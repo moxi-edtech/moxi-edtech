@@ -11,6 +11,7 @@ export type RematriculaCardState =
   | "LEGACY_REVIEW_REQUIRED"
   | "ALREADY_COMPLETED"
   | "PAYMENT_IN_PROGRESS"
+  | "PENDING_ORDER_REVIEW"
   | "RECONCILIATION_REQUIRED"
   | "WINDOW_CLOSED";
 
@@ -71,8 +72,26 @@ export type RematriculaPaymentItem = {
   id: string;
   tipo: "mensalidade" | "servico";
   nome?: string;
+  descricao?: string | null;
+  codigo?: string | null;
   preco: number;
+  quantidade?: number;
   origem_matricula_id?: string | null;
+};
+
+type TurmaPayload = {
+  id: string;
+  nome?: string | null;
+  turma_nome?: string | null;
+  turno?: string | null;
+  capacidade_maxima?: number | null;
+  ocupacao_atual?: number | null;
+  classe_nome?: string | null;
+  classe?: { nome?: string | null } | null;
+  curso_nome?: string | null;
+  curso?: { nome?: string | null } | null;
+  turma_codigo?: string | null;
+  session_id?: string | null;
 };
 
 type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
@@ -88,6 +107,7 @@ interface StatusResponse {
     created_at: string;
     turma_id?: string;
     valor_cobrado?: number;
+    has_payment_intent?: boolean;
   } | null;
   comprovante: {
     docId: string;
@@ -317,7 +337,7 @@ export function useRematriculaBalcao(opts: {
       setProgressao(data.progressao ?? null);
       if (data.items && Array.isArray(data.items)) {
         setTurmas(
-          data.items.map((t: any) => ({
+          data.items.map((t: TurmaPayload) => ({
             id: t.id,
             nome: t.nome ?? t.turma_nome ?? "—",
             turno: t.turno ?? null,
@@ -414,6 +434,27 @@ export function useRematriculaBalcao(opts: {
     }
   }, [cardState, fetchStatus, pedido?.id]);
 
+  const cancelPendingPedido = useCallback(async () => {
+    if (!pedido?.id || cardState !== "PENDING_ORDER_REVIEW") return;
+    if (!window.confirm("Cancelar o pedido pendente sem pagamento e iniciar a rematrícula correta?")) return;
+    setReconciling(true);
+    setApiError(null);
+    try {
+      const response = await fetch("/api/secretaria/balcao/rematriculas/reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pedido_id: pedido.id, action: "cancel" }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || "Não foi possível cancelar o pedido pendente.");
+      await fetchStatus();
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Não foi possível cancelar o pedido pendente.");
+    } finally {
+      setReconciling(false);
+    }
+  }, [cardState, fetchStatus, pedido?.id]);
+
   // Reset detalhes when payment method changes
   const setMetodo = useCallback((m: MetodoPagamento) => {
     setMetodoState(m);
@@ -483,7 +524,12 @@ export function useRematriculaBalcao(opts: {
           const reconciliationResponse = await fetch("/api/secretaria/balcao/rematriculas/reconcile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pedido_id: data.pedido_id, action: "complete" }),
+            body: JSON.stringify({
+              pedido_id: data.pedido_id,
+              action: "complete",
+              ano_letivo_id: anoLetivo.id,
+              destino_turma_id: selectedTurmaId,
+            }),
           });
           const reconciliationData = await reconciliationResponse.json().catch(() => ({}));
           if (reconciliationResponse.ok || reconciliationResponse.status === 202) {
@@ -533,6 +579,7 @@ export function useRematriculaBalcao(opts: {
     reconciling,
     resolveLegacyPedido,
     resolveReconciliation,
+    cancelPendingPedido,
 
     // Turmas
     turmas,

@@ -775,6 +775,7 @@ function Catalogo({
   rematriculaError,
   onResolverPedido,
   onResolverReconciliacao,
+  onCancelPendingPedido,
   onRematricula,
   onRegularize,
 }: {
@@ -795,6 +796,7 @@ function Catalogo({
     | "LEGACY_REVIEW_REQUIRED"
     | "ALREADY_COMPLETED"
     | "PAYMENT_IN_PROGRESS"
+    | "PENDING_ORDER_REVIEW"
     | "RECONCILIATION_REQUIRED"
     | "WINDOW_CLOSED"
     | "DEBT_BLOCKED"
@@ -806,6 +808,7 @@ function Catalogo({
   rematriculaError: string | null;
   onResolverPedido: () => Promise<void>;
   onResolverReconciliacao: () => Promise<void>;
+  onCancelPendingPedido: () => Promise<void>;
   onRematricula: () => void;
   onRegularize: () => void;
 }) {
@@ -882,6 +885,27 @@ function Catalogo({
                 </button>
               </div>
             ) : null}
+            {rematriculaState === "PENDING_ORDER_REVIEW" ? (
+              <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                  <div>
+                    <strong className="block">Pedido pendente sem pagamento</strong>
+                    <p className="mt-1 text-amber-900/80">
+                      Este pedido anterior não tem pagamento associado. Cancele-o aqui para iniciar a rematrícula correta, sem cobrança duplicada.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void onCancelPendingPedido()}
+                  disabled={reconcilingPedido}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {reconcilingPedido ? "A cancelar pedido…" : "Cancelar pedido e reiniciar"}
+                </button>
+              </div>
+            ) : null}
             {rematriculaState === "WINDOW_CLOSED" ? (
               <div className="mb-2 rounded-xl border border-slate-300 bg-slate-50 p-3.5 text-xs text-slate-700">
                 <strong className="block text-slate-900">Período de rematrícula fechado</strong>
@@ -907,7 +931,7 @@ function Catalogo({
                 )}
               </div>
             )}
-            {rematriculaState !== "LEGACY_REVIEW_REQUIRED" && <button
+            {!(["LEGACY_REVIEW_REQUIRED", "PENDING_ORDER_REVIEW"] as string[]).includes(rematriculaState) && <button
               type="button"
               onClick={onRematricula}
               disabled={!rematriculaReady}
@@ -934,8 +958,10 @@ function Catalogo({
                       ? "A verificar elegibilidade da matrícula..."
                       : rematriculaState === "ALREADY_COMPLETED"
                         ? "Aluno já possui matrícula neste ano letivo"
-                        : rematriculaState === "PAYMENT_IN_PROGRESS"
+                          : rematriculaState === "PAYMENT_IN_PROGRESS"
                           ? "Pagamento de rematrícula já iniciado"
+                          : rematriculaState === "PENDING_ORDER_REVIEW"
+                            ? "Resolva o pedido pendente acima"
                           : rematriculaState === "RECONCILIATION_REQUIRED"
                             ? "Rematrícula aguarda reconciliação"
                           : rematriculaState === "DEBT_BLOCKED"
@@ -1637,6 +1663,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 rematriculaError={rematricula.apiError}
                 onResolverPedido={rematricula.resolveLegacyPedido}
                 onResolverReconciliacao={rematricula.resolveReconciliation}
+                onCancelPendingPedido={rematricula.cancelPendingPedido}
                 onRematricula={rematricula.openModal}
                 onRegularize={() => {
                   if ((rematricula.debt?.total ?? 0) > 0) setDebtModalOpen(true);
@@ -1676,6 +1703,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           matriculaId={dossier.aluno.matricula_id ?? ""}
           anoLetivo={rematricula.anoLetivo}
           service={rematricula.service}
+          itensPagamento={carrinho.itens}
           debt={rematricula.debt}
           skipTurmaSelection={rematricula.cardState === "RECONFIRMATION_REQUIRED"}
           turmas={rematricula.turmas}

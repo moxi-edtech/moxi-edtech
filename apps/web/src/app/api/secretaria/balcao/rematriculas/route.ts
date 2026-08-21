@@ -314,9 +314,13 @@ export async function POST(request: Request) {
       .eq("servico_codigo", SERVICE_CODE)
       .in("status", ["pending_payment", "granted"])
       .order("created_at", { ascending: false });
-    const pedidoExistente = (pedidosExistentes ?? []).find(
-      (pedido: any) => pedido.contexto?.ano_letivo_id === academicContext.anoLetivoId,
-    ) ?? (pedidosExistentes ?? []).find(
+    const pedidosDoAno = (pedidosExistentes ?? []).filter(
+      (pedido: any) => pedido.contexto?.ano_letivo_id === academicContext.anoLetivoId
+        || Number(pedido.contexto?.ano_letivo) === Number(academicContext.anoLetivoLabel.slice(0, 4)),
+    );
+    const pedidoExistente = pedidosDoAno.find(
+      (pedido: any) => pedido.contexto?.origem === "portal_rematricula",
+    ) ?? pedidosDoAno[0] ?? (pedidosExistentes ?? []).find(
       (pedido: any) => !pedido.contexto || Object.keys(pedido.contexto).length === 0,
     );
     const pedidoLegado = Boolean(
@@ -358,7 +362,41 @@ export async function POST(request: Request) {
       if (pedidoLegado) {
         return NextResponse.json({ ok: false, error: "Existe um pedido antigo sem ano letivo identificado. Envie para reconciliação antes de criar uma nova taxa.", code: "REMATRICULA_LEGACY_REVIEW_REQUIRED", pedido_id: pedidoExistente.id }, { status: 409 });
       }
-      return NextResponse.json({ ok: false, error: "Já existe uma rematrícula em pagamento para este aluno e ano.", code: "PAYMENT_IN_PROGRESS", pedido_id: pedidoExistente.id }, { status: 409 });
+      // Um pedido contextual sem reason_code e sem intent/pagamento é um
+      // checkout abandonado. Pode ser encerrado com segurança antes de
+      // prosseguir com o método escolhido no atendimento actual.
+      let pagamentoAssociado = false;
+      if (!pedidoExistente.contexto?.reason_code && !pedidoExistente.reason_code) {
+        const { data: intents } = await (supabase as any)
+          .from("pagamento_intents")
+          .select("id")
+          .eq("escola_id", escolaId)
+          .eq("servico_pedido_id", pedidoExistente.id)
+          .limit(1);
+        const { data: pagamentos } = await (supabase as any)
+          .from("pagamentos")
+          .select("id, meta")
+          .eq("escola_id", escolaId)
+          .eq("aluno_id", body.aluno_id)
+          .limit(50);
+        pagamentoAssociado = Boolean(
+          (intents ?? []).length > 0 ||
+          (pagamentos ?? []).some((pagamento: any) =>
+            pagamento.meta?.pedido_id === pedidoExistente.id ||
+            pagamento.meta?.servico_pedido_id === pedidoExistente.id,
+          ),
+        );
+        if (!pagamentoAssociado) {
+          const { error: cancelError } = await (supabase as any).rpc("balcao_cancelar_pedido", {
+            p_pedido_id: pedidoExistente.id,
+            p_reason: "Pedido pendente sem pagamento encerrado antes de nova tentativa no Balcão",
+          });
+          if (cancelError) throw cancelError;
+        }
+      }
+      if (pagamentoAssociado || pedidoExistente.reason_code) {
+        return NextResponse.json({ ok: false, error: "Já existe uma rematrícula em pagamento para este aluno e ano.", code: "PAYMENT_IN_PROGRESS", pedido_id: pedidoExistente.id }, { status: 409 });
+      }
     }
 
     // Regra financeira obrigatória: nenhuma rematrícula nova/reconfirmação

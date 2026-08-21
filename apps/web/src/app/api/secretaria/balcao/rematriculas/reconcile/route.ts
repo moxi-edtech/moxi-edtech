@@ -14,6 +14,7 @@ const Body = z.object({
   pedido_id: z.string().uuid(),
   action: z.enum(["associate", "cancel", "complete"]).default("associate"),
   ano_letivo_id: z.string().uuid().optional(),
+  destino_turma_id: z.string().uuid().optional(),
 });
 
 export async function POST(request: Request) {
@@ -50,8 +51,54 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Este pedido já não está pendente", code: "PEDIDO_NOT_PENDING" }, { status: 409 });
     }
 
+    if (parsed.data.action === "cancel") {
+      if (pedido.status !== "pending_payment") {
+        return NextResponse.json({ ok: false, error: "Só é possível cancelar um pedido pendente", code: "PEDIDO_NOT_PENDING" }, { status: 409 });
+      }
+      const { data: intents } = await supabase
+        .from("pagamento_intents")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("servico_pedido_id", pedido.id)
+        .limit(1);
+      const { data: pagamentos } = pedido.aluno_id
+        ? await supabase
+            .from("pagamentos")
+            .select("id, meta")
+            .eq("escola_id", escolaId)
+            .eq("aluno_id", pedido.aluno_id)
+            .limit(50)
+        : { data: [] };
+      const pagamentoAssociado = Boolean(
+        (intents ?? []).length > 0 ||
+        (pagamentos ?? []).some((pagamento: any) =>
+          pagamento.meta?.pedido_id === pedido.id ||
+          pagamento.meta?.servico_pedido_id === pedido.id,
+        ),
+      );
+      if (pagamentoAssociado) {
+        return NextResponse.json({ ok: false, error: "Existe pagamento associado; encaminhe para reconciliação financeira", code: "PAYMENT_ASSOCIATED" }, { status: 409 });
+      }
+      const { data, error } = await supabase.rpc("balcao_cancelar_pedido", {
+        p_pedido_id: pedido.id,
+        p_reason: "Pedido pendente sem pagamento cancelado no Balcão para reiniciar a rematrícula correta",
+      });
+      if (error) throw error;
+      recordAuditServer({
+        escolaId,
+        portal: "secretaria",
+        acao: "REMATRICULA_BALCAO_PEDIDO_PENDENTE_CANCELADO",
+        entity: "servico_pedidos",
+        entityId: pedido.id,
+        details: { aluno_id: pedido.aluno_id, motivo: "sem_pagamento_associado" },
+      });
+      return NextResponse.json({ ok: true, pedido_id: pedido.id, result: data, action: "cancel" });
+    }
+
     if (parsed.data.action === "complete") {
-      if (pedido.contexto?.origem !== "rematricula_balcao" || pedido.contexto?.ano_letivo_id == null) {
+      const portalPedido = pedido.contexto?.origem === "portal_rematricula";
+      const hasAcademicContext = pedido.contexto?.ano_letivo_id != null || portalPedido;
+      if (!hasAcademicContext) {
         return NextResponse.json({ ok: false, error: "Este pedido não tem contexto suficiente para reconciliação", code: "PEDIDO_CONTEXT_INVALID" }, { status: 409 });
       }
       if (!pedido.aluno_id) {
@@ -81,10 +128,10 @@ export async function POST(request: Request) {
 
       const academicContext = await resolveAcademicYearContext(supabase, {
         userId: user.id,
-        requestedAcademicYearId: String(pedido.contexto.ano_letivo_id),
+        requestedAcademicYearId: parsed.data.ano_letivo_id ?? String(pedido.contexto.ano_letivo_id),
         operation: "WRITE",
       });
-      const destinoTurmaId = String(pedido.contexto.destino_turma_id ?? "");
+      const destinoTurmaId = String(parsed.data.destino_turma_id ?? pedido.contexto.destino_turma_id ?? "");
       if (!destinoTurmaId) {
         return NextResponse.json({ ok: false, error: "Turma destino não encontrada no pedido", code: "DESTINATION_CLASS_REQUIRED" }, { status: 409 });
       }
