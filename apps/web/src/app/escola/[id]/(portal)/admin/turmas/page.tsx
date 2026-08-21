@@ -42,7 +42,7 @@ export default async function Page({
     console.error("[SSR] Error fetching turmas view:", error);
     const { data: fallbackRows } = await supabase
       .from('turmas')
-      .select('id, nome, turma_codigo, turno, sala, capacidade_maxima, status_validacao, escola_id, curso_id, classe_id')
+      .select('id, nome, turma_codigo, turno, sala, capacidade_maxima, status_validacao, escola_id, curso_id, classe_id, session_id')
       .eq('escola_id', escolaId)
       .order('nome', { ascending: true })
       .limit(100);
