@@ -57,32 +57,31 @@ function uploadWithProgress(url: string, formData: FormData, onProgress: (pct: n
 
 export function PaymentDrawer({
   open,
-  mensalidade,
+  mensalidades,
   dadosPagamento,
   onClose,
   onUploaded,
   studentId,
 }: {
   open: boolean;
-  mensalidade: Mensalidade | null;
+  mensalidades: Mensalidade[];
   dadosPagamento: DadosPagamento | null;
   onClose: () => void;
-  onUploaded: (mensalidadeId: string) => void;
+  onUploaded: (mensalidadeIds: string[]) => void;
   studentId?: string | null;
 }) {
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [friendlyError, setFriendlyError] = useState<string | null>(null);
-  const [valorInformado, setValorInformado] = useState("");
   const [mensagem, setMensagem] = useState("");
 
   useEffect(() => {
-    if (!open || !mensalidade) return;
-    setValorInformado("");
+    if (!open || !mensalidades.length) return;
     setMensagem("");
-  }, [open, mensalidade]);
+  }, [open, mensalidades]);
 
-  if (!open || !mensalidade) return null;
+  if (!open || !mensalidades.length) return null;
+  const total = mensalidades.reduce((sum, item) => sum + item.valor, 0);
 
   const submitFile = async (original: File) => {
     setFriendlyError(null);
@@ -98,17 +97,8 @@ export function PaymentDrawer({
     }
 
     const fd = new FormData();
-    fd.append("mensalidadeId", mensalidade.id);
+    mensalidades.forEach((item) => fd.append("mensalidadeIds", item.id));
     fd.append("file", file);
-    const valorAtual = valorInformado.trim();
-    if (valorAtual) {
-      const parsed = Number(valorAtual.replace(",", "."));
-      if (!Number.isFinite(parsed) || parsed <= 0) {
-        setFriendlyError("Valor informado inválido.");
-        return;
-      }
-      fd.append("valorInformado", String(parsed));
-    }
     if (mensagem.trim()) {
       fd.append("mensagem", mensagem.trim());
     }
@@ -119,8 +109,7 @@ export function PaymentDrawer({
     try {
       const json = await uploadWithProgress("/api/aluno/financeiro/comprovativo", fd, setProgress);
       if (!json?.ok) throw new Error(json?.error ?? "Falha ao anexar comprovativo");
-      setValorInformado("");
-      onUploaded(mensalidade.id);
+      onUploaded(mensalidades.map((item) => item.id));
       onClose();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Não foi possível anexar o comprovativo. Tente novamente.";
@@ -133,8 +122,11 @@ export function PaymentDrawer({
   return (
     <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose}>
       <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-4 shadow-xl" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }} onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-semibold text-slate-900">Pagamento — {mensalidade.competencia}</p>
-        <p className="text-xs text-slate-500">Valor: {money.format(mensalidade.valor)}</p>
+        <p className="text-sm font-semibold text-slate-900">Pagamento consolidado</p>
+        <p className="text-xs text-slate-500">{mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {mensalidades.map((item) => <span key={item.id} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{item.competencia} · {money.format(item.valor)}</span>)}
+        </div>
         <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
           <p className="font-medium text-slate-900">Coordenadas bancárias</p>
           <p>Banco: {dadosPagamento?.banco || "Consultar secretaria"}</p>
@@ -143,21 +135,8 @@ export function PaymentDrawer({
             <p>Titular: {dadosPagamento?.titular_conta || dadosPagamento?.titular}</p>
           )}
           {dadosPagamento?.kwik_chave && <p>KWIK: {dadosPagamento.kwik_chave}</p>}
-          <p>Referência: MENS-{mensalidade.id.slice(0, 8).toUpperCase()}</p>
+          <p>Referência: LOTE-{mensalidades[0].id.slice(0, 8).toUpperCase()}</p>
         </div>
-        <label className="mt-4 block">
-          <span className="mb-2 block text-xs text-slate-500">Valor enviado (opcional para parcial)</span>
-          <input
-            type="number"
-            min={1}
-            step="0.01"
-            className="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            placeholder={String(mensalidade.valor)}
-            value={valorInformado}
-            onChange={(event) => setValorInformado(event.target.value)}
-            disabled={sending}
-          />
-        </label>
         <label className="mt-4 block">
           <span className="mb-2 block text-xs text-slate-500">Mensagem para a secretaria (opcional)</span>
           <textarea

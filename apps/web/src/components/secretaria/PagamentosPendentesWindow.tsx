@@ -2,8 +2,11 @@
 
 import { Loader2, FileText, Image as ImageIcon, CheckCircle2, XCircle } from "lucide-react";
 import { usePagamentosPendentes, type PagamentosPendentesFilters } from "@/hooks/usePagamentosPendentes";
+import { useRematriculaBalcao } from "@/hooks/useRematriculaBalcao";
+import type { RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
+import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -15,12 +18,31 @@ function isPdf(url: string) {
   return url.toLowerCase().includes(".pdf");
 }
 
-export default function PagamentosPendentesWindow() {
+type RematriculaTarget = {
+  aluno_id: string;
+  aluno_nome: string;
+  aluno_processo: string;
+  matricula_id: string;
+  ano_letivo_id: string;
+  turma_atual: string | null;
+  itens_pagamento?: RematriculaPaymentItem[];
+};
+
+export default function PagamentosPendentesWindow({ escolaId }: { escolaId: string }) {
   const { success, error: toastError } = useToast();
   const confirm = useConfirm();
   const [decisionNotice, setDecisionNotice] = useState<{ tone: "success" | "info"; title: string; detail: string; alunoId?: string } | null>(null);
   const [filters, setFilters] = useState<PagamentosPendentesFilters>({ origem: "todos", estado: "todos", prioridade: "todos" });
   const [actionError, setActionError] = useState<{ pagamentoId: string; aprovado: boolean; message: string } | null>(null);
+  const [rematriculaTarget, setRematriculaTarget] = useState<RematriculaTarget | null>(null);
+  const [openRematriculaAfterApproval, setOpenRematriculaAfterApproval] = useState(false);
+  const rematriculaAutoOpenHandled = useRef(false);
+  const rematricula = useRematriculaBalcao({
+    escolaId,
+    alunoId: rematriculaTarget?.aluno_id ?? null,
+    matriculaId: rematriculaTarget?.matricula_id ?? null,
+    academicYearId: rematriculaTarget?.ano_letivo_id ?? null,
+  });
   const queryFilters = useMemo(() => filters, [filters]);
   const {
     rows,
@@ -36,6 +58,19 @@ export default function PagamentosPendentesWindow() {
     reload,
     validar,
   } = usePagamentosPendentes(15, queryFilters);
+
+  useEffect(() => {
+    if (!openRematriculaAfterApproval || rematriculaAutoOpenHandled.current || !rematriculaTarget || rematricula.loading || !rematricula.service) return;
+    if (["READY", "RECONFIRMATION_REQUIRED", "FINALIST_PENDING"].includes(rematricula.cardState ?? "")) {
+      rematriculaAutoOpenHandled.current = true;
+      rematricula.openModal();
+      return;
+    }
+    if (rematricula.cardState) {
+      rematriculaAutoOpenHandled.current = true;
+      toastError("O pagamento foi validado, mas a rematrícula não pode ser aberta neste momento.");
+    }
+  }, [openRematriculaAfterApproval, rematriculaTarget, rematricula, toastError]);
 
   async function handleAction(pagamentoId: string, aprovado: boolean) {
     let mensagemSecretaria: string | null = null;
@@ -67,17 +102,30 @@ export default function PagamentosPendentesWindow() {
     }
     setActionError(null);
     const row = rows.find((item) => item.pagamento_id === pagamentoId);
+    const quantidadeItens = row?.quantidade_itens ?? 1;
     const isServico = row?.tipo_entidade === "servico";
+    const isRematricula = isServico && row?.servico_codigo === "SERV_REMATRICULA";
     setDecisionNotice({
       tone: aprovado ? "success" : "info",
       title: aprovado
-        ? isServico ? "Serviço liberado" : "Pagamento aprovado"
+        ? isRematricula ? "Pagamento de rematrícula validado" : isServico ? "Serviço liberado" : "Pagamento aprovado"
         : "Comprovativo rejeitado",
       detail: aprovado
-        ? isServico ? "O aluno já pode voltar ao portal e descarregar o serviço." : "O pagamento foi liquidado e o recibo será actualizado."
+        ? isRematricula ? "O comprovativo foi confirmado. A rematrícula será concluída no modal deste aluno." : isServico ? "O aluno já pode voltar ao portal e descarregar o serviço." : quantidadeItens > 1 ? `${quantidadeItens} mensalidades foram liquidadas numa única decisão; os recibos serão actualizados.` : "O pagamento foi liquidado e o recibo será actualizado."
         : "O motivo foi enviado ao aluno. Ele poderá corrigir e reenviar o comprovativo.",
       alunoId: row?.aluno_id,
     });
+    if (aprovado && isRematricula) {
+      const contextResponse = await fetch(`/api/secretaria/recebimentos/rematricula-context?pagamento_id=${encodeURIComponent(pagamentoId)}`, { cache: "no-store" });
+      const contextJson = await contextResponse.json().catch(() => ({}));
+      if (contextResponse.ok && contextJson?.ok && contextJson.rematricula?.matricula_id && contextJson.rematricula?.ano_letivo_id) {
+        rematriculaAutoOpenHandled.current = false;
+        setRematriculaTarget(contextJson.rematricula);
+        setOpenRematriculaAfterApproval(true);
+      } else {
+        toastError(contextJson?.error || "Pagamento aprovado, mas não foi possível preparar o modal de rematrícula.");
+      }
+    }
     success(aprovado ? "Decisão concluída e registada." : "Rejeição registada com motivo.");
   }
 
@@ -218,7 +266,7 @@ export default function PagamentosPendentesWindow() {
                         {row.tipo_entidade}
                       </span>
                       <p className="mt-1 text-xs font-semibold text-slate-600">
-                        {row.servico_nome || row.servico_codigo || "—"}
+                        {row.quantidade_itens && row.quantidade_itens > 1 ? `${row.quantidade_itens} mensalidades · comprovativo consolidado` : row.servico_nome || row.servico_codigo || "—"}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-slate-800">{kwanza.format(Number(row.valor_esperado || 0))}</td>
@@ -261,7 +309,7 @@ export default function PagamentosPendentesWindow() {
                           className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actioning ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                          {row.tipo_entidade === "servico" ? "Aprovar e liberar" : "Aprovar"}
+                          {row.tipo_entidade === "servico" ? "Aprovar e liberar" : row.quantidade_itens && row.quantidade_itens > 1 ? "Aprovar lote" : "Aprovar"}
                         </button>
                         <button
                           type="button"
@@ -303,6 +351,49 @@ export default function PagamentosPendentesWindow() {
           Próxima
         </button>
       </footer>
+
+      {rematriculaTarget && rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && (
+        <RematriculaBalcaoModal
+          open={rematricula.modalOpen}
+          onClose={rematricula.closeModal}
+          alunoNome={rematriculaTarget.aluno_nome}
+          alunoProcesso={rematriculaTarget.aluno_processo}
+          turmaAtual={rematriculaTarget.turma_atual}
+          matriculaId={rematriculaTarget.matricula_id}
+          anoLetivo={rematricula.anoLetivo}
+          service={rematricula.service}
+          itensPagamento={rematriculaTarget.itens_pagamento}
+          paymentAlreadyValidated
+          skipTurmaSelection={rematricula.cardState === "RECONFIRMATION_REQUIRED"}
+          debt={rematricula.debt}
+          turmas={rematricula.turmas}
+          turmasLoading={rematricula.turmasLoading}
+          progressao={rematricula.progressao}
+          notasLancarDepois={rematricula.notasLancarDepois}
+          setNotasLancarDepois={rematricula.setNotasLancarDepois}
+          decisaoResultado={rematricula.decisaoResultado}
+          setDecisaoResultado={rematricula.setDecisaoResultado}
+          decisaoFonte={rematricula.decisaoFonte}
+          setDecisaoFonte={rematricula.setDecisaoFonte}
+          decisaoMotivo={rematricula.decisaoMotivo}
+          setDecisaoMotivo={rematricula.setDecisaoMotivo}
+          decisaoObservacao={rematricula.decisaoObservacao}
+          setDecisaoObservacao={rematricula.setDecisaoObservacao}
+          step={rematricula.step}
+          setStep={rematricula.setStep}
+          selectedTurmaId={rematricula.selectedTurmaId}
+          setSelectedTurmaId={rematricula.setSelectedTurmaId}
+          metodo={rematricula.metodo}
+          setMetodo={rematricula.setMetodo}
+          detalhes={rematricula.detalhes}
+          setDetalhes={rematricula.setDetalhes}
+          submitting={rematricula.submitting}
+          result={rematricula.result}
+          apiError={rematricula.apiError}
+          submit={rematricula.submit}
+          onPostAction={() => undefined}
+        />
+      )}
     </section>
   );
 }

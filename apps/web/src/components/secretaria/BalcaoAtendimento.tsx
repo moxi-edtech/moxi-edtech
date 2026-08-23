@@ -807,7 +807,7 @@ function Catalogo({
   reconcilingPedido: boolean;
   rematriculaError: string | null;
   onResolverPedido: () => Promise<void>;
-  onResolverReconciliacao: () => Promise<void>;
+  onResolverReconciliacao: () => void;
   onCancelPendingPedido: () => Promise<void>;
   onRematricula: () => void;
   onRegularize: () => void;
@@ -871,7 +871,7 @@ function Catalogo({
                   <div>
                     <strong className="block">Pagamento recebido — falta concluir a matrícula</strong>
                     <p className="mt-1 text-amber-900/80">
-                      Não cobre novamente. O sistema vai reconciliar o pagamento com a matrícula destino e emitir o comprovante.
+                      Não cobre novamente. Registe a decisão académica e conclua a matrícula destino neste mesmo atendimento.
                     </p>
                   </div>
                 </div>
@@ -881,7 +881,7 @@ function Catalogo({
                   disabled={reconcilingPedido}
                   className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
                 >
-                  {reconcilingPedido ? "A concluir reconciliação…" : "Concluir reconciliação"}
+                  {reconcilingPedido ? "A concluir reconciliação…" : "Registar decisão e concluir"}
                 </button>
               </div>
             ) : null}
@@ -890,9 +890,9 @@ function Catalogo({
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                   <div>
-                    <strong className="block">Pedido pendente sem pagamento</strong>
+                    <strong className="block">Tentativa de pagamento sem liquidação</strong>
                     <p className="mt-1 text-amber-900/80">
-                      Este pedido anterior não tem pagamento associado. Cancele-o aqui para iniciar a rematrícula correta, sem cobrança duplicada.
+                      Não há pagamento liquidado nem comprovativo associado. Cancele a tentativa aqui e cobre novamente no mesmo atendimento, sem duplicar pagamentos.
                     </p>
                   </div>
                 </div>
@@ -902,7 +902,7 @@ function Catalogo({
                   disabled={reconcilingPedido}
                   className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
                 >
-                  {reconcilingPedido ? "A cancelar pedido…" : "Cancelar pedido e reiniciar"}
+                  {reconcilingPedido ? "A cancelar tentativa…" : "Cancelar tentativa e cobrar agora"}
                 </button>
               </div>
             ) : null}
@@ -1662,7 +1662,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 reconcilingPedido={rematricula.reconciling}
                 rematriculaError={rematricula.apiError}
                 onResolverPedido={rematricula.resolveLegacyPedido}
-                onResolverReconciliacao={rematricula.resolveReconciliation}
+                onResolverReconciliacao={rematricula.openReconciliationModal}
                 onCancelPendingPedido={rematricula.cancelPendingPedido}
                 onRematricula={rematricula.openModal}
                 onRegularize={() => {
@@ -1697,20 +1697,29 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           }}
           alunoNome={dossier.aluno.nome}
           alunoProcesso={dossier.aluno.numero_processo}
-          alunoId={dossier.aluno.id}
-          escolaId={escolaId}
           turmaAtual={dossier.aluno.turma_codigo ?? null}
           matriculaId={dossier.aluno.matricula_id ?? ""}
           anoLetivo={rematricula.anoLetivo}
           service={rematricula.service}
           itensPagamento={carrinho.itens}
           debt={rematricula.debt}
+          cohort={rematricula.cohort}
+          reconciliationOnly={rematricula.reconciliationMode}
+          onRegularizeDebt={() => setDebtModalOpen(true)}
           skipTurmaSelection={rematricula.cardState === "RECONFIRMATION_REQUIRED"}
           turmas={rematricula.turmas}
           turmasLoading={rematricula.turmasLoading}
           progressao={rematricula.progressao}
           notasLancarDepois={rematricula.notasLancarDepois}
           setNotasLancarDepois={rematricula.setNotasLancarDepois}
+          decisaoResultado={rematricula.decisaoResultado}
+          setDecisaoResultado={rematricula.setDecisaoResultado}
+          decisaoFonte={rematricula.decisaoFonte}
+          setDecisaoFonte={rematricula.setDecisaoFonte}
+          decisaoMotivo={rematricula.decisaoMotivo}
+          setDecisaoMotivo={rematricula.setDecisaoMotivo}
+          decisaoObservacao={rematricula.decisaoObservacao}
+          setDecisaoObservacao={rematricula.setDecisaoObservacao}
           step={rematricula.step}
           setStep={rematricula.setStep}
           selectedTurmaId={rematricula.selectedTurmaId}

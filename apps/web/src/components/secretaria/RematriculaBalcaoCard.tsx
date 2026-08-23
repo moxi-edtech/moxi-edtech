@@ -151,7 +151,7 @@ export function RematriculaBalcaoCard({
                 bg-rose-100 px-4 py-2.5 text-sm font-bold text-rose-700
                 hover:bg-rose-200 transition-colors"
             >
-              Ver dívidas
+              Regularizar no balcão
             </button>
           </div>
         </div>

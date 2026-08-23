@@ -30,7 +30,7 @@ export interface TurmaOption {
 export interface ProgressaoBalcao {
   aplicada: boolean;
   modo: "promocao" | "retencao" | "indefinida";
-  estado: "notas_pendentes" | "reprovado" | "classe_nao_identificada";
+  estado: "notas_pendentes" | "reprovado" | "concluido" | "classe_nao_identificada";
   classe_origem: number | null;
   classe_destino: number | null;
   turma_origem_id: string | null;
@@ -95,6 +95,7 @@ type TurmaPayload = {
 };
 
 type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
+export type ResultadoDecisaoBalcao = "aprovado" | "reprovado" | "concluido";
 
 interface StatusResponse {
   ok: boolean;
@@ -123,6 +124,7 @@ interface StatusResponse {
     destino_turma_id?: string | null;
   } | null;
   reconciliation?: { can_cancel: boolean; reason: string } | null;
+  cohort?: { codigo: string; nome: string; modo: string } | null;
   window?: {
     configured: boolean;
     open: boolean;
@@ -160,6 +162,10 @@ const ERROR_MESSAGES: Record<string, string> = {
     "O período de rematrícula não está aberto para este ano letivo.",
   FINALISTA_PROGRESSION_INVALID:
     "O finalista deve seguir para a classe imediatamente seguinte.",
+  DECISAO_MOTIVO_REQUIRED:
+    "Informe o motivo da decisão administrativa antes de concluir.",
+  ASSISTED_TRANSITION_COHORT_REQUIRED:
+    "Este aluno não pertence à coorte autorizada para decisão administrativa sem notas.",
 };
 
 const DETALHES_VAZIOS = {
@@ -190,16 +196,22 @@ export function useRematriculaBalcao(opts: {
     useState<StatusResponse["ano_letivo"]>(null);
   const [destinoTurmaId, setDestinoTurmaId] = useState<string | null>(null);
   const [reconciling, setReconciling] = useState(false);
+  const [cohort, setCohort] = useState<StatusResponse["cohort"]>(null);
 
   // ── Turmas ──────────────────────────────────────────────────────────────
   const [turmas, setTurmas] = useState<TurmaOption[]>([]);
   const [progressao, setProgressao] = useState<ProgressaoBalcao | null>(null);
   const [notasLancarDepois, setNotasLancarDepois] = useState(false);
+  const [decisaoResultado, setDecisaoResultado] = useState<ResultadoDecisaoBalcao>("aprovado");
+  const [decisaoFonte, setDecisaoFonte] = useState("raa");
+  const [decisaoMotivo, setDecisaoMotivo] = useState("");
+  const [decisaoObservacao, setDecisaoObservacao] = useState("");
   const [turmasLoading, setTurmasLoading] = useState(false);
-  const [turmasFetched, setTurmasFetched] = useState(false);
+  const [turmasFetchedFor, setTurmasFetchedFor] = useState<ResultadoDecisaoBalcao | null>(null);
 
   // ── Modal wizard ────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
+  const [reconciliationMode, setReconciliationMode] = useState(false);
   const [step, setStep] = useState(1);
   const [selectedTurmaId, setSelectedTurmaId] = useState<string | null>(null);
   const [metodo, setMetodoState] = useState<MetodoPagamento>("cash");
@@ -245,6 +257,7 @@ export function useRematriculaBalcao(opts: {
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
         setDestinoTurmaId(data.destino_turma_id ?? null);
+        setCohort(data.cohort ?? null);
       } else {
         setCardState(null);
       }
@@ -261,14 +274,20 @@ export function useRematriculaBalcao(opts: {
     fetchStatus();
     // Reset modal state when student changes
     setModalOpen(false);
+    setReconciliationMode(false);
     setStep(1);
     setSelectedTurmaId(null);
     setResult(null);
     setApiError(null);
-    setTurmasFetched(false);
+    setTurmasFetchedFor(null);
     setTurmas([]);
     setProgressao(null);
+    setCohort(null);
     setNotasLancarDepois(false);
+    setDecisaoResultado("aprovado");
+    setDecisaoFonte("raa");
+    setDecisaoMotivo("");
+    setDecisaoObservacao("");
     setIdempotencyKey(null);
 
     try {
@@ -280,6 +299,10 @@ export function useRematriculaBalcao(opts: {
           metodo?: MetodoPagamento;
           detalhes?: typeof DETALHES_VAZIOS;
           notasLancarDepois?: boolean;
+          decisaoResultado?: ResultadoDecisaoBalcao;
+          decisaoFonte?: string;
+          decisaoMotivo?: string;
+          decisaoObservacao?: string;
           idempotencyKey?: string | null;
         };
         setStep(Number.isInteger(draft.step) && (draft.step ?? 1) >= 1 && (draft.step ?? 1) <= 3 ? draft.step! : 1);
@@ -287,6 +310,10 @@ export function useRematriculaBalcao(opts: {
         if (draft.metodo) setMetodoState(draft.metodo);
         if (draft.detalhes) setDetalhesState({ ...DETALHES_VAZIOS, ...draft.detalhes });
         setNotasLancarDepois(Boolean(draft.notasLancarDepois));
+        if (draft.decisaoResultado) setDecisaoResultado(draft.decisaoResultado);
+        if (draft.decisaoFonte) setDecisaoFonte(draft.decisaoFonte);
+        if (draft.decisaoMotivo) setDecisaoMotivo(draft.decisaoMotivo);
+        if (draft.decisaoObservacao) setDecisaoObservacao(draft.decisaoObservacao);
         setIdempotencyKey(draft.idempotencyKey ?? null);
       }
     } catch {
@@ -303,13 +330,17 @@ export function useRematriculaBalcao(opts: {
         metodo,
         detalhes,
         notasLancarDepois,
+        decisaoResultado,
+        decisaoFonte,
+        decisaoMotivo,
+        decisaoObservacao,
         idempotencyKey,
         savedAt: new Date().toISOString(),
       }));
     } catch {
       // A persistência é uma melhoria; nunca deve bloquear a operação.
     }
-  }, [draftKey, detalhes, idempotencyKey, metodo, notasLancarDepois, opts.alunoId, opts.matriculaId, result, selectedTurmaId, step]);
+  }, [decisaoFonte, decisaoMotivo, decisaoObservacao, decisaoResultado, draftKey, detalhes, idempotencyKey, metodo, notasLancarDepois, opts.alunoId, opts.matriculaId, result, selectedTurmaId, step]);
 
   useEffect(() => {
     if (!modalOpen || !selectedTurmaId) return;
@@ -319,9 +350,9 @@ export function useRematriculaBalcao(opts: {
   // ────────────────────────────────────────────────────────────────────────
   // Lazy-fetch turmas when modal opens
   // ────────────────────────────────────────────────────────────────────────
-  const fetchTurmas = useCallback(async () => {
+  const fetchTurmas = useCallback(async (decision: ResultadoDecisaoBalcao = decisaoResultado) => {
     if (!anoLetivo?.id || !opts.alunoId) return;
-    if (turmasFetched) return;
+    if (turmasFetchedFor === decision) return;
 
     setTurmasLoading(true);
     try {
@@ -330,6 +361,7 @@ export function useRematriculaBalcao(opts: {
         aluno_id: opts.alunoId,
       });
       if (opts.matriculaId) params.set("matricula_id", opts.matriculaId);
+      params.set("decisao_resultado", decision);
       const res = await fetch(
         `/api/secretaria/turmas-simples?${params.toString()}`,
       );
@@ -349,19 +381,26 @@ export function useRematriculaBalcao(opts: {
             session_id: t.session_id ?? null,
           })),
         );
-        setTurmasFetched(true);
+        setTurmasFetchedFor(decision);
       }
     } catch (e) {
       console.error("[useRematriculaBalcao] Error fetching turmas:", e);
     } finally {
       setTurmasLoading(false);
     }
-  }, [anoLetivo?.id, opts.alunoId, opts.matriculaId, turmasFetched]);
+  }, [anoLetivo?.id, decisaoResultado, opts.alunoId, opts.matriculaId, turmasFetchedFor]);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    setSelectedTurmaId(null);
+    void fetchTurmas(decisaoResultado);
+  }, [decisaoResultado, fetchTurmas, modalOpen]);
 
   // ────────────────────────────────────────────────────────────────────────
   // Modal controls
   // ────────────────────────────────────────────────────────────────────────
   const openModal = useCallback(() => {
+    setReconciliationMode(false);
     setModalOpen(true);
     setResult(null);
     setApiError(null);
@@ -371,9 +410,23 @@ export function useRematriculaBalcao(opts: {
     fetchTurmas();
   }, [cardState, destinoTurmaId, fetchTurmas, selectedTurmaId]);
 
+  const openReconciliationModal = useCallback(() => {
+    setReconciliationMode(true);
+    setModalOpen(true);
+    setStep(1);
+    setSelectedTurmaId(null);
+    setDecisaoFonte("declaracao_administrativa_escola");
+    setDecisaoMotivo("");
+    setNotasLancarDepois(true);
+    setResult(null);
+    setApiError(null);
+    void fetchTurmas();
+  }, [fetchTurmas]);
+
   const closeModal = useCallback(() => {
     if (submitting) return;
     setModalOpen(false);
+    setReconciliationMode(false);
     // If result was set (success), refresh status to update the card
     if (result) {
       fetchStatus();
@@ -476,7 +529,7 @@ export function useRematriculaBalcao(opts: {
       !opts.alunoId ||
       !opts.matriculaId ||
       !anoLetivo?.id ||
-      !selectedTurmaId
+      (!selectedTurmaId && (decisaoResultado !== "concluido" || reconciliationMode))
     ) {
       return;
     }
@@ -485,9 +538,34 @@ export function useRematriculaBalcao(opts: {
     setApiError(null);
     setResult(null);
     const requestKey = idempotencyKey ?? crypto.randomUUID();
+    const decisaoAdministrativa = decisaoFonte === "declaracao_administrativa_escola";
     setIdempotencyKey(requestKey);
 
     try {
+      if (reconciliationMode) {
+        const response = await fetch("/api/secretaria/balcao/rematriculas/reconcile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pedido_id: pedido?.id,
+            action: "complete",
+            ano_letivo_id: anoLetivo.id,
+            destino_turma_id: selectedTurmaId,
+            decisao_resultado: decisaoResultado,
+            decisao_fonte: decisaoFonte || undefined,
+            decisao_motivo: decisaoMotivo.trim() || undefined,
+            decisao_observacao: decisaoObservacao.trim() || undefined,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok && response.status !== 202) {
+          throw new Error(data.error || "Não foi possível concluir a reconciliação.");
+        }
+        setResult(data);
+        setStep(4);
+        try { sessionStorage.removeItem(draftKey); } catch {}
+        return;
+      }
       const res = await fetch("/api/secretaria/balcao/rematriculas", {
         method: "POST",
         headers: {
@@ -498,12 +576,16 @@ export function useRematriculaBalcao(opts: {
           aluno_id: opts.alunoId,
           matricula_id: opts.matriculaId,
           ano_letivo_id: anoLetivo.id,
-          destino_turma_id: selectedTurmaId,
-          metodo,
+          destino_turma_id: selectedTurmaId ?? undefined,
+          metodo: decisaoResultado === "concluido" ? undefined : metodo,
           reference: detalhes.referencia.trim() || null,
           evidence_url: detalhes.evidencia_url.trim() || null,
           gateway_ref: detalhes.gateway_ref.trim() || null,
-          notas_lancar_depois: notasLancarDepois,
+          notas_lancar_depois: notasLancarDepois || decisaoAdministrativa,
+          decisao_resultado: decisaoResultado,
+          decisao_fonte: decisaoFonte || undefined,
+          decisao_motivo: decisaoMotivo.trim() || undefined,
+          decisao_observacao: decisaoObservacao.trim() || undefined,
           itens: opts.itensPagamento?.map(({ id, tipo }) => ({ id, tipo })) ?? [],
         }),
       });
@@ -555,9 +637,15 @@ export function useRematriculaBalcao(opts: {
     metodo,
     detalhes,
     notasLancarDepois,
+    decisaoFonte,
+    decisaoMotivo,
+    decisaoObservacao,
+    decisaoResultado,
     draftKey,
     idempotencyKey,
     opts.itensPagamento,
+    pedido?.id,
+    reconciliationMode,
   ]);
 
   // ────────────────────────────────────────────────────────────────────────
@@ -576,9 +664,11 @@ export function useRematriculaBalcao(opts: {
     comprovante,
     anoLetivo,
     destinoTurmaId,
+    cohort,
     reconciling,
     resolveLegacyPedido,
     resolveReconciliation,
+    openReconciliationModal,
     cancelPendingPedido,
 
     // Turmas
@@ -587,9 +677,18 @@ export function useRematriculaBalcao(opts: {
     progressao,
     notasLancarDepois,
     setNotasLancarDepois,
+    decisaoResultado,
+    setDecisaoResultado,
+    decisaoFonte,
+    setDecisaoFonte,
+    decisaoMotivo,
+    setDecisaoMotivo,
+    decisaoObservacao,
+    setDecisaoObservacao,
 
     // Modal
     modalOpen,
+    reconciliationMode,
     openModal,
     closeModal,
     step,

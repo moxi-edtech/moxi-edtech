@@ -72,7 +72,7 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
   const [reviewSearch, setReviewSearch] = useState("");
   const [reviewError, setReviewError] = useState<string | null>(null);
 
-  const fetchSummary = async (tol: number) => {
+  const fetchSummary = useCallback(async (tol: number) => {
     setLoading(true);
     try {
         const params = new URLSearchParams({ tolerance: String(tol) });
@@ -83,11 +83,11 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
     } finally {
         setLoading(false);
     }
-  };
+  }, [fromSession]);
 
   useEffect(() => {
-    fetchSummary(tolerance);
-  }, [tolerance, fromSession]);
+    void fetchSummary(tolerance);
+  }, [fetchSummary, tolerance]);
 
   const fetchReviewList = useCallback(async () => {
     if (!toSession) return;
@@ -195,8 +195,8 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
                     <Settings2 className="h-5 w-5" />
                   </div>
                   <div>
-                      <h3 className="text-sm font-bold text-slate-900 leading-none">Tolerância Financeira</h3>
-                      <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">Amnistia automática para virada</p>
+                      <h3 className="text-sm font-bold text-slate-900 leading-none">Limite de alerta financeiro</h3>
+                      <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">Não altera a decisão académica</p>
                   </div>
               </div>
               <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-xl border border-slate-200">
@@ -217,19 +217,19 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
         <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 text-emerald-600 mb-2">
             <CheckCircle2 className="h-4 w-4" />
-            <span className="text-[10px] font-bold uppercase">Migração provisória</span>
+            <span className="text-[10px] font-bold uppercase">Reservas a preparar</span>
           </div>
           <div className="text-3xl font-black text-slate-900">{summary?.counts.aptos}</div>
-          <p className="text-[10px] text-slate-400 mt-1">Notas serão revistas depois da virada.</p>
+          <p className="text-[10px] text-slate-400 mt-1">A RPC valida o RAA e escolhe a classe correcta.</p>
         </div>
 
         <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 text-amber-600 mb-2">
             <AlertCircle className="h-4 w-4" />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Bloqueados (Dívida)</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight">Pendência financeira</span>
           </div>
           <div className="text-3xl font-black text-slate-900">{summary?.counts.inadimplentes}</div>
-          <p className="text-[10px] text-slate-400 mt-1">Rematrícula travada no Ledger.</p>
+          <p className="text-[10px] text-slate-400 mt-1">A reserva continua; apenas a activação final fica bloqueada.</p>
         </div>
 
         <div className="rounded-2xl border border-rose-100 bg-white p-5 shadow-sm">
@@ -244,8 +244,8 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
 
       <div className="flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-sm font-bold text-emerald-900">Migrar alunos provisoriamente</h3>
-          <p className="mt-1 text-xs text-emerald-700">A migração não exige notas lançadas; a secretaria confirma a classe de cada aluno depois.</p>
+          <h3 className="text-sm font-bold text-emerald-900">Gerar reservas de 2026</h3>
+          <p className="mt-1 text-xs text-emerald-700">O RAA decide progressão ou retenção. Alunos com dívida recebem reserva inactiva e regularizam antes da activação.</p>
         </div>
         <Button
           size="sm"
@@ -254,7 +254,7 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
           disabled={promotingBatch || promotingId !== null || !summary?.lists.aptos_ids?.length}
           onClick={() => void promoteAptosBatch()}
         >
-          Migrar todos ({summary?.counts.aptos ?? 0})
+          Gerar reservas ({summary?.counts.aptos ?? 0})
         </Button>
       </div>
 
@@ -302,7 +302,7 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
                                     disabled={promotingId !== null}
                                     onClick={() => void promoteStudent(s.id)}
                                   >
-                                    Promover após pagamento
+                                    Gerar reserva
                                   </Button>
                               </div>
                           ))}
@@ -372,7 +372,7 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
           <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-violet-400" /></div>
         ) : reviewStudents.length === 0 ? (
           <p className="mt-4 rounded-lg border border-dashed border-violet-200 bg-white/70 px-3 py-4 text-center text-xs text-violet-700">
-            Ainda não há matrículas no ano destino. Execute a migração provisória para abrir esta revisão.
+            Ainda não há reservas no ano destino. Gere as reservas para abrir esta revisão.
           </p>
         ) : (
           <div className="mt-4 max-h-96 space-y-2 overflow-y-auto pr-1">
@@ -409,8 +409,7 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
       <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 flex gap-3 shadow-sm">
           <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
           <p className="text-xs text-blue-800 leading-relaxed font-medium">
-              Esta simulação utiliza o estado atual do <strong>Ledger Financeiro</strong> e o <strong>Histórico de Notas</strong>. 
-              Ao avançar, os alunos bloqueados não serão transportados para o novo ano, permanecendo em estado de &quot;pendência&quot; na secretaria.
+              Esta simulação combina o <strong>RAA</strong> com o <strong>Ledger Financeiro</strong>. A decisão académica define a turma da reserva; a dívida antiga permanece visível e bloqueia somente a activação final.
           </p>
       </div>
 

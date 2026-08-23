@@ -25,6 +25,22 @@ export type ResolveAcademicYearContextInput = {
   operation: "READ" | "WRITE";
 };
 
+export type AcademicYearScope = {
+  id: string;
+  ano: number;
+  dataInicio: string | null;
+  dataFim: string | null;
+  status: AcademicYearStatus;
+  warnings?: string[];
+};
+
+export type ResolveAcademicYearScopeInput = {
+  escolaId: string;
+  requestedAcademicYearId?: string | null;
+  requestedYear?: number | null;
+  operation?: "READ" | "WRITE";
+};
+
 export class AcademicYearContextError extends Error {
   readonly code:
     | "ACADEMIC_YEAR_REQUIRED"
@@ -74,6 +90,60 @@ function labelForYear(year: number) {
   return `${year}/${year + 1}`;
 }
 
+export async function resolveAcademicYearScope(
+  supabase: SupabaseClient,
+  input: ResolveAcademicYearScopeInput,
+): Promise<AcademicYearScope> {
+  const requestedId = input.requestedAcademicYearId?.trim() || null;
+  const requestedYear = input.requestedYear == null ? null : Number(input.requestedYear);
+  const operation = input.operation ?? "READ";
+
+  if (operation === "WRITE" && !requestedId) {
+    throw new AcademicYearContextError("ACADEMIC_YEAR_REQUIRED", 400, "ano_letivo_id é obrigatório para operações de escrita.");
+  }
+
+  let query = supabase
+    .from("anos_letivos")
+    .select("id, ano, data_inicio, data_fim, ativo")
+    .eq("escola_id", input.escolaId);
+  if (requestedId) query = query.eq("id", requestedId);
+  else if (Number.isInteger(requestedYear)) query = query.eq("ano", requestedYear);
+  else query = query.eq("ativo", true);
+
+  const { data, error } = await query
+    .order("data_inicio", { ascending: false, nullsFirst: false })
+    .order("ano", { ascending: false })
+    .limit(10);
+  if (error) throw error;
+
+  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  if (rows.length === 0) {
+    const requested = Boolean(requestedId || Number.isInteger(requestedYear));
+    throw new AcademicYearContextError(
+      requested ? "ACADEMIC_YEAR_NOT_FOUND" : "ACTIVE_ACADEMIC_YEAR_NOT_CONFIGURED",
+      requested ? 404 : 409,
+      requested ? "Ano letivo não encontrado." : "A escola não possui um ano letivo ativo configurado.",
+    );
+  }
+
+  const row = rows[0] as AcademicYearRow;
+  const year = toYear(row.ano);
+  if (!year) throw new AcademicYearContextError("ACADEMIC_YEAR_NOT_FOUND", 404, "Ano letivo inválido.");
+  const status = getAcademicYearStatus(row);
+  if (operation === "WRITE" && status !== "ACTIVE") {
+    throw new AcademicYearContextError("ACADEMIC_YEAR_CLOSED", 409, "O ano letivo selecionado não permite escrita.");
+  }
+
+  return {
+    id: String(row.id),
+    ano: year,
+    dataInicio: row.data_inicio ? String(row.data_inicio) : null,
+    dataFim: row.data_fim ? String(row.data_fim) : null,
+    status,
+    warnings: !requestedId && rows.length > 1 ? ["MULTIPLE_ACTIVE_ACADEMIC_YEARS"] : [],
+  };
+}
+
 async function resolveAcademicYearContextUnbounded(
   supabase: SupabaseClient,
   input: ResolveAcademicYearContextInput,
@@ -97,76 +167,21 @@ async function resolveAcademicYearContextUnbounded(
     );
   }
 
-  let query = supabase
-    .from("anos_letivos")
-    .select("id, ano, data_inicio, data_fim, ativo")
-    .eq("escola_id", escolaId);
-
-  query = requestedId ? query.eq("id", requestedId) : query.eq("ativo", true);
-
-  const activeQuery = requestedId
-    ? query.limit(1).maybeSingle()
-    : query
-        .order("data_inicio", { ascending: false, nullsFirst: false })
-        .limit(10);
-  const { data, error } = await activeQuery;
-  if (error) throw error;
-
-  const rows = Array.isArray(data) ? data : data ? [data] : [];
-  if (rows.length === 0) {
-    if (requestedId) {
-      // Deliberately use the same response for an unknown or cross-tenant id.
-      throw new AcademicYearContextError(
-        "ACADEMIC_YEAR_NOT_FOUND",
-        404,
-        "Ano letivo não encontrado.",
-      );
-    }
-    throw new AcademicYearContextError(
-      "ACTIVE_ACADEMIC_YEAR_NOT_CONFIGURED",
-      409,
-      "A escola não possui um ano letivo ativo configurado.",
-    );
-  }
-
-  let warnings = !requestedId && rows.length > 1
-    ? ["MULTIPLE_ACTIVE_ACADEMIC_YEARS"]
-    : [];
-  if (warnings.length > 0) {
-    console.warn("[academic-context] Mais de um ano ACTIVE encontrado; usando o de início mais recente", {
-      escolaId,
-      academicYearIds: rows.map((row) => String((row as AcademicYearRow).id)),
-    });
-  }
-
-  const row = rows[0] as AcademicYearRow;
-  const year = toYear(row.ano);
-  if (!year) {
-    throw new AcademicYearContextError(
-      "ACADEMIC_YEAR_NOT_FOUND",
-      404,
-      "Ano letivo inválido.",
-    );
-  }
-
-  const status = getAcademicYearStatus(row);
-  if (input.operation === "WRITE" && status !== "ACTIVE") {
-    throw new AcademicYearContextError(
-      "ACADEMIC_YEAR_CLOSED",
-      409,
-      "O ano letivo selecionado não permite escrita.",
-    );
-  }
+  const scope = await resolveAcademicYearScope(supabase, {
+    escolaId,
+    requestedAcademicYearId: requestedId,
+    operation: input.operation,
+  });
 
   return {
     escolaId,
-    anoLetivoId: String(row.id),
-    anoLetivoLabel: labelForYear(year),
-    status,
-    mode: status === "ACTIVE" ? "CURRENT" : "HISTORICAL_READ",
+    anoLetivoId: scope.id,
+    anoLetivoLabel: labelForYear(scope.ano),
+    status: scope.status,
+    mode: scope.status === "ACTIVE" ? "CURRENT" : "HISTORICAL_READ",
     timezone: DEFAULT_SCHOOL_TIMEZONE,
     resolvedFrom: requestedId ? "URL" : "ACTIVE_DEFAULT",
-    warnings,
+    warnings: scope.warnings,
   };
 }
 

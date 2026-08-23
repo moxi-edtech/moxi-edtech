@@ -10,6 +10,116 @@
 
 **Estado:** Preparação — novo ano ainda não ativado
 
+## Aditamento de produto — Virada assistida Curtume — 23 de agosto de 2026
+
+O Curtume iniciou a utilização do KLASSE no meio do ano letivo de 2025 e não
+conseguiu lançar no sistema todas as notas, frequências e dados letivos. Por
+isso, a ausência de notas não será interpretada como reprovação nem bloqueará
+automaticamente a rematrícula.
+
+### Modo operacional aprovado
+
+Para alunos sem avaliação completa no KLASSE, a secretaria poderá tomar a
+decisão no Balcão, individualmente, usando a operação **Virada assistida**:
+
+1. localizar a matrícula histórica de 2025;
+2. registar a decisão administrativa da escola (`aprovado`, `reprovado`,
+   `concluído` ou `revisão necessária`);
+3. indicar obrigatoriamente que a fonte é uma declaração da escola e explicar
+   por que as notas não foram lançadas;
+4. sugerir/confirmar a turma destino de 2026/2027;
+5. criar a reserva de destino sem reativar a matrícula histórica;
+6. apresentar a dívida vencida da matrícula de origem;
+7. regularizar a dívida ou registrar acordo aprovado;
+8. ativar a matrícula destino somente após o gate financeiro.
+
+O sistema não deve criar notas fictícias, alterar retroativamente pautas ou
+classificar a ausência de notas como reprovação. A decisão deve registrar
+utilizador, data, motivo, origem da decisão e observação da secretaria.
+
+### Estados do atendimento
+
+```text
+SEM_NOTAS_REVISAO
+  → DECISAO_ADMINISTRATIVA_REGISTADA
+  → DESTINO_CONFIRMADO
+  → RESERVA_CRIADA
+  → PENDENCIA_FINANCEIRA (quando existir)
+  → MATRÍCULA_ATIVA_2026
+```
+
+`REVISÃO NECESSÁRIA` não cria nem ativa matrícula destino. `APROVADO` encaminha
+para a classe seguinte; `REPROVADO` encaminha para a mesma classe; `CONCLUÍDO`
+encerra o ciclo sem criar turma destino quando aplicável.
+
+### Fonte e auditoria
+
+Nesta fase, a fonte da decisão é `declaracao_administrativa_escola`, e não uma
+nota inferida pelo KLASSE. A decisão permanece ligada à matrícula de 2025 e à
+reserva de 2026/2027. A escola poderá lançar ou corrigir o histórico académico
+posteriormente, sem alterar a decisão financeira já auditada.
+
+### Critério de operação
+
+O atendimento deve ser concluído num único contexto da secretaria. O modal do
+Balcão reúne decisão académica, fonte/motivo, seleção da turma, regularização
+financeira e ativação final; a secretaria não deve procurar o aluno novamente
+nem navegar para a tela de notas para concluir a decisão administrativa.
+
+### Aderência ao código atual
+
+O código já cobre a maior parte deste plano: o Balcão permite decidir o
+resultado no próprio modal, lançar notas posteriormente, validar a classe
+destino, criar a autorização `promocoes_com_pendencias`, registar auditoria e
+separar a dívida da decisão académica. A regularização abre a partir do mesmo
+atendimento e, após saldo zero, o operador retoma a etapa financeira.
+
+O código local já implementa no registo da decisão:
+
+- a fonte estruturada `declaracao_administrativa_escola`;
+- a observação da secretaria;
+- o resultado em `historico_anos.resultado_final`;
+- o fecho da origem como `status = concluido`, `ativo = false`.
+
+Ainda falta um estado explícito de revisão necessária e uma forma de identificar
+o cohort Curtume sem afectar outras escolas. A foundation local da coorte
+`CURTUME_2025_SEM_PAUTAS` está preparada na migration
+`20270823220000_curtume_assisted_transition_cohort.sql` e aguarda aplicação.
+O seed inicial cobre as 564 matrículas Curtume de 2025, excluindo apenas quem
+já tenha resultado final e matrícula 2026 ativa.
+A migration
+`20270823200000_preserve_rematricula_academic_result.sql` já está aplicada no
+ambiente remoto. Não se deve criar um segundo fluxo de rematrícula nem alterar
+a RPC existente sem preservar a autorização e a auditoria já implementadas.
+
+### Correções de fluxo implementadas localmente — 23 de agosto de 2026
+
+- A decisão escolhida no Balcão passa a determinar as turmas elegíveis: aprovado
+  vê a classe seguinte e reprovado vê a mesma classe, sem sair do atendimento.
+- Pré-Escolar é tratado como etapa `0`: aprovado segue para a 1.ª Classe e
+  reprovado permanece no Pré-Escolar.
+- `Concluído` encerra somente a origem, sem exigir turma destino, taxa de
+  rematrícula ou matrícula nova. Esta é a regra já aprovada para a 9.ª Classe
+  do Curtume.
+
+Foi ainda preparada a migration
+`20270823230000_curtume_hold_active_destinations_with_legacy_debt.sql`, que
+reverte para reserva os dois destinos 2026 indevidamente ativos com dívida de
+2025. A migration foi aplicada após aprovação em 23 de agosto de 2026:
+os dois destinos ficaram `pendente` e inativos até a regularização.
+
+A coorte `CURTUME_2025_SEM_PAUTAS` também foi aplicada no remoto, com 564
+membros elegíveis para a decisão administrativa individual no Balcão.
+
+### Separação entre decisão e dívida — aplicada
+
+A migration `20270823210000_allow_closed_origin_rematricula_activation.sql`
+altera a RPC de ativação para aceitar uma origem já concluída quando o resultado
+académico está em `historico_anos`. Assim, a decisão de 2025 pode ficar fechada
+no atendimento e a dívida remanescente bloqueia somente a matrícula ativa de
+2026/2027. A alteração é compatível com a retomada do mesmo aluno no Balcão e
+foi aplicada no remoto após aprovação.
+
 ## Decisões confirmadas em 3 de agosto de 2026
 
 | Decisão | Definição aprovada | Consequência operacional |

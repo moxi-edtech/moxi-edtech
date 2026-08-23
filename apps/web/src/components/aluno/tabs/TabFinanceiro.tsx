@@ -85,7 +85,8 @@ export function TabFinanceiro() {
   const [comprovativoStatus, setComprovativoStatus] = useState<ComprovativoStatus | null>(null);
   const [dadosPagamento, setDadosPagamento] = useState<DadosPagamento | null>(null);
   const [servicos, setServicos] = useState<AlunoServicoFinanceiro[]>([]);
-  const [selected, setSelected] = useState<Item | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [fromAno, setFromAno] = useState(currentYear - 1);
   const [toAno, setToAno] = useState(currentYear);
@@ -132,6 +133,8 @@ export function TabFinanceiro() {
   });
 
   const sortedMensalidades = useMemo(() => [...rows].sort((a, b) => b.competencia.localeCompare(a.competencia)), [rows]);
+  const selectedMensalidades = useMemo(() => rows.filter((item) => selectedIds.includes(item.id)), [rows, selectedIds]);
+  const selectedTotal = useMemo(() => selectedMensalidades.reduce((sum, item) => sum + item.valor, 0), [selectedMensalidades]);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -235,6 +238,12 @@ export function TabFinanceiro() {
             <h2 className="text-sm font-semibold text-slate-900">Mensalidades</h2>
             <Info className="h-4 w-4 text-slate-300" />
           </div>
+          {selectedMensalidades.length ? (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3">
+              <p className="text-sm font-semibold text-klasse-gold-900">{selectedMensalidades.length} seleccionada(s) · {money.format(selectedTotal)}</p>
+              <Button tone="gold" className="min-h-11" size="sm" onClick={() => setPaymentOpen(true)}>Enviar um comprovativo</Button>
+            </div>
+          ) : null}
           {loading ? (
             <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
           ) : (
@@ -272,9 +281,10 @@ export function TabFinanceiro() {
                       Em Verificação
                     </span>
                   ) : (
-                    <Button tone="gold" className="min-h-11" size="sm" onClick={() => setSelected(item)}>
-                      <Wallet className="h-4 w-4" /> Pagar
-                    </Button>
+                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-klasse-gold-200 px-3 text-xs font-semibold text-klasse-gold-800">
+                      <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(event) => setSelectedIds((prev) => event.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id))} />
+                      <Wallet className="h-4 w-4" /> Seleccionar
+                    </label>
                   )}
                 </li>
               ))}
@@ -364,11 +374,11 @@ export function TabFinanceiro() {
       </section>
 
       <PaymentDrawer
-        open={Boolean(selected)}
-        mensalidade={selected}
+        open={paymentOpen && selectedMensalidades.length > 0}
+        mensalidades={selectedMensalidades}
         dadosPagamento={dadosPagamento}
-        onClose={() => setSelected(null)}
-        onUploaded={(id) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "em_verificacao" } : r)))}
+        onClose={() => setPaymentOpen(false)}
+        onUploaded={(ids) => { setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds([]); }}
         studentId={studentId}
       />
     </div>

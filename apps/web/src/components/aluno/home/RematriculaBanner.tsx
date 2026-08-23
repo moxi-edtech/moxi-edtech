@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { Sparkles, ArrowRight, Loader2, CheckCircle2, Wallet, X, Upload, FileCheck2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
@@ -14,12 +14,14 @@ type RematriculaStatus = {
   status?: string
   code?: string
   reason?: string
+  academic?: { decision?: string; destino?: string; disciplinaIdsPendentes?: string[] } | null
   nextWindow?: { ano: number; data_inicio?: string | null; data_fim?: string | null } | null
   rematricula?: {
-    service?: { id: string; nome: string; valor: number } | null
+    service?: { id: string; nome: string; valor: number; pricing_origin?: string; tabela_preco_id?: string | null } | null
     services?: Array<{ id: string; codigo: string; nome: string; descricao?: string | null; valor: number }>
     dadosPagamento?: { iban?: string; banco?: string; titular?: string; kwik_chave?: string }
     paymentIntent?: { id: string; status: string; amount: number; reference?: string | null; has_evidence?: boolean; receipt_pending?: boolean; receipt_url?: string | null } | null
+    destination?: { curso_id: string; classe_id: string; classe_nome: string; classe_numero: number } | null
   }
 }
 
@@ -57,7 +59,7 @@ export function RematriculaBanner() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [flowError, setFlowError] = useState<string | null>(null)
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     setStatusError(null)
     try {
       const res = await fetch('/api/aluno/rematricula/status', { cache: 'no-store' })
@@ -70,11 +72,31 @@ export function RematriculaBanner() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchStatus()
-  }, [])
+    void fetchStatus()
+  }, [fetchStatus])
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void fetchStatus()
+    }
+    window.addEventListener('focus', refreshWhenVisible)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
+  }, [fetchStatus])
+
+  useEffect(() => {
+    const payment = status?.rematricula?.paymentIntent
+    const shouldRefresh = Boolean(status?.hasDebt || (payment && payment.status !== 'settled'))
+    if (!shouldRefresh) return
+    const timer = window.setInterval(() => void fetchStatus(), 30000)
+    return () => window.clearInterval(timer)
+  }, [fetchStatus, status?.hasDebt, status?.rematricula?.paymentIntent])
 
   const handleConfirm = async () => {
     if (status?.hasDebt) {
@@ -150,13 +172,25 @@ export function RematriculaBanner() {
 
   if (loading) return <div className="mb-6 h-28 animate-pulse rounded-3xl border border-slate-200 bg-white" aria-label="A verificar rematrícula" />
   if (statusError && !status) return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p className="font-black">Não foi possível verificar a rematrícula.</p><p className="mt-1">{statusError}</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-rose-700 px-4 py-2 text-xs font-black text-white">Tentar novamente</button></div>
-  if (!status || (!status.eligible && !status.alreadyDone && !['CURRENT_ACADEMIC_YEAR_UNAVAILABLE', 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE', 'SERVICE_NOT_CONFIGURED', 'REMATRICULA_WINDOW_CLOSED', 'ACADEMIC_PROMOTION_PENDING'].includes(status.code || ''))) return null
+  if (!status || (!status.eligible && !status.alreadyDone && !['CURRENT_ACADEMIC_YEAR_UNAVAILABLE', 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE', 'SERVICE_NOT_CONFIGURED', 'DESTINATION_CLASS_NOT_CONFIGURED', 'REMATRICULA_WINDOW_CLOSED', 'ACADEMIC_PROMOTION_PENDING'].includes(status.code || ''))) return null
   if (!status.eligible && !status.alreadyDone) {
-    if (status.code === 'ACADEMIC_PROMOTION_PENDING') return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p className="font-black">Rematrícula ainda não disponível</p><p className="mt-1">A escola ainda está a concluir a sua situação académica. Consulte a secretaria para mais informações.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button></div>
-    return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p className="font-black">Janela de rematrícula ainda não aberta</p><p className="mt-1">A rematrícula estará disponível quando a escola abrir o período para este ano letivo. Consulte a secretaria para mais informações.</p>{status.nextWindow?.data_inicio && <p className="mt-2 text-xs font-semibold">Próximo período previsto: {new Intl.DateTimeFormat('pt-AO', { dateStyle: 'medium' }).format(new Date(status.nextWindow.data_inicio))}</p>}<button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button></div>
+    if (status.code === 'ACADEMIC_PROMOTION_PENDING') return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p className="font-black">Rematrícula ainda não disponível</p><p className="mt-1">{status.reason || 'A escola ainda está a concluir a sua situação académica. Consulte a secretaria para mais informações.'}</p>{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}<button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button></div>
+    const title = status.code === 'SERVICE_NOT_CONFIGURED'
+      ? 'Taxa da classe destino ainda não configurada'
+      : status.code === 'DESTINATION_CLASS_NOT_CONFIGURED'
+        ? 'Classe destino ainda não configurada'
+      : status.code === 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE' || status.code === 'CURRENT_ACADEMIC_YEAR_UNAVAILABLE'
+        ? 'Ano letivo ainda não configurado'
+        : 'Janela de rematrícula ainda não aberta'
+    return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p className="font-black">{title}</p><p className="mt-1">{status.reason || 'A rematrícula estará disponível quando a escola concluir a configuração necessária.'}</p>{status.nextWindow?.data_inicio && <p className="mt-2 text-xs font-semibold">Próximo período previsto: {new Intl.DateTimeFormat('pt-AO', { dateStyle: 'medium' }).format(new Date(status.nextWindow.data_inicio))}</p>}<button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button></div>
   }
   const paymentIntent = status.rematricula?.paymentIntent
   const hasPendingPayment = Boolean(paymentIntent && paymentIntent.status !== 'settled')
+  const isConfirmed = Boolean(
+    status.alreadyDone
+      && !hasPendingPayment
+      && ['aprovada', 'matriculado', 'matriculada', 'concluido', 'concluida'].includes(status.status || ''),
+  )
 
   return (
     <motion.div 
@@ -176,9 +210,13 @@ export function RematriculaBanner() {
           </div>
 
           <h3 className="text-xl font-bold text-slate-900 leading-tight">
-            {status.alreadyDone 
+            {isConfirmed
               ? 'Tudo encaminhado para o próximo ano!' 
-              : 'Sua vaga está pré-reservada!'}
+              : status.alreadyDone
+                ? 'Seu pedido de rematrícula já foi iniciado!'
+                : status.hasDebt
+                  ? 'A sua vaga está reservada; falta regularizar as mensalidades.'
+                : 'Sua vaga está pré-reservada!'}
           </h3>
           <p className="text-sm text-slate-600 mt-1 max-w-md">
             {status.alreadyDone 
@@ -186,13 +224,27 @@ export function RematriculaBanner() {
                   ? 'Sua rematrícula foi confirmada. Vemo-nos no próximo ano!' 
                   : 'Seu pedido está em análise pela secretaria. Aguarde o retorno.')
               : (status.hasDebt 
-                  ? 'Regularize suas pendências financeiras para liberar a rematrícula online.' 
-                  : `Garanta sua continuidade no Ano Letivo ${status.nextAno} agora mesmo.`)}
+                  ? 'Consulte o valor em dívida, envie o comprovativo e aguarde a validação. Depois poderá pagar a taxa da sua classe destino.'
+                  : `Confirme a continuidade no Ano Letivo ${status.nextAno} com o valor calculado para a sua classe destino.`)}
           </p>
+          {status.rematricula?.destination || status.rematricula?.service ? (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-700">
+              {status.rematricula?.destination ? (
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                  Destino: {status.rematricula.destination.classe_nome}
+                </span>
+              ) : null}
+              {status.rematricula?.service ? (
+                <span className="rounded-full border border-klasse-gold-200 bg-white px-3 py-1.5 text-klasse-gold-800">
+                  Taxa: {money.format(status.rematricula.service.valor)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div>
-          {status.alreadyDone && !hasPendingPayment ? (
+          {isConfirmed ? (
             <div className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-bold text-sm">
               <CheckCircle2 className="h-4 w-4 text-klasse-green" />
               Solicitado

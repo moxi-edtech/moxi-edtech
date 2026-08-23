@@ -73,6 +73,15 @@ const STEPS: Step[] = [
   { id: 2, title: "Confirmar", description: "Confirme o resumo e ative o novo ano letivo." },
 ];
 
+const JOURNEY_STAGES = [
+  { title: "Dados de 2025", description: "Notas, frequência e dados académicos", macroStep: 0 },
+  { title: "Decisão RAA", description: "Aprovação, retenção, recurso ou conclusão", macroStep: 0 },
+  { title: "Fechar 2025", description: "Pautas, histórico e matrículas encerradas", macroStep: 0 },
+  { title: "Reservas 2026", description: "Criação em lote, ainda sem activação", macroStep: 1 },
+  { title: "Turmas destino", description: "Aprovados avançam; retidos permanecem", macroStep: 1 },
+  { title: "Activação final", description: "Dívida antiga bloqueia somente esta etapa", macroStep: 2 },
+] as const;
+
 const WORKFLOW_VERSION = 2;
 
 function restoreStep(step: number, payload: WizardPayload): number {
@@ -267,27 +276,47 @@ export function ViradaWizard() {
         </div>
       </div>
 
-      {/* Stepper Visual */}
-      <div className="mb-12 flex items-center justify-between px-4 overflow-x-auto pb-6 scrollbar-hide">
-        {STEPS.map((step, index) => (
-          <div key={step.id} className="flex flex-1 items-center last:flex-none min-w-[140px]">
-            <div className="flex flex-col items-center gap-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border-2 transition-all duration-300 ${
-                currentStep > index ? "border-emerald-500 bg-emerald-50 text-emerald-600 shadow-sm" :
-                currentStep === index ? "border-klasse-gold bg-klasse-gold/10 text-klasse-gold shadow-md ring-4 ring-klasse-gold/10" :
-                "border-slate-100 text-slate-300"
-              }`}>
-                {currentStep > index ? <CheckCircle2 className="h-6 w-6" /> : <span className="font-black text-sm">{index + 1}</span>}
-              </div>
-              <span className={`text-[10px] font-black uppercase tracking-widest text-center ${currentStep === index ? "text-slate-900" : "text-slate-400"}`}>
-                {step.title}
-              </span>
-            </div>
-            {index < STEPS.length - 1 && (
-              <div className={`mx-6 h-[2px] flex-1 rounded-full ${currentStep > index ? "bg-emerald-500" : "bg-slate-50"}`} />
-            )}
+      <div className="mb-12">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Percurso completo</p>
+            <p className="mt-1 text-xs text-slate-500">Trabalhe a transição sem perder o contexto entre académico e financeiro.</p>
           </div>
-        ))}
+          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+            {STEPS[currentStep].title}
+          </span>
+        </div>
+        <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6" aria-label="Etapas da transição académica e rematrícula">
+          {JOURNEY_STAGES.map((stage, index) => {
+            const completed = currentStep > stage.macroStep;
+            const active = currentStep === stage.macroStep;
+            return (
+              <li
+                key={stage.title}
+                aria-current={active ? "step" : undefined}
+                className={`rounded-2xl border p-3 transition-colors ${
+                  completed
+                    ? "border-emerald-200 bg-emerald-50"
+                    : active
+                      ? "border-klasse-gold/60 bg-klasse-gold/10 ring-2 ring-klasse-gold/10"
+                      : "border-slate-200 bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-black ${
+                    completed ? "bg-emerald-600 text-white" : active ? "bg-klasse-gold text-slate-950" : "bg-white text-slate-400"
+                  }`}>
+                    {completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
+                  </span>
+                  <span className={`text-[10px] font-black uppercase tracking-wide ${active || completed ? "text-slate-900" : "text-slate-400"}`}>
+                    {stage.title}
+                  </span>
+                </div>
+                <p className="mt-2 text-[10px] leading-relaxed text-slate-500">{stage.description}</p>
+              </li>
+            );
+          })}
+        </ol>
       </div>
 
       {/* Conteúdo Dinâmico por Passo */}

@@ -251,12 +251,29 @@ export default function DashboardLoader() {
 
       {pendentes > 0 && (
         <AlunoCard className="border-amber-200 bg-amber-50/90 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-black text-slate-900">Mensalidades pendentes</p>
-              <p className="text-xs text-slate-600 font-medium">Há {pendentes} mensalidade(s) aguardando regularização.</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
+                Regularização financeira
+              </p>
+              <p className="mt-1 text-sm font-black text-slate-900">
+                A ativação da sua rematrícula requer a regularização das mensalidades em aberto.
+              </p>
+              <p className="mt-1 text-xs font-medium text-slate-600">
+                Encontrámos {pendentes} mensalidade(s) não liquidada(s). Consulte o valor,
+                efetue o pagamento e envie o comprovativo para validação da secretaria.
+              </p>
             </div>
-            <Pill label="Regularizar" status="gold" className="bg-white shadow-2xs" />
+            <button
+              type="button"
+              onClick={() => {
+                const escolaParam = getEscolaParamFromPath(window.location.pathname) || "default";
+                router.push(buildPortalHref(escolaParam, "/aluno/financeiro"));
+              }}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            >
+              Ver dívida e enviar comprovativo
+            </button>
           </div>
         </AlunoCard>
       )}

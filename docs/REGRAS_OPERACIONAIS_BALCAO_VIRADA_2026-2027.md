@@ -1,6 +1,6 @@
 # Balcão — Regras operacionais da virada 2026/2027
 
-## Atualização de produto — 2026-08-11
+## Atualização de produto — 2026-08-23
 
 O Balcão passou a manter o contexto do ano letivo durante todo o atendimento. O selector de ano deve representar a sessão académica real, por exemplo `2026/2027`, e não apenas `2026` como ano civil. Mensalidades são ordenadas pela competência completa, respeitando Setembro/2026 antes de Janeiro/2027.
 
@@ -16,7 +16,31 @@ O atendimento também permite:
 - retornar à confirmação da rematrícula depois da quitação, com indicação explícita de contexto retomado;
 - consultar o histórico dos pagamentos parciais feitos na sessão.
 
+Na confirmação de rematrícula, o modal do Balcão mantém decisão académica,
+fonte/motivo da decisão, turma destino, dívida e pagamento no mesmo contexto.
+Quando há saldo vencido, a etapa financeira fica bloqueada e o botão
+“Regularizar dívida neste atendimento” abre a regularização sem perder o aluno,
+o ano ou a turma selecionada.
+
 Quando o pagamento é confirmado e a matrícula não é concluída, o caso fica em `RECONCILIATION_REQUIRED` e deve ser resolvido na fila de reconciliação. A secretaria não deve cobrar novamente.
+
+Uma tentativa sem valor liquidado, referência ou comprovativo fica em
+`PENDING_ORDER_REVIEW`. O próprio cartão do aluno permite **Cancelar tentativa
+e cobrar agora**: o servidor só autoriza o cancelamento para intents em
+`draft`, sem prova e sem pagamento associado. Tentativas com referência,
+comprovativo ou pagamento ficam protegidas e seguem para reconciliação.
+
+Para `cash`, a confirmação no Balcão é liquidação imediata: depois de o
+financeiro registar o numerário, o pedido de taxa é marcado como concedido na
+mesma operação e a matrícula é finalizada. Se a etapa académica falhar depois
+do recebimento, o caso entra em reconciliação — nunca volta a ser uma cobrança
+pendente nem permite cobrar a taxa uma segunda vez.
+
+Na reconciliação de uma taxa já liquidada, a secretaria não muda de contexto:
+o mesmo atendimento abre a decisão académica da coorte, exige resultado,
+fonte e motivo, valida a inclusão do aluno e então conclui a matrícula destino
+e o comprovativo. Não chama a autorização de promoção por notas pendentes
+quando a decisão administrativa Curtume já foi registada.
 
 ## Objetivo
 
@@ -27,6 +51,60 @@ O Balcão deve orientar a secretaria sem transformar exceções académicas em b
 - se existem dívidas;
 - se as notas estão pendentes;
 - qual decisão a secretaria está a confirmar.
+
+## Modo Curtume — virada assistida sem notas completas
+
+O Curtume é uma escola piloto que começou a utilizar o KLASSE no meio de 2025.
+Como parte relevante das notas e frequências não foi lançada, a ausência de
+dados não pode ser convertida automaticamente em reprovação.
+
+Quando o aluno aparecer no Balcão, seguir esta sequência no mesmo atendimento:
+
+1. abrir a matrícula histórica de 2025;
+2. selecionar `Aprovado`, `Reprovado`, `Concluído` ou `Revisão necessária`;
+3. quando não houver notas completas, selecionar a fonte
+   `declaracao_administrativa_escola`;
+4. preencher o motivo obrigatório: “Notas de 2025 não lançadas após entrada
+   da escola no KLASSE; decisão confirmada pela secretaria/direção”;
+5. confirmar a turma destino — classe seguinte para aprovado, mesma classe para
+   reprovado;
+6. criar ou reutilizar a reserva 2026/2027;
+7. regularizar a dívida vencida da matrícula de origem ou registrar acordo
+   aprovado;
+8. ativar a matrícula destino apenas quando o gate financeiro estiver verde.
+
+O registo deve guardar utilizador, data, escola, matrícula de origem, decisão,
+fonte, motivo e turma destino. Não é permitido lançar notas fictícias, reabrir
+artificialmente a matrícula histórica ou ativar um destino com decisão em
+`Revisão necessária`.
+
+Se a escola decidir lançar o histórico posteriormente, o lançamento deve usar a
+tela oficial de notas e manter a decisão administrativa e a auditoria da
+virada. A secretaria não deve repetir o atendimento nem criar uma segunda
+matrícula para o mesmo aluno/ano.
+
+### O que o código já faz e o que ainda falta
+
+O Balcão já implementa a decisão de resultado no próprio modal, a opção
+“Lançar notas depois e rematricular agora”, valida a progressão da turma, chama
+a autorização de promoção com pendências, registra motivo/actor/data em
+auditoria, cria ou reutiliza a reserva e mantém a dívida como bloqueio financeiro
+separado.
+
+A extensão está aplicada no ambiente remoto:
+
+- chave de proveniência `declaracao_administrativa_escola`;
+- observação específica da decisão académica;
+- fecho da origem em `historico_anos.resultado_final` e `status = concluido`.
+
+Continua pendente um estado de fila `revisão necessária` distinto do `409` de
+dados pendentes e uma configuração/cohort exclusiva do Curtume.
+
+O fluxo usa `notas_lancar_depois = true` quando a escola decide sem notas e
+persiste a proveniência. A origem passa a ficar concluída **antes** da quitação,
+mantendo a dívida como bloqueio exclusivo da ativação do destino. A regra está
+aplicada no remoto pela migration
+`20270823210000_allow_closed_origin_rematricula_activation.sql`.
 
 ## Estados e comportamento
 

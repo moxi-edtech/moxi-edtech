@@ -111,7 +111,7 @@ export async function GET(request: Request) {
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
-      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
+      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido", "concluido", "concluida"])
       .maybeSingle();
 
     if (!matriculaOrigem) {
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
         .eq("escola_id", escolaId)
         .eq("aluno_id", aluno_id)
         .lt("ano_letivo", targetAnoLetivoAno)
-        .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
+        .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido", "concluido", "concluida"])
         .order("ano_letivo", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -140,6 +140,19 @@ export async function GET(request: Request) {
       }
       matriculaOrigem = matriculaAnterior;
     }
+
+    const { data: cohortMember } = await (supabase as any)
+      .from("academic_transition_cohort_members")
+      .select("status, cohort:academic_transition_cohorts!inner(codigo, nome, modo, ativo, ano_origem, ano_destino, expira_em)")
+      .eq("escola_id", escolaId)
+      .eq("matricula_origem_id", matriculaOrigem.id)
+      .eq("status", "elegivel")
+      .maybeSingle();
+    const cohort = Array.isArray(cohortMember?.cohort) ? cohortMember.cohort[0] : cohortMember?.cohort;
+    const cohortAtivo = cohort?.ativo === true
+      && Number(cohort?.ano_origem) === Number(matriculaOrigem.ano_letivo)
+      && Number(cohort?.ano_destino) === targetAnoLetivoAno
+      && (!cohort?.expira_em || new Date(`${cohort.expira_em}T23:59:59`).getTime() >= Date.now());
 
     // A matrícula destino pode existir como reserva pendente criada pela
     // promoção. Ela só deixa de exigir este fluxo quando a taxa/isenção foi
@@ -275,7 +288,7 @@ export async function GET(request: Request) {
     if (pedidoExistente?.status === "pending_payment") {
       const { data: intents } = await supabase
         .from("pagamento_intents")
-        .select("id")
+        .select("id, status, reference, evidence_url")
         .eq("escola_id", escolaId)
         .eq("servico_pedido_id", pedidoExistente.id)
         .limit(1);
@@ -292,6 +305,12 @@ export async function GET(request: Request) {
           pagamento.meta?.servico_pedido_id === pedidoExistente.id,
         ),
       );
+      const tentativaReiniciavel = Boolean((intents ?? []).length) && (intents ?? []).every((intent: any) =>
+        String(intent.status).toLowerCase() === "draft" &&
+        !String(intent.reference ?? "").trim() &&
+        !String(intent.evidence_url ?? "").trim(),
+      ) && pagamentosDoPedido.length === 0;
+      if (tentativaReiniciavel) pedidoTemPagamentoAssociado = false;
     }
 
     // ── Check comprovante for granted pedido ──────────────────────────────
@@ -387,7 +406,7 @@ export async function GET(request: Request) {
         : status === "PENDING_ORDER_REVIEW"
           ? {
               can_cancel: true,
-              reason: "Pedido pendente sem pagamento associado; pode ser cancelado no Balcão.",
+              reason: "Tentativa sem pagamento liquidado; pode ser cancelada e reiniciada no Balcão.",
             }
         : null,
       window: {
@@ -411,6 +430,11 @@ export async function GET(request: Request) {
             destino_turma_id: reclassificacao.destino_turma_id,
           }
         : null,
+      cohort: cohortAtivo ? {
+        codigo: cohort.codigo,
+        nome: cohort.nome,
+        modo: cohort.modo,
+      } : null,
       context: academicContext,
     });
   } catch (error) {

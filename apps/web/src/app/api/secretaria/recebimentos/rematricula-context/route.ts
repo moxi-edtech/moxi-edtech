@@ -88,7 +88,18 @@ export async function GET(request: Request) {
         .eq("escola_id", escolaId)
         .eq("aluno_id", intent.aluno_id)
         .lt("ano_letivo", targetYear)
-        .in("status", ["ativo", "ativa", "active"])
+        .in("status", [
+          "ativo",
+          "ativa",
+          "active",
+          "concluido",
+          "concluida",
+          "aprovado",
+          "aprovada",
+          "reprovado",
+          "reprovada",
+          "transferido",
+        ])
         .order("ano_letivo", { ascending: false })
         .limit(1)
         .maybeSingle();
