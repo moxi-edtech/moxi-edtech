@@ -242,8 +242,28 @@ export async function GET() {
       const contexto = pedido.contexto ?? {}
       const matchesCandidatura = Boolean(existingCandidatura?.id && contexto.candidatura_id === existingCandidatura.id)
       const matchesTargetYear = contexto.origem === 'portal_rematricula' && Number(contexto.ano_letivo) === nextAno
-      return matchesCandidatura || matchesTargetYear
+      const matchesBalcaoReconciliado = contexto.origem === 'rematricula_balcao'
+        && contexto.origem_matricula_id === sourceMatricula.id
+        && typeof contexto.matricula_destino_id === 'string'
+      return matchesCandidatura || matchesTargetYear || matchesBalcaoReconciliado
     }) ?? null
+    const matriculaDestinoId = typeof rematriculaPedido?.contexto?.matricula_destino_id === 'string'
+      ? rematriculaPedido.contexto.matricula_destino_id
+      : null
+    let rematriculaBalcaoConcluida = false
+    if (rematriculaPedido?.status === 'granted' && matriculaDestinoId) {
+      const { data: matriculaDestino, error: matriculaDestinoError } = await supabase
+        .from('matriculas')
+        .select('id, ano_letivo, status, numero_matricula')
+        .eq('escola_id', escolaId)
+        .eq('id', matriculaDestinoId)
+        .eq('aluno_id', alunoId)
+        .maybeSingle()
+      if (matriculaDestinoError) throw new Error(`Falha ao confirmar matrícula de destino: ${matriculaDestinoError.message}`)
+      rematriculaBalcaoConcluida = Number(matriculaDestino?.ano_letivo) === nextAno
+        && ['ativo', 'ativa', 'active'].includes(String(matriculaDestino?.status ?? '').toLowerCase())
+        && Boolean(matriculaDestino?.numero_matricula)
+    }
     let paymentIntent: Record<string, unknown> | null = null
     if (rematriculaPedido?.id) {
       const { data: intent, error: intentError } = await (supabase as any)
@@ -321,18 +341,20 @@ export async function GET() {
 
     const hasDebt = (mens?.length ?? 0) > 0
 
-    // A matrícula do ano destino é deliberadamente ignorada aqui: a virada
-    // pode criá-la antes do pagamento. A candidatura do portal é a evidência
-    // de que o aluno já iniciou/concluiu a rematrícula neste canal.
-    if (existingCandidatura) {
+    // A reserva criada pela virada, isoladamente, não conclui a rematrícula.
+    // Já um pedido concedido que aponta para uma matrícula destino activa é
+    // a confirmação canónica, inclusive quando o atendimento foi no Balcão.
+    if (existingCandidatura || rematriculaBalcaoConcluida) {
       return NextResponse.json({
         ok: true,
         eligible: false,
         alreadyDone: true,
         nextAno,
         hasDebt,
-        status: existingCandidatura.status,
-        reason: 'O seu pedido de rematrícula já está em análise pela secretaria.',
+        status: rematriculaBalcaoConcluida ? 'matriculada' : existingCandidatura?.status,
+        reason: rematriculaBalcaoConcluida
+          ? 'A sua rematrícula já foi confirmada pela secretaria.'
+          : 'O seu pedido de rematrícula já está em análise pela secretaria.',
         academic: academic ? {
           decision: academicDecision,
           destino: academic.progression.destino,
