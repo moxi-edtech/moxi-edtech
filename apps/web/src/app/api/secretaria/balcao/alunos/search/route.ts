@@ -65,7 +65,9 @@ export async function GET(request: Request) {
       .or(
         `nome.ilike.%${searchQuery}%,nome_completo.ilike.%${searchQuery}%,bi_numero.ilike.%${searchQuery}%,numero_processo.ilike.%${searchQuery}%`
       )
-      .limit(10); // Limitar para não sobrecarregar
+      .order("nome", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+      .limit(50);
 
     if (error) {
       console.error("Erro na busca de alunos:", error);
