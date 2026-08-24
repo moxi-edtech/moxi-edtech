@@ -28,6 +28,8 @@ interface RematriculaBalcaoModalProps {
   alunoProcesso: string;
   turmaAtual: string | null;
   matriculaId: string;
+  responsavelContato: string;
+  setResponsavelContato: (value: string) => void;
   // Academic
   anoLetivo: { id: string; ano: number; label: string };
   // Financial
@@ -61,6 +63,7 @@ interface RematriculaBalcaoModalProps {
   setStep: (n: number) => void;
   selectedTurmaId: string | null;
   setSelectedTurmaId: (id: string | null) => void;
+  destinoTurma?: TurmaOption | null;
   // Payment
   metodo: MetodoPagamento;
   setMetodo: (m: MetodoPagamento) => void;
@@ -146,6 +149,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     onPostAction,
     turmaAtual,
     matriculaId,
+    responsavelContato,
+    setResponsavelContato,
     anoLetivo,
     service,
     itensPagamento = [],
@@ -175,6 +180,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     setStep,
     selectedTurmaId,
     setSelectedTurmaId,
+    destinoTurma = null,
     metodo,
     setMetodo,
     detalhes,
@@ -238,7 +244,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     if (result || step < 3) onClose();
   };
 
-  const selectedTurma = turmas.find((t) => t.id === selectedTurmaId);
+  const selectedTurma = turmas.find((t) => t.id === selectedTurmaId) ?? destinoTurma ?? undefined;
   const academicOnly = decisaoResultado === "concluido";
   const singleStep = academicOnly || reconciliationOnly;
   const financialReady = !debt || debt.total <= 0;
@@ -346,6 +352,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               alunoProcesso={alunoProcesso}
               turmaAtual={turmaAtual}
               matriculaId={matriculaId}
+              responsavelContato={responsavelContato}
+              setResponsavelContato={setResponsavelContato}
               anoLetivo={anoLetivo}
               turmas={turmas}
               turmasLoading={turmasLoading}
@@ -444,6 +452,8 @@ function StepAcademico({
   alunoProcesso,
   turmaAtual,
   matriculaId,
+  responsavelContato,
+  setResponsavelContato,
   anoLetivo,
   turmas,
   turmasLoading,
@@ -468,6 +478,8 @@ function StepAcademico({
   alunoProcesso: string;
   turmaAtual: string | null;
   matriculaId: string;
+  responsavelContato: string;
+  setResponsavelContato: (value: string) => void;
   anoLetivo: { id: string; ano: number; label: string };
   turmas: TurmaOption[];
   turmasLoading: boolean;
@@ -497,6 +509,22 @@ function StepAcademico({
         <InfoRow label="Matrícula" value={matriculaId.slice(0, 8) + "…"} />
         <InfoRow label="Turma actual" value={turmaAtual || "—"} />
         <InfoRow label="Ano lectivo" value={anoLetivo.label} />
+      </div>
+
+      <div>
+        <label htmlFor="rematricula-contacto-encarregado" className="mb-1.5 block text-xs font-bold text-slate-700">
+          Contacto do encarregado
+        </label>
+        <input
+          id="rematricula-contacto-encarregado"
+          type="tel"
+          inputMode="tel"
+          value={responsavelContato}
+          onChange={(event) => setResponsavelContato(event.target.value)}
+          placeholder="Ex.: +244 9XX XXX XXX"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+        />
+        <p className="mt-1.5 text-[11px] text-slate-500">Confirme ou actualize o número que será usado nos contactos da escola.</p>
       </div>
 
       {skipTurmaSelection ? (

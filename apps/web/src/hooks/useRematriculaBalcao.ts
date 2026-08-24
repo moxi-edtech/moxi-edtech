@@ -120,6 +120,7 @@ interface StatusResponse {
   } | null;
   ano_letivo: { id: string; ano: number; label: string } | null;
   destino_turma_id?: string | null;
+  destino_turma?: TurmaOption | null;
   reclassificacao?: {
     id: string;
     tipo: string;
@@ -161,6 +162,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Rematrícula concluída; comprovante pendente de emissão.",
   REMATRICULA_LEGACY_REVIEW_REQUIRED:
     "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
+  GUARDIAN_CONTACT_REQUIRED: "Não foi possível validar o contacto do encarregado.",
   REMATRICULA_WINDOW_CLOSED:
     "O período de rematrícula não está aberto para este ano letivo.",
   FINALISTA_PROGRESSION_INVALID:
@@ -184,6 +186,7 @@ export function useRematriculaBalcao(opts: {
   alunoId: string | null;
   matriculaId: string | null;
   academicYearId: string | null;
+  responsavelContato?: string | null;
   itensPagamento?: RematriculaPaymentItem[];
 }) {
   const draftKey = `klasse:rematricula:draft:${opts.escolaId}:${opts.alunoId ?? "-"}:${opts.matriculaId ?? "-"}:${opts.academicYearId ?? "-"}`;
@@ -198,6 +201,7 @@ export function useRematriculaBalcao(opts: {
   const [anoLetivo, setAnoLetivo] =
     useState<StatusResponse["ano_letivo"]>(null);
   const [destinoTurmaId, setDestinoTurmaId] = useState<string | null>(null);
+  const [destinoTurma, setDestinoTurma] = useState<StatusResponse["destino_turma"]>(null);
   const [reconciling, setReconciling] = useState(false);
   const [cohort, setCohort] = useState<StatusResponse["cohort"]>(null);
 
@@ -225,6 +229,7 @@ export function useRematriculaBalcao(opts: {
   const [result, setResult] = useState<RematriculaResult | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
+  const [responsavelContato, setResponsavelContato] = useState("");
 
   // ────────────────────────────────────────────────────────────────────────
   // Fetch rematrícula eligibility status
@@ -260,6 +265,7 @@ export function useRematriculaBalcao(opts: {
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
         setDestinoTurmaId(data.destino_turma_id ?? null);
+        setDestinoTurma(data.destino_turma ?? null);
         setCohort(data.cohort ?? null);
       } else {
         setCardState("ERROR");
@@ -293,6 +299,7 @@ export function useRematriculaBalcao(opts: {
     setDecisaoMotivo("");
     setDecisaoObservacao("");
     setIdempotencyKey(null);
+    setResponsavelContato(opts.responsavelContato ?? "");
 
     try {
       const raw = sessionStorage.getItem(draftKey);
@@ -308,6 +315,7 @@ export function useRematriculaBalcao(opts: {
           decisaoMotivo?: string;
           decisaoObservacao?: string;
           idempotencyKey?: string | null;
+          responsavelContato?: string;
         };
         setStep(Number.isInteger(draft.step) && (draft.step ?? 1) >= 1 && (draft.step ?? 1) <= 3 ? draft.step! : 1);
         setSelectedTurmaId(draft.selectedTurmaId ?? null);
@@ -319,6 +327,7 @@ export function useRematriculaBalcao(opts: {
         if (draft.decisaoMotivo) setDecisaoMotivo(draft.decisaoMotivo);
         if (draft.decisaoObservacao) setDecisaoObservacao(draft.decisaoObservacao);
         setIdempotencyKey(draft.idempotencyKey ?? null);
+        if (draft.responsavelContato) setResponsavelContato(draft.responsavelContato);
       }
     } catch {
       // Storage indisponível (por exemplo, modo privado): o fluxo continua sem rascunho.
@@ -339,12 +348,17 @@ export function useRematriculaBalcao(opts: {
         decisaoMotivo,
         decisaoObservacao,
         idempotencyKey,
+        responsavelContato,
         savedAt: new Date().toISOString(),
       }));
     } catch {
       // A persistência é uma melhoria; nunca deve bloquear a operação.
     }
-  }, [decisaoFonte, decisaoMotivo, decisaoObservacao, decisaoResultado, draftKey, detalhes, idempotencyKey, metodo, notasLancarDepois, opts.alunoId, opts.matriculaId, result, selectedTurmaId, step]);
+  }, [decisaoFonte, decisaoMotivo, decisaoObservacao, decisaoResultado, draftKey, detalhes, idempotencyKey, metodo, notasLancarDepois, opts.alunoId, opts.matriculaId, responsavelContato, result, selectedTurmaId, step]);
+
+  useEffect(() => {
+    if (!modalOpen) setResponsavelContato(opts.responsavelContato ?? "");
+  }, [modalOpen, opts.responsavelContato]);
 
   useEffect(() => {
     if (!modalOpen || !selectedTurmaId) return;
@@ -595,6 +609,7 @@ export function useRematriculaBalcao(opts: {
           reference: detalhes.referencia.trim() || null,
           evidence_url: detalhes.evidencia_url.trim() || null,
           gateway_ref: detalhes.gateway_ref.trim() || null,
+          contacto_encarregado: responsavelContato.trim() || undefined,
           notas_lancar_depois: notasLancarDepois || decisaoAdministrativa,
           decisao_resultado: decisaoResultado,
           decisao_fonte: decisaoFonte || undefined,
@@ -659,6 +674,7 @@ export function useRematriculaBalcao(opts: {
     draftKey,
     idempotencyKey,
     opts.itensPagamento,
+    responsavelContato,
     pedido?.id,
     reconciliationMode,
   ]);
@@ -679,6 +695,7 @@ export function useRematriculaBalcao(opts: {
     comprovante,
     anoLetivo,
     destinoTurmaId,
+    destinoTurma,
     cohort,
     reconciling,
     resolveLegacyPedido,
@@ -718,6 +735,8 @@ export function useRematriculaBalcao(opts: {
     // Turma selection
     selectedTurmaId,
     setSelectedTurmaId,
+    responsavelContato,
+    setResponsavelContato,
 
     // Submission
     submitting,

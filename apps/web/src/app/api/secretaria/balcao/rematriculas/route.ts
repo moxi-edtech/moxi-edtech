@@ -28,6 +28,7 @@ const Body = z.object({
   reference: z.string().trim().min(1).nullable().optional(),
   evidence_url: z.string().trim().min(1).nullable().optional(),
   gateway_ref: z.string().trim().min(1).nullable().optional(),
+  contacto_encarregado: z.string().trim().min(7).max(32).regex(/^[0-9+().\-\s]+$/).optional(),
   notas_lancar_depois: z.boolean().optional(),
   decisao_resultado: z.enum(["aprovado", "reprovado", "concluido"]).optional(),
   decisao_fonte: z.string().trim().min(1).max(80).optional(),
@@ -177,6 +178,40 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (!matricula) {
       return NextResponse.json({ ok: false, error: "Matrícula de origem do aluno não encontrada.", code: "REMATRICULA_SOURCE_INVALID" }, { status: 409 });
+    }
+
+    const contactoEncarregado = body.contacto_encarregado?.trim() ?? null;
+    if (contactoEncarregado) {
+      const { data: alunoActual, error: alunoError } = await supabase
+        .from("alunos")
+        .select("telefone_responsavel, responsavel_contato, encarregado_telefone")
+        .eq("escola_id", escolaId)
+        .eq("id", body.aluno_id)
+        .maybeSingle();
+      if (alunoError || !alunoActual) {
+        return NextResponse.json({ ok: false, error: "Não foi possível validar o contacto do encarregado.", code: "GUARDIAN_CONTACT_REQUIRED" }, { status: 409 });
+      }
+      const contactoActual = alunoActual.telefone_responsavel ?? alunoActual.responsavel_contato ?? alunoActual.encarregado_telefone ?? null;
+      if (contactoActual !== contactoEncarregado) {
+        const { error: contactoError } = await supabase
+          .from("alunos")
+          .update({
+            telefone_responsavel: contactoEncarregado,
+            responsavel_contato: contactoEncarregado,
+            encarregado_telefone: contactoEncarregado,
+          })
+          .eq("escola_id", escolaId)
+          .eq("id", body.aluno_id);
+        if (contactoError) throw contactoError;
+        recordAuditServer({
+          escolaId,
+          portal: "secretaria",
+          acao: "REMATRICULA_CONTACTO_ENCARREGADO_ATUALIZADO",
+          entity: "alunos",
+          entityId: body.aluno_id,
+          details: { matricula_id: body.matricula_id, contacto_anterior: contactoActual, contacto_novo: contactoEncarregado },
+        }).catch(() => undefined);
+      }
     }
 
     const targetAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));

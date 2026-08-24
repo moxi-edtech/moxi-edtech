@@ -58,6 +58,7 @@ export interface AlunoDossier {
   status_financeiro: "em_dia" | "inadimplente" | "sem_matricula";
   divida_total: number;
   matricula_id?: string | null;
+  telefone_responsavel?: string | null;
 }
 
 export interface Mensalidade {
@@ -279,6 +280,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
           classe: atual.classe ? String(atual.classe) : null,
           status_financeiro: divida > 0 ? "inadimplente" : "em_dia",
           divida_total: divida,
+          telefone_responsavel: perfil.telefone_responsavel ?? perfil.responsavel_contato ?? perfil.encarregado_telefone ?? null,
           // The dossier RPC returns the active registration as `{ id }`;
           // older payloads used `{ matricula_id }`. The rematricula status
           // endpoint needs the registration UUID in either case.
@@ -1501,6 +1503,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     alunoId: dossier.aluno?.id ?? null,
     matriculaId: dossier.aluno?.matricula_id ?? null,
     academicYearId: effectiveAcademicYearId,
+    responsavelContato: dossier.aluno?.telefone_responsavel ?? null,
     itensPagamento: carrinho.itens,
   });
   const audit = useAuditTrail();
@@ -1718,6 +1721,8 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           alunoProcesso={dossier.aluno.numero_processo}
           turmaAtual={dossier.aluno.turma_codigo ?? null}
           matriculaId={dossier.aluno.matricula_id ?? ""}
+          responsavelContato={rematricula.responsavelContato}
+          setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
           service={rematricula.service}
           itensPagamento={carrinho.itens}
@@ -1746,6 +1751,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           setStep={rematricula.setStep}
           selectedTurmaId={rematricula.selectedTurmaId}
           setSelectedTurmaId={rematricula.setSelectedTurmaId}
+          destinoTurma={rematricula.destinoTurma}
           metodo={rematricula.metodo}
           setMetodo={rematricula.setMetodo}
           detalhes={rematricula.detalhes}
