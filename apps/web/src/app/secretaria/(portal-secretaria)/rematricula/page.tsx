@@ -7,7 +7,7 @@ import { buildPortalHref } from "@/lib/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 import { useToast } from "@/components/feedback/FeedbackSystem";
-import { BalcaoAtendimento } from "@/components/secretaria/BalcaoAtendimento";
+import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 import { useDebounce } from "@/hooks/useDebounce";
 import { 
   ArrowRight, 
@@ -967,7 +967,7 @@ export default function RematriculaPage() {
           }}
         />
       )}
-      {balcaoStudent && (
+      {balcaoStudent && escolaId && (
         <BalcaoTriagemModal
           escolaId={escolaId}
           aluno={balcaoStudent}

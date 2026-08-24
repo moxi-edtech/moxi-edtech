@@ -181,33 +181,33 @@ export function TabNotas() {
         ) : (
           <section className="space-y-3">
             {!isLiberado && (
-              <div className="relative mb-5 overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/15 via-amber-50 to-amber-100/80 p-4 shadow-sm sm:p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-start gap-3.5">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-slate-950 shadow-md">
-                      <LockIcon size={22} className="animate-pulse" />
+              <div className="relative mb-6 overflow-hidden rounded-3xl border border-amber-200/90 bg-gradient-to-br from-amber-50 via-white to-amber-50/40 p-5 sm:p-6 shadow-sm">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-200/60 shadow-sm">
+                      <LockIcon size={20} className="stroke-[2.2]" />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-black text-slate-950 tracking-tight">
-                          Pauta de Notas Publicada pelos Professores
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                          Pauta de Avaliação Publicada
                         </h3>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-amber-400/30 px-2.5 py-0.5 text-[9px] font-black uppercase text-amber-950">
-                          🔒 Emolumento Pendente
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/80 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/50">
+                          Emolumento de Secretaria
                         </span>
                       </div>
-                      <p className="text-xs font-medium text-slate-700 leading-relaxed max-w-xl">
-                        Os professores já lançaram as notas no sistema. Regularize a taxa de secretaria para desbloquear as médias detalhadas e descarregar o Boletim Oficial em PDF com QR Code de autenticidade.
+                      <p className="text-xs font-normal text-slate-600 leading-relaxed max-w-xl">
+                        As pautas do ano letivo foram lançadas. Regularize a taxa de emissão para visualizar as notas trimestrais detalhadas e descarregar o Boletim Oficial com validação digital via QR Code.
                       </p>
                     </div>
                   </div>
 
                   <Link 
                     href={`/aluno/documentos${query}`}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-xs font-black text-slate-950 shadow-md hover:bg-amber-300 active:scale-95 transition-all shrink-0 self-start sm:self-center"
+                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-bold text-white shadow-sm hover:bg-slate-800 active:scale-98 transition-all shrink-0"
                   >
-                    <span>Desbloquear na Secretaria</span>
-                    <ChevronRight size={16} />
+                    <span>Regularizar e Desbloquear</span>
+                    <ChevronRight size={15} className="text-slate-400" />
                   </Link>
                 </div>
               </div>
