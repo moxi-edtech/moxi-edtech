@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Banknote, CheckCircle2, CreditCard, Loader2, Printer, QrCode, ArrowRightLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Mensalidade } from "./BalcaoAtendimento";
@@ -42,6 +42,17 @@ export function PagamentoDividaModal({ open, onOpenChange, mensalidades, alunoId
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<Array<{ amount: number; method: string }>>([]);
   const [recibos, setRecibos] = useState<Array<{ label: string; url: string }>>([]);
+
+  // O diálogo é reutilizado entre atendimentos; não deve transportar o estado
+  // (em especial comprovativos) de um aluno para outro.
+  useEffect(() => {
+    setAmount("");
+    setReference("");
+    setEvidenceUrl("");
+    setMessage(null);
+    setPaymentHistory([]);
+    setRecibos([]);
+  }, [open, alunoId]);
 
   const pay = async () => {
     const value = Number(amount);
