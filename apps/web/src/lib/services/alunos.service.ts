@@ -237,17 +237,22 @@ export async function listAlunos(
     }
 
     if (includeFinanceiro && alunoIds.length > 0) {
-      const { data: matriculas } = await supabase
+      let matriculasQuery = supabase
         .from("matriculas")
         .select(
           "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id"
         )
         .eq("escola_id", escolaId)
-        .eq("session_id", options.academicYearId ?? "")
         .in("aluno_id", alunoIds)
         .in("status", ["ativo", "ativa"])
         .order("updated_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false, nullsFirst: false });
+      if (options.academicYearId) {
+        matriculasQuery = matriculasQuery.eq("session_id", options.academicYearId);
+      } else if (targetAno) {
+        matriculasQuery = matriculasQuery.eq("ano_letivo", targetAno);
+      }
+      const { data: matriculas } = await matriculasQuery;
 
       const turmaIds = Array.from(
         new Set(
