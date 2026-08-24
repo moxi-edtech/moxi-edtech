@@ -33,6 +33,9 @@ interface RematriculaBalcaoModalProps {
   // Financial
   service: { id: string; nome: string; valor_base: number };
   itensPagamento?: RematriculaPaymentItem[];
+  itensDisponiveis?: RematriculaPaymentItem[];
+  onAdicionarItem?: (item: RematriculaPaymentItem) => void;
+  onRemoverItem?: (id: string, tipo: RematriculaPaymentItem["tipo"]) => void;
   paymentAlreadyValidated?: boolean;
   skipTurmaSelection?: boolean;
   debt?: { total: number; count: number } | null;
@@ -146,6 +149,9 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     anoLetivo,
     service,
     itensPagamento = [],
+    itensDisponiveis = [],
+    onAdicionarItem,
+    onRemoverItem,
     paymentAlreadyValidated = false,
     skipTurmaSelection = false,
     debt = null,
@@ -362,7 +368,16 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
             />
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
-            <StepFinanceiro service={service} debt={debt} selectedTurma={selectedTurma} itensPagamento={itensPagamento} onRegularizeDebt={onRegularizeDebt} />
+            <StepFinanceiro
+              service={service}
+              debt={debt}
+              selectedTurma={selectedTurma}
+              itensPagamento={itensPagamento}
+              itensDisponiveis={itensDisponiveis}
+              onAdicionarItem={onAdicionarItem}
+              onRemoverItem={onRemoverItem}
+              onRegularizeDebt={onRegularizeDebt}
+            />
           ) : (
             /* ── Step 3: Payment ────────────────────────────────── */
             <StepPagamento
@@ -647,12 +662,18 @@ function StepFinanceiro({
   debt,
   selectedTurma,
   itensPagamento,
+  itensDisponiveis,
+  onAdicionarItem,
+  onRemoverItem,
   onRegularizeDebt,
 }: {
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" };
   debt: { total: number; count: number } | null;
   selectedTurma?: TurmaOption;
   itensPagamento: RematriculaPaymentItem[];
+  itensDisponiveis: RematriculaPaymentItem[];
+  onAdicionarItem?: (item: RematriculaPaymentItem) => void;
+  onRemoverItem?: (id: string, tipo: RematriculaPaymentItem["tipo"]) => void;
   onRegularizeDebt?: () => void;
 }) {
   const itensAdicionais = itensPagamento.filter(
@@ -663,6 +684,11 @@ function StepFinanceiro({
     0,
   );
   const temMensalidade = itensAdicionais.some((item) => item.tipo === "mensalidade");
+  const itemEstaSeleccionado = (item: RematriculaPaymentItem) => itensPagamento.some(
+    (seleccionado) => seleccionado.id === item.id && seleccionado.tipo === item.tipo,
+  );
+  const mensalidadesDisponiveis = itensDisponiveis.filter((item) => item.tipo === "mensalidade");
+  const servicosDisponiveis = itensDisponiveis.filter((item) => item.tipo === "servico");
   return (
     <div className="space-y-5">
       <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -715,6 +741,71 @@ function StepFinanceiro({
       <p className="text-xs text-slate-500">
         O valor acima foi resolvido para a turma destino. {service.pricing_origin === "classe" ? "Existe uma regra específica para esta classe." : "Não existe regra específica para esta classe; foi usado o valor de fallback."}
       </p>
+
+      {itensDisponiveis.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">
+          <div className="mb-3">
+            <p className="text-sm font-bold text-emerald-950">Adicionar a esta cobrança</p>
+            <p className="mt-0.5 text-xs text-emerald-800">
+              Os itens seleccionados serão liquidados no mesmo pagamento e constarão no recibo da rematrícula.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {mensalidadesDisponiveis.map((item) => {
+              const seleccionado = itemEstaSeleccionado(item);
+              return (
+                <button
+                  key={`${item.tipo}-${item.id}`}
+                  type="button"
+                  onClick={() => seleccionado ? onRemoverItem?.(item.id, item.tipo) : onAdicionarItem?.(item)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                    seleccionado
+                      ? "border-emerald-500 bg-emerald-100 text-emerald-950"
+                      : "border-emerald-200 bg-white text-slate-700 hover:border-emerald-400"
+                  }`}
+                >
+                  <span>
+                    <span className="block text-xs font-bold">{item.nome || "Mensalidade"}</span>
+                    <span className="block text-[11px]">Mensalidade</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs font-black">
+                    {kwanza.format(Number(item.preco ?? 0))}
+                    <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">
+                      {seleccionado ? "Remover" : "Adicionar"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+            {servicosDisponiveis.map((item) => {
+              const seleccionado = itemEstaSeleccionado(item);
+              return (
+                <button
+                  key={`${item.tipo}-${item.id}`}
+                  type="button"
+                  onClick={() => seleccionado ? onRemoverItem?.(item.id, item.tipo) : onAdicionarItem?.(item)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                    seleccionado
+                      ? "border-emerald-500 bg-emerald-100 text-emerald-950"
+                      : "border-emerald-200 bg-white text-slate-700 hover:border-emerald-400"
+                  }`}
+                >
+                  <span>
+                    <span className="block text-xs font-bold">{item.nome || "Serviço escolar"}</span>
+                    <span className="block text-[11px]">Serviço adicional</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs font-black">
+                    {kwanza.format(Number(item.preco ?? 0))}
+                    <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">
+                      {seleccionado ? "Remover" : "Adicionar"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {debt && debt.total > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">

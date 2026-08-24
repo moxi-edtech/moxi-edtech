@@ -24,7 +24,7 @@ import { useSearchParams } from "next/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
-import { useRematriculaBalcao } from "@/hooks/useRematriculaBalcao";
+import { useRematriculaBalcao, type RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
@@ -1541,6 +1541,13 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     [dossier.mensalidades, selectedMensalidadeIds]
   );
 
+  const itensDisponiveisNaRematricula = useMemo<RematriculaPaymentItem[]>(() => [
+    ...dossier.mensalidades.filter((mensalidade) =>
+      !mensalidade.atrasada && unlockedMensalidadeIds.has(mensalidade.id),
+    ),
+    ...servicos.filter((servico) => ["DOC_CARTAO_ESTUDANTE", "SERV_UNIFORME"].includes(servico.codigo.trim().toUpperCase())),
+  ], [dossier.mensalidades, servicos, unlockedMensalidadeIds]);
+
   useEffect(() => {
     if (!selectedAlunoId) {
       dossier.clear();
@@ -1714,6 +1721,9 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           anoLetivo={rematricula.anoLetivo}
           service={rematricula.service}
           itensPagamento={carrinho.itens}
+          itensDisponiveis={itensDisponiveisNaRematricula}
+          onAdicionarItem={(item) => carrinho.adicionar(item as ItemCarrinho)}
+          onRemoverItem={(id, tipo) => carrinho.remover(id, tipo)}
           debt={rematricula.debt}
           cohort={rematricula.cohort}
           reconciliationOnly={rematricula.reconciliationMode}

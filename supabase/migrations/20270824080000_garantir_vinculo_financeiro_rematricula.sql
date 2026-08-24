@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION public.garantir_vinculo_financeiro_rematricula(
 )
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path TO public
 AS $$
 DECLARE
