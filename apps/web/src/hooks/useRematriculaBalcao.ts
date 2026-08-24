@@ -415,6 +415,11 @@ export function useRematriculaBalcao(opts: {
     if (!selectedTurmaId && ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
       setSelectedTurmaId(destinoTurmaId);
     }
+    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
+      setDecisaoResultado("aprovado");
+      setDecisaoFonte("raa");
+      setNotasLancarDepois(false);
+    }
     if (!["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) void fetchTurmas();
   }, [cardState, destinoTurmaId, fetchTurmas, selectedTurmaId]);
 
@@ -547,6 +552,7 @@ export function useRematriculaBalcao(opts: {
     setResult(null);
     const requestKey = idempotencyKey ?? crypto.randomUUID();
     const decisaoAdministrativa = decisaoFonte === "declaracao_administrativa_escola";
+    const pagamentoApenas = ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "");
     setIdempotencyKey(requestKey);
 
     try {
@@ -585,7 +591,7 @@ export function useRematriculaBalcao(opts: {
           matricula_id: opts.matriculaId,
           ano_letivo_id: anoLetivo.id,
           destino_turma_id: selectedTurmaId ?? undefined,
-          metodo: decisaoResultado === "concluido" ? undefined : metodo,
+          metodo: decisaoResultado === "concluido" && !pagamentoApenas ? undefined : metodo,
           reference: detalhes.referencia.trim() || null,
           evidence_url: detalhes.evidencia_url.trim() || null,
           gateway_ref: detalhes.gateway_ref.trim() || null,
@@ -649,6 +655,7 @@ export function useRematriculaBalcao(opts: {
     decisaoMotivo,
     decisaoObservacao,
     decisaoResultado,
+    cardState,
     draftKey,
     idempotencyKey,
     opts.itensPagamento,
