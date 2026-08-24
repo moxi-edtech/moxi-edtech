@@ -296,6 +296,18 @@ export async function GET(req: Request) {
       if (fallbackError) {
         console.error('Erro no fallback de turmas-simples:', fallbackError);
       } else {
+        const fallbackClassIds = Array.from(new Set((turmasFallback || []).map((turma: any) => turma.classe_id).filter(Boolean)));
+        const fallbackCourseIds = Array.from(new Set((turmasFallback || []).map((turma: any) => turma.curso_id).filter(Boolean)));
+        const [{ data: fallbackClasses }, { data: fallbackCursos }] = await Promise.all([
+          fallbackClassIds.length
+            ? supabase.from('classes').select('id, nome').eq('escola_id', escolaId).in('id', fallbackClassIds)
+            : Promise.resolve({ data: [] as any[] }),
+          fallbackCourseIds.length
+            ? supabase.from('cursos').select('id, nome').eq('escola_id', escolaId).in('id', fallbackCourseIds)
+            : Promise.resolve({ data: [] as any[] }),
+        ]);
+        const classeNomeById = new Map((fallbackClasses || []).map((classe: any) => [classe.id, classe.nome]));
+        const cursoNomeById = new Map((fallbackCursos || []).map((curso: any) => [curso.id, curso.nome]));
         items = (turmasFallback || []).map((t: any) => ({
           id: t.id,
           escola_id: escolaId,
@@ -305,8 +317,8 @@ export async function GET(req: Request) {
           turno: t.turno ?? null,
           capacidade_maxima: t.capacidade_maxima ?? null,
           sala: t.sala ?? null,
-          classe_nome: null,
-          curso_nome: null,
+          classe_nome: classeNomeById.get(t.classe_id) ?? null,
+          curso_nome: cursoNomeById.get(t.curso_id) ?? null,
           curso_tipo: null,
           curso_is_custom: null,
           curso_global_hash: null,

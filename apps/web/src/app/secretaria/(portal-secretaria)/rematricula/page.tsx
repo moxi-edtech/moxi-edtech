@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 import { useToast } from "@/components/feedback/FeedbackSystem";
-import { createClient } from "@/lib/supabaseClient";
-import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
-import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { BalcaoAtendimento } from "@/components/secretaria/BalcaoAtendimento";
+import { useDebounce } from "@/hooks/useDebounce";
 import { 
   ArrowRight, 
   Search, 
@@ -36,7 +35,6 @@ interface Turma {
 }
 
 type Session = { id: string; ano_letivo: number; status: string };
-type PaymentMensalidade = { id: string; mes: number; ano: number; valor: number; vencimento?: string; status: string };
 type TransitionResult = {
   total: number;
   sucesso: number;
@@ -59,6 +57,7 @@ function proximaClasse(numero: number | null) {
 
 type NotesModalProps = {
   turmaId: string;
+  academicYearId: string | null;
   alunoId: string;
   alunoNome: string;
   onClose: () => void;
@@ -79,6 +78,16 @@ interface AlunoTriagem {
   };
 }
 
+type AlunoBuscaGlobal = {
+  id: string;
+  nome: string;
+  numero_processo?: string | null;
+  bi_numero?: string | null;
+  turma?: string | null;
+  turma_contexto?: string | null;
+  ano_letivo?: number | null;
+};
+
 type TriagemRow = {
   id?: string;
   aluno_id?: string;
@@ -97,9 +106,7 @@ type TriagemRow = {
   };
 };
 
-function NotesModal({ turmaId, alunoId, alunoNome, onClose, onSaved }: NotesModalProps) {
-  const searchParams = useSearchParams();
-  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
+function NotesModal({ turmaId, academicYearId, alunoId, alunoNome, onClose, onSaved }: NotesModalProps) {
   const [disciplinas, setDisciplinas] = useState<any[]>([]);
   const [periodos, setPeriodos] = useState<{ id: string; numero: number }[]>([]);
   const [disciplinaId, setDisciplinaId] = useState("");
@@ -226,6 +233,32 @@ function NotesModal({ turmaId, alunoId, alunoNome, onClose, onSaved }: NotesModa
   );
 }
 
+type BalcaoTriagemModalProps = {
+  escolaId: string;
+  aluno: Pick<AlunoTriagem, "id" | "nome">;
+  onClose: () => void;
+};
+
+function BalcaoTriagemModal({ escolaId, aluno, onClose }: BalcaoTriagemModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-label={`Atendimento de ${aluno.nome}`}>
+      <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-klasse-gold-700">Triagem · atendimento contextual</p>
+            <h2 className="text-lg font-bold text-slate-950">{aluno.nome}</h2>
+            <p className="mt-1 text-sm text-slate-600">Resolva a pendência, registe o pagamento e defina a rematrícula sem sair deste atendimento.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-slate-200" aria-label="Fechar atendimento"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-0">
+          <BalcaoAtendimento escolaId={escolaId} selectedAlunoId={aluno.id} showSearch={false} embedded />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RematriculaPage() {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -242,17 +275,55 @@ export default function RematriculaPage() {
   const [destinationTurmaId, setDestinationTurmaId] = useState("");
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [originYear, setOriginYear] = useState<number | null>(null);
+  const [originAcademicYearId, setOriginAcademicYearId] = useState<string | null>(null);
   const [destinationYear, setDestinationYear] = useState<number | null>(null);
   const [notesStudent, setNotesStudent] = useState<AlunoTriagem | null>(null);
-  const [paymentStudent, setPaymentStudent] = useState<AlunoTriagem | null>(null);
-  const [paymentItems, setPaymentItems] = useState<PaymentMensalidade[]>([]);
-  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [balcaoStudent, setBalcaoStudent] = useState<Pick<AlunoTriagem, "id" | "nome"> | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [globalSearchTerm, setGlobalSearchTerm] = useState("");
+  const [globalResults, setGlobalResults] = useState<AlunoBuscaGlobal[]>([]);
+  const [globalSearching, setGlobalSearching] = useState(false);
+  const globalSearchAbortRef = useRef<AbortController | null>(null);
+  const debouncedGlobalSearch = useDebounce(globalSearchTerm, 350);
   
   // Limpa o destino se a origem mudar
   useEffect(() => {
     setDestinationTurmaId("");
   }, [originTurmaId]);
+
+  useEffect(() => {
+    const query = debouncedGlobalSearch.trim();
+    globalSearchAbortRef.current?.abort();
+    if (query.length < 2) {
+      setGlobalResults([]);
+      setGlobalSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    globalSearchAbortRef.current = controller;
+    setGlobalSearching(true);
+    fetch(`/api/secretaria/balcao/alunos/search?query=${encodeURIComponent(query)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => response.json().catch(() => ({})))
+      .then((payload) => {
+        if (!controller.signal.aborted) {
+          setGlobalResults(payload?.ok && Array.isArray(payload.alunos) ? payload.alunos : []);
+        }
+      })
+      .catch((searchError: unknown) => {
+        if (!(searchError instanceof DOMException && searchError.name === "AbortError") && !controller.signal.aborted) {
+          setGlobalResults([]);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setGlobalSearching(false);
+      });
+
+    return () => controller.abort();
+  }, [debouncedGlobalSearch]);
   
   // Memo para filtrar turmas de destino baseadas na origem
   const destinationOptions = React.useMemo(() => {
@@ -274,6 +345,16 @@ export default function RematriculaPage() {
     const sameTurno = candidates.filter((candidate) => candidate.turno === origin.turno);
     return sameTurno.length > 0 ? sameTurno : candidates;
   }, [originTurmaId, turmas]);
+
+  const destinationHint = useMemo(() => {
+    if (!originTurmaId) return "Escolha primeiro a turma de origem.";
+    const origin = turmas.find((turma) => turma.id === originTurmaId);
+    if (!origin) return "Não foi possível identificar a turma de origem.";
+    const nextClass = proximaClasse(classeNumero(origin.classe_nome));
+    if (nextClass == null) return "Esta turma não tem uma classe seguinte configurada para transição em massa.";
+    if (destinationOptions.length === 0) return `Não há turma da ${nextClass}ª classe preparada no próximo ano letivo para este curso.`;
+    return "A turma sugerida mantém o turno quando houver disponibilidade; você pode escolher outra opção elegível.";
+  }, [destinationOptions.length, originTurmaId, turmas]);
   
   // States de Dados
   const [alunos, setAlunos] = useState<AlunoTriagem[]>([]);
@@ -287,46 +368,6 @@ export default function RematriculaPage() {
   const [motivoFilter, setMotivoFilter] = useState("todos");
   const [transitionResult, setTransitionResult] = useState<TransitionResult | null>(null);
 
-  const openDebtPayment = async (student: AlunoTriagem) => {
-    if (!escolaId) {
-      setError("Escola não identificada para abrir o pagamento.");
-      return;
-    }
-    setPaymentLoading(true);
-    setError(null);
-    try {
-      const supabase = createClient();
-      const { data, error: dossierError } = await supabase.rpc("get_aluno_dossier", {
-        p_escola_id: escolaId,
-        p_aluno_id: student.id,
-      });
-      if (dossierError) throw dossierError;
-      const raw = (data ?? {}) as { financeiro?: { mensalidades?: Array<Record<string, unknown>> } };
-      const items = (raw.financeiro?.mensalidades ?? [])
-        .filter((item) => ["pendente", "pago_parcial", "atrasado"].includes(String(item.status ?? "").toLowerCase()))
-        .map((item) => {
-          const valor = Number(item.valor ?? item.valor_previsto ?? 0);
-          const pago = Number(item.pago ?? item.valor_pago_total ?? 0);
-          return {
-            id: String(item.id),
-            mes: Number(item.mes ?? item.mes_referencia ?? 0),
-            ano: Number(item.ano ?? item.ano_referencia ?? 0),
-            valor: Math.max(0, valor - pago),
-            vencimento: String(item.vencimento ?? item.data_vencimento ?? "") || undefined,
-            status: String(item.status ?? "pendente"),
-          };
-        })
-        .filter((item) => item.valor > 0);
-      if (items.length === 0) throw new Error("Não existem mensalidades abertas para este aluno. Atualize a fila e tente novamente.");
-      setPaymentItems(items);
-      setPaymentStudent(student);
-    } catch (paymentError) {
-      setError(paymentError instanceof Error ? paymentError.message : "Não foi possível abrir o pagamento.");
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
   // Contexto canónico: ano anterior → ano ativo (ou próximo ano preparado).
   useEffect(() => {
     const fetchContext = async () => {
@@ -338,7 +379,10 @@ export default function RematriculaPage() {
         const previous = active ? available.find((session) => session.ano_letivo < active.ano_letivo) : undefined;
         const source = previous ?? active;
         const target = active ?? available[0];
-        if (source) setOriginYear(source.ano_letivo);
+        if (source) {
+          setOriginYear(source.ano_letivo);
+          setOriginAcademicYearId(source.id);
+        }
         if (target) setDestinationYear(target.ano_letivo);
 
         const years = Array.from(new Set([source?.ano_letivo, target?.ano_letivo].filter((year): year is number => typeof year === "number")));
@@ -541,6 +585,60 @@ export default function RematriculaPage() {
         </div>
       </div>
 
+      <div className="relative mb-6 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-slate-900">Localizar aluno na escola</p>
+            <p className="text-xs text-slate-600">Pesquise por nome, processo ou BI. A fila e a turma selecionada não serão alteradas.</p>
+          </div>
+          <div className="relative w-full sm:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              value={globalSearchTerm}
+              onChange={(event) => setGlobalSearchTerm(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.preventDefault();
+              }}
+              placeholder="Nome, processo ou BI..."
+              className="w-full rounded-xl border-slate-200 bg-white py-2 pl-9 pr-9 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+              aria-label="Localizar aluno na escola"
+            />
+            {globalSearching && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
+          </div>
+        </div>
+        {globalSearchTerm.trim().length >= 2 && !globalSearching && (
+          <div className="mt-3 rounded-lg border border-sky-100 bg-white">
+            {globalResults.length > 0 ? (
+              <ul className="divide-y divide-slate-100" aria-label="Resultados da busca global">
+                {globalResults.map((aluno) => (
+                  <li key={aluno.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{aluno.nome}</p>
+                      <p className="text-xs text-slate-500">
+                        Proc. {aluno.numero_processo || "—"} · {aluno.turma_contexto || "Sem histórico de turma"}: {aluno.turma || "—"}{aluno.ano_letivo ? ` · ${aluno.ano_letivo}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBalcaoStudent({ id: aluno.id, nome: aluno.nome });
+                        setGlobalSearchTerm("");
+                        setGlobalResults([]);
+                      }}
+                      className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800 hover:bg-sky-100"
+                    >
+                      Abrir atendimento
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-3 py-3 text-sm text-slate-500">Nenhum aluno encontrado para esta pesquisa.</p>
+            )}
+          </div>
+        )}
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* ZONA 1: ORIGEM E DESTINO */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-100">
@@ -582,6 +680,9 @@ export default function RematriculaPage() {
                 <option key={t.id} value={t.id}>{t.nome}{t.ano_letivo ? ` · ${t.ano_letivo}` : ""}</option>
               ))}
             </select>
+            <p className={`mt-2 text-xs ${destinationOptions.length > 0 ? "text-slate-500" : "text-amber-700"}`}>
+              {destinationHint}
+            </p>
           </div>
         </div>
 
@@ -642,7 +743,7 @@ export default function RematriculaPage() {
                   <input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Buscar aluno..."
+                    placeholder="Filtrar alunos desta turma..."
                     className="pl-9 w-48 rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
                   />
                 </div>
@@ -747,38 +848,6 @@ export default function RematriculaPage() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          {aluno.pode_transitar ? (
-                            <button
-                              type="button"
-                              disabled={loading || !destinationTurmaId}
-                              onClick={() => submitPromotion([aluno.id])}
-                              className="rounded-lg bg-klasse-green px-3 py-2 text-xs font-semibold text-white hover:brightness-110 disabled:opacity-50"
-                            >
-                              Promover
-                            </button>
-                          ) : aluno.motivos_bloqueio.includes("inadimplencia") ? (
-                            <button
-                              type="button"
-                              disabled={paymentLoading}
-                              onClick={() => void openDebtPayment(aluno)}
-                              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                            >
-                              {paymentLoading ? "A abrir…" : "Regularizar dívida"}
-                            </button>
-                          ) : aluno.pedagogico.status === "INCOMPLETA" ? (
-                            <button
-                              type="button"
-                              onClick={() => setNotesStudent(aluno)}
-                              className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-xs font-semibold text-klasse-gold-800 hover:bg-klasse-gold-100"
-                            >
-                              Lançar notas
-                            </button>
-                          ) : (
-                            <span className="text-xs text-slate-400">Resolver pendência</span>
-                          )}
-                        </td>
-
                         {/* BADGE FINANCEIRA */}
                         <td className="py-3 px-4 text-center">
                           {aluno.financeiro.em_dia ? (
@@ -789,6 +858,58 @@ export default function RematriculaPage() {
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title={`Dívida: ${aluno.financeiro.saldo_pendente} Kz`}>
                               <AlertCircle className="w-3.5 h-3.5" /> Dívida Pendente
                             </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {aluno.pode_transitar ? (
+                            <button
+                              type="button"
+                              onClick={() => setBalcaoStudent(aluno)}
+                              className="rounded-lg bg-klasse-green px-3 py-2 text-xs font-semibold text-white hover:brightness-110"
+                            >
+                              Concluir no atendimento
+                            </button>
+                          ) : aluno.motivos_bloqueio.includes("inadimplencia") ? (
+                            <button
+                              type="button"
+                              onClick={() => setBalcaoStudent(aluno)}
+                              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                            >
+                              Resolver no Balcão
+                            </button>
+                          ) : aluno.pedagogico.status === "INCOMPLETA" ? (
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setNotesStudent(aluno)}
+                                className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-xs font-semibold text-klasse-gold-800 hover:bg-klasse-gold-100"
+                              >
+                                Lançar notas
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setBalcaoStudent(aluno)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                Balcão
+                              </button>
+                            </div>
+                          ) : aluno.pedagogico.status === "REPROVADA" ? (
+                            <button
+                              type="button"
+                              onClick={() => setBalcaoStudent(aluno)}
+                              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-800 hover:bg-red-100"
+                            >
+                              Definir retenção no Balcão
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setBalcaoStudent(aluno)}
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Abrir no Balcão
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -837,6 +958,7 @@ export default function RematriculaPage() {
       {notesStudent && (
         <NotesModal
           turmaId={originTurmaId}
+          academicYearId={originAcademicYearId}
           alunoId={notesStudent.id}
           alunoNome={notesStudent.nome}
           onClose={() => setNotesStudent(null)}
@@ -845,22 +967,16 @@ export default function RematriculaPage() {
           }}
         />
       )}
-      <ModalPagamentoRapido
-        escolaId={escolaId}
-        aluno={paymentStudent ? { id: paymentStudent.id, nome: paymentStudent.nome } : { id: "", nome: "" }}
-        mensalidade={paymentItems[0] ?? null}
-        mensalidades={paymentItems}
-        open={Boolean(paymentStudent)}
-        onClose={() => {
-          setPaymentStudent(null);
-          setPaymentItems([]);
-        }}
-        onSuccess={() => {
-          setPaymentStudent(null);
-          setPaymentItems([]);
-          setReloadToken((value) => value + 1);
-        }}
-      />
+      {balcaoStudent && (
+        <BalcaoTriagemModal
+          escolaId={escolaId}
+          aluno={balcaoStudent}
+          onClose={() => {
+            setBalcaoStudent(null);
+            setReloadToken((value) => value + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -73,14 +73,19 @@ export async function GET(request: Request) {
     }
 
     const formattedAlunos = (alunos || []).map((aluno: any) => {
-      const matriculaAtiva = aluno.matriculas.find((m: any) => ['ativa', 'ativo'].includes(m.status));
+      const matriculas = Array.isArray(aluno.matriculas) ? aluno.matriculas : [];
+      const matriculaAtiva = matriculas.find((matricula: any) => ['ativa', 'ativo'].includes(String(matricula.status ?? '').toLowerCase()));
+      const matriculaReferencia = matriculaAtiva ?? [...matriculas]
+        .sort((a: any, b: any) => Number(b.ano_letivo ?? 0) - Number(a.ano_letivo ?? 0))[0] ?? null;
       return {
         id: aluno.id,
         nome: aluno.nome_completo || aluno.nome,
         numero_processo: aluno.numero_processo,
         bi_numero: aluno.bi_numero,
         foto_url: null,
-        turma: matriculaAtiva?.turmas?.nome || 'N/A',
+        turma: matriculaReferencia?.turmas?.nome || null,
+        turma_contexto: matriculaAtiva ? 'Turma atual' : matriculaReferencia ? 'Última turma' : null,
+        ano_letivo: matriculaReferencia?.ano_letivo ?? null,
         matricula_id: matriculaAtiva?.id || null,
       };
     });
