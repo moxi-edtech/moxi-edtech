@@ -14,7 +14,8 @@ export type RematriculaCardState =
   | "PENDING_ORDER_REVIEW"
   | "RECONCILIATION_REQUIRED"
   | "WINDOW_CLOSED"
-  | "SOURCE_RECORD_REQUIRED";
+  | "SOURCE_RECORD_REQUIRED"
+  | "ERROR";
 
 export interface TurmaOption {
   id: string;
@@ -249,7 +250,7 @@ export function useRematriculaBalcao(opts: {
       );
       const data: StatusResponse = await res.json();
 
-      if (data.ok) {
+      if (res.ok && data.ok) {
         setApiError(null);
         setCardState(data.status);
         setService(data.service);
@@ -260,7 +261,8 @@ export function useRematriculaBalcao(opts: {
         setDestinoTurmaId(data.destino_turma_id ?? null);
         setCohort(data.cohort ?? null);
       } else {
-        setCardState(null);
+        setCardState("ERROR");
+        setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
       }
     } catch (e) {
       console.error("[useRematriculaBalcao] Error fetching status:", e);

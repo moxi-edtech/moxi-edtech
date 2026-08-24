@@ -792,6 +792,7 @@ function Catalogo({
     | "PRICE_NOT_CONFIGURED"
     | "CHECKING"
     | "SOURCE_RECORD_REQUIRED"
+    | "ERROR"
     | "RECONFIRMATION_REQUIRED"
     | "FINALIST_PENDING"
     | "LEGACY_REVIEW_REQUIRED"
@@ -957,8 +958,10 @@ function Catalogo({
                         : "Pagamento, atualizacao da matricula e comprovante"
                     : rematriculaState === "CHECKING"
                       ? "A verificar elegibilidade da matrícula..."
-                      : rematriculaState === "SOURCE_RECORD_REQUIRED"
+                    : rematriculaState === "SOURCE_RECORD_REQUIRED"
                         ? "Matrícula histórica não encontrada; regularize o vínculo de origem antes de continuar"
+                      : rematriculaState === "ERROR"
+                        ? "Não foi possível verificar a elegibilidade; consulte a mensagem acima"
                       : rematriculaState === "ALREADY_COMPLETED"
                         ? "Aluno já possui matrícula neste ano letivo"
                           : rematriculaState === "PAYMENT_IN_PROGRESS"
@@ -1656,7 +1659,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 }
                 rematriculaState={
                   servicos.some(isServicoRematricula)
-                    ? rematricula.cardState ?? "CHECKING"
+                    ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
                     : null
                 }
                 rematriculaPrice={rematricula.service?.valor_base ?? null}

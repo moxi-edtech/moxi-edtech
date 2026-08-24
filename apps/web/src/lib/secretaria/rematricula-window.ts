@@ -10,6 +10,28 @@ export type OpenRematriculaWindow = {
   ativa: boolean;
 };
 
+export async function resolveOpenRematriculaWindow(
+  supabase: SupabaseLike,
+  escolaId: string,
+  currentYear: number,
+): Promise<OpenRematriculaWindow | null> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("rematricula_janelas")
+    .select("id, ano_letivo, data_inicio, data_fim, ativa")
+    .eq("escola_id", escolaId)
+    .eq("ativa", true)
+    .gte("ano_letivo", currentYear)
+    .lte("data_inicio", now)
+    .gte("data_fim", now)
+    .order("ano_letivo", { ascending: true })
+    .order("data_inicio", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
 export async function resolveRematriculaWindow(
   supabase: SupabaseLike,
   escolaId: string,
