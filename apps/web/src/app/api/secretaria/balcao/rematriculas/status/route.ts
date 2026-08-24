@@ -125,7 +125,7 @@ export async function GET(request: Request) {
       );
     }
     if (Number(matriculaOrigem.ano_letivo ?? 0) >= targetAnoLetivoAno) {
-      const { data: matriculaAnterior } = await supabase
+      const { data: matriculaAnteriorPorAno } = await supabase
         .from("matriculas")
         .select("id, ano_letivo, status, turma_id")
         .eq("escola_id", escolaId)
@@ -135,8 +135,46 @@ export async function GET(request: Request) {
         .order("ano_letivo", { ascending: false })
         .limit(1)
         .maybeSingle();
+      // Curtume pode já apresentar a reserva de 2026 como matrícula actual.
+      // A origem do atendimento continua a ser a matrícula histórica de 2025,
+      // identificada pela coorte autorizada, mesmo quando não aparece na lista
+      // operacional corrente do aluno.
+      const { data: cohortOrigin } = matriculaAnteriorPorAno
+        ? { data: null }
+        : await (supabase as any)
+            .from("academic_transition_cohort_members")
+            .select("matricula_origem_id, cohort:academic_transition_cohorts!inner(ativo, ano_destino)")
+            .eq("escola_id", escolaId)
+            .eq("aluno_id", aluno_id)
+            .eq("status", "elegivel")
+            .eq("cohort.ativo", true)
+            .eq("cohort.ano_destino", targetAnoLetivoAno)
+            .limit(1)
+            .maybeSingle();
+      const { data: matriculaAnteriorPorCohort } = cohortOrigin?.matricula_origem_id
+        ? await supabase
+            .from("matriculas")
+            .select("id, ano_letivo, status, turma_id")
+            .eq("escola_id", escolaId)
+            .eq("aluno_id", aluno_id)
+            .eq("id", cohortOrigin.matricula_origem_id)
+            .maybeSingle()
+        : { data: null };
+      const matriculaAnterior = matriculaAnteriorPorAno ?? matriculaAnteriorPorCohort;
       if (!matriculaAnterior) {
-        return NextResponse.json({ ok: true, status: "CHECKING", service: null, debt: { total: 0, count: 0 }, pedido: null, comprovante: null, ano_letivo: { id: targetAnoLetivoId, ano: targetAnoLetivoAno, label: academicContext.anoLetivoLabel }, destino_turma_id: null, reclassificacao: null, reconciliation: null, context: academicContext });
+        return NextResponse.json({
+          ok: true,
+          status: "SOURCE_RECORD_REQUIRED",
+          service: null,
+          debt: { total: 0, count: 0 },
+          pedido: null,
+          comprovante: null,
+          ano_letivo: { id: targetAnoLetivoId, ano: targetAnoLetivoAno, label: targetAnoLetivoLabel },
+          destino_turma_id: null,
+          reclassificacao: null,
+          reconciliation: null,
+          context: academicContext,
+        });
       }
       matriculaOrigem = matriculaAnterior;
     }

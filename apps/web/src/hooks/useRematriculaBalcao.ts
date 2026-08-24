@@ -13,7 +13,8 @@ export type RematriculaCardState =
   | "PAYMENT_IN_PROGRESS"
   | "PENDING_ORDER_REVIEW"
   | "RECONCILIATION_REQUIRED"
-  | "WINDOW_CLOSED";
+  | "WINDOW_CLOSED"
+  | "SOURCE_RECORD_REQUIRED";
 
 export interface TurmaOption {
   id: string;
