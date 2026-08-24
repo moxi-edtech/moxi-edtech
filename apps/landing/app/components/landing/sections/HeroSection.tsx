@@ -39,11 +39,10 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
 
   return (
     <section className="hero z section-accent">
-      <div className="hero-gradient-bg" aria-hidden="true" />
-      <div className="hero-noise-bg" aria-hidden="true" />
-      <div className="hero-contrast-overlay" aria-hidden="true" />
+      <div className="hero-ambient" aria-hidden="true" />
       <div className="container">
-        <div className="hero-content">
+        <div className="hero-grid">
+          <div className="hero-content">
           <motion.div
             className="hero-copy"
             variants={containerVariants}
@@ -51,6 +50,7 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
             animate="visible"
           >
             <motion.div variants={itemVariants} className="hero-eyebrow">
+              <span className="hero-eyebrow-dot" />
               {eyebrow}
             </motion.div>
             <motion.h1 variants={itemVariants}>
@@ -81,28 +81,27 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
               </a>
             </motion.div>
             <motion.div variants={itemVariants} className="hero-proof">
-              <div className="proof-text">
-                <strong>{note}</strong>
-              </div>
+              <span className="hero-proof-mark">K</span>
+              <div className="proof-text"><strong>{note}</strong><span>Configuração e formação acompanhadas</span></div>
             </motion.div>
           </motion.div>
+          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
+            className="hero-showcase"
+          >
+            <div className="hero-person-frame">
+              <Image src="/assets/leadership-cover.png" alt="Gestora escolar a acompanhar a sua equipa" fill sizes="(max-width: 900px) 100vw, 44vw" priority />
+              <div className="hero-person-caption"><span>Uma visão para cada decisão</span><strong>KLASSE para a escola inteira</strong></div>
+            </div>
+            <div className="hero-product-window" aria-label="Pré-visualização do dashboard KLASSE">
+              <div className="hero-window-bar"><span className="window-dots"><i /><i /><i /></span><span>app.klasse.ao</span><span className="window-live"><b />Ao vivo</span></div>
+              <div className="hero-real-screen"><Image src="/assets/dashboard-notebook.png" alt="Dashboard real do KLASSE" fill sizes="(max-width: 900px) 100vw, 48vw" /></div>
+            </div>
+          </motion.div>
         </div>
-        <motion.div
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.5, ease: 'easeOut' }}
-          className="hero-bg-image-wrapper"
-          style={{ position: 'absolute', inset: 0, zIndex: -1 }}
-        >
-          <Image
-            src="/diretor%20com%20terno.PNG"
-            alt="Director de escola angolana com terno"
-            fill
-            sizes="100vw"
-            priority
-            className="hero-bg-image"
-          />
-        </motion.div>
       </div>
     </section>
   )

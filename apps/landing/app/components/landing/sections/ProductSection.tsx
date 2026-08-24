@@ -27,39 +27,39 @@ export function ProductSection() {
 
   const features = [
     {
-      title: 'Fecho de caixa cego',
+      title: 'Fecho de caixa com mais controlo',
       description:
-        'O operador declara valores antes de ver o sistema, reduzindo fraude e aumentando controlo financeiro.',
+        'O operador declara primeiro. O sistema confere depois. Mais transparência para cada recebimento.',
       icon: Wallet,
     },
     {
-      title: 'Documentos em lote',
+      title: 'Documentos sem filas',
       description:
-        'Declarações e documentos emitidos em segundos, eliminando filas na secretaria.',
+        'Declarações e documentos emitidos em lote, em segundos, sem repetir o mesmo trabalho na secretaria.',
       icon: BookOpen,
     },
     {
-      title: 'Admissões em massa',
+      title: 'Matrículas sem retrabalho',
       description:
-        'Matrículas e rematrículas para várias turmas sem retrabalho.',
+        'Matrículas e rematrículas organizadas por turma, com os dados certos desde o primeiro registo.',
       icon: Users,
     },
     {
-      title: 'Radar de atrasos',
+      title: 'Atrasos que aparecem cedo',
       description:
-        'Identifique rapidamente quem está em dívida e aja com prioridade.',
+        'Veja quem está em dívida, organize as prioridades e aja antes que o problema cresça.',
       icon: CalendarCheck,
     },
     {
-      title: 'Professor no telemóvel',
+      title: 'O professor trabalha onde está',
       description:
-        'Notas e presenças lançadas no fluxo do dia-a-dia, sem fricção.',
+        'Notas e presenças lançadas no telemóvel, no ritmo da aula e sem depender da secretaria.',
       icon: ClipboardCheck,
     },
     {
-      title: 'Portal com contexto real',
+      title: 'Famílias com informação clara',
       description:
-        'Pais veem notas e situação financeira no mesmo lugar.',
+        'Notas, presenças e situação financeira no mesmo portal, sem mensagens espalhadas.',
       icon: BarChart3,
     },
   ]
@@ -70,9 +70,23 @@ export function ProductSection() {
     <section className="features z section-bg section-bg-product section-accent" id="produto">
       <div className="container">
         <FadeIn className="product-intro product-intro--slide">
-          <div className="sec-eyebrow">O produto</div>
-          <h2 className="sec-title product-title-main">Funcionalidades para operar a escola com controlo.</h2>
-          <p className="sec-sub">Do balcao ao financeiro, tudo integrado numa so plataforma.</p>
+          <div className="sec-eyebrow">O que muda no dia a dia</div>
+          <h2 className="sec-title product-title-main">Menos tarefas espalhadas. Mais escola a funcionar.</h2>
+          <p className="sec-sub">O KLASSE transforma os processos que mais consomem tempo em fluxos claros, acompanháveis e integrados.</p>
+        </FadeIn>
+
+        <FadeIn className="product-film" direction="up">
+          <div className="product-film-copy">
+            <div className="sec-eyebrow">Feito para a rotina real</div>
+            <h3>Menos troca de contexto. Mais tempo para a escola.</h3>
+            <p>O KLASSE aproxima as pessoas e os processos que já fazem parte do dia a dia da instituição.</p>
+          </div>
+          <div className="product-film-frame">
+            <video autoPlay muted loop playsInline preload="metadata" poster="/assets/implementation-wide.png" aria-label="Demonstração visual do KLASSE em uso">
+              <source src="/assets/klasse-login-hero.mp4" type="video/mp4" />
+            </video>
+            <span className="product-film-live"><i /> produto em movimento</span>
+          </div>
         </FadeIn>
 
         <FadeInStagger className="product-showcase-grid">

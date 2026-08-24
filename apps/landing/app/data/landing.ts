@@ -8,13 +8,13 @@ export const navLinks = [
 
 export const hero = {
   eyebrow: 'Gestão escolar para Angola',
-  titleLines: ['Assuma o controlo total', 'da sua escola hoje.'],
+  titleLines: ['A escola inteira,', 'numa única visão.'],
   subtitle:
-    'Propinas sob controlo. Documentos MED prontos. Sem caos no Excel.',
-  primaryCta: 'Começar agora (2 meses grátis)',
-  diagnosticCta: 'Faça o diagnóstico',
+    'Direção, secretaria, professores, alunos e famílias ligados pela mesma informação. Menos retrabalho. Mais controlo para decidir.',
+  primaryCta: 'Conhecer o KLASSE',
+  diagnosticCta: 'Agendar diagnóstico',
   secondaryCta: 'Fale connosco',
-  note: 'Configuração assistida pela nossa equipa.',
+  note: 'Implementação acompanhada pela nossa equipa.',
 }
 
 export const heroMockup = {

@@ -44,7 +44,7 @@ export function LandingPage() {
         loginHref={`${appUrl}/login`}
         onClose={() => setIsMenuOpen(false)}
       />
-      <div className="panel-stack">
+      <main className="panel-stack landing-page">
         <div className="panel panel--hero">
           <HeroSection
             titleLines={hero.titleLines}
@@ -92,7 +92,7 @@ export function LandingPage() {
             <FooterSection links={footerLinks} />
           </div>
         </div>
-      </div>
+      </main>
     </>
   )
 }
