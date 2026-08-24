@@ -88,13 +88,14 @@ export async function ReciboPrintDocument({
         .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)))
         .map((item) => ({
           referencia: getSnapshotString(item.descricao ?? item.referencia ?? item.nome, "Item pago"),
-          valor: Number(item.valor ?? item.amount ?? 0),
+          valor: Number(item.valor ?? item.amount ?? item.preco ?? item.valor_unitario ?? item.valorUnitario ?? 0),
           quantidade: Number(item.quantidade ?? item.qtd ?? 1),
           valorUnitario: Number(item.valor_unitario ?? item.valorUnitario ?? item.preco ?? item.valor ?? 0),
         }))
         .filter((item) => Number.isFinite(item.valor) && item.valor >= 0 && Number.isFinite(item.quantidade) && item.quantidade > 0)
     : [{ referencia, valor: Number(snapshot.valor_pago ?? 0) }];
-  const valorPago = Number(snapshot.valor_pago ?? 0);
+  const totalItensDetalhados = itensDetalhados.reduce((total, item) => total + item.valor, 0);
+  const valorPago = totalItensDetalhados > 0 ? totalItensDetalhados : Number(snapshot.valor_pago ?? 0);
   const dataPagamento = snapshot.data_pagamento
     ? new Date(String(snapshot.data_pagamento)).toLocaleDateString("pt-PT")
     : "—";

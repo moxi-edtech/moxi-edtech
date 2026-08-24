@@ -245,7 +245,7 @@ export async function GET(request: Request) {
 
     const targetTurmaId = destino_turma_id ?? matriculaDestino?.turma_id ?? reclassificacao?.destino_turma_id ?? matriculaOrigem?.turma_id ?? null;
     const { data: targetTurma } = targetTurmaId
-      ? await supabase.from("turmas").select("id, nome, turma_nome, turma_codigo, turno, curso_id, classe_id, classes(nome)").eq("escola_id", escolaId).eq("id", targetTurmaId).maybeSingle()
+      ? await supabase.from("turmas").select("id, nome, turma_code, turno, curso_id, classe_id, classes(nome)").eq("escola_id", escolaId).eq("id", targetTurmaId).maybeSingle()
       : { data: null };
     const targetClasse = Array.isArray((targetTurma as any)?.classes)
       ? (targetTurma as any).classes[0]
@@ -429,11 +429,11 @@ export async function GET(request: Request) {
       destino_turma: targetTurma
         ? {
             id: targetTurma.id,
-            nome: targetTurma.nome ?? targetTurma.turma_nome ?? "—",
+            nome: targetTurma.nome ?? "—",
             turno: targetTurma.turno ?? null,
             classe_nome: targetClasse?.nome ?? null,
             curso_nome: null,
-            turma_codigo: targetTurma.turma_codigo ?? null,
+            turma_codigo: targetTurma.turma_code ?? null,
             capacidade_maxima: null,
             ocupacao_atual: 0,
             session_id: null,
