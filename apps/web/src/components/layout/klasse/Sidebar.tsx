@@ -182,7 +182,13 @@ export default function Sidebar({
                   {hasChildren ? (
                     <button
                       type="button"
-                      onClick={() => setExpanded((prev) => ({ ...prev, [it.href]: !prev[it.href] }))}
+                      onClick={() => {
+                        setExpanded((prev) => ({
+                          ...prev,
+                          [it.href]: collapsed ? true : !prev[it.href],
+                        }));
+                        if (collapsed) setCollapsed(false);
+                      }}
                     className={cn(
                       "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
                       "transition-all duration-200",
