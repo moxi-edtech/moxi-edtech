@@ -1794,7 +1794,6 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
             void audit.fetch(dossier.aluno!.id, dossier.aluno!.matricula_id);
           }}
           onFullyPaid={() => {
-            setDebtModalOpen(false);
             void rematricula.refresh();
             setShowReturnPrompt(true);
           }}

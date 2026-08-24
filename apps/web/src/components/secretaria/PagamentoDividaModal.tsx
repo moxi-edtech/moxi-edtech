@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Banknote, CheckCircle2, CreditCard, Loader2, QrCode, ArrowRightLeft } from "lucide-react";
+import { AlertTriangle, Banknote, CheckCircle2, CreditCard, Loader2, Printer, QrCode, ArrowRightLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Mensalidade } from "./BalcaoAtendimento";
 
@@ -41,6 +41,7 @@ export function PagamentoDividaModal({ open, onOpenChange, mensalidades, alunoId
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<Array<{ amount: number; method: string }>>([]);
+  const [recibos, setRecibos] = useState<Array<{ label: string; url: string }>>([]);
 
   const pay = async () => {
     const value = Number(amount);
@@ -62,6 +63,8 @@ export function PagamentoDividaModal({ open, onOpenChange, mensalidades, alunoId
     let remaining = value;
     try {
       let paidNow = 0;
+      const recibosEmitidos: Array<{ label: string; url: string }> = [];
+      const recibosPendentes: string[] = [];
       for (const item of ordered) {
         if (remaining <= 0) break;
         const allocated = Math.min(remaining, item.preco);
@@ -85,11 +88,24 @@ export function PagamentoDividaModal({ open, onOpenChange, mensalidades, alunoId
         });
         const json = await response.json().catch(() => ({}));
         if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível registar o pagamento.");
+        if (json.recibo?.ok && typeof json.recibo.print_url === "string") {
+          recibosEmitidos.push({ label: item.nome, url: json.recibo.print_url });
+        } else {
+          recibosPendentes.push(item.nome);
+        }
         remaining -= allocated;
         paidNow += allocated;
       }
       setPaymentHistory((history) => [...history, { amount: paidNow, method: methods.find((item) => item.id === method)?.label ?? method }]);
-      setMessage({ type: "success", text: remaining > 0 ? "Pagamento registado parcialmente." : "Pagamento registado com sucesso." });
+      setRecibos((previous) => [...previous, ...recibosEmitidos]);
+      setMessage({
+        type: recibosPendentes.length > 0 ? "error" : "success",
+        text: recibosPendentes.length > 0
+          ? `Pagamento registado, mas o recibo de ${recibosPendentes.join(", ")} está pendente de emissão.`
+          : remaining > 0
+            ? "Pagamento registado parcialmente. O comprovativo está disponível abaixo."
+            : "Pagamento registado com sucesso. O comprovativo está disponível abaixo.",
+      });
       setAmount("");
       onSuccess();
       if (remaining <= 0) onFullyPaid?.();
@@ -119,6 +135,7 @@ export function PagamentoDividaModal({ open, onOpenChange, mensalidades, alunoId
           {method === "transfer" ? <input value={evidenceUrl} onChange={(event) => setEvidenceUrl(event.target.value)} placeholder="URL do comprovativo" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" disabled={submitting} /> : null}
           {message && <p className={`flex items-center gap-2 rounded-xl p-3 text-sm ${message.type === "success" ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-700"}`}>{message.type === "success" && <CheckCircle2 className="h-4 w-4" />}{message.text}</p>}
           {paymentHistory.length > 0 && <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-xs text-emerald-900"><p className="mb-1 font-bold">Pagamentos nesta regularização</p>{paymentHistory.map((item, index) => <div key={`${item.method}-${index}`} className="flex justify-between"><span>{item.method}</span><strong>{money.format(item.amount)}</strong></div>)}</div>}
+          {recibos.length > 0 && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-950"><p className="mb-2 font-bold">Comprovativos emitidos</p><div className="space-y-2">{recibos.map((recibo) => <button key={`${recibo.label}-${recibo.url}`} type="button" onClick={() => window.open(recibo.url, "_blank", "noopener,noreferrer")} className="flex w-full items-center justify-between rounded-lg bg-white px-3 py-2 text-left font-semibold text-emerald-800 hover:bg-emerald-100"><span className="truncate pr-2">{recibo.label}</span><span className="inline-flex shrink-0 items-center gap-1"><Printer className="h-3.5 w-3.5" /> Imprimir</span></button>)}</div></div>}
           <button type="button" onClick={() => void pay()} disabled={submitting || ordered.length === 0} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-3 text-sm font-bold text-slate-950 disabled:opacity-60">{submitting && <Loader2 className="h-4 w-4 animate-spin" />} {submitting ? "A registar pagamento…" : "Registar pagamento parcial"}</button>
         </div>
       </DialogContent>
