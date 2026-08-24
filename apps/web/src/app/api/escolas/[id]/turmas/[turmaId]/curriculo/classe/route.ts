@@ -60,6 +60,56 @@ async function getCurriculum(supabase: any, escolaId: string, scope: { turma: an
   return { current, rows: currentItems, available, catalogCount: catalog?.length ?? 0, availableCount: available.length };
 }
 
+async function resolveDefaultWeeklyHours({
+  supabase,
+  escolaId,
+  cursoId,
+  classeId,
+  disciplinaNome,
+  fallbackWeeklyHours,
+}: {
+  supabase: any;
+  escolaId: string;
+  cursoId: string;
+  classeId: string;
+  disciplinaNome: string;
+  fallbackWeeklyHours?: number | null;
+}) {
+  const fallback = Number(fallbackWeeklyHours ?? 0);
+  const resolvedFallback = Number.isFinite(fallback) && fallback > 0 ? fallback : null;
+  const [{ data: curso, error: cursoError }, { data: classe, error: classeError }] = await Promise.all([
+    supabase.from("cursos").select("curriculum_key").eq("escola_id", escolaId).eq("id", cursoId).maybeSingle(),
+    supabase.from("classes").select("nome").eq("escola_id", escolaId).eq("id", classeId).maybeSingle(),
+  ]);
+  if (cursoError) throw new Error(cursoError.message);
+  if (classeError) throw new Error(classeError.message);
+  if (!curso?.curriculum_key || !classe?.nome) return { weeklyHours: resolvedFallback, presetSubjectId: null };
+
+  const { data: presetSubject, error: presetError } = await supabase
+    .from("curriculum_preset_subjects")
+    .select("id, weekly_hours")
+    .eq("preset_id", curso.curriculum_key)
+    .eq("grade_level", classe.nome)
+    .eq("name", disciplinaNome)
+    .maybeSingle();
+  if (presetError) throw new Error(presetError.message);
+  if (!presetSubject?.id) return { weeklyHours: resolvedFallback, presetSubjectId: null };
+
+  const { data: schoolSubject, error: schoolSubjectError } = await supabase
+    .from("school_subjects")
+    .select("custom_weekly_hours, is_active")
+    .eq("escola_id", escolaId)
+    .eq("preset_subject_id", presetSubject.id)
+    .maybeSingle();
+  if (schoolSubjectError) throw new Error(schoolSubjectError.message);
+
+  const configuredHours = Number(schoolSubject?.custom_weekly_hours ?? presetSubject.weekly_hours ?? resolvedFallback ?? 0);
+  return {
+    weeklyHours: Number.isFinite(configuredHours) && configuredHours > 0 ? configuredHours : null,
+    presetSubjectId: presetSubject.id as string,
+  };
+}
+
 export async function GET(req: Request, ctx: Ctx) {
   try {
     const c = await auth(req, ctx); if (c.error) return c.error;
@@ -111,11 +161,19 @@ export async function POST(req: Request, ctx: Ctx) {
     const parsed = addSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Disciplina inválida" }, { status: 400 });
     const editable = await ensureEditableCurriculoForClass({ supabase: c.supabase, escolaId: c.escolaId, cursoId: scope.turma.curso_id, classeId: scope.turma.classe_id, anoLetivoId: scope.anoLetivoId });
-    const { data: discipline } = await c.supabase.from("disciplinas_catalogo").select("id").eq("escola_id", c.escolaId).eq("id", parsed.data.disciplina_id).maybeSingle();
+    const { data: discipline } = await c.supabase.from("disciplinas_catalogo").select("id, nome, carga_horaria_semana").eq("escola_id", c.escolaId).eq("id", parsed.data.disciplina_id).maybeSingle();
     if (!discipline) return NextResponse.json({ ok: false, error: "Disciplina não encontrada nesta escola." }, { status: 404 });
     const { data: exists } = await c.supabase.from("curso_matriz").select("id").eq("escola_id", c.escolaId).eq("curso_curriculo_id", editable.draftCurriculoId).eq("classe_id", scope.turma.classe_id).eq("disciplina_id", discipline.id).maybeSingle();
     if (exists) return NextResponse.json({ ok: false, error: "A disciplina já faz parte do currículo da classe." }, { status: 409 });
-    const { error } = await c.supabase.from("curso_matriz").insert({ escola_id: c.escolaId, curso_id: scope.turma.curso_id, classe_id: scope.turma.classe_id, curso_curriculo_id: editable.draftCurriculoId, disciplina_id: discipline.id, obrigatoria: true, classificacao: "core", ativo: true, periodos_ativos: [1, 2, 3], entra_no_horario: true, carga_horaria: 0, carga_horaria_semanal: 0, avaliacao_mode: "inherit_school", status_completude: "incompleto" });
+    const defaultLoad = await resolveDefaultWeeklyHours({
+      supabase: c.supabase,
+      escolaId: c.escolaId,
+      cursoId: scope.turma.curso_id,
+      classeId: scope.turma.classe_id,
+      disciplinaNome: discipline.nome,
+      fallbackWeeklyHours: discipline.carga_horaria_semana,
+    });
+    const { error } = await c.supabase.from("curso_matriz").insert({ escola_id: c.escolaId, curso_id: scope.turma.curso_id, classe_id: scope.turma.classe_id, curso_curriculo_id: editable.draftCurriculoId, disciplina_id: discipline.id, preset_subject_id: defaultLoad.presetSubjectId, obrigatoria: true, classificacao: "core", ativo: true, periodos_ativos: [1, 2, 3], entra_no_horario: true, carga_horaria: defaultLoad.weeklyHours, carga_horaria_semanal: defaultLoad.weeklyHours, avaliacao_mode: "inherit_school", status_completude: defaultLoad.weeklyHours ? "completo" : "incompleto" });
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true, draft: true });
   } catch (error) { return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Falha ao alterar currículo" }, { status: 500 }); }

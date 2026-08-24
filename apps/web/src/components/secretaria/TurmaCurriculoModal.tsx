@@ -12,8 +12,22 @@ type CurriculumItem = {
   disciplina_id?: string | null;
   nome: string;
   carga_horaria?: number | null;
+  carga_horaria_semanal?: number | null;
   obrigatoria?: boolean;
 };
+
+type CurriculumScope = {
+  curso_id: string;
+  classe_id: string;
+};
+
+function resolveCargaHorariaSemanal(item: CurriculumItem) {
+  const semanal = Number(item.carga_horaria_semanal ?? 0);
+  if (Number.isFinite(semanal) && semanal > 0) return semanal;
+
+  const legado = Number(item.carga_horaria ?? 0);
+  return Number.isFinite(legado) && legado > 0 ? legado : null;
+}
 
 type Props = {
   turma: TurmaItem;
@@ -29,6 +43,7 @@ export default function TurmaCurriculoModal({ turma, escolaId, isOpen, onClose, 
   const confirm = useConfirm();
   const [items, setItems] = useState<CurriculumItem[]>([]);
   const [available, setAvailable] = useState<CurriculumItem[]>([]);
+  const [curriculumScope, setCurriculumScope] = useState<CurriculumScope | null>(null);
   const [isDraft, setIsDraft] = useState(false);
   const [selected, setSelected] = useState("");
   const [search, setSearch] = useState("");
@@ -54,6 +69,11 @@ export default function TurmaCurriculoModal({ turma, escolaId, isOpen, onClose, 
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível carregar o currículo.");
       setItems(json.items ?? []);
       setAvailable(json.available ?? []);
+      setCurriculumScope(
+        json?.turma?.curso_id && json?.turma?.classe_id
+          ? { curso_id: json.turma.curso_id, classe_id: json.turma.classe_id }
+          : null,
+      );
       setIsDraft(Boolean(json.is_draft));
       setSelected("");
     } catch (err) {
@@ -69,13 +89,15 @@ export default function TurmaCurriculoModal({ turma, escolaId, isOpen, onClose, 
   useEffect(() => { void load(); }, [load]);
 
   const openDisciplineEditor = async (item: CurriculumItem) => {
-    if (!turma.curso_id || !turma.classe_id) {
+    const cursoId = curriculumScope?.curso_id ?? turma.curso_id;
+    const classeId = curriculumScope?.classe_id ?? turma.classe_id;
+    if (!cursoId || !classeId) {
       toastError("Currículo", "Esta turma não tem curso e classe suficientes para editar a disciplina.");
       return;
     }
     setEditingLoading(true);
     try {
-      const response = await fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${turma.curso_id}&classe_id=${turma.classe_id}&limit=200`, { cache: "no-store" });
+      const response = await fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${cursoId}&classe_id=${classeId}&limit=200`, { cache: "no-store" });
       const json = await response.json().catch(() => null);
       const source = (json?.data ?? []).find((entry: any) => entry.id === item.curso_matriz_id);
       if (!response.ok || !source) throw new Error(json?.error || "Não foi possível carregar a configuração da disciplina.");
@@ -93,7 +115,7 @@ export default function TurmaCurriculoModal({ turma, escolaId, isOpen, onClose, 
         conta_para_media_med: source.conta_para_media_med ?? true,
         avaliacao: { mode: source.avaliacao_mode ?? "inherit_school", base_id: source.avaliacao_disciplina_id ?? null },
         modelo_excecao_id: source.modelo_excecao_id ?? null,
-        class_ids: [turma.classe_id],
+        class_ids: [classeId],
         apply_scope: "selected",
       });
     } catch (err) {
@@ -237,10 +259,12 @@ export default function TurmaCurriculoModal({ turma, escolaId, isOpen, onClose, 
               <section>
                 <div className="mb-2 flex items-center justify-between"><div><h3 className="text-sm font-bold text-slate-800">Disciplinas da classe</h3><p className="text-[11px] text-slate-400">A mesma composição será usada por todas as turmas desta classe.</p></div>{isDraft && <span className="rounded-full bg-klasse-gold-50 px-2 py-1 text-[10px] font-bold text-klasse-gold-700">Rascunho</span>}</div>
                 {items.length === 0 ? <p className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-xs text-slate-500">Nenhuma disciplina configurada para esta turma.</p> : <div className="space-y-2">
-                  {items.map((item) => <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-                    <div className="flex min-w-0 items-center gap-3"><span className="rounded-lg bg-green-50 p-2 text-[#1F6B3B]"><BookOpen size={15} /></span><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{item.nome}</p><p className="text-[11px] text-slate-400">{item.carga_horaria ? `${item.carga_horaria}h` : "Carga horária não definida"} · {item.obrigatoria === false ? "Optativa" : "Obrigatória"}</p></div></div>
+                  {items.map((item) => {
+                    const cargaHorariaSemanal = resolveCargaHorariaSemanal(item);
+                    return <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-3"><span className="rounded-lg bg-green-50 p-2 text-[#1F6B3B]"><BookOpen size={15} /></span><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{item.nome}</p><p className="text-[11px] text-slate-400">{cargaHorariaSemanal ? `${cargaHorariaSemanal}h/semana` : "Carga horária não definida"} · {item.obrigatoria === false ? "Optativa" : "Obrigatória"}</p></div></div>
                     <div className="ml-3 flex items-center gap-1"><button type="button" disabled={saving || editingLoading} onClick={() => void openDisciplineEditor(item)} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-[#1F6B3B] hover:bg-green-50 disabled:opacity-50">Configurar</button><button type="button" disabled={saving || editingLoading} onClick={() => void handleRemove(item)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50" title="Remover disciplina" aria-label={`Remover ${item.nome}`}><Trash2 size={15} /></button></div>
-                  </div>)}
+                  </div>})}
                 </div>}
               </section>
 
