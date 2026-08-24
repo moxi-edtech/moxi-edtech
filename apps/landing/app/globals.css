@@ -1943,3 +1943,34 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--t1);font-size:
 .teacher-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}.teacher-kpis article{padding:11px 12px;border-radius:15px;background:white;box-shadow:0 1px 0 rgba(255,255,255,.96) inset,0 12px 30px rgba(15,23,42,.055)}.teacher-kpis small,.teacher-kpis b{display:block}.teacher-kpis small{color:#64748b;font-weight:750}.teacher-kpis b{margin-top:3px;font-size:1.45em;line-height:1}
 .teacher-gradebook{margin-top:10px;overflow:hidden;border:1px solid #e2e8f0;border-radius:16px;background:white;box-shadow:0 14px 34px rgba(15,23,42,.07)}.teacher-gradebook-head{display:flex;align-items:center;justify-content:space-between;min-height:38px;padding:0 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0}.teacher-gradebook-head b{font-size:.92em;text-transform:uppercase}.teacher-gradebook-head span{color:#166534;font-weight:800}.teacher-table{display:grid}.teacher-tr{display:grid;grid-template-columns:.38fr 1.8fr .75fr repeat(4,.56fr);align-items:center;min-height:34px;border-bottom:1px solid #f1f5f9}.teacher-tr:last-child{border-bottom:0}.teacher-tr>span,.teacher-tr>b{min-width:0;padding:0 8px;text-align:center;font-weight:750}.teacher-tr>span:nth-child(2){display:flex;align-items:center;gap:7px;text-align:left;color:#334155}.teacher-tr i{width:18px;height:18px;flex:0 0 18px;border-radius:50%;background:linear-gradient(135deg,#e2e8f0,#cbd5e1)}.teacher-th{min-height:30px;color:#64748b;background:white;font-size:.74em;text-transform:uppercase}.teacher-tr:not(.teacher-th)>span:nth-child(n+4):nth-child(-n+6){justify-self:center;width:30px;height:22px;display:grid;place-items:center;border:1px solid #e2e8f0;border-radius:7px;background:#f8fafc;color:#0f172a}.teacher-tr>b{color:#15803d}.teacher-tr.highlight{background:linear-gradient(90deg,#fffbeb,#fff)}.teacher-tr .ok{color:#15803d}.teacher-tr .saving{color:#b45309}
 @media (max-width:900px){.teacher-hero-row{padding:12px;border-radius:14px}.teacher-hero-row button{padding:7px 9px;font-size:.8em}.teacher-gradebook{border-radius:11px}.teacher-tr{min-height:27px}.teacher-tr>span,.teacher-tr>b{padding:0 4px}.teacher-tr i{width:12px;height:12px;flex-basis:12px}.teacher-sidebar{padding:3% 2%}.teacher-nav{gap:3px;margin-top:9px}.teacher-nav span{min-height:24px;padding:0 6px}.teacher-school{padding:7px 6px}}
+
+@media (max-width:560px){
+  .device-stage--professor .dashboard-real-frame--notebook{width:100%;max-width:none}
+  .device-stage--professor .teacher-portal-ui{grid-template-columns:29% 1fr;font-size:7px}
+  .device-stage--professor .teacher-sidebar{padding:4% 3%}
+  .device-stage--professor .teacher-brand{gap:5px;padding:0 2px 8px}
+  .device-stage--professor .teacher-logo-box{width:20px;height:20px;flex-basis:20px;border-radius:6px}
+  .device-stage--professor .teacher-brand b{font-size:.9em}
+  .device-stage--professor .teacher-brand small{font-size:.62em}
+  .device-stage--professor .teacher-sidebar-context{margin:9px 2px 0;font-size:.62em}
+  .device-stage--professor .teacher-nav{gap:2px;margin-top:8px}
+  .device-stage--professor .teacher-nav span{min-height:22px;padding:0 4px;gap:4px;font-size:.86em}
+  .device-stage--professor .teacher-nav i{width:8px;height:8px;border-radius:3px}
+  .device-stage--professor .teacher-school{padding:6px 5px;border-radius:8px}
+  .device-stage--professor .teacher-school b{font-size:.72em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .device-stage--professor .teacher-workspace{padding:4% 4%}
+  .device-stage--professor .teacher-topbar{height:26px}
+  .device-stage--professor .teacher-hero-row{margin-top:7px;padding:10px;border-radius:11px;gap:6px}
+  .device-stage--professor .teacher-hero-row h3{font-size:1.42em}
+  .device-stage--professor .teacher-hero-row p{font-size:.82em}
+  .device-stage--professor .teacher-hero-row button{padding:6px 7px;font-size:.78em}
+  .device-stage--professor .teacher-kpis{gap:5px;margin-top:7px}
+  .device-stage--professor .teacher-kpis article{padding:7px 8px;border-radius:9px}
+  .device-stage--professor .teacher-gradebook{margin-top:7px;border-radius:9px}
+  .device-stage--professor .teacher-gradebook-head{min-height:28px;padding:0 8px}
+  .device-stage--professor .teacher-tr{grid-template-columns:.3fr 1.55fr .68fr .48fr;min-height:24px}
+  .device-stage--professor .teacher-tr>span:nth-child(5),
+  .device-stage--professor .teacher-tr>span:nth-child(6){display:none}
+  .device-stage--professor .teacher-tr>span,.device-stage--professor .teacher-tr>b{padding:0 3px}
+  .device-stage--professor .teacher-tr i{width:10px;height:10px;flex-basis:10px}
+}
