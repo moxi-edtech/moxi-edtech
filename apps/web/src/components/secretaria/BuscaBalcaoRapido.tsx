@@ -131,7 +131,7 @@ function OmniSearchInput({
       </div>
 
       {open && results.length > 0 && (
-        <div className="absolute z-40 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="absolute z-40 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
           {results.map((aluno, index) => {
             const isActive = index === activeIndex;
             return (
@@ -200,17 +200,12 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
 
       setCarregando(true);
       try {
-        const params = new URLSearchParams({
-          search: debouncedQuery,
-          limit: "8",
-          status: "ativo",
-          includeResumo: "1",
-        });
-        const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, {
+        const params = new URLSearchParams({ query: debouncedQuery });
+        const res = await fetch(`/api/secretaria/balcao/alunos/search?${params.toString()}`, {
           cache: "no-store",
         });
         const data = await res.json().catch(() => ({}));
-        const rows = (data.items || data.data || []) as AlunoResult[];
+        const rows = (data.alunos || []) as AlunoResult[];
         if (active) setResultados(rows);
       } catch (error) {
         if (active) setResultados([]);
@@ -226,7 +221,7 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
     };
   }, [debouncedQuery]);
 
-  const results = useMemo(() => resultados.slice(0, 8), [resultados]);
+  const results = useMemo(() => resultados.slice(0, 20), [resultados]);
 
   const handleSelect = (aluno: AlunoResult) => {
     setAlunoSelecionado(aluno);
