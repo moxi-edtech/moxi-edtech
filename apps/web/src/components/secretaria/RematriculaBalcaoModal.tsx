@@ -248,6 +248,13 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   const academicOnly = decisaoResultado === "concluido";
   const singleStep = academicOnly || reconciliationOnly;
   const financialReady = !debt || debt.total <= 0;
+  const itensAdicionais = itensPagamento.filter(
+    (item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA",
+  );
+  const paymentTotal = service.valor_base + itensAdicionais.reduce(
+    (sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1),
+    0,
+  );
 
   const canSubmit =
     !submitting &&
@@ -341,6 +348,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               anoLetivo={anoLetivo}
               selectedTurma={selectedTurma}
               service={service}
+              paymentTotal={paymentTotal}
               metodo={metodo}
               paymentAlreadyValidated={paymentAlreadyValidated}
               onPostAction={(action) => onPostAction(action, selectedTurma?.id ?? result.rematricula?.turma_id ?? null)}
@@ -385,6 +393,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               onAdicionarItem={onAdicionarItem}
               onRemoverItem={onRemoverItem}
               onRegularizeDebt={onRegularizeDebt}
+              paymentAlreadyValidated={paymentAlreadyValidated}
             />
           ) : (
             /* ── Step 3: Payment ────────────────────────────────── */
@@ -396,6 +405,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               submitting={submitting}
               apiError={apiError}
               service={service}
+              itensPagamento={itensPagamento}
               paymentAlreadyValidated={paymentAlreadyValidated}
             />
           )}
@@ -428,7 +438,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               academicReady={academicReady}
               financialReady={financialReady}
               onRegularizeDebt={onRegularizeDebt}
-              serviceValor={service.valor_base}
+              paymentTotal={paymentTotal}
               paymentAlreadyValidated={paymentAlreadyValidated}
               academicOnly={singleStep}
               reconciliationOnly={reconciliationOnly}
@@ -694,6 +704,7 @@ function StepFinanceiro({
   onAdicionarItem,
   onRemoverItem,
   onRegularizeDebt,
+  paymentAlreadyValidated,
 }: {
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" };
   debt: { total: number; count: number } | null;
@@ -703,6 +714,7 @@ function StepFinanceiro({
   onAdicionarItem?: (item: RematriculaPaymentItem) => void;
   onRemoverItem?: (id: string, tipo: RematriculaPaymentItem["tipo"]) => void;
   onRegularizeDebt?: () => void;
+  paymentAlreadyValidated: boolean;
 }) {
   const itensAdicionais = itensPagamento.filter(
     (item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA",
@@ -770,7 +782,7 @@ function StepFinanceiro({
         O valor acima foi resolvido para a turma destino. {service.pricing_origin === "classe" ? "Existe uma regra específica para esta classe." : "Não existe regra específica para esta classe; foi usado o valor de fallback."}
       </p>
 
-      {itensDisponiveis.length > 0 && (
+      {!paymentAlreadyValidated && itensDisponiveis.length > 0 && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">
           <div className="mb-3">
             <p className="text-sm font-bold text-emerald-950">Adicionar a esta cobrança</p>
@@ -876,6 +888,7 @@ function StepPagamento({
   submitting,
   apiError,
   service,
+  itensPagamento,
   paymentAlreadyValidated,
 }: {
   metodo: MetodoPagamento;
@@ -887,8 +900,12 @@ function StepPagamento({
   submitting: boolean;
   apiError: string | null;
   service: { id: string; nome: string; valor_base: number };
+  itensPagamento: RematriculaPaymentItem[];
   paymentAlreadyValidated: boolean;
 }) {
+  const total = service.valor_base + itensPagamento
+    .filter((item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA")
+    .reduce((sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1), 0);
   if (paymentAlreadyValidated) {
     return (
       <div className="space-y-5">
@@ -898,7 +915,7 @@ function StepPagamento({
           <span className="mt-1 block text-xs">A secretaria confirmou o comprovativo. Falta apenas concluir a turma e a matrícula deste aluno.</span>
         </div>
         <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 text-center">
-          Valor recebido: <strong className="text-slate-900">{kwanza.format(service.valor_base)}</strong>
+          Valor recebido: <strong className="text-slate-900">{kwanza.format(total)}</strong>
         </div>
       </div>
     );
@@ -1036,7 +1053,7 @@ function StepPagamento({
       <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 text-sm text-slate-700 text-center font-medium">
         Confirma que recebeu{" "}
         <strong className="text-slate-900">
-          {kwanza.format(service.valor_base)}
+          {kwanza.format(total)}
         </strong>{" "}
         e deseja concluir a rematrícula?
       </div>
@@ -1051,6 +1068,7 @@ function SuccessView({
   anoLetivo,
   selectedTurma,
   service,
+  paymentTotal,
   metodo,
   paymentAlreadyValidated,
   onPostAction,
@@ -1059,6 +1077,7 @@ function SuccessView({
   anoLetivo: { id: string; ano: number; label: string };
   selectedTurma: TurmaOption | undefined;
   service: { id: string; nome: string; valor_base: number };
+  paymentTotal: number;
   metodo: MetodoPagamento;
   paymentAlreadyValidated: boolean;
   onPostAction: (action: EnrollmentPostAction) => void;
@@ -1091,8 +1110,8 @@ function SuccessView({
         <InfoRow
           label="Pagamento"
           value={paymentAlreadyValidated
-            ? `${kwanza.format(service.valor_base)} · Comprovativo validado`
-            : `${kwanza.format(service.valor_base)} · ${METODOS_UI.find((m) => m.id === metodo)?.label || metodo}`}
+            ? `${kwanza.format(paymentTotal)} · Comprovativo validado`
+            : `${kwanza.format(paymentTotal)} · ${METODOS_UI.find((m) => m.id === metodo)?.label || metodo}`}
         />
         <div className="flex justify-between">
           <span className="text-slate-500">Estado</span>
@@ -1176,7 +1195,7 @@ function FooterWizard({
   academicReady,
   financialReady,
   onRegularizeDebt,
-  serviceValor,
+  paymentTotal,
   paymentAlreadyValidated,
   academicOnly,
   reconciliationOnly,
@@ -1190,7 +1209,7 @@ function FooterWizard({
   academicReady: boolean;
   financialReady: boolean;
   onRegularizeDebt?: () => void;
-  serviceValor: number;
+  paymentTotal: number;
   paymentAlreadyValidated: boolean;
   academicOnly: boolean;
   reconciliationOnly: boolean;
@@ -1207,7 +1226,7 @@ function FooterWizard({
         {step > 1 ? "Voltar" : "Cancelar"}
       </button>
 
-      {step < 3 && !academicOnly && !(step === 2 && serviceValor <= 0 && financialReady) ? (
+      {step < 3 && !academicOnly && !(step === 2 && paymentTotal <= 0 && financialReady) ? (
         <button
           onClick={() => {
             if (step === 2 && !financialReady) {
@@ -1216,7 +1235,7 @@ function FooterWizard({
             }
             setStep(step + 1);
           }}
-          disabled={submitting || (step === 1 && !academicReady) || (step === 2 && serviceValor <= 0 && financialReady) || (step === 2 && !financialReady && !onRegularizeDebt)}
+          disabled={submitting || (step === 1 && !academicReady) || (step === 2 && paymentTotal <= 0 && financialReady) || (step === 2 && !financialReady && !onRegularizeDebt)}
           className="rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-slate-900
             hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -1238,7 +1257,7 @@ function FooterWizard({
           ) : (
             <>
               <Check className="h-4 w-4" />
-              {reconciliationOnly ? "Registar decisão e concluir matrícula" : academicOnly ? "Registar conclusão" : paymentAlreadyValidated ? "Concluir rematrícula" : serviceValor > 0 ? "Pagar e concluir rematrícula" : "Concluir matrícula"}
+              {reconciliationOnly ? "Registar decisão e concluir matrícula" : academicOnly ? "Registar conclusão" : paymentAlreadyValidated ? "Concluir rematrícula" : paymentTotal > 0 ? "Pagar e concluir rematrícula" : "Concluir matrícula"}
             </>
           )}
         </button>

@@ -1497,6 +1497,9 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const dossier = useAlunoDossier(escolaId, effectiveAcademicYearId);
   const servicos = useServicos(escolaId);
   const carrinho = useCarrinho();
+  // Itens escolhidos dentro da rematrícula pertencem ao pagamento dessa
+  // operação, não ao carrinho genérico do balcão.
+  const [itensRematricula, setItensRematricula] = useState<RematriculaPaymentItem[]>([]);
 
   const rematricula = useRematriculaBalcao({
     escolaId,
@@ -1504,7 +1507,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     matriculaId: dossier.aluno?.matricula_id ?? null,
     academicYearId: effectiveAcademicYearId,
     responsavelContato: dossier.aluno?.telefone_responsavel ?? null,
-    itensPagamento: carrinho.itens,
+    itensPagamento: itensRematricula,
   });
   const audit = useAuditTrail();
 
@@ -1535,8 +1538,10 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   });
 
   const selectedMensalidadeIds = useMemo(
-    () => carrinho.itens.filter((item): item is Mensalidade => item.tipo === "mensalidade").map((item) => item.id),
-    [carrinho.itens]
+    () => [...carrinho.itens, ...itensRematricula]
+      .filter((item): item is Mensalidade => item.tipo === "mensalidade")
+      .map((item) => item.id),
+    [carrinho.itens, itensRematricula]
   );
 
   const unlockedMensalidadeIds = useMemo(
@@ -1552,6 +1557,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   ], [dossier.mensalidades, servicos, unlockedMensalidadeIds]);
 
   useEffect(() => {
+    setItensRematricula([]);
     if (!selectedAlunoId) {
       dossier.clear();
       return;
@@ -1568,6 +1574,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const handleSelectAluno = useCallback(
     (alunoId: string) => {
       if (dossier.aluno?.id && dossier.aluno.id !== alunoId) carrinho.limpar();
+      setItensRematricula([]);
       void dossier.load(alunoId);
       setSearchOpen(false);
     },
@@ -1576,6 +1583,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
 
   const handleTrocarAluno = useCallback(() => {
     carrinho.limpar();
+    setItensRematricula([]);
     dossier.clear();
     search.clear();
     setSearchOpen(true);
@@ -1712,8 +1720,8 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           open={rematricula.modalOpen}
           onClose={() => {
             rematricula.closeModal();
+            setItensRematricula([]);
             if (rematricula.result) {
-              carrinho.limpar();
               void dossier.load(dossier.aluno!.id);
             }
           }}
@@ -1725,10 +1733,17 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
           service={rematricula.service}
-          itensPagamento={carrinho.itens}
+          itensPagamento={itensRematricula}
           itensDisponiveis={itensDisponiveisNaRematricula}
-          onAdicionarItem={(item) => carrinho.adicionar(item as ItemCarrinho)}
-          onRemoverItem={(id, tipo) => carrinho.remover(id, tipo)}
+          paymentAlreadyValidated={rematricula.cardState === "DOCUMENT_PENDING"}
+          onAdicionarItem={(item) => setItensRematricula((previous) => (
+            previous.some((selected) => selected.id === item.id && selected.tipo === item.tipo)
+              ? previous
+              : [...previous, item]
+          ))}
+          onRemoverItem={(id, tipo) => setItensRematricula((previous) => (
+            previous.filter((item) => !(item.id === id && item.tipo === tipo))
+          ))}
           debt={rematricula.debt}
           cohort={rematricula.cohort}
           reconciliationOnly={rematricula.reconciliationMode}
