@@ -19,6 +19,11 @@
   page-break-inside: avoid;
 }
 
+.comprovanteSheet {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 @media print {
   @page {
     size: A4;
@@ -72,6 +77,27 @@
   .receiptCompactSheet :global(.receipt-via-content) {
     /* The reference form is intentionally dense: both copies remain on one
        sheet without making the data unreadable. */
+    transform: scale(0.84);
+    transform-origin: top left;
+    width: 119.05%;
+    height: 119.05%;
+  }
+
+  .comprovanteSheet {
+    /* A comprovativo pode conter o plano anual e os serviços liquidados no
+       balcão. Reservamos uma página A4 e compactamos apenas no momento de
+       impressão, preservando o layout de leitura no ecrã. */
+    height: 281mm;
+    min-height: 281mm;
+    max-height: 281mm;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-before: avoid;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .comprovanteContent {
     transform: scale(0.84);
     transform-origin: top left;
     width: 119.05%;

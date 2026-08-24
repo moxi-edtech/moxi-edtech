@@ -39,34 +39,41 @@ export async function ComprovanteMatriculaPrintDocument({
 
   const mensalidades = Array.isArray(snapshot.mensalidades) ? snapshot.mensalidades : [];
   const valorTotalAnual = typeof snapshot.valor_total_anual === "number" ? snapshot.valor_total_anual : 0;
+  const itensPagosBalcao = Array.isArray(snapshot.itens_pagos_balcao)
+    ? snapshot.itens_pagos_balcao.filter((item): item is { descricao: string; valor: number; tipo?: string } => (
+      Boolean(item && typeof item === "object" && typeof item.descricao === "string" && Number.isFinite(Number(item.valor)))
+    ))
+    : [];
+  const totalPagoBalcao = itensPagosBalcao.reduce((total, item) => total + Number(item.valor), 0);
+  const formatKwanza = (valor: number) => valor.toLocaleString("pt-PT", { minimumFractionDigits: 2 });
 
   return (
     <div className={`min-h-screen ${styles.printRoot} font-serif text-slate-900`}>
       <PrintTrigger />
-      <div className={`${styles.sheet} shadow-lg`}>
-        <div className="space-y-8">
-          <header className="text-center space-y-2 border-b border-slate-200 pb-6">
+      <div className={`${styles.sheet} ${styles.comprovanteSheet} shadow-lg`}>
+        <div className={`${styles.comprovanteContent} space-y-8 print:space-y-4`}>
+          <header className="text-center space-y-2 border-b border-slate-200 pb-6 print:pb-3">
             <div className="flex justify-center">
               <img
                 src={logoUrl ?? "/insignia_med.png"}
                 alt="Insígnia da República de Angola"
-                className="h-20 w-20 max-h-20 max-w-20 object-contain"
+                className="h-20 w-20 max-h-20 max-w-20 object-contain print:h-16 print:w-16 print:max-h-16 print:max-w-16"
               />
             </div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-bold">{escolaNome}</p>
-            <h1 className="text-2xl font-bold uppercase tracking-tight">Comprovativo de Matrícula</h1>
+            <h1 className="text-2xl font-bold uppercase tracking-tight print:text-xl">Comprovativo de Matrícula</h1>
             <div className="flex justify-center gap-4 text-[10px] text-slate-500 font-sans">
               <p>Emitido em: {new Date(String(doc.created_at)).toLocaleString("pt-PT")}</p>
               {numero ? <p>Nº de Série: {String(numero).padStart(6, "0")}</p> : null}
             </div>
           </header>
 
-          <section className="space-y-4">
+          <section className="space-y-4 print:space-y-2">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1">Dados do Aluno</h2>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm print:gap-y-1.5 print:text-xs">
               <div className="col-span-2">
                 <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Nome Completo</p>
-                <p className="font-semibold text-base">{snapshot.aluno_nome || "—"}</p>
+                <p className="font-semibold text-base print:text-sm">{snapshot.aluno_nome || "—"}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Nº de Identificação (BI)</p>
@@ -91,9 +98,9 @@ export async function ComprovanteMatriculaPrintDocument({
             </div>
           </section>
 
-          <section className="space-y-4">
+          <section className="space-y-4 print:space-y-2">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1">Vínculo Académico</h2>
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-3 gap-4 text-sm print:gap-2 print:text-xs">
               <div className="col-span-2">
                 <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Curso / Classe</p>
                 <p className="font-semibold">{(snapshot.curso_nome || snapshot.classe_nome) ? `${snapshot.curso_nome || ""} - ${snapshot.classe_nome || ""}` : "—"}</p>
@@ -117,31 +124,64 @@ export async function ComprovanteMatriculaPrintDocument({
             </div>
           </section>
 
+          {itensPagosBalcao.length > 0 && (
+            <section className="space-y-3 pt-2 print:space-y-1 print:pt-1">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1">Pagamentos Liquidados no Balcão</h2>
+              <div className="border border-emerald-200 rounded-lg overflow-hidden">
+                <table className="w-full text-left text-[11px] print:text-[10px]">
+                  <thead className="bg-emerald-50 text-emerald-800 uppercase font-bold border-b border-emerald-100">
+                    <tr>
+                      <th className="px-3 py-2 print:py-1">Item</th>
+                      <th className="px-3 py-2 print:py-1">Tipo</th>
+                      <th className="px-3 py-2 text-right print:py-1">Valor (Kz)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-50">
+                    {itensPagosBalcao.map((item, index) => (
+                      <tr key={`${item.descricao}-${index}`}>
+                        <td className="px-3 py-1.5 font-medium print:py-1">{item.descricao}</td>
+                        <td className="px-3 py-1.5 capitalize print:py-1">{item.tipo === "mensalidade" ? "Propina" : "Serviço"}</td>
+                        <td className="px-3 py-1.5 text-right font-semibold print:py-1">{formatKwanza(Number(item.valor))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-emerald-50/60 font-bold border-t border-emerald-100">
+                    <tr>
+                      <td colSpan={2} className="px-3 py-2 text-right uppercase print:py-1">Total liquidado:</td>
+                      <td className="px-3 py-2 text-right text-sm print:py-1">{formatKwanza(totalPagoBalcao)} Kz</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <p className="text-[9px] text-slate-400 font-sans">Os detalhes fiscais constam do recibo de pagamento emitido no mesmo atendimento.</p>
+            </section>
+          )}
+
           {mensalidades.length > 0 && (
-            <section className="space-y-4 pt-4">
+            <section className="space-y-4 pt-4 print:space-y-2 print:pt-2">
               <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1">Plano de Pagamentos Anual</h2>
               <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-[11px]">
+                <table className="w-full text-left text-[11px] print:text-[10px]">
                   <thead className="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200">
                     <tr>
-                      <th className="px-3 py-2">Mês / Ano</th>
-                      <th className="px-3 py-2">Vencimento</th>
-                      <th className="px-3 py-2 text-right">Valor (Kz)</th>
+                      <th className="px-3 py-2 print:py-1">Mês / Ano</th>
+                      <th className="px-3 py-2 print:py-1">Vencimento</th>
+                      <th className="px-3 py-2 text-right print:py-1">Valor (Kz)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {mensalidades.map((m, i) => (
                       <tr key={i}>
-                        <td className="px-3 py-1.5 font-medium">{m.mes}/{m.ano}</td>
-                        <td className="px-3 py-1.5">{m.vencimento ? new Date(m.vencimento).toLocaleDateString("pt-PT") : "—"}</td>
-                        <td className="px-3 py-1.5 text-right font-semibold">{Number(m.valor).toLocaleString("pt-PT", { minimumFractionDigits: 2 })}</td>
+                        <td className="px-3 py-1.5 font-medium print:py-1">{m.mes}/{m.ano}</td>
+                        <td className="px-3 py-1.5 print:py-1">{m.vencimento ? new Date(m.vencimento).toLocaleDateString("pt-PT") : "—"}</td>
+                        <td className="px-3 py-1.5 text-right font-semibold print:py-1">{Number(m.valor).toLocaleString("pt-PT", { minimumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="bg-slate-50 font-bold border-t border-slate-200">
                     <tr>
-                      <td colSpan={2} className="px-3 py-2 text-right uppercase">Total Anual Estimado:</td>
-                      <td className="px-3 py-2 text-right text-sm">{valorTotalAnual.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} Kz</td>
+                      <td colSpan={2} className="px-3 py-2 text-right uppercase print:py-1">Total Anual Estimado:</td>
+                      <td className="px-3 py-2 text-right text-sm print:py-1">{valorTotalAnual.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} Kz</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -149,8 +189,8 @@ export async function ComprovanteMatriculaPrintDocument({
             </section>
           )}
 
-          <div className="pt-8 grid grid-cols-2 gap-12">
-            <section className="space-y-6">
+          <div className="pt-8 grid grid-cols-2 gap-12 print:pt-3 print:gap-8">
+            <section className="space-y-6 print:space-y-2">
               <div className="space-y-1">
                 <p className="text-[9px] uppercase text-slate-400 font-bold">Autenticação Digital</p>
                 <div className="flex items-center gap-4">

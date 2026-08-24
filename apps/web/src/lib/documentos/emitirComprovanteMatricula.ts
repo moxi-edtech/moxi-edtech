@@ -11,6 +11,11 @@ type EmitParams = {
   matriculaId: string;
   dataHoraEfetivacao: string;
   observacao?: string;
+  itensPagos?: Array<{
+    descricao: string;
+    valor: number;
+    tipo?: "mensalidade" | "servico";
+  }>;
   createdBy?: string | null;
   audit?: {
     portal: "admin_escola" | "secretaria" | "financeiro" | "professor" | "aluno" | "super_admin" | "outro";
@@ -42,6 +47,7 @@ export async function emitirComprovanteMatricula({
   matriculaId,
   dataHoraEfetivacao,
   observacao,
+  itensPagos = [],
   createdBy,
   audit,
 }: EmitParams): Promise<EmitComprovanteResult> {
@@ -181,7 +187,18 @@ export async function emitirComprovanteMatricula({
       vencimento: m.data_vencimento,
       status: m.status
     })),
-    valor_total_anual: (mensalidades || []).reduce((acc, m) => acc + Number(m.valor), 0)
+    valor_total_anual: (mensalidades || []).reduce((acc, m) => acc + Number(m.valor), 0),
+    itens_pagos_balcao: itensPagos
+      .filter((item) => item.descricao.trim() && Number.isFinite(item.valor) && item.valor > 0)
+      .map((item) => ({
+        descricao: item.descricao.trim(),
+        valor: Number(item.valor),
+        tipo: item.tipo ?? "servico",
+      })),
+    total_pago_balcao: itensPagos.reduce(
+      (total, item) => total + (Number.isFinite(item.valor) && item.valor > 0 ? Number(item.valor) : 0),
+      0,
+    ),
   };
 
   const { data: doc, error: docError } = await supabase

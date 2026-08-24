@@ -1055,6 +1055,11 @@ export async function POST(request: Request) {
       escolaId,
       matriculaId: matriculaDestinoId,
       dataHoraEfetivacao: new Date().toISOString(),
+      itensPagos: paymentItems.map((item) => ({
+        descricao: item.nome,
+        valor: item.preco,
+        tipo: item.tipo,
+      })),
       createdBy: user.id,
       audit: { portal: "secretaria", acao: "REMATRICULA_COMPROVANTE_EMITIDO" },
     });
