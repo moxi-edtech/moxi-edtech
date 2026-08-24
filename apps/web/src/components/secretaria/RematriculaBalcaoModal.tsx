@@ -269,11 +269,13 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
                 id="rematricula-modal-title"
                 className="font-bold text-slate-900"
               >
-                Confirmar rematrícula {anoLetivo.label}
+                {skipTurmaSelection
+                  ? `Regularizar taxa de rematrícula ${anoLetivo.label}`
+                  : `Confirmar rematrícula ${anoLetivo.label}`}
               </h2>
 
               {/* Step indicator */}
-              <div className="flex items-center gap-3 mt-2.5">
+              {!skipTurmaSelection && <div className="flex items-center gap-3 mt-2.5">
                 {STEP_LABELS.map((label, i) => {
                   const s = i + 1;
                   const isActive = s === step;
@@ -303,7 +305,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
                     </div>
                   );
                 })}
-              </div>
+              </div>}
             </div>
 
             {!submitting && (
@@ -482,6 +484,12 @@ function StepAcademico({
         <InfoRow label="Ano lectivo" value={anoLetivo.label} />
       </div>
 
+      {skipTurmaSelection ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <strong className="block text-emerald-950">Regularização da taxa de rematrícula</strong>
+          <span className="mt-1 block text-xs">O aluno já está matriculado em {anoLetivo.label}. A turma e a classe atuais serão preservadas; prossiga apenas para cobrar a taxa e emitir o comprovativo.</span>
+        </div>
+      ) : <>
       {/* Decisão académica no próprio atendimento */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
         <div>
@@ -580,11 +588,6 @@ function StepAcademico({
           <strong className="block text-violet-950">Conclusão sem matrícula destino</strong>
           <span className="text-xs">Será encerrada apenas a matrícula de origem. Não haverá taxa nem criação de matrícula no novo ano.</span>
         </div>
-      ) : skipTurmaSelection ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          <strong className="block text-emerald-950">Reconfirmação de matrícula</strong>
-          <span className="text-xs">A matrícula na classe destino já foi preparada. Esta operação apenas regista a taxa de reconfirmação.</span>
-        </div>
       ) : <div className="space-y-2">
         <label
           htmlFor="rematricula-turma-select"
@@ -632,6 +635,7 @@ function StepAcademico({
           </div>
         )}
       </div>}
+      </>}
     </div>
   );
 }

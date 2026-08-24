@@ -74,6 +74,27 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
+async function garantirVinculoFinanceiro(
+  supabase: any,
+  escolaId: string,
+  matriculaId: string,
+  anoLetivoId: string,
+) {
+  const { data, error } = await supabase.rpc("garantir_vinculo_financeiro_rematricula", {
+    p_escola_id: escolaId,
+    p_matricula_id: matriculaId,
+    p_ano_letivo_id: anoLetivoId,
+  });
+  if (error || data?.ok !== true) {
+    return { ok: false as const, error: error?.message ?? data?.erro ?? "FINANCIAL_LINK_REQUIRED" };
+  }
+  return {
+    ok: true as const,
+    inicio: String(data.inicio_financeiro),
+    mensalidades_geradas: Number(data.mensalidades_geradas ?? 0),
+  };
+}
+
 export async function POST(request: Request) {
   const idempotencyKey = request.headers.get("Idempotency-Key") ?? request.headers.get("idempotency-key");
   if (!idempotencyKey) {
@@ -100,7 +121,7 @@ export async function POST(request: Request) {
     }
     const body = parsed.data;
     const decisaoAdministrativa = body.decisao_fonte === "declaracao_administrativa_escola";
-    const academicOnlyConclusion = body.decisao_resultado === "concluido" && !body.destino_turma_id;
+    let academicOnlyConclusion = body.decisao_resultado === "concluido" && !body.destino_turma_id;
     if (!academicOnlyConclusion && !body.destino_turma_id) {
       return NextResponse.json({ ok: false, error: "Seleccione a turma destino antes de concluir.", code: "REMATRICULA_DESTINATION_REQUIRED" }, { status: 400 });
     }
@@ -216,6 +237,25 @@ export async function POST(request: Request) {
           .eq("status", "aguardando_destino")
           .maybeSingle()
       : { data: null };
+    // Clientes com um rascunho anterior podiam ainda enviar "concluído" sem
+    // destino. Se a promoção já criou a matrícula 2026, a fonte de verdade é
+    // essa matrícula: o atendimento passa a ser apenas financeiro.
+    if (matriculaDestino?.turma_id && !body.destino_turma_id) {
+      body.destino_turma_id = matriculaDestino.turma_id;
+      academicOnlyConclusion = false;
+      if (!body.metodo) {
+        return NextResponse.json({
+          ok: false,
+          error: "Esta matrícula já foi promovida. Actualize o atendimento e seleccione apenas o método de pagamento da taxa.",
+          code: "PAYMENT_METHOD_REQUIRED",
+        }, { status: 409 });
+      }
+    }
+    const reconfirmacaoApenas = Boolean(
+      matriculaDestino?.turma_id &&
+      !reclassificacao &&
+      String(matriculaDestino.turma_id) === String(body.destino_turma_id ?? ""),
+    );
 
     const [{ data: turmaOrigem }, { data: turmaDestino }] = await Promise.all([
       matricula.turma_id
@@ -232,7 +272,7 @@ export async function POST(request: Request) {
     const classeById = new Map((classes || []).map((classe: any) => [classe.id, classe]));
     const numeroOrigem = classeNumero(classeById.get(turmaOrigem?.classe_id));
     const numeroDestino = classeNumero(classeById.get(turmaDestino?.classe_id));
-    if (decisaoAdministrativa && matriculaDestino) {
+    if (decisaoAdministrativa && matriculaDestino && !reconfirmacaoApenas) {
       if (body.decisao_resultado === "concluido") {
         return NextResponse.json({
           ok: false,
@@ -299,35 +339,38 @@ export async function POST(request: Request) {
       }
     }
 
-    // A decisão académica é independente da cobrança. Ao confirmá-la no
-    // Balcão, a matrícula de origem termina corretamente como concluída e o
-    // saldo em aberto bloqueia somente a ativação da matrícula destino.
-    const { data: raaAtual, error: raaAtualError } = await (supabase as any).rpc("resolve_raa_progression_for_matricula", {
-      p_escola_id: escolaId,
-      p_matricula_id: origemMatriculaId,
-    });
-    if (raaAtualError) throw raaAtualError;
-    const decision = String(raaAtual?.decision ?? "").toLowerCase();
-    const resultadoFinal = body.decisao_resultado ?? (["retido", "retido_por_faltas", "retido_por_indisciplina", "reprovado"].includes(decision)
-      ? "reprovado"
-      : ["concluiu", "concluido", "concluida"].includes(decision)
-        ? "concluido"
-        : "aprovado");
-    const { error: origemResultadoError } = await (supabase as any).rpc("finalizar_origem_academica", {
-      p_escola_id: escolaId,
-      p_matricula_id: origemMatriculaId,
-      p_resultado_final: resultadoFinal,
-      p_fonte: body.decisao_fonte ?? (body.notas_lancar_depois ? "declaracao_administrativa_escola" : "raa"),
-      p_motivo: body.decisao_motivo ?? (body.notas_lancar_depois ? "Promoção autorizada no Balcão; notas serão lançadas posteriormente" : null),
-      p_observacao: body.decisao_observacao ?? null,
-    });
-    if (origemResultadoError) {
-      return NextResponse.json({
-        ok: false,
-        error: "Não foi possível registar o resultado académico da matrícula de origem.",
-        code: "ACADEMIC_RESULT_RECONCILIATION_REQUIRED",
-        details: origemResultadoError.message,
-      }, { status: 409 });
+    // Uma matrícula já promovida para 2026 não passa por nova decisão
+    // académica no Balcão. O atendimento limita-se a regularizar a taxa.
+    let raaAtual: any = null;
+    if (!reconfirmacaoApenas) {
+      const { data, error: raaAtualError } = await (supabase as any).rpc("resolve_raa_progression_for_matricula", {
+        p_escola_id: escolaId,
+        p_matricula_id: origemMatriculaId,
+      });
+      if (raaAtualError) throw raaAtualError;
+      raaAtual = data;
+      const decision = String(raaAtual?.decision ?? "").toLowerCase();
+      const resultadoFinal = body.decisao_resultado ?? (["retido", "retido_por_faltas", "retido_por_indisciplina", "reprovado"].includes(decision)
+        ? "reprovado"
+        : ["concluiu", "concluido", "concluida"].includes(decision)
+          ? "concluido"
+          : "aprovado");
+      const { error: origemResultadoError } = await (supabase as any).rpc("finalizar_origem_academica", {
+        p_escola_id: escolaId,
+        p_matricula_id: origemMatriculaId,
+        p_resultado_final: resultadoFinal,
+        p_fonte: body.decisao_fonte ?? (body.notas_lancar_depois ? "declaracao_administrativa_escola" : "raa"),
+        p_motivo: body.decisao_motivo ?? (body.notas_lancar_depois ? "Promoção autorizada no Balcão; notas serão lançadas posteriormente" : null),
+        p_observacao: body.decisao_observacao ?? null,
+      });
+      if (origemResultadoError) {
+        return NextResponse.json({
+          ok: false,
+          error: "Não foi possível registar o resultado académico da matrícula de origem.",
+          code: "ACADEMIC_RESULT_RECONCILIATION_REQUIRED",
+          details: origemResultadoError.message,
+        }, { status: 409 });
+      }
     }
 
     if (academicOnlyConclusion) {
@@ -472,6 +515,16 @@ export async function POST(request: Request) {
           pedido_id: pedidoExistente.id,
         }, { status: 409 });
       }
+      const garantia = await garantirVinculoFinanceiro(supabase, escolaId, matriculaDestinoId, academicContext.anoLetivoId);
+      if (!garantia.ok) {
+        return NextResponse.json({
+          ok: false,
+          error: "O pagamento já foi confirmado, mas o vínculo financeiro ainda precisa de ser garantido antes de emitir o comprovativo.",
+          code: "FINANCIAL_LINK_REQUIRED",
+          pedido_id: pedidoExistente.id,
+          details: garantia.error,
+        }, { status: 409 });
+      }
       const comprovante = await emitirComprovanteMatricula({
         supabase,
         escolaId,
@@ -480,11 +533,23 @@ export async function POST(request: Request) {
         createdBy: user.id,
         audit: { portal: "secretaria", acao: "REMATRICULA_COMPROVANTE_REUTILIZADO" },
       });
+      if (!comprovante.ok) {
+        return NextResponse.json({
+          ok: false,
+          error: "O pagamento já foi confirmado, mas o comprovante ainda não foi emitido. Tente novamente sem nova cobrança.",
+          code: "DOCUMENT_PENDING",
+          pedido_id: pedidoExistente.id,
+          comprovante,
+        }, { status: 409 });
+      }
+      const reciboDocId = (pedidoExistente.contexto as any)?.recibo_doc_id;
       return NextResponse.json({
         ok: true,
         pedido_id: pedidoExistente.id,
-        rematricula: { matricula_id: matriculaDestinoId, ano_letivo_id: academicContext.anoLetivoId },
-        recibo: null,
+        rematricula: { matricula_id: matriculaDestinoId, ano_letivo_id: academicContext.anoLetivoId, turma_id: (pedidoExistente.contexto as any)?.destino_turma_id },
+        recibo: reciboDocId
+          ? { ok: true, doc_id: reciboDocId, print_url: `/secretaria/documentos/${reciboDocId}/recibo/print` }
+          : null,
         comprovante,
       });
     }
@@ -562,6 +627,26 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
+    // A matrícula já promovida mantém a turma/classe de destino. Antes de
+    // cobrar a taxa, garantimos os vínculos financeiros dessa mesma matrícula:
+    // início no calendário lectivo e carnê individual idempotente.
+    let vinculoFinanceiro: { inicio: string; mensalidades_geradas: number } | null = null;
+    if (reconfirmacaoApenas && matriculaDestino) {
+      const garantia = await garantirVinculoFinanceiro(supabase, escolaId, matriculaDestino.id, academicContext.anoLetivoId);
+      if (!garantia.ok) {
+        return NextResponse.json({
+          ok: false,
+          error: "Não foi possível garantir as mensalidades da matrícula 2026 antes do pagamento.",
+          code: "FINANCIAL_LINK_REQUIRED",
+          details: garantia.error,
+        }, { status: 409 });
+      }
+      vinculoFinanceiro = {
+        inicio: garantia.inicio,
+        mensalidades_geradas: garantia.mensalidades_geradas,
+      };
+    }
+
     const { data: pedido, error: pedidoError } = await (supabase as any)
       .from("servico_pedidos")
       .insert({
@@ -581,6 +666,8 @@ export async function POST(request: Request) {
           destino_curso_id: turmaDestino?.curso_id ?? null,
           destino_classe_id: turmaDestino?.classe_id ?? null,
           valor_origem: targetPricing.origem,
+          reconfirmacao_apenas: reconfirmacaoApenas,
+          vinculo_financeiro: vinculoFinanceiro,
           notas_lancar_depois: body.notas_lancar_depois === true,
           idempotency_key: idempotencyKey,
         },
@@ -640,6 +727,76 @@ export async function POST(request: Request) {
           reason_code: null,
           reason_detail: null,
         }).eq("id", pedido.id).eq("escola_id", escolaId).eq("status", "pending_payment");
+      }
+
+      // No Balcão, o método foi confirmado pela secretária. Métodos não-cash
+      // chegam inicialmente como pending na função financeira genérica, mas a
+      // rematrícula só pode concluir depois da liquidação e do recibo físico.
+      const pagamentoId = String(paymentJson?.data?.id ?? "");
+      if (!pagamentoId) {
+        await (supabase as any).from("servico_pedidos").update({
+          status: "pending_payment",
+          reason_code: "PAYMENT_SETTLEMENT_REQUIRED",
+          reason_detail: "O pagamento foi registado sem identificador para liquidação.",
+        }).eq("id", pedido.id).eq("escola_id", escolaId);
+        return NextResponse.json({
+          ok: false,
+          error: "O pagamento precisa de confirmação financeira antes de concluir.",
+          code: "PAYMENT_SETTLEMENT_REQUIRED",
+          pedido_id: pedido.id,
+        }, { status: 409 });
+      }
+      if (String(paymentJson?.data?.status ?? "").toLowerCase() !== "settled") {
+        const { data: pagamentoLiquidado, error: liquidacaoError } = await (supabase as any).rpc("financeiro_settle_pagamento", {
+          p_escola_id: escolaId,
+          p_pagamento_id: pagamentoId,
+          p_settle_meta: {
+            origem: "rematricula_balcao",
+            confirmado_no_balcao: true,
+            confirmado_por: user.id,
+          },
+        });
+        if (liquidacaoError || !pagamentoLiquidado) {
+          await (supabase as any).from("servico_pedidos").update({
+            status: "pending_payment",
+            reason_code: "PAYMENT_SETTLEMENT_REQUIRED",
+            reason_detail: liquidacaoError?.message ?? "A liquidação não devolveu um pagamento válido.",
+          }).eq("id", pedido.id).eq("escola_id", escolaId);
+          return NextResponse.json({
+            ok: false,
+            error: "O pagamento foi registado, mas ainda não foi liquidado. Não é possível emitir os documentos.",
+            code: "PAYMENT_SETTLEMENT_REQUIRED",
+            pedido_id: pedido.id,
+          }, { status: 409 });
+        }
+        paymentJson.data = pagamentoLiquidado;
+      }
+
+      if (!paymentJson?.recibo?.ok || !paymentJson.recibo.print_url) {
+        const { data: reciboData, error: reciboError } = await (supabase as any).rpc("emitir_recibo_servicos", {
+          p_pagamento_id: pagamentoId,
+        });
+        const recibo = reciboData as any;
+        const reciboDocId = recibo?.doc_id ? String(recibo.doc_id) : null;
+        if (reciboError || recibo?.ok !== true || !reciboDocId) {
+          await (supabase as any).from("servico_pedidos").update({
+            status: "pending_payment",
+            reason_code: "RECEIPT_PENDING",
+            reason_detail: reciboError?.message ?? recibo?.erro ?? "O recibo não foi emitido.",
+          }).eq("id", pedido.id).eq("escola_id", escolaId);
+          return NextResponse.json({
+            ok: false,
+            error: "Pagamento liquidado, mas o recibo ainda não foi emitido. O comprovativo não será concluído sem os dois documentos.",
+            code: "RECEIPT_PENDING",
+            pedido_id: pedido.id,
+          }, { status: 409 });
+        }
+        paymentJson.recibo = {
+          ok: true,
+          doc_id: reciboDocId,
+          public_id: recibo.public_id ?? null,
+          print_url: `/secretaria/documentos/${reciboDocId}/recibo/print`,
+        };
       }
     }
 
@@ -755,7 +912,22 @@ export async function POST(request: Request) {
     let finalizacao: any;
     let finalizacaoError: any = null;
 
-    if (rematriculaCondicionalConcluida) {
+    if (reconfirmacaoApenas && matriculaDestino) {
+      matriculaDestinoId = String(matriculaDestino.id);
+      finalizacao = { ok: true, matricula_id: matriculaDestinoId };
+      await (supabase as any).from("servico_pedidos").update({
+        status: "granted",
+        matricula_id: matriculaDestinoId,
+        contexto: {
+          ...(pedido.contexto ?? {}),
+          matricula_destino_id: matriculaDestinoId,
+          destino_turma_id: matriculaDestino.turma_id,
+          reconfirmacao_apenas: true,
+          recibo_doc_id: paymentJson.recibo?.doc_id ?? null,
+          vinculo_financeiro: vinculoFinanceiro,
+        },
+      }).eq("id", pedido.id).eq("escola_id", escolaId);
+    } else if (rematriculaCondicionalConcluida) {
       finalizacao = { ok: true, matricula_id: matriculaDestinoId };
     } else if (matriculaDestino && reclassificacao) {
       const result = await (supabase as any).rpc("finalistas_matricular_novo_ciclo", {
@@ -825,6 +997,24 @@ export async function POST(request: Request) {
     }
     matriculaDestinoId = String(finalizacao.matricula_id ?? matriculaDestinoId);
 
+    // Para uma matrícula criada agora, a mesma garantia é executada depois
+    // da finalização, antes de qualquer comprovativo. Se houver falha, o
+    // pedido concedido pode ser retomado sem nova cobrança pela ramificação
+    // acima.
+    if (!reconfirmacaoApenas) {
+      const garantia = await garantirVinculoFinanceiro(supabase, escolaId, matriculaDestinoId, academicContext.anoLetivoId);
+      if (!garantia.ok) {
+        return NextResponse.json({
+          ok: false,
+          error: "Pagamento confirmado, mas o vínculo financeiro da matrícula destino precisa de ser concluído antes do comprovativo.",
+          code: "FINANCIAL_LINK_REQUIRED",
+          pedido_id: pedido.id,
+          payment: paymentJson.data ?? null,
+          details: garantia.error,
+        }, { status: 409 });
+      }
+    }
+
     const comprovante = await emitirComprovanteMatricula({
       supabase,
       escolaId,
@@ -834,7 +1024,7 @@ export async function POST(request: Request) {
       audit: { portal: "secretaria", acao: "REMATRICULA_COMPROVANTE_EMITIDO" },
     });
     if (!comprovante.ok) {
-      return NextResponse.json({ ok: false, error: "Rematrícula e pagamento concluídos, mas o comprovante precisa ser reemitido.", code: "DOCUMENT_PENDING", pedido_id: pedido.id, payment: paymentJson.data ?? null, comprovante }, { status: 202 });
+      return NextResponse.json({ ok: false, error: "Pagamento e recibo confirmados, mas o comprovante precisa ser emitido. Tente novamente sem nova cobrança.", code: "DOCUMENT_PENDING", pedido_id: pedido.id, payment: paymentJson.data ?? null, comprovante }, { status: 409 });
     }
 
     recordAuditServer({

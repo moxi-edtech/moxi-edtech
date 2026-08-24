@@ -192,9 +192,9 @@ export async function GET(request: Request) {
       && Number(cohort?.ano_destino) === targetAnoLetivoAno
       && (!cohort?.expira_em || new Date(`${cohort.expira_em}T23:59:59`).getTime() >= Date.now());
 
-    // A matrícula destino pode existir como reserva pendente criada pela
-    // promoção. Ela só deixa de exigir este fluxo quando a taxa/isenção foi
-    // confirmada e o pedido de rematrícula está concedido.
+    // A matrícula destino criada pela promoção é a matrícula operacional do
+    // aluno. No Balcão ela é preservada: a operação seguinte cobra somente a
+    // taxa de rematrícula, sem seleccionar nem alterar turma/classe.
     const { data: matriculaDestino } = await supabase
       .from("matriculas")
       .select("id, turma_id")
@@ -204,49 +204,6 @@ export async function GET(request: Request) {
       .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada"])
       .limit(1)
       .maybeSingle();
-
-    // A matrícula in the target year is not enough to block rematriculation:
-    // migrations/promotions can leave a provisional row in the wrong class.
-    // Only a row in the academically expected class counts as the destination.
-    const { data: origemTurma } = matriculaOrigem.turma_id
-      ? await supabase
-          .from("turmas")
-          .select("classe_id")
-          .eq("escola_id", escolaId)
-          .eq("id", matriculaOrigem.turma_id)
-          .maybeSingle()
-      : { data: null };
-    const { data: origemClasse } = origemTurma?.classe_id
-      ? await supabase
-          .from("classes")
-          .select("numero, nome")
-          .eq("escola_id", escolaId)
-          .eq("id", origemTurma.classe_id)
-          .maybeSingle()
-      : { data: null };
-    const { data: destinoTurmaExistente } = matriculaDestino?.turma_id
-      ? await supabase
-          .from("turmas")
-          .select("classe_id")
-          .eq("escola_id", escolaId)
-          .eq("id", matriculaDestino.turma_id)
-          .maybeSingle()
-      : { data: null };
-    const { data: destinoClasseExistente } = destinoTurmaExistente?.classe_id
-      ? await supabase
-          .from("classes")
-          .select("numero, nome")
-          .eq("escola_id", escolaId)
-          .eq("id", destinoTurmaExistente.classe_id)
-          .maybeSingle()
-      : { data: null };
-    const classeNumero = (classe: any) => Number(classe?.numero ?? String(classe?.nome ?? "").match(/\d{1,2}/)?.[0] ?? 0) || null;
-    const classeOrigemNumero = classeNumero(origemClasse);
-    const classeDestinoNumero = classeNumero(destinoClasseExistente);
-    const classeDestinoEsperada = classeOrigemNumero && classeOrigemNumero < 12 ? classeOrigemNumero + 1 : null;
-    const matriculaDestinoAdequada = matriculaDestino && (
-      !classeDestinoEsperada || !classeDestinoNumero || classeDestinoNumero === classeDestinoEsperada
-    ) ? matriculaDestino : null;
 
     const { data: reclassificacao } = matriculaDestino
       ? await supabase
@@ -286,7 +243,7 @@ export async function GET(request: Request) {
       .eq("codigo", "SERV_REMATRICULA")
       .maybeSingle();
 
-    const targetTurmaId = destino_turma_id ?? reclassificacao?.destino_turma_id ?? matriculaDestinoAdequada?.turma_id ?? matriculaOrigem?.turma_id ?? null;
+    const targetTurmaId = destino_turma_id ?? matriculaDestino?.turma_id ?? reclassificacao?.destino_turma_id ?? matriculaOrigem?.turma_id ?? null;
     const { data: targetTurma } = targetTurmaId
       ? await supabase.from("turmas").select("curso_id, classe_id").eq("escola_id", escolaId).eq("id", targetTurmaId).maybeSingle()
       : { data: null };
@@ -343,6 +300,10 @@ export async function GET(request: Request) {
           pagamento.meta?.servico_pedido_id === pedidoExistente.id,
         ),
       );
+      const pagamentosDoPedido = (pagamentos ?? []).filter((pagamento: any) =>
+        pagamento.meta?.pedido_id === pedidoExistente.id ||
+        pagamento.meta?.servico_pedido_id === pedidoExistente.id,
+      );
       const tentativaReiniciavel = Boolean((intents ?? []).length) && (intents ?? []).every((intent: any) =>
         String(intent.status).toLowerCase() === "draft" &&
         !String(intent.reference ?? "").trim() &&
@@ -376,8 +337,11 @@ export async function GET(request: Request) {
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
     const pedidoTemMatriculaDestino = Boolean(pedidoExistente?.contexto?.matricula_destino_id);
+    const comprovantePendente = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino && !comprovanteData;
     const pedidoConcluido = pedidoExistente?.status === "granted" && (pedidoTemMatriculaDestino || Boolean(comprovanteData));
-    if (pedidoConcluido) {
+    if (comprovantePendente) {
+      status = "DOCUMENT_PENDING";
+    } else if (pedidoConcluido) {
       status = "ALREADY_COMPLETED";
     } else if (pedidoExistente?.status === "pending_payment") {
       status = pedidoLegado
@@ -389,11 +353,10 @@ export async function GET(request: Request) {
         : "PAYMENT_IN_PROGRESS";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
-    } else if (matriculaDestinoAdequada) {
-      // A prepared destination is still provisional until this operation is
-      // confirmed. Keep the normal promotion flow and let the attendant
-      // select/confirm the destination instead of hiding the selector.
-      status = reclassificacao ? "FINALIST_PENDING" : "READY";
+    } else if (matriculaDestino?.turma_id && !reclassificacao) {
+      status = "RECONFIRMATION_REQUIRED";
+    } else if (reclassificacao) {
+      status = "FINALIST_PENDING";
     } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
       status = "PRICE_NOT_CONFIGURED";
     }
@@ -459,7 +422,7 @@ export async function GET(request: Request) {
         ano: targetAnoLetivoAno,
         label: targetAnoLetivoLabel,
       },
-      destino_turma_id: matriculaDestinoAdequada?.turma_id ?? null,
+      destino_turma_id: matriculaDestino?.turma_id ?? null,
       reclassificacao: reclassificacao
         ? {
             id: reclassificacao.id,

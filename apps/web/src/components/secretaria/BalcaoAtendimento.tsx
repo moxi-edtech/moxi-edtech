@@ -797,6 +797,7 @@ function Catalogo({
     | "FINALIST_PENDING"
     | "LEGACY_REVIEW_REQUIRED"
     | "ALREADY_COMPLETED"
+    | "DOCUMENT_PENDING"
     | "PAYMENT_IN_PROGRESS"
     | "PENDING_ORDER_REVIEW"
     | "RECONCILIATION_REQUIRED"
@@ -944,7 +945,9 @@ function Catalogo({
               <div>
                 <p className="text-sm font-bold text-klasse-green">
                   {rematriculaState === "RECONFIRMATION_REQUIRED"
-                    ? "Reconfirmar matrícula"
+                    ? "Pagar taxa de rematrícula"
+                    : rematriculaState === "DOCUMENT_PENDING"
+                      ? "Emitir comprovativo pendente"
                     : rematriculaState === "FINALIST_PENDING"
                       ? "Finalista: decidir continuidade"
                       : "Rematricula escolar"}
@@ -952,7 +955,9 @@ function Catalogo({
                 <p className="text-xs text-slate-500">
                   {rematriculaReady
                     ? rematriculaState === "RECONFIRMATION_REQUIRED"
-                      ? "Pagar a taxa e ativar a matrícula na turma preparada"
+                      ? "O aluno já está matriculado; cobrar apenas a taxa, sem alterar turma ou classe"
+                      : rematriculaState === "DOCUMENT_PENDING"
+                        ? "O pagamento e o recibo já foram confirmados; emitir apenas o comprovativo"
                       : rematriculaState === "FINALIST_PENDING"
                         ? "Pagar taxa e escolher continuidade ou conclusão"
                         : "Pagamento, atualizacao da matricula e comprovante"
@@ -1655,6 +1660,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 rematriculaReady={
                   rematricula.cardState === "READY" ||
                   rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
+                  rematricula.cardState === "DOCUMENT_PENDING" ||
                   rematricula.cardState === "FINALIST_PENDING"
                 }
                 rematriculaState={
@@ -1712,7 +1718,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           cohort={rematricula.cohort}
           reconciliationOnly={rematricula.reconciliationMode}
           onRegularizeDebt={() => setDebtModalOpen(true)}
-          skipTurmaSelection={rematricula.cardState === "RECONFIRMATION_REQUIRED"}
+          skipTurmaSelection={rematricula.cardState === "RECONFIRMATION_REQUIRED" || rematricula.cardState === "DOCUMENT_PENDING"}
           turmas={rematricula.turmas}
           turmasLoading={rematricula.turmasLoading}
           progressao={rematricula.progressao}

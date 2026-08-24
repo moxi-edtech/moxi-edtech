@@ -10,6 +10,7 @@ export type RematriculaCardState =
   | "FINALIST_PENDING"
   | "LEGACY_REVIEW_REQUIRED"
   | "ALREADY_COMPLETED"
+  | "DOCUMENT_PENDING"
   | "PAYMENT_IN_PROGRESS"
   | "PENDING_ORDER_REVIEW"
   | "RECONCILIATION_REQUIRED"
@@ -395,9 +396,13 @@ export function useRematriculaBalcao(opts: {
 
   useEffect(() => {
     if (!modalOpen) return;
+    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
+      setSelectedTurmaId(destinoTurmaId);
+      return;
+    }
     setSelectedTurmaId(null);
     void fetchTurmas(decisaoResultado);
-  }, [decisaoResultado, fetchTurmas, modalOpen]);
+  }, [cardState, decisaoResultado, destinoTurmaId, fetchTurmas, modalOpen]);
 
   // ────────────────────────────────────────────────────────────────────────
   // Modal controls
@@ -407,10 +412,10 @@ export function useRematriculaBalcao(opts: {
     setModalOpen(true);
     setResult(null);
     setApiError(null);
-    if (!selectedTurmaId && cardState === "RECONFIRMATION_REQUIRED") {
+    if (!selectedTurmaId && ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
       setSelectedTurmaId(destinoTurmaId);
     }
-    fetchTurmas();
+    if (!["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) void fetchTurmas();
   }, [cardState, destinoTurmaId, fetchTurmas, selectedTurmaId]);
 
   const openReconciliationModal = useCallback(() => {
