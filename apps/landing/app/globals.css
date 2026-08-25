@@ -30,6 +30,7 @@
   --bg-audience:none;
   --nav-h:96px;
 }
+
 html,body{min-height:100%}
 html{scroll-behavior:smooth}
 body{font-family:var(--font-manrope),sans-serif;background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;touch-action:pan-y}
@@ -429,6 +430,7 @@ nav.scrolled .hamburger span{background:var(--t2)}
 .dashboard-bullet{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.6;color:var(--t2)}
 .dashboard-bullet-dot{width:8px;height:8px;border-radius:50%;background:var(--g);margin-top:7px;flex-shrink:0}
 .dashboard-visual{position:relative}
+.dashboard-grid > *{min-width:0}
 .dashboard-visual::before{
   content:'';
   position:absolute;
@@ -682,6 +684,7 @@ nav.scrolled .hamburger span{background:var(--t2)}
 .portais-device-intro .sec-sub{margin-top:10px}
 .portais-swap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:18px;align-items:stretch}
 .portais-swap-media{position:relative;overflow:hidden;border-radius:16px;min-height:460px;border:1px solid rgba(255,255,255,.16);background:#0e1712}
+.portais-swap-media-inner{width:100%;height:100%;min-width:0;min-height:0}
 .portais-swap-media,.portais-swap-panel{transition:opacity .18s ease,transform .18s ease}
 .portais-swap-media.is-fading,.portais-swap-panel.is-fading{opacity:.72;transform:translateY(1px)}
 .portais-swap-media--aluno{background:linear-gradient(180deg,#0b1510 0%,#0b1611 100%)}
@@ -1861,6 +1864,30 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--t1);font-size:
   .hero-product-window{left:0;width:100%;max-width:100%}
 }
 
+/* ── E-BOOK CAPTURE PAGE ──────────────────────────────────
+   A focused conversion surface using the same amber / forest / cream system.
+*/
+.ebook-capture-page{min-height:100vh;background:var(--gold);color:var(--t1);overflow:hidden}
+.ebook-capture-header{width:min(1320px,calc(100% - 96px));margin:0 auto;padding:28px 0;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
+.ebook-brand{display:inline-flex;align-items:center;gap:10px;color:var(--t1);text-decoration:none;font-family:var(--font-sora),sans-serif;font-size:17px;font-weight:900;letter-spacing:.03em}
+.ebook-brand img{width:34px;height:34px;object-fit:contain;border-radius:50%;background:var(--gold);box-shadow:0 5px 12px rgba(6,32,20,.18)}
+.ebook-brand small{margin-left:3px;color:rgba(6,32,20,.58);font-family:var(--font-manrope),sans-serif;font-size:9px;font-weight:800;letter-spacing:.08em}
+.ebook-header-link{color:rgba(6,32,20,.62);font-size:12px;font-weight:800;text-decoration:none}.ebook-header-link:hover{color:var(--g)}
+.ebook-capture-hero{width:min(1320px,calc(100% - 96px));margin:0 auto;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(360px,.72fr);gap:clamp(44px,8vw,132px);align-items:center;padding:clamp(60px,8vw,118px) 0 clamp(100px,12vw,170px);position:relative}
+.ebook-capture-hero:before{content:"";position:absolute;inset:-200px -20vw auto;height:800px;z-index:0;pointer-events:none;background:radial-gradient(circle at 72% 48%,rgba(255,249,218,.32),transparent 30%),radial-gradient(circle at 24% 8%,rgba(255,211,73,.3),transparent 30%)}
+.ebook-capture-copy,.ebook-form-card{position:relative;z-index:1}.ebook-kicker{margin:0 0 20px;color:var(--g);font-size:11px;font-weight:900;letter-spacing:.14em;line-height:1.2}.ebook-kicker span{color:rgba(6,32,20,.38);margin:0 4px}.ebook-capture-copy h1{max-width:700px;margin:0;color:var(--t1);font-family:var(--font-sora),sans-serif;font-size:clamp(48px,6.1vw,88px);line-height:.98;letter-spacing:-.045em;font-weight:900}.ebook-capture-copy h1 em,.ebook-section-heading h2 em,.ebook-closing h2 em{font-style:normal;color:var(--g)}
+.ebook-lead{max-width:580px;margin:26px 0 30px;color:rgba(6,32,20,.76);font-size:18px;font-weight:600;line-height:1.52}.ebook-benefits{display:grid;grid-template-columns:repeat(2,minmax(0,230px));gap:12px 20px;margin:0;padding:0;list-style:none;color:var(--t1);font-size:13px;font-weight:800}.ebook-benefits li{display:flex;gap:9px;align-items:center}.ebook-benefits li:before{content:"✓";display:grid;place-items:center;width:19px;height:19px;border-radius:50%;background:var(--g);color:var(--gold);font-size:11px;font-weight:900}
+.ebook-cover-wrap{position:relative;width:min(100%,640px);margin-top:44px;padding-top:31px}.ebook-cover-note{position:absolute;top:0;left:0;color:rgba(6,32,20,.58);font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}.ebook-cover{display:block;width:100%;height:auto;border:1px solid rgba(255,253,247,.78);border-radius:12px;box-shadow:0 28px 58px rgba(6,32,20,.24)}
+.ebook-form-card{padding:34px 34px 29px;border:1px solid rgba(255,253,247,.78);border-radius:12px;background:rgba(255,253,247,.76);box-shadow:0 22px 58px rgba(6,32,20,.16);backdrop-filter:blur(18px)}.ebook-form-topline{display:flex;align-items:center;gap:8px;color:var(--g);font-size:10px;font-weight:900;letter-spacing:.14em}.ebook-form-topline span{width:8px;height:8px;border-radius:50%;background:var(--g);box-shadow:0 0 0 5px rgba(11,90,60,.12)}.ebook-form-card h2{margin:23px 0 10px;color:var(--t1);font-family:var(--font-sora),sans-serif;font-size:clamp(26px,3vw,39px);line-height:1.05;letter-spacing:-.03em}.ebook-form-intro{margin:0 0 26px;color:var(--t2);font-size:14px;line-height:1.5;font-weight:600}.ebook-form-card form{display:grid;gap:16px}.ebook-form-card label{display:grid;gap:7px}.ebook-form-card label span{color:var(--t1);font-size:12px;font-weight:900}.ebook-form-card input{width:100%;min-height:48px;padding:0 14px;border:1px solid rgba(6,32,20,.18);border-radius:7px;background:rgba(255,255,255,.64);color:var(--t1);font:600 14px var(--font-manrope),sans-serif;outline:none;box-sizing:border-box}.ebook-form-card input::placeholder{color:#77857a}.ebook-form-card input:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(11,90,60,.12)}.ebook-submit{display:flex;align-items:center;justify-content:space-between;min-height:52px;margin-top:6px;padding:0 17px;border:0;border-radius:7px;background:var(--g);color:var(--s1);font:900 13px var(--font-manrope),sans-serif;letter-spacing:.04em;cursor:pointer;box-shadow:0 12px 22px rgba(6,32,20,.18);transition:transform .2s,background .2s}.ebook-submit:hover{background:var(--gl);transform:translateY(-1px)}.ebook-submit:disabled{cursor:wait;opacity:.72;transform:none}.ebook-submit b{font-size:20px;font-weight:600}.ebook-form-error{margin:12px 0 0;color:#9b2c2c;font-size:12px;font-weight:800;line-height:1.4}.ebook-form-footnote{margin:19px 0 0;color:var(--t3);font-size:11px;font-weight:700}.ebook-form-footnote span{color:var(--g);margin-right:5px}
+.ebook-guide{padding:clamp(86px,10vw,130px) max(48px,calc((100% - 1320px)/2));background:var(--s1);display:grid;grid-template-columns:minmax(250px,.8fr) minmax(0,1.2fr);gap:clamp(48px,9vw,140px);align-items:start}.ebook-section-heading h2,.ebook-closing h2{margin:0;font-family:var(--font-sora),sans-serif;font-size:clamp(34px,4.4vw,58px);line-height:1.02;letter-spacing:-.04em}.ebook-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--bd)}.ebook-guide-grid article{min-height:138px;padding:22px 18px 18px 0;border-bottom:1px solid var(--bd)}.ebook-guide-grid article:nth-child(odd){margin-right:26px;border-right:1px solid var(--bd)}.ebook-guide-grid article:nth-child(even){padding-left:26px}.ebook-guide-grid article:last-child{grid-column:span 2;border-right:0;margin-right:0}.ebook-guide-grid article span{color:var(--gold);font-family:var(--font-sora),sans-serif;font-size:16px;font-weight:900}.ebook-guide-grid article h3{max-width:190px;margin:22px 0 0;color:var(--t1);font-size:17px;line-height:1.15;font-weight:850}
+.ebook-closing{display:grid;grid-template-columns:minmax(260px,.8fr) minmax(0,1.2fr);gap:clamp(48px,9vw,140px);padding:clamp(84px,10vw,130px) max(48px,calc((100% - 1320px)/2));background:var(--dk);color:var(--s1)}.ebook-closing .ebook-kicker{color:var(--gold-light)}.ebook-closing h2{color:var(--s1)}.ebook-closing h2 em{color:var(--gold-light)}.ebook-closing-copy{align-self:end;max-width:530px}.ebook-closing-copy p{margin:0 0 25px;color:var(--dkt2);font-size:18px;line-height:1.55;font-weight:600}.ebook-closing-link{display:inline-flex;align-items:center;gap:17px;color:var(--gold-light);font-size:14px;font-weight:900;text-decoration:none}.ebook-closing-link span{font-size:21px}.ebook-capture-footer{display:flex;justify-content:space-between;padding:22px max(48px,calc((100% - 1320px)/2));background:var(--dk);border-top:1px solid rgba(255,253,247,.12);color:var(--dkt3);font-size:11px;font-weight:700}.ebook-capture-footer a{color:var(--gold-light);text-decoration:none}
+@media (max-width:900px){.ebook-capture-header,.ebook-capture-hero{width:min(100% - 48px,720px)}.ebook-capture-hero{grid-template-columns:1fr;gap:50px;padding-top:64px}.ebook-capture-copy h1{font-size:clamp(44px,9vw,70px)}.ebook-cover-wrap{width:min(100%,620px)}.ebook-form-card{max-width:620px}.ebook-guide,.ebook-closing{padding-left:24px;padding-right:24px;grid-template-columns:1fr;gap:45px}.ebook-guide-grid{max-width:720px}}
+@media (max-width:560px){.ebook-capture-header{width:calc(100% - 36px);padding:19px 0}.ebook-brand{gap:7px;font-size:15px}.ebook-brand img{width:29px;height:29px}.ebook-brand small,.ebook-header-link{display:none}.ebook-capture-hero{width:calc(100% - 36px);padding:57px 0 82px;gap:47px}.ebook-kicker{font-size:10px;margin-bottom:15px}.ebook-capture-copy h1{font-size:clamp(38px,11.5vw,54px);letter-spacing:-.05em}.ebook-lead{font-size:16px;margin:22px 0 26px}.ebook-benefits{grid-template-columns:1fr;gap:10px;font-size:13px}.ebook-cover-wrap{margin-top:32px;padding-top:27px}.ebook-form-card{padding:25px 20px 22px;border-radius:10px}.ebook-form-card h2{font-size:30px}.ebook-guide,.ebook-closing{padding:72px 18px}.ebook-guide-grid{grid-template-columns:1fr}.ebook-guide-grid article,.ebook-guide-grid article:nth-child(odd),.ebook-guide-grid article:nth-child(even),.ebook-guide-grid article:last-child{grid-column:auto;margin:0;padding:18px 0;border-right:0}.ebook-guide-grid article h3{margin-top:11px}.ebook-closing-copy p{font-size:16px}.ebook-capture-footer{padding:19px 18px}}
+
+.ebook-thanks-page{min-height:100vh;display:flex;flex-direction:column;background:var(--gold);color:var(--t1);overflow:hidden}.ebook-thanks-content{width:min(820px,calc(100% - 48px));margin:auto;padding:80px 0 120px;text-align:center}.ebook-thanks-content .ebook-kicker{margin-bottom:24px}.ebook-thanks-content h1{margin:0;font-family:var(--font-sora),sans-serif;font-size:clamp(50px,7vw,94px);line-height:.98;letter-spacing:-.05em}.ebook-thanks-content h1 em{font-style:normal;color:var(--g)}.ebook-thanks-lead{max-width:620px;margin:30px auto 34px;color:rgba(6,32,20,.78);font-size:19px;line-height:1.55;font-weight:600}.ebook-thanks-actions{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}.ebook-thanks-primary{min-width:265px;text-decoration:none}.ebook-thanks-download{display:inline-flex;align-items:center;gap:14px;min-height:52px;padding:0 18px;border:1px solid rgba(6,32,20,.2);border-radius:7px;color:var(--t1);font-size:13px;font-weight:900;text-decoration:none}.ebook-thanks-download:hover{background:rgba(255,253,247,.3);border-color:var(--g)}.ebook-thanks-download span{font-size:19px}.ebook-thanks-signoff{margin:58px 0 0;color:var(--g);font-size:14px;font-weight:900;letter-spacing:.02em}.ebook-thanks-page .ebook-capture-footer{margin-top:auto}
+@media (max-width:560px){.ebook-thanks-content{width:calc(100% - 36px);padding:56px 0 80px}.ebook-thanks-content h1{font-size:48px}.ebook-thanks-lead{font-size:16px;margin:24px auto 30px}.ebook-thanks-actions{align-items:stretch;flex-direction:column}.ebook-thanks-primary,.ebook-thanks-download{width:100%;justify-content:center;box-sizing:border-box}.ebook-thanks-signoff{margin-top:42px;font-size:12px}}
+.hero-ebook-link{display:inline-flex;align-items:center;gap:8px;width:max-content;margin:-18px 0 30px;color:var(--t1);font-size:13px;font-weight:850;text-decoration:none;border-bottom:1px solid rgba(6,32,20,.3);transition:color .2s,border-color .2s,transform .2s}.hero-ebook-link:hover{color:var(--g);border-color:var(--g);transform:translateX(2px)}.hero-ebook-link span{font-size:17px;font-weight:500}
+
 /* Real product assets: the landing page should prove the product, not redraw it. */
 .hero-real-screen{position:relative;aspect-ratio:2868 / 1646;background:#f7faf8;overflow:hidden}.hero-real-screen img{object-fit:cover;object-position:center}.hero-product-window{width:78%;background:#f7faf8}.dashboard-legacy-frame{display:none}.dashboard-real-frame{position:relative;width:100%;overflow:hidden;border:1px solid rgba(6,32,20,.16);border-radius:18px;background:#f7faf8;box-shadow:0 30px 70px rgba(6,32,20,.18)}.dashboard-real-frame img{display:block;width:100%;height:auto}.dashboard-real-caption{position:absolute;right:18px;bottom:18px;display:flex;flex-direction:column;gap:3px;padding:11px 14px;border:1px solid rgba(255,255,255,.68);border-radius:12px;background:rgba(255,253,247,.8);backdrop-filter:blur(12px);color:var(--t1);font-size:10px}.dashboard-real-caption span{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g)}.dashboard-real-caption strong{font-size:13px}.portal-real-mobile{position:relative;width:min(100%,560px);aspect-ratio:1170 / 2080;margin:0 auto;overflow:hidden;border-radius:22px;filter:drop-shadow(0 28px 40px rgba(6,32,20,.25))}.portal-real-mobile img{object-fit:cover;object-position:center}.portal-legacy-phone{display:none}
 @media (max-width:900px){.hero-product-window{width:82%}.dashboard-real-caption{right:12px;bottom:12px}.portal-real-mobile{width:min(100%,480px)}}
@@ -1973,4 +2000,19 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--t1);font-size:
   .device-stage--professor .teacher-tr>span:nth-child(6){display:none}
   .device-stage--professor .teacher-tr>span,.device-stage--professor .teacher-tr>b{padding:0 3px}
   .device-stage--professor .teacher-tr i{width:10px;height:10px;flex-basis:10px}
+}
+
+/* Portals section: cream surface needs dark editorial copy; keep the real
+   mobile product mockup fully visible on narrow viewports. */
+.portais .sec-eyebrow{color:var(--g)}
+.portais .sec-h{color:var(--t1)}
+.portais .sec-p{color:var(--t2)}
+.precos-dark .sec-eyebrow{color:var(--g)}
+.precos-dark .sec-title{color:var(--t1)}
+.precos-dark .sec-title em{color:var(--g)}
+.precos-dark .precos-intro{color:var(--t2)}
+.precos-dark .precos-note{color:var(--t3)}
+@media (max-width:900px){
+  .device-stage--aluno{display:flex;align-items:center;justify-content:center}
+  .device-stage--aluno .portal-real-mobile{width:auto;height:100%;max-width:92%;aspect-ratio:1170 / 2080;margin:auto}
 }

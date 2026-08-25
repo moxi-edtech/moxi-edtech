@@ -82,7 +82,21 @@ export function ProductSection() {
             <p>O KLASSE aproxima as pessoas e os processos que já fazem parte do dia a dia da instituição.</p>
           </div>
           <div className="product-film-frame">
-            <video autoPlay muted loop playsInline preload="metadata" poster="/assets/implementation-wide.png" aria-label="Demonstração visual do KLASSE em uso">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              poster="/assets/implementation-wide.png"
+              aria-label="Demonstração visual do KLASSE em uso"
+              onLoadedData={(event) => {
+                void event.currentTarget.play().catch(() => undefined)
+              }}
+              onClick={(event) => {
+                void event.currentTarget.play().catch(() => undefined)
+              }}
+            >
               <source src="/assets/klasse-login-hero.mp4" type="video/mp4" />
             </video>
             <span className="product-film-live"><i /> produto em movimento</span>

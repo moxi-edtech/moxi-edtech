@@ -106,18 +106,6 @@ export function DiagnosisPageClient() {
   const maxScore = QUESTIONS.length * 4
   const percentage = (totalScore / maxScore) * 100
 
-  const revenueLeakage = useMemo(() => {
-    const alunos = parseInt(leadData.qtdAlunos) || 100
-    const propinaMedia = 25000 
-    const receitaMensal = alunos * propinaMedia
-    const lossFactor = (100 - percentage) / 100
-    const estimatedLoss = receitaMensal * 0.15 * lossFactor 
-    return {
-      mensal: estimatedLoss,
-      anual: estimatedLoss * 10
-    }
-  }, [percentage, leadData.qtdAlunos])
-
   const submitLead = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -138,13 +126,13 @@ export function DiagnosisPageClient() {
       })
 
       if (!response.ok) throw new Error('Falha ao enviar lead')
-      
-      handleNext()
+
+      const message = encodeURIComponent(
+        `Olá, sou ${leadData.nome}, da escola ${leadData.escola}.\n\nAcabei de responder ao diagnóstico de gestão escolar e gostaria de receber a leitura da minha escola e agendar uma conversa com a equipa KLASSE.`
+      )
+      window.location.href = `https://wa.me/244933349106?text=${message}`
     } catch (error) {
       console.error('Erro ao enviar lead:', error)
-      // Mesmo com erro, avançamos para não bloquear a experiência do usuário, 
-      // mas o ideal seria um feedback de erro aqui.
-      handleNext()
     } finally {
       setIsSubmitting(false)
     }
@@ -199,27 +187,27 @@ export function DiagnosisPageClient() {
             >
               <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 text-center">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-800 shadow-sm">
-                  <BarChart3 size={14} /> Executive Assessment
+                  <BarChart3 size={14} /> Diagnóstico gratuito
                 </div>
                 <div className="flex flex-col items-center gap-6">
                   <h1 className="max-w-4xl break-words text-4xl font-black tracking-tight text-slate-950 sm:text-5xl md:text-7xl lg:text-8xl leading-[1.05]" style={headingStyle}>
-                    Sua Escola está <br className="hidden md:block"/> <span className="text-emerald-700 italic">Lucrando</span> ou <br className="hidden md:block"/> Apenas Operando?
+                    Descubra onde a sua escola <br className="hidden md:block"/> perde <span className="text-emerald-700 italic">tempo e controlo.</span>
                   </h1>
                   <p className="max-w-2xl text-lg md:text-2xl leading-relaxed text-slate-600 font-medium">
-                    Responda a 5 perguntas rápidas e descubra o nível de maturidade da sua gestão escolar em Angola.
+                    Responda a cinco perguntas e receba uma leitura rápida da operação da sua escola, com recomendações práticas para o próximo passo.
                   </p>
                 </div>
                 <div className="flex w-full flex-col items-center gap-4">
                   <button onClick={handleNext} className="btn-p justify-center py-7 px-10 text-xl group sm:min-w-[340px] shadow-xl shadow-emerald-900/10">
-                    Iniciar diagnóstico agora
+                    Começar diagnóstico gratuito
                     <ChevronRight className="transition-transform group-hover:translate-x-1" />
                   </button>
                 </div>
                 <div className="grid w-full gap-4 sm:grid-cols-3">
                   {[
                     { label: 'Tempo', val: '2 min' },
-                    { label: 'Entrega', val: 'Relatório' },
-                    { label: 'Foco', val: 'Angola' },
+                    { label: 'Resultado', val: 'Leitura da operação' },
+                    { label: 'Próximo passo', val: 'Conversa prática' },
                   ].map(card => (
                     <div key={card.label} className="flex min-h-[112px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{card.label}</p>
@@ -234,17 +222,17 @@ export function DiagnosisPageClient() {
                 <div className="flex flex-col items-center gap-10 md:gap-12">
                   <div className="flex max-w-2xl flex-col items-center gap-4">
                     <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-800">
-                      O que avaliamos
+                      O que vamos identificar
                     </div>
                     <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl" style={headingStyle}>Fatores críticos de sucesso</h2>
                   </div>
 
                   <div className="grid w-full gap-4 md:grid-cols-2">
                     {[
-                      { title: 'Matrículas', desc: 'Identificação de gargalos no atendimento e gestão de documentos físicos.', icon: Users },
-                      { title: 'Propinas', desc: 'Rastreabilidade de depósitos e automação de alertas de cobrança.', icon: Building2 },
-                      { title: 'Notas', desc: 'Digitalização de pautas e agilidade no conselho de notas trimestral.', icon: Target },
-                      { title: 'Estratégia', desc: 'Visibilidade executiva sobre a saúde financeira e operacional da escola.', icon: TrendingDown },
+                      { title: 'Matrículas', desc: 'Onde o atendimento e os documentos ainda criam filas e retrabalho.', icon: Users },
+                      { title: 'Propinas', desc: 'Quanto tempo a equipa gasta a conferir pagamentos e pendências.', icon: Building2 },
+                      { title: 'Notas', desc: 'Como a escola recolhe, valida e acompanha os resultados dos alunos.', icon: Target },
+                      { title: 'Visibilidade', desc: 'Se a direção consegue decidir com dados atuais e organizados.', icon: TrendingDown },
                     ].map((item) => (
                       <div key={item.title} className="flex min-h-[156px] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50">
@@ -336,9 +324,9 @@ export function DiagnosisPageClient() {
                     <Check size={32} />
                   </div>
                   <div className="flex max-w-2xl flex-col items-center gap-3">
-                    <h2 className="text-3xl font-black leading-tight text-slate-950 md:text-5xl" style={headingStyle}>Seu diagnóstico está pronto.</h2>
+                    <h2 className="text-3xl font-black leading-tight text-slate-950 md:text-5xl" style={headingStyle}>A sua leitura está pronta.</h2>
                     <p className="text-base font-medium leading-relaxed text-slate-600 md:text-lg">
-                      Estamos processando o impacto financeiro para a sua escola. Identifique-se para visualizar o relatório completo.
+                      Deixe os seus dados para receber o resultado completo e agendar uma conversa sobre a realidade da sua escola.
                     </p>
                   </div>
                 </div>
@@ -346,9 +334,9 @@ export function DiagnosisPageClient() {
                 <div className="diagnosis-lead-card rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
                   <div className="mx-auto mb-8 grid w-full max-w-[620px] gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-5 text-center md:grid-cols-3">
                       {[
-                        'Estimativa de Perda Operacional Anual',
-                        'Nível de Maturidade Digital em Angola',
-                        'Plano de Implementação Sugerido',
+                        'Principais gargalos da operação',
+                        'Nível de organização atual',
+                        'Próximo passo recomendado',
                       ].map((item) => (
                         <div key={item} className="flex flex-col items-center gap-3">
                           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
@@ -384,7 +372,7 @@ export function DiagnosisPageClient() {
                     </div>
                   </div>
                   <button disabled={isSubmitting} className="btn-p mt-3 justify-center py-5 text-lg font-black uppercase tracking-tight shadow-lg shadow-emerald-900/10 disabled:opacity-50">
-                    {isSubmitting ? 'A analisar...' : 'Ver Diagnóstico Final'}
+                    {isSubmitting ? 'A encaminhar...' : 'Enviar e falar no WhatsApp'}
                     <ArrowRight size={24} />
                   </button>
                 </form>
@@ -407,9 +395,9 @@ export function DiagnosisPageClient() {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-sm text-left">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Fuga de Receita</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Prioridade de melhoria</p>
                             <p className="text-3xl font-black text-rose-600 leading-none">
-                                {revenueLeakage.anual.toLocaleString('pt-AO')} Kz <span className="text-[10px] text-slate-400 block mt-1">POR ANO</span>
+                                {percentage < 40 ? 'Alta' : percentage < 75 ? 'Média' : 'Baixa'} <span className="text-[10px] text-slate-400 block mt-1">A PARTIR DAS RESPOSTAS</span>
                             </p>
                         </div>
                         <div className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-sm text-left">
@@ -445,13 +433,13 @@ export function DiagnosisPageClient() {
               <div className="rounded-[3rem] bg-slate-950 p-10 md:p-16 text-white text-center space-y-10 relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,rgba(31,107,59,1),transparent)]" />
                 <div className="relative max-w-2xl mx-auto space-y-6">
-                    <h3 className="text-4xl font-black md:text-5xl tracking-tighter" style={headingStyle}>Pronto para modernizar?</h3>
+                    <h3 className="text-4xl font-black md:text-5xl tracking-tighter" style={headingStyle}>Vamos transformar o diagnóstico em ação?</h3>
                     <p className="text-slate-400 text-lg font-medium leading-relaxed">
-                        O KLASSE ajuda a automatizar cobranças, organizar matrículas e dar visibilidade real à direção. Agende uma conversa com nossos especialistas.
+                        O KLASSE ajuda a organizar matrículas, acompanhar pagamentos e dar visibilidade real à direção. Agende uma conversa com a nossa equipa.
                     </p>
                     <a href="https://wa.me/244933349106?text=Fiz%20o%20diagnóstico%20e%20quero%20conhecer%20o%20KLASSE" className="btn-p w-full justify-center bg-[#25D366] hover:bg-[#128C7E] py-7 text-2xl shadow-xl shadow-emerald-500/20 uppercase font-black">
                         <MessageCircle size={32} />
-                        Falar no WhatsApp
+                        Agendar diagnóstico gratuito no WhatsApp
                     </a>
                 </div>
               </div>

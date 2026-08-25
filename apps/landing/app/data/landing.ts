@@ -4,6 +4,7 @@ export const navLinks = [
   { href: '#para-quem', label: 'Para quem é' },
   { href: '/diagnostico', label: 'Diagnóstico' },
   { href: '#precos', label: 'Preços' },
+  { href: '/ebook', label: 'E-book gratuito' },
 ]
 
 export const hero = {
