@@ -18,6 +18,7 @@ import {
   User,
   ChevronRight,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -814,6 +815,7 @@ function Catalogo({
   onResolverPedido: () => Promise<void>;
   onResolverReconciliacao: () => void;
   onCancelPendingPedido: () => Promise<void>;
+  onRefreshRematricula: () => Promise<unknown>;
   onRematricula: () => void;
   onRegularize: () => void;
 }) {
@@ -908,6 +910,28 @@ function Catalogo({
                   className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
                 >
                   {reconcilingPedido ? "A cancelar tentativa…" : "Cancelar tentativa e cobrar agora"}
+                </button>
+              </div>
+            ) : null}
+            {rematriculaState === "PAYMENT_IN_PROGRESS" ? (
+              <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-950">
+                <div className="flex items-start gap-2">
+                  <Loader2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                  <div>
+                    <strong className="block">Pagamento de rematrícula já iniciado</strong>
+                    <p className="mt-1 text-amber-900/80">
+                      Não será criada uma nova cobrança. Atualize o estado para confirmar a liquidação ou aguarde a validação do pagamento.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void onRefreshRematricula()}
+                  disabled={reconcilingPedido}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
+                >
+                  <RefreshCw className={`h-4 w-4 ${reconcilingPedido ? "animate-spin" : ""}`} />
+                  {reconcilingPedido ? "A atualizar estado…" : "Atualizar estado"}
                 </button>
               </div>
             ) : null}
@@ -1694,6 +1718,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 onResolverPedido={rematricula.resolveLegacyPedido}
                 onResolverReconciliacao={rematricula.openReconciliationModal}
                 onCancelPendingPedido={rematricula.cancelPendingPedido}
+                onRefreshRematricula={rematricula.refreshStatus}
                 onRematricula={rematricula.openModal}
                 onRegularize={() => {
                   if ((rematricula.debt?.total ?? 0) > 0) setDebtModalOpen(true);
