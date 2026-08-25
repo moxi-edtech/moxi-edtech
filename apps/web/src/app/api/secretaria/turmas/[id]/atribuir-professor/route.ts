@@ -187,7 +187,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const status =
         msg.includes('NOT_FOUND')
           ? 404
-          : msg.includes('SKILL_MISMATCH') || msg.includes('TURNO_MISMATCH') || msg.includes('CARGA_EXCEEDED')
+          : msg.includes('SKILL_MISMATCH') || msg.includes('TURNO_MISMATCH') || msg.includes('CARGA_EXCEEDED') || msg.includes('QUADRO_CONFLICT')
             ? 409
             : msg.includes('INVALID_INPUT')
             ? 400
@@ -197,7 +197,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         rpc_error: msg,
         professor_id: professorId,
       })
-      return NextResponse.json({ ok: false, error: msg }, { status, headers })
+      const errorMessage = msg.includes('QUADRO_CONFLICT')
+        ? 'O professor já está ocupado nesse horário noutra disciplina ou turma.'
+        : msg
+      return NextResponse.json({ ok: false, error: errorMessage }, { status, headers })
     }
 
     const rpcRow = (Array.isArray(rpcRows) ? rpcRows[0] : rpcRows) as
