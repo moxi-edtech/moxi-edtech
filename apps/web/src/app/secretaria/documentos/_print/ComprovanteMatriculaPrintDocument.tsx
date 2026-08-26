@@ -29,6 +29,7 @@ export async function ComprovanteMatriculaPrintDocument({
   );
   const hash = typeof snapshot.hash_validacao === "string" ? snapshot.hash_validacao : "";
   const numero = typeof snapshot.numero_sequencial === "number" ? snapshot.numero_sequencial : null;
+  const isRematricula = snapshot.tipo_operacao === "rematricula";
   const urlValidacao = hash ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${doc.public_id}?hash=${hash}` : null;
 
   const efetivacaoRaw = snapshot.data_hora_efetivacao;
@@ -46,6 +47,19 @@ export async function ComprovanteMatriculaPrintDocument({
     : [];
   const totalPagoBalcao = itensPagosBalcao.reduce((total, item) => total + Number(item.valor), 0);
   const formatKwanza = (valor: number) => valor.toLocaleString("pt-PT", { minimumFractionDigits: 2 });
+  const getMensalidadeStatus = (status: unknown) => {
+    const normalized = String(status ?? "").toLowerCase();
+    if (["pago", "liquidado", "settled", "concluido"].includes(normalized)) {
+      return { label: "Paga", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    }
+    if (["pago_parcial", "parcial", "partial"].includes(normalized)) {
+      return { label: "Parcial", className: "bg-amber-50 text-amber-700 border-amber-200" };
+    }
+    if (normalized === "isento") {
+      return { label: "Isenta", className: "bg-sky-50 text-sky-700 border-sky-200" };
+    }
+    return { label: "Pendente", className: "bg-slate-50 text-slate-500 border-slate-200" };
+  };
 
   return (
     <div className={`min-h-screen ${styles.printRoot} font-serif text-slate-900`}>
@@ -61,7 +75,9 @@ export async function ComprovanteMatriculaPrintDocument({
               />
             </div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-bold">{escolaNome}</p>
-            <h1 className="text-2xl font-bold uppercase tracking-tight print:text-xl">Comprovativo de Matrícula</h1>
+            <h1 className="text-2xl font-bold uppercase tracking-tight print:text-xl">
+              {isRematricula ? "Comprovativo de Rematrícula" : "Comprovativo de Matrícula"}
+            </h1>
             <div className="flex justify-center gap-4 text-[10px] text-slate-500 font-sans">
               <p>Emitido em: {new Date(String(doc.created_at)).toLocaleString("pt-PT")}</p>
               {numero ? <p>Nº de Série: {String(numero).padStart(6, "0")}</p> : null}
@@ -166,6 +182,7 @@ export async function ComprovanteMatriculaPrintDocument({
                     <tr>
                       <th className="px-3 py-2 print:py-1">Mês / Ano</th>
                       <th className="px-3 py-2 print:py-1">Vencimento</th>
+                      <th className="px-3 py-2 print:py-1">Estado</th>
                       <th className="px-3 py-2 text-right print:py-1">Valor (Kz)</th>
                     </tr>
                   </thead>
@@ -174,13 +191,19 @@ export async function ComprovanteMatriculaPrintDocument({
                       <tr key={i}>
                         <td className="px-3 py-1.5 font-medium print:py-1">{m.mes}/{m.ano}</td>
                         <td className="px-3 py-1.5 print:py-1">{m.vencimento ? new Date(m.vencimento).toLocaleDateString("pt-PT") : "—"}</td>
+                        <td className="px-3 py-1.5 print:py-1">
+                          {(() => {
+                            const state = getMensalidadeStatus(m.status);
+                            return <span className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold ${state.className}`}>{state.label}</span>;
+                          })()}
+                        </td>
                         <td className="px-3 py-1.5 text-right font-semibold print:py-1">{Number(m.valor).toLocaleString("pt-PT", { minimumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="bg-slate-50 font-bold border-t border-slate-200">
                     <tr>
-                      <td colSpan={2} className="px-3 py-2 text-right uppercase print:py-1">Total Anual Estimado:</td>
+                      <td colSpan={3} className="px-3 py-2 text-right uppercase print:py-1">Total Anual Estimado:</td>
                       <td className="px-3 py-2 text-right text-sm print:py-1">{valorTotalAnual.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} Kz</td>
                     </tr>
                   </tfoot>

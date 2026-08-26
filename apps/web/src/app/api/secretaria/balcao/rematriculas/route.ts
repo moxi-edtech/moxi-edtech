@@ -565,6 +565,7 @@ export async function POST(request: Request) {
         escolaId,
         matriculaId: matriculaDestinoId,
         dataHoraEfetivacao: new Date().toISOString(),
+        tipoOperacao: "rematricula",
         createdBy: user.id,
         audit: { portal: "secretaria", acao: "REMATRICULA_COMPROVANTE_REUTILIZADO" },
       });
@@ -1055,6 +1056,7 @@ export async function POST(request: Request) {
       escolaId,
       matriculaId: matriculaDestinoId,
       dataHoraEfetivacao: new Date().toISOString(),
+      tipoOperacao: "rematricula",
       itensPagos: paymentItems.map((item) => ({
         descricao: item.nome,
         valor: item.preco,

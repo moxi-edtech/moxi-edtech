@@ -286,6 +286,7 @@ export async function POST(request: Request) {
           escolaId,
           matriculaId: matriculaDestinoExistente.id,
           dataHoraEfetivacao: new Date().toISOString(),
+          tipoOperacao: "rematricula",
           createdBy: user.id,
           audit: { portal: "secretaria", acao: "REMATRICULA_RECONCILIADA_MATRICULA_EXISTENTE" },
         });
@@ -371,6 +372,7 @@ export async function POST(request: Request) {
             escolaId,
             matriculaId: matriculaDestino.id,
             dataHoraEfetivacao: new Date().toISOString(),
+            tipoOperacao: "rematricula",
             createdBy: user.id,
             audit: { portal: "secretaria", acao: "REMATRICULA_RECONCILIADA_COMPROVANTE" },
           });
@@ -396,6 +398,7 @@ export async function POST(request: Request) {
         escolaId,
         matriculaId: String(finalizacao.matricula_id),
         dataHoraEfetivacao: new Date().toISOString(),
+        tipoOperacao: "rematricula",
         createdBy: user.id,
         audit: { portal: "secretaria", acao: "REMATRICULA_RECONCILIADA_COMPROVANTE" },
       });
