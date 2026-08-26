@@ -35,8 +35,7 @@ export default async function ObrigadoPage({ searchParams }: { searchParams: Pro
           Enquanto prepara a sua escola para 2026/2027, quer ver como estas ideias funcionam digitalmente no KLASSE?
         </p>
         <div className="ebook-thanks-actions">
-          <a className="ebook-submit ebook-thanks-primary" href={whatsappHref} target="_blank" rel="noreferrer">Agendar diagnóstico no WhatsApp <b aria-hidden="true">→</b></a>
-          <a className="ebook-thanks-download" href={ebookPath} download={ebookName}>Baixar e-book novamente <span aria-hidden="true">↓</span></a>
+          <a className="ebook-submit ebook-thanks-primary" href={whatsappHref} target="_blank" rel="noreferrer">Receber Guia e Diagnóstico no WhatsApp <b aria-hidden="true">→</b></a>
         </div>
         <p className="ebook-thanks-signoff">Prepare a escola. Comece com uma conversa.</p>
       </section>
