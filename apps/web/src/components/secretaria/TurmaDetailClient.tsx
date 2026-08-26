@@ -488,6 +488,7 @@ export default function TurmaDetailClient({
   const [assignProfessorError, setAssignProfessorError] = useState<string | null>(null);
   const [assignPreview, setAssignPreview] = useState<ProfessorAssignmentPreview | null>(null);
   const [assignPreviewLoading, setAssignPreviewLoading] = useState(false);
+  const [scheduleSyncConfirmed, setScheduleSyncConfirmed] = useState(false);
   const [showOnlySemProfessor, setShowOnlySemProfessor] = useState(false);
   const [quickAssigningDisciplinaId, setQuickAssigningDisciplinaId] = useState<string | null>(null);
   const [bulkAssigningRecommended, setBulkAssigningRecommended] = useState(false);
@@ -715,6 +716,7 @@ export default function TurmaDetailClient({
     if (actionModal?.type !== "professor") {
       setAssignPreview(null);
       setAssignPreviewLoading(false);
+      setScheduleSyncConfirmed(false);
       return;
     }
 
@@ -723,6 +725,7 @@ export default function TurmaDetailClient({
     if (typeof disciplinaId !== "string" || !disciplinaId || !professorUserId) {
       setAssignPreview(null);
       setAssignPreviewLoading(false);
+      setScheduleSyncConfirmed(false);
       return;
     }
     const resolvedDisciplinaId = disciplinaId;
@@ -1013,18 +1016,32 @@ export default function TurmaDetailClient({
       return;
     }
 
+    const slotsToUpdate = assignPreview?.has_quadro_for_disciplina
+      ? assignPreview.disciplina_slots_count
+      : 0;
+    if (slotsToUpdate > 0 && !scheduleSyncConfirmed) {
+      setScheduleSyncConfirmed(true);
+      setAssignProfessorError(null);
+      return;
+    }
+
     setAssigningProfessor(true);
     setAssignProfessorError(null);
     try {
       await executeProfessorAssignment(cursoMatrizId, selectedProfessorUserId);
-      setToast({ message: "Professor atribuído com sucesso.", type: "success" });
+      setToast({
+        message: slotsToUpdate > 0
+          ? `Professor atribuído. ${slotsToUpdate} horário(s) atualizado(s).`
+          : "Professor atribuído com sucesso.",
+        type: "success",
+      });
       setActionModal(null);
     } catch (e: any) {
       setAssignProfessorError(e?.message || "Falha ao atribuir professor");
     } finally {
       setAssigningProfessor(false);
     }
-  }, [actionModal, executeProfessorAssignment, selectedProfessorUserId]);
+  }, [actionModal, assignPreview, executeProfessorAssignment, scheduleSyncConfirmed, selectedProfessorUserId]);
 
   const handleQuickAssignRecommended = useCallback(async (disciplina: TurmaData["disciplinas"][number]) => {
     const cursoMatrizId = disciplina.curso_matriz_id ?? null;
@@ -2062,7 +2079,10 @@ export default function TurmaDetailClient({
                           <button
                             key={professor.user_id}
                             type="button"
-                            onClick={() => setSelectedProfessorUserId(professor.user_id)}
+                            onClick={() => {
+                              setSelectedProfessorUserId(professor.user_id);
+                              setScheduleSyncConfirmed(false);
+                            }}
                             className={`w-full rounded-2xl border p-4 text-left transition-all ${
                               selected
                                 ? "border-[#1F6B3B] bg-[#1F6B3B]/5 shadow-sm"
@@ -2226,6 +2246,17 @@ export default function TurmaDetailClient({
                           Esta disciplina ainda não está lançada no quadro; a validação de slot ficará pendente.
                         </p>
                       ) : null}
+
+                      {scheduleSyncConfirmed && assignPreview?.has_quadro_for_disciplina && assignPreview.disciplina_slots_count > 0 ? (
+                        <div className="mt-4 rounded-xl border border-[#E3B23C]/30 bg-white/80 p-3">
+                          <p className="text-xs font-bold text-[#9a7010]">
+                            Esta atribuição atualizará {assignPreview.disciplina_slots_count} horário(s) existentes desta disciplina.
+                          </p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            Os dias, horas e salas serão preservados. Clique novamente em confirmar para aplicar.
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
                   )}
 
@@ -2245,10 +2276,16 @@ export default function TurmaDetailClient({
                     </button>
                     <button
                       onClick={handleAssignProfessor}
-                      disabled={assigningProfessor || !effectiveSelectedProfessorUserId}
+                      disabled={assigningProfessor || assignPreviewLoading || !effectiveSelectedProfessorUserId}
                       className="px-4 py-2 rounded-xl bg-[#E3B23C] text-white text-sm font-bold hover:brightness-95 disabled:opacity-60"
                     >
-                      {assigningProfessor ? "A atribuir…" : "Confirmar atribuição"}
+                      {assigningProfessor
+                        ? "A atribuir…"
+                        : assignPreviewLoading
+                          ? "A validar quadro…"
+                        : scheduleSyncConfirmed && assignPreview?.disciplina_slots_count
+                          ? `Confirmar e atualizar ${assignPreview.disciplina_slots_count} horário(s)`
+                          : "Confirmar atribuição"}
                     </button>
                   </div>
                 </div>

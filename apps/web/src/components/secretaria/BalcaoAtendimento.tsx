@@ -779,6 +779,7 @@ function Catalogo({
   onResolverPedido,
   onResolverReconciliacao,
   onCancelPendingPedido,
+  onRefreshRematricula,
   onRematricula,
   onRegularize,
 }: {

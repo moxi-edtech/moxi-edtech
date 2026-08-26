@@ -360,6 +360,8 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           alunoProcesso={rematriculaTarget.aluno_processo}
           turmaAtual={rematriculaTarget.turma_atual}
           matriculaId={rematriculaTarget.matricula_id}
+          responsavelContato={rematricula.responsavelContato ?? ""}
+          setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
           service={rematricula.service}
           itensPagamento={rematriculaTarget.itens_pagamento}
