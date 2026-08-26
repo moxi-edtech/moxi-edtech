@@ -52,7 +52,7 @@ export function LandingPage() {
             subtitle={hero.subtitle}
             primaryCta={primaryCta}
             secondaryCta={diagnosticCta}
-            ebookCta={{ label: 'Baixar o e-book gratuito', href: '/ebook' }}
+            ebookCta={{ label: 'Receber Guia no WhatsApp', href: '/ebook' }}
             note={hero.note}
           />
         </div>

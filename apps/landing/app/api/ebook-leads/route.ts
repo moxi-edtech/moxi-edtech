@@ -20,11 +20,13 @@ export async function POST(request: Request) {
     nome?: unknown
     escola?: unknown
     whatsapp?: unknown
+    ebook?: unknown
     utm?: Record<string, string | null>
   } | null
   const nome = normalize(body?.nome)
   const escola = normalize(body?.escola)
   const whatsapp = normalize(body?.whatsapp)
+  const ebook = normalize(body?.ebook) === 'futuro' ? 'futuro' : 'matriculas'
 
   if (!nome || !escola || !whatsapp) return Response.json({ ok: false, error: 'missing_fields' }, { status: 400 })
 
@@ -45,8 +47,13 @@ export async function POST(request: Request) {
       escola,
       whatsapp,
       utm_json: body?.utm ?? {},
-      origem: 'ebook_matriculas_2026_2027',
-      metadata_json: { pathname: '/ebook', ip, referer: request.headers.get('referer'), user_agent: request.headers.get('user-agent') },
+      origem: ebook === 'futuro' ? 'ebook_futuro_educacao_2026_2027' : 'ebook_matriculas_2026_2027',
+      metadata_json: {
+        pathname: ebook === 'futuro' ? '/ebook/futuro' : '/ebook',
+        ip,
+        referer: request.headers.get('referer'),
+        user_agent: request.headers.get('user-agent'),
+      },
     }),
   })
 
