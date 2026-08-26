@@ -9,13 +9,8 @@ export const metadata: Metadata = {
 export default async function ObrigadoPage({ searchParams }: { searchParams: Promise<{ ebook?: string }> }) {
   const params = await searchParams
   const isFuture = params.ebook === 'futuro'
-  const ebookPath = isFuture
-    ? '/assets/klasse-ebook-futuro-da-educacao-em-angola-v11.pdf'
-    : '/assets/klasse-ebook-planeamento-matriculas-2026-2027.pdf'
-  const ebookName = isFuture
-    ? 'KLASSE-Ebook-Futuro-da-Educacao-em-Angola-V11.pdf'
-    : 'KLASSE-Ebook-Planeamento-Matriculas-2026-2027.pdf'
-  const whatsappHref = 'https://wa.me/244933349106?text=Olá%2C%20acabei%20de%20baixar%20o%20e-book%20do%20KLASSE%20e%20quero%20agendar%20um%20diagnóstico%20gratuito%20para%20a%20minha%20escola.'
+  const guideName = isFuture ? 'o Guia O Futuro da Educação' : 'o Guia de Matrículas'
+  const whatsappHref = `https://wa.me/244933349106?text=${encodeURIComponent(`Olá! Quero receber ${guideName} e agendar um diagnóstico para a minha escola.`)}`
 
   return (
     <main className="ebook-thanks-page">
@@ -29,10 +24,10 @@ export default async function ObrigadoPage({ searchParams }: { searchParams: Pro
       </header>
 
       <section className="ebook-thanks-content" aria-labelledby="thanks-title">
-        <p className="ebook-kicker">DOWNLOAD CONFIRMADO <span>·</span> 2026/2027</p>
-        <h1 id="thanks-title">O seu e-book<br /><em>está pronto.</em></h1>
+        <p className="ebook-kicker">ENVIO NO WHATSAPP <span>·</span> 2026/2027</p>
+        <h1 id="thanks-title">O seu guia<br /><em>está a caminho.</em></h1>
         <p className="ebook-thanks-lead">
-          Enquanto prepara a sua escola para 2026/2027, quer ver como estas ideias funcionam digitalmente no KLASSE?
+          O assistente virtual do KLASSE está pronto para entregar o seu exemplar em PDF e agendar o diagnóstico da sua escola.
         </p>
         <div className="ebook-thanks-actions">
           <a className="ebook-submit ebook-thanks-primary" href={whatsappHref} target="_blank" rel="noreferrer">Receber Guia e Diagnóstico no WhatsApp <b aria-hidden="true">→</b></a>
