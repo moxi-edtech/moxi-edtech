@@ -74,6 +74,16 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
 
   async function handleAction(pagamentoId: string, aprovado: boolean) {
     let mensagemSecretaria: string | null = null;
+    const targetRow = rows.find((item) => item.pagamento_id === pagamentoId);
+    if (aprovado && targetRow) {
+      const isRematricula = targetRow.tipo_entidade === "servico" && targetRow.servico_codigo === "SERV_REMATRICULA";
+      const confirmed = await confirm({
+        title: isRematricula ? "Validar pagamento de rematrícula" : "Validar pagamento",
+        message: `${targetRow.aluno_nome} · ${kwanza.format(Number(targetRow.valor_enviado || 0))}. ${isRematricula ? "Depois da validação, reveja a turma destino antes de concluir a rematrícula." : "O comprovativo será marcado como confirmado."}`,
+        confirmLabel: "Confirmar validação",
+      });
+      if (!confirmed) return;
+    }
     if (!aprovado) {
       const motivo = await confirm({
         title: "Rejeitar comprovativo",
@@ -234,7 +244,35 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
       ) : null}
 
       {!loading && !error && rows.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <>
+        <div className="space-y-3 md:hidden">
+          {rows.map((row) => {
+            const actioning = Boolean(actioningById[row.pagamento_id]);
+            const isRematricula = row.tipo_entidade === "servico" && row.servico_codigo === "SERV_REMATRICULA";
+            return (
+              <article key={row.pagamento_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-slate-900">{row.aluno_nome}</p>
+                    <p className="text-xs text-slate-500">{row.turma_codigo || "Turma não indicada"}</p>
+                  </div>
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700">A aguardar validação</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-xs">
+                  <span className="text-slate-500">Tipo<p className="mt-0.5 font-bold text-slate-800">{isRematricula ? "Rematrícula" : row.servico_nome || row.tipo_entidade}</p></span>
+                  <span className="text-slate-500">Valor enviado<p className="mt-0.5 font-bold text-slate-800">{kwanza.format(Number(row.valor_enviado || 0))}</p></span>
+                </div>
+                {row.comprovante_url ? <a href={row.comprovante_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-700">{isPdf(row.comprovante_url) ? <FileText className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />} Ver comprovativo</a> : <p className="mt-3 text-xs text-slate-500">Sem comprovativo anexado.</p>}
+                {row.mensagem_aluno ? <p className="mt-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-900"><strong>Mensagem:</strong> {row.mensagem_aluno}</p> : null}
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => void handleAction(row.pagamento_id, true)} disabled={actioning} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-emerald-700 px-3 text-xs font-black text-white disabled:opacity-50"><CheckCircle2 className="h-4 w-4" /> Validar</button>
+                  <button type="button" onClick={() => void handleAction(row.pagamento_id, false)} disabled={actioning} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-rose-300 bg-rose-50 px-3 text-xs font-black text-rose-700 disabled:opacity-50"><XCircle className="h-4 w-4" /> Rejeitar</button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -328,6 +366,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
             </tbody>
           </table>
         </div>
+        </>
       ) : null}
 
       <footer className="flex items-center justify-end gap-2 pt-1">

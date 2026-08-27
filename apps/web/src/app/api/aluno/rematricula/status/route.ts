@@ -268,6 +268,9 @@ export async function GET() {
     if (rematriculaPedido?.id) {
       const { data: intent, error: intentError } = await (supabase as any)
         .from('pagamento_intents')
+        // `updated_at` não faz parte do contrato mínimo histórico da tabela.
+        // O estado do portal usa created_at/meta e continua funcional enquanto
+        // a migration de enriquecimento do schema ainda não estiver disponível.
         .select('id, status, amount, reference, evidence_url, meta')
         .eq('servico_pedido_id', rematriculaPedido.id)
         .order('created_at', { ascending: false })
@@ -290,6 +293,10 @@ export async function GET() {
           amount: Number(intent.amount ?? 0),
           reference: intent.reference ?? null,
           has_evidence: Boolean(intent.evidence_url),
+          submitted_at: intent.meta?.submitted_at ?? null,
+          mensagem_aluno: intent.meta?.mensagem_aluno ?? null,
+          itens_pagamento: intent.meta?.itens_pagamento ?? rematriculaPedido?.contexto?.itens_pagamento ?? [],
+          rejection_reason: intent.meta?.reject_reason ?? null,
           receipt_pending: intent.status === 'settled' && !receipt?.id,
           receipt_url: receipt?.id ? `/aluno/documentos/${receipt.id}/recibo/print` : null,
         }

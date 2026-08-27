@@ -7,10 +7,13 @@ import { BookOpen, FileText, RefreshCw, Search, User } from "lucide-react";
 
 type DocumentoTipo =
   | "declaracao_frequencia"
+  | "declaracao_notas"
   | "boletim_trimestral"
   | "cartao_estudante"
   | "ficha_inscricao"
-  | "comprovante_matricula";
+  | "comprovante_matricula"
+  | "historico"
+  | "certificado";
 
 type DocumentoResponse = {
   ok: boolean;
@@ -43,9 +46,15 @@ const TIPOS: Array<{
     icon: FileText,
   },
   {
-    id: "boletim_trimestral",
+    id: "declaracao_notas",
     title: "Declaração com Notas",
-    description: "Notas e aproveitamento para transferências.",
+    description: "Declaração oficial com notas e aproveitamento escolar.",
+    icon: BookOpen,
+  },
+  {
+    id: "boletim_trimestral",
+    title: "Boletim Trimestral",
+    description: "Notas organizadas por trimestre para acompanhamento escolar.",
     icon: BookOpen,
   },
   {
@@ -65,6 +74,18 @@ const TIPOS: Array<{
     title: "Boletim de Matrícula",
     description: "Comprovativo oficial de vinculação.",
     icon: BookOpen,
+  },
+  {
+    id: "historico",
+    title: "Histórico Escolar",
+    description: "Histórico oficial baseado no ano letivo encerrado.",
+    icon: BookOpen,
+  },
+  {
+    id: "certificado",
+    title: "Certificado de Habilitações",
+    description: "Documento final emitido após o fechamento do histórico.",
+    icon: FileText,
   },
 ];
 
@@ -277,22 +298,17 @@ export default function DocumentosEmissaoHubClient({
 
   const selectedServico = useMemo(() => {
     if (!tipo) return null;
-    const normalizeText = (value: string) =>
-      value
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
-    const normalized = tipo.replace("declaracao_", "decl_");
-    const tokens = [tipo, normalized]
-      .flatMap((value) => value.split("_"))
-      .map(normalizeText)
-      .filter(Boolean);
-    return (
-      servicos.find((servico) => {
-        const haystack = normalizeText(`${servico.codigo} ${servico.nome} ${servico.descricao ?? ""}`);
-        return tokens.some((token) => haystack.includes(token));
-      }) ?? null
-    );
+    const codeByType: Record<DocumentoTipo, string> = {
+      declaracao_frequencia: "DOC_DECLARACAO_FREQUENCIA",
+      declaracao_notas: "DOC_DECLARACAO_NOTAS",
+      boletim_trimestral: "DOC_BOLETIM_TRIMESTRAL",
+      cartao_estudante: "DOC_CARTAO_ESTUDANTE",
+      ficha_inscricao: "DOC_FICHA_INSCRICAO",
+      comprovante_matricula: "DOC_COMPROVANTE_MATRICULA",
+      historico: "DOC_HISTORICO_ESCOLAR",
+      certificado: "DOC_CERTIFICADO_HABILITACOES",
+    };
+    return servicos.find((servico) => servico.codigo === codeByType[tipo]) ?? null;
   }, [servicos, tipo]);
 
   const isPago = Boolean(selectedServico && Number(selectedServico.valor_base ?? 0) > 0);
@@ -400,15 +416,21 @@ export default function DocumentosEmissaoHubClient({
         throw new Error(json.error || "Falha ao emitir documento");
       }
 
-      const destino =
-        tipo === "declaracao_frequencia"
-          ? `/secretaria/documentos/${json.docId}/frequencia/print`
+        const destino =
+          tipo === "declaracao_frequencia"
+            ? `/secretaria/documentos/${json.docId}/frequencia/print`
+          : tipo === "declaracao_notas"
+          ? `/secretaria/documentos/${json.docId}/notas/print`
           : tipo === "boletim_trimestral"
           ? `/secretaria/documentos/${json.docId}/boletim-trimestral/print`
           : tipo === "cartao_estudante"
           ? `/secretaria/documentos/${json.docId}/cartao/print`
           : tipo === "comprovante_matricula"
           ? `/secretaria/documentos/${json.docId}/comprovante-matricula/print`
+          : tipo === "historico"
+          ? `/secretaria/documentos/${json.docId}/historico/print`
+          : tipo === "certificado"
+          ? `/secretaria/documentos/${json.docId}/certificado/print`
           : `/secretaria/documentos/${json.docId}/ficha/print`;
 
       const popup = window.open(destino, "_blank", "noopener,noreferrer");

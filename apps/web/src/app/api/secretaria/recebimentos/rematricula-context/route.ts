@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     const { data: intent } = await supabase
       .from("pagamento_intents")
-      .select("id, aluno_id, servico_pedido_id, status, meta")
+      .select("id, aluno_id, servico_pedido_id, status, amount, meta")
       .eq("id", pagamentoId)
       .eq("escola_id", escolaId)
       .maybeSingle();
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
     const { data: pedido } = await supabase
       .from("servico_pedidos")
-      .select("id, aluno_id, matricula_id, servico_codigo, contexto")
+      .select("id, aluno_id, matricula_id, servico_codigo, servico_nome, valor_cobrado, contexto")
       .eq("id", intent.servico_pedido_id)
       .eq("escola_id", escolaId)
       .maybeSingle();
@@ -70,6 +70,17 @@ export async function GET(request: Request) {
       preco: Number(item.preco ?? item.valor ?? 0),
       quantidade: Number(item.quantidade ?? 1),
     })).filter((item: { id: string; preco: number }) => item.id && item.preco > 0);
+    if (itensPagamento.length === 0 && Number(intent.amount ?? pedido.valor_cobrado ?? 0) > 0) {
+      itensPagamento.push({
+        id: intent.id,
+        tipo: "servico",
+        nome: pedido.servico_nome ?? "Taxa de rematrícula",
+        descricao: "Valor pago pelo portal do aluno; validar comprovativo antes de concluir a rematrícula.",
+        codigo: pedido.servico_codigo,
+        preco: Number(intent.amount ?? pedido.valor_cobrado ?? 0),
+        quantidade: 1,
+      });
+    }
     const targetScope = targetYear > 0
       ? await resolveAnoLetivoScope(supabase, escolaId, { ano: targetYear })
       : null;

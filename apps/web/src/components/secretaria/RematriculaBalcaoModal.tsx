@@ -687,6 +687,12 @@ function StepAcademico({
             direção para preparar a turma correspondente antes de continuar.
           </div>
         )}
+        {selectedTurmaId && turmas.find((turma) => turma.id === selectedTurmaId) && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+            <strong className="block">Destino seleccionado: {turmas.find((turma) => turma.id === selectedTurmaId)?.nome}</strong>
+            <span className="mt-1 block">Esta escolha fica em pré-visualização até clicar em “Concluir rematrícula”. Só então será gravada na matrícula do ano destino.</span>
+          </div>
+        )}
       </div>}
       </>}
     </div>
@@ -780,6 +786,9 @@ function StepFinanceiro({
       </div>
       <p className="text-xs text-slate-500">
         O valor acima foi resolvido para a turma destino. {service.pricing_origin === "classe" ? "Existe uma regra específica para esta classe." : "Não existe regra específica para esta classe; foi usado o valor de fallback."}
+      </p>
+      <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+        A turma destino e o valor desta operação só serão gravados quando a secretaria concluir o atendimento. Fechar o modal preserva o rascunho, mas não altera a matrícula.
       </p>
 
       {!paymentAlreadyValidated && itensDisponiveis.length > 0 && (
@@ -1099,7 +1108,7 @@ function SuccessView({
           Rematrícula concluída
         </h3>
         <p className="text-sm text-slate-500 mt-1">
-          O aluno foi rematriculado com sucesso.
+          A matrícula do ano destino foi criada ou actualizada com a turma seleccionada.
         </p>
       </div>
 

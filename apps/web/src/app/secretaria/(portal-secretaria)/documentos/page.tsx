@@ -1,5 +1,6 @@
 import AuditPageView from "@/components/audit/AuditPageView";
 import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
+import DocumentosAprovacoesQueue from "@/components/secretaria/DocumentosAprovacoesQueue";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -35,6 +36,7 @@ export default async function DocumentosPage() {
             { label: "Documentos" },
           ]}
         />
+        <DocumentosAprovacoesQueue />
         <DocumentosEmissaoHubClient escolaId={escolaId} />
       </div>
     </>

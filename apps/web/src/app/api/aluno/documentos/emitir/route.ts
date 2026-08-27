@@ -14,7 +14,7 @@ import { ptBR } from 'date-fns/locale'
 export const dynamic = 'force-dynamic'
 
 const RequestSchema = z.object({
-  type: z.enum(['boletim', 'declaracao']),
+  type: z.enum(['boletim', 'declaracao', 'cartao', 'ficha', 'historico', 'certificado']),
   studentId: z.string().uuid().optional(),
   serviceCode: z.string().trim().min(3).optional(),
 })
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
     // --- SEGURANÇA: Verificar se o aluno tem permissão (serviço pago/liberado) ---
     const resolvedServiceCode = serviceCode ?? (type === 'boletim' ? 'DOC_DECLARACAO_NOTAS' : 'DOC_DECLARACAO_FREQUENCIA');
-    const supportedServiceCodes = new Set(['DOC_DECLARACAO_NOTAS', 'DOC_DECLARACAO_FREQUENCIA', 'DOC_BOLETIM_TRIMESTRAL', 'DOC_COMPROVANTE_MATRICULA']);
+    const supportedServiceCodes = new Set(['DOC_DECLARACAO_NOTAS', 'DOC_DECLARACAO_FREQUENCIA', 'DOC_BOLETIM_TRIMESTRAL', 'DOC_COMPROVANTE_MATRICULA', 'DOC_CARTAO_ESTUDANTE', 'DOC_FICHA_INSCRICAO', 'DOC_HISTORICO_ESCOLAR', 'DOC_CERTIFICADO_HABILITACOES']);
     if (!supportedServiceCodes.has(resolvedServiceCode)) {
       return NextResponse.json({ ok: false, error: 'Este serviço foi aprovado, mas a emissão digital ainda precisa ser concluída pela secretaria.', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } }, { status: 409 });
     }
@@ -85,6 +85,59 @@ export async function POST(req: Request) {
         error: 'Acesso pendente. Confirme o pagamento do serviço para liberar o documento.',
         next_action: { type: 'pay_service', label: 'Abrir Secretaria Digital', href: '/aluno/documentos' }
       }, { status: 403 });
+    }
+
+    if (resolvedServiceCode === 'DOC_DECLARACAO_FREQUENCIA') {
+      const { data: frequencyDoc, error: frequencyError } = await (supabase as any).rpc('aluno_emitir_declaracao_frequencia', {
+        p_escola_id: escolaId,
+        p_aluno_id: alunoId,
+        p_matricula_id: matriculaId,
+      });
+      if (frequencyError || !(frequencyDoc as any)?.docId) {
+        console.error('Frequency document RPC error:', frequencyError);
+        return NextResponse.json({ ok: false, error: 'Não foi possível emitir a declaração de frequência.' }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true, url: `/aluno/documentos/${(frequencyDoc as any).docId}/frequencia/print`, reused: Boolean((frequencyDoc as any).reused) });
+    }
+    if (resolvedServiceCode === 'DOC_COMPROVANTE_MATRICULA') {
+      const { data: receiptDoc, error: receiptError } = await (supabase as any).rpc('aluno_emitir_comprovante_matricula', {
+        p_escola_id: escolaId,
+        p_aluno_id: alunoId,
+        p_matricula_id: matriculaId,
+      });
+      if (receiptError || !(receiptDoc as any)?.docId) {
+        console.error('Enrollment proof RPC error:', receiptError);
+        return NextResponse.json({ ok: false, error: 'Não foi possível emitir o comprovante de matrícula.' }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true, url: `/aluno/documentos/${(receiptDoc as any).docId}/comprovante-matricula/print`, reused: Boolean((receiptDoc as any).reused) });
+    }
+    if (resolvedServiceCode === 'DOC_CARTAO_ESTUDANTE' || resolvedServiceCode === 'DOC_FICHA_INSCRICAO') {
+      const { data: operationalDoc, error: operationalError } = await (supabase as any).rpc('aluno_emitir_documento_operacional', {
+        p_escola_id: escolaId,
+        p_aluno_id: alunoId,
+        p_matricula_id: matriculaId,
+        p_tipo_documento: resolvedServiceCode === 'DOC_CARTAO_ESTUDANTE' ? 'cartao_estudante' : 'ficha_inscricao',
+      });
+      if (operationalError || !(operationalDoc as any)?.docId) {
+        console.error('Operational document RPC error:', operationalError);
+        return NextResponse.json({ ok: false, error: 'Não foi possível emitir este documento.' }, { status: 500 });
+      }
+      const printType = resolvedServiceCode === 'DOC_CARTAO_ESTUDANTE' ? 'cartao' : 'ficha';
+      return NextResponse.json({ ok: true, url: `/aluno/documentos/${(operationalDoc as any).docId}/${printType}/print`, reused: Boolean((operationalDoc as any).reused) });
+    }
+    if (resolvedServiceCode === 'DOC_HISTORICO_ESCOLAR' || resolvedServiceCode === 'DOC_CERTIFICADO_HABILITACOES') {
+      const { data: finalDoc, error: finalError } = await (supabase as any).rpc('aluno_emitir_documento_final', {
+        p_escola_id: escolaId,
+        p_aluno_id: alunoId,
+        p_ano_letivo: Number(anoLetivo),
+        p_tipo_documento: resolvedServiceCode === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : 'certificado',
+      });
+      if (finalError || !(finalDoc as any)?.docId) {
+        const message = finalError?.message?.includes('LEGAL_LOCK') ? 'O histórico anual ainda não foi fechado pela escola.' : 'Não foi possível emitir o documento final.';
+        return NextResponse.json({ ok: false, error: message, next_action: { type: 'contact_secretaria', label: 'Falar com a secretaria', href: '/aluno/avisos' } }, { status: 409 });
+      }
+      const printType = resolvedServiceCode === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : 'certificado';
+      return NextResponse.json({ ok: true, url: `/aluno/documentos/${(finalDoc as any).docId}/${printType}/print`, reused: Boolean((finalDoc as any).reused) });
     }
     // ----------------------------------------------------------------------------
 
@@ -123,7 +176,7 @@ export async function POST(req: Request) {
       p_escola_id: escolaId,
       p_aluno_id: alunoId,
       p_ano_letivo: Number(anoLetivo),
-      p_tipo_documento: 'declaracao_notas',
+      p_tipo_documento: resolvedServiceCode === 'DOC_BOLETIM_TRIMESTRAL' ? 'boletim_trimestral' : 'declaracao_notas',
     })
 
     const docResult = docRes as { docId: string } | null

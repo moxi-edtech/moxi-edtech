@@ -28,6 +28,10 @@ const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_DECLARACAO_FREQUENCIA',
   'DOC_BOLETIM_TRIMESTRAL',
   'DOC_COMPROVANTE_MATRICULA',
+  'DOC_CARTAO_ESTUDANTE',
+  'DOC_FICHA_INSCRICAO',
+  'DOC_HISTORICO_ESCOLAR',
+  'DOC_CERTIFICADO_HABILITACOES',
 ]);
 
 export function TabDocumentos() {
@@ -41,6 +45,7 @@ export function TabDocumentos() {
   const [docs, setDocs] = useState<DocumentoCatalogo[]>([]);
   const [dadosPagamento, setDadosPagamento] = useState<any>(null);
   const [fetching, setFetching] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   
   // Modal state
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
@@ -48,15 +53,17 @@ export function TabDocumentos() {
   const visibleDocs = serviceCode ? docs.filter((doc) => doc.codigo === serviceCode) : docs;
 
   const fetchCatalogo = async () => {
+    setCatalogError(null);
+    setFetching(true);
     try {
       const res = await fetch(`/api/aluno/documentos/catalogo${query}`);
       const json = await res.json();
-      if (json.ok) {
-        setDocs(json.documentos);
-        setDadosPagamento(json.dados_pagamento);
-      }
+      if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar a Secretaria Digital.");
+      setDocs(json.documentos ?? []);
+      setDadosPagamento(json.dados_pagamento ?? null);
     } catch (err) {
       console.error("Failed to fetch catalog", err);
+      setCatalogError(err instanceof Error ? err.message : "Não foi possível carregar os serviços.");
     } finally {
       setFetching(false);
     }
@@ -96,6 +103,10 @@ export function TabDocumentos() {
       if (json.pagamento_id) {
         setSelectedDoc({ ...doc, pagamento_intent_id: json.pagamento_id });
         setShowDrawer(true);
+      } else if (json.status === 'granted') {
+        success("Documento gratuito disponível", "O documento foi emitido e já pode ser descarregado.");
+      } else if (json.status === 'blocked') {
+        success("Pedido gratuito enviado", "A secretaria precisa aprovar este documento antes da emissão.");
       } else {
         success("Solicitação enviada", json.message || "Seu pedido foi registrado com sucesso.");
       }
@@ -111,7 +122,7 @@ export function TabDocumentos() {
   const handleDownload = async (doc: DocumentoCatalogo) => {
     setLoading(doc.codigo);
     try {
-      const type = ['DOC_DECLARACAO_NOTAS', 'DOC_BOLETIM_TRIMESTRAL'].includes(doc.codigo) ? 'boletim' : 'declaracao';
+      const type = doc.codigo === 'DOC_CARTAO_ESTUDANTE' ? 'cartao' : doc.codigo === 'DOC_FICHA_INSCRICAO' ? 'ficha' : doc.codigo === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : doc.codigo === 'DOC_CERTIFICADO_HABILITACOES' ? 'certificado' : ['DOC_DECLARACAO_NOTAS', 'DOC_BOLETIM_TRIMESTRAL'].includes(doc.codigo) ? 'boletim' : 'declaracao';
       
       const res = await fetch(`/api/aluno/documentos/emitir${query}`, {
         method: 'POST',
@@ -150,6 +161,14 @@ export function TabDocumentos() {
           Solicita e descarrega documentos oficiais com acompanhamento de estado em tempo real.
         </p>
       </header>
+
+      {catalogError ? (
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900" role="alert">
+          <p className="font-black">Não foi possível carregar os serviços.</p>
+          <p className="mt-1 text-xs">{catalogError} Os seus pedidos anteriores não foram alterados.</p>
+          <button type="button" onClick={() => void fetchCatalogo()} className="mt-3 rounded-xl bg-rose-700 px-4 py-2 text-xs font-black text-white">Tentar novamente</button>
+        </div>
+      ) : null}
 
       {visibleDocs.length === 0 ? (
         <div className="p-10 text-center bg-white rounded-3xl border border-slate-100/80 shadow-sm space-y-3">
@@ -207,7 +226,7 @@ export function TabDocumentos() {
                       <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                     </div>
                   ) : (
-                    <ActionButton status={doc.status} codigo={doc.codigo} />
+                    <ActionButton status={doc.status} codigo={doc.codigo} gratuito={doc.valor <= 0} />
                   )}
                 </div>
               </div>
@@ -225,6 +244,12 @@ export function TabDocumentos() {
                   <AlertCircle size={15} className="shrink-0 mt-0.5" />
                   <span className="leading-relaxed"><b>Motivo da Secretaria:</b> {doc.reject_reason}</span>
                 </div>
+              )}
+              {doc.status !== 'available' && doc.status !== 'granted' && (
+                <p className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
+                  <strong className="text-slate-800">Próximo passo: </strong>
+                  {doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
+                </p>
               )}
             </AlunoCard>
           ))}
@@ -336,7 +361,7 @@ function StatusBadge({ status }: { status: DocumentoStatus }) {
     case 'blocked':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold text-blue-700 border border-blue-200/60">
-          <Clock size={11} /> Em Processamento
+          <Clock size={11} /> Aguardando aprovação
         </span>
       );
     case 'granted':
@@ -354,7 +379,7 @@ function StatusBadge({ status }: { status: DocumentoStatus }) {
   }
 }
 
-function ActionButton({ status, codigo }: { status: DocumentoStatus; codigo: string }) {
+function ActionButton({ status, codigo, gratuito }: { status: DocumentoStatus; codigo: string; gratuito: boolean }) {
   switch (status) {
     case 'granted':
       if (!DIGITAL_DOCUMENT_CODES.has(codigo)) {
@@ -396,7 +421,7 @@ function ActionButton({ status, codigo }: { status: DocumentoStatus; codigo: str
     default:
       return (
         <span className="inline-flex items-center gap-1 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95">
-          Solicitar <ChevronRight size={14} />
+          {gratuito ? "Solicitar grátis" : "Solicitar"} <ChevronRight size={14} />
         </span>
       );
   }

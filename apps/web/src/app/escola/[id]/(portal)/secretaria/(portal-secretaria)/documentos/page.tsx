@@ -2,6 +2,7 @@
 
 import AuditPageView from "@/components/audit/AuditPageView";
 import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
+import DocumentosAprovacoesQueue from "@/components/secretaria/DocumentosAprovacoesQueue";
 import { useEscolaId } from "@/hooks/useEscolaId";
 
 export default function DocumentosPage() {
@@ -31,6 +32,7 @@ export default function DocumentosPage() {
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="documentos" />
       <div className="p-4 md:p-6">
+        <DocumentosAprovacoesQueue />
         <DocumentosEmissaoHubClient escolaId={escolaId} />
       </div>
     </>

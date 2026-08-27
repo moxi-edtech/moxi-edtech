@@ -37,7 +37,7 @@ const FINAL_DOC_BACKEND_TYPE: Record<TipoDocumento, string> = {
   historico: "historico",
   certificado: "certificado",
   comprovante_matricula: "comprovante_matricula",
-  declaracao_notas: "boletim_trimestral",
+  declaracao_notas: "declaracao_notas",
   declaracao_frequencia: "declaracao_frequencia",
   cartao_estudante: "cartao_estudante",
   ficha_inscricao: "ficha_inscricao",
