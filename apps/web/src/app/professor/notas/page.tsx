@@ -164,6 +164,7 @@ function ProfessorNotasContent() {
   const [raaRisks, setRaaRisks] = useState<RaaRiskItem[]>([])
   const [raaViewerScope, setRaaViewerScope] = useState<RaaViewerScope | null>(null)
   const [loadingRaaRisks, setLoadingRaaRisks] = useState(false)
+  const [raaRisksLoaded, setRaaRisksLoaded] = useState(false)
   const [raaRisksError, setRaaRisksError] = useState<string | null>(null)
   const [raaRisksRetry, setRaaRisksRetry] = useState(0)
   const [reapreciacaoItem, setReapreciacaoItem] = useState<ReapreciacaoItem | null>(null)
@@ -446,6 +447,7 @@ function ProfessorNotasContent() {
     if (!turmaId || !disciplinaId || !anoLetivoId) {
       setRaaRisks([])
       setRaaViewerScope(null)
+      setRaaRisksLoaded(false)
       setRaaRisksError(null)
       setLoadingRaaRisks(false)
       return
@@ -453,6 +455,7 @@ function ProfessorNotasContent() {
     let active = true
     const load = async () => {
       setLoadingRaaRisks(true)
+      setRaaRisksLoaded(false)
       setRaaRisksError(null)
       try {
         const params = new URLSearchParams({ turma_id: turmaId, disciplina_id: disciplinaId, ano_letivo_id: anoLetivoId })
@@ -470,7 +473,10 @@ function ProfessorNotasContent() {
           setRaaRisksError(cause instanceof Error ? cause.message : "Não foi possível carregar os riscos RAA.")
         }
       } finally {
-        if (active) setLoadingRaaRisks(false)
+        if (active) {
+          setLoadingRaaRisks(false)
+          setRaaRisksLoaded(true)
+        }
       }
     }
     void load()
@@ -955,28 +961,39 @@ function ProfessorNotasContent() {
                     })()}
                   </div>
                 )}
-                {turmaId && disciplinaId && (loadingRaaRisks || raaRisks.length > 0 || raaRisksError) && (
+                {turmaId && disciplinaId && (loadingRaaRisks || raaRisksLoaded || raaRisksError) && (
                   <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 shadow-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-bold text-slate-900">Painel de risco RAA</p>
                         <p className="mt-1 text-xs text-slate-600">{raaViewerScope === "school_management" ? "Visão de acompanhamento da escola para esta turma e disciplina." : "Apenas alunos desta turma e disciplina atribuída ao professor que exigem atenção."}</p>
                       </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-klasse-gold-900">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-klasse-gold-900" aria-live="polite">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
                     </div>
                     {raaRisksError ? (
                       <div className="mt-3 rounded-lg border border-klasse-gold-200 bg-white p-3 text-sm text-slate-700">
                         <p>{raaRisksError}</p>
-                        <button type="button" onClick={() => setRaaRisksRetry((value) => value + 1)} className="mt-3 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white">Tentar novamente</button>
+                        <button type="button" onClick={() => setRaaRisksRetry((value) => value + 1)} className="mt-3 min-h-11 w-full rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white sm:w-auto">Tentar novamente</button>
                       </div>
-                    ) : !loadingRaaRisks && <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {raaRisks.map((item) => (
-                        <button key={item.matricula_id} type="button" onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="rounded-lg border border-klasse-gold-200 bg-white p-3 text-left transition hover:border-klasse-gold-400">
-                          <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold text-slate-900">{item.aluno_nome}</span><span className="text-[10px] font-black uppercase text-klasse-gold-800">{item.risco?.label}</span></div>
-                          <p className="mt-1 text-xs text-slate-600">{item.risco?.action}</p>
-                        </button>
-                      ))}
-                    </div>}
+                    ) : loadingRaaRisks ? (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="A carregar riscos RAA">
+                        {[1, 2].map((item) => <div key={item} className="h-20 animate-pulse rounded-lg bg-white/80" />)}
+                      </div>
+                    ) : raaRisks.length === 0 ? (
+                      <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                        <p className="font-bold">Nenhum aluno exige atenção nesta turma e disciplina.</p>
+                        <p className="mt-1 text-xs text-emerald-800">Continue a completar notas e frequência; o painel será atualizado quando os dados mudarem.</p>
+                      </div>
+                    ) : (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {raaRisks.map((item) => (
+                          <button key={item.matricula_id} type="button" aria-label={`Ver elegibilidade de ${item.aluno_nome}`} onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="min-h-20 rounded-lg border border-klasse-gold-200 bg-white p-3 text-left transition hover:border-klasse-gold-400 focus:outline-none focus:ring-2 focus:ring-klasse-gold-400 focus:ring-offset-1">
+                            <div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-bold text-slate-900">{item.aluno_nome}</span><span className="shrink-0 rounded-full bg-klasse-gold-50 px-2 py-1 text-[10px] font-black uppercase text-klasse-gold-800">{item.risco?.label ?? "Atenção"}</span></div>
+                            <div className="mt-2 flex items-end justify-between gap-2"><p className="text-xs leading-5 text-slate-600">{item.risco?.action ?? "Consultar elegibilidade e completar os dados."}</p><span className="shrink-0 text-[10px] font-black uppercase text-slate-400">Ver detalhe →</span></div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {turmaId && disciplinaId && (loadingExamSessions || examSessions.length > 0) && (
