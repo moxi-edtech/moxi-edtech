@@ -3,10 +3,15 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
+import { resolveProfessorAcademicContext } from '@/lib/professor/resolveProfessorAcademicContext'
 
 const Query = z.object({
   turma_id: z.string().uuid(),
 })
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 export async function GET(req: Request) {
   try {
@@ -34,15 +39,6 @@ export async function GET(req: Request) {
       escolaId: academicContext.escolaId, anoLetivoId: academicContext.anoLetivoId,
     })
 
-    const { data: professor } = await supabase
-      .from('professores')
-      .select('id')
-      .eq('profile_id', user.id)
-      .eq('escola_id', escolaId)
-      .maybeSingle()
-    const professorId = (professor as any)?.id as string | undefined
-    if (!professorId) return NextResponse.json({ ok: false, error: 'Professor não encontrado' }, { status: 403 })
-
     const { data: turma } = await supabase
       .from('turmas')
       .select('id, curso_id, classe_id, ano_letivo')
@@ -51,15 +47,13 @@ export async function GET(req: Request) {
       .maybeSingle()
     if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
 
-    const { data: tdp } = await supabase
-      .from('turma_disciplinas_professores')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('turma_id', turma.id)
-      .eq('professor_id', professorId)
-      .maybeSingle()
-
-    if (!tdp) {
+    const professorContext = await resolveProfessorAcademicContext({
+      supabase,
+      escolaId,
+      userId: user.id,
+      turmaId: turma.id,
+    })
+    if (!professorContext) {
       return NextResponse.json({ ok: false, error: 'Professor não atribuído à turma' }, { status: 403 })
     }
 

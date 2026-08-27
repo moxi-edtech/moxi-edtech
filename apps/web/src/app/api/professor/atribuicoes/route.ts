@@ -104,13 +104,48 @@ export async function GET(req: Request) {
           nome: row.disciplina_nome ?? null,
         },
       }))
+      const canonicalTurmaIds = Array.from(new Set(items.map((item) => item.turma.id)))
+      const { data: canonicalRows } = canonicalTurmaIds.length
+        ? await supabase
+            .from('turma_disciplinas')
+            .select('id, turma_id, curso_matriz_id, professor_id')
+            .eq('escola_id', escolaId)
+            .in('turma_id', canonicalTurmaIds)
+            .order('id', { ascending: true })
+        : { data: [] as Array<{ id: string; turma_id: string; curso_matriz_id: string; professor_id: string | null }> }
+      const canonicalMatrizIds = Array.from(new Set((canonicalRows ?? []).map((row: any) => row.curso_matriz_id).filter(Boolean)))
+      const { data: canonicalMatrizes } = canonicalMatrizIds.length
+        ? await supabase.from('curso_matriz').select('id, disciplina_id').eq('escola_id', escolaId).in('id', canonicalMatrizIds)
+        : { data: [] as Array<{ id: string; disciplina_id: string | null }> }
+      const matrizDisciplinaById = new Map((canonicalMatrizes ?? []).map((row: any) => [row.id, row.disciplina_id]))
+      const canonicalByKey = new Map<string, { id: string; curso_matriz_id: string }>()
+      for (const row of canonicalRows ?? []) {
+        const disciplinaId = matrizDisciplinaById.get(row.curso_matriz_id)
+        if (!disciplinaId) continue
+        const key = `${row.turma_id}:${disciplinaId}`
+        const current = canonicalByKey.get(key)
+        if (!current) {
+          canonicalByKey.set(key, { id: row.id, curso_matriz_id: row.curso_matriz_id })
+        }
+      }
+      for (const item of items) {
+        const canonical = canonicalByKey.get(`${item.turma.id}:${item.disciplina.id}`)
+        if (canonical) {
+          item.id = canonical.id
+          item.turma_disciplina_id = canonical.id
+          item.curso_matriz_id = canonical.curso_matriz_id
+        }
+      }
+      const uniqueItems = Array.from(
+        new Map(items.map((item) => [`${item.turma.id}:${item.disciplina.id}`, item])).values(),
+      )
 
       return NextResponse.json({
         ok: true,
         escola_id: escolaId,
         context: academicContext,
-        items,
-        ...(debug ? { debug: { rpc_items_count: items.length } } : {}),
+        items: uniqueItems,
+        ...(debug ? { debug: { rpc_items_count: items.length, unique_items_count: uniqueItems.length } } : {}),
       })
     }
 
@@ -287,7 +322,9 @@ export async function GET(req: Request) {
         ok: true,
         escola_id: escolaId,
         context: academicContext,
-        items: fallbackItems,
+        items: Array.from(
+          new Map(fallbackItems.map((item: any) => [`${item.turma.id}:${item.disciplina.id}`, item])).values(),
+        ),
         ...(debug
           ? {
               debug: {
@@ -314,7 +351,9 @@ export async function GET(req: Request) {
       ok: true,
       escola_id: escolaId,
       context: academicContext,
-      items,
+      items: Array.from(
+        new Map((items as any[]).map((item) => [`${item.turma.id}:${item.disciplina.id}`, item])).values(),
+      ),
       ...(debug
         ? {
             debug: {
