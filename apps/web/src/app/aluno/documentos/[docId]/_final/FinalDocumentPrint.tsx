@@ -1,4 +1,5 @@
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
+import { formatDocumentoIdentificacao } from "@/lib/documentos/identificacao";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { buildCertificadoSnapshot, type CertificadoSnapshot } from "@/lib/documentos/certificadoSnapshot";
 
@@ -29,7 +30,7 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
         <header className="space-y-2 border-b pb-5 text-center">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Documento oficial escolar</p>
           <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="text-sm text-slate-500">Nº {String(snapshot.numero_sequencial ?? "—")}</p>
+          <p className="text-sm text-slate-500">Código: {formatDocumentoIdentificacao(result.doc.tipo, snapshot.numero_sequencial)}</p>
         </header>
         <section className="grid gap-4 text-sm sm:grid-cols-2">
           <p><strong>Aluno:</strong> {String(snapshot.aluno_nome ?? "—")}</p>

@@ -36,8 +36,61 @@ export async function GET(request: Request) {
   const authz = await requireRoleInSchool({ supabase, escolaId, roles: [...roles] })
   if (authz.error) return authz.error
 
+  // O painel apresentado no portal do professor é limitado à atribuição
+  // pedagógica do professor. A autorização da escola, por si só, não basta:
+  // evita que um professor consulte outra turma alterando os IDs da URL.
+  const { data: membership } = await supabase
+    .from("escola_users")
+    .select("papel")
+    .eq("escola_id", escolaId)
+    .eq("user_id", auth.user.id)
+    .maybeSingle()
+
   const parsed = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams.entries()))
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Turma, disciplina ou ano letivo inválido." }, { status: 400 })
+
+  const viewerScope = membership?.papel === "professor" ? "professor_context" : "school_management"
+
+  if (membership?.papel === "professor") {
+    const { data: professor } = await supabase
+      .from("professores")
+      .select("id")
+      .eq("escola_id", escolaId)
+      .eq("profile_id", auth.user.id)
+      .maybeSingle()
+    if (!professor?.id) return NextResponse.json({ ok: false, error: "Professor não encontrado nesta escola." }, { status: 403 })
+
+    const [{ data: sharedAssignment }, { data: directAssignments }] = await Promise.all([
+      supabase
+        .from("turma_disciplinas_professores")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("turma_id", parsed.data.turma_id)
+        .eq("disciplina_id", parsed.data.disciplina_id)
+        .eq("professor_id", professor.id)
+        .limit(1),
+      supabase
+        .from("turma_disciplinas")
+        .select("id, curso_matriz_id")
+        .eq("escola_id", escolaId)
+        .eq("turma_id", parsed.data.turma_id)
+        .eq("professor_id", professor.id),
+    ])
+
+    const directMatrizIds = (directAssignments ?? []).map((item: any) => item.curso_matriz_id).filter(Boolean)
+    const { data: directMatrizes } = directMatrizIds.length
+      ? await supabase
+        .from("curso_matriz")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("disciplina_id", parsed.data.disciplina_id)
+        .in("id", directMatrizIds)
+      : { data: [] as Array<{ id: string }> }
+
+    if (!(sharedAssignment?.length || directMatrizes?.length)) {
+      return NextResponse.json({ ok: false, error: "Esta turma e disciplina não estão atribuídas ao professor." }, { status: 403 })
+    }
+  }
 
   const academicContext = await resolveAcademicYearContext(supabase, {
     userId: auth.user.id,
@@ -158,6 +211,7 @@ export async function GET(request: Request) {
   const riscos = items.filter((item) => item.risco)
   return NextResponse.json({
     ok: true,
+    viewer_scope: viewerScope,
     turma_id: parsed.data.turma_id,
     disciplina_id: parsed.data.disciplina_id,
     ano_letivo_id: academicContext.anoLetivoId,

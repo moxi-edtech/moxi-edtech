@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getPagamentosPendentes, validarPagamentoAction } from "@/features/financeiro/actions";
+import type { PagamentoPendenteRow } from "@/hooks/usePagamentosPendentes";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { ModalShell } from "@/components/ui/ModalShell";
 import { Loader2, CheckCircle, XCircle, ExternalLink, Clock, AlertCircle } from "lucide-react";
 
 interface FilaValidacaoPagamentosProps {
@@ -11,9 +13,10 @@ interface FilaValidacaoPagamentosProps {
 }
 
 export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosProps) {
-  const [pagamentos, setPagamentos] = useState<any[]>([]);
+  const [pagamentos, setPagamentos] = useState<PagamentoPendenteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [approvalTarget, setApprovalTarget] = useState<PagamentoPendenteRow | null>(null);
   
   const { success, error, warning } = useToast();
   const confirm = useConfirm();
@@ -21,7 +24,34 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
   const loadPagamentos = async () => {
     setLoading(true);
     const data = await getPagamentosPendentes(escolaId);
-    setPagamentos(data);
+    const normalized = data.map((row) => {
+      // A Server Action ainda expõe a view gerada antes dos campos operacionais.
+      // Normalizamos a fronteira para o modelo usado pelo modal e pela fila.
+      const source = row as unknown as Partial<PagamentoPendenteRow>;
+      return {
+        ...source,
+        pagamento_id: source.pagamento_id ?? "",
+        escola_id: source.escola_id ?? escolaId,
+        mensalidade_id: source.mensalidade_id ?? "",
+        aluno_id: source.aluno_id ?? "",
+        aluno_nome: source.aluno_nome ?? "Aluno sem nome",
+        turma_codigo: source.turma_codigo ?? null,
+        valor_esperado: Number(source.valor_esperado ?? 0),
+        valor_enviado: Number(source.valor_enviado ?? 0),
+        comprovante_url: source.comprovante_url ?? null,
+        mensagem_aluno: source.mensagem_aluno ?? null,
+        reference: source.reference ?? null,
+        metodo: source.metodo ?? null,
+        tipo_entidade: source.tipo_entidade === "servico" ? "servico" : "mensalidade",
+        servico_codigo: source.servico_codigo ?? null,
+        servico_nome: source.servico_nome ?? null,
+        created_at: source.created_at ?? new Date(0).toISOString(),
+        estado_operacional: source.estado_operacional ?? "sem_comprovativo",
+        idade_horas: Number(source.idade_horas ?? 0),
+        prioridade: source.prioridade ?? "normal",
+      } satisfies PagamentoPendenteRow;
+    });
+    setPagamentos(normalized);
     setLoading(false);
   };
 
@@ -29,15 +59,14 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
     loadPagamentos();
   }, [escolaId]);
 
-  const handleApprove = async (pagamento: any) => {
-    const ok = await confirm({
-      title: "Validar Pagamento",
-      message: `Confirma que o valor de ${new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(pagamento.valor_enviado)} entrou na conta da escola?`,
-      confirmLabel: "Sim, Validar",
-    });
+  const handleApprove = async (pagamento: PagamentoPendenteRow) => {
+    setApprovalTarget(pagamento);
+  };
 
-    if (!ok) return;
-
+  const confirmApprove = async () => {
+    const pagamento = approvalTarget;
+    if (!pagamento) return;
+    setApprovalTarget(null);
     setProcessingId(pagamento.pagamento_id);
     const res = await validarPagamentoAction(pagamento.pagamento_id, true);
     
@@ -53,7 +82,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
     setProcessingId(null);
   };
 
-  const handleReject = async (pagamento: any) => {
+  const handleReject = async (pagamento: PagamentoPendenteRow) => {
     const motivo = await confirm({
       title: "Rejeitar Comprovativo",
       message: "Por favor, indique o motivo da rejeição. Esta informação será partilhada com o aluno.",
@@ -257,6 +286,87 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
           </div>
         </div>
       )}
+
+      <RecebimentoApprovalModal
+        pagamento={approvalTarget}
+        onClose={() => setApprovalTarget(null)}
+        onConfirm={() => void confirmApprove()}
+        processing={Boolean(approvalTarget && processingId === approvalTarget.pagamento_id)}
+      />
     </div>
   );
+}
+
+function RecebimentoApprovalModal({
+  pagamento,
+  onClose,
+  onConfirm,
+  processing,
+}: {
+  pagamento: PagamentoPendenteRow | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  processing: boolean;
+}) {
+  if (!pagamento) return null;
+  const isServico = pagamento.tipo_entidade === "servico";
+  const isRematricula = isServico && pagamento.servico_codigo === "SERV_REMATRICULA";
+  const isLote = !isServico && Number(pagamento.quantidade_itens || 1) > 1;
+  const isGratuito = Number(pagamento.valor_esperado || 0) === 0 && Number(pagamento.valor_enviado || 0) === 0;
+  const label = isRematricula
+    ? "Validar e rever rematrícula"
+    : isGratuito
+      ? "Aprovar pedido gratuito"
+      : isServico
+        ? "Aprovar e liberar serviço"
+        : isLote
+          ? "Confirmar mensalidades"
+          : "Confirmar pagamento";
+  const consequence = isRematricula
+    ? "O comprovativo será confirmado. Depois, reveja a turma destino antes de concluir a rematrícula."
+    : isGratuito
+      ? "O pedido será aprovado sem cobrança e ficará registado para rastreabilidade."
+      : isServico
+        ? "O serviço solicitado será liberado no portal do aluno."
+        : isLote
+          ? `${pagamento.quantidade_itens} mensalidades serão liquidadas nesta decisão.`
+          : "O recebimento será liquidado e o estado do aluno será atualizado.";
+
+  return (
+    <ModalShell open title="Revisar recebimento" description="Confirme o contexto antes de concluir a validação." onClose={onClose} footer={
+      <div className="flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={onClose} disabled={processing} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50">Cancelar</button>
+        <button type="button" onClick={onConfirm} disabled={processing} className="rounded-lg bg-klasse-green-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{processing ? "A processar..." : label}</button>
+      </div>
+    }>
+      <div className="space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aluno</p>
+          <p className="mt-1 font-bold text-slate-900">{pagamento.aluno_nome}</p>
+          <p className="mt-1 text-xs text-slate-600">Turma: {pagamento.turma_codigo || "Não indicada"}</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ContextDetail label="Tipo" value={isRematricula ? "Rematrícula" : isGratuito ? "Pedido gratuito" : isLote ? "Lote de mensalidades" : isServico ? pagamento.servico_nome || "Serviço escolar" : "Mensalidade"} />
+          <ContextDetail label="Código do pedido KLASSE" value={pagamento.reference || "Não informado"} />
+          <ContextDetail label="Valor esperado" value={formatKwanza(pagamento.valor_esperado)} />
+          <ContextDetail label="Valor enviado" value={formatKwanza(pagamento.valor_enviado)} />
+          <ContextDetail label="Método" value={pagamento.metodo || "Não informado"} />
+          {isServico ? <ContextDetail label="Código" value={pagamento.servico_codigo || "Não informado"} /> : null}
+          {isLote ? <ContextDetail label="Itens" value={`${pagamento.quantidade_itens} mensalidades`} /> : null}
+        </div>
+        {pagamento.mensagem_aluno ? <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"><p className="font-bold">Mensagem do aluno</p><p className="mt-1">{pagamento.mensagem_aluno}</p></div> : null}
+        <p className="text-xs text-slate-500">Confira no comprovativo a referência da operação bancária. Ela não é extraída automaticamente deste documento.</p>
+        <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-sm text-klasse-gold-900"><p className="font-bold">Depois da aprovação</p><p className="mt-1">{consequence}</p></div>
+        {!pagamento.comprovante_url && !isGratuito ? <p className="text-sm text-rose-700">Não há comprovativo anexado. Revise antes de aprovar.</p> : null}
+      </div>
+    </ModalShell>
+  );
+}
+
+function formatKwanza(value: unknown) {
+  return new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function ContextDetail({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 break-words text-sm font-bold text-slate-800">{value}</p></div>;
 }

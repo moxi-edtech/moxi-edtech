@@ -1,6 +1,6 @@
 # REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
-- Verificado em: `2026-08-04T22:22:09.820Z`
+- Verificado em: `2026-08-23T15:11:16.224Z`
 
 ## 1. SUMÁRIO EXECUTIVO
 
@@ -33,7 +33,11 @@
   - `plan_crm_execution_backlog.md` — match: /audit_logs|auditLog|create_audit/i
   - `plan_crm_execution_status.md` — match: /audit_logs|auditLog|create_audit/i
   - `temp_supabase_output.ts` — match: /audit_logs|auditLog|create_audit/i
+  - `docs/LEVANTAMENTO_ESTADO_ARQUITETURA_PUBLIC_SECTOR_READINESS_V0_1.md` — match: /audit_logs|auditLog|create_audit/i
+  - `docs/P0_CHECKLIST_REABERTURA_NOTAS.md` — match: /audit_logs|auditLog|create_audit/i
   - `docs/PLANO_EXECUCAO_UX_FINANCEIRO_SECRETARIA.md` — match: /audit_logs|auditLog|create_audit/i
+  - `docs/SPRINT_EXECUTIVO_KLASSE_PUBLIC_SECTOR_READINESS_V0_1.md` — match: /audit_logs|auditLog|create_audit/i
+  - `docs/STATUS_BACKLOG_REMATRICULA_BALCAO_2026-08-07.md` — match: /audit_logs|auditLog|create_audit/i
   - `docs/inventario-portal-admin-escola-2026-04-03.md` — match: /audit_logs|auditLog|create_audit/i
   - `scripts/README.md` — match: /audit_logs|auditLog|create_audit/i
   - `types/database.ts` — match: /audit_logs|auditLog|create_audit/i
@@ -46,10 +50,6 @@
   - `supabase/migrations/20260127140000_create_confirmar_conciliacao_transacao_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260202002000_sync_lancamentos_registrar_pagamento.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260202003000_set_created_by_on_paid_lancamentos.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000000_rpc_setup_active_ano_letivo.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000002_rpc_upsert_bulk_periodos_letivos.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000003_add_audit_to_curriculo_publish.sql` — match: /audit_logs|auditLog|create_audit/i
 - Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
@@ -71,13 +71,13 @@
 - Status: **VALIDATED**
 - Evidências:
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+MATERIALIZED\s+VIEW\s+\"?internal\"?\.\"?mv_pagamentos_status\"?/i
+  - `supabase/migrations/20260809110000_financeiro_reconciliacao_e_read_models_ano.sql` — match: /CREATE\s+MATERIALIZED\s+VIEW\s+\"?internal\"?\.\"?mv_pagamentos_status\"?/i
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_pagamentos_status/i
+  - `supabase/migrations/20260809110000_financeiro_reconciliacao_e_read_models_ano.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_pagamentos_status/i
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
   - `supabase/migrations/20260202010300_fix_pagamentos_status_refresh.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
   - `supabase/migrations/20260804220000_restore_required_mv_refresh_crons.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
   - `supabase/migrations/20270718120000_restore_required_mv_cron_jobs.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
-  - `supabase/migrations/20270718132000_harden_internal_mv_refresh_grants.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
-  - `supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.(?:vw_)?pagamentos_status/i
 - Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
 
 ### P0_3_MV_DASHBOARDS — P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW

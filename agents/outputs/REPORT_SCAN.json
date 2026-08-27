@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-04T22:22:09.820Z",
+  "timestamp": "2026-08-23T15:11:16.224Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
@@ -77,7 +77,23 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
+          "file": "docs/LEVANTAMENTO_ESTADO_ARQUITETURA_PUBLIC_SECTOR_READINESS_V0_1.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "docs/P0_CHECKLIST_REABERTURA_NOTAS.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
           "file": "docs/PLANO_EXECUCAO_UX_FINANCEIRO_SECRETARIA.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "docs/SPRINT_EXECUTIVO_KLASSE_PUBLIC_SECTOR_READINESS_V0_1.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "docs/STATUS_BACKLOG_REMATRICULA_BALCAO_2026-08-07.md",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
@@ -126,22 +142,6 @@
         },
         {
           "file": "supabase/migrations/20260202002000_sync_lancamentos_registrar_pagamento.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260202003000_set_created_by_on_paid_lancamentos.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000000_rpc_setup_active_ano_letivo.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000002_rpc_upsert_bulk_periodos_letivos.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000003_add_audit_to_curriculo_publish.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         }
       ],
@@ -199,7 +199,15 @@
           "note": "match: /CREATE\\s+MATERIALIZED\\s+VIEW\\s+\\\"?internal\\\"?\\.\\\"?mv_pagamentos_status\\\"?/i"
         },
         {
+          "file": "supabase/migrations/20260809110000_financeiro_reconciliacao_e_read_models_ano.sql",
+          "note": "match: /CREATE\\s+MATERIALIZED\\s+VIEW\\s+\\\"?internal\\\"?\\.\\\"?mv_pagamentos_status\\\"?/i"
+        },
+        {
           "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /CREATE\\s+UNIQUE\\s+INDEX\\s+.*ux_mv_pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260809110000_financeiro_reconciliacao_e_read_models_ano.sql",
           "note": "match: /CREATE\\s+UNIQUE\\s+INDEX\\s+.*ux_mv_pagamentos_status/i"
         },
         {
@@ -217,14 +225,6 @@
         {
           "file": "supabase/migrations/20270718120000_restore_required_mv_cron_jobs.sql",
           "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
-        },
-        {
-          "file": "supabase/migrations/20270718132000_harden_internal_mv_refresh_grants.sql",
-          "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
-        },
-        {
-          "file": "supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql",
-          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.(?:vw_)?pagamentos_status/i"
         }
       ],
       "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper."

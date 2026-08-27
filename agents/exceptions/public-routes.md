@@ -16,3 +16,12 @@ Controles aplicados:
 - O pedido fica com `status = pendente`, sem provisionar escola.
 - A origem é marcada em `financeiro.onboarding_source = public_form`.
 - Dados comerciais mínimos são gravados como rascunho para alinhamento com o CRM.
+
+## EXC-SEC-001-B — `/api/webhooks/proxypay`
+
+regra:       SEC-001
+ficheiro:    apps/web/src/app/api/webhooks/proxypay/route.ts
+motivo:      Callback público da ProxyPay; autenticação é feita por HMAC X-Signature antes de persistir o evento.
+aprovado_por: Codex
+data:        2026-08-26
+expira_em:   permanente

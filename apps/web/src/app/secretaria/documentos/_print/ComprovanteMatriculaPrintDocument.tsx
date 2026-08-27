@@ -4,6 +4,7 @@ import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocum
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
+import { formatDocumentoIdentificacao } from "@/lib/documentos/identificacao";
 
 export async function ComprovanteMatriculaPrintDocument({
   docId,
@@ -29,6 +30,7 @@ export async function ComprovanteMatriculaPrintDocument({
   );
   const hash = typeof snapshot.hash_validacao === "string" ? snapshot.hash_validacao : "";
   const numero = typeof snapshot.numero_sequencial === "number" ? snapshot.numero_sequencial : null;
+  const codigoDocumento = formatDocumentoIdentificacao(doc.tipo, numero);
   const isRematricula = snapshot.tipo_operacao === "rematricula";
   const urlValidacao = hash ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${doc.public_id}?hash=${hash}` : null;
 
@@ -80,7 +82,7 @@ export async function ComprovanteMatriculaPrintDocument({
             </h1>
             <div className="flex justify-center gap-4 text-[10px] text-slate-500 font-sans">
               <p>Emitido em: {new Date(String(doc.created_at)).toLocaleString("pt-PT")}</p>
-              {numero ? <p>Nº de Série: {String(numero).padStart(6, "0")}</p> : null}
+              {numero ? <p>Código: {codigoDocumento}</p> : null}
             </div>
           </header>
 

@@ -15,58 +15,10 @@ const periodoSchema = z.object({
   data_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
   data_fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   trava_notas_em: z.string().datetime().optional().nullable(),
+  peso: z.number().int().min(0).max(100).optional().nullable(),
 });
 
 const upsertBulkSchema = z.array(periodoSchema);
-
-type PeriodoInput = z.infer<typeof periodoSchema>;
-
-const parseIsoDate = (value: string): Date | null => {
-  const [y, m, d] = value.split('-').map(Number);
-  if (!y || !m || !d) return null;
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const formatIsoDate = (date: Date) => date.toISOString().slice(0, 10);
-
-const addDaysUtc = (date: Date, days: number) => {
-  const copy = new Date(date.getTime());
-  copy.setUTCDate(copy.getUTCDate() + days);
-  return copy;
-};
-
-const normalizePeriodosByAnoRange = (
-  periodos: PeriodoInput[],
-  anoDataInicio: string,
-  anoDataFim: string
-): PeriodoInput[] => {
-  const startDate = parseIsoDate(anoDataInicio);
-  const endDate = parseIsoDate(anoDataFim);
-  if (!startDate || !endDate || endDate < startDate || periodos.length === 0) return periodos;
-
-  const sorted = [...periodos].sort((a, b) => a.numero - b.numero);
-  const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
-  const parts = sorted.length;
-  const baseSize = Math.floor(totalDays / parts);
-  let remainder = totalDays % parts;
-
-  let cursor = startDate;
-  return sorted.map((periodo) => {
-    const segmentSize = baseSize + (remainder > 0 ? 1 : 0);
-    remainder = Math.max(0, remainder - 1);
-
-    const segmentStart = cursor;
-    const segmentEnd = addDaysUtc(segmentStart, Math.max(0, segmentSize - 1));
-    cursor = addDaysUtc(segmentEnd, 1);
-
-    return {
-      ...periodo,
-      data_inicio: formatIsoDate(segmentStart),
-      data_fim: formatIsoDate(segmentEnd),
-    };
-  });
-};
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -87,7 +39,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { data: hasRole, error: rolesError } = await (supabase as any)
       .rpc('user_has_role_in_school', {
         p_escola_id: userEscolaId,
-        p_roles: ['admin_escola', 'secretaria', 'admin', 'staff_admin', 'admin_financeiro'],
+        p_roles: ['admin_escola', 'admin_secretaria', 'secretaria', 'admin', 'staff_admin', 'admin_financeiro', 'diretor'],
       });
 
     if (rolesError) {
@@ -109,38 +61,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const academicContext = await resolveAcademicYearContext(supabase, {
       userId: user.id,
       requestedAcademicYearId: parseResult.data[0]?.ano_letivo_id,
-      operation: 'WRITE',
+      // Um ano planeado precisa poder ser configurado antes de ser ativado.
+      operation: 'READ',
     });
+    if (academicContext.status === 'CLOSED') {
+      return NextResponse.json({ ok: false, error: 'O ano letivo encerrado não pode ter os períodos alterados.', code: 'ACADEMIC_YEAR_CLOSED' }, { status: 409 });
+    }
 
     const firstAnoLetivoId = parseResult.data[0]?.ano_letivo_id;
     const mixedAnoLetivoIds = parseResult.data.some((item) => item.ano_letivo_id !== firstAnoLetivoId);
     if (mixedAnoLetivoIds) {
       return NextResponse.json({ ok: false, error: 'Todos os períodos devem pertencer ao mesmo ano letivo.' }, { status: 400 });
     }
-    let normalizedPayload: PeriodoInput[] = parseResult.data;
-
-    if (firstAnoLetivoId) {
-      const { data: anoRows, error: anoError } = await (supabase as any)
-        .from('anos_letivos')
-        .select('id, data_inicio, data_fim')
-        .eq('escola_id', userEscolaId)
-        .eq('id', firstAnoLetivoId)
-        .limit(1);
-
-      if (anoError) {
-        console.error('Error fetching ano_letivo range:', anoError);
-        return NextResponse.json({ ok: false, error: 'Erro ao carregar intervalo do ano letivo.' }, { status: 500 });
-      }
-
-      const ano = Array.isArray(anoRows) ? anoRows[0] : null;
-      if (ano?.data_inicio && ano?.data_fim) {
-        normalizedPayload = normalizePeriodosByAnoRange(parseResult.data, ano.data_inicio, ano.data_fim);
-      }
-    }
-
     const { data, error } = await (supabase as any).rpc('upsert_bulk_periodos_letivos', {
       p_escola_id: userEscolaId,
-      p_periodos_data: normalizedPayload,
+      p_periodos_data: parseResult.data,
     });
 
     if (error) {

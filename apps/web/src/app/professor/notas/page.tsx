@@ -81,6 +81,8 @@ type RaaRiskItem = {
   risco: { codigo: string; label: string; action: string } | null
 }
 
+type RaaViewerScope = "professor_context" | "school_management"
+
 type ReapreciacaoItem = {
   id: string
   protocolo_publico: string
@@ -160,6 +162,7 @@ function ProfessorNotasContent() {
   const [raaResult, setRaaResult] = useState<RaaEligibilityResponse | null>(null)
   const [loadingRaa, setLoadingRaa] = useState(false)
   const [raaRisks, setRaaRisks] = useState<RaaRiskItem[]>([])
+  const [raaViewerScope, setRaaViewerScope] = useState<RaaViewerScope | null>(null)
   const [loadingRaaRisks, setLoadingRaaRisks] = useState(false)
   const [raaRisksError, setRaaRisksError] = useState<string | null>(null)
   const [raaRisksRetry, setRaaRisksRetry] = useState(0)
@@ -442,6 +445,7 @@ function ProfessorNotasContent() {
   useEffect(() => {
     if (!turmaId || !disciplinaId || !anoLetivoId) {
       setRaaRisks([])
+      setRaaViewerScope(null)
       setRaaRisksError(null)
       setLoadingRaaRisks(false)
       return
@@ -455,12 +459,15 @@ function ProfessorNotasContent() {
         const response = await fetch(`/api/academico/raa/riscos?${params.toString()}`, { cache: "no-store" })
         const payload = await response.json().catch(() => null)
         if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível carregar os riscos RAA.")
-        if (active) setRaaRisks(Array.isArray(payload.items) ? payload.items as RaaRiskItem[] : [])
+        if (active) {
+          setRaaViewerScope(payload.viewer_scope === "school_management" ? "school_management" : "professor_context")
+          setRaaRisks(Array.isArray(payload.items) ? payload.items as RaaRiskItem[] : [])
+        }
       } catch (cause) {
         if (active) {
           setRaaRisks([])
+          setRaaViewerScope(null)
           setRaaRisksError(cause instanceof Error ? cause.message : "Não foi possível carregar os riscos RAA.")
-          toastError("Não foi possível carregar o painel RAA", cause instanceof Error ? cause.message : "Tente novamente.")
         }
       } finally {
         if (active) setLoadingRaaRisks(false)
@@ -468,7 +475,7 @@ function ProfessorNotasContent() {
     }
     void load()
     return () => { active = false }
-  }, [turmaId, disciplinaId, anoLetivoId, raaRisksRetry, toastError])
+  }, [turmaId, disciplinaId, anoLetivoId, raaRisksRetry])
 
   useEffect(() => {
     if (!turmaId) {
@@ -953,7 +960,7 @@ function ProfessorNotasContent() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-bold text-slate-900">Painel de risco RAA</p>
-                        <p className="mt-1 text-xs text-slate-600">Alunos desta turma e disciplina que exigem atenção, sem sair do contexto atual.</p>
+                        <p className="mt-1 text-xs text-slate-600">{raaViewerScope === "school_management" ? "Visão de acompanhamento da escola para esta turma e disciplina." : "Apenas alunos desta turma e disciplina atribuída ao professor que exigem atenção."}</p>
                       </div>
                       <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-klasse-gold-900">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
                     </div>

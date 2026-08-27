@@ -25,7 +25,7 @@ export async function GET(
 
     const { data: hasRole, error: roleError } = await supabase.rpc('user_has_role_in_school', {
       p_escola_id: userEscolaId,
-      p_roles: [...K12_ADMIN_SECRETARIA_ROLE_GROUP],
+      p_roles: [...K12_ADMIN_SECRETARIA_ROLE_GROUP, 'diretor'],
     });
     if (roleError) {
       return NextResponse.json({ ok: false, error: "Erro ao verificar permissões" }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { requireRoleInSchool } from '@/lib/authz';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Acesso negado.' }, { status: 403 });
     }
+    const authz = await requireRoleInSchool({
+      supabase: supabase as any,
+      escolaId: userEscolaId,
+      roles: ['admin', 'admin_escola', 'staff_admin', 'admin_secretaria', 'admin_financeiro', 'diretor', 'secretaria'],
+    });
+    if (authz.error) return authz.error;
 
     const body = await req.json();
     const { templateId } = body;
@@ -42,7 +49,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const items = (template as any).items || [];
 
     // 2. Obter ou Criar o Ano Letivo Base do Template
-    let { data: anoLetivo, error: anoError } = await supabase
+    const { data: anoLetivo } = await supabase
       .from('anos_letivos')
       .select('id, ano, data_inicio, data_fim, ativo')
       .eq('escola_id', userEscolaId)

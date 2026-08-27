@@ -20,6 +20,7 @@ type DispatchParams = {
     alunoNome?: string | null;
     anoLetivo?: number | null;
     actionUrl?: string | null;
+    aulaId?: string | null;
     turmaNome?: string | null;
     disciplinaNome?: string | null;
     professorNome?: string | null;
@@ -33,11 +34,13 @@ type DispatchParams = {
 const SECRETARIA_ROLES = [...K12_SECRETARIA_ROLE_GROUP];
 const AULA_REALTIME_ROLES = [
   "secretaria",
+  "secretaria_financeiro",
   "admin_escola",
   "admin_secretaria",
   "admin_financeiro",
   "admin",
   "staff_admin",
+  "diretor",
 ];
 const AULA_KEYS = new Set<SecretariaNotificacaoKey>(["AULA_INICIADA", "AULA_FINALIZADA", "AULA_NAO_CONFIRMADA"]);
 
@@ -91,13 +94,19 @@ export async function dispatchSecretariaNotificacao({
 
   let recipientsToNotify = recipientList;
 
-  if (payload.agrupamento_chave) {
+  // Cada aula é uma ocorrência independente. O agrupamento por tipo continua
+  // útil para outras notificações, mas não pode esconder duas aulas distintas.
+  const agrupamentoChave = payload.agrupamento_chave && params.aulaId
+    ? `${payload.agrupamento_chave}:${params.aulaId}`
+    : payload.agrupamento_chave;
+
+  if (agrupamentoChave) {
     const since = new Date(Date.now() - agrupamentoTTLHoras * 60 * 60 * 1000).toISOString();
     const { data: existing } = await client
       .from("notificacoes")
       .select("destinatario_id")
       .eq("escola_id", escolaId)
-      .eq("agrupamento_chave", payload.agrupamento_chave)
+      .eq("agrupamento_chave", agrupamentoChave)
       .eq("arquivada", false)
       .gte("created_at", since)
       .in(
@@ -124,7 +133,7 @@ export async function dispatchSecretariaNotificacao({
         key,
         gatilho: payload.gatilho,
         tipo: payload.tipo,
-        agrupamento_chave: payload.agrupamento_chave,
+        agrupamento_chave: agrupamentoChave,
         ...params,
       },
       actor_id: actorId,
@@ -151,7 +160,7 @@ export async function dispatchSecretariaNotificacao({
     gatilho: payload.gatilho,
     tipo: payload.tipo,
     modal_id: payload.modal_id ?? null,
-    agrupamento_chave: payload.agrupamento_chave ?? null,
+    agrupamento_chave: agrupamentoChave ?? null,
   }));
 
   const { error: insertError } = await client.from("notificacoes").insert(inserts);
