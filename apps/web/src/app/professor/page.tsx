@@ -40,6 +40,29 @@ type OverviewInfo = {
   primeiro_nome: string | null;
 };
 
+const SCHOOL_TIMEZONE = "Africa/Luanda";
+
+function getSchoolNow(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SCHOOL_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const date = `${values.year}-${values.month}-${values.day}`;
+  const day = new Date(`${date}T12:00:00Z`).getUTCDay() || 7;
+  return {
+    date,
+    day,
+    minutes: Number(values.hour) * 60 + Number(values.minute),
+  };
+}
+
 const dayLabel = (day: number) => {
   switch (day) {
     case 1:
@@ -92,8 +115,7 @@ export default function Page() {
         setLoading(true);
         setLoadError(null);
         setPendenciasResumo(null);
-        const today = new Date();
-        const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const todayIso = getSchoolNow().date;
         const [atribsRes, agendaRes, aulasRes, pendRes, overviewRes] = await Promise.all([
           fetch("/api/professor/atribuicoes", { cache: "no-store" }),
           fetch("/api/professor/agenda", { cache: "no-store" }),
@@ -145,8 +167,7 @@ export default function Page() {
 
   useEffect(() => {
     const timer = window.setInterval(async () => {
-      const now = new Date();
-      const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const todayIso = getSchoolNow().date;
       const response = await fetch(`/api/professor/aulas?from=${todayIso}`, { cache: "no-store" }).catch(() => null);
       const payload = response ? await response.json().catch(() => null) : null;
       if (!payload?.ok) return;
@@ -163,8 +184,7 @@ export default function Page() {
     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
     setStartingKey(key);
     try {
-      const date = new Date();
-      const data = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const data = getSchoolNow().date;
       const response = await fetch("/api/professor/aulas/iniciar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turma_id: item.turma_id, disciplina_id: item.disciplina_id, data, slot_id: item.slot_id ?? undefined, inicio_previsto: item.inicio, fim_previsto: item.fim }) });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível confirmar a aula.");
@@ -188,7 +208,13 @@ export default function Page() {
       setAgenda((current) => current.map((candidate) => candidate.aula_id === item.aula_id ? { ...candidate, status: "finalizada" } : candidate));
       setFinalizingKey(null);
       setFinalizeSummary("");
-      success("Aula finalizada", "O relatório foi enviado para a secretaria.");
+      const attendancePending = payload.report?.attendance_status !== "started";
+      success(
+        "Aula finalizada",
+        attendancePending
+          ? "O relatório foi enviado. A chamada ainda está pendente de lançamento."
+          : "O relatório foi enviado e já existem registos de chamada para a escola consultar.",
+      );
     } catch (cause) {
       toastError("Não foi possível finalizar", cause instanceof Error ? cause.message : "Tente novamente.");
     } finally {
@@ -224,9 +250,8 @@ export default function Page() {
   }, [agenda]);
 
   const todayKey = useMemo(() => {
-    const day = new Date().getDay();
-    return day === 0 ? 7 : day;
-  }, []);
+    return getSchoolNow(new Date(nowTick)).day;
+  }, [nowTick]);
 
   const aulasHoje = useMemo(() => {
     return agenda.filter((item) => item.dia_semana === todayKey).length;
@@ -236,8 +261,7 @@ export default function Page() {
     const aulasHojeList = agendaByDay.get(todayKey) || [];
     if (aulasHojeList.length === 0) return null;
     
-    const now = new Date(nowTick);
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const nowMinutes = getSchoolNow(new Date(nowTick)).minutes;
 
     for (const item of aulasHojeList) {
       if (!item.inicio || !item.fim) continue;
