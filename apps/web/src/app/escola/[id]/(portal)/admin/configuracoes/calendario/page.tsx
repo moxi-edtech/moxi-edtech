@@ -37,6 +37,17 @@ type EventoCalendario = {
   cor_hex?: string | null;
 };
 
+type CalendarioTemplate = {
+  id: string;
+  nome: string;
+  ano_base: number;
+  descricao: string | null;
+  subsistema?: string | null;
+  fonte_nome?: string | null;
+  fonte_referencia?: string | null;
+  versao_documento?: string | null;
+};
+
 type Props = {
   params: Promise<{ id: string }>;
 };
@@ -64,6 +75,7 @@ export default function CalendarioConfigPage({ params }: Props) {
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);
   const [anoLetivo, setAnoLetivo] = useState<{ id: string; ano: number; ativo: boolean; data_inicio: string; data_fim: string } | null>(null);
   const [anosDisponiveis, setAnosDisponiveis] = useState<Array<{ id: string; ano: number; ativo: boolean }>>([]);
+  const [templatesOficiais, setTemplatesOficiais] = useState<CalendarioTemplate[]>([]);
   const [selectedAnoId, setSelectedAnoId] = useState<string | null>(null);
   
   // Modal State
@@ -80,9 +92,10 @@ export default function CalendarioConfigPage({ params }: Props) {
     if (!escolaUuid) return;
     setLoading(true);
     try {
-      const [json, anosRes] = await Promise.all([
+      const [json, anosRes, templatesRes] = await Promise.all([
         fetchPeriodosLetivos(escolaParam, targetAnoId || selectedAnoId || undefined),
-        supabase.from('anos_letivos').select('id, ano, ativo, data_inicio, data_fim').eq('escola_id', escolaUuid).order('ano', { ascending: false })
+        supabase.from('anos_letivos').select('id, ano, ativo, data_inicio, data_fim').eq('escola_id', escolaUuid).order('ano', { ascending: false }),
+        (supabase as any).from('calendario_templates').select('id, nome, ano_base, descricao, subsistema, fonte_nome, fonte_referencia, versao_documento').eq('is_oficial', true).order('ano_base', { ascending: false }).order('nome', { ascending: true }),
       ]);
 
       if (!json.error && Array.isArray(json?.periodos)) {
@@ -101,6 +114,7 @@ export default function CalendarioConfigPage({ params }: Props) {
       }
 
       if (anosRes.data) setAnosDisponiveis(anosRes.data as any);
+      if (!templatesRes.error) setTemplatesOficiais((templatesRes.data ?? []) as CalendarioTemplate[]);
 
     } catch (e) {
       console.error(e);
@@ -117,6 +131,34 @@ export default function CalendarioConfigPage({ params }: Props) {
   const handleAnoChange = (id: string) => {
     setSelectedAnoId(id);
     loadData(id);
+  };
+
+  const handleApplyOfficialTemplate = async (template: CalendarioTemplate) => {
+    const ok = await confirm({
+      title: "Aplicar calendário oficial",
+      message: `Aplicar ${template.nome}? O calendário do decreto será usado como base para o ano ${template.ano_base}. Ajustes posteriores devem ser justificados pela escola.`,
+      confirmLabel: "Aplicar calendário",
+    });
+    if (!ok) return;
+    setSaving(true);
+    const tid = toast({ variant: "syncing", title: "A aplicar calendário oficial...", duration: 0 });
+    try {
+      const response = await fetch(`/api/escola/${escolaParam}/admin/calendario/aplicar-template`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível aplicar o calendário oficial.");
+      success("Calendário oficial aplicado", `${template.nome} foi aplicado ao ano letivo.`);
+      setSelectedAnoId(payload.anoLetivoId);
+      await loadData(payload.anoLetivoId);
+    } catch (cause) {
+      error(cause instanceof Error ? cause.message : "Não foi possível aplicar o calendário oficial.");
+    } finally {
+      dismiss(tid);
+      setSaving(false);
+    }
   };
 
   // --- HANDLERS ---
@@ -200,30 +242,20 @@ export default function CalendarioConfigPage({ params }: Props) {
     setSaving(true);
     const tid = toast({ variant: "syncing", title: "A guardar alterações...", duration: 0 });
     try {
-      // 1. Salvar datas macro do Ano Letivo
-      if (anoLetivo && escolaUuid) {
-        const { error: anoErr } = await supabase
-          .from('anos_letivos')
-          .update({ 
-            data_inicio: anoLetivo.data_inicio, 
-            data_fim: anoLetivo.data_fim 
-          })
-          .eq('id', anoLetivo.id);
-        if (anoErr) throw anoErr;
-      }
-
-      // 2. Salvar Trimestres
-      const payload = periodos.map((periodo) => ({
-        ...periodo,
-        ano_letivo_id: periodo.ano_letivo_id || anoLetivo?.id || "",
-      }));
-
-      const res = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos/upsert-bulk`, {
+      if (!anoLetivo) throw new Error("Selecione um ano letivo antes de guardar.");
+      const res = await fetch(`/api/escola/${escolaParam}/admin/calendario/ajustes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ano_letivo_id: anoLetivo.id,
+          data_inicio: anoLetivo.data_inicio,
+          data_fim: anoLetivo.data_fim,
+          periodos: periodos.map((periodo) => ({ ...periodo, ano_letivo_id: periodo.ano_letivo_id || anoLetivo.id })),
+          motivo: "Ajuste manual no calendário escolar",
+        }),
       });
-      if (!res.ok) throw new Error("Erro ao salvar trimestres");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "Erro ao salvar o calendário");
       
       success("Configurações guardadas.");
       await loadData(selectedAnoId || undefined);
@@ -445,6 +477,30 @@ export default function CalendarioConfigPage({ params }: Props) {
               </button>
           </div>
         </div>
+
+        {templatesOficiais.length > 0 && (
+          <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-black text-blue-950"><CheckCircle2 className="h-4 w-4" /> Fonte oficial: calendário do MED/decreto</p>
+                <p className="mt-1 text-xs text-blue-800">Aplique o modelo correspondente ao subsistema. Alterações manuais devem ser tratadas como exceção da escola.</p>
+              </div>
+              <select
+                className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-blue-900"
+                defaultValue=""
+                onChange={(event) => {
+                  const template = templatesOficiais.find((item) => item.id === event.target.value);
+                  event.target.value = "";
+                  if (template) void handleApplyOfficialTemplate(template);
+                }}
+                disabled={saving}
+              >
+                <option value="">Aplicar modelo oficial...</option>
+                {templatesOficiais.map((template) => <option key={template.id} value={template.id}>{template.nome}</option>)}
+              </select>
+            </div>
+          </section>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-20"><RefreshCw className="h-8 w-8 animate-spin text-slate-300" /></div>
