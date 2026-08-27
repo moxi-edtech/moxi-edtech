@@ -6,7 +6,6 @@ type EbookVariant = 'matriculas' | 'futuro'
 
 const ebookConfig = {
   matriculas: {
-    downloadPath: '/assets/klasse-ebook-planeamento-matriculas-2026-2027.pdf',
     coverPath: '/assets/ebook-matriculas-capa.png',
     title: <>Prepare a sua escola<br /><em>para as matrículas.</em></>,
     alt: 'Capa do e-book Prepare a sua escola para as matrículas',
@@ -22,7 +21,6 @@ const ebookConfig = {
     nextLabel: 'Ver o guia sobre o futuro da educação',
   },
   futuro: {
-    downloadPath: '/assets/klasse-ebook-futuro-da-educacao-em-angola-v11.pdf',
     coverPath: '/assets/ebook-futuro-educacao-capa-v12.png',
     title: <>O futuro da educação<br /><em>começa na escola.</em></>,
     alt: 'Capa do e-book O futuro da educação em Angola',
@@ -41,7 +39,6 @@ const ebookConfig = {
 
 export default function EbookCapture({ variant = 'matriculas' }: { variant?: EbookVariant }) {
   const config = ebookConfig[variant]
-  const downloadPath = config.downloadPath
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
 
@@ -123,7 +120,7 @@ export default function EbookCapture({ variant = 'matriculas' }: { variant?: Ebo
         </div>
 
         <aside className="ebook-form-card" aria-labelledby="form-title">
-          <div className="ebook-form-topline"><span /> DOWNLOAD GRATUITO</div>
+          <div className="ebook-form-topline"><span /> ENVIO NO WHATSAPP</div>
           <h2 id="form-title">{config.formTitle}</h2>
           <p className="ebook-form-intro">{config.formIntro}</p>
 
