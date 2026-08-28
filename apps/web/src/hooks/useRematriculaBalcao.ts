@@ -411,8 +411,13 @@ export function useRematriculaBalcao(opts: {
   useEffect(() => {
     if (!modalOpen) return;
     if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
-      setSelectedTurmaId(destinoTurmaId);
-      return;
+      if (destinoTurmaId) {
+        setSelectedTurmaId(destinoTurmaId);
+        return;
+      }
+      // Pagamento validado sem turma destino ainda precisa de progressão.
+      // Carregar as opções aqui evita deixar o modal sem escolha e o pedido
+      // concedido sem matrícula no novo ano.
     }
     setSelectedTurmaId(null);
     void fetchTurmas(decisaoResultado);

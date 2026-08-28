@@ -243,7 +243,11 @@ export async function GET(request: Request) {
       .eq("codigo", "SERV_REMATRICULA")
       .maybeSingle();
 
-    const targetTurmaId = destino_turma_id ?? matriculaDestino?.turma_id ?? reclassificacao?.destino_turma_id ?? matriculaOrigem?.turma_id ?? null;
+    // A matrícula de origem nunca é uma turma de destino. Usá-la como
+    // fallback fazia o estado do balcão apresentar a turma/classe antiga
+    // como se já fosse a progressão concluída, sobretudo após o pagamento
+    // ser validado antes da escolha da turma.
+    const targetTurmaId = destino_turma_id ?? matriculaDestino?.turma_id ?? reclassificacao?.destino_turma_id ?? null;
     const { data: targetTurma } = targetTurmaId
       ? await supabase.from("turmas").select("id, nome, turma_code, turno, curso_id, classe_id, classes(nome)").eq("escola_id", escolaId).eq("id", targetTurmaId).maybeSingle()
       : { data: null };
@@ -341,9 +345,16 @@ export async function GET(request: Request) {
     let status = "READY";
     const pedidoTemMatriculaDestino = Boolean(pedidoExistente?.contexto?.matricula_destino_id);
     const comprovantePendente = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino && !comprovanteData;
+    // Pagamento concedido sem matrícula destino é uma operação interrompida:
+    // não pode voltar a READY nem desaparecer da operação da secretaria.
+    // Mantê-la na fila de reconciliação permite escolher a turma e completar
+    // a progressão sem cobrar novamente.
+    const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino && !comprovanteData;
     const pedidoConcluido = pedidoExistente?.status === "granted" && (pedidoTemMatriculaDestino || Boolean(comprovanteData));
     if (comprovantePendente) {
       status = "DOCUMENT_PENDING";
+    } else if (pagamentoSemProgressao) {
+      status = "RECONCILIATION_REQUIRED";
     } else if (pedidoConcluido) {
       status = "ALREADY_COMPLETED";
     } else if (pedidoExistente?.status === "pending_payment") {
