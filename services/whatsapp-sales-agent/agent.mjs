@@ -261,6 +261,11 @@ function latestInbound(messages) {
     .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
 }
 
+function latestOutbound(messages) {
+  return messages.filter((message) => message.fromMe && textOf(message))
+    .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
+}
+
 async function generateDecision(chat, messages, followUp, context = {}) {
   const waitMs = lastAiRequestAt + aiMinIntervalMs - now();
   if (waitMs > 0) await sleep(waitMs);
