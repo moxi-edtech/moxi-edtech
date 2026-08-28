@@ -1,60 +1,33 @@
 # Aprovação necessária — Agent 3
-run_id:    1E55913B-0D0B-4AAF-82E8-2203535A27CE
-timestamp: 2026-08-03T00:00:00-03:00
+run_id:    1C1C9512-AF72-4693-8132-27CBAEC04CDA
+timestamp: 2026-08-28T00:00:00-03:00
 
 ## Acção proposta
+Actualizar exclusivamente mensalidades de 2026 da 4.ª classe da escola Curtume que ainda estejam pendentes e tenham valor previsto de 2.000 Kz, para 2.500 Kz. Não alterar pagamentos liquidados, mensalidades com outro valor, outras classes ou outras escolas.
 
-Criar migrations idempotentes para concluir o wizard K12:
-
-1. alinhar `cutover_ano_letivo_v3` aos perfis já autorizados pela aplicação (`admin`, `admin_escola`, `staff_admin`, `admin_financeiro`, `diretor`, `super_admin`);
-2. criar `aplicar_virada_importacao(uuid)` para aplicar, numa única transacção, somente linhas aprovadas, tenant-scoped e ainda não aplicadas;
-3. inserir os templates oficiais MED 2026/2027 de Pré-escolar, Técnico-profissional e Secundário Pedagógico sem alterar o template Regular/Adultos existente.
+Escopo validado: 175 mensalidades, 16 alunos, diferença total de 87.500 Kz.
 
 ## Diff
-
-```diff
-+++ supabase/migrations/20270803130000_complete_k12_rollover.sql
-+ CREATE OR REPLACE FUNCTION public.cutover_ano_letivo_v3(...)
-+ -- mantém o corpo actual e substitui apenas a lista autorizada por:
-+ ARRAY['admin','admin_escola','staff_admin','admin_financeiro','diretor','super_admin']::text[]
-+
-+ CREATE OR REPLACE FUNCTION public.aplicar_virada_importacao(p_importacao_id uuid)
-+ RETURNS jsonb
-+ LANGUAGE plpgsql
-+ SECURITY DEFINER
-+ SET search_path = public, pg_temp;
-+ -- bloqueia o lote FOR UPDATE, valida tenant/perfil/status,
-+ -- rejeita linhas sem matrícula e usa ON CONFLICT para idempotência;
-+ -- marca linhas como APLICADA e o lote como APLICADO na mesma transacção.
-+
-+ REVOKE ALL ON FUNCTION public.aplicar_virada_importacao(uuid) FROM PUBLIC, anon;
-+ GRANT EXECUTE ON FUNCTION public.aplicar_virada_importacao(uuid) TO authenticated;
-+++ supabase/migrations/20270803131000_seed_calendarios_k12_2026_2027.sql
-+ INSERT INTO public.calendario_templates (...) VALUES
-+   (..., 'MED 2026/2027 — Pré-escolar', 2026, 'PRE_ESCOLAR', ...),
-+   (..., 'MED 2026/2027 — Técnico-profissional', 2026, 'TECNICO_PROFISSIONAL', ...),
-+   (..., 'MED 2026/2027 — Secundário pedagógico', 2026, 'SECUNDARIO_PEDAGOGICO', ...)
-+ ON CONFLICT (...) DO UPDATE ...;
-+ INSERT INTO public.calendario_template_items (...)
-+ -- períodos e eventos próprios de cada grelha oficial, com upsert idempotente.
+```sql
+UPDATE public.mensalidades AS me
+SET valor = 2500,
+    valor_previsto = 2500,
+    updated_at = now()
+FROM public.matriculas AS m
+JOIN public.turmas AS t ON t.id = m.turma_id
+WHERE me.matricula_id = m.id
+  AND m.escola_id = '3744879f-2e19-4671-8995-78604302d8c5'
+  AND m.ano_letivo = 2026
+  AND t.classe_id = '36c23920-64e9-4a32-98b6-2c9bccbe5c9a'
+  AND me.status IN ('pendente', 'em_aberto', 'aberta', 'vencida')
+  AND COALESCE(me.valor_previsto, me.valor) = 2000;
 ```
 
 ## Risco
-
-Uma autorização SQL incorrecta pode permitir uma virada indevida; uma resolução ambígua de avaliação pode lançar notas na avaliação errada; datas de subsistemas não devem ser inferidas do calendário Regular.
-
-## Proteções obrigatórias no diff final
-
-- Nenhuma nota numérica será aplicada por nome ambíguo: exigirá `avaliacao_id` validado contra escola, matrícula, turma e ano.
-- `resultado_final = PENDENTE` será bloqueante.
-- O lote inteiro fará rollback se uma linha falhar.
-- Templates serão seleccionados explicitamente pela escola e criados inactivos.
-- O SQL será validado numa transacção antes de qualquer aplicação remota.
+Altera obrigações financeiras pendentes e aumenta o saldo devido em 87.500 Kz. A operação é reversível apenas com uma actualização compensatória baseada nos IDs afectados.
 
 ## Como aprovar
-
-Commit com mensagem: `APPROVE: 1E55913B-0D0B-4AAF-82E8-2203535A27CE`
+Commit com mensagem: `APPROVE: 1C1C9512-AF72-4693-8132-27CBAEC04CDA`
 
 ## Como rejeitar
-
-Commit com mensagem: `REJECT: 1E55913B-0D0B-4AAF-82E8-2203535A27CE [motivo]`
+Commit com mensagem: `REJECT: 1C1C9512-AF72-4693-8132-27CBAEC04CDA [motivo]`
