@@ -35,7 +35,7 @@ const businessTimeZone = "Africa/Luanda";
 // Horário operacional só pode vir da configuração da VPS.
 const businessHours = (process.env.BUSINESS_HOURS || "").trim();
 const callWindows = (process.env.CALL_WINDOWS || "10h–12h, 13h–14h, 14h–15h, 16h–17h").trim();
-const managedLabelIds = new Set(["4", "7", "10", "11"]);
+const managedLabelIds = new Set(["4", "7", "10", "11", "13", "14"]);
 const unsupportedInstitutionPattern = /\bcentro\s+de\s+forma(?:ç|c)(?:a|ã)o|forma(?:ç|c)(?:a|ã)o\s+profissional|instituto\s+de\s+forma(?:ç|c)(?:a|ã)o\b/i;
 const disinterestPattern = /\b(?:não|nao)\s+(?:tenho|temos|tem|queremos?)\s+interesse|(?:não|nao)\s+precisamos?|remov(?:a|er)|parem|parar|cancelar|não contactar|nao contactar|sem interesse/i;
 const maleHandoffChatId = (process.env.HANDOFF_MALE_CHAT_ID || "").trim();
@@ -336,7 +336,7 @@ async function updateLeadLabels(chatId, messages, decision) {
   const intent = String(decision.intent || "").toLowerCase();
   const stage = String(decision.stage || "").toLowerCase();
   const stageLabel = decision.handoff || /ligar|chamada|contact/.test(stage + " " + intent) ? "4" : /reun|agend|demonstr|hor[aá]rio/.test(stage + " " + intent) ? "11" : "7";
-  const labels = [{ id: stageLabel }];
+  const labels = [{ id: stageLabel }, { id: decision.handoff ? "13" : "14" }];
   if (studentCount >= 400) labels.push({ id: "10" });
   await waha("/api/" + encodeURIComponent(session) + "/labels/chats/" + encodeURIComponent(chatId), {
     method: "PUT",
@@ -598,13 +598,13 @@ async function processChat(chat, options = {}) {
     if (/\b(?:tipo|alunos|localiza(?:ção|cao)|cargo|nome)\b/i.test(decision.reply)) entry.qualificationAttempts = Number(entry.qualificationAttempts || 0) + 1;
     entry.callProposed = /ligação para saber mais detalhes/i.test(decision.reply);
   }
-  try { await updateLeadLabels(chatId, messages, decision); }
-  catch (error) { console.error("[LABEL_ERROR] " + mask(chatId) + " " + error.message); }
   if (entry.handoff && !entry.handoffNotified) {
     try { entry.handoffNotified = await notifyHandoff(chat, messages, decision); }
     catch (error) { console.error("[HANDOFF_ERROR] " + mask(chatId) + " " + error.message); }
     if (!entry.handoffNotified) throw new Error("Handoff não confirmado; a mensagem ficará pendente para nova tentativa.");
   }
+  try { await updateLeadLabels(chatId, messages, decision); }
+  catch (error) { console.error("[LABEL_ERROR] " + mask(chatId) + " " + error.message); }
   if (!decision.reply && !entry.handoff) entry.noActionForInboundId = lastInbound.id;
   entry.lastInboundId = lastInbound.id;
   state[stateKey] = entry;
