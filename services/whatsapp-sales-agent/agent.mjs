@@ -131,6 +131,33 @@ function qualificationDataProvided(messages) {
     || /\b(?:director|diretor|secret[aá]ri[oa]|professor|professora|gestor|respons[aá]vel)\b/i.test(text);
 }
 
+function classifyObjection(messages) {
+  const text = messages.map(textOf).join(" ").toLowerCase();
+  if (/pre[cç]o|caro|investimento|or[cç]amento|mensalidade|valor/.test(text)) return "price";
+  if (/dire[cç][aã]o|decisor|autoriza[cç][aã]o|respons[aá]vel|aprova[cç][aã]o/.test(text)) return "authority";
+  if (/pr[oó]ximo ano|mais tarde|agora n[aã]o|sem urg[eê]ncia|depois/.test(text)) return "timing";
+  if (/internet|conex[aã]o|rede|offline/.test(text)) return "internet";
+  if (/migr[aç][aã]o|trocar|sistema atual|software atual|concorrente/.test(text)) return "migration";
+  if (/confian[cç]a|receio|medo|risco|seguran[cç]a/.test(text)) return "trust";
+  if (/implementar|implementa[cç][aã]o|treinamento|forma[cç][aã]o|suporte/.test(text)) return "implementation";
+  return null;
+}
+
+function commercialContext(entry, decision, messages, labels) {
+  const previous = entry.commercialContext || {};
+  return {
+    institution: decision?.institution || previous.institution || null,
+    location: decision?.location || previous.location || null,
+    role: decision?.role || previous.role || null,
+    studentCount: decision?.studentCount ?? previous.studentCount ?? null,
+    stage: decision?.stage || previous.stage || null,
+    objection: classifyObjection(messages) || previous.objection || null,
+    nextAction: followUpStageKey(labels, decision) || previous.nextAction || null,
+    lastIntent: decision?.intent || previous.lastIntent || null,
+    lastUpdatedAt: new Date().toISOString(),
+  };
+}
+
 function normalizeSalesLanguage(reply) {
   let normalized = String(reply || "")
     .replace(/apresenta(?:ção|cao)|demonstra(?:ção|cao)|\bdemo\b/gi, "ligação para saber mais detalhes");
@@ -442,6 +469,8 @@ async function generateDecision(chat, messages, followUp, context = {}) {
     "Número deste follow-up: " + (Number(context.followUpNumber || 0) + 1),
     followUpInstruction(Number(context.followUpNumber || 0)),
     "Labels atuais do contacto: " + labelContext(context.labels),
+    "Contexto comercial persistido: " + JSON.stringify(context.commercialContext || {}),
+    "Use o contexto persistido como memória operacional, mas corrija-o se a conversa mais recente trouxer informação nova ou contraditória.",
     "As labels são contexto operacional obrigatório. Se houver uma label indicando falta de estrutura, não ofereça demonstração, reunião ou follow-up comercial; não contradiga essa decisão da equipa.",
     "Se houver label de reunião/demonstração e o lead não tiver respondido, trate isto como follow-up pendente: não finja que o lead confirmou ou respondeu; faça referência ao próximo passo pendente.",
     "Conversa:", conversationText(messages),
@@ -583,6 +612,7 @@ async function processChat(chat, options = {}) {
   if (deferredInbound) entry.deferredInboundId = null;
   const decision = await generateDecision(chat, messages, false, { ...entry, labels });
   entry.updatedAt = now();
+  entry.commercialContext = commercialContext(entry, decision, messages, labels);
   entry.followUps = 0;
   entry.followUpStageKey = null;
   entry.nextFollowUpAt = null;
@@ -648,6 +678,7 @@ async function processFollowUp(chat) {
   const replyChatId = replyTarget(chatId, lastInbound);
   const followUpNumber = entry.followUps;
   const decision = await generateDecision(chat, messages, true, { ...entry, labels, followUpNumber });
+  entry.commercialContext = commercialContext(entry, decision, messages, labels);
   entry.nextFollowUpAt = null;
   if (decision.reply) {
     decision.reply = normalizeSalesLanguage(decision.reply);
