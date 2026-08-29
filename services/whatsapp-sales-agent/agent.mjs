@@ -29,6 +29,7 @@ const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const queueEnabled = Boolean(supabaseUrl && supabaseServiceKey && String(process.env.SUPABASE_AGENT_QUEUE_ENABLED || "true").toLowerCase() !== "false");
 const queueBatchSize = Math.min(50, Math.max(1, Number(process.env.SUPABASE_AGENT_QUEUE_BATCH_SIZE || 20)));
 const workerId = (process.env.SUPABASE_AGENT_WORKER_ID || crypto.randomUUID()).trim();
+const reconciliationIntervalMs = Math.max(60000, Number(process.env.SUPABASE_AGENT_RECONCILIATION_INTERVAL_MS || 300000));
 const businessTimeZone = "Africa/Luanda";
 // Horário operacional só pode vir da configuração da VPS.
 const businessHours = (process.env.BUSINESS_HOURS || "").trim();
@@ -44,6 +45,7 @@ const knowledge = await fs.readFile(new URL("./knowledge.md", import.meta.url), 
 
 let state = {};
 let lastAiRequestAt = 0;
+let lastReconciliationAt = 0;
 try { state = JSON.parse(await fs.readFile(stateFile, "utf8")); } catch { state = {}; }
 const bootstrap = String(process.env.BOOTSTRAP_STATE || "true").toLowerCase() !== "false";
 
@@ -553,6 +555,19 @@ async function tick() {
         const nextStatus = Number(event.attempts || 1) >= 8 ? "dead_letter" : "failed";
         await updateInboxEvent(event.id, { status: nextStatus, available_at: new Date(Date.now() + retryDelay).toISOString(), locked_at: null, locked_by: null, last_error: message.slice(0, 1000), updated_at: new Date().toISOString() }).catch((updateError) => console.error("[QUEUE_UPDATE_ERROR] " + updateError.message));
         console.error("[QUEUE_EVENT_ERROR] " + mask(chat.id) + " " + message);
+      }
+    }
+    if (now() - lastReconciliationAt >= reconciliationIntervalMs) {
+      lastReconciliationAt = now();
+      const chats = (await getChats()).sort((a, b) => Number(b.lastMessage?.timestamp || 0) - Number(a.lastMessage?.timestamp || 0));
+      console.log("[RECONCILIATION] chats=" + chats.length);
+      let reconciled = 0;
+      for (const chat of chats) {
+        try {
+          if (await processChat(chat)) reconciled += 1;
+          await processFollowUp(chat);
+          if (reconciled >= maxNewChatsPerTick) break;
+        } catch (error) { console.error("[RECONCILIATION_ERROR] " + mask(chat.id) + " " + error.message); }
       }
     }
     return;
