@@ -261,6 +261,30 @@ async function getMessages(chatId) {
   return Array.isArray(result) ? result : result.data || result.messages || [];
 }
 
+async function getChatLabels(chatId) {
+  try {
+    const result = await waha("/api/" + encodeURIComponent(session) + "/labels/chats/" + encodeURIComponent(chatId));
+    return Array.isArray(result) ? result : result.labels || [];
+  } catch (error) {
+    console.error("[LABELS_READ_ERROR] " + mask(chatId) + " " + (error instanceof Error ? error.message : String(error)));
+    return [];
+  }
+}
+
+function labelContext(labels) {
+  return (Array.isArray(labels) ? labels : [])
+    .map((label) => String(label?.name || label?.id || "").trim())
+    .filter(Boolean)
+    .join(", ") || "nenhuma label atribuída";
+}
+
+function hasInsufficientStructureLabel(labels) {
+  return (Array.isArray(labels) ? labels : []).some((label) => {
+    const name = String(label?.name || "").toLowerCase();
+    return String(label?.id) === "9" || /(?:não|nao) tem estrutura|sem estrutura|estrutura inadequada/.test(name);
+  });
+}
+
 async function setPresence(chatId, presence) {
   if (dryRun) return;
   await waha("/api/" + encodeURIComponent(session) + "/presence", {
@@ -377,6 +401,9 @@ async function generateDecision(chat, messages, followUp, context = {}) {
     "Nome do contacto: " + (chat.name || "não informado"),
     "É follow-up: " + (followUp ? "sim" : "não"),
     "Perguntas anteriores sobre dados de qualificação: " + Number(context.qualificationAttempts || 0),
+    "Labels atuais do contacto: " + labelContext(context.labels),
+    "As labels são contexto operacional obrigatório. Se houver uma label indicando falta de estrutura, não ofereça demonstração, reunião ou follow-up comercial; não contradiga essa decisão da equipa.",
+    "Se houver label de reunião/demonstração e o lead não tiver respondido, trate isto como follow-up pendente: não finja que o lead confirmou ou respondeu; faça referência ao próximo passo pendente.",
     "Conversa:", conversationText(messages),
   ].join("\n\n");
 
@@ -434,6 +461,11 @@ async function processChat(chat, options = {}) {
   }
   if (!options.gateAlreadyChecked && !(await humanGate(chatId))) return false;
   const messages = await getMessages(chatId);
+  const labels = await getChatLabels(chatId);
+  if (hasInsufficientStructureLabel(labels)) {
+    console.log("[SKIP_INSUFFICIENT_STRUCTURE] " + mask(chatId));
+    return false;
+  }
   const lastInbound = latestInbound(messages);
   if (!lastInbound || !lastInbound.id) return false;
   // Trabalhar numa cópia impede que uma falha de envio contamine o estado em memória.
@@ -494,7 +526,7 @@ async function processChat(chat, options = {}) {
     return false;
   }
   if (deferredInbound) entry.deferredInboundId = null;
-  const decision = await generateDecision(chat, messages, false, entry);
+  const decision = await generateDecision(chat, messages, false, { ...entry, labels });
   entry.updatedAt = now();
   entry.followUps = 0;
   entry.handoff = Boolean(decision.handoff);
@@ -533,8 +565,14 @@ async function processFollowUp(chat) {
     entry.nextFollowUpAt = null;
     return;
   }
+  const labels = await getChatLabels(chatId);
+  if (hasInsufficientStructureLabel(labels)) {
+    entry.nextFollowUpAt = null;
+    console.log("[SKIP_FOLLOW_UP_INSUFFICIENT_STRUCTURE] " + mask(chatId));
+    return;
+  }
   const replyChatId = replyTarget(chatId, lastInbound);
-  const decision = await generateDecision(chat, messages, true);
+  const decision = await generateDecision(chat, messages, true, { ...entry, labels });
   entry.followUps += 1;
   entry.nextFollowUpAt = null;
   if (decision.reply) {
