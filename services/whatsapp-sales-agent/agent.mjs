@@ -37,6 +37,7 @@ const businessHours = (process.env.BUSINESS_HOURS || "").trim();
 const callWindows = (process.env.CALL_WINDOWS || "10h–12h, 13h–14h, 14h–15h, 16h–17h").trim();
 const managedLabelIds = new Set(["4", "7", "10", "11"]);
 const unsupportedInstitutionPattern = /\bcentro\s+de\s+forma(?:ç|c)(?:a|ã)o|forma(?:ç|c)(?:a|ã)o\s+profissional|instituto\s+de\s+forma(?:ç|c)(?:a|ã)o\b/i;
+const disinterestPattern = /\b(?:não|nao)\s+(?:tenho|temos|tem|queremos?)\s+interesse|(?:não|nao)\s+precisamos?|remov(?:a|er)|parem|parar|cancelar|não contactar|nao contactar|sem interesse/i;
 const maleHandoffChatId = (process.env.HANDOFF_MALE_CHAT_ID || "").trim();
 const femaleHandoffChatId = (process.env.HANDOFF_FEMALE_CHAT_ID || "").trim();
 const testChatIds = new Set(String(process.env.TEST_CHAT_IDS || "").split(",").map((id) => id.trim()).filter(Boolean));
@@ -276,6 +277,16 @@ function hasInsufficientStructureLabel(labels) {
   });
 }
 
+function followUpStageKey(labels, decision = null) {
+  const values = (Array.isArray(labels) ? labels : []).map((label) => (String(label?.id || "") + " " + String(label?.name || "")).toLowerCase());
+  if (values.some((value) => /(?:^|\s)8\s|demonstra|apresenta/.test(value))) return "demonstracao";
+  if (values.some((value) => /(?:^|\s)11\s|reuni[aã]o|dia da reuni/.test(value))) return "reuniao";
+  if (values.some((value) => /(?:^|\s)4\s|por ligar|liga[cç][aã]o/.test(value))) return "ligacao";
+  const reply = String(decision?.reply || "").toLowerCase();
+  if (/liga[cç][aã]o para saber mais detalhes|marcar|pr[oó]ximo passo/.test(reply)) return "ligacao";
+  return null;
+}
+
 async function resolveCanonicalChatId(chatId) {
   const value = String(chatId || "").trim();
   if (!value.endsWith("@lid")) return value;
@@ -487,6 +498,15 @@ async function processChat(chat, options = {}) {
   const stateKey = await resolveCanonicalChatId(chatId);
   const entry = { ...(state[stateKey] || state[chatId] || { followUps: 0 }) };
   if (chat.name && !entry.leadName) entry.leadName = String(chat.name).trim();
+  if (disinterestPattern.test(textOf(lastInbound))) {
+    entry.nextFollowUpAt = null;
+    entry.followUpStageKey = null;
+    entry.lastInboundId = lastInbound.id;
+    entry.optOut = true;
+    state[stateKey] = entry;
+    console.log("[STOP_DISINTEREST] " + mask(chatId));
+    return false;
+  }
   const deferredInbound = entry.deferredInboundId === lastInbound.id;
   const replyChatId = replyTarget(chatId, lastInbound);
   const lastOutbound = latestOutbound(messages);
@@ -544,13 +564,16 @@ async function processChat(chat, options = {}) {
   const decision = await generateDecision(chat, messages, false, { ...entry, labels });
   entry.updatedAt = now();
   entry.followUps = 0;
+  entry.followUpStageKey = null;
+  entry.nextFollowUpAt = null;
   entry.handoff = Boolean(decision.handoff);
   entry.noActionForInboundId = null;
   if (decision.reply) {
     decision.reply = normalizeSalesLanguage(decision.reply);
     await send(replyChatId, decision.reply, lastInbound.id);
     entry.lastOutboundAt = now();
-    entry.nextFollowUpAt = decision.followUpHours ? now() + decision.followUpHours * 3600000 : null;
+    entry.followUpStageKey = !entry.handoff ? followUpStageKey(labels, decision) : null;
+    entry.nextFollowUpAt = entry.followUpStageKey ? now() + followUpHours * 3600000 : null;
     console.log("[REPLY] " + mask(chatId) + " intent=" + decision.intent + " handoff=" + Boolean(decision.handoff));
     if (/\b(?:tipo|alunos|localiza(?:ção|cao)|cargo|nome)\b/i.test(decision.reply)) entry.qualificationAttempts = Number(entry.qualificationAttempts || 0) + 1;
     entry.callProposed = /ligação para saber mais detalhes/i.test(decision.reply);
@@ -589,6 +612,19 @@ async function processFollowUp(chat) {
     console.log("[SKIP_FOLLOW_UP_INSUFFICIENT_STRUCTURE] " + mask(chatId));
     return;
   }
+  if (!isBusinessHours()) return;
+  const currentStageKey = followUpStageKey(labels);
+  if (!entry.followUpStageKey || (currentStageKey && currentStageKey !== entry.followUpStageKey)) {
+    entry.nextFollowUpAt = null;
+    console.log("[SKIP_FOLLOW_UP_NO_PENDING_STAGE] " + mask(chatId));
+    return;
+  }
+  if (disinterestPattern.test(textOf(lastInbound))) {
+    entry.nextFollowUpAt = null;
+    entry.optOut = true;
+    console.log("[STOP_FOLLOW_UP_DISINTEREST] " + mask(chatId));
+    return;
+  }
   const replyChatId = replyTarget(chatId, lastInbound);
   const decision = await generateDecision(chat, messages, true, { ...entry, labels });
   entry.followUps += 1;
@@ -597,9 +633,9 @@ async function processFollowUp(chat) {
     decision.reply = normalizeSalesLanguage(decision.reply);
     await send(replyChatId, decision.reply, lastInbound.id);
     entry.lastOutboundAt = now();
-    entry.nextFollowUpAt = decision.followUpHours ? now() + decision.followUpHours * 3600000 : null;
     console.log("[FOLLOW_UP] " + mask(chatId) + " number=" + entry.followUps);
   }
+  entry.followUpStageKey = null;
 }
 
 async function tick() {
