@@ -156,7 +156,8 @@ export default function ComunicacaoConfigPage({ params }: Props) {
 
   useEffect(() => {
     if (!escolaParam) return;
-    if (!qrDataUrl && qrStatus !== "pending_qr") return;
+    // Não substituir um QR já exibido durante a leitura; a actualização fica manual.
+    if (qrDataUrl || qrStatus !== "pending_qr") return;
 
     const timer = window.setInterval(() => {
       loadQr();
