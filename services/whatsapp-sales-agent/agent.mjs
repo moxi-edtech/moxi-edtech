@@ -24,6 +24,11 @@ const aiMinIntervalMs = Math.max(1000, Number(process.env.AI_MIN_INTERVAL_MS || 
 const maxNewChatsPerTick = Math.max(1, Number(process.env.MAX_NEW_CHATS_PER_TICK || 1));
 const chatPageSize = Math.min(100, Math.max(25, Number(process.env.CHAT_PAGE_SIZE || 100)));
 const maxChatPages = Math.min(20, Math.max(1, Number(process.env.MAX_CHAT_PAGES || 10)));
+const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
+const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const queueEnabled = Boolean(supabaseUrl && supabaseServiceKey && String(process.env.SUPABASE_AGENT_QUEUE_ENABLED || "true").toLowerCase() !== "false");
+const queueBatchSize = Math.min(50, Math.max(1, Number(process.env.SUPABASE_AGENT_QUEUE_BATCH_SIZE || 20)));
+const workerId = (process.env.SUPABASE_AGENT_WORKER_ID || crypto.randomUUID()).trim();
 const businessTimeZone = "Africa/Luanda";
 // Horário operacional só pode vir da configuração da VPS.
 const businessHours = (process.env.BUSINESS_HOURS || "").trim();
@@ -155,6 +160,40 @@ async function waha(path, options = {}) {
   let json; try { json = JSON.parse(body); } catch { json = body; }
   if (!response.ok) throw new Error("WAHA " + response.status + ": " + (typeof json === "string" ? json : JSON.stringify(json)));
   return json;
+}
+
+async function supabaseRequest(path, options = {}) {
+  if (!queueEnabled) throw new Error("Supabase agent queue is not configured");
+  const response = await fetch(supabaseUrl + path, {
+    ...options,
+    signal: AbortSignal.timeout(requestTimeoutMs),
+    headers: {
+      apikey: supabaseServiceKey,
+      Authorization: "Bearer " + supabaseServiceKey,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  const body = await response.text();
+  let json; try { json = JSON.parse(body); } catch { json = body; }
+  if (!response.ok) throw new Error("Supabase " + response.status + ": " + (typeof json === "string" ? json : JSON.stringify(json)));
+  return json;
+}
+
+async function claimInboxEvents() {
+  return supabaseRequest("/rest/v1/rpc/claim_whatsapp_agent_inbox", {
+    method: "POST",
+    body: JSON.stringify({ p_session_name: session, p_limit: queueBatchSize, p_worker_id: workerId }),
+  });
+}
+
+async function updateInboxEvent(id, update) {
+  await supabaseRequest("/rest/v1/whatsapp_agent_inbox_events?id=eq." + encodeURIComponent(id), {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(update),
+  });
 }
 
 async function humanGate(chatId) {
@@ -374,13 +413,13 @@ async function send(chatId, text, idempotencyKey = "") {
   }
 }
 
-async function processChat(chat) {
+async function processChat(chat, options = {}) {
   const chatId = String(chat.id || "");
   if (!isDirectChat(chatId) || chatId === "status@broadcast" || isInternalChat(chatId)) {
     if (isInternalChat(chatId)) console.log("[SKIP_INTERNAL_CHAT] " + mask(chatId));
     return false;
   }
-  if (!(await humanGate(chatId))) return false;
+  if (!options.gateAlreadyChecked && !(await humanGate(chatId))) return false;
   const messages = await getMessages(chatId);
   const lastInbound = latestInbound(messages);
   if (!lastInbound || !lastInbound.id) return false;
@@ -495,6 +534,29 @@ async function processFollowUp(chat) {
 }
 
 async function tick() {
+  if (queueEnabled) {
+    const events = await claimInboxEvents();
+    console.log("[QUEUE_TICK] events=" + (Array.isArray(events) ? events.length : 0));
+    for (const event of Array.isArray(events) ? events : []) {
+      const chat = { id: String(event.chat_id || "") };
+      try {
+        if (!(await humanGate(chat.id))) {
+          await updateInboxEvent(event.id, { status: "pending", available_at: new Date(Date.now() + 60000).toISOString(), locked_at: null, locked_by: null, last_error: "human_gate_not_eligible", updated_at: new Date().toISOString() });
+          continue;
+        }
+        await processChat(chat, { gateAlreadyChecked: true });
+        await processFollowUp(chat);
+        await updateInboxEvent(event.id, { status: "processed", processed_at: new Date().toISOString(), locked_at: null, locked_by: null, last_error: null, updated_at: new Date().toISOString() });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const retryDelay = Math.min(3600000, Math.max(60000, 60000 * Math.pow(2, Math.min(Number(event.attempts || 1), 5))));
+        const nextStatus = Number(event.attempts || 1) >= 8 ? "dead_letter" : "failed";
+        await updateInboxEvent(event.id, { status: nextStatus, available_at: new Date(Date.now() + retryDelay).toISOString(), locked_at: null, locked_by: null, last_error: message.slice(0, 1000), updated_at: new Date().toISOString() }).catch((updateError) => console.error("[QUEUE_UPDATE_ERROR] " + updateError.message));
+        console.error("[QUEUE_EVENT_ERROR] " + mask(chat.id) + " " + message);
+      }
+    }
+    return;
+  }
   const chats = (await getChats()).sort((a, b) => Number(b.lastMessage?.timestamp || 0) - Number(a.lastMessage?.timestamp || 0));
   console.log("[TICK] chats=" + chats.length + " pageSize=" + chatPageSize + " maxPages=" + maxChatPages);
   if (state.__activationGeneration !== activationGeneration) {

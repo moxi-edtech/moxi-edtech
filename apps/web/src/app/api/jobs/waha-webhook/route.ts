@@ -268,7 +268,7 @@ export async function POST(request: Request) {
           }
 
           // Create message
-          await admin
+          const { data: insertedMessage, error: messageInsertError } = await admin
             .from("communication_messages")
             .insert({
               thread_id: threadId,
@@ -289,7 +289,27 @@ export async function POST(request: Request) {
               status: "received",
               metadata: { raw_phone: normalizedSender },
               received_at: new Date().toISOString()
-            });
+            })
+            .select("id")
+            .single();
+
+          if (messageInsertError) throw messageInsertError;
+
+          if (insertedMessage?.id && providerMessageId) {
+            const { error: queueError } = await admin
+              .from("whatsapp_agent_inbox_events")
+              .insert({
+                school_id: provider.school_id,
+                session_name: sessionName,
+                communication_message_id: insertedMessage.id,
+                provider_message_id: providerMessageId,
+                chat_id: from,
+                status: "pending",
+                available_at: new Date().toISOString()
+              });
+
+            if (queueError && queueError.code !== "23505") throw queueError;
+          }
         }
       }
     }
