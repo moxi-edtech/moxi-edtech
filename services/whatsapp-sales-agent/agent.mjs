@@ -257,7 +257,7 @@ async function getChats() {
 }
 
 async function getMessages(chatId) {
-  const result = await waha("/api/" + encodeURIComponent(session) + "/chats/" + encodeURIComponent(chatId) + "/messages?limit=30");
+  const result = await waha("/api/" + encodeURIComponent(session) + "/chats/" + encodeURIComponent(chatId) + "/messages?limit=100");
   return Array.isArray(result) ? result : result.data || result.messages || [];
 }
 
@@ -323,7 +323,7 @@ function textOf(message) {
 }
 
 function conversationText(messages) {
-  return messages.filter((message) => textOf(message)).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)).slice(-16)
+  return messages.filter((message) => textOf(message)).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)).slice(-40)
     .map((message) => (message.fromMe ? "KLASSE" : "LEAD") + ": " + textOf(message)).join("\n");
 }
 
