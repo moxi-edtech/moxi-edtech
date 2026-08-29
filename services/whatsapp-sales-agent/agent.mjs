@@ -15,8 +15,8 @@ const aiProvider = (process.env.AI_PROVIDER || "gemini").trim().toLowerCase();
 const aiModel = (process.env.AI_MODEL || "gemini-2.5-flash").trim();
 const dryRun = String(process.env.AGENT_DRY_RUN || "true").toLowerCase() !== "false";
 const pollMs = Math.max(5000, Number(process.env.POLL_MS || 15000));
-const followUpHours = Math.max(1, Number(process.env.FOLLOWUP_AFTER_HOURS || 24));
-const maxFollowUps = Math.max(0, Number(process.env.MAX_FOLLOWUPS || 1));
+const followUpDelaysMs = [5 * 60 * 1000, 60 * 60 * 1000, 24 * 60 * 60 * 1000, 7 * 24 * 60 * 60 * 1000, 30 * 24 * 60 * 60 * 1000, 60 * 24 * 60 * 60 * 1000, 90 * 24 * 60 * 60 * 1000];
+const maxFollowUps = Math.min(followUpDelaysMs.length, Math.max(0, Number(process.env.MAX_FOLLOWUPS || followUpDelaysMs.length)));
 const requestTimeoutMs = Math.max(5000, Number(process.env.REQUEST_TIMEOUT_MS || 15000));
 const gateBaseUrl = (process.env.KLASSE_GATE_BASE_URL || "https://app.klasse.ao").trim().replace(/\/$/, "");
 const gateSecret = (process.env.AGENT_GATE_SECRET || process.env.WAHA_WEBHOOK_SECRET || "").trim();
@@ -287,6 +287,24 @@ function followUpStageKey(labels, decision = null) {
   return null;
 }
 
+function nextFollowUpAt(followUpNumber) {
+  const delay = followUpDelaysMs[followUpNumber];
+  return delay ? now() + delay : null;
+}
+
+function followUpInstruction(followUpNumber) {
+  const instructions = [
+    "Primeiro follow-up (5 minutos): retome apenas o passo pendente, de forma curta, sem assumir que o lead confirmou algo.",
+    "Segundo follow-up (1 hora): faça uma única pergunta objetiva sobre o passo pendente; não repita a apresentação.",
+    "Terceiro follow-up (24 horas): relembre o contexto em uma frase e ofereça continuidade sem pressionar.",
+    "Follow-up de reativação (7 dias): reconheça que pode ter havido correria e pergunte se ainda faz sentido continuar.",
+    "Follow-up de reativação (30 dias): reabra o assunto apenas se houver histórico de interesse; não invente novidade.",
+    "Follow-up de reativação (60 dias): faça uma última tentativa contextual e respeitosa.",
+    "Follow-up final (90 dias): encerre o ciclo e ofereça contacto futuro apenas se houver interesse.",
+  ];
+  return instructions[followUpNumber] || "Não há mais follow-ups autorizados para este ciclo.";
+}
+
 async function resolveCanonicalChatId(chatId) {
   const value = String(chatId || "").trim();
   if (!value.endsWith("@lid")) return value;
@@ -416,11 +434,13 @@ async function generateDecision(chat, messages, followUp, context = {}) {
     "handoff=true para reclamação, contrato, negociação, preço final, pedido de humano ou dúvida fora da base.",
     "optOut=true se o lead pedir para parar, remover ou não contactar.",
     "Para follow-up, não pressione: reconheça o contexto e faça uma pergunta simples.",
-    "followUpHours deve ser 0 se não houver próximo passo, ou 24 para um único follow-up. Faça no máximo um follow-up por novo contacto. studentCount deve ser um número ou null. stage deve ser um de: por_acompanhar, por_ligar, reuniao, importante. contactGender só pode ser male ou female quando o nome indicar claramente; caso contrário, unknown.",
+    "followUpHours é apenas informativo e não agenda mensagens. A cadência é controlada pelo agente e pode ser interrompida a qualquer momento. studentCount deve ser um número ou null. stage deve ser um de: por_acompanhar, por_ligar, reuniao, importante. contactGender só pode ser male ou female quando o nome indicar claramente; caso contrário, unknown.",
     knowledge,
     "Nome do contacto: " + (chat.name || "não informado"),
     "É follow-up: " + (followUp ? "sim" : "não"),
     "Perguntas anteriores sobre dados de qualificação: " + Number(context.qualificationAttempts || 0),
+    "Número deste follow-up: " + (Number(context.followUpNumber || 0) + 1),
+    followUpInstruction(Number(context.followUpNumber || 0)),
     "Labels atuais do contacto: " + labelContext(context.labels),
     "As labels são contexto operacional obrigatório. Se houver uma label indicando falta de estrutura, não ofereça demonstração, reunião ou follow-up comercial; não contradiga essa decisão da equipa.",
     "Se houver label de reunião/demonstração e o lead não tiver respondido, trate isto como follow-up pendente: não finja que o lead confirmou ou respondeu; faça referência ao próximo passo pendente.",
@@ -573,7 +593,7 @@ async function processChat(chat, options = {}) {
     await send(replyChatId, decision.reply, lastInbound.id);
     entry.lastOutboundAt = now();
     entry.followUpStageKey = !entry.handoff ? followUpStageKey(labels, decision) : null;
-    entry.nextFollowUpAt = entry.followUpStageKey ? now() + followUpHours * 3600000 : null;
+    entry.nextFollowUpAt = entry.followUpStageKey ? nextFollowUpAt(0) : null;
     console.log("[REPLY] " + mask(chatId) + " intent=" + decision.intent + " handoff=" + Boolean(decision.handoff));
     if (/\b(?:tipo|alunos|localiza(?:ção|cao)|cargo|nome)\b/i.test(decision.reply)) entry.qualificationAttempts = Number(entry.qualificationAttempts || 0) + 1;
     entry.callProposed = /ligação para saber mais detalhes/i.test(decision.reply);
@@ -626,16 +646,17 @@ async function processFollowUp(chat) {
     return;
   }
   const replyChatId = replyTarget(chatId, lastInbound);
-  const decision = await generateDecision(chat, messages, true, { ...entry, labels });
-  entry.followUps += 1;
+  const followUpNumber = entry.followUps;
+  const decision = await generateDecision(chat, messages, true, { ...entry, labels, followUpNumber });
   entry.nextFollowUpAt = null;
   if (decision.reply) {
     decision.reply = normalizeSalesLanguage(decision.reply);
     await send(replyChatId, decision.reply, lastInbound.id);
+    entry.followUps = followUpNumber + 1;
     entry.lastOutboundAt = now();
-    console.log("[FOLLOW_UP] " + mask(chatId) + " number=" + entry.followUps);
+    entry.nextFollowUpAt = nextFollowUpAt(entry.followUps);
+    console.log("[FOLLOW_UP] " + mask(chatId) + " number=" + entry.followUps + " next=" + Boolean(entry.nextFollowUpAt));
   }
-  entry.followUpStageKey = null;
 }
 
 async function tick() {
