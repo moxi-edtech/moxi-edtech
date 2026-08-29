@@ -30,6 +30,7 @@ const queueEnabled = Boolean(supabaseUrl && supabaseServiceKey && String(process
 const queueBatchSize = Math.min(50, Math.max(1, Number(process.env.SUPABASE_AGENT_QUEUE_BATCH_SIZE || 20)));
 const workerId = (process.env.SUPABASE_AGENT_WORKER_ID || crypto.randomUUID()).trim();
 const reconciliationIntervalMs = Math.max(60000, Number(process.env.SUPABASE_AGENT_RECONCILIATION_INTERVAL_MS || 300000));
+const reconciliationChatLimit = Math.min(100, Math.max(10, Number(process.env.SUPABASE_AGENT_RECONCILIATION_CHAT_LIMIT || 50)));
 const businessTimeZone = "Africa/Luanda";
 // Horário operacional só pode vir da configuração da VPS.
 const businessHours = (process.env.BUSINESS_HOURS || "").trim();
@@ -559,8 +560,9 @@ async function tick() {
     }
     if (now() - lastReconciliationAt >= reconciliationIntervalMs) {
       lastReconciliationAt = now();
-      const chats = (await getChats()).sort((a, b) => Number(b.lastMessage?.timestamp || 0) - Number(a.lastMessage?.timestamp || 0));
-      console.log("[RECONCILIATION] chats=" + chats.length);
+      const allChats = (await getChats()).sort((a, b) => Number(b.lastMessage?.timestamp || 0) - Number(a.lastMessage?.timestamp || 0));
+      const chats = allChats.slice(0, reconciliationChatLimit);
+      console.log("[RECONCILIATION] chats=" + chats.length + " of=" + allChats.length);
       let reconciled = 0;
       for (const chat of chats) {
         try {
