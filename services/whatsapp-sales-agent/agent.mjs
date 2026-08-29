@@ -200,7 +200,17 @@ async function updateInboxEvent(id, update) {
 }
 
 async function humanGate(chatId) {
-  const phone = String(chatId).split("@")[0].replace(/\D/g, "");
+  let gateChatId = String(chatId || "");
+  if (gateChatId.endsWith("@lid")) {
+    try {
+      const contact = await waha("/api/" + encodeURIComponent(session) + "/contacts/" + encodeURIComponent(gateChatId));
+      const canonicalId = String(contact?.id || "").trim();
+      if (canonicalId.endsWith("@c.us")) gateChatId = canonicalId;
+    } catch (error) {
+      console.error("[HUMAN_GATE_CONTACT_RESOLVE_ERROR] " + mask(chatId) + " " + (error instanceof Error ? error.message : String(error)));
+    }
+  }
+  const phone = gateChatId.split("@")[0].replace(/\D/g, "");
   if (!phone || !gateSecret) {
     console.error("[HUMAN_GATE_BLOCKED] gate secret or phone is missing");
     return false;
