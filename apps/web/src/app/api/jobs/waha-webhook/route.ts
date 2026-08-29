@@ -172,7 +172,7 @@ export async function POST(request: Request) {
   }
 
   // Handle message received (inbound)
-  if (eventType === "message.received") {
+  if (eventType === "message" || eventType === "message.received") {
     const messagePayload = payload?.payload;
     const fromMe = Boolean(messagePayload?.fromMe);
 
@@ -316,7 +316,7 @@ export async function POST(request: Request) {
   }
 
   // Handle message sent (outbound)
-  if (eventType === "message.sent" || (eventType === "message.received" && payload?.payload?.fromMe)) {
+  if (eventType === "message.sent" || eventType === "message.received" || (eventType === "message" && payload?.payload?.fromMe)) {
     const messagePayload = payload?.payload;
     const to = String(messagePayload?.to || "").trim();
     const from = String(messagePayload?.from || "").trim();
