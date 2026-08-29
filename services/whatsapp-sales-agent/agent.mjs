@@ -200,16 +200,7 @@ async function updateInboxEvent(id, update) {
 }
 
 async function humanGate(chatId) {
-  let gateChatId = String(chatId || "");
-  if (gateChatId.endsWith("@lid")) {
-    try {
-      const contact = await waha("/api/" + encodeURIComponent(session) + "/contacts/" + encodeURIComponent(gateChatId));
-      const canonicalId = String(contact?.id || "").trim();
-      if (canonicalId.endsWith("@c.us")) gateChatId = canonicalId;
-    } catch (error) {
-      console.error("[HUMAN_GATE_CONTACT_RESOLVE_ERROR] " + mask(chatId) + " " + (error instanceof Error ? error.message : String(error)));
-    }
-  }
+  const gateChatId = await resolveCanonicalChatId(chatId);
   const phone = gateChatId.split("@")[0].replace(/\D/g, "");
   if (!phone || !gateSecret) {
     console.error("[HUMAN_GATE_BLOCKED] gate secret or phone is missing");
@@ -285,6 +276,19 @@ function hasInsufficientStructureLabel(labels) {
   });
 }
 
+async function resolveCanonicalChatId(chatId) {
+  const value = String(chatId || "").trim();
+  if (!value.endsWith("@lid")) return value;
+  try {
+    const contact = await waha("/api/" + encodeURIComponent(session) + "/contacts/" + encodeURIComponent(value));
+    const canonicalId = String(contact?.id || "").trim();
+    return canonicalId.endsWith("@c.us") ? canonicalId : value;
+  } catch (error) {
+    console.error("[CONTACT_RESOLVE_ERROR] " + mask(value) + " " + (error instanceof Error ? error.message : String(error)));
+    return value;
+  }
+}
+
 async function setPresence(chatId, presence) {
   if (dryRun) return;
   await waha("/api/" + encodeURIComponent(session) + "/presence", {
@@ -353,6 +357,11 @@ function conversationText(messages) {
 
 function latestInbound(messages) {
   return messages.filter((message) => !message.fromMe && textOf(message))
+    .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
+}
+
+function latestInboundMessage(messages) {
+  return messages.filter((message) => !message.fromMe)
     .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
 }
 
@@ -461,6 +470,11 @@ async function processChat(chat, options = {}) {
   }
   if (!options.gateAlreadyChecked && !(await humanGate(chatId))) return false;
   const messages = await getMessages(chatId);
+  const latestInboundAny = latestInboundMessage(messages);
+  if (latestInboundAny && !textOf(latestInboundAny)) {
+    console.log("[SKIP_NON_TEXT_INBOUND] " + mask(chatId));
+    return false;
+  }
   const labels = await getChatLabels(chatId);
   if (hasInsufficientStructureLabel(labels)) {
     console.log("[SKIP_INSUFFICIENT_STRUCTURE] " + mask(chatId));
@@ -470,7 +484,8 @@ async function processChat(chat, options = {}) {
   if (!lastInbound || !lastInbound.id) return false;
   // Trabalhar numa cópia impede que uma falha de envio contamine o estado em memória.
   // A mensagem só é confirmada em state depois de uma ação concluída.
-  const entry = { ...(state[chatId] || { followUps: 0 }) };
+  const stateKey = await resolveCanonicalChatId(chatId);
+  const entry = { ...(state[stateKey] || state[chatId] || { followUps: 0 }) };
   if (chat.name && !entry.leadName) entry.leadName = String(chat.name).trim();
   const deferredInbound = entry.deferredInboundId === lastInbound.id;
   const replyChatId = replyTarget(chatId, lastInbound);
@@ -492,7 +507,7 @@ async function processChat(chat, options = {}) {
     entry.handoffNotified = false;
     entry.callProposed = false;
     entry.lastOutboundAt = now();
-    state[chatId] = entry;
+    state[stateKey] = entry;
     console.log("[CALL_CONFIRMED] " + mask(chatId));
     return true;
   }
@@ -501,7 +516,7 @@ async function processChat(chat, options = {}) {
     entry.unsupportedInstitution = true;
     entry.lastInboundId = lastInbound.id;
     entry.lastOutboundAt = now();
-    state[chatId] = entry;
+    state[stateKey] = entry;
     try { await updateLeadLabels(chatId, messages, { intent: "", stage: "por_acompanhar", studentCount: null }); }
     catch (error) { console.error("[LABEL_ERROR] " + mask(chatId) + " " + error.message); }
     console.log("[UNSUPPORTED_INSTITUTION] " + mask(chatId));
@@ -515,14 +530,14 @@ async function processChat(chat, options = {}) {
       entry.lastInboundId = lastInbound.id;
       entry.deferredInboundId = lastInbound.id;
       entry.lastOutboundAt = now();
-      state[chatId] = entry;
+      state[stateKey] = entry;
       try { await updateLeadLabels(chatId, messages, { intent: "", stage: "por_acompanhar", studentCount: null }); }
       catch (error) { console.error("[LABEL_ERROR] " + mask(chatId) + " " + error.message); }
       console.log("[OUTSIDE_HOURS_REPLY] " + mask(chatId));
       return true;
     }
     entry.lastInboundId = lastInbound.id;
-    state[chatId] = entry;
+    state[stateKey] = entry;
     return false;
   }
   if (deferredInbound) entry.deferredInboundId = null;
@@ -549,7 +564,7 @@ async function processChat(chat, options = {}) {
   }
   if (!decision.reply && !entry.handoff) entry.noActionForInboundId = lastInbound.id;
   entry.lastInboundId = lastInbound.id;
-  state[chatId] = entry;
+  state[stateKey] = entry;
   return true;
 }
 
@@ -557,9 +572,12 @@ async function processFollowUp(chat) {
   const chatId = String(chat.id || "");
   if (isInternalChat(chatId)) return;
   if (!(await humanGate(chatId))) return;
-  const entry = state[chatId];
+  const stateKey = await resolveCanonicalChatId(chatId);
+  const entry = state[stateKey] || state[chatId];
   if (!entry || !entry.nextFollowUpAt || entry.followUps >= maxFollowUps || entry.nextFollowUpAt > now()) return;
   const messages = await getMessages(chatId);
+  const latestInboundAny = latestInboundMessage(messages);
+  if (latestInboundAny && !textOf(latestInboundAny)) return;
   const lastInbound = latestInbound(messages);
   if (!lastInbound || lastInbound.id !== entry.lastInboundId || entry.handoff || entry.unsupportedInstitution) {
     entry.nextFollowUpAt = null;
