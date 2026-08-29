@@ -88,7 +88,7 @@ function outsideBusinessHoursReply(hasQualificationData = false) {
 }
 
 function isBusinessHours() {
-  if (!businessHours) return true;
+  if (!businessHours) return false;
   const { weekday, hour } = localParts();
   if (["Sat", "Sun"].includes(weekday)) return false;
   const range = businessHours.match(/(\d{1,2})h(?:([0-5]\d))?.*?(\d{1,2})h(?:([0-5]\d))?/i);
@@ -547,6 +547,10 @@ async function processChat(chat, options = {}) {
   const stateKey = await resolveCanonicalChatId(chatId);
   const entry = { ...(state[stateKey] || state[chatId] || { followUps: 0 }) };
   if (chat.name && !entry.leadName) entry.leadName = String(chat.name).trim();
+  if (entry.optOut) {
+    console.log("[SKIP_OPTOUT] " + mask(chatId));
+    return false;
+  }
   if (disinterestPattern.test(textOf(lastInbound))) {
     entry.nextFollowUpAt = null;
     entry.followUpStageKey = null;
@@ -647,7 +651,7 @@ async function processFollowUp(chat) {
   if (!(await humanGate(chatId))) return;
   const stateKey = await resolveCanonicalChatId(chatId);
   const entry = state[stateKey] || state[chatId];
-  if (!entry || !entry.nextFollowUpAt || entry.followUps >= maxFollowUps || entry.nextFollowUpAt > now()) return;
+  if (!entry || entry.optOut || !entry.nextFollowUpAt || entry.followUps >= maxFollowUps || entry.nextFollowUpAt > now()) return;
   const messages = await getMessages(chatId);
   const latestInboundAny = latestInboundMessage(messages);
   if (latestInboundAny && !textOf(latestInboundAny)) return;
@@ -664,7 +668,7 @@ async function processFollowUp(chat) {
   }
   if (!isBusinessHours()) return;
   const currentStageKey = followUpStageKey(labels);
-  if (!entry.followUpStageKey || (currentStageKey && currentStageKey !== entry.followUpStageKey)) {
+  if (!entry.followUpStageKey || currentStageKey !== entry.followUpStageKey) {
     entry.nextFollowUpAt = null;
     console.log("[SKIP_FOLLOW_UP_NO_PENDING_STAGE] " + mask(chatId));
     return;
