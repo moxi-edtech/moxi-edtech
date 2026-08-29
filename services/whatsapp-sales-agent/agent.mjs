@@ -280,6 +280,15 @@ function latestInbound(messages) {
     .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
 }
 
+function replyTarget(chatId, inbound) {
+  const inboundFrom = String(inbound?.from || "").trim();
+  if (inboundFrom.endsWith("@lid")) {
+    if (inboundFrom !== chatId) console.log("[REPLY_TARGET_LID] " + mask(chatId) + " -> " + mask(inboundFrom));
+    return inboundFrom;
+  }
+  return chatId;
+}
+
 function latestOutbound(messages) {
   return messages.filter((message) => message.fromMe && textOf(message))
     .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
@@ -380,6 +389,7 @@ async function processChat(chat) {
   const entry = { ...(state[chatId] || { followUps: 0 }) };
   if (chat.name && !entry.leadName) entry.leadName = String(chat.name).trim();
   const deferredInbound = entry.deferredInboundId === lastInbound.id;
+  const replyChatId = replyTarget(chatId, lastInbound);
   const lastOutbound = latestOutbound(messages);
   const outboundAfterInbound = lastOutbound && Number(lastOutbound.timestamp || 0) >= Number(lastInbound.timestamp || 0);
   const noActionConfirmed = entry.noActionForInboundId === lastInbound.id;
@@ -392,7 +402,7 @@ async function processChat(chat) {
   if (entry.unsupportedInstitution) return false;
   const latestText = textOf(lastInbound);
   if (entry.callProposed && /\b(?:10|11|13|14|16|17)h(?:\s*\d{2})?\b/i.test(latestText)) {
-    await send(chatId, confirmedCallReply(chat, latestText), lastInbound.id);
+    await send(replyChatId, confirmedCallReply(chat, latestText), lastInbound.id);
     entry.lastInboundId = lastInbound.id;
     entry.handoff = true;
     entry.handoffNotified = false;
@@ -403,7 +413,7 @@ async function processChat(chat) {
     return true;
   }
   if (unsupportedInstitutionPattern.test(textOf(lastInbound))) {
-    await send(chatId, unsupportedInstitutionReply(), lastInbound.id);
+    await send(replyChatId, unsupportedInstitutionReply(), lastInbound.id);
     entry.unsupportedInstitution = true;
     entry.lastInboundId = lastInbound.id;
     entry.lastOutboundAt = now();
@@ -416,7 +426,7 @@ async function processChat(chat) {
   if (!isBusinessHours()) {
     const hasQualificationData = qualificationDataProvided(messages);
     if (entry.offHoursNotifiedDate !== localDateKey()) {
-      await send(chatId, outsideBusinessHoursReply(hasQualificationData), lastInbound.id);
+      await send(replyChatId, outsideBusinessHoursReply(hasQualificationData), lastInbound.id);
       entry.offHoursNotifiedDate = localDateKey();
       entry.lastInboundId = lastInbound.id;
       entry.deferredInboundId = lastInbound.id;
@@ -439,7 +449,7 @@ async function processChat(chat) {
   entry.noActionForInboundId = null;
   if (decision.reply) {
     decision.reply = normalizeSalesLanguage(decision.reply);
-    await send(chatId, decision.reply, lastInbound.id);
+    await send(replyChatId, decision.reply, lastInbound.id);
     entry.lastOutboundAt = now();
     entry.nextFollowUpAt = decision.followUpHours ? now() + decision.followUpHours * 3600000 : null;
     console.log("[REPLY] " + mask(chatId) + " intent=" + decision.intent + " handoff=" + Boolean(decision.handoff));
@@ -471,12 +481,13 @@ async function processFollowUp(chat) {
     entry.nextFollowUpAt = null;
     return;
   }
+  const replyChatId = replyTarget(chatId, lastInbound);
   const decision = await generateDecision(chat, messages, true);
   entry.followUps += 1;
   entry.nextFollowUpAt = null;
   if (decision.reply) {
     decision.reply = normalizeSalesLanguage(decision.reply);
-    await send(chatId, decision.reply, lastInbound.id);
+    await send(replyChatId, decision.reply, lastInbound.id);
     entry.lastOutboundAt = now();
     entry.nextFollowUpAt = decision.followUpHours ? now() + decision.followUpHours * 3600000 : null;
     console.log("[FOLLOW_UP] " + mask(chatId) + " number=" + entry.followUps);
