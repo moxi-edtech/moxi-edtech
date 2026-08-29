@@ -22,6 +22,8 @@ const gateBaseUrl = (process.env.KLASSE_GATE_BASE_URL || "https://app.klasse.ao"
 const gateSecret = (process.env.AGENT_GATE_SECRET || process.env.WAHA_WEBHOOK_SECRET || "").trim();
 const aiMinIntervalMs = Math.max(1000, Number(process.env.AI_MIN_INTERVAL_MS || 15000));
 const maxNewChatsPerTick = Math.max(1, Number(process.env.MAX_NEW_CHATS_PER_TICK || 1));
+const chatPageSize = Math.min(100, Math.max(25, Number(process.env.CHAT_PAGE_SIZE || 100)));
+const maxChatPages = Math.min(20, Math.max(1, Number(process.env.MAX_CHAT_PAGES || 10)));
 const businessTimeZone = "Africa/Luanda";
 // Horário operacional só pode vir da configuração da VPS.
 const businessHours = (process.env.BUSINESS_HOURS || "").trim();
@@ -181,8 +183,25 @@ async function humanGate(chatId) {
 }
 
 async function getChats() {
-  const result = await waha("/api/" + encodeURIComponent(session) + "/chats/overview?limit=100&offset=0");
-  return Array.isArray(result) ? result : result.data || result.chats || [];
+  const chats = [];
+  const seen = new Set();
+  for (let page = 0; page < maxChatPages; page += 1) {
+    const offset = page * chatPageSize;
+    const result = await waha("/api/" + encodeURIComponent(session) + "/chats/overview?limit=" + chatPageSize + "&offset=" + offset);
+    const batch = Array.isArray(result) ? result : result.data || result.chats || [];
+    for (const chat of batch) {
+      const chatId = String(chat?.id || "");
+      if (chatId && !seen.has(chatId)) {
+        seen.add(chatId);
+        chats.push(chat);
+      }
+    }
+    if (batch.length < chatPageSize) break;
+  }
+  if (chats.length >= chatPageSize * maxChatPages) {
+    console.warn("[CHAT_PAGINATION_LIMIT] pages=" + maxChatPages + " chats=" + chats.length);
+  }
+  return chats;
 }
 
 async function getMessages(chatId) {
@@ -466,7 +485,7 @@ async function processFollowUp(chat) {
 
 async function tick() {
   const chats = (await getChats()).sort((a, b) => Number(b.lastMessage?.timestamp || 0) - Number(a.lastMessage?.timestamp || 0));
-  console.log("[TICK] chats=" + chats.length);
+  console.log("[TICK] chats=" + chats.length + " pageSize=" + chatPageSize + " maxPages=" + maxChatPages);
   if (state.__activationGeneration !== activationGeneration) {
     for (const chat of chats) {
       const chatId = String(chat.id || "");
