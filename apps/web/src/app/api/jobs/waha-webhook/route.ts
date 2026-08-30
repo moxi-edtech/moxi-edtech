@@ -65,6 +65,17 @@ function extractProviderMessageId(payload: unknown) {
   return null;
 }
 
+function extractMessageBody(payload: unknown) {
+  const candidates = [
+    readPath(payload, ["payload", "body"]),
+    readPath(payload, ["payload", "text", "body"]),
+    readPath(payload, ["payload", "caption"]),
+    readPath(payload, ["payload", "_data", "body"]),
+    readPath(payload, ["payload", "_data", "caption"]),
+  ];
+  return candidates.find((value) => typeof value === "string" && value.trim())?.trim() || "";
+}
+
 function normalizeEventType(payload: any) {
   return String(payload?.event || payload?.type || payload?.event_type || "unknown").toLowerCase();
 }
@@ -204,7 +215,7 @@ export async function POST(request: Request) {
           );
 
           // Find or create thread
-          const bodyText = String(messagePayload?.body || "").trim();
+          const bodyText = extractMessageBody(payload);
           const isMedia = messagePayload?.hasMedia || ["image", "video", "document", "audio", "voice", "sticker"].includes(messagePayload?.type);
           const finalBody = isMedia ? (bodyText || "📎 Mensagem com anexo recebida (visualização não disponível)") : bodyText;
           const bodyPreview = finalBody.slice(0, 100);
@@ -345,7 +356,7 @@ export async function POST(request: Request) {
           .maybeSingle();
 
         if (thread) {
-          const bodyText = String(messagePayload?.body || "").trim();
+          const bodyText = extractMessageBody(payload);
           const bodyPreview = bodyText.slice(0, 100);
 
           await admin
