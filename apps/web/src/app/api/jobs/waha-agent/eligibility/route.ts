@@ -13,11 +13,11 @@ function getAdminClient() {
   return url && key ? createClient(url, key) : null;
 }
 
-function validSignature(request: Request, session: string, phone: string) {
+function validSignature(request: Request, session: string, identity: string) {
   const secret = process.env.AGENT_GATE_SECRET || process.env.WAHA_WEBHOOK_SECRET;
   const received = request.headers.get("x-agent-signature") || "";
   if (!secret || !received) return false;
-  const expected = crypto.createHmac("sha256", secret).update(`${session}\n${phone}`).digest("hex");
+  const expected = crypto.createHmac("sha256", secret).update(`${session}\n${identity}`).digest("hex");
   const left = Buffer.from(received);
   const right = Buffer.from(expected);
   return left.length === right.length && crypto.timingSafeEqual(left, right);
@@ -26,8 +26,10 @@ function validSignature(request: Request, session: string, phone: string) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const session = (url.searchParams.get("session") || "").trim();
+  const chatId = (url.searchParams.get("chatId") || "").trim();
   const phone = normalizeWhatsappPhone(url.searchParams.get("phone"));
-  if (!session || !phone || !validSignature(request, session, phone)) {
+  const identity = phone || (chatId.endsWith("@lid") ? chatId : "");
+  if (!session || !identity || !validSignature(request, session, identity)) {
     return NextResponse.json({ ok: false, eligible: false, reason: "invalid_agent_request" }, { status: 401 });
   }
 
@@ -42,6 +44,10 @@ export async function GET(request: Request) {
     .maybeSingle();
   if (providerError) return NextResponse.json({ ok: false, eligible: false, reason: "provider_lookup_failed" }, { status: 500 });
   if (!provider?.school_id) return NextResponse.json({ ok: false, eligible: false, reason: "unknown_session" }, { status: 404 });
+
+  // WhatsApp LID is an opaque identity and cannot be normalized to a phone.
+  // The signed agent request is the authorization boundary for this identity.
+  if (!phone) return NextResponse.json({ ok: true, eligible: true, reason: "lid_identity" });
 
   const phoneHash = hashPhone(phone);
   if (!phoneHash) return NextResponse.json({ ok: false, eligible: false, reason: "invalid_phone" }, { status: 400 });
