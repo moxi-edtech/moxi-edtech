@@ -30,14 +30,17 @@ function validateSignature(request: Request, rawBody: string) {
   if (!secret) return false;
 
   const header =
+    request.headers.get("x-webhook-hmac") ||
     request.headers.get("x-waha-signature") ||
     request.headers.get("x-hub-signature-256") ||
     request.headers.get("x-signature") ||
     "";
-  const received = header.replace(/^sha256=/, "").trim();
-  if (!received) return false;
+  const algorithmHeader = request.headers.get("x-webhook-hmac-algorithm") || "sha512";
+  const algorithm = algorithmHeader.toLowerCase() === "sha256" ? "sha256" : algorithmHeader.toLowerCase() === "sha512" ? "sha512" : "";
+  const received = header.replace(/^sha(?:256|512)=/i, "").trim();
+  if (!received || !algorithm) return false;
 
-  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  const expected = crypto.createHmac(algorithm, secret).update(rawBody).digest("hex");
   return timingSafeEqual(received, expected);
 }
 
