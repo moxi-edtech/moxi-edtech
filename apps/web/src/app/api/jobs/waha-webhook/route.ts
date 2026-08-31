@@ -57,6 +57,7 @@ function extractProviderMessageId(payload: unknown) {
     readPath(payload, ["id"]),
     readPath(payload, ["payload", "id"]),
     readPath(payload, ["payload", "_data", "id", "_serialized"]),
+    readPath(payload, ["payload", "_data", "id", "id"]),
     readPath(payload, ["payload", "id", "_serialized"]),
   ];
   for (const candidate of candidates) {
@@ -188,11 +189,12 @@ export async function POST(request: Request) {
   // Handle message received (inbound)
   if (eventType === "message" || eventType === "message.received") {
     const messagePayload = payload?.payload;
-    const fromMe = Boolean(messagePayload?.fromMe);
+    const messageData = messagePayload?._data;
+    const fromMe = Boolean(messagePayload?.fromMe ?? messageData?.fromMe);
 
     if (!fromMe) {
-      const from = String(messagePayload?.from || "").trim();
-      const to = String(messagePayload?.to || "").trim();
+      const from = String(messagePayload?.from || messageData?.from || "").trim();
+      const to = String(messagePayload?.to || messageData?.to || "").trim();
 
       const senderPhone = from.split("@")[0].replace(/\D/g, "");
       const recipientPhone = to.split("@")[0].replace(/\D/g, "");
@@ -216,7 +218,8 @@ export async function POST(request: Request) {
 
           // Find or create thread
           const bodyText = extractMessageBody(payload);
-          const isMedia = messagePayload?.hasMedia || ["image", "video", "document", "audio", "voice", "sticker"].includes(messagePayload?.type);
+          const messageType = messagePayload?.type || messageData?.type || "text";
+          const isMedia = messagePayload?.hasMedia || messageData?.hasMedia || ["image", "video", "document", "audio", "voice", "sticker"].includes(messageType);
           const finalBody = isMedia ? (bodyText || "📎 Mensagem com anexo recebida (visualização não disponível)") : bodyText;
           const bodyPreview = finalBody.slice(0, 100);
 
@@ -299,7 +302,7 @@ export async function POST(request: Request) {
               body: finalBody,
               body_preview: bodyPreview,
               body_sanitized: finalBody,
-              message_type: messagePayload?.type || "text",
+              message_type: messageType,
               status: "received",
               metadata: { raw_phone: normalizedSender },
               received_at: new Date().toISOString()
@@ -332,8 +335,9 @@ export async function POST(request: Request) {
   // Handle message sent (outbound)
   if (eventType === "message.sent" || eventType === "message.received" || (eventType === "message" && payload?.payload?.fromMe)) {
     const messagePayload = payload?.payload;
-    const to = String(messagePayload?.to || "").trim();
-    const from = String(messagePayload?.from || "").trim();
+    const messageData = messagePayload?._data;
+    const to = String(messagePayload?.to || messageData?.to || "").trim();
+    const from = String(messagePayload?.from || messageData?.from || "").trim();
 
     const recipientPhone = to.split("@")[0].replace(/\D/g, "");
     const senderPhone = from.split("@")[0].replace(/\D/g, "");
