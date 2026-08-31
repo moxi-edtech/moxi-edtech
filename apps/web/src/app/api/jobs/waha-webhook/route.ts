@@ -25,6 +25,16 @@ function timingSafeEqual(a: string, b: string) {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
+function hashWhatsappIdentity(value: string) {
+  const pepper = process.env.WHATSAPP_PHONE_HASH_PEPPER || process.env.NEXTAUTH_SECRET || "klasse-phone-hash";
+  return crypto.createHmac("sha256", pepper).update("waha-identity:" + value).digest("hex");
+}
+
+function maskWhatsappIdentity(value: string) {
+  const [user, server] = value.split("@");
+  return `${user.slice(0, 3)}***${user.slice(-2)}@${server || "unknown"}`;
+}
+
 function validateSignature(request: Request, rawBody: string) {
   const secret = process.env.WAHA_WEBHOOK_SECRET;
   if (!secret) return false;
@@ -210,16 +220,18 @@ export async function POST(request: Request) {
 
       const senderPhone = from.split("@")[0].replace(/\D/g, "");
       const recipientPhone = to.split("@")[0].replace(/\D/g, "");
+      const senderIsLid = from.endsWith("@lid");
+      const recipientIsLid = to.endsWith("@lid");
 
-      if (senderPhone) {
+      if (senderPhone || senderIsLid) {
         const normalizedSender = normalizeWhatsappPhone(senderPhone);
-        if (normalizedSender) {
-          const senderPhoneHash = hashPhone(normalizedSender) || "";
-          const senderPhoneMasked = maskPhone(normalizedSender) || "";
+        if (normalizedSender || senderIsLid) {
+          const senderPhoneHash = normalizedSender ? hashPhone(normalizedSender) || "" : hashWhatsappIdentity(from);
+          const senderPhoneMasked = normalizedSender ? maskPhone(normalizedSender) || "" : maskWhatsappIdentity(from);
 
           const normalizedRecipient = normalizeWhatsappPhone(recipientPhone) || "";
-          const recipientPhoneHash = hashPhone(normalizedRecipient) || "";
-          const recipientPhoneMasked = maskPhone(normalizedRecipient) || "";
+          const recipientPhoneHash = normalizedRecipient ? hashPhone(normalizedRecipient) || "" : recipientIsLid ? hashWhatsappIdentity(to) : "";
+          const recipientPhoneMasked = normalizedRecipient ? maskPhone(normalizedRecipient) || "" : recipientIsLid ? maskWhatsappIdentity(to) : "";
 
           // Resolve contact in school
           const contactInfo = await resolveCommunicationContactByPhone(
@@ -277,7 +289,7 @@ export async function POST(request: Request) {
               .insert({
                 school_id: provider.school_id,
                 channel: "whatsapp",
-                provider: "waha",
+            provider: "waha",
                 contact_phone_hash: senderPhoneHash,
                 contact_phone_masked: senderPhoneMasked,
                 contact_name: currentName || senderPhoneMasked,
