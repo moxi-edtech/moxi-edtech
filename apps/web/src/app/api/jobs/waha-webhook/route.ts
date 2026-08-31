@@ -69,10 +69,14 @@ function extractProviderMessageId(payload: unknown) {
 function extractMessageBody(payload: unknown) {
   const candidates = [
     readPath(payload, ["payload", "body"]),
+    readPath(payload, ["data", "body"]),
+    readPath(payload, ["body"]),
     readPath(payload, ["payload", "text", "body"]),
     readPath(payload, ["payload", "caption"]),
     readPath(payload, ["payload", "_data", "body"]),
     readPath(payload, ["payload", "_data", "caption"]),
+    readPath(payload, ["data", "_data", "body"]),
+    readPath(payload, ["_data", "body"]),
   ];
   return candidates.find((value) => typeof value === "string" && value.trim())?.trim() || "";
 }
@@ -90,11 +94,19 @@ function statusForEvent(eventType: string) {
 }
 
 function sanitizePayload(payload: any) {
+  const message = payload?.payload || payload?.data || payload;
+  const data = message?._data || message;
   return {
     event: payload?.event || payload?.type || null,
     session: payload?.session || payload?.sessionName || null,
     provider_message_id: extractProviderMessageId(payload),
     ack: readPath(payload, ["payload", "ack"]) ?? null,
+    from_me: Boolean(message?.fromMe ?? data?.fromMe ?? data?.id?.fromMe),
+    has_from: Boolean(message?.from || data?.from),
+    has_to: Boolean(message?.to || data?.to),
+    has_body: Boolean(extractMessageBody(payload)),
+    payload_keys: Object.keys(message || {}).slice(0, 20),
+    data_keys: Object.keys(data || {}).slice(0, 20),
   };
 }
 
@@ -188,7 +200,7 @@ export async function POST(request: Request) {
 
   // Handle message received (inbound)
   if (eventType === "message" || eventType === "message.received") {
-    const messagePayload = payload?.payload;
+    const messagePayload = payload?.payload || payload?.data || payload;
     const messageData = messagePayload?._data;
     const fromMe = Boolean(messagePayload?.fromMe ?? messageData?.fromMe);
 
@@ -334,7 +346,7 @@ export async function POST(request: Request) {
 
   // Handle message sent (outbound)
   if (eventType === "message.sent" || eventType === "message.received" || (eventType === "message" && payload?.payload?.fromMe)) {
-    const messagePayload = payload?.payload;
+    const messagePayload = payload?.payload || payload?.data || payload;
     const messageData = messagePayload?._data;
     const to = String(messagePayload?.to || messageData?.to || "").trim();
     const from = String(messagePayload?.from || messageData?.from || "").trim();
