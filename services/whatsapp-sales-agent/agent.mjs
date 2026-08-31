@@ -735,11 +735,12 @@ async function processChat(chat, options = {}) {
     return false;
   }
   if (entry.unsupportedInstitution) return false;
+  const testConversation = testChatIds.has(chatId) || testChatIds.has(stateKey);
   const latestText = textOf(lastInbound);
   if (entry.callProposed && /\b(?:10|11|13|14|16|17)h(?:\s*\d{2})?\b/i.test(latestText)) {
     entry.lastAgentOutboundId = await send(replyChatId, confirmedCallReply(chat, latestText), lastInbound.id);
     entry.lastInboundId = lastInbound.id;
-    entry.handoff = true;
+    entry.handoff = !testConversation;
     entry.handoffNotified = false;
     entry.callProposed = false;
     entry.lastOutboundAt = now();
@@ -758,7 +759,6 @@ async function processChat(chat, options = {}) {
     console.log("[UNSUPPORTED_INSTITUTION] " + mask(chatId));
     return true;
   }
-  const testConversation = testChatIds.has(chatId) || testChatIds.has(stateKey);
   if (!isBusinessHours() && !testConversation) {
     entry.deferredInboundId = lastInbound.id;
     entry.lastInboundId = lastInbound.id;
@@ -773,7 +773,7 @@ async function processChat(chat, options = {}) {
   entry.followUps = 0;
   entry.followUpStageKey = null;
   entry.nextFollowUpAt = null;
-  entry.handoff = Boolean(decision.handoff);
+  entry.handoff = testConversation ? false : Boolean(decision.handoff);
   entry.noActionForInboundId = null;
   if (decision.reply) {
     decision.reply = normalizeSalesLanguage(decision.reply);
