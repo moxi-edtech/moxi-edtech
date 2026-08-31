@@ -233,12 +233,20 @@ export async function POST(request: Request) {
           const recipientPhoneHash = normalizedRecipient ? hashPhone(normalizedRecipient) || "" : recipientIsLid ? hashWhatsappIdentity(to) : "";
           const recipientPhoneMasked = normalizedRecipient ? maskPhone(normalizedRecipient) || "" : recipientIsLid ? maskWhatsappIdentity(to) : "";
 
-          // Resolve contact in school
-          const contactInfo = await resolveCommunicationContactByPhone(
-            admin,
-            provider.school_id,
-            normalizedSender
-          );
+          // LID is an opaque WhatsApp identity, not a phone number. Only run
+          // phone-based contact resolution when WAHA provides a valid phone.
+          const contactInfo = normalizedSender
+            ? await resolveCommunicationContactByPhone(
+                admin,
+                provider.school_id,
+                normalizedSender
+              )
+            : {
+                linkedEntityType: "unknown" as const,
+                linkedEntityId: null,
+                contactName: null,
+                contactRole: "unknown" as const,
+              };
 
           // Find or create thread
           const bodyText = extractMessageBody(payload);
