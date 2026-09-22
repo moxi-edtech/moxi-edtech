@@ -203,19 +203,20 @@ export async function POST(request: Request) {
       if (!mensalidade?.matricula_id) {
         return NextResponse.json({ ok: false, error: "Mensalidade não encontrada.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 404 });
       }
-      if (String(mensalidade.aluno_id) !== String(payload.aluno_id)) {
-        return NextResponse.json({ ok: false, error: "A mensalidade não pertence ao aluno selecionado.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 409 });
-      }
-
       const { data: matriculaContext, error: matriculaContextError } = await supabase
         .from("matriculas")
-        .select("id, turma_id, session_id, ano_letivo")
+        .select("id, aluno_id, turma_id, session_id, ano_letivo")
         .eq("escola_id", escolaId)
         .eq("id", mensalidade.matricula_id)
         .maybeSingle();
       if (matriculaContextError) throw matriculaContextError;
       if (!matriculaContext) {
         return NextResponse.json({ ok: false, error: "A matrícula da mensalidade não foi encontrada.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 409 });
+      }
+      const belongsToAluno = String(mensalidade.aluno_id ?? "") === String(payload.aluno_id)
+        || String(matriculaContext.aluno_id ?? "") === String(payload.aluno_id);
+      if (!belongsToAluno) {
+        return NextResponse.json({ ok: false, error: "A mensalidade não pertence ao aluno selecionado.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 409 });
       }
 
       // O ano de competência é o ano civil do mês (ex.: maio/2026), não o

@@ -226,13 +226,21 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
           }
         }
 
-        const { data, error } = await (supabase as any).rpc(dossierRpc, dossierArgs);
+        const baseDossierArgs = { p_escola_id: escolaId, p_aluno_id: alunoId };
+        const [contextResult, financialResult] = await Promise.all([
+          (supabase as any).rpc(dossierRpc, dossierArgs),
+          dossierRpc === "get_aluno_dossier_contextual"
+            ? (supabase as any).rpc("get_aluno_dossier", baseDossierArgs)
+            : Promise.resolve(null),
+        ]);
 
-        if (error) throw error;
+        if (contextResult.error) throw contextResult.error;
+        if (financialResult?.error) throw financialResult.error;
 
-        const raw = (data ?? {}) as any;
+        const raw = (contextResult.data ?? {}) as any;
+        const financialRaw = (financialResult?.data ?? raw) as any;
         const perfil = raw.perfil ?? raw.aluno ?? {};
-        const financeiro = raw.financeiro ?? {};
+        const financeiro = financialRaw.financeiro ?? raw.financeiro ?? {};
         const historico = Array.isArray(raw.historico) ? raw.historico : [];
         const atual = raw.matricula_ativa ?? historico[0] ?? {};
         const divida = Number(financeiro.total_em_atraso ?? raw.aluno?.divida_total ?? 0);
@@ -299,7 +307,6 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
               .from("mensalidades")
               .select("id, matricula_id, turma_id, ano_letivo")
               .eq("escola_id", escolaId)
-              .eq("aluno_id", alunoId)
               .in("id", mensalidadeIds)
           : { data: [] };
         const originById = new Map((origins ?? []).map((origin) => [String(origin.id), origin]));
@@ -772,7 +779,6 @@ function Catalogo({
   rematriculaReady,
   rematriculaState,
   rematriculaPrice,
-  rematriculaDebt,
   rematriculaAnoLabel,
   reconcilingPedido,
   rematriculaError,
@@ -809,7 +815,6 @@ function Catalogo({
     | "DEBT_BLOCKED"
     | null;
   rematriculaPrice: number | null;
-  rematriculaDebt: { total: number; count: number } | null;
   rematriculaAnoLabel: string | null;
   reconcilingPedido: boolean;
   rematriculaError: string | null;
@@ -821,6 +826,10 @@ function Catalogo({
   onRegularize: () => void;
 }) {
   const atrasadas = useMemo(() => mensalidades.filter((m) => m.atrasada), [mensalidades]);
+  const dividaHistorica = useMemo(() => ({
+    count: atrasadas.length,
+    total: atrasadas.reduce((total, mensalidade) => total + mensalidade.preco, 0),
+  }), [atrasadas]);
   const correntes = useMemo(() => mensalidades.filter((m) => !m.atrasada), [mensalidades]);
   const documentos = useMemo(
     () => servicos.filter((s) => !isServicoRematricula(s) && isDocServico(s)),
@@ -846,6 +855,22 @@ function Catalogo({
       </div>
 
       <div className="space-y-6 max-h-[620px] overflow-y-auto pr-2">
+        {dividaHistorica.total > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+            <strong className="block">Atenção financeira</strong>
+            <span>
+              {dividaHistorica.count} mensalidade(s) vencida(s) · {kwanza.format(dividaHistorica.total)}.
+              A regularização segue da mensalidade mais antiga para a mais recente.
+            </span>
+            <button
+              type="button"
+              onClick={onRegularize}
+              className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700"
+            >
+              Regularizar agora
+            </button>
+          </div>
+        )}
         {rematriculaState && (
           <div>
             <div className="mb-2 flex items-center justify-between gap-3">
@@ -947,20 +972,6 @@ function Catalogo({
                 {rematriculaError}
               </p>
             ) : null}
-            {rematriculaDebt && rematriculaDebt.total > 0 && (
-              <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-                <strong className="block">Atenção financeira</strong>
-                <span>
-                  {rematriculaDebt.count} mensalidade(s) em aberto · {kwanza.format(rematriculaDebt.total)}.
-                  A dívida deve ser tratada no atendimento; as notas pendentes, por si só, não impedem a progressão quando a secretaria confirmar a aptidão.
-                </span>
-                {rematriculaState === "DEBT_BLOCKED" && (
-                  <button type="button" onClick={onRegularize} className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700">
-                    Regularizar agora
-                  </button>
-                )}
-              </div>
-            )}
             {!(["LEGACY_REVIEW_REQUIRED", "PENDING_ORDER_REVIEW"] as string[]).includes(rematriculaState) && <button
               type="button"
               onClick={onRematricula}
@@ -1539,13 +1550,17 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const [addingServicoId] = useState<string | null>(null);
   const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null } | null>(null);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
+  const hasOverdueDebt = useMemo(
+    () => dossier.mensalidades.some((item) => item.preco > 0 && item.atrasada),
+    [dossier.mensalidades]
+  );
 
   useEffect(() => {
     // Do not leave a blocking, empty debt dialog open after the last payment.
-    if (debtModalOpen && rematricula.debt && rematricula.debt.total <= 0) {
+    if (debtModalOpen && !dossier.loading && !hasOverdueDebt) {
       setDebtModalOpen(false);
     }
-  }, [debtModalOpen, rematricula.debt]);
+  }, [debtModalOpen, dossier.loading, hasOverdueDebt]);
 
   const onCheckoutSuccess = useCallback(() => {
     if (dossier.aluno?.id) {
@@ -1712,7 +1727,6 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                     : null
                 }
                 rematriculaPrice={rematricula.service?.valor_base ?? null}
-                rematriculaDebt={rematricula.debt}
                 rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
                 reconcilingPedido={rematricula.reconciling}
                 rematriculaError={rematricula.apiError}
@@ -1721,9 +1735,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 onCancelPendingPedido={rematricula.cancelPendingPedido}
                 onRefreshRematricula={rematricula.refreshStatus}
                 onRematricula={rematricula.openModal}
-                onRegularize={() => {
-                  if ((rematricula.debt?.total ?? 0) > 0) setDebtModalOpen(true);
-                }}
+                onRegularize={() => setDebtModalOpen(true)}
               />
             </div>
           </div>
