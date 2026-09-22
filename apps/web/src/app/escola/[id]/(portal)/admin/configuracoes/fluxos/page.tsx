@@ -9,6 +9,7 @@ import {
   Users,    // Ícone de conselho
   ShieldCheck, // Ícone de sistema
   Clock, 
+  CalendarClock,
   Mail, 
   Stamp, 
   FileSignature,
@@ -461,6 +462,22 @@ export default function FluxosConfiguracaoPage() {
               O modo actual permite recolher pré-candidaturas mesmo antes de concluir todos os requisitos operacionais.
             </p>
           )}
+        </div>
+        <div className="mb-6 flex flex-col gap-4 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50/50 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-klasse-gold-700" />
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-klasse-gold-700">Rematrículas pelo portal</p>
+              <h3 className="mt-1 text-sm font-bold text-slate-900">Gerir ou reabrir janela de rematrícula</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">Defina o período em que os alunos podem confirmar a rematrícula. Uma janela desativada pode ser reaberta nessa área.</p>
+            </div>
+          </div>
+          <Link
+            href={buildPortalHref(escolaParam, "/secretaria/rematricula/janelas")}
+            className="inline-flex shrink-0 items-center justify-center rounded-lg bg-klasse-gold-600 px-3 py-2 text-xs font-bold text-white hover:bg-klasse-gold-700"
+          >
+            Gerir janelas
+          </Link>
         </div>
         <div className="flex items-center justify-between mb-6">
             <h3 className="text-sm font-bold text-slate-900">Pipeline de Aprovação de Notas</h3>

@@ -166,7 +166,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
             next_action: setupRes.data.next_action?.href
               ? {
                   label: setupRes.data.next_action.label ?? "Continuar",
-                  href: setupRes.data.next_action.href,
+                  href: buildContextualPortalHref(escolaParam, setupRes.data.next_action.href, pathname),
                 }
               : undefined,
             blockers: Array.isArray(setupRes.data.blockers)
