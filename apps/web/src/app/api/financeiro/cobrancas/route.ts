@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 
 const CobrancaItemSchema = z.object({
   aluno_id: z.string().uuid(),
@@ -24,6 +27,11 @@ export async function GET(req: NextRequest) {
     const user = userRes?.user;
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -53,7 +61,8 @@ export async function GET(req: NextRequest) {
           status
         )
       `
-      );
+      )
+      .eq("escola_id", escolaId);
 
     query = applyKf2ListInvariants(query);
     
@@ -97,10 +106,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: escolaId, error: escolaError } = await supabase.rpc("current_tenant_escola_id");
-    if (escolaError || !escolaId) {
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 });
     }
+
+    const financeGuard = requireFinanceChargeMessages(
+      await resolveSchoolOperatingProfile(supabase as any, String(escolaId))
+    );
+    if (!financeGuard.ok) return NextResponse.json(financeGuard, { status: 409 });
 
     const rows = parsed.data.items.map((item) => ({
       escola_id: escolaId,

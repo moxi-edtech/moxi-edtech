@@ -80,11 +80,27 @@ async function resolvePagamentoEscolaId(
     .eq("id", pagamentoId)
     .maybeSingle();
 
-  if (error || !data?.escola_id) {
+  if (error) {
     throw new Error("Pagamento não encontrado.");
   }
 
-  return String(data.escola_id);
+  if (data?.escola_id) {
+    return String(data.escola_id);
+  }
+
+  // A fila de recebimentos também inclui serviços/rematrículas,
+  // cujo pagamento é persistido como uma intenção antes da liquidação.
+  const { data: intent, error: intentError } = await supabase
+    .from("pagamento_intents")
+    .select("escola_id")
+    .eq("id", pagamentoId)
+    .maybeSingle();
+
+  if (intentError || !intent?.escola_id) {
+    throw new Error("Pagamento não encontrado.");
+  }
+
+  return String(intent.escola_id);
 }
 
 /**
