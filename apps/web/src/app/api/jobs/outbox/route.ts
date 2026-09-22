@@ -11,6 +11,8 @@ import {
   resolveCommunicationContactByPhone,
   toWahaMessageId,
 } from "@/lib/server/whatsappUtility";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -57,6 +59,8 @@ type NotificationOutboxRow = {
 type CommunicationOutboxRow = {
   id: string;
   school_id: string | null;
+  message_type: string;
+  status: string;
   body: string | null;
   metadata: Record<string, any> | null;
   requires_approval: boolean | null;
@@ -317,6 +321,28 @@ async function processCommunicationOutbox(admin: NonNullable<ReturnType<typeof g
     try {
       if (!schoolId) throw new Error("Mensagem sem school_id");
       if (row.requires_approval && !row.approved_by) throw new Error("Mensagem exige aprovação humana");
+
+      if (row.message_type === "finance_charge") {
+        const profile = await resolveSchoolOperatingProfile(admin as any, schoolId, { bypassCache: true });
+        const financeGuard = requireFinanceChargeMessages(profile);
+        if (!financeGuard.ok) {
+          await markCommunicationOutbox(
+            admin,
+            row,
+            {
+              status: "cancelled",
+              cancelled_at: new Date().toISOString(),
+              sending_at: null,
+              next_retry_at: null,
+              last_error: financeGuard.code,
+            },
+            "outbox.blocked_finance_model",
+            { code: financeGuard.code, finance_model: profile.financeModel }
+          );
+          results.push({ id: row.id, status: "cancelled", error: financeGuard.code });
+          continue;
+        }
+      }
 
       let limit = limitCache.get(schoolId);
       if (!limit) {

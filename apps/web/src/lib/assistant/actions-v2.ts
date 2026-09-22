@@ -4,6 +4,8 @@ import {
   AI_ADMIN_ROLES as ADMIN_ROLES,
   AI_WIDGET_ROLES as ALL_ROLES,
 } from "@/lib/roles/ai-roles";
+import type { SchoolOperatingProfile } from "@/lib/school-profile/types";
+import { canUseFinanceChargeMessages } from "@/lib/school-profile/finance-capabilities";
 
 export type AssistantActionV2Kind =
   | "open_screen"
@@ -357,6 +359,23 @@ export function createAssistantActionV2(action: AssistantActionV2): AssistantAct
 export function canUseAssistantActionV2(role: string, action: Pick<AssistantActionV2Definition, "roles">): boolean {
   const cleanRole = role.toLowerCase().trim();
   return action.roles.includes(cleanRole);
+}
+
+export function canUseAssistantActionV2ForProfile(
+  action: Pick<AssistantActionV2, "id">,
+  profile?: SchoolOperatingProfile,
+) {
+  if (!profile) return true;
+  const isFinanceAction = action.id.includes("finance")
+    || action.id.includes("whatsapp_draft");
+  return !isFinanceAction || canUseFinanceChargeMessages(profile);
+}
+
+export function filterAssistantActionsV2ForProfile(
+  actions: AssistantActionV2[],
+  profile?: SchoolOperatingProfile,
+) {
+  return actions.filter((action) => canUseAssistantActionV2ForProfile(action, profile));
 }
 
 export function instantiateAssistantActionV2(

@@ -5,6 +5,8 @@ import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { assertPortalAccess } from "@/lib/portalAccess";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { canUseFinancialSuspension } from "@/lib/school-profile/finance-capabilities";
 
 export async function GET(req: Request) {
   try {
@@ -94,13 +96,14 @@ export async function GET(req: Request) {
     }));
 
     // Enriquecer com inadimplência se necessário
+    const operatingProfile = await resolveSchoolOperatingProfile(s as any, escolaId);
     const { data: configFin } = await s
       .from("configuracoes_financeiro")
       .select("bloquear_inadimplentes")
       .eq("escola_id", escolaId)
       .maybeSingle();
 
-    if (configFin?.bloquear_inadimplentes) {
+    if (configFin?.bloquear_inadimplentes && canUseFinancialSuspension(operatingProfile)) {
       const { data: inadimplentes } = await s
         .from("vw_radar_inadimplencia" as any)
         .select("aluno_id, dias_em_atraso")

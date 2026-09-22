@@ -17,6 +17,8 @@ import {
   withNoStore,
 } from "@/lib/server/whatsappUtility";
 import type { DBWithRPC } from "@/types/supabase-augment";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -215,6 +217,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (parsed.data.messageType === "finance_charge") {
       const allowed = await userHasAnyRole(supabase, auth.auth.escolaId, WHATSAPP_FINANCE_ROLES);
       if (!allowed) return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão para mensagens financeiras." }, { status: 403 }));
+
+      const profile = await resolveSchoolOperatingProfile(supabase, auth.auth.escolaId);
+      const financeGuard = requireFinanceChargeMessages(profile);
+      if (!financeGuard.ok) {
+        return withNoStore(NextResponse.json(financeGuard, { status: 409 }));
+      }
     }
 
     const sourceInsightResult = parsed.data.aiInsightId

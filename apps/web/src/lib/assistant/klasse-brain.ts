@@ -3,12 +3,14 @@ import { getActionsForRole, ASSISTANT_ACTIONS, AssistantAction } from "./action-
 import { hasAssistantPermission } from "./permission-registry";
 import { searchKnowledge } from "./knowledge-search";
 import { AiWidgetContext, describeScreenContext, sanitizeContextForAi } from "./screen-context";
-import { createAssistantActionV2, instantiateAssistantActionV2, type AssistantActionV2 } from "./actions-v2";
+import { createAssistantActionV2, filterAssistantActionsV2ForProfile, instantiateAssistantActionV2, type AssistantActionV2 } from "./actions-v2";
 import { runDataCopilotTool } from "./data-copilot/tool-registry";
 import { normalizeAssistantText } from "./data-copilot/query-matcher";
 import type { InsightAnswer } from "./data-copilot/types";
 import { updateAiUsageLog } from "@/lib/server/ai/ai-guards";
 import { callAiWithFallback } from "@/lib/server/ai/provider-client";
+import type { SchoolOperatingProfile } from "@/lib/school-profile/types";
+import { canUseFinanceChargeMessages } from "@/lib/school-profile/finance-capabilities";
 
 export type AssistantResponse = {
   ok: boolean;
@@ -190,6 +192,10 @@ function actionsFromSuggestions(suggestions: AssistantAction[] | undefined, scho
     .filter((action): action is AssistantActionV2 => Boolean(action));
 }
 
+function canUseAssistantRoute(route: KlasseRoute, profile?: SchoolOperatingProfile) {
+  return route.module !== "financeiro" || !profile || canUseFinanceChargeMessages(profile);
+}
+
 export async function processKlasseBrainQuery(params: {
   schoolId: string;
   role: string;
@@ -197,8 +203,9 @@ export async function processKlasseBrainQuery(params: {
   context?: AiWidgetContext;
   allowedFeatures?: string[];
   usageLogId?: string;
+  operatingProfile?: SchoolOperatingProfile;
 }): Promise<AssistantResponse> {
-  const { schoolId, role, query, context, usageLogId } = params;
+  const { schoolId, role, query, context, usageLogId, operatingProfile } = params;
   const cleanQuery = query.trim().toLowerCase();
 
   // 1. Permission check: Check if user is allowed to view/use the assistant
@@ -231,7 +238,7 @@ export async function processKlasseBrainQuery(params: {
 
   let dataCopilotAnswer;
   try {
-    dataCopilotAnswer = await runDataCopilotTool({ schoolId, role, query, context });
+    dataCopilotAnswer = await runDataCopilotTool({ schoolId, role, query, context, operatingProfile });
   } catch (error) {
     console.error("[KLASSE IA] Fonte de dados indisponível:", error);
     return {
@@ -247,7 +254,7 @@ export async function processKlasseBrainQuery(params: {
 
   // 2. Fast Path: Check if user wants to see what they can do on this screen
   if (cleanQuery.includes("o que posso fazer nesta tela") || cleanQuery.includes("acoes desta tela")) {
-    const allowedActions = getActionsForRole(role, context?.module);
+    const allowedActions = getActionsForRole(role, context?.module, operatingProfile);
     const textContext = describeScreenContext(context);
 
     let answerText = `Você está em: **${textContext}**. Aqui estão as ações oficiais recomendadas para o seu perfil:\n\n`;
@@ -260,7 +267,7 @@ export async function processKlasseBrainQuery(params: {
       answerText += "Nenhuma ação contextual específica cadastrada para o seu perfil nesta tela.";
     }
 
-    const matchedRoutes = KLASSE_ROUTES.filter((r) => r.module === context?.module && r.roles.includes(role.toLowerCase()));
+    const matchedRoutes = KLASSE_ROUTES.filter((r) => r.module === context?.module && r.roles.includes(role.toLowerCase()) && canUseAssistantRoute(r, operatingProfile));
     const links = matchedRoutes.map((r) => ({
       label: r.title,
       href: r.href(schoolId),
@@ -287,7 +294,7 @@ export async function processKlasseBrainQuery(params: {
   for (const pattern of FAST_PATH_PATTERNS) {
     if (pattern.keywords.some((kw) => cleanQuery.includes(kw))) {
       const route = KLASSE_ROUTES.find((r) => r.key === pattern.routeKey);
-      if (route && route.roles.includes(role.toLowerCase())) {
+      if (route && route.roles.includes(role.toLowerCase()) && canUseAssistantRoute(route, operatingProfile)) {
         const action = ASSISTANT_ACTIONS.find((act) => act.href && act.module === route.module);
         return {
           ok: true,
@@ -407,7 +414,7 @@ export async function processKlasseBrainQuery(params: {
   // Attempt to map matching routes to offer links
   const links: Array<{ label: string; href: string }> = [];
   for (const route of KLASSE_ROUTES) {
-    if (route.roles.includes(role.toLowerCase())) {
+    if (route.roles.includes(role.toLowerCase()) && canUseAssistantRoute(route, operatingProfile)) {
       const containsAlias = route.aliases.some((alias) => query.toLowerCase().includes(alias));
       if (containsAlias || answer.toLowerCase().includes(route.title.toLowerCase())) {
         links.push({
@@ -418,7 +425,7 @@ export async function processKlasseBrainQuery(params: {
     }
   }
 
-  const suggestions = getActionsForRole(role, context?.module).slice(0, 2);
+  const suggestions = getActionsForRole(role, context?.module, operatingProfile).slice(0, 2);
   const routeActions = links.slice(0, 3).map((link, index) => routeAction({
     id: `rag:link:${index}`,
     label: link.label,

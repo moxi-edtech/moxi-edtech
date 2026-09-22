@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) return NextResponse.json({ error: "Escola não identificada" }, { status: 403 });
+
+    const financeGuard = requireFinanceChargeMessages(
+      await resolveSchoolOperatingProfile(supabase as any, escolaId)
+    );
+    if (!financeGuard.ok) return NextResponse.json(financeGuard, { status: 409 });
 
     // Verify campaign belongs to escola and is not already finished
     const { data: existing, error: fetchErr } = await supabase

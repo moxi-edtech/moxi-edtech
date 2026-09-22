@@ -7,6 +7,8 @@ import {
   withNoStore,
 } from "@/lib/server/whatsappUtility";
 import type { DBWithRPC } from "@/types/supabase-augment";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -41,13 +43,21 @@ export async function PATCH(
 
     const { data: item, error: itemError } = await (supabase as any)
       .from("communication_outbox")
-      .select("id,school_id,status")
+      .select("id,school_id,status,message_type")
       .eq("id", outboxId)
       .eq("school_id", auth.auth.escolaId)
       .maybeSingle();
 
     if (itemError) throw itemError;
     if (!item) return withNoStore(NextResponse.json({ ok: false, error: "Mensagem não encontrada." }, { status: 404 }));
+
+    if (["approve", "retry"].includes(parsed.data.action) && item.message_type === "finance_charge") {
+      const profile = await resolveSchoolOperatingProfile(supabase, auth.auth.escolaId);
+      const financeGuard = requireFinanceChargeMessages(profile);
+      if (!financeGuard.ok) {
+        return withNoStore(NextResponse.json(financeGuard, { status: 409 }));
+      }
+    }
 
     if (parsed.data.action === "approve") {
       if (!isWahaEnabled()) return withNoStore(NextResponse.json({ ok: false, error: "WhatsApp KLASSE está desativado neste ambiente." }, { status: 403 }));

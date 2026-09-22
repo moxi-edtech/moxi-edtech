@@ -10,6 +10,8 @@ import {
 import type { Database, Json } from "~types/supabase";
 import { requireApiTenantGuard } from "@/lib/api/requireApiTenantGuard";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -330,6 +332,11 @@ export async function POST(req: NextRequest) {
     const supabaseAny = supabase as any;
     const user = guard.user;
     const escolaId = guard.tenantId;
+
+    const financeGuard = requireFinanceChargeMessages(
+      await resolveSchoolOperatingProfile(supabase as any, escolaId)
+    );
+    if (!financeGuard.ok) return NextResponse.json(financeGuard, { status: 409 });
 
     const { data: existingIdempotency } = await supabaseAny
       .from("idempotency_keys")

@@ -6,6 +6,8 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { isBillingCompetencyAllowed, resolveTurmaBillingWindow } from '@/lib/financeiro/turma-billing-window'
 import { resolveRegimeAcademico } from '@/lib/academico/regime-academico'
+import { resolveSchoolOperatingProfile } from '@/lib/school-profile/resolve-school-profile'
+import { requireRecurringTuition } from '@/lib/school-profile/guards'
 import type { Database } from '~types/supabase'
 
 export const dynamic = "force-dynamic"
@@ -40,6 +42,12 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola não identificada' }, { status: 400 })
+    }
+
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId)
+    const financeGuard = requireRecurringTuition(operatingProfile)
+    if (!financeGuard.ok) {
+      return NextResponse.json(financeGuard, { status: 409 })
     }
 
     const body = await req.json().catch(() => ({}))

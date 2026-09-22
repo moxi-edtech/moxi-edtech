@@ -5,6 +5,8 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { createAiAction } from "@/lib/server/ai/ai-actions";
 import { updateAiUsageLog, validateAiAccess } from "@/lib/server/ai/ai-guards";
 import { generateAiText } from "@/lib/server/ai/text-generation";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 import type { DBWithRPC } from "@/types/supabase-augment";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +48,12 @@ export async function POST(req: Request) {
   );
   if (!schoolId || schoolId !== parsed.data.schoolId) {
     return NextResponse.json({ ok: false, error: "Sem permissão para esta escola." }, { status: 403 });
+  }
+
+  const operatingProfile = await resolveSchoolOperatingProfile(supabase, schoolId);
+  const financeGuard = requireFinanceChargeMessages(operatingProfile);
+  if (!financeGuard.ok) {
+    return NextResponse.json(financeGuard, { status: 409 });
   }
 
   const access = await validateAiAccess(schoolId, "finance_message", "admin_ai_finance_message");

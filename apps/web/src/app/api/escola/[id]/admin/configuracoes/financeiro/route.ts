@@ -3,6 +3,8 @@ import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinancialSuspension } from "@/lib/school-profile/guards";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -172,6 +174,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         NextResponse.json({ ok: false, error: "Dados inválidos.", issues: parsed.error.issues }, { status: 400 }),
         start
       );
+    }
+
+    if (parsed.data.bloquear_inadimplentes === true) {
+      const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, resolvedEscolaId);
+      const suspensionGuard = requireFinancialSuspension(operatingProfile);
+      if (!suspensionGuard.ok) return withNoStore(NextResponse.json(suspensionGuard, { status: 409 }), start);
     }
 
     const anoLetivo = await resolveAnoLetivoAtivo(supabase, resolvedEscolaId);
