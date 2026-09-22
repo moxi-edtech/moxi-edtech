@@ -199,12 +199,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .eq('versao_id', versaoId)
       .limit(200)
 
+    const previousBySlot = new Map((previousRows || []).map((row: { slot_id: string; sala_id?: string | null }) => [row.slot_id, row]))
     const payload = parsed.data.items.map((item) => ({
       escola_id: escolaIdResolved,
       turma_id: parsed.data.turma_id,
       disciplina_id: item.disciplina_id,
       professor_id: item.professor_id ?? null,
-      sala_id: item.sala_id ?? null,
+      // Clientes que não editam salas (ex.: modal da lista de turmas) não devem
+      // apagar uma sala já persistida; null explícito continua a removê-la.
+      sala_id: item.sala_id === undefined ? (previousBySlot.get(item.slot_id)?.sala_id ?? null) : item.sala_id,
       slot_id: item.slot_id,
       versao_id: versaoId,
     }))

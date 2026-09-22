@@ -13,6 +13,8 @@ import {
   UserCheck, UserX, LayoutGrid, List,
   X, AlertCircle, CheckCircle2, ChevronLeft, RefreshCw, Eye, Pencil, KeyRound,
 } from "lucide-react"
+import TurmaAtribuirProfessoresModal from "@/components/secretaria/TurmaAtribuirProfessoresModal"
+import type { TurmaItem } from "~/types/turmas"
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -631,6 +633,8 @@ export default function ProfessoresPage() {
   } | null>(null)
   const [confirmRemove,      setConfirmRemove]       = useState<{ disciplinaId: string } | null>(null)
   const [removing,           setRemoving]            = useState(false)
+  const [quickAssignSelection, setQuickAssignSelection] = useState("")
+  const [quickAssignTurmaId, setQuickAssignTurmaId] = useState<string | null>(null)
 
   // ── Adicionar state ──────────────────────────────────────────────────────────
   const [teacherStep,       setTeacherStep]       = useState(0)
@@ -675,6 +679,10 @@ export default function ProfessoresPage() {
   // ── Derived ──────────────────────────────────────────────────────────────────
   const ativos    = professores.filter((p) => !!p.last_login).length
   const pendentes = Math.max(0, professores.length - ativos)
+  const quickAssignTurma = useMemo(
+    () => todasTurmas.find((turma) => turma.id === quickAssignTurmaId) ?? null,
+    [todasTurmas, quickAssignTurmaId],
+  )
 
   const filteredProfessores = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -1328,6 +1336,40 @@ export default function ProfessoresPage() {
             </div>
           </div>
 
+          <div className="mb-6 rounded-xl border border-[#1F6B3B]/15 bg-[#1F6B3B]/[0.04] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-slate-900">Atribuição rápida por turma</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Distribua todas as disciplinas de uma turma num único lugar, com os vínculos e horários preservados.
+                </p>
+              </div>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1F6B3B]">
+                Recomendado
+              </span>
+            </div>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <select
+                className={`${selectCls} sm:max-w-sm`}
+                value={quickAssignSelection}
+                onChange={(e) => setQuickAssignSelection(e.target.value)}
+              >
+                <option value="">Selecione uma turma</option>
+                {todasTurmas.map((turma) => (
+                  <option key={turma.id} value={turma.id}>{turma.nome}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!quickAssignSelection}
+                onClick={() => setQuickAssignTurmaId(quickAssignSelection)}
+                className="rounded-xl bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white transition-all hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Abrir atribuição por turma
+              </button>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmitAtribuir} className="space-y-3 max-w-lg">
             <select className={selectCls} required value={atribProfessorUserId}
               onChange={(e) => setAtribProfessorUserId(e.target.value)}>
@@ -1741,6 +1783,19 @@ export default function ProfessoresPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {quickAssignTurmaId && escolaId && (
+        <TurmaAtribuirProfessoresModal
+          turma={{ id: quickAssignTurmaId, nome: quickAssignTurma?.nome ?? "Turma" } as TurmaItem}
+          escolaId={escolaId}
+          isOpen
+          onClose={() => setQuickAssignTurmaId(null)}
+          onUpdated={() => {
+            void loadBootstrapData()
+            if (atribTurmaId === quickAssignTurmaId) void loadTurmaAssignments(quickAssignTurmaId)
+          }}
+        />
       )}
 
       {/* ── Confirm: remover atribuição ─────────────────────────────────────── */}

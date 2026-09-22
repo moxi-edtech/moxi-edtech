@@ -15,6 +15,7 @@ import {
 
 interface Disciplina {
   id: string;
+  curso_matriz_id?: string | null;
   nome: string;
   professor_id?: string | null;
   professor_nome?: string | null;
@@ -22,6 +23,8 @@ interface Disciplina {
 
 interface Professor {
   id: string;
+  professor_id?: string | null;
+  user_id?: string | null;
   nome: string;
 }
 
@@ -66,11 +69,19 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
       ]);
       const [discJson, profJson] = await Promise.all([discRes.json(), profRes.json()]);
       
-      if (discJson.ok) setDisciplinas(discJson.items || []);
+      if (discJson.ok) {
+        setDisciplinas((discJson.items || []).map((item: any) => ({
+          ...item,
+          curso_matriz_id: item.curso_matriz_id || item.id,
+          id: item.id,
+        })));
+      }
       if (profJson.ok) {
         setProfessores(
           (profJson.items || []).map((p: any) => ({
-            id: p.user_id || p.id,
+            id: p.professor_id || p.id || p.user_id,
+            professor_id: p.professor_id || p.id || null,
+            user_id: p.user_id || null,
             nome: p.nome || "Professor sem nome",
           }))
         );
@@ -87,17 +98,23 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
   }, [turmaId]);
 
   const handleAssign = async (disciplinaId: string, professorId: string) => {
+    const disciplina = disciplinas.find((item) => item.id === disciplinaId);
+    const professor = professores.find((item) => item.id === professorId);
+    const cursoMatrizId = disciplina?.curso_matriz_id || disciplina?.id;
+    if (!cursoMatrizId || !professor) return;
     try {
       const res = await fetch(`/api/secretaria/turmas/${turmaId}/atribuir-professor`, {
         method: "POST",
         body: JSON.stringify({
-          disciplina_id: disciplinaId,
-          professor_id: professorId,
+          curso_matriz_id: cursoMatrizId,
+          professor_id: professor.professor_id || undefined,
+          professor_user_id: professor.professor_id ? undefined : professor.user_id || professor.id,
+          replace_existing: true,
         }),
       });
       const json = await res.json();
       if (json.ok) {
-        const prof = professores.find(p => p.id === professorId);
+        const prof = professor;
         setDisciplinas(prev => prev.map(d => d.id === disciplinaId ? { ...d, professor_id: professorId, professor_nome: prof?.nome } : d));
         setAssigningId(null);
         success("Professor atribuído!");
