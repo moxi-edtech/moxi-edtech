@@ -88,73 +88,6 @@ type Relatorio = {
   }>;
 };
 
-// --- Serviço de WhatsApp (modo demo/front) ---
-class WhatsAppService {
-  static async enviarMensagemIndividual(
-    telefone: string,
-    mensagem: string
-  ): Promise<boolean> {
-    const telefoneFormatado = telefone.replace(/\D/g, "");
-    const textoFormatado = encodeURIComponent(mensagem);
-    const url = `https://wa.me/${telefoneFormatado}?text=${textoFormatado}`;
-    window.open(url, "_blank");
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return true;
-  }
-
-  static async enviarMensagemEmMassa(
-    contatos: Array<{ telefone: string; mensagem: string }>
-  ): Promise<{ sucesso: number; falhas: number }> {
-    let sucesso = 0;
-    let falhas = 0;
-
-    for (const contato of contatos) {
-      try {
-        const enviado = await this.enviarMensagemIndividual(
-          contato.telefone,
-          contato.mensagem
-        );
-        if (enviado) {
-          sucesso++;
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        } else {
-          falhas++;
-        }
-      } catch {
-        falhas++;
-      }
-    }
-
-    return { sucesso, falhas };
-  }
-}
-
-// --- Templates de Mensagem (tipados) ---
-type TemplateArgs = {
-  nomeAluno: string;
-  responsavel: string;
-  valor: number;
-  diasAtraso: number;
-};
-
-const MensagensTemplates = {
-  cobrancaSimples: ({ nomeAluno, responsavel, valor, diasAtraso }: TemplateArgs) =>
-    `Olá ${responsavel}! Lembramos que a mensalidade do(a) ${nomeAluno} está em atraso há ${diasAtraso} dias no valor de ${valor.toLocaleString(
-      "pt-AO"
-    )} Kz. Podemos ajudar com alguma questão?`,
-
-  cobrancaUrgente: ({ nomeAluno, responsavel, valor, diasAtraso }: TemplateArgs) =>
-    `*URGENTE* - ${responsavel}, a mensalidade do(a) ${nomeAluno} está em atraso há ${diasAtraso} dias (${valor.toLocaleString(
-      "pt-AO"
-    )} Kz). Entre em contacto connosco para regularizar. Obrigado!`,
-
-  lembreteAmigavel: ({ nomeAluno, responsavel, valor }: TemplateArgs) =>
-    `Olá ${responsavel}! Apenas um lembrete amigável sobre a mensalidade do(a) ${nomeAluno} no valor de ${valor.toLocaleString(
-      "pt-AO"
-    )} Kz. Precisando de ajuda, estamos aqui!`,
-};
-
 type RadarInadimplenciaActiveProps = {
   onSelectionChange?: (entries: RadarEntry[]) => void;
   disableActions?: boolean;
@@ -238,7 +171,7 @@ export default function RadarInadimplenciaActive({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [filtroTexto, setFiltroTexto] = useState("");
-  const [enviando, setEnviando] = useState(false);
+  const [rascunhos, setRascunhos] = useState<Array<{ item: RadarEntry; mensagem: string }>>([]);
   const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [timelineFor, setTimelineFor] = useState<RadarEntry | null>(null);
@@ -259,6 +192,8 @@ export default function RadarInadimplenciaActive({
 
   // Carregar dados reais da API
   useEffect(() => {
+    setRascunhos([]);
+    setSelectedIds(new Set());
     const fetchDados = async () => {
       try {
         setLoading(true);
@@ -373,165 +308,17 @@ export default function RadarInadimplenciaActive({
     setExpandedIds(updated);
   };
 
-  const carregarResumoCobrancas = async () => {
-    const contextQuery = academicYearId
-      ? `?ano_letivo_id=${encodeURIComponent(academicYearId)}`
-      : "";
-    const res = await fetch(`/api/financeiro/cobrancas/resumo${contextQuery}`, { cache: "no-store" });
-    if (!res.ok) return;
-    const json = await res.json();
-    if (!json?.ok || !json?.resumo) return;
-    setRelatorio({
-      totalEnviadas: json.resumo.totalEnviadas ?? 0,
-      totalRespondidas: json.resumo.totalRespondidas ?? 0,
-      totalPagos: json.resumo.totalPagos ?? 0,
-      taxaResposta: json.resumo.taxaResposta ?? 0,
-      taxaConversao: json.resumo.taxaConversao ?? 0,
-      valorRecuperado: json.resumo.valorRecuperado ?? 0,
-      historico: json.historico ?? [],
-    });
-  };
-
-  const registrarCobrancas = async (
-    entries: Array<{ aluno_id: string; id: string; mensagem: string; mensalidade_id?: string | null }>,
-    status: "enviada" | "falha"
-  ) => {
-    if (entries.length === 0) return;
-    await fetch("/api/financeiro/cobrancas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: entries.map((entry) => ({
-          aluno_id: entry.aluno_id,
-          mensalidade_id: entry.mensalidade_id ?? null,
-          canal: "whatsapp",
-          status,
-          mensagem: entry.mensagem,
-          enviado_em: new Date().toISOString(),
-        })),
-      }),
-    }).catch(() => null);
-  };
-
-  // --- INTEGRAÇÃO WHATSAPP (demo/front) ---
-  const handleCobrancaMassa = async () => {
+  // Preparar um rascunho nunca confirma envio nem altera o histórico.
+  const prepararRascunhos = (entries: RadarEntry[]) => {
     if (disableActions) return;
-    if (selectedIds.size === 0) return;
-
-    setEnviando(true);
-
-    const selecionados = dados.filter((d) => selectedIds.has(d.id));
-    const totalRecuperavel = selecionados.reduce(
-      (acc, curr) => acc + curr.valor_divida,
-      0
-    );
-
-    const mensagens = selecionados.map((item) => {
-      let template:
-        | typeof MensagensTemplates.cobrancaUrgente
-        | typeof MensagensTemplates.cobrancaSimples
-        | typeof MensagensTemplates.lembreteAmigavel;
-
-      if (item.status === "critico") {
-        template = MensagensTemplates.cobrancaUrgente;
-      } else if (item.status === "atencao") {
-        template = MensagensTemplates.cobrancaSimples;
-      } else {
-        template = MensagensTemplates.lembreteAmigavel;
-      }
-
-      const args: TemplateArgs = {
-        nomeAluno: item.nome_aluno,
-        responsavel: item.responsavel,
-        valor: item.valor_divida,
-        diasAtraso: item.dias_atraso,
-      };
-
-      return {
-        telefone: item.telefone,
-        mensagem: template(args),
-        aluno_id: item.aluno_id,
-        mensalidade_id: item.mensalidade_id ?? null,
-      };
-    });
-
-    try {
-      const resultado = await WhatsAppService.enviarMensagemEmMassa(mensagens);
-
-      await registrarCobrancas(
-        mensagens.map((msg) => ({
-          aluno_id: msg.aluno_id,
-          id: msg.aluno_id,
-          mensagem: msg.mensagem,
-          mensalidade_id: msg.mensalidade_id,
-        })),
-        resultado.falhas > 0 ? "falha" : "enviada"
-      );
-      await carregarResumoCobrancas();
-
-      success(
-        "Lembretes processados",
-        `Enviámos ${resultado.sucesso} mensagens com sucesso. O potencial de recuperação estimado é de ${Math.floor(totalRecuperavel * 0.4).toLocaleString("pt-AO")} Kz.`
-      );
-
-      setSelectedIds(new Set());
-    } catch (err) {
-      error("Erro no envio", "Não conseguimos concluir o envio das mensagens. Por favor, tente novamente.");
-    } finally {
-      setEnviando(false);
-    }
+    setRascunhos(entries.map((item) => ({
+      item,
+      mensagem: `Olá ${item.responsavel === "—" ? "encarregado(a) de educação" : item.responsavel}! Consta um saldo em atraso de ${item.valor_divida.toLocaleString("pt-AO")} Kz referente às propinas de ${item.nome_aluno}. Se já efectuou o pagamento, agradecemos que contacte a secretaria para conferência. Podemos ajudar com alguma questão?`,
+    })));
   };
 
-  const handleCobrancaIndividual = async (item: RadarEntry) => {
-    if (disableActions) return;
-    let template:
-      | typeof MensagensTemplates.cobrancaUrgente
-      | typeof MensagensTemplates.cobrancaSimples
-      | typeof MensagensTemplates.lembreteAmigavel;
-
-    if (item.status === "critico") {
-      template = MensagensTemplates.cobrancaUrgente;
-    } else if (item.status === "atencao") {
-      template = MensagensTemplates.cobrancaSimples;
-    } else {
-      template = MensagensTemplates.lembreteAmigavel;
-    }
-
-    const args: TemplateArgs = {
-      nomeAluno: item.nome_aluno,
-      responsavel: item.responsavel,
-      valor: item.valor_divida,
-      diasAtraso: item.dias_atraso,
-    };
-
-    const mensagem = template(args);
-
-    try {
-      await WhatsAppService.enviarMensagemIndividual(item.telefone, mensagem);
-      await registrarCobrancas(
-        [
-          {
-            aluno_id: item.aluno_id,
-            id: item.id,
-            mensagem,
-            mensalidade_id: item.mensalidade_id ?? null,
-          },
-        ],
-        "enviada"
-      );
-      await carregarResumoCobrancas();
-
-      setDados((prev) =>
-        prev.map((d) =>
-          d.id === item.id
-            ? { ...d, ultimo_contato: "Agora", ultimo_contato_data: new Date() }
-            : d
-        )
-      );
-    } catch {
-      error("Erro no WhatsApp", "Não foi possível abrir a aplicação do WhatsApp. Verifique se o número de telefone é válido.");
-    }
-  };
+  const handleCobrancaMassa = () => prepararRascunhos(dados.filter((d) => selectedIds.has(d.id)));
+  const handleCobrancaIndividual = (item: RadarEntry) => prepararRascunhos([item]);
 
   const dadosFiltrados = dados.filter((d) => {
     const textoOk =
@@ -656,22 +443,45 @@ export default function RadarInadimplenciaActive({
 
           <button
             onClick={handleCobrancaMassa}
-            disabled={selectedIds.size === 0 || enviando || disableActions}
+            disabled={selectedIds.size === 0 || disableActions}
             className="inline-flex items-center gap-2 rounded-lg bg-[#1F6B3B] px-5 py-3 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#1F6B3B]/20 transition-all active:scale-95 transform hover:-translate-y-0.5"
           >
-            {enviando ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <MessageCircle className="h-4 w-4" />
-            )}
+            <MessageCircle className="h-4 w-4" />
             {selectedIds.size === 0
-              ? "Selecione para Cobrar"
-              : enviando
-              ? "Enviando..."
-              : `Cobrar ${selectedIds.size} Responsáveis`}
+              ? "Selecione para preparar lembretes"
+              : `Preparar ${selectedIds.size} lembretes`}
           </button>
         </div>
       </div>
+
+      {rascunhos.length > 0 && !disableActions && (
+        <section aria-label="Revisão de lembretes" className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-slate-900">Rever lembretes ({rascunhos.length})</h2>
+            <button type="button" onClick={() => setRascunhos([])} className="text-sm text-slate-600 underline">Descartar rascunhos</button>
+          </div>
+          <p className="text-sm text-slate-600">Rascunhos locais, não guardados. Reveja o saldo e o destinatário. Abrir o WhatsApp não confirma o envio; envie apenas depois de conferir a mensagem na aplicação.</p>
+          {rascunhos.map(({ item, mensagem }, index) => {
+            const digits = item.telefone.replace(/\D/g, "");
+            const telefone = digits.length === 9 ? `244${digits}` : digits.startsWith("00") ? digits.slice(2) : digits;
+            const telefoneValido = /^[1-9]\d{9,14}$/.test(telefone);
+            return (
+              <div key={item.id} className="rounded-xl border border-slate-200 p-4 space-y-3">
+                <p className="text-sm font-semibold">{item.nome_aluno} · {item.responsavel} · {item.telefone || "Sem telefone"}</p>
+                <label className="block text-sm text-slate-700">
+                  Mensagem para {item.nome_aluno}
+                  <textarea value={mensagem} rows={4} className="mt-2 w-full rounded-xl border border-slate-200 p-3 focus:ring-4 focus:ring-klasse-gold/20"
+                    onChange={(event) => setRascunhos((prev) => prev.map((draft, i) => i === index ? { ...draft, mensagem: event.target.value } : draft))} />
+                </label>
+                {!telefoneValido && <p className="text-sm text-red-600">Telefone ausente ou inválido. Corrija o contacto do encarregado antes de abrir o WhatsApp.</p>}
+                {telefoneValido && mensagem.trim() && (
+                  <a href={`https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white">Abrir rascunho no WhatsApp</a>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      )}
 
       {/* --- RELATÓRIO EXPANDIDO --- */}
       {mostrarRelatorio && (
@@ -937,7 +747,7 @@ export default function RadarInadimplenciaActive({
                           onClick={() => handleCobrancaIndividual(item)}
                           disabled={disableActions}
                           className="p-2 rounded-lg text-[#1F6B3B] hover:bg-[#1F6B3B]/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                          title="Enviar Cobrança via WhatsApp"
+                          title="Preparar lembrete" aria-label={`Preparar lembrete para ${item.nome_aluno}`}
                         >
                           <MessageSquare className="w-4 h-4" />
                         </button>
