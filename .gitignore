@@ -121,3 +121,23 @@ validator-package.json
 /tsconfig.tsbuildinfo
 /output/
 /.playwright-mcp/
+
+# ========================================
+# Material local — não versionado aqui (decisão 2026-09-22)
+# ========================================
+
+# Site pessoal; vive em repositório próprio
+/portfolio/
+
+# Artigos, dossiês e referências de trabalho em curso
+/primeira-versao-artigo-tecnico.md
+/techshare-autoavaliacao-rascunho.md
+/docs/LEVANTAMENTO_ESTADO_ARQUITETURA_PUBLIC_SECTOR_READINESS_V0_1.md
+/docs/SPRINT_EXECUTIVO_KLASSE_PUBLIC_SECTOR_READINESS_V0_1.md
+/docs/references/
+/docs/unesco-2026/
+/scripts/build-academic-article-docx.js
+/scripts/render-pdf-pages.js
+
+# Comprovativo pessoal
+/PROPINA 2025.6.pdf
