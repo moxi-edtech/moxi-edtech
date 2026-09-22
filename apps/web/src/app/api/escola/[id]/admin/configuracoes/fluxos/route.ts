@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -41,12 +42,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (auth.response || !auth.escolaId) return auth.response;
 
   const db = auth.supabase as any;
-  const [{ data: config, error }, { data: activeYear }] = await Promise.all([
+  const [{ data: config, error }, activeYear] = await Promise.all([
     db.from("school_workflow_configs").select("academic_year_id,grade_workflow,updated_at").eq("escola_id", auth.escolaId).maybeSingle(),
-    auth.supabase.from("anos_letivos").select("id,ano,data_inicio,data_fim").eq("escola_id", auth.escolaId).eq("ativo", true).maybeSingle(),
+    resolveAnoLetivoScope(auth.supabase, auth.escolaId),
   ]);
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, config: config ?? null, active_year: activeYear ?? null });
+  return NextResponse.json({ ok: true, config: config ?? null, active_year: activeYear ? { id: activeYear.id, ano: activeYear.ano, data_inicio: activeYear.dataInicio, data_fim: activeYear.dataFim } : null });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -56,13 +57,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Pipeline de notas inválido" }, { status: 400 });
 
-  const { data: activeYear, error: yearError } = await auth.supabase
-    .from("anos_letivos")
-    .select("id,ano")
-    .eq("escola_id", auth.escolaId)
-    .eq("ativo", true)
-    .maybeSingle();
-  if (yearError) return NextResponse.json({ ok: false, error: yearError.message }, { status: 500 });
+  const activeYear = await resolveAnoLetivoScope(auth.supabase, auth.escolaId);
   if (!activeYear) return NextResponse.json({ ok: false, error: "Nenhum ano letivo operacional ativo" }, { status: 409 });
 
   const { data, error } = await (auth.supabase as any)
@@ -71,5 +66,5 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select("academic_year_id,grade_workflow,updated_at")
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, config: data, active_year: activeYear });
+  return NextResponse.json({ ok: true, config: data, active_year: { id: activeYear.id, ano: activeYear.ano } });
 }

@@ -25,6 +25,7 @@ import {
 } from '@/lib/roles'
 import { formatAnoLetivoDisplay } from '@/utils/formatters'
 import type { Json } from '~types/supabase'
+import { resolveAnoLetivoScope } from '@/lib/financeiro/resolveAnoLetivoScope'
 
 const searchParamsSchema = z.object({
   escolaId: z.string().uuid(),
@@ -111,7 +112,8 @@ export async function GET(request: Request) {
       ...ano,
       label: formatAnoLetivoDisplay(ano),
     }))
-    const fallbackAno = anos.find((ano) => ano.ativo)?.ano ?? anos[0]?.ano ?? null
+    const activeYearScope = await resolveAnoLetivoScope(supabase, escolaId)
+    const fallbackAno = activeYearScope?.ano ?? null
     const configAdmissoes = isJsonObject(escola.data?.config_portal_admissao)
       ? escola.data?.config_portal_admissao
       : {}
@@ -193,17 +195,12 @@ export async function PATCH(request: Request) {
     }
 
     if (abrir_admissoes_formais === true) {
-      const fallbackYear = await supabase
-        .from('anos_letivos')
-        .select('ano')
-        .eq('escola_id', escolaId)
-        .eq('ativo', true)
-        .maybeSingle()
+      const fallbackYear = await resolveAnoLetivoScope(supabase, escolaId)
       const targetYear = getAnoLetivoAdmissoesFromConfig(
         ano_letivo_admissoes !== undefined
           ? { ano_letivo_admissoes }
           : escola.config_portal_admissao,
-        fallbackYear.data?.ano ?? null,
+        fallbackYear?.ano ?? null,
       )
       if (!targetYear) return NextResponse.json({ error: 'Defina o ano de admissões antes de abrir candidaturas.' }, { status: 409 })
 
@@ -262,14 +259,7 @@ export async function PATCH(request: Request) {
 
     if (updateError) throw updateError
 
-    const { data: fallbackAnoLetivo } = await supabase
-      .from('anos_letivos')
-      .select('ano, ativo, data_inicio, data_fim')
-      .eq('escola_id', escolaId)
-      .order('ativo', { ascending: false })
-      .order('ano', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const fallbackAnoLetivo = await resolveAnoLetivoScope(supabase, escolaId)
 
     const anoLetivoAdmissoesConfigurado = normalizeAnoLetivoAdmissoes(nextConfig.ano_letivo_admissoes)
     const anoLetivoAdmissoesEfetivo = getAnoLetivoAdmissoesFromConfig(nextConfig, fallbackAnoLetivo?.ano ?? null)
@@ -284,7 +274,7 @@ export async function PATCH(request: Request) {
         ano_letivo_admissoes_efetivo: anoLetivoAdmissoesEfetivo,
         ano_letivo_admissoes_efetivo_label: formatAnoLetivoDisplay(
           fallbackAnoLetivo && Number(fallbackAnoLetivo.ano) === Number(anoLetivoAdmissoesEfetivo)
-            ? fallbackAnoLetivo
+            ? { ano: fallbackAnoLetivo.ano, data_inicio: fallbackAnoLetivo.dataInicio, data_fim: fallbackAnoLetivo.dataFim }
             : anoLetivoAdmissoesEfetivo
         ),
         modo_portal_admissoes: getModoPortalAdmissoesFromConfig(nextConfig),
