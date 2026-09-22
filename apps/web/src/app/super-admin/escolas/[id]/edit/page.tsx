@@ -18,6 +18,7 @@ import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import Link from "next/link";
+import SchoolOperatingProfileSettings from "@/components/super-admin/SchoolOperatingProfileSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -220,6 +221,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initialAlunoPortalEnabled={Boolean(escola.aluno_portal_enabled)}
         initialPlano={plano}
       />
+
+      <SchoolOperatingProfileSettings schoolId={String(escola.id)} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpis.map((kpi) => (
