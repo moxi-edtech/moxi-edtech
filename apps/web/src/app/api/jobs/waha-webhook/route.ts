@@ -248,73 +248,33 @@ export async function POST(request: Request) {
                 contactRole: "unknown" as const,
               };
 
-          // Find or create thread
+          // Build the thread update before claiming it atomically. A separate
+          // SELECT followed by INSERT races when WAHA retries/delivers the
+          // same chat concurrently and violates the unique thread key.
           const bodyText = extractMessageBody(payload);
           const messageType = messagePayload?.type || messageData?.type || "text";
           const isMedia = messagePayload?.hasMedia || messageData?.hasMedia || ["image", "video", "document", "audio", "voice", "sticker"].includes(messageType);
           const finalBody = isMedia ? (bodyText || "📎 Mensagem com anexo recebida (visualização não disponível)") : bodyText;
           const bodyPreview = finalBody.slice(0, 100);
 
-          const { data: existingThread } = await admin
-            .from("communication_threads")
-            .select("id, unread_count, status, linked_entity_type, linked_entity_id, contact_name, contact_role")
-            .eq("school_id", provider.school_id)
-            .eq("contact_phone_hash", senderPhoneHash)
-            .maybeSingle();
+          const { data: thread, error: threadError } = await admin.rpc(
+            "upsert_communication_thread_for_inbound",
+            {
+              p_school_id: provider.school_id,
+              p_contact_phone_hash: senderPhoneHash,
+              p_contact_phone_masked: senderPhoneMasked,
+              p_contact_name: contactInfo.contactName || senderPhoneMasked,
+              p_contact_role: contactInfo.contactRole,
+              p_linked_entity_type: contactInfo.linkedEntityType,
+              p_linked_entity_id: contactInfo.linkedEntityId,
+              p_body_preview: bodyPreview,
+              p_received_at: new Date().toISOString(),
+            },
+          );
 
-          let threadId: string;
-          let currentRole = contactInfo.contactRole;
-          let currentEntityType = contactInfo.linkedEntityType;
-          let currentEntityId = contactInfo.linkedEntityId;
-          let currentName = contactInfo.contactName;
-
-          if (existingThread) {
-            threadId = existingThread.id;
-            if (existingThread.linked_entity_type !== "unknown") {
-              currentEntityType = existingThread.linked_entity_type;
-              currentEntityId = existingThread.linked_entity_id;
-              currentRole = existingThread.contact_role;
-              currentName = existingThread.contact_name;
-            }
-
-            await admin
-              .from("communication_threads")
-              .update({
-                last_message_preview: bodyPreview,
-                last_message_at: new Date().toISOString(),
-                unread_count: existingThread.unread_count + 1,
-                status: existingThread.status === "archived" || existingThread.status === "resolved" ? "open" : existingThread.status,
-                linked_entity_type: currentEntityType,
-                linked_entity_id: currentEntityId,
-                contact_role: currentRole,
-                contact_name: currentName || senderPhoneMasked,
-                updated_at: new Date().toISOString()
-              })
-              .eq("id", threadId);
-          } else {
-            const { data: newThread, error: createErr } = await admin
-              .from("communication_threads")
-              .insert({
-                school_id: provider.school_id,
-                channel: "whatsapp",
-            provider: "waha",
-                contact_phone_hash: senderPhoneHash,
-                contact_phone_masked: senderPhoneMasked,
-                contact_name: currentName || senderPhoneMasked,
-                contact_role: currentRole,
-                linked_entity_type: currentEntityType,
-                linked_entity_id: currentEntityId,
-                status: "open",
-                last_message_preview: bodyPreview,
-                last_message_at: new Date().toISOString(),
-                unread_count: 1
-              })
-              .select("id")
-              .single();
-
-            if (createErr) throw createErr;
-            threadId = newThread.id;
-          }
+          if (threadError) throw threadError;
+          if (!thread?.id) throw new Error("Thread upsert returned no thread");
+          const threadId = thread.id;
 
           // Create message
           const { data: insertedMessage, error: messageInsertError } = await admin
