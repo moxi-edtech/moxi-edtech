@@ -116,3 +116,8 @@ supabase_*.tar.gz
 REPORT_SCAN_LIVE.json
 validator-package.json
 *.tsbuildinfo
+
+# Artefactos locais de build/QA
+/tsconfig.tsbuildinfo
+/output/
+/.playwright-mcp/
