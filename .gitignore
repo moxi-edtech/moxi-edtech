@@ -141,3 +141,10 @@ validator-package.json
 
 # Comprovativo pessoal
 /PROPINA 2025.6.pdf
+
+# ========================================
+# Outputs de agentes — ficam no working tree, fora do versionamento
+# (decisão 2026-09-22; os 661 já rastreados foram retirados do índice)
+# agents/exceptions/ continua versionado: o contrato exige excepções documentadas
+# ========================================
+/agents/outputs/
