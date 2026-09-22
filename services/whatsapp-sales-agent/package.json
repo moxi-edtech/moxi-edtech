@@ -2,5 +2,8 @@
   "name": "@moxi/whatsapp-sales-agent",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node agent.mjs" }
+  "scripts": {
+    "start": "node agent.mjs",
+    "test": "node --test response-policy.test.mjs"
+  }
 }
