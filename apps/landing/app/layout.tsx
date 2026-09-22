@@ -65,6 +65,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-AO">
       <head>
+        <meta name="facebook-domain-verification" content="96psjcnshbx9b0pvzy8zyids0nloxd" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="icon" href="/logo-klasse.png" type="image/png" />
