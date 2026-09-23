@@ -172,7 +172,7 @@ export function DiagnosisPageClient() {
   const diagnosis = getDiagnosis()
 
   return (
-    <div className="diagnosis-page-shell selection:bg-klasse-gold selection:text-black">
+    <div className="diagnosis-page-shell selection:bg-amber selection:text-black">
       <div className="w-full">
         
         <AnimatePresence mode="wait">
