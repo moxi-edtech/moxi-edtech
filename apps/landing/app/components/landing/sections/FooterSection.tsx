@@ -4,6 +4,7 @@ import { socialLinks } from '../../../data/landing'
 interface FooterLink {
   href: string
   label: string
+  newTab?: boolean
 }
 
 interface FooterSectionProps {
@@ -43,7 +44,12 @@ export function FooterSection({ links }: FooterSectionProps) {
             </div>
           <div className="footer-links">
             {links.map((link) => (
-              <a key={link.label} href={link.href}>
+              <a
+                key={link.label}
+                href={link.href}
+                target={link.newTab ? '_blank' : undefined}
+                rel={link.newTab ? 'noopener noreferrer' : undefined}
+              >
                 {link.label}
               </a>
             ))}
@@ -69,6 +75,8 @@ export function FooterSection({ links }: FooterSectionProps) {
         </p>
         <address className="footer-copy" style={{ marginTop: 8, lineHeight: 1.8, fontStyle: 'normal' }}>
           Sede: Bairro Azul, Rua dos Bombeiros, Nº S/N, Município de Menongue, Província de Cubango, Angola.
+          <br />
+          Escritório: Luanda, Angola.
           <br />
           Telefone: <a href="tel:+244933349106" style={{ color: 'inherit', textDecoration: 'underline' }}>+244 933 349 106</a>
           <br />

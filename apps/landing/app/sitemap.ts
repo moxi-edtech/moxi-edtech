@@ -11,6 +11,7 @@ const ROUTES = [
   '/presencas-escolares',
   '/secretaria-escolar',
   '/financeiro-escolar',
+  '/termos',
   '/privacidade',
   '/exclusao-de-dados',
 ]

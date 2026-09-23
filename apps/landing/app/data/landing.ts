@@ -273,11 +273,11 @@ export const pricingPlans: PricingPlan[] = [
 export const footerLinks = [
   { href: '/diagnostico', label: 'Diagnóstico de Gestão' },
   { href: '/sistema-de-gestao-escolar', label: 'Sistema de Gestão Escolar' },
-  { href: '#', label: 'Termos de Serviço' },
+  { href: '/termos', label: 'Termos de Serviço' },
   { href: '/privacidade', label: 'Política de Privacidade' },
   { href: '/exclusao-de-dados', label: 'Política de Exclusão de Dados' },
-  { href: '#', label: 'Suporte' },
-  { href: '#', label: 'Contacto' },
+  { href: 'https://wa.me/244933349106', label: 'Suporte', newTab: true },
+  { href: 'mailto:contato@klasse.ao', label: 'Contacto' },
 ]
 
 export const socialLinks = [
