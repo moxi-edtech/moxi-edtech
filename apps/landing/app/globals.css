@@ -2030,3 +2030,10 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--t1);font-size:
 .legal-page a:focus-visible{outline:2px solid var(--g);outline-offset:4px}
 .legal-page address{font-style:normal}
 .legal-updated{font-size:14px}
+
+/* Redes sociais */
+.footer-social{display:flex;align-items:center;gap:12px;margin-top:24px}
+.footer-social a{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--bd);border-radius:999px;color:var(--t2);transition:color .2s,border-color .2s}
+.footer-social a:hover{color:var(--t1);border-color:var(--t2)}
+.footer-social a:focus-visible{outline:2px solid var(--g);outline-offset:3px}
+.footer-social svg{width:16px;height:16px;fill:currentColor}

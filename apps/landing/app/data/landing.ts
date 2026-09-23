@@ -279,3 +279,13 @@ export const footerLinks = [
   { href: '#', label: 'Suporte' },
   { href: '#', label: 'Contacto' },
 ]
+
+export const socialLinks = [
+  { network: 'facebook', href: 'https://www.facebook.com/profile.php?id=61591621266437', label: 'Facebook' },
+  { network: 'instagram', href: 'https://www.instagram.com/klassegestao', label: 'Instagram' },
+  {
+    network: 'linkedin',
+    href: 'https://www.linkedin.com/company/klasse-sistema-de-gestao-escolar/',
+    label: 'LinkedIn',
+  },
+]
