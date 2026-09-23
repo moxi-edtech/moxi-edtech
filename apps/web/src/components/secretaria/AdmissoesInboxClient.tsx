@@ -144,13 +144,13 @@ const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: 
   pendente: { label: 'Documentos Pendentes', color: 'text-rose-700', bg: 'bg-rose-50' },
   lista_espera: { label: 'Lista de Espera', color: 'text-amber-700', bg: 'bg-amber-100' },
   em_analise: { label: 'Em Análise', color: 'text-amber-600', bg: 'bg-amber-50' },
-  aprovada: { label: 'Aprovada', color: 'text-klasse-green', bg: 'bg-klasse-green/10' },
+  aprovada: { label: 'Aprovada', color: 'text-emerald', bg: 'bg-emerald/10' },
   aguardando_pagamento: { label: 'Reserva (Aguardando Pagamento)', color: 'text-amber-700', bg: 'bg-amber-100' },
   aguardando_compensacao: { label: 'Reserva (Em Validação)', color: 'text-amber-700', bg: 'bg-amber-100' },
   rejeitada: { label: 'Rejeitada', color: 'text-red-600', bg: 'bg-red-50' },
   arquivada: { label: 'Arquivada', color: 'text-slate-600', bg: 'bg-slate-100' },
   arquivado: { label: 'Arquivado', color: 'text-slate-600', bg: 'bg-slate-100' },
-  matriculado: { label: 'Matriculado', color: 'text-klasse-green', bg: 'bg-klasse-green/20' },
+  matriculado: { label: 'Matriculado', color: 'text-emerald', bg: 'bg-emerald/20' },
 }
 
 const REJECTABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'pre_candidatura', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
@@ -1177,7 +1177,7 @@ export default function AdmissoesInboxClient({
               </Button>
               <Button
                 size="sm"
-                className="h-8 bg-klasse-green hover:bg-klasse-green-600 text-white gap-1"
+                className="h-8 bg-emerald hover:bg-emerald-600 text-white gap-1"
                 onClick={() => router.push(withSlug(`/secretaria/admissoes/nova`))}
               >
                 <Plus className="h-4 w-4" />
@@ -1221,7 +1221,7 @@ export default function AdmissoesInboxClient({
               placeholder="Buscar aluno..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-gold rounded-xl text-sm transition-all outline-none"
+              className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-amber/20 focus:border-amber rounded-xl text-sm transition-all outline-none"
             />
           </div>
 
@@ -1239,7 +1239,7 @@ export default function AdmissoesInboxClient({
                 onClick={() => setStatusFilter(f.id)}
                 className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
                   statusFilter === f.id
-                    ? 'bg-white text-klasse-green shadow-sm'
+                    ? 'bg-white text-emerald shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -1356,7 +1356,7 @@ export default function AdmissoesInboxClient({
                   onClick={() => setSelectedId(item.id)}
                   className={`group relative p-4 rounded-xl cursor-pointer transition-all border ${
                     isActive
-                      ? 'bg-white border-klasse-gold shadow-md ring-1 ring-klasse-gold/20'
+                      ? 'bg-white border-amber shadow-md ring-1 ring-amber/20'
                       : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm'
                   }`}
                 >
@@ -1378,7 +1378,7 @@ export default function AdmissoesInboxClient({
                   )}
 
                   <div className={isBulkSelectable ? "pl-7 pr-16" : "pr-16"}>
-                    <p className="font-sans font-bold text-slate-900 group-hover:text-klasse-green transition-colors">
+                    <p className="font-sans font-bold text-slate-900 group-hover:text-emerald transition-colors">
                       {item.nome_candidato}
                     </p>
                     <p className="font-mono text-[11px] text-slate-500 mt-1 uppercase tracking-wider">
@@ -1391,7 +1391,7 @@ export default function AdmissoesInboxClient({
                       <Clock className="h-3 w-3" />
                       {format(new Date(item.created_at), "dd MMM, HH:mm", { locale: ptBR })}
                     </span>
-                    <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'translate-x-1 text-klasse-gold' : 'text-slate-300'}`} />
+                    <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'translate-x-1 text-amber' : 'text-slate-300'}`} />
                   </div>
                 </motion.div>
               )
@@ -1422,7 +1422,7 @@ export default function AdmissoesInboxClient({
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <Badge variant="outline" className="font-mono text-[10px] uppercase border-klasse-gold/30 text-klasse-gold-600">
+                          <Badge variant="outline" className="font-mono text-[10px] uppercase border-amber/30 text-amber-600">
                             Protocolo: {displayProtocol(selectedData)}
                           </Badge>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_CONFIG[selectedData.status]?.bg || 'bg-slate-100'} ${STATUS_CONFIG[selectedData.status]?.color || 'text-slate-500'}`}>
@@ -1439,7 +1439,7 @@ export default function AdmissoesInboxClient({
                             Esta candidatura entrou em lista de espera porque a turma selecionada estava lotada no momento da submissão.
                           </p>
                         )}
-                        <h1 className="text-4xl font-sans font-bold text-klasse-green leading-tight">
+                        <h1 className="text-4xl font-sans font-bold text-emerald leading-tight">
                           {selectedData.nome_candidato}
                         </h1>
                         <p className="text-slate-500 mt-1 flex items-center gap-2">
@@ -1617,7 +1617,7 @@ export default function AdmissoesInboxClient({
                             documentEntries.map(([name, path]) => (
                               <div
                                 key={name}
-                                className="group relative w-24 h-32 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden hover:border-klasse-gold transition-all"
+                                className="group relative w-24 h-32 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden hover:border-amber transition-all"
                               >
                                 <button
                                   type="button"
@@ -1632,9 +1632,9 @@ export default function AdmissoesInboxClient({
                                 <button
                                   type="button"
                                   onClick={() => handleViewDoc(name, path as string)}
-                                  className="absolute inset-0 bg-klasse-green/0 group-hover:bg-klasse-green/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
+                                  className="absolute inset-0 bg-emerald/0 group-hover:bg-emerald/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
                                 >
-                                  <ExternalLink className="h-5 w-5 text-klasse-green" />
+                                  <ExternalLink className="h-5 w-5 text-emerald" />
                                 </button>
                               </div>
                             ))
@@ -1764,7 +1764,7 @@ export default function AdmissoesInboxClient({
                       <button
                         onClick={handleApprove}
                         disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
+                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-amber/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
                       >
                         {loadingAction === 'approving' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
                         Aprovar Candidatura
@@ -1775,7 +1775,7 @@ export default function AdmissoesInboxClient({
                       <button
                         onClick={() => setIsConversionOpen(true)}
                         disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
+                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-amber/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
                       >
                         <Check className="h-5 w-5" />
                         {getConversionActionLabel(selectedData.status)}

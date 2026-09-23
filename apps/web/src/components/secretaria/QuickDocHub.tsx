@@ -738,7 +738,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           <select
             value={anoLetivo ?? ""}
             onChange={(event) => setAnoLetivo(event.target.value ? Number(event.target.value) : null)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">{loadingAnos ? "A carregar..." : "Selecione"}</option>
             {anosLetivos.map((ano) => (
@@ -764,7 +764,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                 }}
                 className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
                   scope === item
-                    ? "border-klasse-gold bg-klasse-gold/10 text-slate-900"
+                    ? "border-amber bg-amber/10 text-slate-900"
                     : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                 }`}
               >
@@ -778,7 +778,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           <select
             value={classeFiltro}
             onChange={(event) => setClasseFiltro(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">Todas</option>
             {classes.map((classe) => (
@@ -793,7 +793,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           <select
             value={cursoFiltro}
             onChange={(event) => setCursoFiltro(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">Todos</option>
             {cursos.map((curso) => (
@@ -808,7 +808,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           <select
             value={turnoFiltro}
             onChange={(event) => setTurnoFiltro(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">Todos</option>
             {turnos.map((turno) => (
@@ -854,7 +854,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                   }, 120);
                 }}
                 placeholder={loadingTurmas ? "Carregando turmas..." : "Pesquise por turma, classe ou curso"}
-                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none transition focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                 <ChevronsUpDown size={16} />
@@ -877,7 +877,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                               setTurmaPickerOpen(false);
                             }}
                             className={`flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2 text-left transition ${
-                              active ? "bg-klasse-gold/10 text-slate-900" : "text-slate-700 hover:bg-slate-50"
+                              active ? "bg-amber/10 text-slate-900" : "text-slate-700 hover:bg-slate-50"
                             }`}
                           >
                             <div className="min-w-0">
@@ -886,7 +886,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                                 {turma.classe_nome || "Sem classe"} • {turma.curso_nome || "Sem curso"} • {turma.turno || "Sem turno"}
                               </p>
                             </div>
-                            {active ? <Check size={16} className="mt-0.5 shrink-0 text-klasse-green" /> : null}
+                            {active ? <Check size={16} className="mt-0.5 shrink-0 text-emerald" /> : null}
                           </button>
                         );
                       })}
@@ -929,7 +929,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               <select
                 value={month}
                 onChange={(event) => setMonth(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
               >
                 {MONTH_OPTIONS.map((item) => (
                   <option key={item.v} value={item.v}>
@@ -943,7 +943,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               <select
                 value={periodoId}
                 onChange={(event) => setPeriodoId(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
               >
                 <option value="">{loadingPeriodos ? "A carregar..." : "Selecione"}</option>
                 {periodos.map((periodo) => (
@@ -961,7 +961,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                 type="checkbox"
                 checked={includeAllStatus}
                 onChange={e => setIncludeAllStatus(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                className="w-4 h-4 rounded border-slate-300 text-amber focus:ring-amber"
               />
               <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
                 Incluir todos os estados (pendentes/transferidos)
@@ -974,7 +974,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                   type="checkbox"
                   checked={isAlbum}
                   onChange={e => setIsAlbum(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                  className="w-4 h-4 rounded border-slate-300 text-amber focus:ring-amber"
                 />
                 <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
                   Versão Álbum Visual (Grid com Fotos)
@@ -1008,7 +1008,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                     onClick={() => setFormat(item)}
                     className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
                       format === item
-                        ? "border-klasse-gold bg-klasse-gold/10 text-slate-900"
+                        ? "border-amber bg-amber/10 text-slate-900"
                         : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
@@ -1104,7 +1104,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                 }
                 className={`rounded-xl border px-3 py-3 text-left transition ${
                   selected
-                    ? "border-klasse-gold bg-klasse-gold/10"
+                    ? "border-amber bg-amber/10"
                     : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
@@ -1115,7 +1115,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                       <p className="text-sm font-semibold text-slate-900">{doc.label}</p>
                       <span
                         className={`inline-flex h-5 w-5 items-center justify-center rounded-full border ${
-                          selected ? "border-klasse-gold bg-white text-klasse-green" : "border-slate-200 text-transparent"
+                          selected ? "border-amber bg-white text-emerald" : "border-slate-200 text-transparent"
                         }`}
                       >
                         <Check size={12} />
@@ -1147,7 +1147,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               ? "Documentos compatíveis serão enviados para a fila e aparecerão no histórico abaixo."
               : "Os documentos serão gerados imediatamente em novas abas."}
           </p>
-          {feedback ? <p className="mt-2 text-xs font-medium text-klasse-green">{feedback}</p> : null}
+          {feedback ? <p className="mt-2 text-xs font-medium text-emerald">{feedback}</p> : null}
         </div>
         <button
           type="button"
@@ -1188,12 +1188,12 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                       <StatusPill status={job.status} />
                     </div>
                     <div className="mt-3 h-2 rounded-full bg-slate-200">
-                      <div className="h-2 rounded-full bg-klasse-green transition-all" style={{ width: `${progress}%` }} />
+                      <div className="h-2 rounded-full bg-emerald transition-all" style={{ width: `${progress}%` }} />
                     </div>
                     <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
                       <span>{job.processed}/{job.total_turmas} processado(s)</span>
                       {job.download_url ? (
-                        <a href={job.download_url} className="font-semibold text-klasse-green hover:underline">
+                        <a href={job.download_url} className="font-semibold text-emerald hover:underline">
                           Baixar ZIP
                         </a>
                       ) : null}
@@ -1224,7 +1224,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                       {formatLabels[item.format]} • {new Date(item.createdAt).toLocaleString("pt-PT")}
                     </p>
                   </div>
-                  <a href={item.href} target="_blank" rel="noreferrer" className="text-xs font-semibold text-klasse-green hover:underline">
+                  <a href={item.href} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald hover:underline">
                     Abrir
                   </a>
                 </div>

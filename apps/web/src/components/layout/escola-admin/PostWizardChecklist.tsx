@@ -174,7 +174,7 @@ export default function PostWizardChecklist({
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progressPct}%` }}
-              className="h-full bg-klasse-green"
+              className="h-full bg-emerald"
             />
           </div>
         </div>
@@ -198,9 +198,9 @@ export default function PostWizardChecklist({
             <div className={`
               w-10 h-10 flex items-center justify-center shrink-0 rounded-lg transition-colors
               ${step.completed 
-                ? 'bg-klasse-green/10 text-klasse-green'
+                ? 'bg-emerald/10 text-emerald'
                 : step.current
-                ? 'bg-klasse-gold/15 text-klasse-gold group-hover:bg-klasse-green group-hover:text-white'
+                ? 'bg-amber/15 text-amber group-hover:bg-emerald group-hover:text-white'
                 : 'bg-slate-50 text-slate-400 border border-slate-100/50'
               }
             `}>
@@ -217,7 +217,7 @@ export default function PostWizardChecklist({
             </div>
 
             {step.current && (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-klasse-green text-white shadow-sm transition-transform group-hover:translate-x-0.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald text-white shadow-sm transition-transform group-hover:translate-x-0.5">
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
             )}

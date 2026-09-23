@@ -230,7 +230,7 @@ export default function FinanceiroConfiguracoesPage() {
           {/* CARD 1: REGRAS GERAIS */}
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
-              <div className="rounded-lg bg-klasse-green-100 p-2 text-klasse-green-700">
+              <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
@@ -250,7 +250,7 @@ export default function FinanceiroConfiguracoesPage() {
                 <select
                   value={config.dia_vencimento_padrao}
                   onChange={(e) => setConfig({ ...config, dia_vencimento_padrao: Number(e.target.value) })}
-                  className="w-full rounded-lg border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 focus:border-klasse-gold focus:ring-klasse-gold"
+                  className="w-full rounded-lg border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 focus:border-amber focus:ring-amber"
                 >
                   {[1, 5, 10, 15, 20, 25, 30].map(d => (
                     <option key={d} value={d}>Dia {d}</option>
@@ -272,7 +272,7 @@ export default function FinanceiroConfiguracoesPage() {
                     type="number"
                     value={config.multa_atraso_percent}
                     onChange={(e) => setConfig({ ...config, multa_atraso_percent: Number(e.target.value) })}
-                    className="w-full rounded-lg border-slate-200 pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-klasse-gold focus:ring-klasse-gold"
+                    className="w-full rounded-lg border-slate-200 pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-amber focus:ring-amber"
                   />
                   <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">%</span>
                 </div>
@@ -293,7 +293,7 @@ export default function FinanceiroConfiguracoesPage() {
                     step="0.01"
                     value={config.juros_diarios_percent}
                     onChange={(e) => setConfig({ ...config, juros_diarios_percent: Number(e.target.value) })}
-                    className="w-full rounded-lg border-slate-200 pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-klasse-gold focus:ring-klasse-gold"
+                    className="w-full rounded-lg border-slate-200 pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-amber focus:ring-amber"
                   />
                   <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">%</span>
                 </div>
@@ -305,9 +305,9 @@ export default function FinanceiroConfiguracoesPage() {
           </div>
 
           {/* CARD 2: POLÍTICA DE INADIMPLÊNCIA */}
-          <div className="rounded-xl border border-klasse-green-100 bg-klasse-green-50/30 p-6">
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-6">
             <div className="flex items-start gap-4">
-              <div className="rounded-full bg-klasse-green-100 p-2 text-klasse-green-700">
+              <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
                 <Wallet className="h-5 w-5" />
               </div>
               <div className="flex-1">
@@ -330,7 +330,7 @@ export default function FinanceiroConfiguracoesPage() {
                             step="0.5"
                             value={config[key]}
                             onChange={(e) => setConfig({ ...config, [key]: Number(e.target.value) })}
-                            className="w-full rounded-lg border-slate-200 bg-white pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-klasse-green focus:ring-klasse-green"
+                            className="w-full rounded-lg border-slate-200 bg-white pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-emerald focus:ring-emerald"
                           />
                           <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">%</span>
                         </div>
@@ -363,10 +363,10 @@ export default function FinanceiroConfiguracoesPage() {
               {!familyGroupId && <input value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder="Nome do encarregado / família" className="rounded-lg border-slate-200 text-sm" />}
               {!familyGroupId && <input value={familyPhone} onChange={(e) => setFamilyPhone(e.target.value)} placeholder="Telefone de referência (opcional)" className="rounded-lg border-slate-200 text-sm" />}
             </div>
-            <button type="button" onClick={() => void handleFamilySave()} disabled={familySaving || !familyStudentId || (!familyGroupId && !familyName.trim())} className="mt-4 rounded-lg bg-klasse-green px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+            <button type="button" onClick={() => void handleFamilySave()} disabled={familySaving || !familyStudentId || (!familyGroupId && !familyName.trim())} className="mt-4 rounded-lg bg-emerald px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
               {familySaving ? "A associar..." : "Associar aluno ao agregado"}
             </button>
-            {familyFeedback ? <p className="mt-3 text-xs font-semibold text-klasse-green-700">{familyFeedback}</p> : null}
+            {familyFeedback ? <p className="mt-3 text-xs font-semibold text-emerald-700">{familyFeedback}</p> : null}
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {familyGroups.map((group) => (
                 <div key={group.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3">

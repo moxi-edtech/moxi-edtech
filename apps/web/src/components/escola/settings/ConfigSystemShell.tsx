@@ -106,7 +106,7 @@ export default function ConfigSystemShell({
             {testHref && (
               <Link
                 href={testHref}
-                className="rounded-lg bg-klasse-gold px-3 py-2 text-center text-xs font-semibold text-white"
+                className="rounded-lg bg-amber px-3 py-2 text-center text-xs font-semibold text-white"
               >
                 Testar
               </Link>
@@ -197,7 +197,7 @@ export default function ConfigSystemShell({
                   {testHref && (
                     <Link
                       href={testHref}
-                      className="rounded-lg bg-klasse-gold px-3 py-2 text-center text-xs font-semibold text-white"
+                      className="rounded-lg bg-amber px-3 py-2 text-center text-xs font-semibold text-white"
                     >
                       Testar
                     </Link>

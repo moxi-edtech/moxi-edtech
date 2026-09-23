@@ -124,7 +124,7 @@ export default function ProfessorPerfilPage() {
                       form.turnos_disponiveis.map((turno) => (
                         <span
                           key={turno}
-                          className="rounded-full border border-klasse-gold bg-klasse-gold/10 px-3 py-1 text-xs font-semibold text-klasse-gold"
+                          className="rounded-full border border-amber bg-amber/10 px-3 py-1 text-xs font-semibold text-amber"
                         >
                           {turno}
                         </span>

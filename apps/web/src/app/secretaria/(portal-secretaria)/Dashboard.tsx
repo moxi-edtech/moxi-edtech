@@ -383,10 +383,10 @@ export function Dashboard({
                     href={buildPortalHref(escolaParam, "/secretaria/admissoes?nova=1")}
                     className="
                       inline-flex items-center justify-center gap-2
-                      rounded-xl bg-klasse-gold px-4 py-2
+                      rounded-xl bg-amber px-4 py-2
                       text-sm font-semibold text-white
                       hover:brightness-95
-                      focus:outline-none focus:ring-4 focus:ring-klasse-gold/20
+                      focus:outline-none focus:ring-4 focus:ring-amber/20
                     "
                   >
                     Nova Matrícula
@@ -518,7 +518,7 @@ export function Dashboard({
                       href={buildPortalHref(escolaParam, "/secretaria/acesso-alunos")}
                     />
                     <AcaoRapidaCard
-                      icon={<Upload size={20} className="text-klasse-green-600" />}
+                      icon={<Upload size={20} className="text-emerald-600" />}
                       label="Migração"
                       href={buildPortalHref(escolaParam, "/secretaria/migracao/alunos")}
                     />

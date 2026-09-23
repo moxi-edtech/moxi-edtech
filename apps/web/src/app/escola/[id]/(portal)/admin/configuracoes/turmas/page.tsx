@@ -1014,16 +1014,16 @@ export default function TurmasConfiguracoesPage() {
           </div>
         </nav>
         {selectedCursoId && pendingPublishedClasses.length > 0 && (
-          <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <p className="font-semibold">Classes sem currículo publicado</p>
-            <p className="text-xs text-klasse-gold-700 mt-1">
+            <p className="text-xs text-amber-700 mt-1">
               Publique o currículo destas classes antes de gerar turmas.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {pendingPublishedClasses.map((cls) => (
                 <span
                   key={cls.id}
-                  className="rounded-full border border-klasse-gold-200 bg-white px-3 py-1 text-xs font-semibold text-klasse-gold-700"
+                  className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-700"
                 >
                   {cls.nome}
                 </span>
@@ -1088,7 +1088,7 @@ export default function TurmasConfiguracoesPage() {
                 }
               }}
               disabled={modalActionLoading}
-              className="mt-3 rounded-xl bg-klasse-gold-600 px-4 py-2 text-xs font-bold text-white hover:bg-klasse-gold-700 disabled:opacity-50"
+              className="mt-3 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
             >
               {modalActionLoading ? "Publicando..." : "Publicar todas as classes"}
             </button>
@@ -1120,7 +1120,7 @@ export default function TurmasConfiguracoesPage() {
                 <Link
                   key={String(label)}
                   href={portalHref(String(href))}
-                  className={`rounded-lg border px-3 py-3 text-xs transition hover:border-klasse-gold ${ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-200 bg-amber-50/60"}`}
+                  className={`rounded-lg border px-3 py-3 text-xs transition hover:border-amber ${ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-200 bg-amber-50/60"}`}
                 >
                   <span className="flex items-center gap-2 font-semibold text-slate-800">
                     {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
@@ -1136,7 +1136,7 @@ export default function TurmasConfiguracoesPage() {
                 {readinessBlockers.slice(0, 3).map((blocker) => (
                   <div key={blocker.code ?? blocker.title} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 py-2">
                     <span>{blocker.detail || blocker.title || "Revise a configuração académica."}</span>
-                    <button type="button" onClick={() => setActiveReadinessBlocker(blocker)} className="inline-flex shrink-0 items-center gap-1 font-semibold text-klasse-gold-700 hover:underline">
+                    <button type="button" onClick={() => setActiveReadinessBlocker(blocker)} className="inline-flex shrink-0 items-center gap-1 font-semibold text-amber-700 hover:underline">
                       Corrigir agora <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -1209,8 +1209,8 @@ export default function TurmasConfiguracoesPage() {
                       <div
                         className={`mt-1 rounded-full p-1.5 ${
                           isPublished
-                            ? "bg-klasse-green-100 text-klasse-green-600"
-                            : "bg-klasse-gold-100 text-klasse-gold-600"
+                            ? "bg-emerald-100 text-emerald-600"
+                            : "bg-amber-100 text-amber-600"
                         }`}
                       >
                         {isPublished ? (
@@ -1222,7 +1222,7 @@ export default function TurmasConfiguracoesPage() {
                       <div>
                         <h4 className="font-bold text-slate-900">{curso.nome}</h4>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5">
-                          <span className={`font-medium ${isPublished ? "text-klasse-green-700" : "text-klasse-gold-700"}`}>
+                          <span className={`font-medium ${isPublished ? "text-emerald-700" : "text-amber-700"}`}>
                             {isPublished ? "Currículo Publicado" : "Rascunho"}
                           </span>
                           <span>•</span>
@@ -1252,7 +1252,7 @@ export default function TurmasConfiguracoesPage() {
                         <button
                           type="button"
                           onClick={() => openModal(curso.id, "publish")}
-                          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-white hover:brightness-95"
+                          className="inline-flex items-center gap-2 rounded-xl bg-amber px-3 py-2 text-xs font-semibold text-white hover:brightness-95"
                         >
                           <BookOpenCheck className="h-4 w-4" />
                           Ativar currículo
@@ -1314,7 +1314,7 @@ export default function TurmasConfiguracoesPage() {
                   await handleAutoAssignTeachers();
                 }}
                 disabled={assigningTeachers}
-                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               >
                 <UserRound className="h-4 w-4" />
                 {assigningTeachers ? "A atribuir professores..." : "Tentar atribuição automática"}
@@ -1328,7 +1328,7 @@ export default function TurmasConfiguracoesPage() {
                   setActiveReadinessBlocker(null);
                   void openModal(cursoId, activeReadinessBlocker.code === "ACADEMIC_TURMAS_INVALID" ? "classes" : "disciplinas");
                 }}
-                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white"
+                className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white"
               >
                 <BookOpenCheck className="h-4 w-4" />
                 Corrigir neste curso
@@ -1361,7 +1361,7 @@ export default function TurmasConfiguracoesPage() {
                   modalActionLoading ||
                   (!publishRebuild && publishExistingTurmasCount > 0 && !publishNoRebuildAcknowledge)
                 }
-                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               >
                 {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <BookOpenCheck className="h-4 w-4" />}
                 Publicar e continuar
@@ -1391,7 +1391,7 @@ export default function TurmasConfiguracoesPage() {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-xs text-klasse-gold-900">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
               <p className="font-semibold">Próximo estado</p>
               <p className="mt-1">O currículo ficará publicado e qualquer horário automático será criado apenas como proposta para revisão posterior.</p>
             </div>
@@ -1474,7 +1474,7 @@ export default function TurmasConfiguracoesPage() {
                 type="button"
                 onClick={handleSaveClasses}
                 disabled={modalActionLoading}
-                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               >
                 {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Salvar mudanças"}
               </button>

@@ -11,8 +11,8 @@ type Props = {
 };
 
 const STATUS_CONFIG: Record<string, { colorClass: string; label: string }> = {
-  pago: { colorClass: "bg-klasse-green", label: "Pagos" },
-  pendente: { colorClass: "bg-klasse-gold", label: "Pendentes" },
+  pago: { colorClass: "bg-emerald", label: "Pagos" },
+  pendente: { colorClass: "bg-amber", label: "Pendentes" },
   em_atraso: { colorClass: "bg-red-600", label: "Em atraso" },
   cancelado: { colorClass: "bg-slate-400", label: "Cancelados" },
 };
@@ -84,7 +84,7 @@ export default function ChartsSection({ escolaId, data }: Props) {
         <p className="text-sm font-semibold text-slate-700">Saúde Financeira</p>
         <p className="mt-1 text-sm text-slate-500">Eficiência consolidada de adimplência.</p>
         <div className="mt-6 flex items-end gap-2">
-          <span className="text-5xl font-bold text-klasse-green">{data.eficiencia ?? 0}</span>
+          <span className="text-5xl font-bold text-emerald">{data.eficiencia ?? 0}</span>
           <span className="text-lg font-semibold text-slate-500">%</span>
         </div>
         <p className="mt-2 text-sm text-slate-500">Próximo passo: priorizar cobranças com risco alto.</p>

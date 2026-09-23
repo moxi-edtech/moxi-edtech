@@ -172,8 +172,8 @@ export default function TurmasPage() {
               const max = turma.capacidade_maxima || 30
               const atual = turma.ocupacao_atual || 0
               const pct = Math.min(Math.round((atual / max) * 100), 100)
-              const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-klasse-gold-400" : "bg-[#1F6B3B]"
-              const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-klasse-gold-600" : "text-[#1F6B3B]"
+              const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]"
+              const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]"
               const livre = Math.max(max - atual, 0)
               
               return (

@@ -654,11 +654,11 @@ function Avatar({ url, nome, size = "md" }: { url?: string | null; nome?: string
   const dim = size === "lg" ? "h-14 w-14" : size === "sm" ? "h-9 w-9" : "h-10 w-10";
   const txt = size === "lg" ? "text-lg" : "text-sm";
   return (
-    <div className={`${dim} rounded-2xl bg-klasse-green/10 border border-klasse-green/20 flex items-center justify-center overflow-hidden flex-shrink-0`}>
+    <div className={`${dim} rounded-2xl bg-emerald/10 border border-emerald/20 flex items-center justify-center overflow-hidden flex-shrink-0`}>
       {url ? (
         <img src={url} alt="" className="h-full w-full object-cover" />
       ) : (
-        <span className={`font-black text-klasse-green ${txt}`}>{(nome ?? "?").charAt(0).toUpperCase()}</span>
+        <span className={`font-black text-emerald ${txt}`}>{(nome ?? "?").charAt(0).toUpperCase()}</span>
       )}
     </div>
   );
@@ -674,7 +674,7 @@ function StatusPill({ status }: { status: "em_dia" | "inadimplente" | "sem_matri
       Sem matricula
     </span>
   ) : (
-    <span className="inline-flex items-center rounded-full border border-klasse-green/20 bg-klasse-green/10 px-2.5 py-0.5 text-[10px] font-bold text-klasse-green uppercase tracking-wide">
+    <span className="inline-flex items-center rounded-full border border-emerald/20 bg-emerald/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald uppercase tracking-wide">
       Em dia
     </span>
   );
@@ -718,7 +718,7 @@ function AlunoCard({ aluno, onTrocarAluno }: { aluno: AlunoDossier; onTrocarAlun
           <button
             type="button"
             onClick={onTrocarAluno}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold text-slate-500 hover:border-klasse-gold hover:text-slate-900"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold text-slate-500 hover:border-amber hover:text-slate-900"
           >
             <ArrowRightLeft className="h-3 w-3" />
             Trocar
@@ -754,13 +754,13 @@ function AlunoCard({ aluno, onTrocarAluno }: { aluno: AlunoDossier; onTrocarAlun
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-3.5 flex items-center gap-3">
-          <div className="p-2 rounded-full bg-klasse-green/10">
-            <CheckCircle className="h-4 w-4 text-klasse-green" />
+        <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-3.5 flex items-center gap-3">
+          <div className="p-2 rounded-full bg-emerald/10">
+            <CheckCircle className="h-4 w-4 text-emerald" />
           </div>
           <div>
-            <p className="text-xs font-bold text-klasse-green">Situacao regular</p>
-            <p className="text-[11px] text-klasse-green/70">Nenhuma pendencia.</p>
+            <p className="text-xs font-bold text-emerald">Situacao regular</p>
+            <p className="text-[11px] text-emerald/70">Nenhuma pendencia.</p>
           </div>
         </div>
       )}
@@ -841,7 +841,7 @@ function Catalogo({
   );
 
   const servicoBtnCls = (busy: boolean) =>
-    `p-3 rounded-xl border border-slate-200/90 bg-slate-50/70 text-left transition-all hover:bg-white hover:border-klasse-gold hover:shadow-xs ${
+    `p-3 rounded-xl border border-slate-200/90 bg-slate-50/70 text-left transition-all hover:bg-white hover:border-amber hover:shadow-xs ${
       busy ? "opacity-50 cursor-not-allowed" : ""
     }`;
 
@@ -849,7 +849,7 @@ function Catalogo({
     <div className="xl:col-span-8 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Plus className="h-4 w-4 text-klasse-gold" />
+          <Plus className="h-4 w-4 text-amber" />
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Adicionar item</p>
         </div>
       </div>
@@ -977,11 +977,11 @@ function Catalogo({
               onClick={onRematricula}
               disabled={!rematriculaReady}
               className="w-full flex items-center justify-between p-3.5 rounded-xl border
-                border-klasse-green/25 bg-klasse-green/5 hover:bg-klasse-green/10
+                border-emerald/25 bg-emerald/5 hover:bg-emerald/10
                 transition-all text-left disabled:cursor-not-allowed disabled:opacity-70"
             >
               <div>
-                <p className="text-sm font-bold text-klasse-green">
+                <p className="text-sm font-bold text-emerald">
                   {rematriculaState === "RECONFIRMATION_REQUIRED"
                     ? "Pagar taxa de rematrícula"
                     : rematriculaState === "DOCUMENT_PENDING"
@@ -1067,7 +1067,7 @@ function Catalogo({
                   disabled={!unlockedMensalidadeIds.has(m.id)}
                   title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
                   className="flex items-center justify-between p-3.5 rounded-xl border
-                    border-slate-200 bg-white hover:border-klasse-gold hover:shadow-xs transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60"
+                    border-slate-200 bg-white hover:border-amber hover:shadow-xs transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <div className="min-w-0 pr-2">
                     <p className="text-xs font-bold text-slate-700 group-hover:text-slate-900 truncate">{m.nome}</p>
@@ -1098,7 +1098,7 @@ function Catalogo({
                       <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(s.preco)}</span>
                       <span
                         className={`text-[10px] font-bold rounded-md px-1.5 py-0.5 ${
-                          s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-klasse-green"
+                          s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"
                         }`}
                       >
                         {busy ? "..." : s.preco > 0 ? "Cobrar" : "Adicionar"}
@@ -1126,7 +1126,7 @@ function Catalogo({
                       <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(s.preco)}</span>
                       <span
                         className={`text-[10px] font-bold rounded-md px-1.5 py-0.5 ${
-                          s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-klasse-green"
+                          s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"
                         }`}
                       >
                         {busy ? "..." : s.preco > 0 ? "Pago" : "Gratis"}
@@ -1162,7 +1162,7 @@ function AuditTrail({ audit, aluno, onRefresh }: { audit: ReturnType<typeof useA
           >
             {audit.scope === "aluno" ? "Ver todos" : "Ver aluno"}
           </button>
-          <button onClick={onRefresh} className="text-[10px] font-bold uppercase tracking-widest text-klasse-gold hover:underline">
+          <button onClick={onRefresh} className="text-[10px] font-bold uppercase tracking-widest text-amber hover:underline">
             Actualizar
           </button>
         </div>
@@ -1217,7 +1217,7 @@ function CarrinhoPanel({
 }) {
   const { itens, total, metodo, setMetodo, detalhes, setDetalhes, valorRecebido, setValorRecebido, valorNum, troco, prontoParaPagar, remover, limpar } = carrinho;
 
-  const inputCls = `w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20`;
+  const inputCls = `w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-amber focus:ring-2 focus:ring-amber/20`;
 
   return (
     <div
@@ -1227,10 +1227,10 @@ function CarrinhoPanel({
     >
       <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5 text-klasse-gold" />
+          <ShoppingCart className="h-5 w-5 text-amber" />
           <span className="text-sm font-bold text-white font-sora">Resumo da venda</span>
           {itens.length > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-klasse-gold text-[10px] font-black text-slate-900 font-mono">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber text-[10px] font-black text-slate-900 font-mono">
               {itens.length}
             </span>
           )}
@@ -1277,7 +1277,7 @@ function CarrinhoPanel({
                         const url = await checkout.emitirDocumento(item as Servico);
                         if (url) checkout.setPrintQueue((prev) => [{ label: item.nome, url }, ...prev]);
                       }}
-                      className="mt-1.5 text-[10px] font-semibold text-klasse-green hover:underline"
+                      className="mt-1.5 text-[10px] font-semibold text-emerald hover:underline"
                     >
                       Imprimir agora
                     </button>
@@ -1309,10 +1309,10 @@ function CarrinhoPanel({
                 key={id}
                 onClick={() => setMetodo(id)}
                 className={`flex flex-col items-center justify-center py-2.5 rounded-xl border gap-1 transition-all ${
-                  active ? "border-klasse-gold bg-klasse-gold/10 text-slate-900 font-bold" : "border-slate-200 text-slate-400 hover:border-slate-300"
+                  active ? "border-amber bg-amber/10 text-slate-900 font-bold" : "border-slate-200 text-slate-400 hover:border-slate-300"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${active ? "text-klasse-gold" : "text-current"}`} />
+                <Icon className={`h-4 w-4 ${active ? "text-amber" : "text-current"}`} />
                 <span className="text-[9px] font-bold uppercase font-mono">{label}</span>
               </button>
             );
@@ -1354,7 +1354,7 @@ function CarrinhoPanel({
           <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Recebido</label>
-              {valorNum > total && <span className="text-xs font-bold text-klasse-green">Troco: {kwanza.format(troco)}</span>}
+              {valorNum > total && <span className="text-xs font-bold text-emerald">Troco: {kwanza.format(troco)}</span>}
             </div>
             <div className="relative">
               <input
@@ -1374,7 +1374,7 @@ function CarrinhoPanel({
           onClick={() => void checkout.checkout()}
           className={`w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
             prontoParaPagar && !checkout.isSubmitting
-              ? "bg-klasse-gold text-slate-950 shadow-md shadow-klasse-gold/20 hover:brightness-105 font-sora"
+              ? "bg-amber text-slate-950 shadow-md shadow-amber/20 hover:brightness-105 font-sora"
               : "bg-slate-100 text-slate-400 cursor-not-allowed"
           }`}
         >
@@ -1447,7 +1447,7 @@ function BillingWindowRepairPanel({
       <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-klasse-green">Ação de recuperação</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald">Ação de recuperação</p>
             <h2 id="billing-window-title" className="mt-1 text-xl font-black text-slate-900">Configurar janela da turma</h2>
             <p className="mt-1 text-sm text-slate-500">A mensalidade {issue.competencia || "selecionada"} está fora do período permitido.</p>
           </div>
@@ -1480,7 +1480,7 @@ function BillingWindowRepairPanel({
           min={issue.dataFim}
           value={dataFim}
           onChange={(event) => setDataFim(event.target.value)}
-          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none ring-klasse-green focus:ring-2"
+          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none ring-emerald focus:ring-2"
         />
 
         <div className="mt-5 rounded-2xl border border-slate-200 p-4">
@@ -1489,7 +1489,7 @@ function BillingWindowRepairPanel({
               <p className="text-sm font-bold text-slate-800">Prévia das mensalidades</p>
               <p className="text-xs text-slate-500">Competências abrangidas pela janela</p>
             </div>
-            <span className="rounded-full bg-klasse-green/10 px-2.5 py-1 text-xs font-bold text-klasse-green">{months.length} meses</span>
+            <span className="rounded-full bg-emerald/10 px-2.5 py-1 text-xs font-bold text-emerald">{months.length} meses</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {months.length > 0 ? months.map((month) => (
@@ -1500,7 +1500,7 @@ function BillingWindowRepairPanel({
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button type="button" onClick={onClose} disabled={saving} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Cancelar</button>
-          <button type="button" onClick={() => void handleSaveAndRetry()} disabled={saving || !dataFim || dataFim < issue.dataFim} className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-green px-4 py-3 text-sm font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" onClick={() => void handleSaveAndRetry()} disabled={saving || !dataFim || dataFim < issue.dataFim} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-3 text-sm font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
             Guardar e tentar novamente
           </button>
@@ -1663,7 +1663,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
               placeholder="Buscar aluno por nome ou n. de processo..."
               className="w-full text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
             />
-            {search.isSearching && <Loader2 className="h-4 w-4 animate-spin text-klasse-gold" />}
+            {search.isSearching && <Loader2 className="h-4 w-4 animate-spin text-amber" />}
             {search.searchTerm && (
               <button onClick={search.clear} className="p-1 text-slate-400 hover:text-slate-600">
                 <X className="h-4 w-4" />
@@ -1699,7 +1699,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
 
       {dossier.loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
-          <Loader2 className="h-8 w-8 animate-spin text-klasse-gold" />
+          <Loader2 className="h-8 w-8 animate-spin text-amber" />
           <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
         </div>
       ) : dossier.aluno ? (

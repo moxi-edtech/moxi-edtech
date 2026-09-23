@@ -78,7 +78,7 @@ function getActivityPriority(item: ActivityFeedItem): "urgente" | "importante" |
 
 const priorityStyles = {
   urgente: "bg-rose-50 text-rose-700 ring-rose-200",
-  importante: "bg-klasse-gold-50 text-klasse-gold-700 ring-klasse-gold-200",
+  importante: "bg-amber-50 text-amber-700 ring-amber-200",
   informativa: "bg-slate-50 text-slate-500 ring-slate-200",
 } as const;
 
@@ -192,16 +192,16 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
             escolaParam,
             portalBase === "operacoes" ? "/operacoes/alertas" : "/admin/relatorios"
           )}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider text-klasse-green hover:bg-emerald-50 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider text-emerald hover:bg-emerald-50 transition-colors"
         >
           {portalBase === "operacoes" ? "Abrir fila" : "Histórico"} <ArrowRight className="h-3 w-3" />
         </Link>
       </header>
 
       {newItem && (
-        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-emerald/20 bg-emerald/5 p-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest text-klasse-green">
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald">
               Nova actividade{newCount > 1 ? ` · ${newCount} novidades` : ""}
             </p>
             <p className="truncate text-sm font-bold text-slate-900">{newItem.headline}</p>
@@ -212,7 +212,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
               <Link
                 href={getActivityAction(newItem, escolaParam)!.href}
                 onClick={() => { setNewItem(null); setNewCount(0); }}
-                className="rounded-lg bg-klasse-green px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-klasse-green/90"
+                className="rounded-lg bg-emerald px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-emerald/90"
               >
                 {getActivityAction(newItem, escolaParam)!.label}
               </Link>
@@ -270,7 +270,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                       <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tighter ${familyBadgeClasses(item.event_family)}`}>
                         {familyLabel(item.event_family)}
                       </span>
-                      <p className="truncate text-sm font-bold text-slate-900 group-hover:text-klasse-green transition-colors">{item.headline}</p>
+                      <p className="truncate text-sm font-bold text-slate-900 group-hover:text-emerald transition-colors">{item.headline}</p>
                       <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ring-1 ${priorityStyles[priority]}`}>
                         {priority}
                       </span>
@@ -284,7 +284,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                         <Button 
                           variant="secondary" 
                           size="sm" 
-                          className="h-7 px-2 text-[10px] font-black uppercase tracking-wider bg-klasse-green text-white hover:bg-klasse-green/90"
+                          className="h-7 px-2 text-[10px] font-black uppercase tracking-wider bg-emerald text-white hover:bg-emerald/90"
                           onClick={() => handleAction(item, "validate")}
                         >
                           <CheckCircle2 className="mr-1.5 h-3 w-3" /> Validar Rápido
@@ -293,7 +293,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                       {activityAction && (
                         <Link
                           href={activityAction.href}
-                          className="inline-flex h-7 items-center gap-1 rounded-md border border-klasse-green/20 bg-klasse-green/5 px-2 text-[10px] font-black uppercase tracking-wider text-klasse-green hover:bg-klasse-green/10"
+                          className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald/20 bg-emerald/5 px-2 text-[10px] font-black uppercase tracking-wider text-emerald hover:bg-emerald/10"
                         >
                           {activityAction.label} <ExternalLink className="h-3 w-3" />
                         </Link>
@@ -319,7 +319,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
         <SheetContent side="right" className="sm:max-w-xl">
           <SheetHeader className="border-b border-slate-100 pb-4 mb-6">
             <SheetTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
-              {viewType === "validate" ? <CheckCircle2 className="h-5 w-5 text-klasse-green" /> : <Activity className="h-5 w-5 text-slate-400" />}
+              {viewType === "validate" ? <CheckCircle2 className="h-5 w-5 text-emerald" /> : <Activity className="h-5 w-5 text-slate-400" />}
               {viewType === "validate" ? "Validação Expressa" : "Detalhes do Evento"}
             </SheetTitle>
             <SheetDescription>
@@ -355,7 +355,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                    </div>
                    
                    <div className="flex items-center gap-3">
-                     <Button className="flex-1 bg-klasse-green text-white font-black uppercase tracking-widest h-12 shadow-lg shadow-emerald-200">
+                     <Button className="flex-1 bg-emerald text-white font-black uppercase tracking-widest h-12 shadow-lg shadow-emerald-200">
                        Aprovar Documento
                      </Button>
                      <Button variant="outline" className="flex-1 border-rose-200 text-rose-600 font-black uppercase tracking-widest h-12 hover:bg-rose-50">

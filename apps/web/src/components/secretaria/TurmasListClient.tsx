@@ -134,7 +134,7 @@ function computeHealth(
 
 const HEALTH_CONFIG: Record<HealthSignal, { label: string; dot: string; ring: string; text: string }> = {
   ok:       { label: "Saudável",  dot: `bg-[${C.green}]`,  ring: `ring-[${C.green}]/20`,  text: `text-[${C.green}]`  },
-  warning:  { label: "Atenção",   dot: "bg-klasse-gold-500",      ring: "ring-klasse-gold-200",         text: "text-klasse-gold-600"     },
+  warning:  { label: "Atenção",   dot: "bg-amber-500",      ring: "ring-amber-200",         text: "text-amber-600"     },
   critical: { label: "Crítico",   dot: `bg-[${C.rose}]`,   ring: `ring-[${C.rose}]/20`,   text: `text-[${C.rose}]`  },
 };
 
@@ -416,7 +416,7 @@ function SecretaryCardView({
               return (
                 <div key={turma.id} className={`
                   group relative rounded-xl border bg-white p-4 transition-all hover:shadow-md
-                  ${isSelected ? "ring-2 ring-klasse-gold-400 border-klasse-gold-200" : isDraft ? "border-klasse-gold-200 bg-klasse-gold-50/30" : "border-slate-200 hover:border-slate-300"}
+                  ${isSelected ? "ring-2 ring-amber-400 border-amber-200" : isDraft ? "border-amber-200 bg-amber-50/30" : "border-slate-200 hover:border-slate-300"}
                 `}>
                   {/* Checkbox overlay */}
                   <div className={`absolute top-3 left-3 z-10 transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
@@ -424,7 +424,7 @@ function SecretaryCardView({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => onToggleSelect(turma.id)}
-                      className="w-4 h-4 rounded border-slate-300 text-klasse-gold-500 focus:ring-klasse-gold-500 cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
                     />
                   </div>
 
@@ -459,13 +459,13 @@ function SecretaryCardView({
                   <div className="mb-3">
                     <div className="flex justify-between text-[10px] font-bold mb-1">
                       <span className="text-slate-500">{atual}/{max} alunos</span>
-                      <span className={pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-klasse-gold-600" : "text-[#1F6B3B]"}>
+                      <span className={pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]"}>
                         {pct}%
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-klasse-gold-400" : "bg-[#1F6B3B]"}`}
+                        className={`h-full rounded-full transition-all ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -482,7 +482,7 @@ function SecretaryCardView({
                       >
                         {turma.professor_nome
                           ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
-                          : <><UserX size={12} className="text-klasse-gold-500" /><span className="text-klasse-gold-600 font-semibold underline decoration-dotted">Atribuir prof.</span></>
+                          : <><UserX size={12} className="text-amber-500" /><span className="text-amber-600 font-semibold underline decoration-dotted">Atribuir prof.</span></>
                         }
                         {ped?.is_desescoberta && <AlertTriangle size={12} className="text-rose-500 animate-pulse" />}
                       </button>
@@ -499,7 +499,7 @@ function SecretaryCardView({
                       {ped && ped.candidatos_espera > 0 && (
                         <Link 
                           href={`${secretariaBase}/admissoes?turmaId=${turma.id}&search=${encodeURIComponent(turma.nome || "")}`}
-                          className="flex items-center gap-1 px-1.5 py-0.5 bg-klasse-gold-50 text-klasse-gold-700 rounded-lg text-[10px] font-bold border border-klasse-gold-200 hover:bg-klasse-gold-100 transition-colors"
+                          className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold border border-amber-200 hover:bg-amber-100 transition-colors"
                           title={`${ped.candidatos_espera} candidato(s) em espera`}
                         >
                           <UsersRound size={12} />
@@ -538,7 +538,7 @@ function SecretaryCardView({
                           </Link>
                         )}
                         <button onClick={() => onEdit(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-klasse-gold-50 rounded-lg transition-colors">
+                          className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors">
                           <Pencil size={14} />
                         </button>
                       </div>
@@ -596,7 +596,7 @@ function TurmaRow({
   return (
     <tr
       className={`border-b border-slate-100 transition-colors group ${
-        isSelected ? "bg-klasse-gold-50/50" : isDraft ? "bg-klasse-gold-50/30" : isExpanded ? "bg-slate-50" : "hover:bg-slate-50"
+        isSelected ? "bg-amber-50/50" : isDraft ? "bg-amber-50/30" : isExpanded ? "bg-slate-50" : "hover:bg-slate-50"
       }`}
       style={style}
     >
@@ -606,7 +606,7 @@ function TurmaRow({
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelect(turma.id)}
-          className="w-4 h-4 rounded border-slate-300 text-klasse-gold-500 focus:ring-klasse-gold-500 cursor-pointer"
+          className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
         />
       </td>
 
@@ -614,7 +614,7 @@ function TurmaRow({
       <td className="w-[30%] max-w-[320px] px-6 py-4.5">
         <div className="flex items-center gap-3.5">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold border flex-shrink-0 shadow-xs
-            ${isDraft ? "bg-klasse-gold-100 text-klasse-gold-700 border-klasse-gold-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
+            ${isDraft ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
             {iniciais}
           </div>
           <div className="min-w-0 max-w-[260px] flex-1">
@@ -632,7 +632,7 @@ function TurmaRow({
               <span className="text-[10px] font-mono text-slate-500 bg-slate-100/90 px-1.5 py-0.5 rounded">
                 {turma.ano_letivo || "—"}
               </span>
-              {isDraft && <span className="text-[10px] font-bold text-klasse-gold-600">RASCUNHO</span>}
+              {isDraft && <span className="text-[10px] font-bold text-amber-600">RASCUNHO</span>}
             </div>
           </div>
         </div>
@@ -685,8 +685,8 @@ function TurmaRow({
           const atual = turma.ocupacao_atual    || 0;
           const livre = Math.max(max - atual, 0);
           const pct   = Math.min(Math.round((atual / max) * 100), 100);
-          const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-klasse-gold-400" : "bg-[#1F6B3B]";
-          const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-klasse-gold-600" : "text-[#1F6B3B]";
+          const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]";
+          const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]";
           return (
             <div className="space-y-1.5 min-w-[120px]">
               <div className="flex items-center justify-between gap-2">
@@ -791,7 +791,7 @@ function TurmaRow({
                 <Eye size={15} />
               </Link>
               <button onClick={() => onEdit(turma)}
-                className="p-2 text-slate-400 hover:text-[#E3B23C] hover:bg-klasse-gold-50 rounded-lg transition-colors"
+                className="p-2 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors"
                 title="Editar turma"
               >
                 <Pencil size={15} />
@@ -1389,7 +1389,7 @@ export default function TurmasListClient({
                         type="checkbox"
                         checked={selectedIds.size > 0 && selectedIds.size === filteredIds.length}
                         onChange={() => toggleAll(filteredIds)}
-                        className="w-4 h-4 rounded border-slate-300 text-klasse-gold-500 focus:ring-klasse-gold-500 cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
                       />
                     </th>
                     <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[30%]">Turma</th>
@@ -1470,7 +1470,7 @@ export default function TurmasListClient({
                                     </div>
                                     <div className="flex items-center justify-between">
                                       <span className="text-slate-500">Currículo:</span>
-                                      <span className={`font-semibold ${row.turma.status_curriculo === "pendente" ? "text-klasse-gold-600" : "text-[#1F6B3B]"}`}>
+                                      <span className={`font-semibold ${row.turma.status_curriculo === "pendente" ? "text-amber-600" : "text-[#1F6B3B]"}`}>
                                         {row.turma.status_curriculo === "pendente" ? "Pendente" : "OK"}
                                       </span>
                                     </div>
@@ -1491,7 +1491,7 @@ export default function TurmasListClient({
                                         <span className="text-slate-500">Em Espera:</span>
                                         <Link 
                                           href={`${secretariaBase}/admissoes?turmaId=${row.turma.id}&search=${encodeURIComponent(row.turma.nome || "")}`}
-                                          className="font-bold text-klasse-gold-600 hover:underline"
+                                          className="font-bold text-amber-600 hover:underline"
                                         >
                                           {ped.candidatos_espera} candidatos
                                         </Link>
@@ -1537,7 +1537,7 @@ export default function TurmasListClient({
                                     {qv?.currentSubject && !substituting && (
                                       <button 
                                         onClick={() => { setSubstituting(row.turma.id); fetchProfessors(); }}
-                                        className="text-[10px] font-bold text-klasse-gold-600 hover:text-klasse-gold-700 transition-colors"
+                                        className="text-[10px] font-bold text-amber-600 hover:text-amber-700 transition-colors"
                                       >
                                         Substituir
                                       </button>
@@ -1554,7 +1554,7 @@ export default function TurmasListClient({
                                       <select 
                                         value={selectedProf}
                                         onChange={(e) => setSelectedProf(e.target.value)}
-                                        className="w-full p-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-klasse-gold"
+                                        className="w-full p-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-amber"
                                       >
                                         <option value="">Selecione um professor...</option>
                                         {professors.map(p => (
@@ -1814,7 +1814,7 @@ export default function TurmasListClient({
       {selectedIds.size > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-slate-700/50 backdrop-blur-md">
           <div className="flex items-center gap-3 border-r border-slate-700 pr-8">
-            <div className="w-6 h-6 rounded-full bg-klasse-gold-500 text-slate-900 flex items-center justify-center text-xs font-bold">
+            <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-900 flex items-center justify-center text-xs font-bold">
               {selectedIds.size}
             </div>
             <span className="text-sm font-semibold text-slate-300">Selecionadas</span>
@@ -1846,7 +1846,7 @@ export default function TurmasListClient({
             </button>
             <button
               onClick={handleBulkNotify}
-              className="flex items-center gap-2 px-4 py-2 bg-klasse-gold-500 text-slate-900 hover:bg-klasse-gold-400 rounded-xl transition-all text-sm font-bold shadow-lg shadow-klasse-gold-500/20"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-900 hover:bg-amber-400 rounded-xl transition-all text-sm font-bold shadow-lg shadow-amber-500/20"
             >
               <Send size={16} />
               Notificar Encarregados

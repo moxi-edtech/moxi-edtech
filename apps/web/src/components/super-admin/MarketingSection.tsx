@@ -66,7 +66,7 @@ export default function MarketingSection() {
       <div className="flex items-center justify-between gap-3 border-b border-slate-50 pb-4 mb-2">
         <div>
           <h2 className="text-xl font-bold text-slate-950 flex items-center gap-2">
-            <Megaphone className="h-5 w-5 text-klasse-green" />
+            <Megaphone className="h-5 w-5 text-emerald" />
             Marketing & Parceiros
           </h2>
           <p className="text-sm text-slate-500 font-medium">Pipeline de prospecção e suporte a parceiros.</p>
@@ -95,7 +95,7 @@ export default function MarketingSection() {
         <div className="md:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Últimas Atividades</h3>
-            <Link href="/super-admin/onboarding" className="text-[10px] font-bold text-klasse-green hover:underline flex items-center">
+            <Link href="/super-admin/onboarding" className="text-[10px] font-bold text-emerald hover:underline flex items-center">
               VER PIPELINE COMPLETO <ChevronRight size={10} />
             </Link>
           </div>

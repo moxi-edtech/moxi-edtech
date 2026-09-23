@@ -466,10 +466,10 @@ export default function DocumentosEmissaoHubClient({
               setSelectedAluno(null);
             }}
             placeholder="Buscar aluno por nome, processo ou BI..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/10"
           />
           {loading && (
-            <RefreshCw className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-klasse-green" />
+            <RefreshCw className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-emerald" />
           )}
         </div>
 
@@ -495,7 +495,7 @@ export default function DocumentosEmissaoHubClient({
         )}
 
         {selectedAluno && (
-          <div className="mt-3 rounded-xl border border-klasse-green-200 bg-klasse-green-50 px-4 py-2 text-sm text-klasse-green-800">
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
             Selecionado: <span className="font-semibold">{selectedAluno.label}</span>
           </div>
         )}
@@ -514,19 +514,19 @@ export default function DocumentosEmissaoHubClient({
               onClick={() => setTipo(doc.id)}
               className={`rounded-2xl border px-5 py-6 text-left transition-all ${
                 isActive
-                  ? "border-klasse-gold bg-klasse-gold-50 shadow-sm"
-                  : "border-slate-200 bg-white hover:border-klasse-gold/60"
+                  ? "border-amber bg-amber-50 shadow-sm"
+                  : "border-slate-200 bg-white hover:border-amber/60"
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`rounded-xl p-2 ${isActive ? "bg-klasse-gold/20 text-klasse-gold" : "bg-slate-100 text-slate-500"}`}>
+                <div className={`rounded-xl p-2 ${isActive ? "bg-amber/20 text-amber" : "bg-slate-100 text-slate-500"}`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-slate-900">{doc.title}</h2>
                   <p className="mt-1 text-sm text-slate-500">{doc.description}</p>
                   {priceLabel !== null && (
-                    <p className={`mt-2 text-xs font-semibold ${priceLabel > 0 ? "text-klasse-gold-700" : "text-klasse-green-700"}`}>
+                    <p className={`mt-2 text-xs font-semibold ${priceLabel > 0 ? "text-amber-700" : "text-emerald-700"}`}>
                       {priceLabel > 0 ? `Documento pago · ${priceLabel} Kz` : "Documento grátis"}
                     </p>
                   )}
@@ -583,7 +583,7 @@ export default function DocumentosEmissaoHubClient({
                   onClick={() => setMetodo(item.id as typeof metodo)}
                   className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
                     metodo === item.id
-                      ? "border-klasse-gold bg-klasse-gold-50 text-klasse-gold"
+                      ? "border-amber bg-amber-50 text-amber"
                       : "border-slate-200 bg-white text-slate-600"
                   }`}
                 >
@@ -623,7 +623,7 @@ export default function DocumentosEmissaoHubClient({
       )}
 
       {printQueue.length > 0 && (
-        <div className="rounded-xl border border-klasse-green-200 bg-klasse-green-50 px-4 py-3 text-sm text-klasse-green-800">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           <div className="font-semibold mb-2">Documentos prontos para impressão</div>
           <div className="space-y-2">
             {printQueue.map((doc, index) => (
@@ -631,7 +631,7 @@ export default function DocumentosEmissaoHubClient({
                 key={`${doc.url}-${index}`}
                 type="button"
                 onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
-                className="w-full rounded-lg border border-klasse-green-200 bg-white px-3 py-2 text-left text-xs font-semibold text-klasse-green-800 hover:bg-klasse-green-100"
+                className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
               >
                 Abrir documento
               </button>
@@ -645,7 +645,7 @@ export default function DocumentosEmissaoHubClient({
           type="button"
           onClick={handleEmitir}
           disabled={!canSubmit}
-          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
           {isPago ? "Pagar e Emitir Documento" : "Emitir e Imprimir"}

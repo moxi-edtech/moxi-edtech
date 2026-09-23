@@ -42,7 +42,7 @@ export default function NovaEscolaPage() {
   return (
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-klasse-green" />
+        <Loader2 className="w-8 h-8 animate-spin text-emerald" />
         <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">A carregar formulário...</p>
       </div>
     }>
@@ -189,7 +189,7 @@ function CriarEscolaForm() {
       
       {/* Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-klasse-green rounded-3xl shadow-xl shadow-klasse-green/20 mb-2">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald rounded-3xl shadow-xl shadow-emerald/20 mb-2">
           <Building2 className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-3xl font-black text-slate-900 tracking-tight font-sora">
@@ -207,15 +207,15 @@ function CriarEscolaForm() {
             <div
               className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 font-bold transition-all ${
                 step === currentStep
-                  ? "bg-klasse-green text-white border-klasse-green shadow-lg shadow-klasse-green/20"
+                  ? "bg-emerald text-white border-emerald shadow-lg shadow-emerald/20"
                   : step < currentStep
-                  ? "bg-klasse-green-500 text-white border-klasse-green-500"
+                  ? "bg-emerald-500 text-white border-emerald-500"
                   : "bg-white text-slate-300 border-slate-100"
               }`}
             >
               {step < currentStep ? <CheckCircle2 size={20} /> : step}
             </div>
-            <span className={`text-[10px] mt-2 font-black uppercase tracking-widest ${step === currentStep ? "text-klasse-green" : "text-slate-400"}`}>
+            <span className={`text-[10px] mt-2 font-black uppercase tracking-widest ${step === currentStep ? "text-emerald" : "text-slate-400"}`}>
               {step === 1 && "Instituição"}
               {step === 2 && "Administrador"}
               {step === 3 && "Sucesso"}
@@ -232,21 +232,21 @@ function CriarEscolaForm() {
           <div className="space-y-6 animate-klasse-fade-up">
             
             {/* Pre-fill Selector */}
-            <div className="bg-klasse-gold-50 border border-klasse-gold-100 rounded-3xl p-6 space-y-4">
+            <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-klasse-gold-100 rounded-xl text-klasse-gold-700">
+                <div className="p-2 bg-amber-100 rounded-xl text-amber-700">
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-klasse-gold-900">Preencher via Onboarding</h3>
-                  <p className="text-xs text-klasse-gold-700/70 font-medium">Use dados já submetidos por uma escola.</p>
+                  <h3 className="text-sm font-bold text-amber-900">Preencher via Onboarding</h3>
+                  <p className="text-xs text-amber-700/70 font-medium">Use dados já submetidos por uma escola.</p>
                 </div>
               </div>
               <select 
                 value={selectedOnboardingId}
                 onChange={(e) => handlePreFill(e.target.value)}
                 disabled={loadingOnboarding}
-                className="w-full bg-white border-klasse-gold-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-klasse-gold-500 focus:border-klasse-gold-500"
+                className="w-full bg-white border-amber-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-amber-500 focus:border-amber-500"
               >
                 <option value="">Seleccionar pedido pendente...</option>
                 {onboardingRequests.map(r => (
@@ -258,7 +258,7 @@ function CriarEscolaForm() {
             <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
               <CardHeader className="bg-slate-50/50 border-b border-slate-100">
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Layout size={18} className="text-klasse-green" /> Informações da Escola
+                  <Layout size={18} className="text-emerald" /> Informações da Escola
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
@@ -266,7 +266,7 @@ function CriarEscolaForm() {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Nome da Escola *</label>
                     <input
-                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                       placeholder="Ex: Colégio Horizonte"
                       value={formData.nome}
                       onChange={(e) => handleInputChange('nome', e.target.value)}
@@ -276,7 +276,7 @@ function CriarEscolaForm() {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">NIF *</label>
                     <input
-                      className={`w-full border rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 outline-none transition-all ${!isNifValid ? 'border-rose-300' : 'border-slate-200 focus:border-klasse-green'}`}
+                      className={`w-full border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 outline-none transition-all ${!isNifValid ? 'border-rose-300' : 'border-slate-200 focus:border-emerald'}`}
                       placeholder="9 dígitos"
                       value={formData.nif}
                       onChange={(e) => handleInputChange('nif', e.target.value.replace(/\D/g, '').slice(0, 9))}
@@ -289,7 +289,7 @@ function CriarEscolaForm() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Endereço</label>
                   <input
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                     placeholder="Ex: Luanda, Viana..."
                     value={formData.endereco}
                     onChange={(e) => handleInputChange('endereco', e.target.value)}
@@ -299,7 +299,7 @@ function CriarEscolaForm() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Plano Base</label>
                   <select
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all appearance-none bg-white"
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all appearance-none bg-white"
                     value={formData.plano}
                     onChange={(e) => handleInputChange("plano", e.target.value)}
                   >
@@ -316,7 +316,7 @@ function CriarEscolaForm() {
                 type="button" 
                 onClick={() => setCurrentStep(2)}
                 disabled={!formData.nome || !isNifValid || formData.nif.length < 9}
-                className="bg-klasse-green text-white px-8 rounded-xl font-bold gap-2"
+                className="bg-emerald text-white px-8 rounded-xl font-bold gap-2"
               >
                 Próximo Passo <ChevronRight size={16} />
               </Button>
@@ -330,7 +330,7 @@ function CriarEscolaForm() {
             <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
               <CardHeader className="bg-slate-50/50 border-b border-slate-100">
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <UserPlus size={18} className="text-klasse-gold" /> Administrador Principal
+                  <UserPlus size={18} className="text-amber" /> Administrador Principal
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
@@ -342,7 +342,7 @@ function CriarEscolaForm() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Nome Completo *</label>
                   <input
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                     placeholder="Nome do gestor principal"
                     value={formData.adminNome}
                     onChange={(e) => handleInputChange('adminNome', e.target.value)}
@@ -355,7 +355,7 @@ function CriarEscolaForm() {
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Email do Administrador *</label>
                     <input
                       type="email"
-                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                       placeholder="email@escola.com"
                       value={formData.adminEmail}
                       onChange={(e) => handleInputChange('adminEmail', e.target.value)}
@@ -365,7 +365,7 @@ function CriarEscolaForm() {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Telefone do Administrador</label>
                     <input
-                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                       placeholder="9XXXXXXXX"
                       value={formData.adminTelefone}
                       onChange={(e) => handleInputChange('adminTelefone', e.target.value.replace(/\D/g, ''))}
@@ -377,7 +377,7 @@ function CriarEscolaForm() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Papel Inicial</label>
                   <select
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all appearance-none bg-white"
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all appearance-none bg-white"
                     value={formData.adminPapel}
                     onChange={(e) => handleInputChange('adminPapel', e.target.value)}
                   >
@@ -396,7 +396,7 @@ function CriarEscolaForm() {
               <Button 
                 type="submit" 
                 disabled={loading || !formData.adminNome || !formData.adminEmail}
-                className="bg-klasse-green text-white px-10 rounded-xl font-bold gap-2 shadow-lg shadow-klasse-green/10"
+                className="bg-emerald text-white px-10 rounded-xl font-bold gap-2 shadow-lg shadow-emerald/10"
               >
                 {loading ? <RefreshCw size={16} className="animate-spin" /> : <Database size={16} />}
                 Criar Instância
@@ -408,12 +408,12 @@ function CriarEscolaForm() {
         {/* Step 3: Success Confirmation */}
         {currentStep === 3 && creationResult && (
           <div className="space-y-6 animate-klasse-fade-up">
-            <div className="bg-klasse-green-50 border-2 border-klasse-green-100 rounded-[2rem] p-8 text-center space-y-4">
-              <div className="w-20 h-20 bg-klasse-green-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-klasse-green-200">
+            <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] p-8 text-center space-y-4">
+              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-200">
                 <CheckCircle2 size={40} className="text-white" />
               </div>
-              <h2 className="text-2xl font-black text-klasse-green-900 font-sora">Escola Criada!</h2>
-              <p className="text-klasse-green-700 font-medium">O ambiente para <strong className="text-klasse-green-900">{formData.nome}</strong> está pronto.</p>
+              <h2 className="text-2xl font-black text-emerald-900 font-sora">Escola Criada!</h2>
+              <p className="text-emerald-700 font-medium">O ambiente para <strong className="text-emerald-900">{formData.nome}</strong> está pronto.</p>
             </div>
 
             <Card className="rounded-3xl border-slate-200 shadow-xl overflow-hidden bg-white">
@@ -427,7 +427,7 @@ function CriarEscolaForm() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Senha Temporária</p>
-                      <p className="font-mono font-black text-klasse-green text-lg tracking-wider">
+                      <p className="font-mono font-black text-emerald text-lg tracking-wider">
                         {creationResult.adminPassword || "Já existente"}
                       </p>
                     </div>
@@ -436,7 +436,7 @@ function CriarEscolaForm() {
 
                 <div className="flex flex-col md:flex-row gap-3">
                   <Button
-                    className="flex-1 bg-klasse-green text-white rounded-xl font-bold py-6 shadow-lg shadow-klasse-green/10"
+                    className="flex-1 bg-emerald text-white rounded-xl font-bold py-6 shadow-lg shadow-emerald/10"
                     onClick={() => router.push(`/escola/${creationResult.escolaId}/admin`)}
                   >
                     Abrir Painel da Escola <ArrowRight size={18} className="ml-2" />

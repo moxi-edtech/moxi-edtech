@@ -144,7 +144,7 @@ export default function ReapreciacoesPage() {
                 {item.nota_referencia !== null && <span>Nota de referência: {item.nota_referencia}</span>}
               </div>
               {(item.estado === "pendente" || item.estado === "em_analise") && (
-                <button onClick={() => { setSelected(item); setDecision(item.estado === "pendente" ? "em_analise" : "deferido"); setReason(item.decisao_motivo || ""); }} className="mt-4 rounded-lg bg-klasse-green px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green/90">
+                <button onClick={() => { setSelected(item); setDecision(item.estado === "pendente" ? "em_analise" : "deferido"); setReason(item.decisao_motivo || ""); }} className="mt-4 rounded-lg bg-emerald px-3 py-2 text-xs font-semibold text-white hover:bg-emerald/90">
                   Abrir decisão
                 </button>
               )}
@@ -168,7 +168,7 @@ export default function ReapreciacoesPage() {
             <textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={5} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Registe a fundamentação para a secretaria e para o histórico." />
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Cancelar</button>
-              <button disabled={saving} onClick={() => void submitDecision()} className="inline-flex items-center gap-2 rounded-lg bg-klasse-green px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button disabled={saving} onClick={() => void submitDecision()} className="inline-flex items-center gap-2 rounded-lg bg-emerald px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
                 {decision === "deferido" ? <CheckCircle2 className="h-4 w-4" /> : decision === "indeferido" ? <XCircle className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
                 {saving ? "A guardar..." : "Guardar decisão"}
               </button>

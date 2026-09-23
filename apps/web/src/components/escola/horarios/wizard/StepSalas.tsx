@@ -95,7 +95,7 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center gap-4 mb-8">
         <div className="p-4 rounded-2xl bg-white shadow-sm border border-slate-100">
-          <School className="h-8 w-8 text-klasse-gold" />
+          <School className="h-8 w-8 text-amber" />
         </div>
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Ambientes e Salas</h2>
@@ -115,7 +115,7 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
                 value={nome}
                 onChange={e => setNome(e.target.value)}
                 placeholder="Ex: Sala 01, Lab de Química..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/10 transition-all"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
                 required
               />
             </div>
@@ -126,7 +126,7 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
                 value={capacidade}
                 onChange={e => setCapacidade(e.target.value)}
                 placeholder="Ex: 30"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/10 transition-all"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
               />
             </div>
             <Button type="submit" tone="gold" className="w-full h-12 font-black gap-2" loading={saving}>
@@ -151,7 +151,7 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
           ) : (
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
               {salas.map(sala => (
-                <div key={sala.id} className="group flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200 hover:border-klasse-gold/50 transition-all shadow-sm">
+                <div key={sala.id} className="group flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200 hover:border-amber/50 transition-all shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center">
                       <School className="h-5 w-5 text-slate-400" />

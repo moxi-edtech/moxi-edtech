@@ -70,8 +70,8 @@ const fmtHora = (ts: string) => {
 };
 
 const TIPO_CONFIG: Record<string, { icon: LucideIcon, colorClass: string, bgClass: string, label: string }> = {
-  pagamento: { icon: CreditCard,    colorClass: "text-klasse-green", bgClass: "bg-klasse-green/10", label: "Pagamento"  },
-  matricula: { icon: UserPlus,      colorClass: "text-klasse-gold",  bgClass: "bg-klasse-gold/10",  label: "Matrícula"  },
+  pagamento: { icon: CreditCard,    colorClass: "text-emerald", bgClass: "bg-emerald/10", label: "Pagamento"  },
+  matricula: { icon: UserPlus,      colorClass: "text-amber",  bgClass: "bg-amber/10",  label: "Matrícula"  },
   nota:      { icon: GraduationCap, colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Notas"      },
   presenca:  { icon: Presentation,  colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Presença"   },
   config:    { icon: Settings,      colorClass: "text-slate-600",    bgClass: "bg-slate-50",        label: "Config"     },
@@ -83,7 +83,7 @@ const TIPO_CONFIG: Record<string, { icon: LucideIcon, colorClass: string, bgClas
 function SaudeRing({ valor }: { valor: number }) {
   const [v, setV] = useState(0);
   useEffect(() => { const t = setTimeout(() => setV(valor), 400); return () => clearTimeout(t); }, [valor]);
-  const barColor = v >= 80 ? "bg-klasse-green" : v >= 60 ? "bg-klasse-gold" : "bg-slate-400";
+  const barColor = v >= 80 ? "bg-emerald" : v >= 60 ? "bg-amber" : "bg-slate-400";
 
   return (
     <div className="min-w-[140px]">
@@ -108,14 +108,14 @@ function SaudeRing({ valor }: { valor: number }) {
 function MetricCard({ icon: Icon, label, main, sub, variant = "default", delay = 0 }: { icon: LucideIcon, label: string, main: ReactNode, sub: string, variant?: "default" | "green" | "gold", delay?: number }) {
   const variants = {
     default: "border-slate-200 bg-white",
-    green: "border-klasse-green/20 bg-klasse-green/5",
-    gold: "border-klasse-gold/20 bg-klasse-gold/5",
+    green: "border-emerald/20 bg-emerald/5",
+    gold: "border-amber/20 bg-amber/5",
   };
 
   const accents = {
     default: "bg-slate-100 text-slate-600",
-    green: "bg-klasse-green/10 text-klasse-green",
-    gold: "bg-klasse-gold/10 text-klasse-gold",
+    green: "bg-emerald/10 text-emerald",
+    gold: "bg-amber/10 text-amber",
   };
 
   return (
@@ -209,13 +209,13 @@ function NotasInternas({ escolaId }: { escolaId: string }) {
     <div className="space-y-3">
       <div className="flex justify-between items-center">
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-          <StickyNote size={14} className="text-klasse-gold" />
+          <StickyNote size={14} className="text-amber" />
           Notas Internas
         </h3>
         {loading ? (
           <RefreshCw size={12} className="animate-spin text-slate-300" />
         ) : (
-          <span className={`text-[10px] font-bold uppercase ${saved ? "text-klasse-green" : "text-klasse-gold"}`}>
+          <span className={`text-[10px] font-bold uppercase ${saved ? "text-emerald" : "text-amber"}`}>
             {saved ? "✓ sincronizado" : "a guardar…"}
           </span>
         )}
@@ -225,7 +225,7 @@ function NotasInternas({ escolaId }: { escolaId: string }) {
         onChange={e => handleChange(e.target.value)}
         disabled={loading}
         placeholder="Apontamentos privados sobre esta escola..."
-        className="w-full min-h-[120px] bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-600 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green/30 transition-all outline-none resize-none leading-relaxed"
+        className="w-full min-h-[120px] bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-600 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-emerald/5 focus:border-emerald/30 transition-all outline-none resize-none leading-relaxed"
       />
       <p className="text-[10px] text-slate-400 leading-tight">
         * Estas notas são visíveis apenas para a equipa do Super Admin.
@@ -487,14 +487,14 @@ export default function EscolaMonitor({
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline" className="bg-klasse-green/5 text-klasse-green border-klasse-green/20 font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                    <Badge variant="outline" className="bg-emerald/5 text-emerald border-emerald/20 font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                       Plano {escola.plano_atual}
                     </Badge>
-                    <Badge className={`${escola.status === 'ativa' ? 'bg-klasse-green/10 text-klasse-green border-klasse-green/20' : 'bg-slate-100 text-slate-600 border-slate-200'} font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
+                    <Badge className={`${escola.status === 'ativa' ? 'bg-emerald/10 text-emerald border-emerald/20' : 'bg-slate-100 text-slate-600 border-slate-200'} font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
                       {escola.status}
                     </Badge>
                     {escola.aluno_portal_enabled && (
-                      <Badge className="bg-klasse-green text-white font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border-0">
+                      <Badge className="bg-emerald text-white font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border-0">
                         Portal Ativo
                       </Badge>
                     )}
@@ -523,7 +523,7 @@ export default function EscolaMonitor({
                     onClick={() => window.open(`/escola/${escola.id}/admin`, '_blank')}
                     variant="default"
                     size="sm"
-                    className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-semibold text-xs gap-2 shadow-sm"
+                    className="bg-emerald hover:bg-emerald/90 text-white rounded-xl font-semibold text-xs gap-2 shadow-sm"
                   >
                     <Eye size={14} />
                     Entrar como Escola
@@ -605,7 +605,7 @@ export default function EscolaMonitor({
                         <CardTitle className="text-lg">Diagnóstico do Sistema</CardTitle>
                         <CardDescription>Métricas de saúde técnica e sincronização</CardDescription>
                       </div>
-                      <Badge className="bg-klasse-green/10 text-klasse-green hover:bg-klasse-green/10 border-klasse-green/20 uppercase font-bold text-[10px]">
+                      <Badge className="bg-emerald/10 text-emerald hover:bg-emerald/10 border-emerald/20 uppercase font-bold text-[10px]">
                         Sistema Saudável
                       </Badge>
                     </div>
@@ -615,7 +615,7 @@ export default function EscolaMonitor({
                       <div className="p-6 border-r border-slate-100 space-y-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sincronização</p>
                         <div className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${performance.sync_status === 'error' ? 'bg-klasse-gold' : 'bg-klasse-green animate-pulse'}`} />
+                          <div className={`w-2 h-2 rounded-full ${performance.sync_status === 'error' ? 'bg-amber' : 'bg-emerald animate-pulse'}`} />
                           {performance.sync_status?.toUpperCase() || "OK"}
                         </div>
                         <p className="text-[10px] text-slate-400 font-medium">Última: {new Date(performance.sync_updated_at).toLocaleString()}</p>
@@ -623,13 +623,13 @@ export default function EscolaMonitor({
                       <div className="p-6 space-y-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Uptime Médio</p>
                         <p className="text-xl font-bold text-slate-900">99.98%</p>
-                        <p className="text-[10px] text-klasse-green font-bold uppercase tracking-tight">SLA Profissional</p>
+                        <p className="text-[10px] text-emerald font-bold uppercase tracking-tight">SLA Profissional</p>
                       </div>
                     </div>
                     <div className="p-6">
                       <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Uso de Recursos (MB)</h4>
                       <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-klasse-green w-[42%] rounded-full" />
+                        <div className="h-full bg-emerald w-[42%] rounded-full" />
                       </div>
                       <div className="flex justify-between mt-2 text-[10px] font-bold text-slate-400">
                         <span>STORAGE: 1.2 GB USADO</span>
@@ -659,12 +659,12 @@ export default function EscolaMonitor({
                         const remaining = max === null ? null : Math.max(0, max - alunosTotal);
                         const isCurrent = escola.plano_atual === tier;
                         return (
-                          <div key={tier} className={`flex flex-col gap-2 rounded-2xl border ${isCurrent ? 'border-klasse-green/40 bg-klasse-green/5' : 'border-slate-200 bg-white'} p-4`}>
+                          <div key={tier} className={`flex flex-col gap-2 rounded-2xl border ${isCurrent ? 'border-emerald/40 bg-emerald/5' : 'border-slate-200 bg-white'} p-4`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{tier}</span>
                                 {isCurrent && (
-                                  <Badge className="bg-klasse-green text-white border-0 text-[9px] font-bold uppercase">Plano actual</Badge>
+                                  <Badge className="bg-emerald text-white border-0 text-[9px] font-bold uppercase">Plano actual</Badge>
                                 )}
                               </div>
                               <span className="text-xs font-semibold text-slate-700">
@@ -699,7 +699,7 @@ export default function EscolaMonitor({
                   </div>
                   {atividades.length > 0 && (
                     <div className="bg-slate-50/50 p-4 border-t border-slate-100 text-center">
-                      <Button variant="ghost" size="sm" className="text-xs font-bold text-slate-500 hover:text-klasse-green">
+                      <Button variant="ghost" size="sm" className="text-xs font-bold text-slate-500 hover:text-emerald">
                         Carregar mais actividades
                         <ArrowRight size={14} className="ml-2" />
                       </Button>
@@ -719,7 +719,7 @@ export default function EscolaMonitor({
                     <div className="border border-slate-200 rounded-2xl p-5 bg-white space-y-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-xl bg-klasse-green/10 text-klasse-green shrink-0">
+                          <div className="p-2 rounded-xl bg-emerald/10 text-emerald shrink-0">
                             <Zap size={20} />
                           </div>
                           <div>
@@ -729,9 +729,9 @@ export default function EscolaMonitor({
                         </div>
                         <Badge className={`${
                           wahaStatus === "connected"
-                            ? "bg-klasse-green/10 text-klasse-green border-klasse-green/20"
+                            ? "bg-emerald/10 text-emerald border-emerald/20"
                             : wahaStatus === "pending_qr"
-                              ? "bg-klasse-gold/10 text-klasse-gold border-klasse-gold/20 animate-pulse"
+                              ? "bg-amber/10 text-amber border-amber/20 animate-pulse"
                               : wahaStatus === "error" || wahaStatus === "disconnected"
                                 ? "bg-red-50 text-red-600 border-red-100"
                                 : "bg-slate-100 text-slate-600 border-slate-200"
@@ -747,7 +747,7 @@ export default function EscolaMonitor({
                             type="text"
                             value={wahaDisplayName}
                             onChange={(e) => setWahaDisplayName(e.target.value)}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                             placeholder="WAHA Experimental"
                           />
                         </div>
@@ -761,7 +761,7 @@ export default function EscolaMonitor({
                                 setWahaStatus(e.target.value);
                               }
                             }}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                           >
                             <option value="disabled">Desativado (disabled)</option>
                             <option value="pending_qr">Aguardando QR Code (pending_qr)</option>
@@ -778,7 +778,7 @@ export default function EscolaMonitor({
                             min="0"
                             value={wahaDailyLimit}
                             onChange={(e) => setWahaDailyLimit(Number(e.target.value))}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                           />
                         </div>
 
@@ -789,7 +789,7 @@ export default function EscolaMonitor({
                             min="0"
                             value={wahaMonthlyLimit}
                             onChange={(e) => setWahaMonthlyLimit(Number(e.target.value))}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                           />
                         </div>
 
@@ -799,7 +799,7 @@ export default function EscolaMonitor({
                             type="text"
                             value={wahaSessionName}
                             onChange={(e) => setWahaSessionName(e.target.value)}
-                            className="w-full font-mono text-xs text-slate-650 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            className="w-full font-mono text-xs text-slate-650 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                             placeholder="klasse_school_..."
                           />
                           <p className="text-[10px] text-slate-400">
@@ -813,7 +813,7 @@ export default function EscolaMonitor({
                             type="text"
                             value={wahaFallbackPhone}
                             onChange={(e) => setWahaFallbackPhone(e.target.value)}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                             placeholder="+244..."
                           />
                           <p className="text-[10px] text-slate-400">
@@ -826,7 +826,7 @@ export default function EscolaMonitor({
                         <Button
                           onClick={handleSaveWaha}
                           disabled={savingWaha}
-                          className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-bold text-xs px-6"
+                          className="bg-emerald hover:bg-emerald/90 text-white rounded-xl font-bold text-xs px-6"
                         >
                           {savingWaha ? "A Salvar..." : "Salvar Configuração WAHA"}
                         </Button>
@@ -881,7 +881,7 @@ export default function EscolaMonitor({
                     <CardDescription>Activar ou desactivar módulos centrais da escola</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
-                    <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-klasse-green/30 transition-colors">
+                    <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald/30 transition-colors">
                       <div className="space-y-1">
                         <Label className="text-sm font-bold text-slate-900">Portal do Aluno</Label>
                         <p className="text-xs text-slate-500 font-medium">Permite que alunos consultem notas e paguem propinas online.</p>
@@ -889,21 +889,21 @@ export default function EscolaMonitor({
                       <Switch
                         checked={escola.aluno_portal_enabled}
                         onCheckedChange={togglePortalAluno}
-                        className="data-[state=checked]:bg-klasse-green"
+                        className="data-[state=checked]:bg-emerald"
                       />
                     </div>
 
                     <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl opacity-60 grayscale cursor-not-allowed">
                       <div className="space-y-1">
                         <Label className="text-sm font-bold text-slate-900">Módulo de Mensagens SMS</Label>
-                        <p className="text-xs text-slate-500 font-medium text-klasse-gold font-bold uppercase tracking-tighter">Upgrade Necessário</p>
+                        <p className="text-xs text-slate-500 font-medium text-amber font-bold uppercase tracking-tighter">Upgrade Necessário</p>
                       </div>
                       <Switch disabled checked={false} />
                     </div>
 
                     <div className="pt-6 border-t border-slate-100">
-                      <h4 className="text-[10px] font-bold text-klasse-gold uppercase tracking-[0.2em] mb-4">Zona de Perigo</h4>
-                      <div className="p-5 bg-klasse-gold/10 border border-klasse-gold/20 rounded-2xl flex items-center justify-between">
+                      <h4 className="text-[10px] font-bold text-amber uppercase tracking-[0.2em] mb-4">Zona de Perigo</h4>
+                      <div className="p-5 bg-amber/10 border border-amber/20 rounded-2xl flex items-center justify-between">
                         <div className="space-y-1">
                           <p className="text-sm font-bold text-slate-900">Resetar Escola</p>
                           <p className="text-xs text-slate-600 font-medium">Esta acção apaga todos os dados e não pode ser desfeita.</p>
@@ -926,13 +926,13 @@ export default function EscolaMonitor({
                   <CardContent className="p-6 space-y-6">
                     {loadingAi ? (
                       <div className="text-center py-10 space-y-2">
-                        <Loader2 className="w-8 h-8 animate-spin text-klasse-green mx-auto" />
+                        <Loader2 className="w-8 h-8 animate-spin text-emerald mx-auto" />
                         <p className="text-xs text-slate-500 font-medium">A carregar estatísticas de IA...</p>
                       </div>
                     ) : (
                       <>
                         {/* AI Active Toggle */}
-                        <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-klasse-green/30 transition-colors">
+                        <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald/30 transition-colors">
                           <div className="space-y-1">
                             <Label className="text-sm font-bold text-slate-900">Estado do KLASSE AI</Label>
                             <p className="text-xs text-slate-500 font-medium">Ativa ou desativa completamente o assistente de produtividade por IA nesta escola.</p>
@@ -944,7 +944,7 @@ export default function EscolaMonitor({
                               setAiSettings(prev => prev ? { ...prev, enabled: val } : { enabled: val, daily_limit: 20, monthly_limit: 500 });
                               await handleSaveAiSettings(val, aiSettings?.daily_limit ?? 20, aiSettings?.monthly_limit ?? 500);
                             }}
-                            className="data-[state=checked]:bg-klasse-green"
+                            className="data-[state=checked]:bg-emerald"
                           />
                         </div>
 
@@ -961,7 +961,7 @@ export default function EscolaMonitor({
                                   const val = parseInt(e.target.value, 10) || 0;
                                   setAiSettings(prev => prev ? { ...prev, daily_limit: val } : { enabled: false, daily_limit: val, monthly_limit: 500 });
                                 }}
-                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-klasse-green transition-colors"
+                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald transition-colors"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -973,7 +973,7 @@ export default function EscolaMonitor({
                                   const val = parseInt(e.target.value, 10) || 0;
                                   setAiSettings(prev => prev ? { ...prev, monthly_limit: val } : { enabled: false, daily_limit: 20, monthly_limit: val });
                                 }}
-                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-klasse-green transition-colors"
+                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald transition-colors"
                               />
                             </div>
                           </div>
@@ -1031,9 +1031,9 @@ export default function EscolaMonitor({
                                       <Badge
                                         className={`rounded-lg uppercase text-[9px] font-extrabold ${
                                           isSuccess
-                                            ? "bg-klasse-green/10 text-klasse-green border border-klasse-green/20"
+                                            ? "bg-emerald/10 text-emerald border border-emerald/20"
                                             : isPending
-                                            ? "bg-klasse-gold/10 text-klasse-gold border border-klasse-gold/20"
+                                            ? "bg-amber/10 text-amber border border-amber/20"
                                             : "bg-red-50 text-red-600 border border-red-100"
                                         }`}
                                       >
@@ -1056,7 +1056,7 @@ export default function EscolaMonitor({
 
           <div className="space-y-6">
             <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-              <CardHeader className="bg-klasse-gold/5 border-b border-klasse-gold/10 p-6">
+              <CardHeader className="bg-amber/5 border-b border-amber/10 p-6">
                 <CardTitle className="text-lg font-bold text-slate-900">Gestão Interna</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -1076,7 +1076,7 @@ export default function EscolaMonitor({
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-500 font-medium">SSL Status</span>
                   {sslStatus ? (
-                    <span className="text-klasse-green font-bold flex items-center gap-1">
+                    <span className="text-emerald font-bold flex items-center gap-1">
                       <ShieldCheck size={14} /> {sslStatus}
                     </span>
                   ) : (

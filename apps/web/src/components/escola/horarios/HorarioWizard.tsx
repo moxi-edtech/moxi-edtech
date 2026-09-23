@@ -63,8 +63,8 @@ export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWi
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Configurar base do horário</h1>
           <p className="mt-1 text-sm font-medium text-slate-500">Defina apenas a estrutura-base. Cargas, professores e sala da turma ficam no próprio quadro.</p>
         </div>
-        <div className="h-12 w-12 rounded-2xl bg-klasse-gold/10 border border-klasse-gold/20 flex items-center justify-center">
-            <Zap className="h-6 w-6 text-klasse-gold" />
+        <div className="h-12 w-12 rounded-2xl bg-amber/10 border border-amber/20 flex items-center justify-center">
+            <Zap className="h-6 w-6 text-amber" />
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWi
             <div className="flex flex-col items-center gap-3">
               <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border-2 transition-all duration-300 ${
                 currentStep > index ? "border-emerald-500 bg-emerald-50 text-emerald-600 shadow-sm" :
-                currentStep === index ? "border-klasse-gold bg-klasse-gold/10 text-klasse-gold shadow-md ring-4 ring-klasse-gold/10" :
+                currentStep === index ? "border-amber bg-amber/10 text-amber shadow-md ring-4 ring-amber/10" :
                 "border-slate-100 text-slate-300"
               }`}>
                 {currentStep > index ? <CheckCircle2 className="h-6 w-6" /> : <step.icon className="h-5 w-5" />}
@@ -134,7 +134,7 @@ export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWi
         {currentStep < STEPS.length - 1 && (
           <Button 
             tone="gold" 
-            className="h-12 px-10 gap-2 font-black rounded-2xl shadow-lg shadow-klasse-gold/20"
+            className="h-12 px-10 gap-2 font-black rounded-2xl shadow-lg shadow-amber/20"
             loading={loading}
             disabled={!canProceed}
             onClick={handleNext}

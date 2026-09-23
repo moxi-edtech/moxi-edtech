@@ -170,7 +170,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
             <span className="font-bold text-slate-800">{c.code}</span>
           </span>
           <span className="text-slate-400">×</span>
-          <span className="font-bold text-klasse-gold">{c.peso / 100}</span>
+          <span className="font-bold text-amber">{c.peso / 100}</span>
           {idx < avaliacaoConfig.componentes.length - 1 && (
             <span className="font-bold text-slate-400">+</span>
           )}
@@ -219,7 +219,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#D4A32C] disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#D4A32C] disabled:opacity-70"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar
@@ -237,10 +237,10 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
             <div className="animate-in fade-in duration-300 space-y-6">
               
               {/* Card Fórmula Ativa */}
-              <div className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-klasse-gold/50">
+              <div className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-amber/50">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="rounded-lg bg-klasse-green-100 p-2 text-klasse-green-700">
+                    <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
                       <Calculator className="h-5 w-5" />
                     </div>
                     <div>
@@ -248,7 +248,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
                       <p className="text-xs text-slate-500">{selectedModelo?.nome ?? (modeloAvaliacao || 'Sem modelo')}</p>
                     </div>
                   </div>
-                  <span className="rounded-full bg-klasse-green-50 px-3 py-1 text-xs font-medium text-klasse-green-700">
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                     Ativo
                   </span>
                 </div>
@@ -288,7 +288,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
 
           {/* --- MODO EDIÇÃO (FORMULÁRIO) --- */}
           {isEditing && (
-            <div className="animate-in slide-in-from-bottom-4 duration-300 rounded-xl border border-klasse-gold/30 bg-slate-50/50 p-6 ring-1 ring-klasse-gold/10">
+            <div className="animate-in slide-in-from-bottom-4 duration-300 rounded-xl border border-amber/30 bg-slate-50/50 p-6 ring-1 ring-amber/10">
               <AcademicStep2Config
                 frequenciaModelo={frequenciaModelo}
                 onFrequenciaModeloChange={setFrequenciaModelo}
@@ -300,8 +300,8 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
                   avaliacaoConfig={avaliacaoConfig}
                 />
               
-              <div className="mt-6 flex items-start gap-3 rounded-lg bg-klasse-gold-50 p-4 text-klasse-gold-800">
-                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-klasse-gold-600" />
+              <div className="mt-6 flex items-start gap-3 rounded-lg bg-amber-50 p-4 text-amber-800">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                 <div className="text-xs">
                   <p className="font-semibold">Cuidado ao alterar regras</p>
                   <p className="mt-1 opacity-90">

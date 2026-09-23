@@ -31,7 +31,7 @@ type EscolaHealth = {
 
 const StatusItem = ({ label, ok }: { label: string; ok: boolean }) => (
   <div className="flex items-center gap-2 text-sm">
-    {ok ? <CheckCircleIcon className="w-5 h-5 text-klasse-green-500" /> : <XCircleIcon className="w-5 h-5 text-red-400" />}
+    {ok ? <CheckCircleIcon className="w-5 h-5 text-emerald-500" /> : <XCircleIcon className="w-5 h-5 text-red-400" />}
     <span className={ok ? "text-gray-700" : "text-red-600 font-medium"}>{label}</span>
   </div>
 );
@@ -123,8 +123,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const kpis = [
     { title: "Alunos Ativos", value: stats.total_alunos ?? 0, icon: UsersIcon, color: "text-slate-600" },
     { title: "Professores", value: stats.total_professores ?? 0, icon: UserGroupIcon, color: "text-slate-600" },
-    { title: "Notas Lançadas", value: `${stats.percentual_notas ?? 0}%`, icon: AcademicCapIcon, color: "text-klasse-gold-600" },
-    { title: "Adimplência", value: `${stats.adimplencia ?? 0}%`, icon: BanknotesIcon, color: "text-klasse-green-600" },
+    { title: "Notas Lançadas", value: `${stats.percentual_notas ?? 0}%`, icon: AcademicCapIcon, color: "text-amber-600" },
+    { title: "Adimplência", value: `${stats.adimplencia ?? 0}%`, icon: BanknotesIcon, color: "text-emerald-600" },
   ];
 
   const health = (healthRes.data as EscolaHealth | null) ?? null;
@@ -140,7 +140,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             <span
               className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${
                 escola.status === "ativa"
-                  ? "bg-klasse-green-50 text-klasse-green-700 border-klasse-green-200"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                   : escola.status === "suspensa"
                   ? "bg-red-50 text-red-700 border-red-200"
                   : "bg-gray-100 text-gray-600 border-gray-200"
@@ -189,7 +189,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                     href={waHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-3 py-1.5 rounded-md bg-klasse-green-600 text-white hover:bg-klasse-green-700 text-xs font-bold border border-transparent"
+                    className="px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold border border-transparent"
                   >
                     WhatsApp
                   </a>

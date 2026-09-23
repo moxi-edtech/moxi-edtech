@@ -32,10 +32,10 @@ const statusLabel = (status: ModalExtratoAlunoProps["mensalidades"][number]["sta
 };
 
 const statusTone = (status: ModalExtratoAlunoProps["mensalidades"][number]["status"]) => {
-  if (status === "paga") return "bg-klasse-green-50 text-klasse-green-700 border-klasse-green-200";
+  if (status === "paga") return "bg-emerald-50 text-emerald-700 border-emerald-200";
   if (status === "atrasada") return "bg-rose-50 text-rose-700 border-rose-200";
   if (status === "cancelada") return "bg-slate-50 text-slate-600 border-slate-200";
-  return "bg-klasse-gold-50 text-klasse-gold-700 border-klasse-gold-200";
+  return "bg-amber-50 text-amber-700 border-amber-200";
 };
 
 const formatVencimento = (mensalidade: ModalExtratoAlunoProps["mensalidades"][number]) => {
@@ -102,7 +102,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
               <button
                 type="button"
                 onClick={() => setPaymentOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold-500 px-3 py-2 text-xs font-bold text-white shadow-sm shadow-klasse-gold-500/10 transition-all hover:bg-klasse-gold-600"
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-sm shadow-amber-500/10 transition-all hover:bg-amber-600"
               >
                 Receber selecionadas • {formatMoney(totalSelecionado)}
               </button>
@@ -139,7 +139,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                           type="checkbox"
                           checked={selectedIds.includes(mensalidade.id)}
                           onChange={() => toggleSelected(mensalidade.id)}
-                          className="h-4 w-4 rounded border-slate-300 text-klasse-gold-500 focus:ring-klasse-gold-500"
+                          className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
                         />
                       ) : null}
                     </td>
@@ -162,7 +162,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                         <button
                           type="button"
                           onClick={() => openSinglePayment(mensalidade.id)}
-                          className="inline-flex items-center gap-2 bg-klasse-gold-500 hover:bg-klasse-gold-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm shadow-klasse-gold-500/10 transition-all focus:ring-4 focus:ring-klasse-gold-500/20 outline-none"
+                          className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm shadow-amber-500/10 transition-all focus:ring-4 focus:ring-amber-500/20 outline-none"
                         >
                           Receber
                         </button>

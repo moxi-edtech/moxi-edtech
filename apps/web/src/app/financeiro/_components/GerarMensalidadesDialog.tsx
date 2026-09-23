@@ -72,7 +72,7 @@ export function GerarMensalidadesDialog() {
         
         {/* Header */}
         <div className="bg-slate-50 p-6 border-b border-slate-100 flex items-center gap-4">
-          <div className="p-3 bg-klasse-green-100 text-klasse-green-700 rounded-full">
+          <div className="p-3 bg-emerald-100 text-emerald-700 rounded-full">
             <Wallet className="w-6 h-6" />
           </div>
           <div>
@@ -96,7 +96,7 @@ export function GerarMensalidadesDialog() {
               <select 
                 value={mes}
                 onChange={e => setMes(Number(e.target.value))}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-klasse-green-500"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 {Array.from({length: 12}, (_, i) => i + 1).map(m => (
                   <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('pt-AO', { month: 'long' })}</option>
@@ -110,7 +110,7 @@ export function GerarMensalidadesDialog() {
                 type="number"
                 value={ano}
                 onChange={e => setAno(Number(e.target.value))}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-klasse-green-500"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -128,7 +128,7 @@ export function GerarMensalidadesDialog() {
           <button 
             onClick={handleGerar}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-klasse-green-600 hover:bg-klasse-green-700 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarDays className="w-4 h-4" />}
             {loading ? 'Processando...' : 'Confirmar Geração'}

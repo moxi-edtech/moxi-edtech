@@ -240,11 +240,11 @@ const TOAST_CONFIG: Record<
 > = {
   success: {
     bg: "bg-white/90",
-    border: "border-klasse-green/20",
+    border: "border-emerald/20",
     icon: <CheckCircle2 size={18} />,
     textColor: "text-slate-900",
-    iconColor: "text-klasse-green",
-    barColor: "bg-klasse-green",
+    iconColor: "text-emerald",
+    barColor: "bg-emerald",
   },
   error: {
     bg: "bg-white/90",
@@ -256,11 +256,11 @@ const TOAST_CONFIG: Record<
   },
   warning: {
     bg: "bg-white/90",
-    border: "border-klasse-gold/20",
+    border: "border-amber/20",
     icon: <AlertTriangle size={18} />,
     textColor: "text-slate-900",
-    iconColor: "text-klasse-gold",
-    barColor: "bg-klasse-gold",
+    iconColor: "text-amber",
+    barColor: "bg-amber",
   },
   info: {
     bg: "bg-white/90",
@@ -318,7 +318,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         {toast.action && (
           <button
             onClick={toast.action.onClick}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-900 hover:text-klasse-green transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-900 hover:text-emerald transition-colors"
           >
             {toast.action.label} <ArrowRight size={12} />
           </button>
@@ -383,7 +383,7 @@ export function SyncIndicator({
     },
     synced: {
       icon: <CheckCircle2 size={11} />,
-      color: "text-klasse-green",
+      color: "text-emerald",
       text: "Guardado",
     },
     error: {
@@ -393,7 +393,7 @@ export function SyncIndicator({
     },
     offline: {
       icon: <WifiOff size={11} />,
-      color: "text-klasse-gold",
+      color: "text-amber",
       text: "Offline",
     },
   }[status]
@@ -439,7 +439,7 @@ export function OfflineBanner() {
 
   return (
     <div
-      className="fixed top-0 inset-x-0 z-[300] bg-klasse-gold text-white text-xs font-semibold
+      className="fixed top-0 inset-x-0 z-[300] bg-amber text-white text-xs font-semibold
       flex items-center justify-center gap-2 py-2 px-4 animate-in slide-in-from-top duration-200"
     >
       <WifiOff size={13} />
@@ -473,11 +473,11 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
       count: "text-rose-600",
     },
     warning: {
-      border: "border-klasse-gold/25",
-      bg: "bg-klasse-gold/10",
-      icon: <AlertTriangle size={16} className="text-klasse-gold flex-shrink-0 mt-0.5" />,
-      badge: "bg-klasse-gold/20 text-klasse-gold",
-      count: "text-klasse-gold",
+      border: "border-amber/25",
+      bg: "bg-amber/10",
+      icon: <AlertTriangle size={16} className="text-amber flex-shrink-0 mt-0.5" />,
+      badge: "bg-amber/20 text-amber",
+      count: "text-amber",
     },
     info: {
       border: "border-slate-200",
@@ -512,8 +512,8 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
             if (alert.link) router.push(alert.link)
           }}
           className={`flex items-center gap-1.5 flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-700
-            hover:text-klasse-green rounded-lg border border-slate-200 px-3 py-2 bg-white shadow-sm
-            hover:border-klasse-green/30 transition-all active:scale-95 hover:shadow-md`}
+            hover:text-emerald rounded-lg border border-slate-200 px-3 py-2 bg-white shadow-sm
+            hover:border-emerald/30 transition-all active:scale-95 hover:shadow-md`}
         >
           {alert.link_label ?? "Resolver"} <ArrowRight size={12} />
         </button>
@@ -542,7 +542,7 @@ export function RadarOperacional({
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3 text-sm font-bold text-slate-400 uppercase tracking-widest">
-          <Loader2 size={16} className="animate-spin text-klasse-green" /> Mapeando Cockpit…
+          <Loader2 size={16} className="animate-spin text-emerald" /> Mapeando Cockpit…
         </div>
       </div>
     )
@@ -655,8 +655,8 @@ function FaltasIndicador({ faltas, max }: { faltas: number; max: number }) {
   const risco: FaltaRisco = restantes <= 0 ? "critico" : restantes <= 3 ? "atencao" : "ok"
 
   const cfg = {
-    ok: { color: "text-klasse-green", bg: "bg-klasse-green/10", bar: "bg-klasse-green" },
-    atencao: { color: "text-klasse-gold", bg: "bg-klasse-gold/10", bar: "bg-klasse-gold" },
+    ok: { color: "text-emerald", bg: "bg-emerald/10", bar: "bg-emerald" },
+    atencao: { color: "text-amber", bg: "bg-amber/10", bar: "bg-amber" },
     critico: { color: "text-rose-600", bg: "bg-rose-50", bar: "bg-rose-500" },
   }[risco]
 
@@ -703,9 +703,9 @@ function DisciplinaRow({
     nota === null || nota === undefined
       ? "text-slate-400"
       : nota >= 10
-        ? "text-klasse-green font-black"
+        ? "text-emerald font-black"
         : nota >= 8
-          ? "text-klasse-gold font-bold"
+          ? "text-amber font-bold"
           : "text-rose-600 font-bold"
 
   return (
@@ -723,7 +723,7 @@ function DisciplinaRow({
           <span className="text-sm text-slate-300 font-medium">—</span>
         )}
         {d.status === "pendente" && (
-          <p className="mt-0.5 text-[9px] font-bold uppercase text-klasse-gold">Pendente</p>
+          <p className="mt-0.5 text-[9px] font-bold uppercase text-amber">Pendente</p>
         )}
         {d.status === "bloqueada" && (
           <p className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Bloqueada</p>
@@ -776,7 +776,7 @@ export function BoletimAluno({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="bg-klasse-green px-5 py-4">
+      <div className="bg-emerald px-5 py-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-white/60 font-medium uppercase tracking-wide">Boletim</p>
@@ -804,7 +804,7 @@ export function BoletimAluno({
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all
-                ${tab === t.id ? "bg-white text-klasse-green" : "text-white/70 hover:text-white"}`}
+                ${tab === t.id ? "bg-white text-emerald" : "text-white/70 hover:text-white"}`}
             >
               {t.label}
             </button>
@@ -878,8 +878,8 @@ export function OperationProgress({
   const pct = total > 0 ? Math.round((current / total) * 100) : 0
 
   const cfg = {
-    running: { bar: "bg-klasse-gold", icon: <Loader2 size={14} className="animate-spin text-klasse-gold" /> },
-    done: { bar: "bg-klasse-green", icon: <CheckCircle2 size={14} className="text-klasse-green" /> },
+    running: { bar: "bg-amber", icon: <Loader2 size={14} className="animate-spin text-amber" /> },
+    done: { bar: "bg-emerald", icon: <CheckCircle2 size={14} className="text-emerald" /> },
     error: { bar: "bg-rose-500", icon: <AlertCircle size={14} className="text-rose-600" /> },
   }[status]
 
@@ -930,7 +930,7 @@ export function EmptyState({
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-4 rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-white
+          className="mt-4 rounded-xl bg-amber px-5 py-2 text-sm font-bold text-white
             hover:brightness-95 transition-all active:scale-95"
         >
           {action.label}

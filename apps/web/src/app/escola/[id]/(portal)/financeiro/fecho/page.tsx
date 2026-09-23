@@ -256,7 +256,7 @@ export default function FechoCaixaPage() {
           <Button
             onClick={declareFecho}
             disabled={declaring}
-            className="bg-klasse-gold text-white px-4 py-2 rounded-lg text-sm font-semibold"
+            className="bg-amber text-white px-4 py-2 rounded-lg text-sm font-semibold"
           >
             {declaring ? "Declarando..." : "Declarar Fecho"}
           </Button>

@@ -1267,7 +1267,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 animate-spin text-klasse-gold mx-auto" />
+          <Loader2 className="w-12 h-12 animate-spin text-amber mx-auto" />
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">A carregar o painel da parceria...</p>
         </div>
       </div>
@@ -1463,7 +1463,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         <>
                           <div>
                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Potencial de Receita Comercial</p>
-                            <p className="text-xl font-bold text-klasse-gold">
+                            <p className="text-xl font-bold text-amber">
                               Kz {totalCrmPipelineValue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                             </p>
                           </div>
@@ -2092,7 +2092,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                     Atrasado (SLA)
                                   </Badge>
                                 )}
-                                <Badge className="border border-klasse-gold-200 bg-klasse-gold-100 text-[9px] font-bold uppercase tracking-widest text-klasse-gold-700">
+                                <Badge className="border border-amber-200 bg-amber-100 text-[9px] font-bold uppercase tracking-widest text-amber-700">
                                   Plano: {escola.plano_label || escola.plano || "Não informado"}
                                 </Badge>
                                 <Badge className="border border-slate-200 bg-slate-100 text-[9px] font-bold uppercase tracking-widest text-slate-700">
@@ -2246,7 +2246,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   <CardTitle className="text-xl font-bold text-slate-900 tracking-tight">Diagnósticos concluídos (últimos 7 dias)</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-klasse-gold animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-amber animate-pulse" />
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Live Update</span>
                 </div>
               </CardHeader>
@@ -2341,7 +2341,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   <Card className="rounded-[32px] border-slate-900 bg-slate-900 text-white shadow-xl">
                     <CardHeader className="p-6">
                       <CardTitle className="text-lg flex items-center gap-2">
-                        <Award className="text-klasse-gold" />
+                        <Award className="text-amber" />
                         Resultado da Parceria
                       </CardTitle>
                       <CardDescription className="text-slate-400 text-xs">
@@ -2353,7 +2353,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                           {totalComissaoReal > 0 ? "Total em Ledger" : "Total Estimado"}
                         </p>
-                        <p className="text-2xl font-bold text-klasse-gold">
+                        <p className="text-2xl font-bold text-amber">
                           {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(totalComissao).replace('AOA', 'Kz')}
                         </p>
                         {commissionSummary && commissionSummary.count > 0 && (
@@ -2435,7 +2435,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                       </p>
                                     ) : null}
                                   </div>
-                                  <p className="text-xs font-bold text-klasse-gold">
+                                  <p className="text-xs font-bold text-amber">
                                     {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(item.valor_kz).replace('AOA', 'Kz')}
                                   </p>
                                 </div>
@@ -2483,7 +2483,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                 type="button"
                                 onClick={() => setCalcPlan(p)}
                                 className={`py-1 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all
-                                  ${calcPlan === p ? 'bg-klasse-gold text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                  ${calcPlan === p ? 'bg-amber text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'}`}
                               >
                                 {p}
                               </button>
@@ -2503,14 +2503,14 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                             step="50"
                             value={calcAlunos} 
                             onChange={e => setCalcAlunos(parseInt(e.target.value))}
-                            className="w-full accent-klasse-gold bg-white/10 rounded-lg appearance-none h-1 cursor-pointer"
+                            className="w-full accent-amber bg-white/10 rounded-lg appearance-none h-1 cursor-pointer"
                           />
                         </div>
 
                         <div className="space-y-2 pt-2">
                           <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
                             <span className="font-bold text-slate-400">Ativação (100% único):</span>
-                            <span className="font-bold text-klasse-gold">
+                            <span className="font-bold text-amber">
                               {(() => {
                                 let actFee = 50000;
                                 if (calcPlan === 'profissional') actFee = 80000;
@@ -2522,7 +2522,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
                           <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
                             <span className="font-bold text-slate-400">Recorrência Mensal (25%):</span>
-                            <span className="font-bold text-klasse-gold">
+                            <span className="font-bold text-amber">
                               {(() => {
                                 let basePrice = 80000;
                                 if (calcPlan === 'profissional') basePrice = 140000;

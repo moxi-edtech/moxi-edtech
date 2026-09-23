@@ -73,7 +73,7 @@ export function SimuladorNotasModal({ isOpen, onClose, disciplinas }: Props) {
     if (mediaFinal >= 10) {
       return {
         label: "Aprovado",
-        color: "text-klasse-green-700 bg-klasse-green-50 border-klasse-green-200",
+        color: "text-emerald-700 bg-emerald-50 border-emerald-200",
         icon: CheckCircle2,
         message: "Estás em zona de aprovação direta.",
       };
@@ -113,7 +113,7 @@ export function SimuladorNotasModal({ isOpen, onClose, disciplinas }: Props) {
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-klasse-gold shadow-inner">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-amber shadow-inner">
               <Calculator size={24} />
             </div>
             <div>
@@ -134,7 +134,7 @@ export function SimuladorNotasModal({ isOpen, onClose, disciplinas }: Props) {
             <select
               value={selectedDiscId}
               onChange={(e) => setSelectedDiscId(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-900 focus:border-klasse-green focus:bg-white focus:outline-none focus:ring-4 focus:ring-klasse-green/10"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-900 focus:border-emerald focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald/10"
             >
               {disciplinas.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -160,7 +160,7 @@ export function SimuladorNotasModal({ isOpen, onClose, disciplinas }: Props) {
                 step="0.5"
                 value={t1Input}
                 onChange={(e) => setT1Input(parseFloat(e.target.value))}
-                className="w-full h-2 rounded-lg bg-slate-200 appearance-none cursor-pointer accent-klasse-green"
+                className="w-full h-2 rounded-lg bg-slate-200 appearance-none cursor-pointer accent-emerald"
               />
             </div>
 
@@ -177,7 +177,7 @@ export function SimuladorNotasModal({ isOpen, onClose, disciplinas }: Props) {
                 step="0.5"
                 value={t2Input}
                 onChange={(e) => setT2Input(parseFloat(e.target.value))}
-                className="w-full h-2 rounded-lg bg-slate-200 appearance-none cursor-pointer accent-klasse-green"
+                className="w-full h-2 rounded-lg bg-slate-200 appearance-none cursor-pointer accent-emerald"
               />
             </div>
 

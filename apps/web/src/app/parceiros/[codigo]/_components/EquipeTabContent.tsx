@@ -148,7 +148,7 @@ export function EquipeTabContent({
 
                       <div className="mt-3 rounded-lg bg-zinc-950 px-3 py-2 text-white">
                         <p className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">Pipeline potencial</p>
-                        <p className="mt-0.5 text-sm font-bold text-klasse-gold">
+                        <p className="mt-0.5 text-sm font-bold text-amber">
                           Kz {operator.pipeline_value_kz.toLocaleString("pt-PT")}
                         </p>
                       </div>

@@ -96,7 +96,7 @@ export function ModuleSwitcherInner({
     <button
       type="button"
       onClick={() => handleChange(nextModule)}
-      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/20"
       aria-label={`Alternar módulo a partir de ${LABELS[currentModule]}`}
       title={`Alternar para ${LABELS[nextModule]}`}
     >

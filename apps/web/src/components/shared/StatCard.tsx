@@ -16,16 +16,16 @@ type StatCardProps = {
 
 const toneStyles: Record<Tone, { iconBg: string; iconText: string; valueText: string; border: string }> = {
   default: {
-    iconBg: "bg-klasse-green/10",
-    iconText: "text-klasse-green",
-    valueText: "text-klasse-green",
-    border: "border-klasse-green/15",
+    iconBg: "bg-emerald/10",
+    iconText: "text-emerald",
+    valueText: "text-emerald",
+    border: "border-emerald/15",
   },
   warning: {
-    iconBg: "bg-klasse-gold/15",
-    iconText: "text-klasse-gold-700",
-    valueText: "text-klasse-gold-700",
-    border: "border-klasse-gold/30",
+    iconBg: "bg-amber/15",
+    iconText: "text-amber-700",
+    valueText: "text-amber-700",
+    border: "border-amber/30",
   },
   critical: {
     iconBg: "bg-rose-50",
@@ -91,7 +91,7 @@ export default function StatCard({
           </span>
         </div>
         {href && !disabled && (
-          <Link href={href} className="text-[10px] font-semibold text-klasse-green hover:underline">
+          <Link href={href} className="text-[10px] font-semibold text-emerald hover:underline">
             Ver todos
           </Link>
         )}

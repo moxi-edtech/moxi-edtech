@@ -178,7 +178,7 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/10"
+        className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/10"
       >
         <Search className="h-4 w-4 text-slate-400 group-hover:text-slate-500" />
         <span className="flex-1 text-left">Buscar ou digitar ação...</span>
@@ -209,7 +209,7 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
               className="flex-1 bg-transparent text-lg text-slate-900 placeholder:text-slate-400 outline-none"
             />
             {loading ? (
-              <Loader2 className="ml-2 h-5 w-5 animate-spin text-klasse-green" />
+              <Loader2 className="ml-2 h-5 w-5 animate-spin text-emerald" />
             ) : (
               <kbd className="hidden h-6 select-none items-center gap-1 rounded border border-slate-200 bg-slate-50 px-2 font-mono text-[10px] font-medium text-slate-400 sm:flex">
                 ESC
@@ -219,9 +219,9 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
 
           <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
             {detectedIntent && (
-              <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl bg-klasse-green/5 border border-klasse-green/10">
-                <Zap className="h-3 w-3 text-klasse-green" />
-                <span className="text-[10px] font-bold text-klasse-green uppercase tracking-wider">
+              <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl bg-emerald/5 border border-emerald/10">
+                <Zap className="h-3 w-3 text-emerald" />
+                <span className="text-[10px] font-bold text-emerald uppercase tracking-wider">
                   Modo: {detectedIntent === 'financeiro' ? 'Financeiro' : detectedIntent === 'academico' ? 'Acadêmico' : detectedIntent === 'documentos' ? 'Documentos' : 'Ação Rápida'}
                 </span>
               </div>
@@ -243,14 +243,14 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
                     <Command.Item
                       key={`recent-${item.type}-${item.id}`}
                       onSelect={() => selectResult(item)}
-                      className="flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-klasse-green transition-colors cursor-pointer group"
+                      className="flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-emerald transition-colors cursor-pointer group"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 group-aria-selected:bg-klasse-green/10 transition-colors">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 group-aria-selected:bg-emerald/10 transition-colors">
                           {item.type === "aluno" ? <User className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-bold text-slate-900 group-aria-selected:text-klasse-green">{item.label}</div>
+                          <div className="truncate text-sm font-bold text-slate-900 group-aria-selected:text-emerald">{item.label}</div>
                           <div className="text-[10px] uppercase tracking-wider text-slate-400">{item.type}</div>
                         </div>
                       </div>
@@ -265,9 +265,9 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
                   <Command.Item
                     key={action.id}
                     onSelect={() => runCommand(action.onSelect)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-klasse-green transition-colors cursor-pointer group"
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-emerald transition-colors cursor-pointer group"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 group-aria-selected:bg-klasse-green/10 transition-colors">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 group-aria-selected:bg-emerald/10 transition-colors">
                       <action.icon className="h-4 w-4" />
                     </div>
                     <span>{action.label}</span>
@@ -283,10 +283,10 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
                   <Command.Item
                     key={item.id}
                     onSelect={() => selectResult(item)}
-                    className="flex items-center justify-between rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-klasse-green transition-colors cursor-pointer group"
+                    className="flex items-center justify-between rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-emerald transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 group-aria-selected:bg-klasse-green/10 transition-colors">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 group-aria-selected:bg-emerald/10 transition-colors">
                         {item.intent === "financeiro" ? (
                           <CreditCard className="h-4 w-4" />
                         ) : item.type === "aluno" ? (
@@ -301,7 +301,7 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-bold text-slate-900 group-aria-selected:text-klasse-green transition-colors">
+                          <span className="truncate text-sm font-bold text-slate-900 group-aria-selected:text-emerald transition-colors">
                             {item.label}
                           </span>
                           {item.highlight && (
@@ -342,8 +342,8 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
                                 className={cn(
                                   "inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold transition",
                                   isPrimary
-                                    ? "border-klasse-green/30 bg-klasse-green/10 text-klasse-green hover:bg-klasse-green/15"
-                                    : "border-slate-200 bg-white text-slate-600 hover:border-klasse-green/30 hover:bg-klasse-green/5 hover:text-klasse-green",
+                                    ? "border-emerald/30 bg-emerald/10 text-emerald hover:bg-emerald/15"
+                                    : "border-slate-200 bg-white text-slate-600 hover:border-emerald/30 hover:bg-emerald/5 hover:text-emerald",
                                 )}
                               >
                                 <Icon className="h-3 w-3" />
@@ -354,7 +354,7 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
                         </div>
                       )}
                       {item.intent && (
-                        <span className="text-[10px] font-bold text-klasse-green bg-klasse-green/10 px-2 py-1 rounded-lg">
+                        <span className="text-[10px] font-bold text-emerald bg-emerald/10 px-2 py-1 rounded-lg">
                           {item.intent === 'financeiro' ? 'Lançar' : 'Ver'}
                         </span>
                       )}

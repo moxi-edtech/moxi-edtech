@@ -33,7 +33,7 @@ const statusConfig: Record<string, { label: string; className: string; icon: typ
   agendada: { label: "Agendada", className: "bg-slate-100 text-slate-600", icon: Clock3 },
   aguardando_confirmacao: { label: "Aguardando confirmação", className: "bg-amber-50 text-amber-700", icon: AlertCircle },
   em_andamento: { label: "Em andamento", className: "bg-emerald-50 text-emerald-700", icon: Activity },
-  finalizada: { label: "Finalizada", className: "bg-klasse-green/10 text-klasse-green", icon: CheckCircle2 },
+  finalizada: { label: "Finalizada", className: "bg-emerald/10 text-emerald", icon: CheckCircle2 },
   nao_realizada: { label: "Não realizada", className: "bg-rose-50 text-rose-700", icon: AlertCircle },
   cancelada: { label: "Cancelada", className: "bg-slate-100 text-slate-500", icon: AlertCircle },
 };
@@ -142,7 +142,7 @@ export default function AulasOperacionaisPanel({ escolaId }: { escolaId: string 
       <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <SecaoLabel className="text-klasse-green">Acompanhamento académico</SecaoLabel>
+            <SecaoLabel className="text-emerald">Acompanhamento académico</SecaoLabel>
           </div>
           <div className="mt-1 flex items-center gap-2">
             <h2 className="text-lg font-black text-slate-900">Aulas de hoje</h2>
@@ -165,8 +165,8 @@ export default function AulasOperacionaisPanel({ escolaId }: { escolaId: string 
       </div>
 
       <div className="mb-5 flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center">
-        <div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar turma, disciplina ou professor" className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-klasse-green/20 focus:ring-2" /></div>
-        <div className="relative md:w-56"><Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-klasse-green/20 focus:ring-2"><option value="todos">Todos os estados</option>{Object.entries(statusConfig).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}</select></div>
+        <div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar turma, disciplina ou professor" className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-emerald/20 focus:ring-2" /></div>
+        <div className="relative md:w-56"><Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-emerald/20 focus:ring-2"><option value="todos">Todos os estados</option>{Object.entries(statusConfig).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}</select></div>
       </div>
 
       {loading ? (
@@ -176,7 +176,7 @@ export default function AulasOperacionaisPanel({ escolaId }: { escolaId: string 
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center"><BookOpen className="mx-auto mb-2 h-7 w-7 text-slate-300" /><p className="font-bold text-slate-700">Nenhuma aula registada para hoje.</p><p className="mt-1 text-sm text-slate-500">As ocorrências aparecem aqui quando o professor confirmar a aula.</p></div>
       ) : filteredItems.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center"><Search className="mx-auto mb-2 h-7 w-7 text-slate-300" /><p className="font-bold text-slate-700">Nenhuma aula corresponde aos filtros.</p><button type="button" onClick={() => { setSearch(""); setStatusFilter("todos"); }} className="mt-2 text-sm font-bold text-klasse-green hover:underline">Limpar filtros</button></div>
+        <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center"><Search className="mx-auto mb-2 h-7 w-7 text-slate-300" /><p className="font-bold text-slate-700">Nenhuma aula corresponde aos filtros.</p><button type="button" onClick={() => { setSearch(""); setStatusFilter("todos"); }} className="mt-2 text-sm font-bold text-emerald hover:underline">Limpar filtros</button></div>
       ) : (
         <div className="space-y-2">
           {filteredItems.map((aula) => {
@@ -193,7 +193,7 @@ export default function AulasOperacionaisPanel({ escolaId }: { escolaId: string 
                 {aula.presencas?.total ? <p><span className="font-bold text-emerald-700">{aula.presencas.presentes} presentes</span> · <span className="font-bold text-rose-700">{aula.presencas.faltas} faltas</span>{aula.presencas.atrasos ? ` · ${aula.presencas.atrasos} atrasos` : ""}</p> : <p>Chamada pendente</p>}
                 <p className="mt-0.5">Plano: {aula.plano_aula ? `${aula.plano_aula.status}${aula.plano_aula.tema ? ` · ${aula.plano_aula.tema}` : ""}` : "não associado"}</p>
               </div>
-              {aula.status === "finalizada" ? <Link href={`/escola/${escolaId}/operacoes/aulas/${aula.id}`} className="text-xs font-bold text-klasse-green hover:underline">Ver relatório</Link> : <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Users className="h-3.5 w-3.5" /> Operacional</span>}
+              {aula.status === "finalizada" ? <Link href={`/escola/${escolaId}/operacoes/aulas/${aula.id}`} className="text-xs font-bold text-emerald hover:underline">Ver relatório</Link> : <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Users className="h-3.5 w-3.5" /> Operacional</span>}
             </div>;
           })}
         </div>

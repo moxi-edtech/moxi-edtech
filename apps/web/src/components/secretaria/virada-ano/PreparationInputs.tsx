@@ -184,7 +184,7 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
             value={manual[field]}
             onChange={(event) => setManual((current) => ({ ...current, [field]: event.target.value }))}
             placeholder={field.replace(/_/g, " ")}
-            className="h-10 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:ring-2 focus:ring-klasse-gold/20"
+            className="h-10 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:ring-2 focus:ring-amber/20"
           />
         ))}
         <select
@@ -235,7 +235,7 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
                       <input
                         value={String(row[field] ?? "")}
                         onChange={(event) => updateRow(index, field, event.target.value)}
-                        className="h-8 w-full min-w-36 rounded border border-slate-200 px-2 outline-none focus:border-klasse-gold"
+                        className="h-8 w-full min-w-36 rounded border border-slate-200 px-2 outline-none focus:border-amber"
                       />
                     </td>
                   ))}

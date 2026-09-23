@@ -253,8 +253,8 @@ export default function AlunosPage() {
                                         <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold border border-slate-200">10ª Classe A</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="inline-flex items-center gap-1.5 bg-klasse-green-50 text-klasse-green-700 px-2.5 py-1 rounded-full text-xs font-bold border border-klasse-green-100">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-klasse-green-500"/> Ativo
+                                        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-bold border border-emerald-100">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"/> Ativo
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">

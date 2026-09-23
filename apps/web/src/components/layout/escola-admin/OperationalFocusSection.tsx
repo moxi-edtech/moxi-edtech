@@ -39,7 +39,7 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
     <Link
       href={card.href}
       title={card.description}
-      className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-klasse-green/40 hover:shadow-xs"
+      className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald/40 hover:shadow-xs"
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -51,7 +51,7 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
           </span>
         </div>
         {!isZero && (
-          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-klasse-green animate-pulse" />
+          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-emerald animate-pulse" />
         )}
       </div>
 
@@ -59,7 +59,7 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
         <span className={`text-2xl font-extrabold tracking-tight font-sora ${isZero ? "text-slate-400" : "text-slate-900"}`}>
           {card.value}
         </span>
-        <span className="text-xs font-bold text-slate-300 group-hover:text-klasse-green transition-colors">
+        <span className="text-xs font-bold text-slate-300 group-hover:text-emerald transition-colors">
           &rarr;
         </span>
       </div>
@@ -85,7 +85,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
       cta: "Ver mensalidades",
       icon: Banknote,
-      tone: "bg-klasse-green/10 text-klasse-green",
+      tone: "bg-emerald/10 text-emerald",
     },
     {
       key: "admissoes",
@@ -95,7 +95,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/admissoes"),
       cta: "Abrir admissões",
       icon: UserRoundSearch,
-      tone: "bg-klasse-green/10 text-klasse-green",
+      tone: "bg-emerald/10 text-emerald",
     },
     {
       key: "matriculas",
@@ -105,7 +105,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/matriculas"),
       cta: "Tratar matrículas",
       icon: ClipboardCheck,
-      tone: "bg-klasse-green/10 text-klasse-green",
+      tone: "bg-emerald/10 text-emerald",
     },
     {
       key: "documentos",
@@ -115,7 +115,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/documentos-oficiais"),
       cta: "Ver documentos",
       icon: FileClock,
-      tone: "bg-klasse-green/10 text-klasse-green",
+      tone: "bg-emerald/10 text-emerald",
     },
     {
       key: "inadimplencia",
@@ -125,7 +125,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
       cta: "Ver carteira",
       icon: ShieldAlert,
-      tone: "bg-klasse-gold/15 text-klasse-gold-600",
+      tone: "bg-amber/15 text-amber-600",
     },
     {
       key: "turmas",
@@ -135,7 +135,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/turmas"),
       cta: "Revisar turmas",
       icon: Layers3,
-      tone: "bg-klasse-green/10 text-klasse-green",
+      tone: "bg-emerald/10 text-emerald",
     },
     {
       key: "horarios",
@@ -145,7 +145,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: horarioQuadroHref,
       cta: "Publicar quadro",
       icon: CalendarClock,
-      tone: "bg-klasse-gold/15 text-klasse-gold-600",
+      tone: "bg-amber/15 text-amber-600",
     },
     {
       key: "setup",
@@ -155,7 +155,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/configuracoes"),
       cta: "Finalizar setup",
       icon: AlertTriangle,
-      tone: "bg-klasse-gold/15 text-klasse-gold-600",
+      tone: "bg-amber/15 text-amber-600",
     },
   ];
 

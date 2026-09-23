@@ -68,8 +68,8 @@ export default function DashboardLoader() {
 
   const notaColor = (nota: number | null) => {
     if (nota === null) return "text-slate-400";
-    if (nota >= 14) return "text-klasse-green-600";
-    if (nota >= 10) return "text-klasse-gold-600";
+    if (nota >= 14) return "text-emerald-600";
+    if (nota >= 10) return "text-amber-600";
     return "text-rose-500";
   };
 
@@ -123,8 +123,8 @@ export default function DashboardLoader() {
 
   const attendanceColor = (perc: number) => {
     if (perc >= 80) return "text-rose-600";
-    if (perc >= 50) return "text-klasse-gold-600";
-    return "text-klasse-green-600";
+    if (perc >= 50) return "text-amber-600";
+    return "text-emerald-600";
   };
 
   const attendanceBarColor = (perc: number) => {

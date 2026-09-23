@@ -27,7 +27,7 @@ export function RegistrarPagamentoButton({
     <>
       <button
         onClick={() => setModalOpen(true)}
-        className="inline-flex items-center gap-2 bg-klasse-gold-500 hover:bg-klasse-gold-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm shadow-klasse-gold-500/10 transition-all focus:ring-4 focus:ring-klasse-gold-500/20 outline-none"
+        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm shadow-amber-500/10 transition-all focus:ring-4 focus:ring-amber-500/20 outline-none"
       >
         <Wallet className="w-3.5 h-3.5" />
         Receber

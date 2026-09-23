@@ -131,7 +131,7 @@ export function JustificarFaltaModal() {
         onClick={handleAbrirTurma}
         disabled={!turmaId}
         className={cx(
-          "flex w-full items-center justify-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-sm font-semibold text-white",
+          "flex w-full items-center justify-center gap-2 rounded-lg bg-amber px-3 py-2 text-sm font-semibold text-white",
           !turmaId && "opacity-50"
         )}
       >

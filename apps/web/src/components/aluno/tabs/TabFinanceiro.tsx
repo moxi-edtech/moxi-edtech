@@ -68,7 +68,7 @@ function normalizeStatus(value: string): Item["status"] {
 }
 
 function serviceStatusClass(status: AlunoServicoFinanceiro["status"]): string {
-  if (status === "pago") return "text-klasse-green-700";
+  if (status === "pago") return "text-emerald-700";
   if (status === "rejeitado" || status === "cancelado" || status === "erro") return "text-rose-700";
   return "text-amber-700";
 }
@@ -162,7 +162,7 @@ export function TabFinanceiro() {
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Saldo Consolidado</p>
-          <p className={`mt-2 text-lg font-bold ${resumo && resumo.saldo_consolidado > 0 ? 'text-red-600' : 'text-klasse-green-700'}`}>
+          <p className={`mt-2 text-lg font-bold ${resumo && resumo.saldo_consolidado > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
             {resumo ? money.format(resumo.saldo_consolidado) : "—"}
           </p>
           <p className="text-[10px] text-slate-400 mt-1 uppercase">Débitos - Créditos</p>
@@ -171,9 +171,9 @@ export function TabFinanceiro() {
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Total Pago</p>
           <p className="mt-2 text-lg font-semibold text-slate-700">{resumo ? money.format(resumo.total_pago) : "—"}</p>
         </div>
-        <div className="rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-klasse-gold-700">A Pagar</p>
-          <p className="mt-2 text-lg font-semibold text-klasse-gold-800">{resumo ? money.format(resumo.total_pendente) : "—"}</p>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-[0.2em] text-amber-700">A Pagar</p>
+          <p className="mt-2 text-lg font-semibold text-amber-800">{resumo ? money.format(resumo.total_pendente) : "—"}</p>
         </div>
       </div>
 
@@ -212,12 +212,12 @@ export function TabFinanceiro() {
       </div>
 
       {comprovativoStatus && comprovativoStatus.pendentes > 0 ? (
-        <section className="rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-klasse-gold-700">Comprovativo</p>
-          <p className="mt-1 text-sm font-semibold text-klasse-gold-900">
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-[0.2em] text-amber-700">Comprovativo</p>
+          <p className="mt-1 text-sm font-semibold text-amber-900">
             Comprovativo enviado, aguardando validação da secretaria.
           </p>
-          <p className="mt-1 text-xs text-klasse-gold-800">
+          <p className="mt-1 text-xs text-amber-800">
             Último envio: {comprovativoStatus.ultimo_envio_em
               ? new Date(comprovativoStatus.ultimo_envio_em).toLocaleString("pt-PT", {
                   day: "2-digit",
@@ -239,8 +239,8 @@ export function TabFinanceiro() {
             <Info className="h-4 w-4 text-slate-300" />
           </div>
           {selectedMensalidades.length ? (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3">
-              <p className="text-sm font-semibold text-klasse-gold-900">{selectedMensalidades.length} seleccionada(s) · {money.format(selectedTotal)}</p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-sm font-semibold text-amber-900">{selectedMensalidades.length} seleccionada(s) · {money.format(selectedTotal)}</p>
               <Button tone="gold" className="min-h-11" size="sm" onClick={() => setPaymentOpen(true)}>Enviar um comprovativo</Button>
             </div>
           ) : null}
@@ -256,7 +256,7 @@ export function TabFinanceiro() {
                   </div>
                   {item.status === "pago" ? (
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green-50 px-3 py-1 text-xs font-medium text-klasse-green-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                         <Check className="h-4 w-4" /> Pago
                       </span>
                       {item.recibo_id ? (
@@ -264,9 +264,9 @@ export function TabFinanceiro() {
                           type="button"
                           title="Reimprimir recibo"
                           onClick={() => handleReprintRecibo(item.recibo_id)}
-                          className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:text-klasse-gold"
+                          className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:text-amber"
                         >
-                          <Printer className="h-4 w-4 text-slate-400 transition-colors group-hover:text-klasse-gold" />
+                          <Printer className="h-4 w-4 text-slate-400 transition-colors group-hover:text-amber" />
                           Ver Recibo
                         </button>
                       ) : (
@@ -277,11 +277,11 @@ export function TabFinanceiro() {
                       )}
                     </div>
                   ) : item.status === "em_verificacao" ? (
-                    <span className="rounded-full bg-klasse-gold-100 px-3 py-1 text-xs font-medium text-klasse-gold-700">
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
                       Em Verificação
                     </span>
                   ) : (
-                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-klasse-gold-200 px-3 text-xs font-semibold text-klasse-gold-800">
+                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-amber-200 px-3 text-xs font-semibold text-amber-800">
                       <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(event) => setSelectedIds((prev) => event.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id))} />
                       <Wallet className="h-4 w-4" /> Seleccionar
                     </label>
@@ -305,17 +305,17 @@ export function TabFinanceiro() {
             <div className="space-y-4 relative before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100">
               {movimentos.map((mov) => (
                 <div key={mov.id} className="relative pl-10">
-                  <div className={`absolute left-0 top-1 p-1 rounded-full bg-white border-2 ${mov.tipo === 'debito' ? 'border-red-200' : 'border-klasse-green-200'}`}>
+                  <div className={`absolute left-0 top-1 p-1 rounded-full bg-white border-2 ${mov.tipo === 'debito' ? 'border-red-200' : 'border-emerald-200'}`}>
                     {mov.tipo === 'debito' ? (
                       <ArrowUpCircle className="h-4 w-4 text-red-500" />
                     ) : (
-                      <ArrowDownCircle className="h-4 w-4 text-klasse-green-600" />
+                      <ArrowDownCircle className="h-4 w-4 text-emerald-600" />
                     )}
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-900">{mov.descricao}</span>
-                      <span className={`text-xs font-bold ${mov.tipo === 'debito' ? 'text-red-600' : 'text-klasse-green-700'}`}>
+                      <span className={`text-xs font-bold ${mov.tipo === 'debito' ? 'text-red-600' : 'text-emerald-700'}`}>
                         {mov.tipo === 'debito' ? '+' : '-'}{money.format(mov.valor)}
                       </span>
                     </div>
@@ -359,7 +359,7 @@ export function TabFinanceiro() {
                 {servico.acao ? (
                   <Link
                     href={studentId ? `${servico.acao.href}&studentId=${encodeURIComponent(studentId)}` : servico.acao.href}
-                    className="mt-2 inline-flex min-h-10 items-center rounded-xl bg-klasse-green-700 px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green-800"
+                    className="mt-2 inline-flex min-h-10 items-center rounded-xl bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800"
                   >
                     {servico.acao.label}
                   </Link>

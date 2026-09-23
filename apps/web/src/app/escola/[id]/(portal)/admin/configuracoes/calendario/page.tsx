@@ -420,7 +420,7 @@ export default function CalendarioConfigPage({ params }: Props) {
 
              <Link
                href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
-               className="inline-flex items-center gap-2 rounded-xl border border-klasse-gold/30 bg-white px-4 py-2.5 text-sm font-bold text-klasse-gold shadow-sm transition-all hover:bg-klasse-gold/5"
+               className="inline-flex items-center gap-2 rounded-xl border border-amber/30 bg-white px-4 py-2.5 text-sm font-bold text-amber shadow-sm transition-all hover:bg-amber/5"
              >
                <Wand2 className="h-4 w-4" />
                Configurar por oferta
@@ -430,7 +430,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               type="button"
               onClick={handleSave}
               disabled={saving || loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
             >
               {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saving ? "A guardar..." : "Guardar Tudo"}
@@ -443,13 +443,13 @@ export default function CalendarioConfigPage({ params }: Props) {
           <div className="flex">
             <button 
               onClick={() => setActiveTab('trimestres')}
-              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'trimestres' ? 'border-klasse-gold text-klasse-gold' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'trimestres' ? 'border-amber text-amber' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Trimestres e Pesos
             </button>
             <button 
               onClick={() => setActiveTab('eventos')}
-              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'eventos' ? 'border-klasse-gold text-klasse-gold' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'eventos' ? 'border-amber text-amber' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Feriados e Interrupções
             </button>
@@ -457,7 +457,7 @@ export default function CalendarioConfigPage({ params }: Props) {
 
           <div className="pb-2 sm:pb-0 sm:pr-2 flex items-center gap-2">
              <select 
-                className="rounded-lg border-slate-200 text-sm font-bold text-slate-700 focus:border-klasse-gold focus:ring-klasse-gold"
+                className="rounded-lg border-slate-200 text-sm font-bold text-slate-700 focus:border-amber focus:ring-amber"
                 value={selectedAnoId || ""}
                 onChange={(e) => handleAnoChange(e.target.value)}
               >
@@ -512,7 +512,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                 {/* DATAS MACRO DO ANO */}
                 <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                   <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-klasse-gold" />
+                    <Calendar className="h-4 w-4 text-amber" />
                     Duração Global do Ano Lectivo {anoLetivo?.ano}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
@@ -551,7 +551,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                       ) : (
                         <button 
                           onClick={handleSetActiveAno}
-                          className="text-[10px] bg-slate-100 text-slate-500 hover:bg-klasse-gold hover:text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors"
+                          className="text-[10px] bg-slate-100 text-slate-500 hover:bg-amber hover:text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors"
                         >
                           Tornar Ativo
                         </button>
@@ -628,7 +628,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {eventos.map((ev) => (
-                    <div key={ev.id} className="group relative rounded-xl border border-slate-200 bg-white p-4 hover:border-klasse-gold/30 transition-all text-left">
+                    <div key={ev.id} className="group relative rounded-xl border border-slate-200 bg-white p-4 hover:border-amber/30 transition-all text-left">
                       <div className="flex justify-between items-start">
                         <div className="flex gap-3">
                           <div className={`mt-1 h-2 w-2 rounded-full ${ev.tipo === 'FERIADO' ? 'bg-red-400' : ev.tipo === 'PAUSA_PEDAGOGICA' ? 'bg-blue-400' : ev.tipo === 'PROVA_TRIMESTRAL' ? 'bg-amber-400' : 'bg-slate-400'}`} />
@@ -655,7 +655,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">
                     <button 
                       onClick={() => setIsModalOpen(true)}
-                      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-klasse-gold hover:text-klasse-gold transition-all"
+                      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-amber hover:text-amber transition-all"
                     >
                       <Plus className="h-6 w-6 mb-2" />
                       <span className="text-xs font-bold uppercase tracking-widest">Adicionar Evento</span>
@@ -664,7 +664,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                     {anosDisponiveis.some(a => a.ano < (anoLetivo?.ano || 0)) && (
                       <button 
                         onClick={handleCopyEvents}
-                        className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-klasse-gold hover:text-klasse-gold transition-all"
+                        className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-amber hover:text-amber transition-all"
                       >
                         <RefreshCw className="h-6 w-6 mb-2" />
                         <span className="text-xs font-bold uppercase tracking-widest text-center">Copiar do Ano Anterior</span>
@@ -693,7 +693,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               <input 
                 type="text" 
                 required
-                className="w-full rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold"
+                className="w-full rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
                 placeholder="Ex: Dia do Patrono, Festa da Escola..."
                 value={newEvent.nome}
                 onChange={e => setNewEvent(prev => ({ ...prev, nome: e.target.value }))}
@@ -704,7 +704,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Tipo</label>
                 <select 
-                  className="w-full rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold"
+                  className="w-full rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
                   value={newEvent.tipo}
                   onChange={e => setNewEvent(prev => ({ ...prev, tipo: e.target.value as EventoTipo }))}
                 >
@@ -724,7 +724,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                 <input 
                   type="date" 
                   required
-                  className="w-full rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold"
+                  className="w-full rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
                   value={newEvent.data_inicio}
                   onChange={e => setNewEvent(prev => ({ ...prev, data_inicio: e.target.value }))}
                 />
@@ -733,7 +733,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                 <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Data Fim (Opcional)</label>
                 <input 
                   type="date" 
-                  className="w-full rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold"
+                  className="w-full rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
                   value={newEvent.data_fim}
                   onChange={e => setNewEvent(prev => ({ ...prev, data_fim: e.target.value }))}
                 />
@@ -752,7 +752,7 @@ export default function CalendarioConfigPage({ params }: Props) {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-klasse-gold px-8 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
+              className="rounded-xl bg-amber px-8 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
             >
               {saving ? "A criar..." : "Criar Evento"}
             </button>

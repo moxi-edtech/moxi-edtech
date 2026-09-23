@@ -32,7 +32,7 @@ export function BottomNav() {
               key={href}
               href={href}
               className={`flex min-h-11 flex-col items-center justify-center rounded-xl text-xs font-medium transition ${
-                active ? "bg-klasse-green/10 text-klasse-green" : "text-slate-500 hover:bg-slate-100"
+                active ? "bg-emerald/10 text-emerald" : "text-slate-500 hover:bg-slate-100"
               }`}
               aria-current={active ? "page" : undefined}
             >

@@ -31,7 +31,7 @@ export default function EscolaMonitoramentoPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <Loader2 className="w-10 h-10 animate-spin text-klasse-green mx-auto" />
+          <Loader2 className="w-10 h-10 animate-spin text-emerald mx-auto" />
           <p className="text-slate-500 font-medium animate-pulse">A carregar monitor central...</p>
         </div>
       </div>
@@ -50,7 +50,7 @@ export default function EscolaMonitoramentoPage() {
             </AlertDescription>
           </Alert>
           <Button 
-            className="mt-4 bg-klasse-green hover:bg-klasse-green/90 text-white font-bold" 
+            className="mt-4 bg-emerald hover:bg-emerald/90 text-white font-bold"
             onClick={() => router.push('/super-admin/escolas')}
           >
             Voltar para lista de escolas

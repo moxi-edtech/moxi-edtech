@@ -146,7 +146,7 @@ export function TabDocumentos() {
   if (fetching) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-        <Loader2 className="animate-spin mb-3 h-7 w-7 text-klasse-green" />
+        <Loader2 className="animate-spin mb-3 h-7 w-7 text-emerald" />
         <p className="text-xs font-medium">A carregar os serviços da secretaria...</p>
       </div>
     );

@@ -22,7 +22,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="relatorios" />
-        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
           Vincule seu perfil a uma escola para ver relatórios.
         </div>
       </>
@@ -99,7 +99,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               </a>
               <a
                 href={`/escola/${escolaId}/secretaria/relatorios/mapa-aproveitamento`}
-                className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-klasse-gold"
+                className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-amber"
               >
                 Abrir Mapa de Aproveitamento
               </a>
@@ -111,7 +111,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               </a>
               <a
                 href={`/escola/${escolaId}/secretaria/relatorios/propinas`}
-                className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-klasse-gold"
+                className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-amber"
               >
                 Abrir Relatório de Propinas
               </a>

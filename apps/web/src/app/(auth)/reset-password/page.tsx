@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
     }
     if (score >= 5) {
       label = "Excelente";
-      color = "bg-klasse-green";
+      color = "bg-emerald";
     }
     return { score, label, color, rules };
   }, [nextPwd]);
@@ -152,7 +152,7 @@ export default function ResetPasswordPage() {
           {status === "loading" ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6 text-klasse-gold animate-pulse" />
+                <ShieldCheck className="w-6 h-6 text-amber animate-pulse" />
               </div>
               <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Validando acesso...</p>
             </div>
@@ -180,7 +180,7 @@ export default function ResetPasswordPage() {
             <>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="h-8 w-8 rounded-lg bg-klasse-gold/10 flex items-center justify-center text-klasse-gold">
+                  <div className="h-8 w-8 rounded-lg bg-amber/10 flex items-center justify-center text-amber">
                     <Lock size={18} />
                   </div>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Segurança</span>
@@ -271,7 +271,7 @@ export default function ResetPasswordPage() {
                   disabled={loading || status !== "ready"} 
                   fullWidth
                   tone="gold"
-                  className="h-16 rounded-[20px] font-black text-base shadow-xl shadow-klasse-gold/20 hover:scale-[1.02] transition-transform"
+                  className="h-16 rounded-[20px] font-black text-base shadow-xl shadow-amber/20 hover:scale-[1.02] transition-transform"
                 >
                   {loading ? "Processando..." : "Atualizar Senha Agora"}
                 </Button>

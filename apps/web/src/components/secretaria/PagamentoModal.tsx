@@ -227,7 +227,7 @@ export function PagamentoModal({
                     onClick={() => setMethod("cash")}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "cash"
-                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        ? "border-amber ring-4 ring-amber/20"
                         : "border-slate-200"
                     }`}
                   >
@@ -238,7 +238,7 @@ export function PagamentoModal({
                     onClick={() => setMethod("tpa")}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "tpa"
-                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        ? "border-amber ring-4 ring-amber/20"
                         : "border-slate-200"
                     }`}
                   >
@@ -249,7 +249,7 @@ export function PagamentoModal({
                     onClick={() => setMethod("transfer")}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "transfer"
-                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        ? "border-amber ring-4 ring-amber/20"
                         : "border-slate-200"
                     }`}
                   >
@@ -260,7 +260,7 @@ export function PagamentoModal({
                     onClick={() => setMethod("mcx")}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "mcx"
-                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        ? "border-amber ring-4 ring-amber/20"
                         : "border-slate-200"
                     }`}
                   >
@@ -271,7 +271,7 @@ export function PagamentoModal({
                     onClick={() => setMethod("kiwk")}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "kiwk"
-                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        ? "border-amber ring-4 ring-amber/20"
                         : "border-slate-200"
                     }`}
                   >
@@ -287,7 +287,7 @@ export function PagamentoModal({
                         <input
                           value={reference}
                           onChange={(event) => setReference(event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                           placeholder="Ex: TPA-2026-000882"
                         />
                       </>
@@ -296,7 +296,7 @@ export function PagamentoModal({
                       <input
                         value={terminalId}
                         onChange={(event) => setTerminalId(event.target.value)}
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                         placeholder="Terminal ID (opcional)"
                       />
                     ) : null}
@@ -308,7 +308,7 @@ export function PagamentoModal({
                         <input
                           value={gatewayRef}
                           onChange={(event) => setGatewayRef(event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                           placeholder="MCX-..."
                         />
                       </>
@@ -325,7 +325,7 @@ export function PagamentoModal({
                     <input
                       value={evidenceUrl}
                       onChange={(event) => setEvidenceUrl(event.target.value)}
-                      className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                      className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                       placeholder="https://..."
                     />
                   </div>
@@ -349,7 +349,7 @@ export function PagamentoModal({
               <button
                 onClick={handleConfirmar}
                 disabled={loading || !intentId}
-                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-70"
+                className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-70"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                 Confirmar

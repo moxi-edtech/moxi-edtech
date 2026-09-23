@@ -84,7 +84,7 @@ export default function RematriculaReconciliacaoPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-klasse-green">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald">
               <WalletCards className="h-4 w-4" /> Rematrícula · Secretaria
             </div>
             <h1 className="text-2xl font-bold text-slate-950">Pendências de reconciliação</h1>
@@ -92,7 +92,7 @@ export default function RematriculaReconciliacaoPage() {
               Pagamentos já recebidos que precisam de uma conclusão académica. Abra o Balcão para resolver — não cobre novamente.
             </p>
           </div>
-          <button type="button" onClick={() => setReloadKey((value) => value + 1)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-klasse-green hover:text-klasse-green">
+          <button type="button" onClick={() => setReloadKey((value) => value + 1)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-emerald hover:text-emerald">
             <RefreshCw className="h-4 w-4" /> Actualizar fila
           </button>
         </div>
@@ -100,20 +100,20 @@ export default function RematriculaReconciliacaoPage() {
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><div className="text-xs font-semibold uppercase tracking-wide text-amber-800">Pendências abertas</div><div className="mt-1 text-2xl font-bold text-amber-950">{total}</div></div>
           <div className="rounded-xl border border-slate-200 bg-white p-4"><div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Mais antiga nesta página</div><div className="mt-1 text-lg font-bold text-slate-900">{oldest ?? "—"}</div></div>
-          <div className="rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-4"><div className="text-xs font-semibold uppercase tracking-wide text-klasse-green">Regra operacional</div><div className="mt-1 text-sm font-semibold text-klasse-green-900">Sem nova cobrança</div></div>
+          <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-4"><div className="text-xs font-semibold uppercase tracking-wide text-emerald">Regra operacional</div><div className="mt-1 text-sm font-semibold text-emerald-900">Sem nova cobrança</div></div>
         </div>
 
         <form onSubmit={submitSearch} className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row">
           <label className="sr-only" htmlFor="reconciliation-search">Pesquisar aluno ou processo</label>
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-slate-200 px-3 focus-within:border-klasse-gold focus-within:ring-4 focus-within:ring-klasse-gold/20">
+          <div className="flex flex-1 items-center gap-2 rounded-lg border border-slate-200 px-3 focus-within:border-amber focus-within:ring-4 focus-within:ring-amber/20">
             <Search className="h-4 w-4 text-slate-400" />
             <input id="reconciliation-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pesquisar por nome ou número de processo" className="w-full py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400" />
           </div>
-          <select aria-label="Filtrar por ano letivo" value={yearId} onChange={(event) => { setYearId(event.target.value); setReloadKey((value) => value + 1); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+          <select aria-label="Filtrar por ano letivo" value={yearId} onChange={(event) => { setYearId(event.target.value); setReloadKey((value) => value + 1); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/20">
             <option value="">Todos os anos</option>
             {years.map((year) => <option key={year.id} value={year.id}>{year.ano}{year.ativo ? " · activo" : ""}</option>)}
           </select>
-          <button type="submit" className="rounded-lg bg-klasse-green px-4 py-2 text-sm font-semibold text-white hover:bg-klasse-green-700">Pesquisar</button>
+          <button type="submit" className="rounded-lg bg-emerald px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Pesquisar</button>
         </form>
 
         {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div>}
@@ -132,8 +132,8 @@ export default function RematriculaReconciliacaoPage() {
                       <td className="px-4 py-4"><div className="font-semibold text-slate-900">{item.aluno_nome}</div><div className="mt-0.5 text-xs text-slate-500">Proc. {item.numero_processo ?? "—"}</div></td>
                       <td className="px-4 py-4"><div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900"><AlertTriangle className="h-3.5 w-3.5" /> {reasonLabel[item.reason_code] ?? "Revisão necessária"}</div><div className="mt-1 max-w-xs text-xs text-slate-500">{item.reason_detail ?? "Pagamento registado; falta concluir a operação."}</div></td>
                       <td className="px-4 py-4 text-slate-700">{item.turma_nome ?? "Turma por confirmar"}{item.turno ? <span className="block text-xs text-slate-500">{item.turno}</span> : null}</td>
-                      <td className="px-4 py-4"><div className="font-semibold text-slate-900">{money.format(item.pagamento?.valor ?? item.valor_cobrado)}</div><div className="mt-0.5 flex items-center gap-1 text-xs text-klasse-green"><CheckCircle2 className="h-3.5 w-3.5" /> Recebido</div></td>
-                      <td className="px-4 py-4 text-right"><Link href={`/escola/${escolaId}/secretaria/balcao?alunoId=${encodeURIComponent(item.aluno_id)}${item.ano_letivo_id ? `&ano_letivo_id=${encodeURIComponent(item.ano_letivo_id)}` : ""}`} className="inline-flex items-center gap-1.5 rounded-lg bg-klasse-green px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green-700">Abrir Balcão <ArrowRight className="h-3.5 w-3.5" /></Link></td>
+                      <td className="px-4 py-4"><div className="font-semibold text-slate-900">{money.format(item.pagamento?.valor ?? item.valor_cobrado)}</div><div className="mt-0.5 flex items-center gap-1 text-xs text-emerald"><CheckCircle2 className="h-3.5 w-3.5" /> Recebido</div></td>
+                      <td className="px-4 py-4 text-right"><Link href={`/escola/${escolaId}/secretaria/balcao?alunoId=${encodeURIComponent(item.aluno_id)}${item.ano_letivo_id ? `&ano_letivo_id=${encodeURIComponent(item.ano_letivo_id)}` : ""}`} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Abrir Balcão <ArrowRight className="h-3.5 w-3.5" /></Link></td>
                     </tr>
                   ))}
                   {!items.length && <tr><td colSpan={5} className="px-4 py-12 text-center"><Clock3 className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 font-semibold text-slate-700">Nenhuma pendência aberta</p><p className="mt-1 text-sm text-slate-500">Os pagamentos de rematrícula estão sincronizados com as matrículas.</p></td></tr>}

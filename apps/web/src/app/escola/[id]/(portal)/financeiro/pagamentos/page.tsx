@@ -53,8 +53,8 @@ export default async function Page(props: {
                   href={`/escola/${escolaParam}/financeiro/pagamentos?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
                   className={`rounded-lg border px-3 py-2 font-semibold transition ${
                     days === d
-                      ? "border-klasse-green-600 bg-klasse-green-600 text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-klasse-green-200 hover:text-klasse-green-700"
+                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
                   }`}
                 >
                   {d === "1" ? "1 dia" : `${d} dias`}
@@ -72,7 +72,7 @@ export default async function Page(props: {
               className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-slate-400"
             />
             <input type="hidden" name="days" value={days} />
-            <button className="h-10 rounded-lg bg-klasse-green-600 px-5 text-sm font-semibold text-white hover:bg-klasse-green-700">
+            <button className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700">
               Pesquisar
             </button>
           </form>

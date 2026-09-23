@@ -215,7 +215,7 @@ export function MinhaProdutividade({
                     onAtenderAluno(selectedActivity.aluno_id);
                     setSelectedActivity(null);
                   }}
-                  className="px-4 py-2.5 bg-klasse-gold text-white rounded-xl text-sm font-bold shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                  className="px-4 py-2.5 bg-amber text-white rounded-xl text-sm font-bold shadow-sm hover:brightness-110 active:scale-95 transition-all"
                  >
                    Atender Aluno
                  </button>

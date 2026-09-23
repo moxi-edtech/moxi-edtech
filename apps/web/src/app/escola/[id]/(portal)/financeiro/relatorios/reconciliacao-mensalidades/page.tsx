@@ -207,7 +207,7 @@ export default function ReconciliacaoMensalidadesPage() {
                     <td className="px-4 py-3 text-slate-600">{item.ano_letivo ?? item.mensalidade_ano_letivo ?? "—"} · {item.turma_nome ?? "Sem turma"}</td>
                     <td className="px-4 py-3"><div className="flex flex-wrap gap-1">{item.problemas.map((problem) => <span key={problem} className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-900">{LABELS[problem] ?? problem}</span>)}</div></td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{Number(item.saldo ?? 0).toLocaleString("pt-AO")} Kz</td>
-                    <td className="px-4 py-3 text-right"><button type="button" onClick={() => openReview(item)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-klasse-green hover:text-klasse-green">Rever</button></td>
+                    <td className="px-4 py-3 text-right"><button type="button" onClick={() => openReview(item)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald hover:text-emerald">Rever</button></td>
                   </tr>
                   {reviewing?.mensalidade_id === item.mensalidade_id && (
                     <tr className="border-b bg-slate-50">
@@ -234,7 +234,7 @@ export default function ReconciliacaoMensalidadesPage() {
                           <label className="block text-xs font-semibold text-slate-700">Justificativa obrigatória
                             <textarea value={justification} onChange={(event) => setJustification(event.target.value)} rows={3} placeholder="Ex.: confirmado pela pauta/recibo da secretaria…" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal" />
                           </label>
-                          <div className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">A ação ficará registada no histórico de auditoria.</p><button type="button" onClick={() => void resolveReview()} disabled={submitting || (actionFor(reviewProblem) === "corrigir_vinculo" && !selectedCandidate)} className="rounded-lg bg-klasse-green px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "A guardar…" : actionFor(reviewProblem) === "justificar" ? "Justificar e fechar" : "Confirmar correcção"}</button></div>
+                          <div className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">A ação ficará registada no histórico de auditoria.</p><button type="button" onClick={() => void resolveReview()} disabled={submitting || (actionFor(reviewProblem) === "corrigir_vinculo" && !selectedCandidate)} className="rounded-lg bg-emerald px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "A guardar…" : actionFor(reviewProblem) === "justificar" ? "Justificar e fechar" : "Confirmar correcção"}</button></div>
                         </div>
                       </td>
                     </tr>

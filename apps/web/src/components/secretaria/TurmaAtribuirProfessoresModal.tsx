@@ -190,7 +190,7 @@ export default function TurmaAtribuirProfessoresModal({
               <UserCheck size={13} /> {atribuidas} atribuídas
             </span>
             {pendentes > 0 && (
-              <span className="text-klasse-gold-600 font-medium flex items-center gap-1">
+              <span className="text-amber-600 font-medium flex items-center gap-1">
                 <UserX size={13} /> {pendentes} sem professor
               </span>
             )}
@@ -229,7 +229,7 @@ export default function TurmaAtribuirProfessoresModal({
                 <div
                   key={disc.id || disc.curso_matriz_id}
                   className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    hasProf ? "bg-white border-slate-200" : "bg-klasse-gold-50/20 border-klasse-gold-200"
+                    hasProf ? "bg-white border-slate-200" : "bg-amber-50/20 border-amber-200"
                   }`}
                 >
                   <div className="min-w-0">
@@ -253,8 +253,8 @@ export default function TurmaAtribuirProfessoresModal({
                         </>
                       ) : (
                         <>
-                          <UserX size={12} className="text-klasse-gold-600" />
-                          <span className="text-klasse-gold-700 font-medium">Sem professor atribuído</span>
+                          <UserX size={12} className="text-amber-600" />
+                          <span className="text-amber-700 font-medium">Sem professor atribuído</span>
                         </>
                       )}
                     </p>

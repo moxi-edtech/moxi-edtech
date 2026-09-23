@@ -56,7 +56,7 @@ export function NoticePanel({
       {showHeader && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl bg-klasse-gold/10 text-klasse-gold ring-1 ring-klasse-gold/25 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-xl bg-amber/10 text-amber ring-1 ring-amber/25 flex items-center justify-center">
               <Megaphone className="h-4 w-4" />
             </div>
             <h3 className="text-sm font-semibold text-slate-900">{title}</h3>

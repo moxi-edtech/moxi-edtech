@@ -121,8 +121,8 @@ function toneByStatus(s: TransacaoBancaria["status"]): "ok" | "warn" | "neutral"
 function pillClasses(tone: "ok" | "warn" | "neutral") {
   return cx(
     "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide",
-    tone === "ok" && "border-klasse-green/25 bg-klasse-green/10 text-klasse-green",
-    tone === "warn" && "border-klasse-gold/25 bg-klasse-gold/10 text-klasse-gold",
+    tone === "ok" && "border-emerald/25 bg-emerald/10 text-emerald",
+    tone === "warn" && "border-amber/25 bg-amber/10 text-amber",
     tone === "neutral" && "border-slate-200 bg-white text-slate-700"
   );
 }
@@ -130,8 +130,8 @@ function pillClasses(tone: "ok" | "warn" | "neutral") {
 function iconBadge(tone: "ok" | "warn" | "neutral") {
   return cx(
     "inline-flex h-10 w-10 items-center justify-center rounded-2xl border",
-    tone === "ok" && "border-klasse-green/25 bg-klasse-green/10",
-    tone === "warn" && "border-klasse-gold/25 bg-klasse-gold/10",
+    tone === "ok" && "border-emerald/25 bg-emerald/10",
+    tone === "warn" && "border-amber/25 bg-amber/10",
     tone === "neutral" && "border-slate-200 bg-slate-100"
   );
 }
@@ -139,8 +139,8 @@ function iconBadge(tone: "ok" | "warn" | "neutral") {
 function iconColor(tone: "ok" | "warn" | "neutral") {
   return cx(
     "h-5 w-5",
-    tone === "ok" && "text-klasse-green",
-    tone === "warn" && "text-klasse-gold",
+    tone === "ok" && "text-emerald",
+    tone === "warn" && "text-amber",
     tone === "neutral" && "text-slate-700"
   );
 }
@@ -152,8 +152,8 @@ function confidenceBar(n: number) {
   // no hard colors — just KLASSE gold/green + slate
   const bar = cx(
     "h-1.5 rounded-full",
-    t === "high" && "bg-klasse-green/70",
-    t === "mid" && "bg-klasse-gold/70",
+    t === "high" && "bg-emerald/70",
+    t === "mid" && "bg-amber/70",
     t === "low" && "bg-slate-300"
   );
 
@@ -236,9 +236,9 @@ function SoftButton(props: {
       disabled={props.disabled}
       className={cx(
         "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition",
-        "focus:outline-none focus:ring-4 focus:ring-klasse-gold/20",
+        "focus:outline-none focus:ring-4 focus:ring-amber/20",
         props.disabled && "opacity-60 cursor-not-allowed",
-        variant === "primary" && "bg-klasse-gold text-white hover:brightness-95",
+        variant === "primary" && "bg-amber text-white hover:brightness-95",
         variant === "secondary" &&
           "border border-slate-200 bg-white text-slate-900 hover:bg-slate-50",
         variant === "ghost" && "text-slate-700 hover:bg-slate-100"
@@ -488,7 +488,7 @@ const ConciliacaoBancaria: React.FC = () => {
     <div className="space-y-8">
       {/* Top header */}
       <header className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-        <div className="h-1 bg-gradient-to-r from-transparent via-klasse-gold/60 to-transparent" />
+        <div className="h-1 bg-gradient-to-r from-transparent via-amber/60 to-transparent" />
         <div className="px-6 py-6 md:px-8 md:py-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
@@ -558,7 +558,7 @@ const ConciliacaoBancaria: React.FC = () => {
           action={
             <button
               onClick={() => setMostrarConfiguracoes((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/20"
             >
               <Settings className="h-4 w-4 text-slate-600" />
               Configurar matching
@@ -587,7 +587,7 @@ const ConciliacaoBancaria: React.FC = () => {
                   onChange={(e) =>
                     setConfigMatching((p) => ({ ...p, toleranciaValor: Number(e.target.value || 0) }))
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 />
               </label>
 
@@ -602,7 +602,7 @@ const ConciliacaoBancaria: React.FC = () => {
                       diasToleranciaVencimento: Number(e.target.value || 0),
                     }))
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 />
               </label>
 
@@ -616,7 +616,7 @@ const ConciliacaoBancaria: React.FC = () => {
                   onChange={(e) =>
                     setConfigMatching((p) => ({ ...p, confiancaMinima: Number(e.target.value || 0) }))
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 />
               </label>
 
@@ -663,7 +663,7 @@ const ConciliacaoBancaria: React.FC = () => {
                   className={cx(
                     "rounded-xl px-4 py-2 text-sm font-medium transition border",
                     active
-                      ? "border-klasse-gold/30 bg-klasse-gold/10 text-slate-900"
+                      ? "border-amber/30 bg-amber/10 text-slate-900"
                       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                   )}
                 >
@@ -681,7 +681,7 @@ const ConciliacaoBancaria: React.FC = () => {
               <input
                 value={contaSelecionada}
                 onChange={(e) => setContaSelecionada(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 placeholder="Número da conta"
               />
             </div>
@@ -694,7 +694,7 @@ const ConciliacaoBancaria: React.FC = () => {
           className={cx(
             "rounded-2xl border-2 border-dashed p-8 text-center transition cursor-pointer",
             isDragActive
-              ? "border-klasse-gold/60 bg-klasse-gold/10"
+              ? "border-amber/60 bg-amber/10"
               : "border-slate-300 hover:border-slate-400"
           )}
         >
@@ -714,7 +714,7 @@ const ConciliacaoBancaria: React.FC = () => {
           <div className="mt-4">
             <button
               disabled={processingUpload}
-              className="inline-flex items-center justify-center rounded-xl bg-klasse-gold px-6 py-2 text-sm font-medium text-white hover:brightness-95 disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-xl bg-amber px-6 py-2 text-sm font-medium text-white hover:brightness-95 disabled:opacity-60"
             >
               {processingUpload ? "Processando..." : "Selecionar arquivo"}
             </button>
@@ -743,7 +743,7 @@ const ConciliacaoBancaria: React.FC = () => {
                       setArquivos([]);
                       setTransacoes([]);
                     }}
-                    className="rounded-xl p-2 text-slate-500 hover:text-red-600 hover:bg-white focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                    className="rounded-xl p-2 text-slate-500 hover:text-red-600 hover:bg-white focus:outline-none focus:ring-4 focus:ring-amber/20"
                     title="Remover"
                   >
                     <Trash2 className="h-5 w-5" />
@@ -755,7 +755,7 @@ const ConciliacaoBancaria: React.FC = () => {
         ) : null}
 
         {!processingUpload && transacoes.length === 0 && arquivos.length > 0 ? (
-          <div className="mt-6 rounded-2xl border border-klasse-gold/25 bg-klasse-gold/10 p-4 text-slate-900">
+          <div className="mt-6 rounded-2xl border border-amber/25 bg-amber/10 p-4 text-slate-900">
             <div className="flex items-start gap-3">
               <span className={iconBadge("warn")}>
                 <AlertTriangle className={iconColor("warn")} />
@@ -860,7 +860,7 @@ const ConciliacaoBancaria: React.FC = () => {
                           <div
                             className={cx(
                               "text-sm font-black",
-                              isCredito ? "text-klasse-green" : "text-slate-900"
+                              isCredito ? "text-emerald" : "text-slate-900"
                             )}
                             title={kwanza.format(t.valor)}
                           >
@@ -919,7 +919,7 @@ const ConciliacaoBancaria: React.FC = () => {
                                     t.alunoMatch!.mensalidadesPendentes?.[0]?.id
                                   )
                                 }
-                                className="rounded-xl p-2 text-klasse-green hover:bg-klasse-green/10 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                                className="rounded-xl p-2 text-emerald hover:bg-emerald/10 focus:outline-none focus:ring-4 focus:ring-amber/20"
                                 title="Conciliar"
                               >
                                 <Check className="h-5 w-5" />
@@ -929,7 +929,7 @@ const ConciliacaoBancaria: React.FC = () => {
                             {t.status === "pendente" && !t.alunoMatch ? (
                               <button
                                 onClick={() => rawToast({ variant: "info", title: "Busca manual em preparação." })}
-                                className="rounded-xl p-2 text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                                className="rounded-xl p-2 text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
                                 title="Buscar aluno"
                               >
                                 <Search className="h-5 w-5" />
@@ -938,7 +938,7 @@ const ConciliacaoBancaria: React.FC = () => {
 
                             <button
                               onClick={() => ignorarTransacao(t.id)}
-                              className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                              className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
                               title="Ignorar"
                             >
                               <XCircle className="h-5 w-5" />
@@ -946,7 +946,7 @@ const ConciliacaoBancaria: React.FC = () => {
 
                             <button
                               onClick={() => rawToast({ variant: "info", title: "Detalhes em preparação." })}
-                              className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                              className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
                               title="Detalhes"
                             >
                               <Eye className="h-5 w-5" />

@@ -190,7 +190,7 @@ export function FilaAtendimentoModal({
                     className={cx(
                       "rounded-full px-3 py-1 text-xs font-semibold",
                       status === item
-                        ? "bg-klasse-gold text-white"
+                        ? "bg-amber text-white"
                         : "bg-slate-100 text-slate-600"
                     )}
                   >
@@ -226,9 +226,9 @@ export function FilaAtendimentoModal({
                         className={cx(
                           "rounded-full px-2 py-1 text-[10px] font-bold uppercase",
                           item.status === "fechado"
-                            ? "bg-klasse-green-100 text-klasse-green-700"
+                            ? "bg-emerald-100 text-emerald-700"
                             : item.status === "em_atendimento"
-                              ? "bg-klasse-gold-100 text-klasse-gold-700"
+                              ? "bg-amber-100 text-amber-700"
                               : "bg-slate-100 text-slate-600"
                         )}
                       >
@@ -242,7 +242,7 @@ export function FilaAtendimentoModal({
                         <button
                           type="button"
                           onClick={() => setFinalizingId(item.id)}
-                          className="text-klasse-gold font-semibold"
+                          className="text-amber font-semibold"
                         >
                           Finalizar
                         </button>
@@ -273,7 +273,7 @@ export function FilaAtendimentoModal({
                             type="button"
                             onClick={handleFinalizar}
                             disabled={savingFinal || !resolucao.trim()}
-                            className="rounded-lg bg-klasse-green-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                            className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-60"
                           >
                             {savingFinal ? "Salvando..." : "Concluir"}
                           </button>
@@ -337,7 +337,7 @@ export function FilaAtendimentoModal({
                   type="button"
                   onClick={handleCreate}
                   disabled={creating || !motivo.trim()}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 >
                   {creating ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

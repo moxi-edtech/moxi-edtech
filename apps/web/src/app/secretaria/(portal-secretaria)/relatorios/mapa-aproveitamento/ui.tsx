@@ -85,7 +85,7 @@ export default function MapaAproveitamentoClient() {
                 if (!data) void carregar(false);
               }}
               onChange={(e) => setTurmaId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-amber focus:ring-4 focus:ring-amber/20"
             >
               <option value="">Selecione a turma</option>
               {turmas.map((turma) => (
@@ -106,7 +106,7 @@ export default function MapaAproveitamentoClient() {
                 if (!data) void carregar(false);
               }}
               onChange={(e) => setPeriodoId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-amber focus:ring-4 focus:ring-amber/20"
             >
               <option value="">Todos</option>
               {periodos.map((periodo) => (
@@ -122,7 +122,7 @@ export default function MapaAproveitamentoClient() {
               type="button"
               disabled={!turmaId || loading}
               onClick={() => void carregar(true)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-medium text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-medium text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Filter className="h-4 w-4" />
               {loading ? "A carregar..." : "Gerar mapa"}

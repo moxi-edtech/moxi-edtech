@@ -500,21 +500,21 @@ function ListaUsuarios() {
                             <button onClick={() => setEditingId(null)} className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-colors shadow-sm">
                               Cancelar
                             </button>
-                            <button onClick={() => handleSave(u.id)} disabled={isSaving} className="flex items-center gap-1 px-4 py-2 rounded-xl bg-klasse-gold text-white text-xs font-bold hover:brightness-95 transition-colors shadow-sm disabled:opacity-50">
+                            <button onClick={() => handleSave(u.id)} disabled={isSaving} className="flex items-center gap-1 px-4 py-2 rounded-xl bg-amber text-white text-xs font-bold hover:brightness-95 transition-colors shadow-sm disabled:opacity-50">
                               <Check className="w-3 h-3" /> {isSaving ? "A gravar..." : "Guardar"}
                             </button>
                           </div>
                         ) : (
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEdit(u)} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-klasse-gold hover:bg-slate-50 transition-all shadow-sm inline-flex items-center gap-2" title="Editar Perfil">
+                            <button onClick={() => handleEdit(u)} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-amber hover:bg-slate-50 transition-all shadow-sm inline-flex items-center gap-2" title="Editar Perfil">
                               <Pencil className="w-4 h-4" />
                               <span className="hidden md:inline text-xs font-semibold">Editar</span>
                             </button>
-                            <button onClick={() => { setResetUser(u); setResetPassword(""); setResetError(null); }} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-klasse-gold hover:bg-amber-50 transition-all shadow-sm inline-flex items-center gap-2" title="Forçar Nova Senha">
+                            <button onClick={() => { setResetUser(u); setResetPassword(""); setResetError(null); }} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-amber hover:bg-amber-50 transition-all shadow-sm inline-flex items-center gap-2" title="Forçar Nova Senha">
                               <Filter className="w-4 h-4" />
                               <span className="hidden md:inline text-xs font-semibold">Reset</span>
                             </button>
-                            <button onClick={() => handleResendInvite(u)} disabled={isSaving} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-klasse-gold hover:bg-green-50 transition-all shadow-sm disabled:opacity-50 inline-flex items-center gap-2" title="Reenviar Convite">
+                            <button onClick={() => handleResendInvite(u)} disabled={isSaving} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-amber hover:bg-green-50 transition-all shadow-sm disabled:opacity-50 inline-flex items-center gap-2" title="Reenviar Convite">
                               <Mail className="w-4 h-4" />
                               <span className="hidden md:inline text-xs font-semibold">Reenviar</span>
                             </button>
@@ -542,7 +542,7 @@ function ListaUsuarios() {
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-klasse-gold" />
+                  <Filter className="w-4 h-4 text-amber" />
                   Override de Credenciais
                 </h3>
                 <p className="text-[10px] text-slate-500 mt-1">{resetUser.email}</p>

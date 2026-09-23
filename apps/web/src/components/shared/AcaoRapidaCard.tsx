@@ -26,8 +26,8 @@ export default function AcaoRapidaCard({
   variant = "green",
 }: AcaoRapidaCardProps) {
   const colorClasses = variant === "yellow"
-    ? "bg-klasse-gold/10 text-klasse-gold"
-    : "bg-klasse-green/10 text-klasse-green";
+    ? "bg-amber/10 text-amber"
+    : "bg-emerald/10 text-emerald";
 
   const inner = (
     <div className={`relative group flex flex-col items-start gap-2 border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md rounded-xl`}>

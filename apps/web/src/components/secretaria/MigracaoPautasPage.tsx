@@ -168,7 +168,7 @@ function GradeMatrixInput({
           onNavigate(0, 1);
         }
       }}
-      className={`h-10 w-20 rounded-lg border px-2 text-center text-sm font-semibold outline-none transition focus:ring-2 focus:ring-klasse-green-500 ${
+      className={`h-10 w-20 rounded-lg border px-2 text-center text-sm font-semibold outline-none transition focus:ring-2 focus:ring-emerald-500 ${
         invalid
           ? "border-rose-300 bg-rose-50 text-rose-700"
           : value.trim() === ""
@@ -550,7 +550,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
               type="button"
               onClick={() => void handleSaveAll()}
               disabled={!canSave}
-              className="inline-flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2 text-xs font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald px-4 py-2 text-xs font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar tudo
@@ -569,7 +569,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                 <select
                   value={selectedTurmaId}
                   onChange={(event) => applyTurmaDefaults(event.target.value, turmas, classes)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/20"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
                 >
                   <option value="">Selecione a turma</option>
                   {turmas.map((turma) => (
@@ -589,7 +589,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                     setPreview(null);
                     setDraftGrades({});
                   }}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/20"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
                   disabled={availableClasses.length === 0}
                 >
                   <option value="">Selecione a classe</option>
@@ -611,7 +611,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                     setPreview(null);
                     setDraftGrades({});
                   }}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/20"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
                 />
               </label>
             </div>
@@ -670,7 +670,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Preenchidas</p>
-                <p className="mt-2 text-xl font-bold text-klasse-green">{filledCells}</p>
+                <p className="mt-2 text-xl font-bold text-emerald">{filledCells}</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Pendentes</p>
@@ -679,7 +679,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
             </div>
 
             {preview?.stats.registros_existentes ? (
-              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-klasse-green/20 bg-klasse-green/5 px-3 py-1 text-[11px] font-semibold text-klasse-green">
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald/20 bg-emerald/5 px-3 py-1 text-[11px] font-semibold text-emerald">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 {preview.stats.registros_existentes} históricos já existiam e serão sobrescritos no save.
               </div>

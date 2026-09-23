@@ -1808,7 +1808,7 @@ export default function TurmaDetailClient({
                   type="checkbox" 
                   checked={includeAllStatus} 
                   onChange={e => setIncludeAllStatus(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                  className="w-4 h-4 rounded border-slate-300 text-amber focus:ring-amber"
                 />
                 <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors uppercase tracking-wider">
                   Incluir todos os estados
@@ -1820,7 +1820,7 @@ export default function TurmaDetailClient({
                   type="checkbox" 
                   checked={isAlbum} 
                   onChange={e => setIsAlbum(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                  className="w-4 h-4 rounded border-slate-300 text-amber focus:ring-amber"
                 />
                 <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors uppercase tracking-wider">
                   Versão Álbum Visual

@@ -106,7 +106,7 @@ const mapAulas = (items: any[]): SchedulerAula[] =>
       professor: item.professor?.nome ?? "—",
       professorId: item.professor?.id ?? null,
       salaId: null,
-      cor: "bg-white border-slate-200 text-slate-700 hover:border-klasse-gold",
+      cor: "bg-white border-slate-200 text-slate-700 hover:border-amber",
       temposTotal: calculateTotalSlots(rulesInput),
       temposAlocados: 0,
       missingLoad,

@@ -18,7 +18,7 @@ export function StudentStatusCard({ loading, nome, classe, turma, estadoAcademic
       <p className="mt-2 text-sm text-slate-600">
         {classe ?? "Classe —"} {turma ? `• ${turma}` : ""}
       </p>
-      <span className="mt-3 inline-flex rounded-full bg-klasse-green/10 px-3 py-1 text-xs font-medium text-klasse-green">
+      <span className="mt-3 inline-flex rounded-full bg-emerald/10 px-3 py-1 text-xs font-medium text-emerald">
         {estadoAcademico ?? "Sem estado"}
       </span>
     </section>

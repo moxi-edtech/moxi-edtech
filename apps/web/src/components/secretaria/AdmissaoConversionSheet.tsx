@@ -613,7 +613,7 @@ export function AdmissaoConversionSheet({
       <SheetContent className="sm:max-w-[540px] p-0 flex flex-col h-full border-l-0 shadow-2xl overflow-hidden">
         <SheetHeader className="p-8 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3 mb-2">
-            <div className="bg-klasse-gold p-2 rounded-xl">
+            <div className="bg-amber p-2 rounded-xl">
               <Check className="w-5 h-5 text-white" />
             </div>
             <Badge variant="outline" className="text-[10px] uppercase border-white/20 text-white/60">
@@ -629,7 +629,7 @@ export function AdmissaoConversionSheet({
         <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="w-10 h-10 text-klasse-gold animate-spin" />
+              <Loader2 className="w-10 h-10 text-amber animate-spin" />
               <p className="text-sm font-bold text-slate-400">Carregando dados do candidato...</p>
             </div>
           ) : enrollmentResult ? (
@@ -760,7 +760,7 @@ export function AdmissaoConversionSheet({
                 <div className="pt-4 flex flex-col gap-3">
                   <button
                     onClick={onClose}
-                    className="text-slate-400 hover:text-klasse-gold font-bold text-sm transition-colors"
+                    className="text-slate-400 hover:text-amber font-bold text-sm transition-colors"
                   >
                     Fechar e atender próximo candidato
                   </button>
@@ -1160,7 +1160,7 @@ export function AdmissaoConversionSheet({
             <Button
               onClick={() => void handleEfetivar()}
               disabled={submitting || !academic.turmaId || !payment.amount}
-              className="flex-[2] h-14 rounded-2xl bg-klasse-gold hover:brightness-95 text-white font-black text-base shadow-xl shadow-klasse-gold/20"
+              className="flex-[2] h-14 rounded-2xl bg-amber hover:brightness-95 text-white font-black text-base shadow-xl shadow-amber/20"
               loading={submitting}
             >
               {submitting ? 'Processando...' : 'Efetivar Matrícula Agora'}
@@ -1217,7 +1217,7 @@ export function AdmissaoConversionSheet({
                 onClick={() => void handleEfetivar({ capacidade: true, motivo: capacityOverrideMotivo })}
                 disabled={submitting || capacityOverrideMotivo.trim().length < 10}
                 loading={submitting}
-                className="flex-[2] bg-klasse-gold text-white"
+                className="flex-[2] bg-amber text-white"
               >
                 Confirmar override
               </Button>

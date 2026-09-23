@@ -154,7 +154,7 @@ export function CampanhaTabContent({
       <Card className="overflow-hidden rounded-[40px] border-zinc-800 bg-gradient-to-br from-zinc-950 via-[#0e1017] to-zinc-950 text-white shadow-[0_30px_60px_rgba(0,0,0,0.25)] border-0">
         <CardContent className="grid gap-12 p-8 lg:p-16 lg:grid-cols-[1.2fr_0.8fr] items-center">
           <div className="space-y-6">
-            <Badge className="w-fit border border-amber-500/20 bg-amber-500/10 text-[9px] font-bold uppercase tracking-[0.25em] text-klasse-gold px-3.5 py-1 rounded-full">
+            <Badge className="w-fit border border-amber-500/20 bg-amber-500/10 text-[9px] font-bold uppercase tracking-[0.25em] text-amber px-3.5 py-1 rounded-full">
               Foco Estratégico
             </Badge>
             <div className="space-y-4">
@@ -172,7 +172,7 @@ export function CampanhaTabContent({
             <div className="space-y-4">
               {STRATEGIC_ACTIONS.map((action, index) => (
                 <div key={action} className="flex gap-4 items-start">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-klasse-gold/15 text-[11px] font-bold text-klasse-gold">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber/15 text-[11px] font-bold text-amber">
                     0{index + 1}
                   </div>
                   <p className="text-xs font-semibold leading-relaxed text-slate-355 pt-0.5">{action}</p>

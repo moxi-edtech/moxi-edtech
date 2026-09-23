@@ -173,10 +173,10 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
               setSelectedAluno(null);
             }}
             placeholder="Buscar aluno por nome, processo ou BI..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/10"
           />
           {loading && (
-            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-klasse-green" />
+            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-emerald" />
           )}
         </div>
 
@@ -202,7 +202,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
         )}
 
         {selectedAluno && (
-          <div className="mt-3 rounded-xl border border-klasse-green-200 bg-klasse-green-50 px-4 py-2 text-sm text-klasse-green-800">
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
             Selecionado: <span className="font-semibold">{selectedAluno.label}</span>
           </div>
         )}
@@ -219,12 +219,12 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
               onClick={() => setTipo(doc.id)}
               className={`rounded-2xl border px-5 py-6 text-left transition-all ${
                 isActive
-                  ? "border-klasse-gold bg-klasse-gold-50 shadow-sm"
-                  : "border-slate-200 bg-white hover:border-klasse-gold/60"
+                  ? "border-amber bg-amber-50 shadow-sm"
+                  : "border-slate-200 bg-white hover:border-amber/60"
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`rounded-xl p-2 ${isActive ? "bg-klasse-gold/20 text-klasse-gold" : "bg-slate-100 text-slate-500"}`}>
+                <div className={`rounded-xl p-2 ${isActive ? "bg-amber/20 text-amber" : "bg-slate-100 text-slate-500"}`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
@@ -248,7 +248,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
           type="button"
           onClick={handleEmitir}
           disabled={!canSubmit}
-          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Emitir e Imprimir

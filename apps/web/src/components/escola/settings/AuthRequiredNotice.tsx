@@ -21,12 +21,12 @@ export default function AuthRequiredNotice({
   return (
     <div className={className}>
       <div
-        className={`rounded-2xl border border-klasse-gold-200 bg-white p-6 shadow-sm ${
+        className={`rounded-2xl border border-amber-200 bg-white p-6 shadow-sm ${
           compact ? "" : "w-full max-w-xl"
         }`}
       >
         <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-klasse-gold-50 p-2 text-klasse-gold-700">
+          <div className="rounded-lg bg-amber-50 p-2 text-amber-700">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div className="space-y-2">
@@ -35,7 +35,7 @@ export default function AuthRequiredNotice({
             <div className="pt-1 flex flex-wrap gap-2">
               <Link
                 href={`/login?redirect=${encodeURIComponent(nextPath)}`}
-                className="inline-flex items-center gap-2 rounded-md bg-klasse-gold-600 px-3 py-2 text-sm font-semibold text-white hover:bg-klasse-gold-700"
+                className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700"
               >
                 <LogIn className="h-4 w-4" />
                 Entrar novamente

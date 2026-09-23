@@ -1151,7 +1151,7 @@ function FooterSuccess({
         <button
           onClick={() => window.open(reciboUrl, "_blank", "noopener,noreferrer")}
           className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl
-            bg-klasse-gold px-4 py-2.5 text-sm font-bold text-white
+            bg-amber px-4 py-2.5 text-sm font-bold text-white
             hover:brightness-110 transition-colors"
         >
           <Printer className="h-4 w-4" />

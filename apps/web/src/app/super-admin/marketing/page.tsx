@@ -140,7 +140,7 @@ export default function MarketingAssetsPage() {
             <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
               <span>Super Admin</span>
               <ChevronRight size={10} />
-              <span className="text-klasse-green">Marketing de Influencers</span>
+              <span className="text-emerald">Marketing de Influencers</span>
               </nav>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Materiais para Influencers</h1>
               <p className="text-sm text-slate-500 font-medium">Banners, scripts e artes para os parceiros divulgarem o KLASSE.</p>
@@ -154,7 +154,7 @@ export default function MarketingAssetsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center p-20 bg-white rounded-3xl border border-slate-200">
-            <Loader2 className="w-8 h-8 animate-spin text-klasse-green" />
+            <Loader2 className="w-8 h-8 animate-spin text-emerald" />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -215,7 +215,7 @@ export default function MarketingAssetsPage() {
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase text-slate-400">Tipo</label>
                       <select 
-                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
+                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald"
                         value={formData.tipo}
                         onChange={e => {
                           const nextType = e.target.value;
@@ -234,7 +234,7 @@ export default function MarketingAssetsPage() {
                       <label className="text-[10px] font-bold uppercase text-slate-400">Título</label>
                         <input 
                         required
-                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
+                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald"
                         value={formData.titulo ?? ''}
                         onChange={e => setFormData({ ...formData, titulo: e.target.value })}
                       />
@@ -244,7 +244,7 @@ export default function MarketingAssetsPage() {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase text-slate-400">Descrição Curta</label>
                     <input 
-                      className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
+                      className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald"
                       value={formData.descricao ?? ''}
                       onChange={e => setFormData({ ...formData, descricao: e.target.value })}
                     />
@@ -255,7 +255,7 @@ export default function MarketingAssetsPage() {
                       <label className="text-[10px] font-bold uppercase text-slate-400">Conteúdo do Script</label>
                       <textarea 
                         rows={4}
-                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green resize-none"
+                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald resize-none"
                         value={formData.conteudo ?? ''}
                         onChange={e => setFormData({ ...formData, conteudo: e.target.value })}
                       />
@@ -265,7 +265,7 @@ export default function MarketingAssetsPage() {
                       <label className="text-[10px] font-bold uppercase text-slate-400">Ficheiro ou Link</label>
                       <div className="flex gap-2">
                           <input 
-                          className="flex-1 p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
+                          className="flex-1 p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald"
                           placeholder="URL externa ou use o botão de upload"
                           value={formData.url ?? ''}
                           onChange={e => setFormData({ ...formData, url: e.target.value })}
@@ -280,7 +280,7 @@ export default function MarketingAssetsPage() {
                     </div>
                   )}
 
-                  <Button type="submit" className="w-full py-4 bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-black text-sm mt-4 shadow-lg shadow-klasse-green/10">
+                  <Button type="submit" className="w-full py-4 bg-emerald hover:bg-emerald/90 text-white rounded-xl font-black text-sm mt-4 shadow-lg shadow-emerald/10">
                     PUBLICAR PARA INFLUENCERS
                   </Button>
                 </form>

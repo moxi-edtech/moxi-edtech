@@ -176,7 +176,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
                   <select 
                     value={plano} 
                     onChange={(e) => setPlano(e.target.value as any)}
-                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-2 focus:ring-klasse-green/30 focus:border-klasse-green"
+                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-2 focus:ring-emerald/30 focus:border-emerald"
                   >
                     <option value="essencial">Essencial</option>
                     <option value="profissional">Profissional</option>
@@ -188,7 +188,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
                   <select 
                     value={ciclo} 
                     onChange={(e) => setCiclo(e.target.value as any)}
-                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-2 focus:ring-klasse-green/30 focus:border-klasse-green"
+                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-2 focus:ring-emerald/30 focus:border-emerald"
                   >
                     <option value="mensal">Mensal</option>
                     <option value="anual">Anual</option>
@@ -218,8 +218,8 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
                   variant="outline" 
                   className={`text-[10px] uppercase font-bold h-10 ${
                     data.status === 'activa'
-                      ? 'border-klasse-gold text-klasse-gold hover:bg-klasse-gold/10'
-                      : 'border-klasse-green text-klasse-green hover:bg-klasse-green/10'
+                      ? 'border-amber text-amber hover:bg-amber/10'
+                      : 'border-emerald text-emerald hover:bg-emerald/10'
                   }`}
                   onClick={handleToggleStatus}
                 >
@@ -250,7 +250,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
               fullWidth 
               loading={saving} 
               onClick={handleSave}
-              className="bg-klasse-green hover:bg-klasse-green/90 text-white font-bold"
+              className="bg-emerald hover:bg-emerald/90 text-white font-bold"
             >
               Guardar Alterações
             </Button>

@@ -203,7 +203,7 @@ export default function TabelasMensalidadeClient({
                 {filtered.map(item => (
                     <div key={item.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group relative">
                         <div className="flex justify-between items-start mb-3">
-                            <div className={`p-2 rounded-lg ${item.ativo ? 'bg-klasse-green-50 text-klasse-green-600' : 'bg-slate-100 text-slate-400'}`}>
+                            <div className={`p-2 rounded-lg ${item.ativo ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                                 <DollarSign size={20}/>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

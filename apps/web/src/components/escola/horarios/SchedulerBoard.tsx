@@ -240,7 +240,7 @@ export function SchedulerBoard({
     if (!aula) return null;
 
     return (
-      <div className="w-40 h-24 rounded-xl shadow-xl p-3 rotate-3 cursor-grabbing bg-slate-900 text-white border border-klasse-gold/50 flex flex-col justify-center items-center">
+      <div className="w-40 h-24 rounded-xl shadow-xl p-3 rotate-3 cursor-grabbing bg-slate-900 text-white border border-amber/50 flex flex-col justify-center items-center">
         <span className="font-sora font-bold text-lg">{aula.sigla}</span>
         <span className="text-xs text-slate-400">Alocando...</span>
       </div>
@@ -348,7 +348,7 @@ const StatusAlerts = React.memo(({
 }: any) => (
   <>
     {missingLoadCount > 0 && (
-      <div className="mb-4 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-xs text-klasse-gold-800">
+      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
         <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
         <div className="mt-1">Defina a carga para publicar o quadro.</div>
         {onAutoConfigurarCargas && (
@@ -356,7 +356,7 @@ const StatusAlerts = React.memo(({
             type="button"
             onClick={onAutoConfigurarCargas}
             disabled={autoConfiguring}
-            className="mt-2 w-full rounded-lg bg-klasse-gold-500 px-3 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-2 w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {autoConfiguring ? "Configurando..." : "Auto-Configurar cargas"}
           </button>
@@ -401,7 +401,7 @@ const ActionButtons = React.memo(({
       type="button"
       onClick={onAutoCompletar}
       disabled={autoCompleting}
-      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-70"
+      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-70"
     >
       <Wand2 className="w-4 h-4" />
       {autoCompleting ? "Auto-Completar..." : "Auto-Completar"}
@@ -467,10 +467,10 @@ const GridRow = React.memo(({
         <span className="font-bold text-slate-900 mb-1">{defaultRange[0] || "—"}</span>
         <span className="text-slate-400 text-[10px]">{defaultRange[1] || ""}</span>
         {hasDifferentTimes && (
-          <span className="mt-1 text-[9px] font-semibold text-klasse-gold-600">Horário varia</span>
+          <span className="mt-1 text-[9px] font-semibold text-amber-600">Horário varia</span>
         )}
         {tempo.tipo === "intervalo" && (
-          <span className="mt-2 px-2 py-0.5 bg-klasse-gold-100 text-klasse-gold-700 rounded-full font-bold text-[9px] uppercase tracking-wide">
+          <span className="mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold text-[9px] uppercase tracking-wide">
             Intervalo
           </span>
         )}
@@ -630,7 +630,7 @@ const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
             ? "bg-emerald-50/50 border-emerald-100" 
             : isOverbooked
             ? "bg-rose-50/50 border-rose-100"
-            : "bg-white border-slate-200 hover:border-klasse-gold/50 hover:shadow-sm cursor-grab active:cursor-grabbing"
+            : "bg-white border-slate-200 hover:border-amber/50 hover:shadow-sm cursor-grab active:cursor-grabbing"
         }
       `}
     >
@@ -646,7 +646,7 @@ const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
         ) : isOverbooked ? (
           <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
         ) : (
-          <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-klasse-gold transition-colors" />
+          <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-amber transition-colors" />
         )}
       </div>
 
@@ -660,7 +660,7 @@ const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
          <div className="h-2 w-20 bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-200/50">
             <div
               className={`h-full transition-all duration-500 ${
-                isComplete ? "bg-emerald-500" : isOverbooked ? "bg-rose-500" : "bg-klasse-gold"
+                isComplete ? "bg-emerald-500" : isOverbooked ? "bg-rose-500" : "bg-amber"
               }`}
               style={{ width: `${Math.min(100, allocation.progress)}%` }}
             />
@@ -703,7 +703,7 @@ const DroppableSlot = ({ id, children, hasConflict, isFilled }: any) => {
       ref={setNodeRef}
       className={`
         p-1 border-r border-slate-200 transition-all h-full min-h-[110px] flex flex-col
-        ${isOver && !isFilled ? "bg-klasse-gold/5 ring-2 ring-inset ring-klasse-gold/30" : ""}
+        ${isOver && !isFilled ? "bg-amber/5 ring-2 ring-inset ring-amber/30" : ""}
         ${hasConflict ? "bg-rose-50 ring-2 ring-inset ring-rose-200" : ""}
         ${!children && !isOver ? "hover:bg-slate-50" : ""}
       `}
@@ -711,9 +711,9 @@ const DroppableSlot = ({ id, children, hasConflict, isFilled }: any) => {
       {children || (
         <div className={`
             h-full w-full rounded-lg border-2 border-dashed flex items-center justify-center transition-all
-            ${isOver ? "border-klasse-gold/40 bg-white" : "border-transparent opacity-0 hover:opacity-100 hover:border-slate-200"}
+            ${isOver ? "border-amber/40 bg-white" : "border-transparent opacity-0 hover:opacity-100 hover:border-slate-200"}
         `}>
-          {isOver && <span className="text-[10px] font-bold text-klasse-gold uppercase">Soltar</span>}
+          {isOver && <span className="text-[10px] font-bold text-amber uppercase">Soltar</span>}
           {!isOver && <span className="text-[10px] font-bold text-slate-300 uppercase">Vazio</span>}
         </div>
       )}
@@ -797,7 +797,7 @@ const AssignProfessorModal = ({
               await onAssign(selected);
               setSaving(false);
             }}
-            className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            className="rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
           >
             {saving ? "Salvando..." : "Salvar"}
           </button>
@@ -862,7 +862,7 @@ const AssignTurmaSalaModal = ({
               await onAssign(selected);
               setSaving(false);
             }}
-            className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            className="rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
           >
             {saving ? "Salvando..." : "Salvar"}
           </button>

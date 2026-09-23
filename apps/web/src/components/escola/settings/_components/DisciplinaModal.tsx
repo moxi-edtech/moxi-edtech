@@ -494,12 +494,12 @@ export function DisciplinaModal({
             </section>
           )}
           {pendingDisciplines.length > 0 && (
-            <section className="bg-white p-5 rounded-xl border border-klasse-gold-200 shadow-sm">
-              <h3 className="text-xs font-bold uppercase text-klasse-gold-700 mb-3">Resolver pendências</h3>
+            <section className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm">
+              <h3 className="text-xs font-bold uppercase text-amber-700 mb-3">Resolver pendências</h3>
               <select
                 value={pendingDisciplines.some((d) => d.id === initial?.id) ? initial?.id ?? "" : ""}
                 onChange={(event) => onSelectPending?.(event.target.value)}
-                className="w-full rounded-xl border border-klasse-gold-200 px-3 py-2 text-sm bg-klasse-gold-50"
+                className="w-full rounded-xl border border-amber-200 px-3 py-2 text-sm bg-amber-50"
               >
                 <option value="">Selecione uma disciplina pendente</option>
                 {pendingDisciplines.map((disc) => (
@@ -515,19 +515,19 @@ export function DisciplinaModal({
               <p className="text-sm font-bold text-slate-900">Auto-preencher disciplina</p>
               <p className="text-xs text-slate-500">Aplica padrões de carga, períodos e avaliação.</p>
               {autoFillFeedback && (
-                <p className="mt-2 text-xs font-medium text-klasse-green">{autoFillFeedback}</p>
+                <p className="mt-2 text-xs font-medium text-emerald">{autoFillFeedback}</p>
               )}
             </div>
             <button
               type="button"
               onClick={handleAutoFill}
-              className="rounded-lg bg-klasse-gold px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110"
+              className="rounded-lg bg-amber px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110"
             >
               Auto-preencher
             </button>
           </section>
           {!appearsInScheduler && (
-            <section className="bg-klasse-gold-50 p-4 rounded-xl border border-klasse-gold-200 text-klasse-gold-800 text-sm">
+            <section className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-amber-800 text-sm">
               Esta disciplina não aparecerá no quadro porque não entra no horário ou a carga semanal está zerada.
             </section>
           )}
@@ -697,7 +697,7 @@ export function DisciplinaModal({
               )}
               {standardInfo && standardInfo.baseHours !== null && (
                 <div className={`mt-4 p-3 rounded-lg border text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 ${
-                  standardInfo.isOutOfStandard ? 'bg-klasse-gold-50 border-klasse-gold-200 text-klasse-gold-700' : 'bg-klasse-green-50 border-klasse-green-200 text-klasse-green-700'
+                  standardInfo.isOutOfStandard ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
                 }`}>
                   <AlertCircle size={14} />
                   Padrão MED para esta classe: {standardInfo.baseHours}h semanais
@@ -947,9 +947,9 @@ export function DisciplinaModal({
           </div>
 
           {!canSave && (
-            <div className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-xs text-klasse-gold-800">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-klasse-gold-700" />
+                <AlertCircle className="w-4 h-4 text-amber-700" />
                 <span className="font-semibold">Salvar bloqueado.</span>
               </div>
               <ul className="mt-2 list-disc pl-5 space-y-1">
@@ -989,7 +989,7 @@ export function DisciplinaModal({
                 type="button"
                 onClick={handleQuickSave}
                 disabled={!canQuickSave || saving}
-                className="px-6 py-3 rounded-xl font-bold text-white bg-klasse-green hover:brightness-110 shadow-lg transition-all flex items-center gap-2 disabled:opacity-70"
+                className="px-6 py-3 rounded-xl font-bold text-white bg-emerald hover:brightness-110 shadow-lg transition-all flex items-center gap-2 disabled:opacity-70"
               >
                 <Check className="w-5 h-5" />
                 {saving ? "Salvando..." : "Salvar carga"}

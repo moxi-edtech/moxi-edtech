@@ -152,7 +152,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
         <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
           <div>
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Mensalidades & Matrículas</p>
-            <p className="mt-1.5 text-2xl font-black leading-none text-klasse-green">
+            <p className="mt-1.5 text-2xl font-black leading-none text-emerald">
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(stats.mensalidades)}
             </p>
           </div>
@@ -162,7 +162,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
         <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
           <div>
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Serviços & Emolumentos</p>
-            <p className="mt-1.5 text-2xl font-black leading-none text-klasse-gold">
+            <p className="mt-1.5 text-2xl font-black leading-none text-amber">
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(stats.servicos)}
             </p>
           </div>
@@ -181,7 +181,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-klasse-gold" />
+              <Clock className="h-4 w-4 text-amber" />
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Aguardando Validação</h2>
             </div>
             <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">
@@ -261,7 +261,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                         <button
                           onClick={() => handleApprove(p)}
                           disabled={processingId === p.pagamento_id}
-                          className="inline-flex items-center gap-2 bg-klasse-green-600 hover:bg-klasse-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm shadow-klasse-green-600/20 disabled:opacity-50"
+                          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-50"
                         >
                           {processingId === p.pagamento_id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -336,7 +336,7 @@ function RecebimentoApprovalModal({
     <ModalShell open title="Revisar recebimento" description="Confirme o contexto antes de concluir a validação." onClose={onClose} footer={
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={onClose} disabled={processing} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50">Cancelar</button>
-        <button type="button" onClick={onConfirm} disabled={processing} className="rounded-lg bg-klasse-green-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{processing ? "A processar..." : label}</button>
+        <button type="button" onClick={onConfirm} disabled={processing} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{processing ? "A processar..." : label}</button>
       </div>
     }>
       <div className="space-y-4">
@@ -356,7 +356,7 @@ function RecebimentoApprovalModal({
         </div>
         {pagamento.mensagem_aluno ? <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"><p className="font-bold">Mensagem do aluno</p><p className="mt-1">{pagamento.mensagem_aluno}</p></div> : null}
         <p className="text-xs text-slate-500">Confira no comprovativo a referência da operação bancária. Ela não é extraída automaticamente deste documento.</p>
-        <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-sm text-klasse-gold-900"><p className="font-bold">Depois da aprovação</p><p className="mt-1">{consequence}</p></div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><p className="font-bold">Depois da aprovação</p><p className="mt-1">{consequence}</p></div>
         {!pagamento.comprovante_url && !isGratuito ? <p className="text-sm text-rose-700">Não há comprovativo anexado. Revise antes de aprovar.</p> : null}
       </div>
     </ModalShell>

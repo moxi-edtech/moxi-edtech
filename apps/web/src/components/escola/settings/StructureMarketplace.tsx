@@ -32,7 +32,7 @@ import { DisciplinaModal, type DisciplinaForm } from "./_components/DisciplinaMo
  * KLASSE UI rules applied:
  * - rounded-xl / rounded-full
  * - Dark UI: slate-950
- * - Gold for actions only (bg-klasse-gold)
+ * - Gold for actions only (bg-amber)
  * - No teal palette
  * - Lucide icons only from allowed set (using subset)
  */
@@ -1418,10 +1418,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // -------- Default view (tabs) --------
   return (
     <div className="space-y-6">
-      <Alert className="bg-klasse-gold-50 border-klasse-gold-200 text-klasse-gold-800">
-        <Info className="h-4 w-4 text-klasse-gold-600" />
+      <Alert className="bg-amber-50 border-amber-200 text-amber-800">
+        <Info className="h-4 w-4 text-amber-600" />
         <AlertTitle className="text-sm font-semibold">Dica Angola</AlertTitle>
-        <AlertDescription className="text-xs text-klasse-gold-700">
+        <AlertDescription className="text-xs text-amber-700">
           No ensino médio, algumas disciplinas só existem em certas classes (ex.: Filosofia apenas na 12ª).
           Edite por classe e use trimestres para refletir a realidade.
         </AlertDescription>
@@ -1720,7 +1720,7 @@ function CourseCard({
             className={cx(
               "rounded-xl border p-4 mb-4",
               canPrepareTurmas
-                ? "border-klasse-gold-200 bg-klasse-gold-50/50"
+                ? "border-amber-200 bg-amber-50/50"
                 : "border-slate-200 bg-slate-50/50"
             )}
           >

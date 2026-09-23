@@ -150,7 +150,7 @@ export default function SandboxConfiguracoesPage() {
           <div className="relative z-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-bold">
-                <FlaskConical className="h-5 w-5 text-klasse-gold" />
+                <FlaskConical className="h-5 w-5 text-amber" />
                 Ambiente de Teste Isolado
               </h2>
               <p className="mt-1 text-sm text-slate-400">
@@ -161,7 +161,7 @@ export default function SandboxConfiguracoesPage() {
             {!simulating && !result && (
               <button
                 onClick={runSimulation}
-                className="group inline-flex items-center gap-2 rounded-full bg-klasse-gold px-6 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#D4A32C]"
+                className="group inline-flex items-center gap-2 rounded-full bg-amber px-6 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#D4A32C]"
               >
                 <Play className="h-4 w-4 fill-current" />
                 Rodar Simulação
@@ -170,7 +170,7 @@ export default function SandboxConfiguracoesPage() {
           </div>
 
           {/* BACKGROUND DECORATION */}
-          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-klasse-gold/10 blur-3xl"></div>
+          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber/10 blur-3xl"></div>
         </div>
 
         {/* LOADING STATE */}
@@ -178,7 +178,7 @@ export default function SandboxConfiguracoesPage() {
           <div className="py-12 text-center">
             <div className="mx-auto mb-4 h-2 w-64 overflow-hidden rounded-full bg-slate-100">
               <div 
-                className="h-full bg-klasse-gold transition-all duration-300 ease-out"
+                className="h-full bg-amber transition-all duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>

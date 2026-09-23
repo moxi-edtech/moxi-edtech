@@ -73,7 +73,7 @@ export default function Topbar({
           <NotificacoesDropdown />
           <LockScreenButton
             iconOnly
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
           />
 
           <div className="relative">
@@ -81,12 +81,12 @@ export default function Topbar({
               onClick={() => setMenuOpen((prev) => !prev)}
               className={cn(
                 "flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 h-10",
-                "hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                "hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/20"
               )}
               aria-label={`Menu do usuário - ${portalTitle}`}
             >
-              <div className="h-7 w-7 rounded-full bg-klasse-green/15 ring-1 ring-klasse-green/25 flex items-center justify-center">
-                <span className="text-[11px] font-bold text-klasse-green-900">{userInitial}</span>
+              <div className="h-7 w-7 rounded-full bg-emerald/15 ring-1 ring-emerald/25 flex items-center justify-center">
+                <span className="text-[11px] font-bold text-emerald-900">{userInitial}</span>
               </div>
               <div className="hidden sm:block text-left leading-4">
                 <div className="text-sm font-medium text-slate-900">{portalTitle}</div>

@@ -36,7 +36,7 @@ function statusBadge(totalEmAtraso?: number | null) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-klasse-green-200 bg-klasse-green-50 px-2 py-0.5 text-[11px] font-semibold text-klasse-green-700">
+    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
       <CheckCircle className="h-3 w-3" />
       Regular
     </span>
@@ -105,7 +105,7 @@ function OmniSearchInput({
           placeholder={placeholder}
           className={cx(
             "w-full rounded-xl border border-slate-200 bg-white pl-12 pr-10 font-medium text-slate-900 leading-none placeholder:text-slate-400",
-            "focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20",
+            "focus:border-amber focus:ring-4 focus:ring-amber/20",
             sizeStyles
           )}
           value={query}
@@ -145,7 +145,7 @@ function OmniSearchInput({
                 className={cx(
                   "flex w-full items-center justify-between gap-3 px-4 py-3 text-left",
                   "border-b border-slate-100 last:border-b-0",
-                  isActive ? "bg-klasse-gold/10" : "hover:bg-slate-50"
+                  isActive ? "bg-amber/10" : "hover:bg-slate-50"
                 )}
               >
                 <div className="min-w-0">

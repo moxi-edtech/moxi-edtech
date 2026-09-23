@@ -103,7 +103,7 @@ export function SchoolRow({
           <button 
             title="Ver Portal" 
             onClick={() => onEnterPortal(school.id)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold/10 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber/10 transition-all"
           >
             <Eye size={16} />
             <span className="hidden md:inline text-xs font-semibold">Ver</span>
@@ -112,7 +112,7 @@ export function SchoolRow({
           <button 
             title="Financeiro" 
             onClick={() => onSendBilling(school.id)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold/10 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber/10 transition-all"
           >
             <CreditCard size={16} />
             <span className="hidden md:inline text-xs font-semibold">Financeiro</span>
@@ -121,7 +121,7 @@ export function SchoolRow({
           <button 
             title="Editar Unidade" 
             onClick={() => onEdit(school)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold/10 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber/10 transition-all"
           >
             <Pencil size={16} />
             <span className="hidden md:inline text-xs font-semibold">Editar</span>
@@ -132,7 +132,7 @@ export function SchoolRow({
           <button 
             title={String(school.status).toLowerCase() === 'suspensa' ? 'Reactivar' : 'Suspender'} 
             onClick={() => onSuspend(school)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold/10 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber/10 transition-all"
           >
             <Power size={16} />
             <span className="hidden md:inline text-xs font-semibold">{String(school.status).toLowerCase() === 'suspensa' ? 'Reativar' : 'Suspender'}</span>
@@ -156,7 +156,7 @@ export function SchoolRow({
     return v === undefined || v === null ? fallback : v;
   };
 
-  const inputCls = "h-9 border border-slate-200 bg-white rounded-xl px-3 text-xs font-bold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 transition-all w-full";
+  const inputCls = "h-9 border border-slate-200 bg-white rounded-xl px-3 text-xs font-bold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20 transition-all w-full";
 
   const renderEditing = () => (
     <tr className="bg-[#1F6B3B]/5">
@@ -195,7 +195,7 @@ export function SchoolRow({
           <button 
             disabled={String(saving) === String(school.id)} 
             onClick={() => onSave(school.id)}
-            className="h-9 px-3 rounded-xl bg-klasse-gold text-white inline-flex items-center gap-2 hover:brightness-95 shadow-sm"
+            className="h-9 px-3 rounded-xl bg-amber text-white inline-flex items-center gap-2 hover:brightness-95 shadow-sm"
           >
             {String(saving) === String(school.id) ? <span className="animate-spin text-[10px]">...</span> : <Check size={16} />}
             <span className="hidden md:inline text-xs font-semibold">Guardar</span>

@@ -298,13 +298,13 @@ export function ViradaWizard() {
                   completed
                     ? "border-emerald-200 bg-emerald-50"
                     : active
-                      ? "border-klasse-gold/60 bg-klasse-gold/10 ring-2 ring-klasse-gold/10"
+                      ? "border-amber/60 bg-amber/10 ring-2 ring-amber/10"
                       : "border-slate-200 bg-slate-50"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className={`flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-black ${
-                    completed ? "bg-emerald-600 text-white" : active ? "bg-klasse-gold text-slate-950" : "bg-white text-slate-400"
+                    completed ? "bg-emerald-600 text-white" : active ? "bg-amber text-slate-950" : "bg-white text-slate-400"
                   }`}>
                     {completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
                   </span>
@@ -327,7 +327,7 @@ export function ViradaWizard() {
         <div className="w-full max-w-3xl relative z-10">
           <div className="text-center mb-10">
             <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-xl shadow-slate-200/50 ring-1 ring-slate-100/50">
-                {currentStep === 0 && <Zap className="h-7 w-7 text-klasse-gold fill-current" />}
+                {currentStep === 0 && <Zap className="h-7 w-7 text-amber fill-current" />}
                 {currentStep === 1 && <Users className="h-7 w-7 text-orange-500" />}
                 {currentStep === 2 && <ShieldCheck className="h-7 w-7 text-emerald-600" />}
             </div>
@@ -373,7 +373,7 @@ export function ViradaWizard() {
                         </div>
                     ) : (
                         step0Issues.map((issue) => (
-                            <div key={issue.id} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-klasse-gold/50 hover:shadow-md transition-all duration-300">
+                            <div key={issue.id} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-amber/50 hover:shadow-md transition-all duration-300">
                                 <div className="flex flex-wrap items-center justify-between gap-6">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 rounded-2xl bg-amber-50 text-amber-500 group-hover:scale-110 transition-transform">
@@ -391,7 +391,7 @@ export function ViradaWizard() {
                                             size="sm" 
                                             tone="gold" 
                                             variant="ghost" 
-                                            className="h-10 gap-2 font-black border-2 border-klasse-gold/20 hover:border-klasse-gold"
+                                            className="h-10 gap-2 font-black border-2 border-amber/20 hover:border-amber"
                                             loading={issue.action.loading}
                                             onClick={issue.action.handler}
                                         >
@@ -471,7 +471,7 @@ export function ViradaWizard() {
             {saving && <span className="text-[10px] font-black uppercase text-slate-300 animate-pulse tracking-widest">Salvando Progresso...</span>}
             <Button 
               tone="gold" 
-              className="h-12 px-10 gap-2 font-black rounded-2xl shadow-lg shadow-klasse-gold/20"
+              className="h-12 px-10 gap-2 font-black rounded-2xl shadow-lg shadow-amber/20"
               loading={saving}
               disabled={currentStep === STEPS.length - 1 || !canProceed}
               onClick={() => saveProgress(currentStep + 1)}

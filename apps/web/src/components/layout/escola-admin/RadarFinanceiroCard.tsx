@@ -130,11 +130,11 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
       <div className="p-5 border-b border-slate-100 flex flex-col gap-3">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-klasse-gold-50 text-klasse-gold-700">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
               <AlertCircle className="h-5 w-5" />
             </div>
             <div>
-              <SecaoLabel className="text-klasse-green">Financeiro</SecaoLabel>
+              <SecaoLabel className="text-emerald">Financeiro</SecaoLabel>
               <h3 className="mt-1 text-sm font-bold tracking-tight text-slate-900">Radar Financeiro</h3>
               <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                 {totalAlunos > 0 ? (
@@ -148,7 +148,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
           {totalAlunos > 0 && (
             <Link
               href={contextualLinkHref}
-              className="text-[11px] font-bold uppercase tracking-wider text-klasse-green hover:underline flex items-center gap-0.5 mt-1 shrink-0"
+              className="text-[11px] font-bold uppercase tracking-wider text-emerald hover:underline flex items-center gap-0.5 mt-1 shrink-0"
             >
               Ver todos <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -182,8 +182,8 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
       <div className="flex-1 flex flex-col">
         {totalAlunos === 0 ? (
           /* Celebratory empty state — §4 Graciosidade */
-          <div className="flex flex-col items-center justify-center flex-1 min-h-[220px] p-6 text-center border-t border-klasse-green-100 bg-klasse-green-50/30">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-klasse-green-50 text-klasse-green border border-klasse-green-100 shadow-sm">
+          <div className="flex flex-col items-center justify-center flex-1 min-h-[220px] p-6 text-center border-t border-emerald-100 bg-emerald-50/30">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald border border-emerald-100 shadow-sm">
               <CheckCircle2 className="h-7 w-7" />
             </div>
             <h4 className="text-sm font-bold text-slate-900 mb-1">Inadimplência Zero</h4>
@@ -192,7 +192,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
             </p>
             <Link
               href={contextualLinkHref}
-              className="text-xs font-bold text-klasse-green hover:text-klasse-green-700 transition-colors flex items-center gap-1 group"
+              className="text-xs font-bold text-emerald hover:text-emerald-700 transition-colors flex items-center gap-1 group"
             >
               Ver histórico de cobranças
               <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -228,7 +228,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                     <button
                       type="button"
                       onClick={() => setExpandedItemId((current) => current === item.aluno_id ? null : item.aluno_id)}
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-offset-2"
                       aria-label={`Ver detalhes da dívida de ${nome}`}
                       aria-expanded={expandedItemId === item.aluno_id}
                     >
@@ -236,7 +236,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                         {initials}
                       </div>
                       <div className="min-w-0 flex flex-col gap-0.5">
-                        <p className="text-sm font-bold text-slate-900 truncate group-hover:text-klasse-green transition-colors">
+                        <p className="text-sm font-bold text-slate-900 truncate group-hover:text-emerald transition-colors">
                           {nome}
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -257,9 +257,9 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                           {item.tendencia && (
                             <>
                               <span className="text-slate-200">·</span>
-                              {item.tendencia === "piorando" && <ArrowUp className="h-3 w-3 text-klasse-gold-700" aria-label="Piorando" />}
+                              {item.tendencia === "piorando" && <ArrowUp className="h-3 w-3 text-amber-700" aria-label="Piorando" />}
                               {item.tendencia === "estavel" && <Minus className="h-3 w-3 text-slate-400" aria-label="Estável" />}
-                              {item.tendencia === "melhorando" && <ArrowDown className="h-3 w-3 text-klasse-green" aria-label="Melhorando" />}
+                              {item.tendencia === "melhorando" && <ArrowDown className="h-3 w-3 text-emerald" aria-label="Melhorando" />}
                             </>
                           )}
                         </div>
@@ -269,7 +269,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                     <button
                       type="button"
                       onClick={() => setExpandedItemId((current) => current === item.aluno_id ? null : item.aluno_id)}
-                      className="flex shrink-0 flex-col rounded-lg pl-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2 sm:items-end sm:pl-0"
+                      className="flex shrink-0 flex-col rounded-lg pl-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-offset-2 sm:items-end sm:pl-0"
                       aria-label={`Ver detalhes da dívida de ${nome}`}
                       aria-expanded={expandedItemId === item.aluno_id}
                     >
@@ -320,7 +320,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
           {totalAlunos > 5 && (
             <Link
               href={contextualLinkHref}
-              className="font-bold text-slate-500 hover:text-klasse-green transition-colors flex items-center gap-1 group"
+              className="font-bold text-slate-500 hover:text-emerald transition-colors flex items-center gap-1 group"
             >
               Ver todos os {totalAlunos} casos
               <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />

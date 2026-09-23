@@ -138,7 +138,7 @@ export default function Sidebar({
       {/* Header / Brand */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800/80">
         <Link href={homeHref} className="flex items-center gap-3 min-w-0" aria-label="Ir para a home do portal">
-          <div className="h-10 w-10 rounded-xl bg-klasse-gold/15 ring-1 ring-klasse-gold/30 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-amber/15 ring-1 ring-amber/30 flex items-center justify-center">
             <Image
               src="/logo-klasse-ui.png"
               alt="KLASSE"
@@ -160,7 +160,7 @@ export default function Sidebar({
           onClick={() => setCollapsed((v) => !v)}
           className={cn(
             "hidden md:inline-flex h-9 w-9 items-center justify-center rounded-lg",
-            "hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+            "hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
           )}
           aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
         >

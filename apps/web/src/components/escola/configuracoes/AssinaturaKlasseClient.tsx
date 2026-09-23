@@ -399,7 +399,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
                     {beneficiosPlano.map((item) => (
                       <div key={item.label} className="flex items-center justify-between">
                         <span>{item.label}</span>
-                        <span className={`font-semibold ${item.enabled ? "text-klasse-green-600" : "text-slate-400"}`}>
+                        <span className={`font-semibold ${item.enabled ? "text-emerald-600" : "text-slate-400"}`}>
                           {item.enabled ? "Ativo" : "Indisponível"}
                         </span>
                       </div>

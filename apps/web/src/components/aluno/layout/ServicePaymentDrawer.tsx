@@ -123,13 +123,13 @@ export function ServicePaymentDrawer({
             <p className="text-lg font-black text-slate-900">{documento.nome}</p>
             <div className="mt-4 flex items-center justify-between">
                 <span className="text-sm text-slate-500">Valor a pagar:</span>
-                <span className="text-xl font-black text-klasse-green">{money.format(documento.valor)}</span>
+                <span className="text-xl font-black text-emerald">{money.format(documento.valor)}</span>
             </div>
           </div>
 
           {dadosPagamento && (
-            <div className="mb-6 rounded-2xl bg-klasse-green-50/50 p-4 border border-klasse-green-100">
-                <p className="text-[10px] font-bold text-klasse-green-700 uppercase tracking-widest mb-3">Coordenadas para Pagamento</p>
+            <div className="mb-6 rounded-2xl bg-emerald-50/50 p-4 border border-emerald-100">
+                <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mb-3">Coordenadas para Pagamento</p>
                 <div className="space-y-2 text-sm text-slate-700 font-medium">
                     {dadosPagamento.banco && <p><span className="text-slate-400 font-normal">Banco:</span> {dadosPagamento.banco}</p>}
                     {dadosPagamento.iban && (
@@ -152,7 +152,7 @@ export function ServicePaymentDrawer({
                     value={mensagem}
                     onChange={(e) => setMensagem(e.target.value)}
                     placeholder="Alguma observação sobre o pagamento?"
-                    className="w-full rounded-2xl border-slate-200 text-sm focus:ring-klasse-green focus:border-klasse-green p-4 bg-slate-50 border-0"
+                    className="w-full rounded-2xl border-slate-200 text-sm focus:ring-emerald focus:border-emerald p-4 bg-slate-50 border-0"
                     rows={2}
                     disabled={sending}
                 />
@@ -170,17 +170,17 @@ export function ServicePaymentDrawer({
                 <label 
                     htmlFor="doc-upload"
                     className={`flex flex-col items-center justify-center gap-3 w-full py-8 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer ${
-                        sending ? 'bg-slate-50 border-slate-200' : 'bg-klasse-green-50/30 border-klasse-green-200 hover:bg-klasse-green-50'
+                        sending ? 'bg-slate-50 border-slate-200' : 'bg-emerald-50/30 border-emerald-200 hover:bg-emerald-50'
                     }`}
                 >
                     {sending ? (
                         <>
-                            <Loader2 size={32} className="text-klasse-green animate-spin" />
-                            <p className="text-sm font-bold text-klasse-green">Enviando... {progress}%</p>
+                            <Loader2 size={32} className="text-emerald animate-spin" />
+                            <p className="text-sm font-bold text-emerald">Enviando... {progress}%</p>
                         </>
                     ) : (
                         <>
-                            <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-klasse-green">
+                            <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-emerald">
                                 <Upload size={24} />
                             </div>
                             <div className="text-center">

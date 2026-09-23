@@ -255,7 +255,7 @@ export default function CentrosFormacaoTableClient() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Pesquisar por nome, sigla, município ou email"
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-klasse-green sm:max-w-md"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald sm:max-w-md"
         />
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={load} disabled={loading}>
@@ -479,7 +479,7 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
       onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
         active
-          ? "border-klasse-green bg-klasse-green text-white"
+          ? "border-emerald bg-emerald text-white"
           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
       }`}
     >

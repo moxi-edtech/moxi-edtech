@@ -266,7 +266,7 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
             placeholder="Procurar aluno ou turma na simulação..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-11 pl-11 pr-4 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:ring-4 focus:ring-klasse-gold/10 transition-all"
+            className="w-full h-11 pl-11 pr-4 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:ring-4 focus:ring-amber/10 transition-all"
           />
       </div>
 

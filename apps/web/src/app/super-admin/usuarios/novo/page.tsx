@@ -522,7 +522,7 @@ function Step2({
           </select>
           
           {!escolasLoading && !escolasError && escolas.length === 0 && (
-            <p className="text-sm text-klasse-gold-600 mt-1 flex items-center gap-1">
+            <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
               <InformationCircleIcon className="w-4 h-4" />
               Nenhuma escola encontrada
             </p>
@@ -795,7 +795,7 @@ function PasswordStrength({ password }: { password: string }) {
   const strengthConfig = {
     0: { label: 'Muito fraca', color: 'bg-red-500' },
     1: { label: 'Muito fraca', color: 'bg-red-500' },
-    2: { label: 'Fraca', color: 'bg-klasse-gold-500' },
+    2: { label: 'Fraca', color: 'bg-amber-500' },
     3: { label: 'Média', color: 'bg-yellow-500' },
     4: { label: 'Forte', color: 'bg-green-500' },
     5: { label: 'Excelente', color: 'bg-moxinexa-teal' },

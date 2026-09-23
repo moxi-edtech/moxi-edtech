@@ -470,12 +470,12 @@ export default function RadarInadimplenciaActive({
                 <p className="text-sm font-semibold">{item.nome_aluno} · {item.responsavel} · {item.telefone || "Sem telefone"}</p>
                 <label className="block text-sm text-slate-700">
                   Mensagem para {item.nome_aluno}
-                  <textarea value={mensagem} rows={4} className="mt-2 w-full rounded-xl border border-slate-200 p-3 focus:ring-4 focus:ring-klasse-gold/20"
+                  <textarea value={mensagem} rows={4} className="mt-2 w-full rounded-xl border border-slate-200 p-3 focus:ring-4 focus:ring-amber/20"
                     onChange={(event) => setRascunhos((prev) => prev.map((draft, i) => i === index ? { ...draft, mensagem: event.target.value } : draft))} />
                 </label>
                 {!telefoneValido && <p className="text-sm text-red-600">Telefone ausente ou inválido. Corrija o contacto do encarregado antes de abrir o WhatsApp.</p>}
                 {telefoneValido && mensagem.trim() && (
-                  <a href={`https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white">Abrir rascunho no WhatsApp</a>
+                  <a href={`https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white">Abrir rascunho no WhatsApp</a>
                 )}
               </div>
             );

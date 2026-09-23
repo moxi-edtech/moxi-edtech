@@ -625,17 +625,17 @@ function Step1Identificacao(props: {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-klasse-green">Identificação</h2>
+          <h2 className="text-lg font-semibold text-emerald">Identificação</h2>
           <p className="text-sm text-slate-500">
             Preencha o básico. O sistema salva automaticamente como rascunho.
           </p>
           {localRestored && !initialData && (
-            <p className="mt-1 text-xs text-klasse-green-700">
+            <p className="mt-1 text-xs text-emerald-700">
               Dados restaurados localmente após queda ou retorno.
             </p>
           )}
           {!canEditDraft && (
-            <p className="mt-1 text-xs text-klasse-gold-700">
+            <p className="mt-1 text-xs text-amber-700">
               Esta candidatura já foi submetida e não pode ser editada.
             </p>
           )}
@@ -691,7 +691,7 @@ function Step1Identificacao(props: {
           onChange={onChange}
           placeholder="Nome completo"
           disabled={!canEditDraft}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
         />
         {fieldErrors.nome_candidato && (
           <p className="text-xs text-red-600">{fieldErrors.nome_candidato}</p>
@@ -701,7 +701,7 @@ function Step1Identificacao(props: {
           value={form.tipo_documento ?? ""}
           onChange={onChange}
           disabled={!canEditDraft}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
         >
           <option value="">Tipo de documento</option>
           <option value="BI">BI</option>
@@ -720,7 +720,7 @@ function Step1Identificacao(props: {
           onChange={onChange}
           placeholder="Nº do documento"
           disabled={!canEditDraft}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
         />
         {fieldErrors.numero_documento && (
           <p className="text-xs text-red-600">{fieldErrors.numero_documento}</p>
@@ -732,7 +732,7 @@ function Step1Identificacao(props: {
           onChange={onChange}
           placeholder="Telefone"
           disabled={!canEditDraft}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
         />
         {fieldErrors.telefone && (
           <p className="text-xs text-red-600">{fieldErrors.telefone}</p>
@@ -744,7 +744,7 @@ function Step1Identificacao(props: {
           onChange={onChange}
           placeholder="Email"
           disabled={!canEditDraft}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
         />
       </div>
 
@@ -760,7 +760,7 @@ function Step1Identificacao(props: {
               setExtraOpen((prev) => !prev);
               setExtraTouched(true);
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-klasse-gold/40"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-amber/40"
           >
             {extraOpen ? "Ocultar" : "Completar"}
           </button>
@@ -774,14 +774,14 @@ function Step1Identificacao(props: {
               value={form.data_nascimento ?? ""}
               onChange={onChange}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <select
               name="sexo"
               value={form.sexo ?? ""}
               onChange={onChange}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             >
               <option value="">Gênero</option>
               <option value="M">Masculino</option>
@@ -796,7 +796,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Naturalidade"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -805,7 +805,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Província"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -814,7 +814,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Nome do pai"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -823,7 +823,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Nome da mãe"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -832,7 +832,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Nome do encarregado"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -841,7 +841,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Contacto do encarregado"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -850,20 +850,20 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Relação com o aluno"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             {fieldErrors.responsavel_contato && (
               <p className="text-xs text-red-600">{fieldErrors.responsavel_contato}</p>
             )}
             {familyLookupLoading ? <p className="text-xs text-slate-400">A procurar agregado familiar…</p> : null}
             {familySuggestion && form.agregado_familiar_id !== familySuggestion.id ? (
-              <div className="rounded-xl border border-klasse-green-100 bg-klasse-green-50/50 p-3 md:col-span-2">
-                <p className="text-xs font-bold text-klasse-green-800">Encontrámos um agregado familiar: {familySuggestion.nome}</p>
-                <p className="mt-1 text-[11px] text-klasse-green-700">Alunos associados: {familySuggestion.membros.join(", ") || "nenhum"}</p>
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 md:col-span-2">
+                <p className="text-xs font-bold text-emerald-800">Encontrámos um agregado familiar: {familySuggestion.nome}</p>
+                <p className="mt-1 text-[11px] text-emerald-700">Alunos associados: {familySuggestion.membros.join(", ") || "nenhum"}</p>
                 <button
                   type="button"
                   onClick={() => setForm((previous) => ({ ...previous, agregado_familiar_id: familySuggestion.id }))}
-                  className="mt-2 rounded-lg bg-klasse-green px-3 py-1.5 text-[11px] font-bold text-white"
+                  className="mt-2 rounded-lg bg-emerald px-3 py-1.5 text-[11px] font-bold text-white"
                 >
                   Associar a esta família
                 </button>
@@ -876,7 +876,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Email do encarregado"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -885,7 +885,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Endereço"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -894,7 +894,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="NIF"
               disabled={!canEditDraft}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <label className="flex items-center gap-2 text-xs text-slate-600">
               <input
@@ -903,7 +903,7 @@ function Step1Identificacao(props: {
                 checked={Boolean(form.mesmo_que_encarregado)}
                 onChange={onChange}
                 disabled={!canEditDraft}
-                className="rounded text-klasse-green focus:ring-klasse-green"
+                className="rounded text-emerald focus:ring-emerald"
               />
               Responsável financeiro igual ao encarregado
             </label>
@@ -914,7 +914,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="Responsável financeiro (nome)"
               disabled={!canEditDraft || Boolean(form.mesmo_que_encarregado)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
             <input
               type="text"
@@ -923,7 +923,7 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="NIF do responsável financeiro"
               disabled={!canEditDraft || Boolean(form.mesmo_que_encarregado)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             />
           </div>
         ) : null}
@@ -942,7 +942,7 @@ function Step1Identificacao(props: {
           type="button"
           onClick={handleNext}
           disabled={!isUuid(escolaId) || saving}
-          className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
         >
           Avançar
         </button>
@@ -1253,7 +1253,7 @@ function Step2FitAcademico(props: {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-klasse-green">Fit Acadêmico</h2>
+          <h2 className="text-lg font-semibold text-emerald">Fit Acadêmico</h2>
           <p className="text-sm text-slate-500">Selecione a turma preferencial.</p>
         </div>
 
@@ -1280,8 +1280,8 @@ function Step2FitAcademico(props: {
       )}
 
       {localRestored && !initialData && (
-        <div className="rounded-xl border border-klasse-green-200 bg-klasse-green-50 p-4">
-          <p className="text-sm font-semibold text-klasse-green-700">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-700">
             Dados restaurados localmente após queda ou retorno.
           </p>
         </div>
@@ -1292,7 +1292,7 @@ function Step2FitAcademico(props: {
           value={sel.cursoId}
           onChange={(e) => onSelectCurso(e.target.value)}
           disabled={loadingCfg || !safeUuid(candidaturaId) || !canEditDraft}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
         >
           <option value="">Filtrar por curso</option>
           {cursos.map((c) => (
@@ -1306,7 +1306,7 @@ function Step2FitAcademico(props: {
           value={sel.classeId}
           onChange={(e) => onSelectClasse(e.target.value)}
           disabled={loadingCfg || !safeUuid(candidaturaId) || !canEditDraft}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
         >
           <option value="">Filtrar por classe</option>
           {classOptions.map((c) => (
@@ -1340,8 +1340,8 @@ function Step2FitAcademico(props: {
                 className={[
                   "w-full rounded-xl border p-3 text-left text-sm transition",
                   active
-                    ? "border-klasse-gold/60 bg-klasse-gold/10 ring-1 ring-klasse-gold/25"
-                    : "border-slate-200 hover:border-klasse-gold/40",
+                    ? "border-amber/60 bg-amber/10 ring-1 ring-amber/25"
+                    : "border-slate-200 hover:border-amber/40",
                   !canEditDraft ? "cursor-not-allowed opacity-60" : "",
                 ].join(" ")}
               >
@@ -1378,14 +1378,14 @@ function Step2FitAcademico(props: {
       </div>
 
       {/* ACORDO FINANCEIRO (Novo) */}
-      <div className="bg-klasse-gold-50/50 border border-klasse-gold-100 rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-bold text-klasse-gold-900 flex items-center gap-2">
+      <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 space-y-4">
+        <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
           <Save className="w-4 h-4" />
           Acordo Financeiro Especial
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-klasse-gold-800 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
               Desconto (%)
             </label>
             <input
@@ -1398,12 +1398,12 @@ function Step2FitAcademico(props: {
                 onUpdateFinanceiro({ percentagemDesconto: val });
               }}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border-klasse-gold-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-klasse-gold-500/20 focus:border-klasse-gold-500 disabled:opacity-60"
+              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
               placeholder="Ex: 15"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-klasse-gold-800 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
               Motivo do Desconto
             </label>
             <select
@@ -1412,7 +1412,7 @@ function Step2FitAcademico(props: {
                 onUpdateFinanceiro({ motivoDesconto: e.target.value });
               }}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border-klasse-gold-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-klasse-gold-500/20 focus:border-klasse-gold-500 disabled:opacity-60"
+              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
             >
               <option value="">Sem desconto</option>
               <option value="Irmãos">Irmãos na Instituição</option>
@@ -1423,7 +1423,7 @@ function Step2FitAcademico(props: {
             </select>
           </div>
         </div>
-        <p className="text-[10px] text-klasse-gold-700 italic">
+        <p className="text-[10px] text-amber-700 italic">
           * Este desconto será aplicado automaticamente a todas as propinas geradas para esta matrícula.
         </p>
       </div>
@@ -1441,7 +1441,7 @@ function Step2FitAcademico(props: {
           type="button"
           onClick={onNext}
           disabled={!canAdvance}
-          className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
         >
           Avançar
         </button>
@@ -1580,7 +1580,7 @@ function AdmissionDuplicateDialog({
             <button
               type="button"
               onClick={onCorrectAdmission}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-amber/40"
             >
               <Edit3 className="h-4 w-4" />
               Corrigir dados
@@ -1588,7 +1588,7 @@ function AdmissionDuplicateDialog({
             <button
               type="button"
               onClick={onOpenExisting}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
             >
               <ExternalLink className="h-4 w-4" />
               {isDraftConflict ? "Retomar rascunho existente" : "Abrir aluno existente"}
@@ -2085,7 +2085,7 @@ function Step3Pagamento(props: {
     return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-klasse-green">Resultado</h2>
+          <h2 className="text-lg font-semibold text-emerald">Resultado</h2>
           <p className="text-sm font-semibold text-red-600">Erro: {result.error}</p>
         </div>
 
@@ -2093,7 +2093,7 @@ function Step3Pagamento(props: {
           <button
             type="button"
             onClick={() => setResult(null)}
-            className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+            className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
           >
             Tentar novamente
           </button>
@@ -2101,7 +2101,7 @@ function Step3Pagamento(props: {
             <button
               type="button"
               onClick={() => setResult(null)}
-              className="rounded-xl border border-klasse-gold/40 bg-klasse-gold/10 px-4 py-2 text-sm font-semibold text-klasse-green hover:bg-klasse-gold/20"
+              className="rounded-xl border border-amber/40 bg-amber/10 px-4 py-2 text-sm font-semibold text-emerald hover:bg-amber/20"
             >
               {result.action.label}
             </button>
@@ -2110,7 +2110,7 @@ function Step3Pagamento(props: {
             <button
               type="button"
               onClick={() => window.open(`/escola/${escolaId}/admin/configuracoes/calendario`, "_blank", "noopener,noreferrer")}
-              className="rounded-xl border border-klasse-gold/40 bg-klasse-gold/10 px-4 py-2 text-sm font-semibold text-klasse-green hover:bg-klasse-gold/20"
+              className="rounded-xl border border-amber/40 bg-amber/10 px-4 py-2 text-sm font-semibold text-emerald hover:bg-amber/20"
             >
               {result.action.label}
             </button>
@@ -2118,7 +2118,7 @@ function Step3Pagamento(props: {
           <button
             type="button"
             onClick={() => router.push(`${secretariaBase}/admissoes`)}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-amber/40"
           >
             Voltar ao radar
           </button>
@@ -2156,7 +2156,7 @@ function Step3Pagamento(props: {
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-sm font-semibold text-klasse-green">Resumo do Candidato</h3>
+              <h3 className="text-sm font-semibold text-emerald">Resumo do Candidato</h3>
               <p className="text-xs text-slate-500">
                 Dados bloqueados até ação explícita de edição.
               </p>
@@ -2164,7 +2164,7 @@ function Step3Pagamento(props: {
             <button
               type="button"
               onClick={onEditDados}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-klasse-gold/40"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-amber/40"
             >
               Editar Dados
             </button>
@@ -2204,7 +2204,7 @@ function Step3Pagamento(props: {
         </div>
       )}
       <div>
-        <h2 className="text-lg font-semibold text-klasse-green">Pagamento</h2>
+        <h2 className="text-lg font-semibold text-emerald">Pagamento</h2>
         <p className="text-sm text-slate-500">Confirme a matrícula diretamente pela secretaria.</p>
       </div>
 
@@ -2219,9 +2219,9 @@ function Step3Pagamento(props: {
               {servicos.map((service) => {
                 const checked = servicosSelecionados.includes(service.id);
                 return (
-                  <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-klasse-gold bg-amber-50" : "border-slate-200"}`}>
-                    <input type="checkbox" checked={checked} onChange={() => { setServicosSelecionados((current) => checked ? current.filter((id) => id !== service.id) : [...current, service.id]); if (!checked) setPayment((current) => ({ ...current, parcial: false, amount: "" })); }} className="mt-1 h-4 w-4 rounded border-slate-300 text-klasse-green" />
-                    <span className="min-w-0 text-sm"><span className="block font-semibold text-slate-800">{service.nome}</span><span className="block text-xs text-slate-500">{service.descricao || service.codigo}</span><span className="mt-1 block font-semibold text-klasse-green">{service.preco.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span></span>
+                  <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-amber bg-amber-50" : "border-slate-200"}`}>
+                    <input type="checkbox" checked={checked} onChange={() => { setServicosSelecionados((current) => checked ? current.filter((id) => id !== service.id) : [...current, service.id]); if (!checked) setPayment((current) => ({ ...current, parcial: false, amount: "" })); }} className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald" />
+                    <span className="min-w-0 text-sm"><span className="block font-semibold text-slate-800">{service.nome}</span><span className="block text-xs text-slate-500">{service.descricao || service.codigo}</span><span className="mt-1 block font-semibold text-emerald">{service.preco.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span></span>
                   </label>
                 );
               })}
@@ -2233,7 +2233,7 @@ function Step3Pagamento(props: {
           name="metodo_pagamento"
           value={payment.metodo_pagamento}
           onChange={onChange}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
         >
           <option value="CASH">Dinheiro</option>
           <option value="TPA">TPA</option>
@@ -2247,7 +2247,7 @@ function Step3Pagamento(props: {
             checked={payment.parcial}
             onChange={onChange}
             disabled={servicosSelecionados.length > 0}
-            className="h-4 w-4 rounded border-slate-300 text-klasse-green focus:ring-klasse-gold/40"
+            className="h-4 w-4 rounded border-slate-300 text-emerald focus:ring-amber/40"
           />
           Pagamento parcial
         </label>
@@ -2259,7 +2259,7 @@ function Step3Pagamento(props: {
             value={payment.amount}
             onChange={onChange}
             placeholder="Valor pago"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
           />
         ) : priceHint ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
@@ -2279,7 +2279,7 @@ function Step3Pagamento(props: {
             value={payment.referencia}
             onChange={onChange}
             placeholder="Referência do pagamento"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
           />
         )}
 
@@ -2289,7 +2289,7 @@ function Step3Pagamento(props: {
           value={payment.comprovativo_url}
           onChange={onChange}
           placeholder="URL do comprovativo"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
         />
       </div>
 
@@ -2308,7 +2308,7 @@ function Step3Pagamento(props: {
           type="button"
           onClick={() => void handleFinalizarMatricula()}
           disabled={loading || !canFinalize}
-          className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
         >
           {loading ? "Processando…" : "Finalizar matrícula"}
         </button>
@@ -2592,9 +2592,9 @@ export default function AdmissaoWizardClient({
   return (
     <div className="space-y-4">
       {!candidaturaId && !dismissedResumePrompt && draftItems.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-klasse-gold/40 bg-klasse-gold/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber/40 bg-amber/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-klasse-green">
+            <p className="text-sm font-semibold text-emerald">
               Tem uma candidatura em andamento
             </p>
             <p className="mt-1 text-xs text-slate-600">
@@ -2608,7 +2608,7 @@ export default function AdmissaoWizardClient({
               <button
                 type="button"
                 onClick={() => handleResume(draftItems[0].id)}
-                className="rounded-xl bg-klasse-green px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green/90"
+                className="rounded-xl bg-emerald px-3 py-2 text-xs font-semibold text-white hover:bg-emerald/90"
               >
                 Continuar candidatura
               </button>
@@ -2616,7 +2616,7 @@ export default function AdmissaoWizardClient({
               <button
                 type="button"
                 onClick={() => setShowDrafts(true)}
-                className="rounded-xl bg-klasse-green px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green/90"
+                className="rounded-xl bg-emerald px-3 py-2 text-xs font-semibold text-white hover:bg-emerald/90"
               >
                 Ver candidaturas
               </button>
@@ -2637,7 +2637,7 @@ export default function AdmissaoWizardClient({
         </div>
       )}
       <div className="flex items-start justify-between gap-3">
-        <h1 className="text-xl font-semibold text-klasse-green">Nova Admissão</h1>
+        <h1 className="text-xl font-semibold text-emerald">Nova Admissão</h1>
         <div className="relative">
           <button
             type="button"
@@ -2645,7 +2645,7 @@ export default function AdmissaoWizardClient({
               setShowDrafts((prev) => !prev);
               if (!showDrafts) void loadDrafts();
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-klasse-gold/40"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-amber/40"
           >
             Retomar rascunho
           </button>

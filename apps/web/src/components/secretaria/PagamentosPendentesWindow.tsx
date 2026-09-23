@@ -528,7 +528,7 @@ function RecebimentoApprovalModal({
           </div>
         ) : null}
         <p className="text-xs text-slate-500">Confira no comprovativo a referência da operação bancária. Ela não é extraída automaticamente deste documento.</p>
-        <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-sm text-klasse-gold-900">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <p className="font-bold">Depois da aprovação</p>
           <p className="mt-1">{consequence}</p>
         </div>

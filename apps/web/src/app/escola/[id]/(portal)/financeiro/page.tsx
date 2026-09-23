@@ -299,7 +299,7 @@ export default async function FinanceiroDashboardPage({
                 href={hrefForTab(tab.id)}
                 className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                   active
-                    ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
+                    ? "bg-slate-900 text-amber ring-1 ring-amber/25"
                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                 }`}
               >
@@ -324,7 +324,7 @@ export default async function FinanceiroDashboardPage({
                 <Card title="Cobrado" value={kwanza.format(realizado)} valueClassName="text-[#1F6B3B]" helper={`+${percentPago}% do previsto`} icon={<Wallet />} />
                 <Card title="Previsto" value={kwanza.format(previsto)} valueClassName="text-slate-700" helper="Meta do mês" icon={<TrendingUp />} />
                 <Card title="Em Atraso" value={kwanza.format(inadimplenciaTotal)} valueClassName="text-rose-600" helper={`${alunosInadimplentes} alunos`} icon={<AlertCircle />} />
-                <Card title="Descontos / Pendências" value={kwanza.format(totalPendentes)} valueClassName="text-klasse-gold-600" helper="Itens a regularizar" icon={<BadgePercent />} />
+                <Card title="Descontos / Pendências" value={kwanza.format(totalPendentes)} valueClassName="text-amber-600" helper="Itens a regularizar" icon={<BadgePercent />} />
               </section>
 
               <section className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
@@ -337,7 +337,7 @@ export default async function FinanceiroDashboardPage({
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-klasse-green-400 shadow-[0_0_14px_rgba(34,197,94,0.35)]"
+                    className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-emerald-400 shadow-[0_0_14px_rgba(34,197,94,0.35)]"
                     style={{ width: `${Math.max(0, Math.min(100, percentPago))}%` }}
                   />
                 </div>
@@ -379,7 +379,7 @@ export default async function FinanceiroDashboardPage({
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-bold text-rose-600">{kwanza.format(Number(row.valor_em_atraso ?? 0))}</div>
-                        <Link href={`/escola/${escolaParam}/financeiro/pagamentos?aluno=${row.aluno_id}`} className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white hover:brightness-95">
+                        <Link href={`/escola/${escolaParam}/financeiro/pagamentos?aluno=${row.aluno_id}`} className="rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-white hover:brightness-95">
                           Registar
                         </Link>
                         <Link href={`/escola/${escolaParam}/financeiro/radar?aluno=${row.aluno_id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
@@ -421,7 +421,7 @@ export default async function FinanceiroDashboardPage({
                 <ChecklistItem ok={totalPendentes === 0} label="Conciliações pendentes resolvidas" detail={`${totalPendentes} pendências`} />
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                <Link href={`/escola/${escolaParam}/financeiro/fecho`} className="rounded-lg bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
+                <Link href={`/escola/${escolaParam}/financeiro/fecho`} className="rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
                   Abrir fecho do mês
                 </Link>
                 <Link href={`/escola/${escolaParam}/financeiro/relatorios/fluxo-caixa`} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
@@ -635,7 +635,7 @@ function Card({
     >
       <div className="flex items-center justify-between">
         <span className="text-sm text-slate-600">{title}</span>
-        <div className="text-klasse-gold-400">{icon}</div>
+        <div className="text-amber-400">{icon}</div>
       </div>
       <div className={`text-2xl font-bold ${valueClassName || "text-slate-900"}`}>{value}</div>
       {helper && <div className="text-xs text-slate-500">{helper}</div>}
@@ -659,7 +659,7 @@ function QuickLink({
       href={href}
       className="group bg-white border border-slate-200/70 p-5 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col gap-3"
     >
-      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-klasse-gold-500">
+      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-amber-500">
         {icon}
       </div>
 
@@ -668,7 +668,7 @@ function QuickLink({
         <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
       </div>
 
-      <div className="flex items-center gap-1 text-klasse-green-500 text-sm font-medium group-hover:underline mt-auto pt-2">
+      <div className="flex items-center gap-1 text-emerald-500 text-sm font-medium group-hover:underline mt-auto pt-2">
         Aceder
         <ArrowRight className="h-4 w-4" />
       </div>

@@ -75,7 +75,7 @@ export default function QuadroHorariosPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
-        <Spinner className="text-klasse-gold" size={24} />
+        <Spinner className="text-amber" size={24} />
         <span className="ml-3 text-sm">A carregar quadro...</span>
       </div>
     }>
@@ -1506,7 +1506,7 @@ function QuadroHorariosContent() {
   if (isLoading && !turmaId) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
-        <Spinner className="text-klasse-gold" size={24} />
+        <Spinner className="text-amber" size={24} />
         <span className="ml-3 text-sm">Carregando quadro...</span>
       </div>
     );
@@ -1581,7 +1581,7 @@ function QuadroHorariosContent() {
                 }
                 setTurmaId(nextTurmaId);
               }}
-              className="max-w-xs rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold text-slate-900"
+              className="max-w-xs rounded-xl border-slate-200 focus:border-amber focus:ring-amber text-slate-900"
             />            {selectedTurma?.sala ? (
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
                 Sala {selectedTurma.sala}
@@ -1608,12 +1608,12 @@ function QuadroHorariosContent() {
             </button>
             {isLoading ? (
               <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Spinner size={14} className="text-klasse-gold" />
+                <Spinner size={14} className="text-amber" />
                 Sincronizando dados...
               </div>
             ) : null}
             {showOfflineStatus ? (
-              <div className="flex items-center gap-2 rounded-full bg-klasse-gold-100 px-3 py-1 text-xs font-semibold text-klasse-gold-800">
+              <div className="flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                 <WifiOff className="h-3 w-3" />
                 Modo offline
               </div>
@@ -1622,7 +1622,7 @@ function QuadroHorariosContent() {
             {turmaError ? <span className="text-xs text-rose-600">{turmaError}</span> : null}
             {saveError ? <span className="text-xs text-rose-600">{saveError}</span> : null}
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Save className={`h-4 w-4 ${saving ? "text-klasse-gold" : "text-slate-300"}`} />
+              <Save className={`h-4 w-4 ${saving ? "text-amber" : "text-slate-300"}`} />
               <span>
                 {saving ? "Salvando..." : autoDraftDirty ? "Proposta não salva" : "Alterações prontas"}
               </span>
@@ -1719,7 +1719,7 @@ function QuadroHorariosContent() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold text-slate-500 uppercase">Pendências de carga</p>
-              <p className="text-2xl font-bold text-klasse-gold-600 mt-2">{missingLoadCount}</p>
+              <p className="text-2xl font-bold text-amber-600 mt-2">{missingLoadCount}</p>
               <p className="text-xs text-slate-500 mt-1">Sem carga definida</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -1743,7 +1743,7 @@ function QuadroHorariosContent() {
               {disciplinasPendentes.slice(0, 6).map((disc) => (
                 <span
                   key={disc.id}
-                  className="rounded-full border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-1 text-xs font-semibold text-klasse-gold-700"
+                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
                 >
                   {disc.disciplina} {disc.temposAlocados}/{disc.temposTotal || "?"}
                 </span>
@@ -1778,7 +1778,7 @@ function QuadroHorariosContent() {
           </div>
         )}
         {missingLoadCount > 0 && (
-          <div className="mb-4 rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
+          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
             <div className="mt-1">Pode publicar agora e ajustar as cargas depois em poucos cliques.</div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -1786,7 +1786,7 @@ function QuadroHorariosContent() {
                 type="button"
                 onClick={() => handleAutoConfigurar({ rerunAutoComplete: true })}
                 disabled={autoConfiguring}
-                className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                className="rounded-lg bg-amber px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
               >
                 {autoConfiguring ? "Ajustando..." : "Preencher e redistribuir"}
               </button>
@@ -1795,7 +1795,7 @@ function QuadroHorariosContent() {
               {missingLoadSuggestions.slice(0, 6).map((disc) => (
                 <div
                   key={disc.id}
-                  className="flex flex-col gap-2 rounded-xl border border-klasse-gold-200 bg-white/80 p-3 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-white/80 p-3 md:flex-row md:items-center md:justify-between"
                 >
                   <div>
                     <div className="font-semibold text-slate-900">{disc.disciplina}</div>
@@ -1812,7 +1812,7 @@ function QuadroHorariosContent() {
                         onClick={() =>
                           applySuggestedLoad(disc.id, disc.suggestedHours, { rerunAutoComplete: true })
                         }
-                        className="rounded-lg border border-klasse-gold-300 bg-klasse-gold-100 px-3 py-2 text-xs font-bold text-klasse-gold-900"
+                        className="rounded-lg border border-amber-300 bg-amber-100 px-3 py-2 text-xs font-bold text-amber-900"
                       >
                         Usar MED {disc.suggestedHours}h e redistribuir
                       </button>
@@ -1921,7 +1921,7 @@ function QuadroHorariosContent() {
                 handleAddSala(novaSala);
                 setNovaSala("");
               }}
-              className="h-10 w-52 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold"
+              className="h-10 w-52 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-amber focus:ring-1 focus:ring-amber"
             />
             <button
               type="button"
@@ -1930,7 +1930,7 @@ function QuadroHorariosContent() {
                 handleAddSala(novaSala);
                 setNovaSala("");
               }}
-              className="h-10 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-slate-950 shadow-sm"
+              className="h-10 rounded-xl bg-amber px-4 text-sm font-semibold text-slate-950 shadow-sm"
             >
               Adicionar sala
             </button>

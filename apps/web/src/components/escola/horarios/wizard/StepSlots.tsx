@@ -180,7 +180,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <div className="p-4 rounded-2xl bg-white shadow-sm border border-slate-100">
-            <Clock className="h-8 w-8 text-klasse-gold" />
+            <Clock className="h-8 w-8 text-amber" />
           </div>
           <div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">Grade de Tempos</h2>
@@ -205,7 +205,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
               onClick={() => setActiveTurno(t.id)}
               className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
                 activeTurno === t.id 
-                  ? "bg-white text-klasse-gold shadow-sm ring-1 ring-slate-200" 
+                  ? "bg-white text-amber shadow-sm ring-1 ring-slate-200"
                   : "text-slate-400 hover:text-slate-600"
               }`}
             >
@@ -287,7 +287,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
                   min={1}
                   value={newSlot.ordem}
                   onChange={e => setNewSlot(v => ({ ...v, ordem: parseInt(e.target.value) }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-klasse-gold focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
               <div className="flex items-end">
@@ -296,7 +296,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
                     type="checkbox"
                     checked={newSlot.is_intervalo}
                     onChange={e => setNewSlot(v => ({ ...v, is_intervalo: e.target.checked }))}
-                    className="w-5 h-5 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                    className="w-5 h-5 rounded border-slate-300 text-amber focus:ring-amber"
                   />
                   <span className="text-xs font-bold text-slate-700">É Intervalo?</span>
                 </label>
@@ -308,7 +308,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
                   required
                   value={newSlot.inicio}
                   onChange={e => setNewSlot(v => ({ ...v, inicio: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-klasse-gold focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
               <div>
@@ -318,7 +318,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
                   required
                   value={newSlot.fim}
                   onChange={e => setNewSlot(v => ({ ...v, fim: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-klasse-gold focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
             </div>

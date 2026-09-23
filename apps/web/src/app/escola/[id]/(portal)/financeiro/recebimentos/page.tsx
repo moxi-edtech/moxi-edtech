@@ -59,7 +59,7 @@ export default async function RecebimentosPage({
           actions={
             <Link
               href={`/escola/${escolaParam}/operacoes/financeiro/cobrancas`}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-klasse-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-klasse-green-700"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" /> Registar recebimento
             </Link>
@@ -89,7 +89,7 @@ export default async function RecebimentosPage({
                             href={`?vista=historico&days=${period}&q=${encodeURIComponent(q)}`}
                             className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
                               days === period
-                                ? "border-klasse-green-600 bg-klasse-green-600 text-white"
+                                ? "border-emerald-600 bg-emerald-600 text-white"
                                 : "border-slate-200 text-slate-600 hover:bg-slate-50"
                             }`}
                           >

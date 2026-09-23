@@ -210,7 +210,7 @@ export default function ReciboPagamentoCompacto({
         <div className={`grid grid-cols-[1fr_auto] items-center gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-2 print:px-2.5 print:py-1.5" : isPrintCompact ? "print:gap-3 print:px-3 print:py-1.5" : "print:px-3 print:py-2"}`}>
           <div className="min-w-0">
             <p className={`text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isUltraDensePrint ? "print:text-[7px]" : "print:text-[8px]"}`}>Valor Pago</p>
-            <p className={`truncate text-xl font-bold leading-tight text-klasse-gold ${isUltraDensePrint ? "print:text-[15px]" : "print:text-lg"}`} title={formatMoney(valorPago)}>
+            <p className={`truncate text-xl font-bold leading-tight text-amber ${isUltraDensePrint ? "print:text-[15px]" : "print:text-lg"}`} title={formatMoney(valorPago)}>
               {formatMoney(valorPago)}
             </p>
           </div>

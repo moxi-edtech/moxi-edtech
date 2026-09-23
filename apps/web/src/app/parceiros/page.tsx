@@ -146,7 +146,7 @@ export default function AfiliadosEntryPage() {
               autoFocus
               type="text"
               placeholder="EX: CLARUS10"
-              className="w-full p-4 rounded-xl border border-slate-800 bg-[#0a0b0f] text-white placeholder:text-slate-800 outline-none transition-all text-center text-lg font-black uppercase tracking-widest focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold/20"
+              className="w-full p-4 rounded-xl border border-slate-800 bg-[#0a0b0f] text-white placeholder:text-slate-800 outline-none transition-all text-center text-lg font-black uppercase tracking-widest focus:border-amber focus:ring-1 focus:ring-amber/20"
               value={code}
               onChange={(e) => {
                 setCode(e.target.value);
@@ -174,7 +174,7 @@ export default function AfiliadosEntryPage() {
                 </label>
                 <div className="relative">
                   <select
-                    className="w-full rounded-xl border border-slate-800 bg-[#0a0b0f] px-4 py-3.5 text-sm font-bold text-white outline-none transition-all focus:border-klasse-gold cursor-pointer appearance-none"
+                    className="w-full rounded-xl border border-slate-800 bg-[#0a0b0f] px-4 py-3.5 text-sm font-bold text-white outline-none transition-all focus:border-amber cursor-pointer appearance-none"
                     value={selectedMemberId}
                     onChange={(e) => setSelectedMemberId(e.target.value)}
                   >
@@ -199,7 +199,7 @@ export default function AfiliadosEntryPage() {
                   <input
                     type="password"
                     placeholder="PIN"
-                    className="w-full rounded-xl border border-slate-800 bg-[#0a0b0f] py-3.5 pl-12 pr-4 text-center text-lg font-bold tracking-[0.2em] text-white outline-none transition-all placeholder:text-slate-800 focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold/20"
+                    className="w-full rounded-xl border border-slate-800 bg-[#0a0b0f] py-3.5 pl-12 pr-4 text-center text-lg font-bold tracking-[0.2em] text-white outline-none transition-all placeholder:text-slate-800 focus:border-amber focus:ring-1 focus:ring-amber/20"
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
                   />
@@ -210,7 +210,7 @@ export default function AfiliadosEntryPage() {
 
           <div className="space-y-4">
             <Button
-              className="w-full py-6 rounded-xl bg-klasse-gold hover:bg-klasse-gold/90 text-slate-950 font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 border-0"
+              className="w-full py-6 rounded-xl bg-amber hover:bg-amber/90 text-slate-950 font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 border-0"
               disabled={
                 !code.trim() ||
                 isLoading ||

@@ -25,7 +25,7 @@ interface QuickAction {
 
 const RISK_CONFIG: Record<RiskLevel, { dot: string; bg: string; text: string }> = {
   low: { dot: "bg-slate-400", bg: "bg-slate-50", text: "text-slate-600" },
-  medium: { dot: "bg-klasse-gold", bg: "bg-klasse-gold/5", text: "text-klasse-gold" },
+  medium: { dot: "bg-amber", bg: "bg-amber/5", text: "text-amber" },
   high: { dot: "bg-rose-500", bg: "bg-rose-50", text: "text-rose-600" },
 };
 
@@ -280,7 +280,7 @@ export default function QuickActionsSection() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => executeAction(action)}
                   disabled={Boolean(action.disabledReason)}
-                  className="group relative flex w-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 text-left transition-all hover:border-klasse-gold/30 hover:shadow-xl hover:shadow-klasse-gold/5 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="group relative flex w-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 text-left transition-all hover:border-amber/30 hover:shadow-xl hover:shadow-amber/5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {/* Background Accents */}
                   <div className={`absolute -right-4 -top-4 h-16 w-16 rounded-full transition-all group-hover:scale-150 ${RISK_CONFIG[action.risk_level].bg}`} />
@@ -298,7 +298,7 @@ export default function QuickActionsSection() {
                         )}
                       </div>
 
-                      <h4 className="text-base font-bold text-slate-950 group-hover:text-klasse-green transition-colors">
+                      <h4 className="text-base font-bold text-slate-950 group-hover:text-emerald transition-colors">
                         {action.label}
                       </h4>
                       <p className="mt-2 text-xs leading-relaxed text-slate-500 line-clamp-2">

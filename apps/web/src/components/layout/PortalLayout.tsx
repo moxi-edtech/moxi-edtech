@@ -47,7 +47,7 @@ const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
 // Componente de Logo
 const Logo = ({ collapsed = false, href = "/" }: { collapsed?: boolean; href?: string }) => (
   <Link href={href} className="px-3 py-3 flex items-center gap-3 overflow-hidden" aria-label="Ir para a home do portal">
-    <div className="h-10 w-10 shrink-0 rounded-xl bg-klasse-gold-500/15 ring-1 ring-klasse-gold-500/30 flex items-center justify-center">
+    <div className="h-10 w-10 shrink-0 rounded-xl bg-amber-500/15 ring-1 ring-amber-500/30 flex items-center justify-center">
       <Image src="/logo-klasse-ui.png" alt="KLASSE" width={22} height={22} className="h-5 w-5 object-contain" />
     </div>
     {!collapsed && (

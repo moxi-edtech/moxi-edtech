@@ -115,7 +115,7 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
             <div className="flex flex-col items-end rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Licenças Disponíveis</span>
               <div className="flex items-baseline gap-1">
-                <span className={`text-xl font-bold ${licencasTotais !== null && licencasDisponiveis <= 5 ? 'text-rose-600' : 'text-klasse-gold'}`}>
+                <span className={`text-xl font-bold ${licencasTotais !== null && licencasDisponiveis <= 5 ? 'text-rose-600' : 'text-amber'}`}>
                   {licencasDisponiveisLabel}
                 </span>
                 <span className="text-sm text-slate-500">/ {licencasTotaisLabel}</span>

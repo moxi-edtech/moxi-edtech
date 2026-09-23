@@ -106,7 +106,7 @@ function ConfirmDialog({ open, message, loading, onConfirm, onCancel }: {
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-klasse-gold-500 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm font-medium text-slate-700">{message}</p>
         </div>
         <div className="flex justify-end gap-3">
@@ -188,7 +188,7 @@ function ComplianceBadge({ status }: { status: string }) {
   const cfg = s === "CRITICAL"
     ? { label: "Crítico",  dot: "bg-rose-500",     text: "text-rose-600",    ring: "ring-rose-200" }
     : s === "PENDING_MAC"
-    ? { label: "Pendente", dot: "bg-klasse-gold-400",    text: "text-klasse-gold-600",   ring: "ring-klasse-gold-200" }
+    ? { label: "Pendente", dot: "bg-amber-400",    text: "text-amber-600",   ring: "ring-amber-200" }
     : { label: "OK",       dot: "bg-[#1F6B3B]",   text: "text-[#1F6B3B]",  ring: "ring-[#1F6B3B]/20" }
 
   return (
@@ -202,7 +202,7 @@ function ComplianceBadge({ status }: { status: string }) {
 function PendenciasResumoBadge({ total }: { total: number }) {
   const hasPendencias = total > 0
   const cfg = hasPendencias
-    ? { label: `Pendências: ${total}`, dot: "bg-klasse-gold-400", text: "text-klasse-gold-600", ring: "ring-klasse-gold-200" }
+    ? { label: `Pendências: ${total}`, dot: "bg-amber-400", text: "text-amber-600", ring: "ring-amber-200" }
     : { label: "Sem pendências", dot: "bg-[#1F6B3B]", text: "text-[#1F6B3B]", ring: "ring-[#1F6B3B]/20" }
 
   return (
@@ -221,7 +221,7 @@ function PendenciaBadge({ status, label, count, total }: {
   const cfg = status === "ok"
     ? { dot: "bg-[#1F6B3B]",  text: "text-[#1F6B3B]",  ring: "ring-[#1F6B3B]/20" }
     : status === "pendente"
-    ? { dot: "bg-klasse-gold-400",   text: "text-klasse-gold-600",   ring: "ring-klasse-gold-200" }
+    ? { dot: "bg-amber-400",   text: "text-amber-600",   ring: "ring-amber-200" }
     : status === "sem_avaliacao"
     ? { dot: "bg-rose-500",    text: "text-rose-600",    ring: "ring-rose-200" }
     : { dot: "bg-slate-400",   text: "text-slate-500",   ring: "ring-slate-200" }
@@ -276,7 +276,7 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
   const cargaReal   = prof.carga_horaria_real   ?? 0
   const cargaPct    = cargaMax > 0 ? Math.min(Math.round((cargaReal / cargaMax) * 100), 100) : 0
   const cargaColor  = cargaReal > cargaMax ? "bg-rose-500"
-    : cargaReal >= cargaMax * 0.8 ? "bg-klasse-gold-400"
+    : cargaReal >= cargaMax * 0.8 ? "bg-amber-400"
     : "bg-[#1F6B3B]"
 
   const infoRows: Array<{ label: string; value: string | null | undefined }> = [
@@ -313,7 +313,7 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
                   <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     prof.last_login
                       ? "bg-white/20 text-white"
-                      : "bg-klasse-gold-400/20 text-klasse-gold-200"
+                      : "bg-amber-400/20 text-amber-200"
                   }`}>
                     {prof.last_login
                       ? <><UserCheck size={9} /> Ativo</>
@@ -335,7 +335,7 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
             <div className="bg-white/10 rounded-xl p-3">
               <div className="flex justify-between text-[10px] font-bold text-white/70 mb-1.5">
                 <span>Carga horária</span>
-                <span className={cargaReal > cargaMax ? "text-rose-300" : cargaReal >= cargaMax * 0.8 ? "text-klasse-gold-300" : "text-white/80"}>
+                <span className={cargaReal > cargaMax ? "text-rose-300" : cargaReal >= cargaMax * 0.8 ? "text-amber-300" : "text-white/80"}>
                   {cargaReal} / {cargaMax} tempos · {cargaPct}%
                 </span>
               </div>
@@ -495,12 +495,12 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
   const cargaBarCls = cargaPct === null
     ? "bg-slate-200"
     : cargaReal > cargaMax  ? "bg-rose-500"
-    : cargaReal >= cargaMax * 0.8 ? "bg-klasse-gold-400"
+    : cargaReal >= cargaMax * 0.8 ? "bg-amber-400"
     : "bg-[#1F6B3B]"
   const cargaPctCls = cargaPct === null
     ? "text-slate-400"
     : cargaReal > cargaMax  ? "text-rose-600"
-    : cargaReal >= cargaMax * 0.8 ? "text-klasse-gold-600"
+    : cargaReal >= cargaMax * 0.8 ? "text-amber-600"
     : "text-[#1F6B3B]"
 
   return (
@@ -541,7 +541,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
         <div className="flex items-center gap-1.5">
           {prof.last_login
             ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="text-[#1F6B3B] font-semibold">Ativo</span></>
-            : <><UserX size={12} className="text-klasse-gold-500" /><span className="text-klasse-gold-600 font-semibold">Pendente</span></>
+            : <><UserX size={12} className="text-amber-500" /><span className="text-amber-600 font-semibold">Pendente</span></>
           }
           <span className="text-slate-300">·</span>
           <span className="text-slate-500">
@@ -576,7 +576,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
           <Eye size={14} />
         </button>
         <button onClick={onEdit} title="Editar"
-          className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-klasse-gold-50 rounded-lg transition-colors">
+          className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors">
           <Pencil size={14} />
         </button>
         {!prof.last_login && (
@@ -1161,7 +1161,7 @@ export default function ProfessoresPage() {
             <div className={`p-2.5 rounded-xl ${
               dark  ? "bg-white/10 text-[#E3B23C]"
               : green ? "bg-[#1F6B3B]/10 text-[#1F6B3B]"
-              : amber ? "bg-klasse-gold-50 text-klasse-gold-600"
+              : amber ? "bg-amber-50 text-amber-600"
               : "bg-slate-50 text-slate-400"
             }`}>
               <Icon className="w-5 h-5" />
@@ -1618,9 +1618,9 @@ export default function ProfessoresPage() {
                           </td>
                           <td className="px-5 py-4">
                             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ${
-                              p.last_login ? "ring-[#1F6B3B]/20 text-[#1F6B3B]" : "ring-klasse-gold-200 text-klasse-gold-600"
+                              p.last_login ? "ring-[#1F6B3B]/20 text-[#1F6B3B]" : "ring-amber-200 text-amber-600"
                             }`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${p.last_login ? "bg-[#1F6B3B]" : "bg-klasse-gold-400"}`} />
+                              <span className={`h-1.5 w-1.5 rounded-full ${p.last_login ? "bg-[#1F6B3B]" : "bg-amber-400"}`} />
                               {p.last_login ? "Ativo" : "Pendente"}
                             </span>
                           </td>

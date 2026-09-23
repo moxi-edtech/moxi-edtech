@@ -113,7 +113,7 @@ export default function OperacoesPendenciasSummary() {
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6" aria-label="Pendências operacionais">
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-klasse-green">Visão operacional</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald">Visão operacional</p>
           <h2 className="mt-1 text-lg font-black text-slate-900">O que precisa de atenção agora</h2>
           <p className="mt-1 text-sm text-slate-500">Atalhos compartilhados para secretaria, gestão escolar e financeiro.</p>
         </div>
@@ -127,14 +127,14 @@ export default function OperacoesPendenciasSummary() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{cards.map((card) => {
           const Icon = card.icon;
           const tone = card.tone === "warning"
-            ? "border-klasse-gold/30 bg-klasse-gold/5 text-klasse-gold-700"
+            ? "border-amber/30 bg-amber/5 text-amber-700"
             : card.tone === "success"
-              ? "border-slate-200 bg-white text-klasse-green"
+              ? "border-slate-200 bg-white text-emerald"
               : "border-slate-200 bg-white text-slate-600";
           const iconTone = card.tone === "warning"
-            ? "bg-klasse-gold/15 text-klasse-gold-700"
+            ? "bg-amber/15 text-amber-700"
             : card.tone === "success"
-              ? "bg-klasse-green/10 text-klasse-green"
+              ? "bg-emerald/10 text-emerald"
               : "bg-slate-100 text-slate-600";
           return <button key={card.id} type="button" onClick={() => focus(card.id)} className={`rounded-xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tone}`}>
             <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconTone}`}><Icon className="h-4 w-4" /></span>
@@ -145,7 +145,7 @@ export default function OperacoesPendenciasSummary() {
         })}</div>
         <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
           <div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-black uppercase tracking-wide text-slate-500">Fila por perfil</p><p className="text-[11px] text-slate-400">Ações pendentes no contexto autorizado</p></div>
-          <div className="grid gap-2 md:grid-cols-3">{profileQueues.map((queue) => <div key={queue.label} className={`rounded-lg border bg-white px-3 py-2 ${queue.active ? "border-klasse-green/30 ring-2 ring-klasse-green/10" : "border-slate-100"}`}><div className="flex items-center justify-between gap-2"><p className="text-xs font-black text-slate-800">{queue.label}{queue.active ? " · você" : ""}</p><span className="text-lg font-black text-slate-900">{queue.count}</span></div><p className="mt-1 text-[11px] text-slate-500">{queue.description}</p></div>)}</div>
+          <div className="grid gap-2 md:grid-cols-3">{profileQueues.map((queue) => <div key={queue.label} className={`rounded-lg border bg-white px-3 py-2 ${queue.active ? "border-emerald/30 ring-2 ring-emerald/10" : "border-slate-100"}`}><div className="flex items-center justify-between gap-2"><p className="text-xs font-black text-slate-800">{queue.label}{queue.active ? " · você" : ""}</p><span className="text-lg font-black text-slate-900">{queue.count}</span></div><p className="mt-1 text-[11px] text-slate-500">{queue.description}</p></div>)}</div>
         </div>
       </>}
     </section>

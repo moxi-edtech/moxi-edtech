@@ -275,7 +275,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/85 px-4 backdrop-blur-md">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white p-6 shadow-2xl">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-klasse-green/10 text-klasse-green">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald/10 text-emerald">
                 <Lock className="h-6 w-6" />
               </div>
               <div>
@@ -303,8 +303,8 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
             </div>
 
             {showConfig && (
-              <div className="mt-4 rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-4 animate-in fade-in slide-in-from-top-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-klasse-green-900 mb-3">Tempo para bloqueio</p>
+              <div className="mt-4 rounded-xl border border-emerald/20 bg-emerald/5 p-4 animate-in fade-in slide-in-from-top-2">
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-900 mb-3">Tempo para bloqueio</p>
                 <div className="flex flex-wrap gap-2">
                   {TIMEOUT_OPTIONS.map((opt) => (
                     <button
@@ -315,8 +315,8 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
                       className={`
                         flex-1 min-w-[70px] rounded-lg px-2 py-2 text-xs font-bold transition-all
                         ${user.idleTimeoutMinutes === opt.value
-                          ? "bg-klasse-green text-white shadow-md shadow-klasse-green/20"
-                          : "bg-white text-slate-600 border border-slate-200 hover:border-klasse-green/40 hover:text-klasse-green"
+                          ? "bg-emerald text-white shadow-md shadow-emerald/20"
+                          : "bg-white text-slate-600 border border-slate-200 hover:border-emerald/40 hover:text-emerald"
                         }
                       `}
                     >
@@ -324,7 +324,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-[10px] text-klasse-green-800/70 italic">
+                <p className="mt-2 text-[10px] text-emerald-800/70 italic">
                   * Alteração salva no seu perfil.
                 </p>
               </div>
@@ -338,7 +338,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-green focus:ring-4 focus:ring-klasse-green/10"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-emerald focus:ring-4 focus:ring-emerald/10"
                   placeholder="Digite a sua senha"
                 />
               </label>
@@ -348,7 +348,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
               <button
                 type="submit"
                 disabled={busy || password.length < 1}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-green px-4 py-3 text-sm font-black text-white transition hover:bg-klasse-green/90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-3 text-sm font-black text-white transition hover:bg-emerald/90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <ShieldCheck className="h-4 w-4" />
                 {busy ? "A validar..." : "Desbloquear"}
@@ -384,7 +384,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
             <button
               type="button"
               onClick={continueSession}
-              className="inline-flex flex-1 items-center justify-center rounded-xl bg-klasse-green px-3 py-2 text-xs font-black text-white transition hover:bg-klasse-green/90"
+              className="inline-flex flex-1 items-center justify-center rounded-xl bg-emerald px-3 py-2 text-xs font-black text-white transition hover:bg-emerald/90"
             >
               Continuar sessão
             </button>
@@ -404,7 +404,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-start gap-4 mb-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-klasse-green/10 text-klasse-green">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald/10 text-emerald">
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
@@ -426,8 +426,8 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
                       className={`
                         flex-1 min-w-[80px] rounded-xl px-2 py-2.5 text-xs font-bold transition-all
                         ${user.idleTimeoutMinutes === opt.value
-                          ? "bg-klasse-green text-white shadow-md shadow-klasse-green/20"
-                          : "bg-slate-50 text-slate-600 border border-slate-200 hover:border-klasse-green/40 hover:text-klasse-green"
+                          ? "bg-emerald text-white shadow-md shadow-emerald/20"
+                          : "bg-slate-50 text-slate-600 border border-slate-200 hover:border-emerald/40 hover:text-emerald"
                         }
                       `}
                     >

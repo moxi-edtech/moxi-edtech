@@ -48,7 +48,7 @@ export default async function Page() {
     return (
       <>
 <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="alertas" />
-        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
           Vincule seu perfil a uma escola para configurar alertas.
         </div>
       </>
@@ -118,7 +118,7 @@ export default async function Page() {
                 <span className="text-[10px] text-slate-400">últimos 8</span>
                 <a
                   href={buildPortalHref(eid, "/secretaria/fechamento-academico")}
-                  className="text-[10px] font-semibold text-klasse-green hover:underline"
+                  className="text-[10px] font-semibold text-emerald hover:underline"
                 >
                   Abrir monitor
                 </a>
@@ -134,9 +134,9 @@ export default async function Page() {
                     </div>
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       ['FAILED'].includes(String(job.estado || '').toUpperCase())
-                        ? 'bg-klasse-gold/20 text-klasse-gold'
+                        ? 'bg-amber/20 text-amber'
                         : ['DONE'].includes(String(job.estado || '').toUpperCase())
-                          ? 'bg-klasse-green/10 text-klasse-green'
+                          ? 'bg-emerald/10 text-emerald'
                           : 'bg-slate-100 text-slate-600'
                     }`}>
                       {job.estado}
@@ -148,7 +148,7 @@ export default async function Page() {
               )}
             </div>
             {fechamentoStuck.length > 0 && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-klasse-gold">
+              <div className="mt-3 flex items-center gap-2 text-xs text-amber">
                 <Clock className="h-3.5 w-3.5" /> {fechamentoStuck.length} job(s) acima de 30m sem conclusão.
               </div>
             )}
@@ -161,7 +161,7 @@ export default async function Page() {
                 <span className="text-[10px] text-slate-400">últimos 8</span>
                 <a
                   href={buildPortalHref(eid, "/secretaria/documentos-oficiais")}
-                  className="text-[10px] font-semibold text-klasse-green hover:underline"
+                  className="text-[10px] font-semibold text-emerald hover:underline"
                 >
                   Abrir monitor
                 </a>
@@ -177,9 +177,9 @@ export default async function Page() {
                     </div>
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       ['FAILED'].includes(String(job.status || '').toUpperCase())
-                        ? 'bg-klasse-gold/20 text-klasse-gold'
+                        ? 'bg-amber/20 text-amber'
                         : ['SUCCESS'].includes(String(job.status || '').toUpperCase())
-                          ? 'bg-klasse-green/10 text-klasse-green'
+                          ? 'bg-emerald/10 text-emerald'
                           : 'bg-slate-100 text-slate-600'
                     }`}>
                       {job.status}
@@ -191,7 +191,7 @@ export default async function Page() {
               )}
             </div>
             {pautasStuck.length > 0 && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-klasse-gold">
+              <div className="mt-3 flex items-center gap-2 text-xs text-amber">
                 <Clock className="h-3.5 w-3.5" /> {pautasStuck.length} job(s) acima de 30m sem conclusão.
               </div>
             )}
@@ -199,10 +199,10 @@ export default async function Page() {
         </div>
 
         {!allowed && (
-          <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
             Alertas automáticos por responsável estão disponíveis no plano {PLAN_NAMES.profissional} ou {PLAN_NAMES.premium}.
             {isSuperAdmin && escolaId && (
-              <> {' '}<a href={`/super-admin/escolas/${escolaId}/edit`} className="underline text-klasse-gold-900">Abrir edição da escola</a></>
+              <> {' '}<a href={`/super-admin/escolas/${escolaId}/edit`} className="underline text-amber-900">Abrir edição da escola</a></>
             )}
           </div>
         )}

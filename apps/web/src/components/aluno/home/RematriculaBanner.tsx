@@ -198,15 +198,15 @@ export function RematriculaBanner() {
     <motion.div 
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-3xl border border-klasse-gold-200 bg-gradient-to-br from-klasse-gold-50 to-white p-6 shadow-sm mb-6"
+      className="relative overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm mb-6"
     >
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-klasse-gold-100 rounded-lg">
-              <Sparkles className="h-4 w-4 text-klasse-gold-600" />
+            <div className="p-1.5 bg-amber-100 rounded-lg">
+              <Sparkles className="h-4 w-4 text-amber-600" />
             </div>
-            <span className="text-[10px] font-bold text-klasse-gold-700 uppercase tracking-widest">
+            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
               Rematrícula {status.nextAno}
             </span>
           </div>
@@ -245,7 +245,7 @@ export function RematriculaBanner() {
                 </span>
               ) : null}
               {status.rematricula?.service ? (
-                <span className="rounded-full border border-klasse-gold-200 bg-white px-3 py-1.5 text-klasse-gold-800">
+                <span className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-amber-800">
                   Taxa: {money.format(status.rematricula.service.valor)}
                 </span>
               ) : null}
@@ -256,7 +256,7 @@ export function RematriculaBanner() {
         <div>
           {isConfirmed ? (
             <div className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-bold text-sm">
-              <CheckCircle2 className="h-4 w-4 text-klasse-green" />
+              <CheckCircle2 className="h-4 w-4 text-emerald" />
               Solicitado
             </div>
           ) : (
@@ -266,7 +266,7 @@ export function RematriculaBanner() {
               className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg active:scale-95 disabled:opacity-50 ${
                 status.hasDebt 
                   ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' 
-                  : 'bg-klasse-gold-500 text-white hover:bg-klasse-gold-600 shadow-klasse-gold/20'
+                  : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber/20'
               }`}
             >
               {busy ? (
@@ -290,7 +290,7 @@ export function RematriculaBanner() {
       {statusError && <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><span>O estado pode estar desatualizado.</span><button type="button" onClick={() => void fetchStatus()} className="font-black underline">Atualizar estado</button></div>}
 
       {/* Decorative background circle */}
-      <div className="absolute -right-12 -top-12 w-40 h-40 bg-klasse-gold-100 rounded-full blur-3xl opacity-50" />
+      <div className="absolute -right-12 -top-12 w-40 h-40 bg-amber-100 rounded-full blur-3xl opacity-50" />
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4" onClick={() => setOpen(false)}>
@@ -304,10 +304,10 @@ export function RematriculaBanner() {
               <div className="mt-5 space-y-4">
                 <div className={`rounded-2xl border p-4 ${paymentIntent.has_evidence ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}><p className={`text-xs font-black uppercase tracking-widest ${paymentIntent.has_evidence ? 'text-amber-700' : 'text-emerald-700'}`}>{paymentIntent.has_evidence ? 'Comprovativo recebido · em análise' : 'Pagamento disponível · aguarda comprovativo'}</p><p className="mt-1 text-sm text-slate-900">Referência: <strong>{paymentIntent.reference || 'Rematrícula'}</strong></p><p className="mt-1 text-2xl font-black text-slate-900">{money.format(paymentIntent.amount)}</p></div>
                 {(paymentIntent.itens_pagamento?.length ?? 0) > 0 && <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm font-black text-slate-900">Detalhamento do valor</p><div className="mt-2 space-y-2">{paymentIntent.itens_pagamento?.map((item, index) => <div key={`${item.nome ?? 'item'}-${index}`} className="flex items-start justify-between gap-3 text-sm text-slate-600"><span>{item.nome || item.descricao || 'Item da rematrícula'}{item.quantidade && item.quantidade > 1 ? ` · ${item.quantidade}x` : ''}</span><strong className="text-slate-900">{money.format(Number(item.valor ?? 0) * Number(item.quantidade ?? 1))}</strong></div>)}</div><div className="mt-3 flex justify-between border-t border-slate-200 pt-3 text-sm font-black text-slate-900"><span>Total</span><span>{money.format(paymentIntent.amount)}</span></div></div>}
-                {paymentIntent.status === 'settled' && paymentIntent.receipt_url ? <a href={paymentIntent.receipt_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-klasse-green px-4 py-3 text-sm font-black text-white"><FileCheck2 size={17} /> Abrir recibo financeiro</a> : paymentIntent.status === 'settled' && paymentIntent.receipt_pending ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-black">Pagamento confirmado.</p><p className="mt-1">O recibo financeiro está a ser emitido. Atualize o estado em alguns instantes.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm">Atualizar estado</button></div> : paymentIntent.has_evidence && !['failed', 'rejected', 'cancelled', 'canceled'].includes(paymentIntent.status) ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-black">Comprovativo recebido · em análise pela secretaria</p><p className="mt-1">O pagamento ainda não está confirmado. A secretaria precisa validar o documento e o valor. Não envie outro comprovativo enquanto este estiver em análise.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-amber-800 shadow-sm">Atualizar estado</button></div> : ['failed', 'rejected', 'cancelled', 'canceled'].includes(paymentIntent.status) ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"><p className="font-black">Pagamento não confirmado</p><p className="mt-1">{paymentIntent.rejection_reason || 'A secretaria não confirmou esta transação.'} Envie um novo comprovativo ou contacte a secretaria.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button></div> : <>
+                {paymentIntent.status === 'settled' && paymentIntent.receipt_url ? <a href={paymentIntent.receipt_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald px-4 py-3 text-sm font-black text-white"><FileCheck2 size={17} /> Abrir recibo financeiro</a> : paymentIntent.status === 'settled' && paymentIntent.receipt_pending ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-black">Pagamento confirmado.</p><p className="mt-1">O recibo financeiro está a ser emitido. Atualize o estado em alguns instantes.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm">Atualizar estado</button></div> : paymentIntent.has_evidence && !['failed', 'rejected', 'cancelled', 'canceled'].includes(paymentIntent.status) ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-black">Comprovativo recebido · em análise pela secretaria</p><p className="mt-1">O pagamento ainda não está confirmado. A secretaria precisa validar o documento e o valor. Não envie outro comprovativo enquanto este estiver em análise.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-amber-800 shadow-sm">Atualizar estado</button></div> : ['failed', 'rejected', 'cancelled', 'canceled'].includes(paymentIntent.status) ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"><p className="font-black">Pagamento não confirmado</p><p className="mt-1">{paymentIntent.rejection_reason || 'A secretaria não confirmou esta transação.'} Envie um novo comprovativo ou contacte a secretaria.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button></div> : <>
                   <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700"><p className="font-black text-slate-900">Como pagar</p><p className="mt-2">Banco: {status.rematricula?.dadosPagamento?.banco || 'Consulte a secretaria'}</p><p>IBAN: {status.rematricula?.dadosPagamento?.iban || 'Indisponível'}</p><p>Referência: {paymentIntent.reference || 'Rematrícula'}</p></div>
                   <textarea value={evidenceMessage} onChange={(event) => setEvidenceMessage(event.target.value)} disabled={uploading} rows={2} maxLength={500} placeholder="Mensagem para a secretaria (opcional)" className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm" />
-                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-klasse-green-200 bg-klasse-green-50/40 p-6 text-center"><Upload className="text-klasse-green" /><span className="text-sm font-black text-slate-900">Enviar comprovativo</span><span className="text-xs text-slate-500">PDF, JPG, PNG ou WEBP · máximo 5MB</span><input type="file" className="sr-only" accept=".pdf,image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void submitEvidence(file) }} />{uploading && <span className="text-xs font-bold text-klasse-green">Enviando… {uploadProgress}%</span>}</label>
+                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-6 text-center"><Upload className="text-emerald" /><span className="text-sm font-black text-slate-900">Enviar comprovativo</span><span className="text-xs text-slate-500">PDF, JPG, PNG ou WEBP · máximo 5MB</span><input type="file" className="sr-only" accept=".pdf,image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void submitEvidence(file) }} />{uploading && <span className="text-xs font-bold text-emerald">Enviando… {uploadProgress}%</span>}</label>
                   <p className="text-center text-xs text-slate-500">Depois do envio, a secretaria recebe o documento para validar o valor e a referência. O estado ficará “em análise” até à decisão.</p>
                 </>}
                 {flowError && <div className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700"><p>{flowError}</p><button type="button" onClick={() => void fetchStatus()} className="mt-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-rose-800">Atualizar estado</button></div>}
@@ -315,9 +315,9 @@ export function RematriculaBanner() {
             ) : (
               <div className="mt-5 space-y-4">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm font-black text-slate-900">Serviço obrigatório</p><div className="mt-2 flex items-center justify-between text-sm"><span>{status.rematricula?.service?.nome || 'Rematrícula'}</span><strong>{money.format(status.rematricula?.service?.valor || 0)}</strong></div></div>
-                {(status.rematricula?.services ?? []).length > 0 && <div><p className="text-sm font-black text-slate-900">Serviços adicionais (opcionais)</p><div className="mt-2 space-y-2">{(status.rematricula?.services ?? []).map((service) => <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 ${selectedServices.includes(service.id) ? 'border-klasse-gold bg-amber-50' : 'border-slate-200'}`}><input type="checkbox" checked={selectedServices.includes(service.id)} onChange={() => setSelectedServices((current) => current.includes(service.id) ? current.filter((id) => id !== service.id) : [...current, service.id])} className="mt-1 h-4 w-4" /><span className="flex-1 text-sm"><strong className="block text-slate-900">{service.nome}</strong><small className="block text-slate-500">{service.descricao || service.codigo}</small></span><strong className="text-sm text-klasse-green">{money.format(service.valor)}</strong></label>)}</div></div>}
+                {(status.rematricula?.services ?? []).length > 0 && <div><p className="text-sm font-black text-slate-900">Serviços adicionais (opcionais)</p><div className="mt-2 space-y-2">{(status.rematricula?.services ?? []).map((service) => <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 ${selectedServices.includes(service.id) ? 'border-amber bg-amber-50' : 'border-slate-200'}`}><input type="checkbox" checked={selectedServices.includes(service.id)} onChange={() => setSelectedServices((current) => current.includes(service.id) ? current.filter((id) => id !== service.id) : [...current, service.id])} className="mt-1 h-4 w-4" /><span className="flex-1 text-sm"><strong className="block text-slate-900">{service.nome}</strong><small className="block text-slate-500">{service.descricao || service.codigo}</small></span><strong className="text-sm text-emerald">{money.format(service.valor)}</strong></label>)}</div></div>}
                 <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-base font-black"><span>Total da transação</span><span>{money.format(selectedTotal)}</span></div>
-                <button type="button" onClick={() => void startPayment()} disabled={starting || !status.rematricula?.service} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-klasse-gold-500 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{starting ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Continuar para pagamento</button>
+                <button type="button" onClick={() => void startPayment()} disabled={starting || !status.rematricula?.service} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{starting ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Continuar para pagamento</button>
                 {flowError && <p className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{flowError}</p>}
               </div>
             )}

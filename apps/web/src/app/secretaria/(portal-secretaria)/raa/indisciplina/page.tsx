@@ -47,7 +47,7 @@ export default function IndisciplinaRaaPage() {
           <div><label className="text-sm font-medium text-slate-700">Descrição factual</label><textarea required minLength={10} value={descricao} onChange={(event) => setDescricao(event.target.value)} rows={5} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></div>
           <div><label className="text-sm font-medium text-slate-700">Medida aplicada <span className="font-normal text-slate-400">(opcional)</span></label><textarea value={medida} onChange={(event) => setMedida(event.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></div>
           <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={impactaResultado} onChange={(event) => setImpactaResultado(event.target.checked)} /> Considerar na análise de resultado RAA</label>
-          <button disabled={saving} className="rounded-lg bg-klasse-green px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "A guardar..." : "Registar ocorrência"}</button>
+          <button disabled={saving} className="rounded-lg bg-emerald px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "A guardar..." : "Registar ocorrência"}</button>
         </form>
       </section>
     </main>

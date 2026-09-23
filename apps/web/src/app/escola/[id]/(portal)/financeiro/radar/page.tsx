@@ -202,7 +202,7 @@ export default function SistemaCobrancas() {
             onClick={() => setMostrarCriarCampanha(true)}
             disabled={writeBlockedByAcademicYear}
             title={writeBlockedByAcademicYear ? "Edição bloqueada no ano histórico" : undefined}
-            className="flex items-center gap-2 rounded-xl bg-klasse-green px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-klasse-green/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl bg-emerald px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
             Nova Campanha
@@ -261,7 +261,7 @@ export default function SistemaCobrancas() {
               </h3>
               <p className="text-sm text-slate-600">
                 {selecionadosRadar.length > 0 ? (
-                  <span className="font-medium text-klasse-green">
+                  <span className="font-medium text-emerald">
                     {selecionadosRadar.length} aluno(s) selecionado(s)
                   </span>
                 ) : (
@@ -322,7 +322,7 @@ export default function SistemaCobrancas() {
                     type="text"
                     value={novaCampanha.nome}
                     onChange={(e) => setNovaCampanha({ ...novaCampanha, nome: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                     placeholder="Ex: Cobrança Mensalidade Março"
                     required
                   />
@@ -334,7 +334,7 @@ export default function SistemaCobrancas() {
                     <select
                       value={novaCampanha.canal}
                       onChange={(e) => setNovaCampanha({ ...novaCampanha, canal: e.target.value as Campanha['canal'] })}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                       required
                     >
                       <option value="whatsapp">WhatsApp</option>
@@ -349,7 +349,7 @@ export default function SistemaCobrancas() {
                     <select
                       value={novaCampanha.template_id ?? ""}
                       onChange={(e) => setNovaCampanha({ ...novaCampanha, template_id: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                     >
                       <option value="">Selecione...</option>
                       {templates.map((t) => (
@@ -365,7 +365,7 @@ export default function SistemaCobrancas() {
                   <button
                     type="submit"
                     disabled={submitting || writeBlockedByAcademicYear}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-green px-4 py-3 text-sm font-bold text-white transition-all hover:bg-klasse-green/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-3 text-sm font-bold text-white transition-all hover:bg-emerald/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {submitting ? "A criar campanha..." : "Disparar Campanha"}
                   </button>

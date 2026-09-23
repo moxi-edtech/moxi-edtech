@@ -463,18 +463,18 @@ export default function FluxosConfiguracaoPage() {
             </p>
           )}
         </div>
-        <div className="mb-6 flex flex-col gap-4 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50/50 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 rounded-xl border border-amber-200 bg-amber-50/50 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-klasse-gold-700" />
+            <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-klasse-gold-700">Rematrículas pelo portal</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Rematrículas pelo portal</p>
               <h3 className="mt-1 text-sm font-bold text-slate-900">Gerir ou reabrir janela de rematrícula</h3>
               <p className="mt-1 text-xs leading-relaxed text-slate-600">Defina o período em que os alunos podem confirmar a rematrícula. Uma janela desativada pode ser reaberta nessa área.</p>
             </div>
           </div>
           <Link
             href={buildPortalHref(escolaParam, "/secretaria/rematricula/janelas")}
-            className="inline-flex shrink-0 items-center justify-center rounded-lg bg-klasse-gold-600 px-3 py-2 text-xs font-bold text-white hover:bg-klasse-gold-700"
+            className="inline-flex shrink-0 items-center justify-center rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white hover:bg-amber-700"
           >
             Gerir janelas
           </Link>
@@ -682,7 +682,7 @@ export default function FluxosConfiguracaoPage() {
                       {/* Controles (Badge Horas + Toggle) */}
                       <div className="flex items-center gap-4">
                         {step.sla_hours && step.sla_hours > 0 && step.active && (
-                          <div className="flex items-center gap-1 text-[10px] font-semibold text-klasse-gold-700 bg-klasse-gold-50 border border-klasse-gold-100 px-2 py-1 rounded-full">
+                          <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded-full">
                             <Clock className="h-3 w-3" />
                             {step.sla_hours}h
                           </div>
@@ -748,8 +748,8 @@ export default function FluxosConfiguracaoPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-klasse-gold-100 bg-klasse-gold-50 p-4">
-              <p className="text-xs text-klasse-gold-900 leading-relaxed">
+            <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+              <p className="text-xs text-amber-900 leading-relaxed">
                 <strong>Nota:</strong> Alterações no fluxo só valem para novos lançamentos. Notas em processo seguem o fluxo antigo.
               </p>
             </div>

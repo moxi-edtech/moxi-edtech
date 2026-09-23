@@ -184,9 +184,9 @@ function MensalidadeRow({
               if (!m.recibo_id) return onMissingRecibo();
               window.open(`/secretaria/documentos/${m.recibo_id}/recibo/print`, "_blank", "noopener,noreferrer");
             }}
-            className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:text-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
+            className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:text-amber disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Printer className="h-4 w-4 text-slate-400 transition-colors group-hover:text-klasse-gold" />
+            <Printer className="h-4 w-4 text-slate-400 transition-colors group-hover:text-amber" />
             Reimprimir
           </button>
         ) : null}

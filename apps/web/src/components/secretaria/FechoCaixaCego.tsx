@@ -17,7 +17,7 @@ const KWANZA_NOTES = [
   { value: 5000, label: "5.000 Kz", color: "text-slate-700 bg-slate-50" },
   { value: 2000, label: "2.000 Kz", color: "text-slate-700 bg-slate-50" },
   { value: 1000, label: "1.000 Kz", color: "text-rose-700 bg-rose-50" },
-  { value: 500, label: "500 Kz", color: "text-klasse-gold-700 bg-klasse-gold-50" },
+  { value: 500, label: "500 Kz", color: "text-amber-700 bg-amber-50" },
   { value: 200, label: "200 Kz", color: "text-cyan-700 bg-cyan-50" },
   { value: 100, label: "100 Kz", color: "text-slate-700 bg-slate-100" },
 ];

@@ -74,8 +74,8 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
     <div className={`${embedded ? "" : "mx-auto w-full max-w-6xl space-y-6 px-4 py-6"}`}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <UserGroupIcon className="w-7 h-7 text-klasse-green" />
-          <h1 className="text-3xl font-bold text-klasse-green">Funcionários</h1>
+          <UserGroupIcon className="w-7 h-7 text-emerald" />
+          <h1 className="text-3xl font-bold text-emerald">Funcionários</h1>
         </div>
         {!embedded && (
           <Link href={buildPortalHref(escolaParam, "/funcionarios/novo")}>
@@ -97,13 +97,13 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
               }
               className={`px-6 py-3 font-medium relative ${
                 tab === "funcionarios"
-                  ? "text-klasse-gold"
+                  ? "text-amber"
                   : "text-slate-500 hover:text-slate-900"
               }`}
             >
               {tab === "novo" ? "Cadastrar" : "Funcionários"}
               {tab === "funcionarios" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-klasse-gold" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber" />
               )}
             </Link>
           ))}
@@ -113,7 +113,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-klasse-green">Equipe cadastrada</h2>
+            <h2 className="text-lg font-semibold text-emerald">Equipe cadastrada</h2>
             <p className="text-sm text-slate-500">Busque por nome, e-mail, telefone ou login.</p>
           </div>
           <div className="relative w-full max-w-sm">
@@ -122,7 +122,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar funcionário"
-              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
             />
           </div>
         </div>
@@ -170,8 +170,8 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
                           item.last_login
-                            ? "bg-klasse-green/10 text-klasse-green"
-                            : "bg-klasse-gold/10 text-klasse-gold"
+                            ? "bg-emerald/10 text-emerald"
+                            : "bg-amber/10 text-amber"
                         }`}
                       >
                         {item.last_login ? (

@@ -19,8 +19,8 @@ export function NoticePanel({
         <div
           className="
             h-8 w-8 rounded-xl
-            bg-klasse-gold/10 text-klasse-gold
-            ring-1 ring-klasse-gold/25
+            bg-amber/10 text-amber
+            ring-1 ring-amber/25
             flex items-center justify-center
           "
         >

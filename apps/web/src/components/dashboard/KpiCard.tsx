@@ -42,20 +42,20 @@ export function KpiCard({
     },
     brand: {
       box: "bg-white border-slate-200",
-      icon: "bg-klasse-green/10 text-klasse-green ring-1 ring-klasse-green/20",
-      value: "text-klasse-green",
+      icon: "bg-emerald/10 text-emerald ring-1 ring-emerald/20",
+      value: "text-emerald",
       chart: klasseColors.green.DEFAULT,
     },
     warning: {
-      box: "bg-klasse-gold/5 border-klasse-gold/30",
-      icon: "bg-klasse-gold/15 text-klasse-gold ring-1 ring-klasse-gold/25",
-      value: "text-klasse-gold",
-      chart: "#D4AF37", // klasse-gold
+      box: "bg-amber/5 border-amber/30",
+      icon: "bg-amber/15 text-amber ring-1 ring-amber/25",
+      value: "text-amber",
+      chart: "#D4AF37", // amber
     },
     success: {
       box: "bg-white border-slate-200",
-      icon: "bg-klasse-green-100 text-klasse-green-700",
-      value: "text-klasse-green-700",
+      icon: "bg-emerald-100 text-emerald-700",
+      value: "text-emerald-700",
       chart: "#15803d", // green-700
     },
   }[variant];
@@ -101,7 +101,7 @@ export function KpiCard({
             <Icon className={compact ? "h-4.5 w-4.5" : "h-5 w-5"} />
           </div>
           {href && (
-            <div className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-tighter text-klasse-green opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-tighter text-emerald opacity-0 transition-opacity group-hover:opacity-100">
               Ver Detalhes <ArrowRight className="h-2.5 w-2.5" />
             </div>
           )}

@@ -289,11 +289,11 @@ export default function Page() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-klasse-gold animate-pulse" />
+                <span className="h-2 w-2 rounded-full bg-amber animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Portal do Professor</span>
              </div>
              <h1 className="text-3xl font-black tracking-tight text-slate-900">
-                Olá, <span className="text-klasse-gold">{overview?.primeiro_nome || "Professor"}</span>
+                Olá, <span className="text-amber">{overview?.primeiro_nome || "Professor"}</span>
              </h1>
              <p className="text-sm font-medium text-slate-500">
                 {overview?.escola_nome || "Bem-vindo de volta ao seu painel académico."}
@@ -365,9 +365,9 @@ export default function Page() {
         )}
 
         {/* RESUMO DE IMPACTO */}
-        <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 text-white shadow-2xl shadow-klasse-gold/10">
+        <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 text-white shadow-2xl shadow-amber/10">
           {/* Background Elements */}
-          <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-klasse-gold/10 blur-3xl" />
+          <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-amber/10 blur-3xl" />
           <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-emerald-500/5 blur-3xl" />
           
           <div className="relative z-10 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
@@ -447,7 +447,7 @@ export default function Page() {
             <Link 
                key={action.title} 
                href={professorHref(action.href)} 
-               className="group relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:border-klasse-gold/20"
+               className="group relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:border-amber/20"
             >
                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-inner transition-transform group-hover:scale-110 ${action.light}`}>
                   <action.icon className="h-7 w-7" />
@@ -473,7 +473,7 @@ export default function Page() {
           <section className="space-y-4">
             <div className="flex items-center justify-between px-2">
               <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Minhas Turmas Ativas</h2>
-              <Link href={professorHref("/professor/frequencias")} className="text-[10px] font-black uppercase text-klasse-gold hover:underline">Novo Registro</Link>
+              <Link href={professorHref("/professor/frequencias")} className="text-[10px] font-black uppercase text-amber hover:underline">Novo Registro</Link>
             </div>
             
             {loadError ? (
@@ -485,10 +485,10 @@ export default function Page() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {turmaMap.map((turma) => (
-                    <div key={turma.id} className={`group rounded-[1.5rem] border bg-white p-5 shadow-sm transition-all ${expandedTurmaId === turma.id ? "border-klasse-gold/50 ring-2 ring-klasse-gold/10" : "border-slate-200 hover:border-klasse-gold/40"}`}>
+                    <div key={turma.id} className={`group rounded-[1.5rem] border bg-white p-5 shadow-sm transition-all ${expandedTurmaId === turma.id ? "border-amber/50 ring-2 ring-amber/10" : "border-slate-200 hover:border-amber/40"}`}>
                     <button type="button" onClick={() => setExpandedTurmaId((current) => current === turma.id ? null : turma.id)} aria-expanded={expandedTurmaId === turma.id} className="block w-full text-left">
                     <div className="flex items-start justify-between">
-                       <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-klasse-gold/10 group-hover:text-klasse-gold transition-colors font-black text-xs">
+                       <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber/10 group-hover:text-amber transition-colors font-black text-xs">
                           {turma.nome?.split("-")[0]}
                        </div>
                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-600 border border-emerald-100">
@@ -536,7 +536,7 @@ export default function Page() {
                 ) : (
                   (agendaByDay.get(todayKey) || []).map((item, idx) => {
                     const query = item.turma_id && item.disciplina_id ? `?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}` : "";
-                    const content = <><div className="flex items-center gap-4"><div className="flex flex-col items-center"><span className="text-[10px] font-black text-slate-900 leading-none">{item.inicio.split(":")[0]}</span><span className="text-[8px] font-bold text-slate-400 uppercase">{item.inicio.split(":")[1]}</span></div><div className="h-8 w-[2px] bg-slate-100 rounded-full" /><div><p className="text-xs font-black text-slate-900 group-hover:text-klasse-gold transition-colors">{item.disciplina_nome}</p><p className="text-[10px] font-bold text-slate-400">{formatTurmaDisplayName({ turma_nome: item.turma_nome })}{item.sala_nome && ` • Sala ${item.sala_nome}`}</p></div></div><div className="shrink-0 h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all"><PencilSquareIcon className="h-4 w-4" /></div></>;
+                    const content = <><div className="flex items-center gap-4"><div className="flex flex-col items-center"><span className="text-[10px] font-black text-slate-900 leading-none">{item.inicio.split(":")[0]}</span><span className="text-[8px] font-bold text-slate-400 uppercase">{item.inicio.split(":")[1]}</span></div><div className="h-8 w-[2px] bg-slate-100 rounded-full" /><div><p className="text-xs font-black text-slate-900 group-hover:text-amber transition-colors">{item.disciplina_nome}</p><p className="text-[10px] font-bold text-slate-400">{formatTurmaDisplayName({ turma_nome: item.turma_nome })}{item.sala_nome && ` • Sala ${item.sala_nome}`}</p></div></div><div className="shrink-0 h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all"><PencilSquareIcon className="h-4 w-4" /></div></>;
                     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
                     const isCurrentLesson = aulaAtiva?.turma_id === item.turma_id && aulaAtiva?.disciplina_id === item.disciplina_id && (aulaAtiva?.slot_id ?? aulaAtiva?.inicio) === (item.slot_id ?? item.inicio);
                     return item.turma_id && item.disciplina_id ? <div key={idx} className="group rounded-xl py-4 first:pt-0 last:pb-0 hover:bg-slate-50/80"><div className="flex items-center justify-between gap-4 px-2">{content}</div><div className="mt-2 flex flex-wrap gap-2 pl-16 text-[10px] font-black uppercase tracking-wide">{isCurrentLesson ? <>{item.status === "em_andamento" ? <><button type="button" onClick={() => { setFinalizingKey(key); setFinalizeSummary(""); }} disabled={!item.aula_id} className="text-emerald-700 hover:underline disabled:opacity-50">Sair da sala</button><span className="text-emerald-700">Em andamento</span></> : item.status === "finalizada" ? <span className="text-blue-700">Finalizada</span> : <button type="button" onClick={() => void startLesson(item)} disabled={startingKey === key} className="text-amber-700 hover:underline disabled:opacity-50">{startingKey === key ? "A confirmar..." : "Entrar na sala"}</button>}<Link href={professorHref(`/professor/frequencias${query}`)} className="text-emerald-700 hover:underline">Abrir chamada</Link><Link href={professorHref(`/professor/notas${query}`)} className="text-blue-700 hover:underline">Lançar nota</Link><Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}`)} className="text-amber-700 hover:underline">Abrir plano</Link></> : <span className="text-slate-400">Disponível das {item.inicio} às {item.fim}</span>}</div>{finalizingKey === key && <div className="mx-2 mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><textarea value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} placeholder="Resumo breve da aula (opcional)" className="w-full rounded-lg border border-emerald-200 bg-white p-2 text-xs outline-none focus:ring-2 focus:ring-emerald-300" /><div className="mt-2 flex gap-2"><button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">{finalizing ? "A finalizar..." : "Confirmar saída"}</button><button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-600">Cancelar</button></div></div>}</div> : <div key={idx} className="group py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">{content}</div>;

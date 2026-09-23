@@ -378,7 +378,7 @@ export default function CrmSection() {
                         {new Date(row.latest_activity_at).toLocaleDateString("pt-PT")}
                       </td>
                       <td className="py-3">
-                        <Link href={row.action_href} className="font-semibold text-klasse-gold hover:underline">
+                        <Link href={row.action_href} className="font-semibold text-amber hover:underline">
                           Abrir
                         </Link>
                       </td>
@@ -450,7 +450,7 @@ export default function CrmSection() {
                         <p className="text-sm font-semibold text-slate-900">{row.escola_nome}</p>
                         <p className="text-sm text-slate-500">churn: {row.churn_risk}% · cobrança: {row.payment_risk}%</p>
                       </div>
-                      <Link href={row.action_href} className="text-sm font-semibold text-klasse-gold hover:underline">
+                      <Link href={row.action_href} className="text-sm font-semibold text-amber hover:underline">
                         Ver
                       </Link>
                     </li>
@@ -471,7 +471,7 @@ export default function CrmSection() {
                         <p className="text-sm font-semibold text-slate-900">{row.escola_nome}</p>
                         <p className="text-sm text-slate-500">expansão: {row.expansion_signal}% · plano: {row.plano ?? "n/d"}</p>
                       </div>
-                      <Link href={row.action_href} className="text-sm font-semibold text-klasse-gold hover:underline">
+                      <Link href={row.action_href} className="text-sm font-semibold text-amber hover:underline">
                         Abrir
                       </Link>
                     </li>

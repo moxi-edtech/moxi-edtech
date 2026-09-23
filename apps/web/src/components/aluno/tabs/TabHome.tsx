@@ -134,7 +134,7 @@ export function TabHome() {
       <header className="flex items-center justify-between px-1">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900">
-            {greeting}, <span className="text-klasse-green">{status?.nome.split(' ')[0]}!</span>
+            {greeting}, <span className="text-emerald">{status?.nome.split(' ')[0]}!</span>
           </h1>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
             {status?.classe} • {status?.turma}
@@ -150,7 +150,7 @@ export function TabHome() {
                     </div>
                 )}
             </div>
-            <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-klasse-green rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white">
+            <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-emerald rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white">
                 <Star size={10} fill="white" />
             </div>
         </Link>
@@ -173,7 +173,7 @@ export function TabHome() {
                 />
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Média Geral</p>
-            <div className="mt-2 flex items-center gap-1 text-xs font-bold text-klasse-green">
+            <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald">
                 <TrendingUp size={12} />
                 <span>+0.2</span>
             </div>
@@ -228,7 +228,7 @@ export function TabHome() {
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Agenda do Aluno</h3>
-            <Link href={`/aluno/academico${query}`} className="text-[10px] font-black uppercase text-klasse-green underline underline-offset-4">Ver tudo</Link>
+            <Link href={`/aluno/academico${query}`} className="text-[10px] font-black uppercase text-emerald underline underline-offset-4">Ver tudo</Link>
         </div>
         
         <div className="grid gap-3">
@@ -254,7 +254,7 @@ export function TabHome() {
             {/* NOTAS RECENTES INTEGRADO */}
             {restrictedGrades ? (
                 <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 p-6 text-white shadow-xl">
-                    <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-klasse-green/10 blur-2xl" />
+                    <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-emerald/10 blur-2xl" />
                     <div className="relative z-10 flex flex-col items-center text-center">
                         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-amber-400">
                             <LockIcon size={24} />
@@ -265,7 +265,7 @@ export function TabHome() {
                         </p>
                         <Link 
                             href={`/aluno/documentos${query}`}
-                            className="mt-4 w-full rounded-xl bg-klasse-green py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition active:scale-95 hover:brightness-110 text-center"
+                            className="mt-4 w-full rounded-xl bg-emerald py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition active:scale-95 hover:brightness-110 text-center"
                         >
                             Liberar Agora
                         </Link>

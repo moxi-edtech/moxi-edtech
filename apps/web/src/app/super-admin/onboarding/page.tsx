@@ -121,9 +121,9 @@ interface ExistingSchoolOption {
 
 // ─── Helpers Visuais ──────────────────────────────────────────────────────────
 const STATUS_META = {
-  pendente:       { label: "Pendente",      color: "bg-klasse-gold-100 text-klasse-gold-700 border-klasse-gold-200", dot: "bg-klasse-gold-500" },
+  pendente:       { label: "Pendente",      color: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
   em_configuracao: { label: "Configuração",  color: "bg-slate-100 text-slate-700 border-slate-200",    dot: "bg-slate-500" },
-  activo:         { label: "Activo",        color: "bg-klasse-green-100 text-klasse-green-700 border-klasse-green-200", dot: "bg-klasse-green-500" },
+  activo:         { label: "Activo",        color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
   cancelado:      { label: "Cancelado",     color: "bg-slate-100 text-slate-600 border-slate-200",  dot: "bg-slate-400" },
 };
 
@@ -136,8 +136,8 @@ const LEAD_STATUS_META = {
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
   essencial: { label: "Essencial", color: "bg-slate-100 text-slate-700 border-slate-200" },
-  profissional: { label: "Profissional", color: "bg-klasse-gold-100 text-klasse-gold-700 border-klasse-gold-200" },
-  premium: { label: "Premium", color: "bg-klasse-green-100 text-klasse-green-700 border-klasse-green-200" },
+  profissional: { label: "Profissional", color: "bg-amber-100 text-amber-700 border-amber-200" },
+  premium: { label: "Premium", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
 };
 
 const getPlanMeta = (financeiro: any) => {
@@ -612,7 +612,7 @@ export default function SuperAdminOnboardingPage() {
             <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
               <span>Super Admin</span>
               <ChevronRight size={10} />
-              <span className="text-klasse-green">Gestão de Onboarding</span>
+              <span className="text-emerald">Gestão de Onboarding</span>
             </nav>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Pipeline de Entrada</h1>
             <p className="text-sm text-slate-500 font-medium">Controlo de leads, diagnósticos e novas escolas.</p>
@@ -626,14 +626,14 @@ export default function SuperAdminOnboardingPage() {
                 placeholder="Buscar escola ou nome..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green/30 outline-none w-64 transition-all"
+                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald/30 outline-none w-64 transition-all"
               />
             </div>
             {activeTab === 'candidaturas' && (
               <select 
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
-                className="bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-klasse-green/5"
+                className="bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-emerald/5"
               >
                 <option value="todos">Todos os Status</option>
                 <option value="pendente">Pendentes</option>
@@ -645,7 +645,7 @@ export default function SuperAdminOnboardingPage() {
               <select
                 value={uploadFilter}
                 onChange={e => setUploadFilter(e.target.value as typeof uploadFilter)}
-                className="bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-klasse-green/5"
+                className="bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-emerald/5"
               >
                 <option value="todos">Todos os Uploads</option>
                 <option value="pendente">Pendentes</option>
@@ -659,16 +659,16 @@ export default function SuperAdminOnboardingPage() {
 
         <Tabs defaultValue="candidaturas" value={activeTab} onValueChange={(value) => setActiveTab(value as 'candidaturas' | 'leads' | 'uploads' | 'relatorios')} className="w-full">
           <TabsList className="bg-slate-200/50 p-1 rounded-xl mb-6">
-            <TabsTrigger value="candidaturas" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-klasse-green shadow-none">
+            <TabsTrigger value="candidaturas" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-emerald shadow-none">
               Candidaturas ({requests.length})
             </TabsTrigger>
-            <TabsTrigger value="leads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-klasse-green shadow-none">
+            <TabsTrigger value="leads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-emerald shadow-none">
               Leads Diagnóstico ({mLeads.length})
             </TabsTrigger>
-            <TabsTrigger value="uploads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-klasse-green shadow-none">
+            <TabsTrigger value="uploads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-emerald shadow-none">
               Uploads ({uploads.length})
             </TabsTrigger>
-            <TabsTrigger value="relatorios" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-klasse-green shadow-none">
+            <TabsTrigger value="relatorios" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-emerald shadow-none">
               Relatórios
             </TabsTrigger>
           </TabsList>
@@ -679,7 +679,7 @@ export default function SuperAdminOnboardingPage() {
             <div className={activeTab === 'relatorios' ? "lg:col-span-3 space-y-4" : "lg:col-span-2 space-y-4"}>
               {loading ? (
                 <div className="flex flex-col items-center justify-center p-20 bg-white border border-slate-200 rounded-3xl space-y-4">
-                  <Loader2 className="w-8 h-8 animate-spin text-klasse-green" />
+                  <Loader2 className="w-8 h-8 animate-spin text-emerald" />
                   <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Carregando dados...</p>
                 </div>
               ) : (
@@ -698,7 +698,7 @@ export default function SuperAdminOnboardingPage() {
                       return (
                         <Card 
                           key={req.id} 
-                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === req.id ? 'ring-2 ring-klasse-green border-transparent bg-klasse-green/5' : 'bg-white'}`}
+                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === req.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-white'}`}
                           onClick={() => setSelectedId(req.id)}
                         >
                           <CardContent className="p-5">
@@ -712,7 +712,7 @@ export default function SuperAdminOnboardingPage() {
                                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
                                     <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(req.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
                                     <span className="text-slate-200">•</span>
-                                    <span className="font-bold text-klasse-green">{fmtKz(calcEstimativa(req.faixa_propina, req.financeiro?.total_alunos))} /mês est.</span>
+                                    <span className="font-bold text-emerald">{fmtKz(calcEstimativa(req.faixa_propina, req.financeiro?.total_alunos))} /mês est.</span>
                                   </div>
                                   <div className="mt-2 flex flex-wrap items-center gap-2">
                                     <Badge className={`${plan.color} border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full`}>
@@ -751,7 +751,7 @@ export default function SuperAdminOnboardingPage() {
                       return (
                         <Card 
                           key={lead.id} 
-                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === lead.id ? 'ring-2 ring-klasse-green border-transparent bg-klasse-green/5' : 'bg-white'}`}
+                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === lead.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-white'}`}
                           onClick={() => setSelectedId(lead.id)}
                         >
                           <CardContent className="p-5">
@@ -801,7 +801,7 @@ export default function SuperAdminOnboardingPage() {
                       return (
                         <Card
                           key={upload.id}
-                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === upload.id ? 'ring-2 ring-klasse-green border-transparent bg-klasse-green/5' : 'bg-white'}`}
+                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === upload.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-white'}`}
                           onClick={() => {
                             setSelectedId(upload.id);
                             setRejectionReason(upload.rejection_reason || '');
@@ -848,7 +848,7 @@ export default function SuperAdminOnboardingPage() {
                     <Card className="border-slate-200 bg-white rounded-3xl p-6 shadow-sm">
                       <CardHeader className="p-0 pb-4">
                         <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                          <BarChart3 className="text-klasse-green w-4 h-4" />
+                          <BarChart3 className="text-emerald w-4 h-4" />
                           Gargalos por Responsável
                         </CardTitle>
                         <CardDescription className="text-xs">Etapas pendentes/atrasadas ativas</CardDescription>
@@ -862,7 +862,7 @@ export default function SuperAdminOnboardingPage() {
                             </div>
                             <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                               <div 
-                                className="h-full bg-klasse-green rounded-full" 
+                                className="h-full bg-emerald rounded-full"
                                 style={{ width: `${b.pending ? Math.min(100, (b.pending / (allOnboardingSteps.length || 1)) * 100) : 0}%` }}
                               />
                             </div>
@@ -880,7 +880,7 @@ export default function SuperAdminOnboardingPage() {
                     <Card className="border-slate-200 bg-white rounded-3xl p-6 shadow-sm md:col-span-2">
                       <CardHeader className="p-0 pb-4">
                         <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                          <Clock className="text-klasse-green w-4 h-4" />
+                          <Clock className="text-emerald w-4 h-4" />
                           Tempo Médio de Resolução (Fases Concluídas)
                         </CardTitle>
                         <CardDescription className="text-xs">Duração média entre a criação e conclusão de cada etapa</CardDescription>
@@ -912,7 +912,7 @@ export default function SuperAdminOnboardingPage() {
                   <Card className="border-slate-200 bg-white rounded-3xl p-6 shadow-sm">
                     <CardHeader className="p-0 pb-4">
                       <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                        <ShieldCheck className="text-klasse-green w-4 h-4" />
+                        <ShieldCheck className="text-emerald w-4 h-4" />
                         Desempenho de Conversão por Parceiro
                       </CardTitle>
                       <CardDescription className="text-xs">Indicados convertidos em escolas ativas</CardDescription>
@@ -971,15 +971,15 @@ export default function SuperAdminOnboardingPage() {
                       const plan = getPlanMeta(selectedRequest.financeiro);
                       const influencerCode = getInfluencerCode(selectedRequest.financeiro);
                       return (
-                        <div className="rounded-2xl border border-klasse-green-100 bg-klasse-green-50 p-4">
-                          <h4 className="mb-3 text-[10px] font-bold text-klasse-green-700 uppercase tracking-widest">Contexto Comercial</h4>
+                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                          <h4 className="mb-3 text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Contexto Comercial</h4>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-[9px] font-bold text-klasse-green-600 uppercase">Plano Escolhido</p>
+                              <p className="text-[9px] font-bold text-emerald-600 uppercase">Plano Escolhido</p>
                               <p className="text-sm font-black text-slate-900">{plan.label}</p>
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold text-klasse-green-600 uppercase">Influencer</p>
+                              <p className="text-[9px] font-bold text-emerald-600 uppercase">Influencer</p>
                               <p className="text-sm font-black text-slate-900">{influencerCode || "Direto"}</p>
                             </div>
                           </div>
@@ -1007,7 +1007,7 @@ export default function SuperAdminOnboardingPage() {
                       <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto do Director</h4>
                       <div className="space-y-2">
                         <div className="flex items-center gap-3 text-sm text-slate-600">
-                          <ShieldCheck size={14} className="text-klasse-green" />
+                          <ShieldCheck size={14} className="text-emerald" />
                           <span className="font-bold">{selectedRequest.director_nome}</span>
                         </div>
                         <div className="flex items-center gap-3 text-sm text-slate-600">
@@ -1108,7 +1108,7 @@ export default function SuperAdminOnboardingPage() {
                       </div>
                       
                       <Button 
-                        className="w-full bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-black text-sm gap-2 shadow-lg shadow-klasse-green/10"
+                        className="w-full bg-emerald hover:bg-emerald/90 text-white rounded-xl font-black text-sm gap-2 shadow-lg shadow-emerald/10"
                         onClick={handleOpenProvisionModal}
                         disabled={!canProvisionSelectedRequest}
                       >
@@ -1274,7 +1274,7 @@ export default function SuperAdminOnboardingPage() {
                         value={rejectionReason}
                         onChange={e => setRejectionReason(e.target.value)}
                         placeholder="Descreva por que o documento foi rejeitado..."
-                        className="min-h-[110px] w-full rounded-2xl border border-slate-200 p-4 text-sm text-slate-700 outline-none transition-all focus:border-klasse-green/40 focus:ring-4 focus:ring-klasse-green/5"
+                        className="min-h-[110px] w-full rounded-2xl border border-slate-200 p-4 text-sm text-slate-700 outline-none transition-all focus:border-emerald/40 focus:ring-4 focus:ring-emerald/5"
                       />
                     </div>
 
@@ -1291,7 +1291,7 @@ export default function SuperAdminOnboardingPage() {
                         <Button
                           onClick={() => reviewUpload(selectedUpload.id, 'aprovado')}
                           disabled={reviewingUpload || selectedUpload.status === 'aprovado'}
-                          className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-black text-xs uppercase tracking-wider gap-2"
+                          className="bg-emerald hover:bg-emerald/90 text-white rounded-xl font-black text-xs uppercase tracking-wider gap-2"
                         >
                           {reviewingUpload ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check size={14} />}
                           Aprovar
@@ -1327,7 +1327,7 @@ export default function SuperAdminOnboardingPage() {
         <DialogContent className="sm:max-w-[550px] rounded-3xl border-slate-100 bg-white shadow-2xl p-6">
           <DialogHeader className="space-y-1.5">
             <DialogTitle className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <Database className="w-5 h-5 text-klasse-green" />
+              <Database className="w-5 h-5 text-emerald" />
               Provisionar Escola
             </DialogTitle>
             <DialogDescription className="text-xs font-medium text-slate-500">
@@ -1341,7 +1341,7 @@ export default function SuperAdminOnboardingPage() {
               onClick={() => setProvisionTab('existente')}
               className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
                 provisionTab === 'existente'
-                  ? 'bg-white text-klasse-green shadow-sm'
+                  ? 'bg-white text-emerald shadow-sm'
                   : 'text-slate-500 hover:text-slate-900'
               }`}
             >
@@ -1351,7 +1351,7 @@ export default function SuperAdminOnboardingPage() {
               onClick={() => setProvisionTab('nova')}
               className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
                 provisionTab === 'nova'
-                  ? 'bg-white text-klasse-green shadow-sm'
+                  ? 'bg-white text-emerald shadow-sm'
                   : 'text-slate-500 hover:text-slate-900'
               }`}
             >
@@ -1363,7 +1363,7 @@ export default function SuperAdminOnboardingPage() {
             <div className="space-y-4 py-2">
               {loadingSchools ? (
                 <div className="flex flex-col items-center justify-center p-8 space-y-2">
-                  <Loader2 className="w-6 h-6 animate-spin text-klasse-green" />
+                  <Loader2 className="w-6 h-6 animate-spin text-emerald" />
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Buscando escolas...</p>
                 </div>
               ) : existingSchools.length === 0 ? (
@@ -1501,7 +1501,7 @@ export default function SuperAdminOnboardingPage() {
               <Button
                 onClick={handleLinkAndProvision}
                 disabled={provisioning || loadingSchools || existingSchools.length === 0}
-                className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-black text-xs uppercase tracking-wider gap-2 animate-none"
+                className="bg-emerald hover:bg-emerald/90 text-white rounded-xl font-black text-xs uppercase tracking-wider gap-2 animate-none"
               >
                 {provisioning && <Loader2 className="w-3 h-3 animate-spin" />}
                 Vincular e Provisionar
@@ -1510,7 +1510,7 @@ export default function SuperAdminOnboardingPage() {
               <Button
                 onClick={handleCreateAndProvision}
                 disabled={provisioning}
-                className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-black text-xs uppercase tracking-wider gap-2 animate-none"
+                className="bg-emerald hover:bg-emerald/90 text-white rounded-xl font-black text-xs uppercase tracking-wider gap-2 animate-none"
               >
                 {provisioning && <Loader2 className="w-3 h-3 animate-spin" />}
                 Criar e Provisionar
