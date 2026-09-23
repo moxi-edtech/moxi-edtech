@@ -274,7 +274,8 @@ export const footerLinks = [
   { href: '/diagnostico', label: 'Diagnóstico de Gestão' },
   { href: '/sistema-de-gestao-escolar', label: 'Sistema de Gestão Escolar' },
   { href: '#', label: 'Termos de Serviço' },
-  { href: '#', label: 'Política de Privacidade' },
+  { href: '/privacidade', label: 'Política de Privacidade' },
+  { href: '/exclusao-de-dados', label: 'Política de Exclusão de Dados' },
   { href: '#', label: 'Suporte' },
   { href: '#', label: 'Contacto' },
 ]

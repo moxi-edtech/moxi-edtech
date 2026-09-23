@@ -11,6 +11,8 @@ const ROUTES = [
   '/presencas-escolares',
   '/secretaria-escolar',
   '/financeiro-escolar',
+  '/privacidade',
+  '/exclusao-de-dados',
 ]
 
 export default function sitemap(): MetadataRoute.Sitemap {

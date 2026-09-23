@@ -2017,3 +2017,16 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--t1);font-size:
   .device-stage--aluno{display:flex;align-items:center;justify-content:center}
   .device-stage--aluno .portal-real-mobile{width:auto;height:100%;max-width:92%;aspect-ratio:1170 / 2080;margin:auto}
 }
+
+/* Public legal documents */
+.legal-page{max-width:820px;padding-top:40px;padding-bottom:48px;color:var(--t2);font-size:16px;line-height:1.8;overflow-wrap:anywhere}
+.legal-page h1{font-family:var(--font-sora),sans-serif;font-size:clamp(28px,5vw,44px);line-height:1.2;letter-spacing:-.03em;color:var(--t1);margin:24px 0}
+.legal-page h2{font-family:var(--font-sora),sans-serif;font-size:clamp(21px,3vw,26px);line-height:1.35;color:var(--t1);margin:36px 0 16px}
+.legal-page p,.legal-page ul,.legal-page ol,.legal-page address{margin-bottom:20px}
+.legal-page ul{list-style:disc;padding-left:26px}
+.legal-page ol{list-style:decimal;padding-left:26px}
+.legal-page li{padding-left:4px;margin-bottom:6px}
+.legal-page a{color:var(--g);text-decoration:underline;text-underline-offset:3px}
+.legal-page a:focus-visible{outline:2px solid var(--g);outline-offset:4px}
+.legal-page address{font-style:normal}
+.legal-updated{font-size:14px}
