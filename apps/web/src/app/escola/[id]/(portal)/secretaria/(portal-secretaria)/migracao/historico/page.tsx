@@ -30,11 +30,11 @@ export default function HistoricoImportacao() {
   }, []);
 
   if (loading) {
-    return <main className="p-6">Carregando histórico…</main>;
+    return <div className="p-6">Carregando histórico…</div>;
   }
 
   return (
-    <main className="p-6 space-y-4">
+    <div className="p-6 space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Histórico de Importações</h1>
         <p className="text-sm text-muted-foreground">Acompanhe importações recentes e resultados.</p>
@@ -71,6 +71,6 @@ export default function HistoricoImportacao() {
           </Card>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

@@ -97,7 +97,7 @@ export default function ReapreciacoesPage() {
   };
 
   return (
-    <main className="space-y-5">
+    <div className="space-y-5">
       <DashboardHeader
         title="Reapreciações RAA"
         description="Uma fila única para analisar pedidos, decidir e manter o protocolo rastreável."
@@ -176,6 +176,6 @@ export default function ReapreciacoesPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

@@ -282,8 +282,10 @@ const TurmasAlunosFinanceiro: React.FC = () => {
     });
   }, [data.turmas, data.alunos, busca]);
 
+  // Goteira própria `px-6 py-8` sobre a do AppShell e `max-w-6xl` — é exactamente a
+  // casca do `AlunosListClient`, a página com que esta tem de parecer irmã.
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8 print:space-y-6 print:p-0">
+    <div className="mx-auto w-full max-w-6xl space-y-5 px-6 py-8 print:space-y-6 print:p-0">
       
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
@@ -326,35 +328,35 @@ const TurmasAlunosFinanceiro: React.FC = () => {
             <Wallet className="w-4 h-4" />
             Gestão Financeira
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Turmas & Mensalidades</h1>
-          <p className="text-slate-500 mt-1">Acompanhamento de inadimplência e arrecadação por turma.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Turmas & Mensalidades</h1>
+          <p className="mt-0.5 text-sm text-slate-500">Acompanhamento de inadimplência e arrecadação por turma.</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-bold shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-semibold shadow-sm"
           >
             <Download className="w-4 h-4" /> Relatório
           </button>
           {whatsappStatus === 'connected' && (
             <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100/50 shadow-sm print:hidden">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> WAHA Online
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> WAHA Online
             </span>
           )}
           {whatsappStatus === 'disconnected' && (
             <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-100/50 shadow-sm print:hidden" title="O serviço de WhatsApp está desconectado.">
-              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" /> WAHA Offline
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> WAHA Offline
             </span>
           )}
           {whatsappStatus === 'checking' && (
             <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 text-slate-400 text-xs font-bold border border-slate-100 shadow-sm print:hidden">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse" /> WAHA status...
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> WAHA status...
             </span>
           )}
 
           <button 
             onClick={() => setModalCobranca(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all text-sm font-bold shadow-md print:hidden"
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all text-sm font-bold shadow-sm print:hidden"
           >
             <Mail className="w-4 h-4" /> Disparar Cobranças
           </button>
@@ -383,43 +385,39 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       {/* RESUMO GERAL EXECUTIVO (KPIs Globais) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:break-avoid">
         {/* KPI 1: Arrecadação Global */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between h-28 print:border-slate-300">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:border-slate-300">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Taxa de Arrecadação</span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-[#1F6B3B]">{resumoGeral.taxaArrecadacao.toFixed(1)}%</span>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-xl font-black text-[#1F6B3B]">{resumoGeral.taxaArrecadacao.toFixed(1)}%</span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 print:hidden">Meta: 90%</span>
           </div>
         </div>
 
         {/* KPI 2: Total em Dívida */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between h-28 print:border-slate-300">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:border-slate-300">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Carteira em Atraso</span>
-          <div className="mt-2">
-            <span className="text-2xl font-black text-rose-600">{formatCurrency(resumoGeral.totalDivida)}</span>
+          <div className="mt-3">
+            <span className="text-xl font-black text-rose-600">{formatCurrency(resumoGeral.totalDivida)}</span>
           </div>
         </div>
 
         {/* KPI 3: Alunos Regulares */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between h-28 print:border-slate-300">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:border-slate-300">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alunos Regulares</span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-800">{resumoGeral.totalPagas}</span>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-xl font-black text-slate-800">{resumoGeral.totalPagas}</span>
             <span className="text-xs text-slate-400">de {resumoGeral.totalAlunos} ativos</span>
           </div>
         </div>
 
         {/* KPI 4: Atrasos Pendentes */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between h-28 print:border-slate-300">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:border-slate-300">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Casos em Aberto</span>
-          <div className="mt-2 flex items-baseline gap-4">
-            <div>
-              <span className="text-2xl font-black text-rose-600">{resumoGeral.totalAtrasadas}</span>
-              <span className="text-[9px] font-bold text-slate-400 block uppercase">Atrasados</span>
-            </div>
-            <div>
-              <span className="text-2xl font-black text-amber-600">{resumoGeral.totalPendentes}</span>
-              <span className="text-[9px] font-bold text-slate-400 block uppercase">A Vencer</span>
-            </div>
+          {/* Mesma anatomia do KPI 3 (`valor` + `de N …`), em vez de dois números
+              grandes empilhados que quebravam o ritmo da linha. */}
+          <div className="mt-3">
+            <span className="text-xl font-black text-rose-600">{resumoGeral.totalAtrasadas}</span>
+            <span className="text-xs text-slate-400"> e {resumoGeral.totalPendentes} a vencer</span>
           </div>
         </div>
       </div>
@@ -494,12 +492,12 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                 {/* Header da Turma (Resumo) */}
                 <div 
                   onClick={() => toggleTurma(turma.id)}
-                  className="p-6 cursor-pointer flex flex-col md:flex-row items-center justify-between gap-6 group"
+                  className="p-4 cursor-pointer flex flex-col md:flex-row items-center justify-between gap-6 group"
                 >
                   {/* Info Básica */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#E3B23C] transition-colors truncate">
+                      <h3 className="text-base font-semibold text-slate-900 group-hover:text-[#E3B23C] transition-colors truncate">
                         {formatTurmaDisplayName(turma)}
                       </h3>
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-slate-50 text-slate-500 border-slate-200">
@@ -539,17 +537,19 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                   </div>
 
                   {/* KPIs Rápidos */}
-                  <div className="flex items-center gap-8 border-l border-slate-100 pl-8">
+                  {/* Os números da linha da turma descem um degrau para não competirem
+                      com os KPIs do topo (24px). Eram 20px, quase iguais. */}
+                  <div className="flex items-center gap-6 border-l border-slate-100 pl-6">
                     <div className="text-center">
-                      <div className="text-xl font-bold text-slate-900">{stats.qtdAlunos}</div>
+                      <div className="text-base font-bold text-slate-900">{stats.qtdAlunos}</div>
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Alunos</div>
                     </div>
                     <div className="text-center">
-                      <div className={`text-xl font-bold ${stats.atrasadas > 0 ? 'text-rose-600' : 'text-slate-300'}`}>{stats.atrasadas}</div>
+                      <div className={`text-base font-bold ${stats.atrasadas > 0 ? 'text-rose-600' : 'text-slate-300'}`}>{stats.atrasadas}</div>
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Atrasos</div>
                     </div>
                     <div className="text-center">
-                      <div className={`text-xl font-bold ${stats.pendentes > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{stats.pendentes}</div>
+                      <div className={`text-base font-bold ${stats.pendentes > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{stats.pendentes}</div>
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pendentes</div>
                     </div>
                     <div className="text-center border-l border-slate-100 pl-4 min-w-[90px]">

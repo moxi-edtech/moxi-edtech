@@ -40,16 +40,16 @@ export default async function ReclassificacaoFinalistasPage({
 
   if (!escolaId) {
     return (
-      <main className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto">
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
           Escola não identificada para este utilizador.
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
       <AuditPageView
         portal="secretaria"
         acao="PAGE_VIEW"
@@ -70,6 +70,6 @@ export default async function ReclassificacaoFinalistasPage({
       />
 
       <ReclassificacaoFinalistasClient />
-    </main>
+    </div>
   );
 }

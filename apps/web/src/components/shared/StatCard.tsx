@@ -9,6 +9,11 @@ type StatCardProps = {
   value: number | string | null | undefined;
   icon: ReactNode;
   href?: string;
+  /**
+   * Torna o cartão accionável (ex.: abrir um modal). Aditivo: quem não passa
+   * onClick continua a receber exactamente o mesmo <div> de antes.
+   */
+  onClick?: () => void;
   tone?: Tone;
   disabled?: boolean;
   animateValue?: boolean;
@@ -65,6 +70,7 @@ export default function StatCard({
   value,
   icon,
   href,
+  onClick,
   tone = "default",
   disabled = false,
   animateValue = false,
@@ -73,7 +79,7 @@ export default function StatCard({
   const isNumericValue = typeof value === "number" && Number.isFinite(value);
   const animatedValue = useCountUp(isNumericValue && animateValue ? value : 0);
 
-  return (
+  const card = (
     <div
       className={`rounded-xl border bg-white p-4 shadow-sm transition ${
         disabled ? "opacity-60" : "hover:shadow-md"
@@ -101,4 +107,16 @@ export default function StatCard({
       </div>
     </div>
   );
+
+  // onClick torna o cartão accionável. O <Link> "Ver todos" só existe quando há
+  // href, por isso nunca há um link dentro do botão.
+  if (onClick && !disabled && !href) {
+    return (
+      <button type="button" onClick={onClick} className="w-full text-left">
+        {card}
+      </button>
+    );
+  }
+
+  return card;
 }

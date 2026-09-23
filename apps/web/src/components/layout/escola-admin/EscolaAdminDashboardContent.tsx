@@ -13,7 +13,7 @@ import AcademicSection from "./AcademicSection";
 import PostWizardChecklist from "./PostWizardChecklist";
 import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
-import OperationalFocusSection from "./OperationalFocusSection";
+import OperacoesPainelHub from "@/components/layout/operacoes/OperacoesPainelHub";
 import { EstadoVitalBanner } from "./EstadoVitalBanner";
 import RadarFinanceiroCard from "./RadarFinanceiroCard";
 import SecaoLabel from "@/components/shared/SecaoLabel";
@@ -353,20 +353,15 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
-        <RadarOperacional alerts={radarAlerts} role={mode === "operacoes" ? "secretaria" : "admin"} />
+        <RadarOperacional
+          alerts={radarAlerts}
+          role={mode === "operacoes" ? "secretaria" : "admin"}
+          variant={mode === "operacoes" ? "compact" : "default"}
+        />
       </motion.div>
 
-      {isOperacoes && operationalSnapshot && (
-        <motion.div variants={itemVariants}>
-          <OperationalFocusSection escolaId={escolaId} snapshot={operationalSnapshot} />
-        </motion.div>
-      )}
-
-      {isOperacoes && (
-        <motion.div variants={itemVariants}>
-          <OperationalFeedSection escolaId={escolaId} portalBase={portalBase} />
-        </motion.div>
-      )}
+      {/* Foco da operação e Fila operacional vivem agora no OperacoesPainelHub,
+          abertos por modal — mantêm-se acessíveis sem pesar na página. */}
 
       {/* ── 3. KPIs ──────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
@@ -482,18 +477,21 @@ export default function EscolaAdminDashboardContent({
         </motion.section>
       )}
 
-      {/* ── 5. CHARTS ────────────────────────────────────────────────────────── */}
-      <motion.div variants={itemVariants}>
-        <ChartsSection
-          meses={charts?.meses}
-          alunosPorMes={charts?.alunosPorMes}
-          pagamentos={charts?.pagamentos}
-          pagamentosValores={charts?.pagamentosValores}
-          mode={mode}
-        />
-      </motion.div>
+      {/* ── 5. CHARTS (admin) — em operações abre no hub ─────────────────────── */}
+      {!isOperacoes && (
+        <motion.div variants={itemVariants}>
+          <ChartsSection
+            meses={charts?.meses}
+            alunosPorMes={charts?.alunosPorMes}
+            pagamentos={charts?.pagamentos}
+            pagamentosValores={charts?.pagamentosValores}
+            mode={mode}
+          />
+        </motion.div>
+      )}
 
-      {/* ── 6. FINANCE CARDS ─────────────────────────────────────────────────── */}
+      {/* ── 6. FINANCE CARDS (admin) — em operações vive no hub ──────────────── */}
+      {!isOperacoes && (
       <section className="grid gap-6 lg:grid-cols-2">
         <FinanceCard
           iconBg="bg-emerald-50 text-emerald"
@@ -547,54 +545,45 @@ export default function EscolaAdminDashboardContent({
           isOperacoes={isOperacoes}
         />
       </section>
+      )}
 
-      {/* ── 7. BOTTOM GRID ───────────────────────────────────────────────────── */}
-      {isOperacoes ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-          <div className="space-y-6 lg:col-span-2">
-            <motion.div variants={itemVariants}>
-              <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
-            </motion.div>
-            <motion.div variants={itemVariants}>
-              <NoticesSection escolaId={escolaId} notices={notices} portalBase={portalBase} />
-            </motion.div>
-          </div>
-          <div className="space-y-6">
-            <motion.div variants={itemVariants}>
-              <PostWizardChecklist
-                setupStatus={setupStatus}
-                stats={stats}
-                missingPricingCount={missingPricingCount}
-                portalBase={portalBase}
-              />
-            </motion.div>
-          </div>
+      {/* ── 7. OPERAÇÃO (só em modo operações) ───────────────────────────────── */}
+      {isOperacoes && (
+        <motion.div variants={itemVariants}>
+          <OperacoesPainelHub
+            escolaId={escolaId}
+            operationalSnapshot={operationalSnapshot}
+            charts={charts}
+          />
+        </motion.div>
+      )}
+
+      {/* ── 8. BOTTOM GRID (gestão) ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
+        <div className="space-y-8 lg:col-span-2">
+          <motion.div variants={itemVariants}>
+            <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <NoticesSection escolaId={escolaId} notices={notices} portalBase={portalBase} />
+          </motion.div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
-          <div className="space-y-8 lg:col-span-2">
-            <motion.div variants={itemVariants}>
-              <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
-            </motion.div>
-            <motion.div variants={itemVariants}>
-              <NoticesSection escolaId={escolaId} notices={notices} portalBase={portalBase} />
-            </motion.div>
-          </div>
-          <div className="space-y-8">
-            <motion.div variants={itemVariants}>
-              <PostWizardChecklist
-                setupStatus={setupStatus}
-                stats={stats}
-                missingPricingCount={missingPricingCount}
-                portalBase={portalBase}
-              />
-            </motion.div>
+        <div className="space-y-8">
+          <motion.div variants={itemVariants}>
+            <PostWizardChecklist
+              setupStatus={setupStatus}
+              stats={stats}
+              missingPricingCount={missingPricingCount}
+              portalBase={portalBase}
+            />
+          </motion.div>
+          {!isOperacoes && (
             <motion.div variants={itemVariants}>
               <OperationalFeedSection escolaId={escolaId} portalBase={portalBase} />
             </motion.div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
     </motion.div>
   );

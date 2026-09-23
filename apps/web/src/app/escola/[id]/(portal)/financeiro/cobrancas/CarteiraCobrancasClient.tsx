@@ -322,7 +322,7 @@ export default function CarteiraCobrancasClient() {
   };
 
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -604,6 +604,6 @@ export default function CarteiraCobrancasClient() {
           }}
         />
       ) : null}
-    </main>
+    </div>
   );
 }

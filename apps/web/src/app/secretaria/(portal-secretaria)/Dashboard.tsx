@@ -341,7 +341,7 @@ export function Dashboard({
   return (
     <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
       <div className="flex-1 flex">
-        <main className="flex-1 p-6 lg:p-8 pb-32">
+        <div className="flex-1 p-6 lg:p-8 pb-32">
           <div className="max-w-5xl mx-auto space-y-8">
             <DashboardHeader
               title={dashboardTitle}
@@ -541,7 +541,7 @@ export function Dashboard({
               </div>
             </div>
           </div>
-        </main>
+        </div>
       </div>
 
       {selectedAlunoIdForFicha && (

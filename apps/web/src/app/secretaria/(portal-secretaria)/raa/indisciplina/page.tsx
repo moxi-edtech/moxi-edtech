@@ -36,7 +36,7 @@ export default function IndisciplinaRaaPage() {
   };
 
   return (
-    <main className="space-y-5">
+    <div className="space-y-5">
       <DashboardHeader title="Indisciplina grave — RAA" description="Registe a ocorrência dentro da escola, ano letivo e matrícula corretos." breadcrumbs={[{ label: "Início", href: "/" }, { label: "Secretaria", href: "/secretaria" }, { label: "Indisciplina RAA" }]} />
       <section className="max-w-3xl rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><p>O evento fica auditável e pode influenciar a análise RAA. Registe apenas factos verificáveis.</p></div>
@@ -50,6 +50,6 @@ export default function IndisciplinaRaaPage() {
           <button disabled={saving} className="rounded-lg bg-emerald px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "A guardar..." : "Registar ocorrência"}</button>
         </form>
       </section>
-    </main>
+    </div>
   );
 }

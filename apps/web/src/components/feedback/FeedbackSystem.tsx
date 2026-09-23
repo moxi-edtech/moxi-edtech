@@ -522,21 +522,158 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
   )
 }
 
+/**
+ * Variante compacta (usada em operações): alinha o radar com o cartão
+ * "Estado Académico" — uma linha só, ícone pequeno em caixa cinza, rótulo em
+ * caixa alta e as contagens como pills suaves. A lista de alertas abre por baixo.
+ *
+ * Existe como componente próprio para o caminho por omissão ficar intacto: quem
+ * não pede `variant="compact"` continua a receber o radar de sempre.
+ */
+function RadarCompacto({
+  role,
+  critical,
+  warnings,
+  infos,
+  loading,
+  onAction,
+  collapsed,
+  onToggle,
+}: {
+  role: "secretaria" | "admin"
+  critical: OperationalAlert[]
+  warnings: OperationalAlert[]
+  infos: OperationalAlert[]
+  loading: boolean
+  onAction?: (alert: OperationalAlert) => void
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  const total = critical.length + warnings.length + infos.length
+  const limpo = !loading && total === 0
+
+  const subline = loading
+    ? "A verificar…"
+    : critical.length > 0
+      ? `${critical.length} pendência${critical.length > 1 ? "s" : ""} crítica${critical.length > 1 ? "s" : ""}`
+      : warnings.length > 0
+        ? `${warnings.length} alerta${warnings.length > 1 ? "s" : ""} por resolver`
+        : infos.length > 0
+          ? `${infos.length} informaç${infos.length > 1 ? "ões" : "ão"}`
+          : "Sem pendências no radar"
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={`rounded-xl border p-2 ${
+              limpo
+                ? "border-emerald-100 bg-emerald-50 text-emerald-600"
+                : "border-slate-100 bg-slate-50 text-slate-500"
+            }`}
+          >
+            {limpo ? <CheckCircle2 className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              {role === "admin" ? "Cockpit de Gestão" : "Radar Operacional"}
+            </p>
+            <p className="text-xs font-bold text-slate-700 mt-0.5">{subline}</p>
+          </div>
+        </div>
+
+        {total > 0 && (
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+            {critical.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 text-slate-400" />
+                <span className="font-medium text-slate-400">Crítico:</span>
+                <span className="rounded-full border border-rose-100/50 bg-rose-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-rose-700">
+                  {critical.length}
+                </span>
+              </div>
+            )}
+            {warnings.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-slate-400" />
+                <span className="font-medium text-slate-400">Alerta:</span>
+                <span className="rounded-full border border-amber-100/50 bg-amber-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-700">
+                  {warnings.length}
+                </span>
+              </div>
+            )}
+            {infos.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Info className="h-3.5 w-3.5 text-slate-400" />
+                <span className="font-medium text-slate-400">Info:</span>
+                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                  {infos.length}
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              aria-expanded={!collapsed}
+              onClick={onToggle}
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition-colors hover:text-slate-600"
+            >
+              {collapsed ? "Ver alertas" : "Ocultar"}
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${collapsed ? "" : "rotate-180"}`}
+              />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs font-medium text-slate-400">
+          <Loader2 size={14} className="animate-spin" /> A mapear o radar…
+        </div>
+      ) : !collapsed && total > 0 ? (
+        <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+          {[...critical, ...warnings, ...infos].map((alert) => (
+            <AlertCard key={alert.id} alert={alert} onAction={onAction} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function RadarOperacional({
   alerts,
   loading = false,
   role = "secretaria",
   onAction,
+  variant = "default",
 }: {
   alerts: OperationalAlert[]
   loading?: boolean
   role?: "secretaria" | "admin"
   onAction?: (alert: OperationalAlert) => void
+  variant?: "default" | "compact"
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const critical = alerts.filter((a) => a.severity === "critical")
   const warnings = alerts.filter((a) => a.severity === "warning")
   const infos = alerts.filter((a) => a.severity === "info")
+
+  if (variant === "compact") {
+    return (
+      <RadarCompacto
+        role={role}
+        critical={critical}
+        warnings={warnings}
+        infos={infos}
+        loading={loading}
+        onAction={onAction}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((c) => !c)}
+      />
+    )
+  }
 
   if (loading) {
     return (

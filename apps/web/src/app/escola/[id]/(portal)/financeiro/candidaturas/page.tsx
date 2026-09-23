@@ -39,7 +39,7 @@ export default async function FinanceiroCandidaturasPage({ params, searchParams 
   const selectedId = resolvedParams?.candidatura || null
 
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <DashboardHeader
         title="Inbox de Candidaturas"
         description="Compense pagamentos, valide comprovativos e converta em matrículas."
@@ -56,6 +56,6 @@ export default async function FinanceiroCandidaturasPage({ params, searchParams 
           initialSelectedId={selectedId}
         />
       ) : null}
-    </main>
+    </div>
   )
 }

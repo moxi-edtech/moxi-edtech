@@ -564,7 +564,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                   </div>
                   <div className="divide-y divide-slate-100 text-left">
                     {periodos.length === 0 ? (
-                      <div className="px-6 py-8 text-center text-slate-400 italic text-sm">
+                      <div className="px-6 py-10 text-center text-slate-400 italic text-sm">
                         Nenhum trimestre configurado para este ano. Utilize um modelo acima para começar.
                       </div>
                     ) : periodos.map((p) => (

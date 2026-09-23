@@ -14,7 +14,7 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
   const returnTo = returnToParam?.startsWith("/") && !returnToParam.startsWith("//") ? returnToParam : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12">
+    <div className="bg-slate-50 pb-12">
       <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-4">
         <div className="max-w-[1720px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -33,7 +33,7 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
         </div>
       </header>
 
-      <main className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         <ResumoCaixaSecretaria escolaId={escolaId} />
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[700px]">
           <BalcaoAtendimento 
@@ -43,7 +43,7 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
             returnTo={returnTo}
           />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

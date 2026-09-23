@@ -169,7 +169,7 @@ export default function FechoCaixaPage() {
   };
 
   return (
-    <main className="space-y-8">
+    <div className="space-y-8">
       
       {/* HEADER DE GESTÃO */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 pb-6">
@@ -464,6 +464,6 @@ export default function FechoCaixaPage() {
           </button>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

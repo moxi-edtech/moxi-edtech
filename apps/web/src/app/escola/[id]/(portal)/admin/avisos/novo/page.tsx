@@ -64,7 +64,7 @@ export default function AvisosNovoPage() {
           <p className="text-sm text-slate-500">Comunique algo importante para a comunidade escolar.</p>
         </header>
 
-        <form onSubmit={onSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+        <form onSubmit={onSubmit} className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Título</label>
             <input

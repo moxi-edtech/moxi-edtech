@@ -37,7 +37,7 @@ export default async function RecebimentosPage({
     : null;
 
   return (
-    <main className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6 p-4 md:p-6">
       <DashboardHeader
         title="Recebimentos"
         description="Registe entradas, valide comprovativos e consulte o histórico num único lugar."
@@ -137,6 +137,6 @@ export default async function RecebimentosPage({
           ]}
         />
       )}
-    </main>
+    </div>
   );
 }

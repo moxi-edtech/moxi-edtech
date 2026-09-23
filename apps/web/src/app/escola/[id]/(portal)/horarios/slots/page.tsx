@@ -300,7 +300,7 @@ function HorariosSlotsContent() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-slate-500">
               <Spinner className="text-amber" size={24} />

@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ClipboardCheck, XCircle } from "lucide-react";
-import SecaoLabel from "@/components/shared/SecaoLabel";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 type Item = { id: string; turma_id: string; disciplina_id: string; turma_nome?: string; disciplina_nome?: string; professor_nome?: string; trimestre: number; motivo: string; created_at: string };
 
@@ -39,11 +38,12 @@ export default function NotasReaberturaPanel() {
     setRejecting(null); setReason(""); await load(); setActingId(null);
   };
 
-  if (loading) return <section className="rounded-2xl border border-slate-200 bg-white p-5"><div className="h-5 w-56 animate-pulse rounded bg-slate-100" /><div className="mt-3 h-12 animate-pulse rounded-xl bg-slate-100" /></section>;
-  if (loadError) return <section className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700"><p className="font-black">Não foi possível carregar as reaberturas.</p><p className="mt-1">{loadError}</p><button type="button" onClick={() => void load()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></section>;
-  if (!items.length) return null;
-  return <section id="operacoes-reabertura-notas" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <div className="mb-4"><SecaoLabel className="text-emerald">Acompanhamento académico</SecaoLabel><div className="mt-1 flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-emerald" /><div><h2 className="font-black text-slate-900">Reabertura de notas</h2><p className="text-xs text-slate-500">Solicitações de professores aguardando decisão.</p></div></div></div>
+  if (loading) return <section className="space-y-3"><div className="h-5 w-56 animate-pulse rounded bg-slate-100" /><div className="h-12 animate-pulse rounded-xl bg-slate-100" /></section>;
+  if (loadError) return <section className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p className="font-black">Não foi possível carregar as reaberturas.</p><p className="mt-1">{loadError}</p><button type="button" onClick={() => void load()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></section>;
+  // Dentro do modal, o vazio precisa de se explicar — antes a secção desaparecia.
+  if (!items.length) return <p className="text-sm text-slate-500">Nenhuma reabertura pendente neste momento.</p>;
+  // Título e descrição vivem no ModalShell — aqui fica só a lista e as acções.
+  return <section className="space-y-3">
     <div className="space-y-2">{items.map((item) => <div key={item.id} className="rounded-xl border border-slate-100 bg-white p-3"><div className="flex flex-wrap items-start gap-3"><div className="min-w-[220px] flex-1"><p className="font-bold text-slate-900">{item.turma_nome} · {item.disciplina_nome}</p><p className="text-xs text-slate-500">{item.professor_nome} · Trimestre {item.trimestre}</p><p className="mt-2 text-sm text-slate-700">{item.motivo}</p></div><div className="flex items-center gap-2">{rejecting === item.id ? <><input autoFocus value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Motivo" className="w-40 rounded-lg border border-slate-200 px-3 py-2 text-xs" /><button type="button" disabled={Boolean(actingId)} onClick={() => void decide(item.id, "REJEITADO")} className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{actingId === item.id ? "A guardar..." : "Confirmar"}</button><button type="button" disabled={Boolean(actingId)} onClick={() => { setRejecting(null); setReason(""); }} className="text-xs font-bold text-slate-500 disabled:opacity-60">Cancelar</button></> : <><button type="button" disabled={Boolean(actingId)} onClick={() => { setRejecting(item.id); setReason(""); }} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-60"><XCircle className="h-3.5 w-3.5" /> Rejeitar</button><button type="button" disabled={Boolean(actingId)} onClick={() => void decide(item.id, "APROVADO")} className="inline-flex items-center gap-1 rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60"><CheckCircle2 className="h-3.5 w-3.5" /> {actingId === item.id ? "A guardar..." : "Aprovar"}</button></>}</div></div></div>)}</div>
     {message && <p className="mt-3 text-xs font-bold text-slate-600">{message}</p>}
   </section>;

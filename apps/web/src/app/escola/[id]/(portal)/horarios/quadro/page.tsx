@@ -1701,7 +1701,7 @@ function QuadroHorariosContent() {
         )}
         {turmaId && (
           <div className="mb-6 grid gap-4 md:grid-cols-5">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold text-slate-500 uppercase">Slots preenchidos</p>
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {filledSlots}/{totalSlots || 0}
@@ -1710,24 +1710,24 @@ function QuadroHorariosContent() {
                 {totalDias} dia(s) • {temposAulaCount} tempos/dia
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold text-slate-500 uppercase">Disciplinas completas</p>
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {disciplinasCompletas}/{aulas.length}
               </p>
               <p className="text-xs text-slate-500 mt-1">Meta semanal por disciplina</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold text-slate-500 uppercase">Pendências de carga</p>
               <p className="text-2xl font-bold text-amber-600 mt-2">{missingLoadCount}</p>
               <p className="text-xs text-slate-500 mt-1">Sem carga definida</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold text-slate-500 uppercase">Conflitos detectados</p>
               <p className="text-2xl font-bold text-rose-600 mt-2">{conflitosCount}</p>
               <p className="text-xs text-slate-500 mt-1">Professor/Sala</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold text-slate-500 uppercase">Sobrecarga</p>
               <p className="text-2xl font-bold text-slate-900 mt-2">
                 {overloadProfessores.length + overloadSalas.length}
@@ -1737,7 +1737,7 @@ function QuadroHorariosContent() {
           </div>
         )}
         {turmaId && disciplinasPendentes.length > 0 && (
-          <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold text-slate-800">Disciplinas pendentes</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {disciplinasPendentes.slice(0, 6).map((disc) => (

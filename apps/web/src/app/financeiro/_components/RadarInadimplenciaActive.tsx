@@ -390,44 +390,45 @@ export default function RadarInadimplenciaActive({
   );
   const potencialRecuperacao = Math.floor(totalEmRisco * 0.7); // 70% estimado
 
+  // Sem `max-w-6xl mx-auto`: este componente vive dentro de uma coluna `lg:col-span-2`
+  // da página, e centrar-se a si próprio desalinhava-o da grelha.
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* --- HEADER COM MÉTRICAS --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-2xl font-bold text-slate-900">
+          <div className="text-xl font-bold text-slate-900">
             {resumo.inadimplencia.total}
           </div>
           <div className="text-sm text-slate-500">Alunos Pendentes</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-2xl font-bold text-[#7A5200]">
+          <div className="text-xl font-bold text-[#7A5200]">
             {mounted ? totalEmRisco.toLocaleString("pt-AO") : "—"} Kz
           </div>
           <div className="text-sm text-slate-500">Total em Risco</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-2xl font-bold text-[#1F6B3B]">
+          <div className="text-xl font-bold text-[#1F6B3B]">
             {mounted ? potencialRecuperacao.toLocaleString("pt-AO") : "—"} Kz
           </div>
           <div className="text-sm text-slate-500">Potencial Recuperação</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-2xl font-bold text-slate-900">
+          <div className="text-xl font-bold text-slate-900">
             {resumo.matriculados.total}
           </div>
           <div className="text-sm text-slate-500">Matriculados</div>
         </div>
       </div>
 
-      {/* --- HEADER DE AÇÃO --- */}
+      {/* --- BARRA DE AÇÃO --- */}
+      {/* O título saiu daqui: a página já escreve "Radar de Inadimplência" no
+          cabeçalho da secção acima, e esta cópia era ainda um `<h1>` — dois
+          títulos iguais e dois `<h1>` no mesmo ecrã. */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#E3B23C] animate-pulse" />
-            Radar de Inadimplência
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm font-semibold text-slate-900">
             {dados.length} alunos pendentes • {selectedIds.size} selecionados
           </p>
         </div>
@@ -492,25 +493,25 @@ export default function RadarInadimplenciaActive({
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-700">
+              <div className="text-xl font-bold text-slate-700">
                 {relatorio.totalEnviadas}
               </div>
               <div className="text-sm text-slate-600">Mensagens Enviadas</div>
             </div>
             <div className="text-center p-4 bg-[#1F6B3B]/10 rounded-lg">
-              <div className="text-2xl font-bold text-[#1F6B3B]">
+              <div className="text-xl font-bold text-[#1F6B3B]">
                 {relatorio.taxaResposta}%
               </div>
               <div className="text-sm text-[#1F6B3B]">Taxa de Resposta</div>
             </div>
             <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-700">
+              <div className="text-xl font-bold text-slate-700">
                 {relatorio.taxaConversao}%
               </div>
               <div className="text-sm text-slate-600">Taxa de Pagamento</div>
             </div>
             <div className="text-center p-4 bg-[#E3B23C]/10 rounded-lg">
-              <div className="text-2xl font-bold text-[#7A5200]">
+              <div className="text-xl font-bold text-[#7A5200]">
                 {mounted ? relatorio.valorRecuperado.toLocaleString("pt-AO") : "—"} Kz
               </div>
               <div className="text-sm text-[#7A5200]">Valor Recuperado</div>

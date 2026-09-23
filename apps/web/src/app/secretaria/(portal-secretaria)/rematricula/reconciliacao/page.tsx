@@ -80,7 +80,7 @@ export default function RematriculaReconciliacaoPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
@@ -143,6 +143,6 @@ export default function RematriculaReconciliacaoPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -579,7 +579,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
       : null;
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="bg-slate-50 p-4 md:p-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
         <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -1153,6 +1153,6 @@ export default function WhatsAppKlassePage({ params }: Props) {
           </section>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -260,7 +260,7 @@ export default function IdentidadePage({ params }: Props) {
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-50 pb-4 mb-2">
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Identidade Oficial</h3>
                   {formData.plano_atual && (
@@ -301,7 +301,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-4 mb-2">Aparência da Marca</h3>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Logótipo (URL)</label>
@@ -349,7 +349,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-50 pb-4 mb-2">
                   <div>
                     <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Dados Bancários</h3>
@@ -443,7 +443,7 @@ export default function IdentidadePage({ params }: Props) {
             </div>
 
             <aside className="space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-6 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-6 shadow-sm">
                 <div>
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-3 mb-4">Estado da Subscrição</h3>
                   <div className="space-y-4">
@@ -470,7 +470,7 @@ export default function IdentidadePage({ params }: Props) {
               </div>
 
               {planoLimites && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+                <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-3 mb-2">Contrato do Plano</h3>
                   <div className="grid gap-3 text-xs text-slate-600">
                     <div className="flex items-center justify-between">
@@ -537,7 +537,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-slate-800">Prévia do logótipo</h3>
                 <div className="flex items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 min-h-[180px]">
                   {logoPreview ? (

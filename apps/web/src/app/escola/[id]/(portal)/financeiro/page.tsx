@@ -267,7 +267,7 @@ export default async function FinanceiroDashboardPage({
   };
 
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <DashboardHeader
         title="Financeiro"
         description="Controlo total do mês em um único ecrã operacional."
@@ -593,7 +593,7 @@ export default async function FinanceiroDashboardPage({
           </section>
         </aside>
       </div>
-    </main>
+    </div>
   );
 }
 

@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   UserRoundSearch,
 } from "lucide-react";
+import SecaoLabel from "@/components/shared/SecaoLabel";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import type { OperationalSnapshot } from "./dashboard.types";
@@ -39,28 +40,18 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
     <Link
       href={card.href}
       title={card.description}
-      className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald/40 hover:shadow-xs"
+      className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 transition hover:border-slate-300 hover:shadow-md"
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${card.tone}`}>
-            <Icon className="h-3.5 w-3.5" />
-          </div>
-          <span className="text-xs font-semibold text-slate-600 truncate group-hover:text-slate-900 transition-colors">
-            {card.label}
-          </span>
+      <div className="flex min-w-0 items-center gap-2">
+        <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${card.tone}`}>
+          <Icon className="h-4 w-4" />
         </div>
-        {!isZero && (
-          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-emerald animate-pulse" />
-        )}
+        <span className="truncate text-xs font-semibold text-slate-600">{card.label}</span>
       </div>
 
-      <div className="mt-3 flex items-baseline justify-between">
-        <span className={`text-2xl font-extrabold tracking-tight font-sora ${isZero ? "text-slate-400" : "text-slate-900"}`}>
+      <div className="mt-3">
+        <span className={`text-2xl font-black ${isZero ? "text-slate-400" : "text-slate-900"}`}>
           {card.value}
-        </span>
-        <span className="text-xs font-bold text-slate-300 group-hover:text-emerald transition-colors">
-          &rarr;
         </span>
       </div>
     </Link>
@@ -160,19 +151,10 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
   ];
 
   return (
-    <section className="space-y-3.5">
-      <div className="flex items-baseline justify-between gap-4">
-        <div>
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 font-sora">
-            Foco da Operação
-          </h3>
-          <p className="mt-0.5 text-xs font-medium text-slate-500">
-            Filas e bloqueios que realmente movem a escola no dia-a-dia.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+    // Vive dentro do modal "Fila operacional", por isso não repete título próprio.
+    <section className="space-y-3">
+      <SecaoLabel>Foco da operação</SecaoLabel>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {cards.map((card) => (
           <FocusMetricCard key={card.key} card={card} />
         ))}
