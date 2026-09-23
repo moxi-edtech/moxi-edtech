@@ -270,13 +270,25 @@ correcção mecânica. Fica registado, não mexido.
 ### 4.2 A outra metade: `klasse-*` removido (item C, feito)
 
 Decisão de produto tomada em 2026-09-23: fica a grafia do Tailwind. `klasse-green` → `emerald`,
-`klasse-gold` → `amber`, em todo o repo.
+`klasse-gold` → `amber`. Âmbito executado: **`apps/web`**.
 
 ```
 257 ficheiros, 2517 ocorrências
-0 klasse-green|gold restantes
+0 klasse-green|gold em código vivo do apps/web
 tokens intactos (packages/design-tokens/tailwind.cjs, md5 inalterado)
 ```
+
+**O que ficou de fora — e porque não é a mesma coisa.** O `sed` correu só sobre `apps/web`. Fora
+dele sobram **205 linhas em 37 ficheiros de `apps/formacao`** — mas ali as classes **não são
+mortas**, e é exactamente isso que impede a conversão. O `apps/formacao` é Tailwind v4 com
+`@theme { --color-klasse-gold: #C8902A }` (`app/globals.css:7`): um dourado **próprio**, diferente
+do `#E3B23C` que o `apps/web` usa. Trocar por `amber` mudaria a cor — o ficheiro de tema do
+formacao declara de propósito o valor que quer. Fica por converter, por decisão de 2026-09-23.
+
+O resto do que sobra não é código: três `.bak` órfãos, um `src/` na raiz fora de qualquer
+workspace pnpm, um log versionado e a prosa de `docs/`. Em código vivo, a conversão está fechada —
+`apps/landing` (1 linha) e o `README` do `apps/web` (2) foram convertidos depois, ambos com o
+mesmo valor de origem e destino.
 
 Não havia uma única comparação de igualdade nem chave de objecto sobre estas strings — todas as
 2517 estavam dentro de strings de classe. `emerald: klasseColors.green` e
