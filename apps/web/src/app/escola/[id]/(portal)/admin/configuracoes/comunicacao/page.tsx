@@ -177,7 +177,7 @@ export default function ComunicacaoConfigPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link

@@ -250,7 +250,7 @@ export default function CockpitPedagogicoPage() {
   };
 
   return (
-    <main className="space-y-6 p-6 max-w-7xl mx-auto">
+    <main className="space-y-6 p-6 max-w-6xl mx-auto">
       {/* Back button and Header */}
       <div className="flex flex-col gap-4">
         <Link

@@ -13,7 +13,7 @@ export default async function ReclassificacaoFinalistasOperacoesPage({
   const { id } = await params;
 
   return (
-    <main className="p-6 max-w-7xl mx-auto space-y-6">
+    <main className="p-6 max-w-6xl mx-auto space-y-6">
       <AuditPageView
         portal="admin_escola"
         acao="PAGE_VIEW"

@@ -1316,7 +1316,7 @@ export default function TurmasListClient({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 space-y-6 pb-24">
+    <div className="w-full max-w-6xl mx-auto p-6 space-y-6 pb-24">
 
       {/* ... (Header, KPIs, Pending banner) ... */}
 

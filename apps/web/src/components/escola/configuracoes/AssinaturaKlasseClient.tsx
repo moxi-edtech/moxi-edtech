@@ -236,7 +236,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
   const isTransferencia = assinatura.metodo_pagamento === 'transferencia';
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       
       {/* HEADER DO STATUS (Enterprise Vibe) */}
       <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden relative">

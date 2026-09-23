@@ -475,7 +475,7 @@ export default async function Page(props: {
       <AuditPageView portal="admin_escola" acao="PAGE_VIEW" entity="relatorios" />
 
       <div className="min-h-screen bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+        <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
           <nav>
             <ol className="flex items-center gap-1 text-xs font-semibold text-slate-400">
               <li>

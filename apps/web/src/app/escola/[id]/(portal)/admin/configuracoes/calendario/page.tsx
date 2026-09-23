@@ -392,7 +392,7 @@ export default function CalendarioConfigPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-left">
-      <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
         
         {/* HEADER */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -564,7 +564,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                   </div>
                   <div className="divide-y divide-slate-100 text-left">
                     {periodos.length === 0 ? (
-                      <div className="px-6 py-10 text-center text-slate-400 italic text-sm">
+                      <div className="px-6 py-8 text-center text-slate-400 italic text-sm">
                         Nenhum trimestre configurado para este ano. Utilize um modelo acima para começar.
                       </div>
                     ) : periodos.map((p) => (

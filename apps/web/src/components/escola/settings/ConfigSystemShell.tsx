@@ -58,7 +58,7 @@ export default function ConfigSystemShell({
   const hasActionControls = Boolean(onSave || testHref);
   const showRightPanel = hasStatusData || hasActionControls;
   return (
-    <div className={embedded ? "w-full h-full space-y-6" : "max-w-6xl mx-auto p-6 space-y-6"}>
+    <div className={embedded ? "w-full h-full space-y-6" : "max-w-6xl mx-auto px-6 py-8 space-y-6"}>
       <header className="flex flex-col gap-2">
         {!embedded && backHref && (
           <Link

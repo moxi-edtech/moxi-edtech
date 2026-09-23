@@ -118,7 +118,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
+      <div className="max-w-6xl mx-auto px-6 py-8 space-y-5">
         <DossierHeader aluno={aluno} role={role} escolaId={resolvedEscolaId} />
         <DossierTabs
           aluno={aluno}

@@ -11,7 +11,7 @@ type Props = {
 
 export default function OperacoesDashboard({ escolaId, escolaNome }: Props) {
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8 p-6 pb-12 font-sans lg:p-8 lg:pb-16">
+    <div className="mx-auto w-full max-w-6xl space-y-8 p-6 pb-12 font-sans lg:p-8 lg:pb-16">
       <OperacoesDashboardData escolaId={escolaId} escolaNome={escolaNome} />
 
       <section aria-label="Detalhes da operação" className="space-y-6">

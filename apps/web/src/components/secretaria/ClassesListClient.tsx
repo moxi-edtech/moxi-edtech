@@ -52,7 +52,7 @@ export default function ClassesListClient() {
   }, [escolaId]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 p-6">
+    <div className="w-full max-w-6xl mx-auto space-y-6 p-6">
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <h1 className="text-2xl font-bold text-moxinexa-navy">Classes</h1>
         <p className="text-sm text-slate-500 mt-1">
