@@ -35,7 +35,7 @@ const SOCIAL_ICONS: Record<string, ReactNode> = {
 
 export function FooterSection({ links }: FooterSectionProps) {
   return (
-    <footer className="z">
+    <footer className="z" id="site-footer">
       <div className="container">
         <div className="footer-inner">
             <div className="footer-logo">

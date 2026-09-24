@@ -2,7 +2,7 @@
 
 import { track } from '@vercel/analytics'
 import { motion, Variants } from 'framer-motion'
-import Image from 'next/image'
+import { LaptopPreview } from './LaptopPreview'
 
 interface HeroSectionProps {
   titleLines: string[]
@@ -51,7 +51,6 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
             animate="visible"
           >
             <motion.div variants={itemVariants} className="hero-eyebrow">
-              <span className="hero-eyebrow-dot" />
               {eyebrow}
             </motion.div>
             <motion.h1 variants={itemVariants}>
@@ -90,7 +89,6 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
               {ebookCta.label} <span aria-hidden="true">→</span>
             </motion.a>
             <motion.div variants={itemVariants} className="hero-proof">
-              <span className="hero-proof-mark">K</span>
               <div className="proof-text"><strong>{note}</strong><span>Configuração e formação acompanhadas</span></div>
             </motion.div>
           </motion.div>
@@ -101,14 +99,7 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
             transition={{ duration: 0.9, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
             className="hero-showcase"
           >
-            <div className="hero-person-frame">
-              <Image src="/assets/leadership-cover.png" alt="Gestora escolar a acompanhar a sua equipa" fill sizes="(max-width: 900px) 100vw, 44vw" priority />
-              <div className="hero-person-caption"><span>Uma visão para cada decisão</span><strong>KLASSE para a escola inteira</strong></div>
-            </div>
-            <div className="hero-product-window" aria-label="Pré-visualização do dashboard KLASSE">
-              <div className="hero-window-bar"><span className="window-dots"><i /><i /><i /></span><span>app.klasse.ao</span><span className="window-live"><b />Ao vivo</span></div>
-              <div className="hero-real-screen"><Image src="/assets/dashboard-notebook.png" alt="Dashboard real do KLASSE" fill sizes="(max-width: 900px) 100vw, 48vw" /></div>
-            </div>
+            <LaptopPreview />
           </motion.div>
         </div>
       </div>

@@ -258,7 +258,7 @@ nav.scrolled .hamburger span{background:var(--t2)}
 }
 .hero-bg-image{object-fit:cover;object-position:center;opacity:.38;z-index:0}
 .hero-eyebrow{display:inline-flex;align-items:center;gap:10px;padding:4px 0 4px 14px;border-left:2px solid var(--gold);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dkt2);margin-bottom:28px;background:none;border-radius:0}
-.hero-eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0;animation:blink 2s ease-in-out infinite}
+.hero-eyebrow::before{content:none;animation:none}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .hero h1{font-family:var(--font-sora),sans-serif;font-size:clamp(40px,5vw,66px);line-height:1.06;letter-spacing:-.04em;margin-bottom:24px;color:var(--dkt1);font-weight:900}
 .hero h1 em{font-style:italic;color:var(--gold)}
@@ -2037,3 +2037,75 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--t1);font-size:
 .footer-social a:hover{color:var(--t1);border-color:var(--t2)}
 .footer-social a:focus-visible{outline:2px solid var(--g);outline-offset:3px}
 .footer-social svg{width:16px;height:16px;fill:currentColor}
+
+/* Mobile landing: keep one native document scroll through the final footer.
+   Older snap rules made the onboarding panel consume the viewport and hid the
+   footer completely. These overrides intentionally live last in the cascade. */
+@media (max-width:900px){
+  html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
+  .panel-stack{
+    height:auto;
+    min-height:100%;
+    overflow:visible;
+    scroll-snap-type:none;
+    scroll-padding-top:0;
+    overscroll-behavior-y:auto;
+  }
+  .panel,
+  .panel--pricing-mobile,
+  .panel--onboarding{
+    height:auto;
+    min-height:0;
+    overflow:visible;
+    scroll-snap-align:none;
+    scroll-snap-stop:normal;
+  }
+  .panel--onboarding .onboarding-lead{
+    display:block;
+    min-height:0;
+    height:auto;
+    flex:none;
+  }
+  .panel--onboarding .panel-footer{display:block;margin-top:0}
+  .panel--pricing-mobile .precos{
+    display:block;
+    height:auto;
+    min-height:0;
+    padding:56px 0;
+  }
+  .panel--pricing-mobile .precos .container{margin-bottom:0}
+  .precos--center .precos-grid{transform:none}
+  .pricing-feature:nth-child(n+4){display:flex}
+  .panel-footer footer{padding:34px 0 calc(34px + env(safe-area-inset-bottom,0px))}
+  .footer-inner{align-items:flex-start;flex-direction:column}
+  .footer-links{display:flex;flex-wrap:wrap;gap:12px 18px}
+  .hero-showcase{min-height:0}
+}
+
+@media (max-width:560px){
+  .hero{padding-bottom:54px}
+  .hero-grid{gap:22px}
+  .hero-showcase{width:calc(100% + 12px);margin-left:-6px}
+  .product-showcase-grid,
+  .product-highlight-row,
+  .problema-grid{grid-template-columns:1fr}
+  .audience-layout{gap:28px}
+  .portais-swap-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+  .portais-swap-tab{min-width:0;padding-inline:6px}
+  .portais-swap-content{padding:20px 16px}
+  .pricing-card{padding:22px 18px}
+  .pricing-capacity{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:8px 5px}
+  .pricing-capacity-value{font-size:15px}
+  .pricing-capacity-label{font-size:8px;overflow-wrap:anywhere}
+  .onboarding-lead__compact{padding:22px 18px}
+  .panel-footer .container{padding-inline:18px}
+  .footer-links{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:12px}
+  .footer-copy{max-width:100%;line-height:1.65;overflow-wrap:anywhere}
+  .footer-social{margin-top:20px}
+}
+
+@media (max-width:360px){
+  .footer-links{grid-template-columns:1fr}
+  .pricing-capacity{grid-template-columns:1fr}
+  .pricing-capacity > div{display:flex;align-items:baseline;justify-content:space-between;padding:5px 8px}
+}
