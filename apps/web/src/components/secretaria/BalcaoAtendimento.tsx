@@ -30,6 +30,7 @@ import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalca
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
+import { getTipoDocumentoFromCodigo } from "@/lib/documentos/identificacao";
 import Link from "next/link";
 
 const ACADEMIC_YEAR_PARAM = "ano_letivo_id";
@@ -117,9 +118,29 @@ function isServicoRematricula(s: Servico): boolean {
   return s.codigo.trim().toUpperCase() === "SERV_REMATRICULA";
 }
 
-function getDocTipo(s: Servico): string {
-  if (s.documento_tipo) return s.documento_tipo;
-  return s.codigo.replace("DOC_", "").toLowerCase();
+// Tipo que a API de emissão aceita, ou null se o serviço não emitir documento.
+// O código do serviço é configurável por escola e não coincide com o enum da
+// API (DOC_DECLARACAO_FREQ, DOC_CERTIFICADO_HABILITACOES, DOC_HISTORICO_ESCOLAR
+// não são valores válidos) — daí passar pelo mapa canónico em vez de cortar o
+// prefixo DOC_.
+function getDocTipo(s: Servico): string | null {
+  return getTipoDocumentoFromCodigo(s.documento_tipo ?? s.codigo);
+}
+
+// Segmento da página de impressão, por tipo de documento. Espelha o mapa de
+// DocumentosEmissaoHubClient.tsx:419-434.
+const DOC_PRINT_SEGMENT: Record<string, string> = {
+  declaracao_frequencia: "frequencia",
+  declaracao_notas: "notas",
+  boletim_trimestral: "boletim-trimestral",
+  cartao_estudante: "cartao",
+  comprovante_matricula: "comprovante-matricula",
+  historico: "historico",
+  certificado: "certificado",
+};
+
+function docPrintUrl(docId: string, tipoDocumento: string): string {
+  return `/secretaria/documentos/${docId}/${DOC_PRINT_SEGMENT[tipoDocumento] ?? "ficha"}/print`;
 }
 
 function getUnlockedMensalidadeIds(mensalidades: Mensalidade[], selectedIds: string[]): Set<string> {
@@ -530,6 +551,10 @@ function useCheckout({
   const [billingWindowIssue, setBillingWindowIssue] = useState<BillingWindowIssue | null>(null);
   const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
+  // Serviços que emitem documento e acabaram de ser pagos. O carrinho é limpo no
+  // sucesso, e sem isto o item pago desaparecia do ecrã sem forma de emitir o
+  // documento — que é exactamente o que faltava ao pagar uma declaração.
+  const [pagos, setPagos] = useState<Servico[]>([]);
   const { success, error } = useToast();
 
   const checkout = useCallback(async (): Promise<boolean> => {
@@ -576,6 +601,11 @@ function useCheckout({
       if (json.recibo?.print_url) {
         window.open(json.recibo.print_url, "_blank", "noopener,noreferrer");
       }
+      setPagos(
+        carrinho.itens.filter(
+          (item): item is Servico => item.tipo === "servico" && getDocTipo(item) !== null,
+        ),
+      );
       success("Pagamento processado com sucesso!");
       setBillingWindowIssue(null);
       carrinho.limpar();
@@ -611,22 +641,31 @@ function useCheckout({
   const emitirDocumento = useCallback(
     async (servico: Servico): Promise<string | null> => {
       if (!aluno) return null;
+
+      const tipoDocumento = getDocTipo(servico);
+      if (!tipoDocumento) {
+        error(`O serviço "${servico.nome}" não tem um documento associado.`);
+        return null;
+      }
+
       setEmittingDocId(servico.id);
       try {
         const response = await fetch("/api/secretaria/documentos/emitir", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            escola_id: escolaId,
-            aluno_id: aluno.id,
-            servico_id: servico.id,
-            documento_tipo: getDocTipo(servico),
+            alunoId: aluno.id,
+            escolaId,
+            tipoDocumento,
+            ...(academicYearId ? { ano_letivo_id: academicYearId } : {}),
           }),
         });
 
-        const json = await response.json();
-        if (!response.ok || !json.url) throw new Error(json.error || "Erro ao emitir documento");
-        return json.url;
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok || !json.ok || !json.docId) {
+          throw new Error(json.error || "Erro ao emitir documento");
+        }
+        return docPrintUrl(String(json.docId), tipoDocumento);
       } catch (err) {
         error(err instanceof Error ? err.message : "Nao foi possivel emitir o documento.");
         return null;
@@ -634,7 +673,7 @@ function useCheckout({
         setEmittingDocId(null);
       }
     },
-    [aluno, escolaId, error]
+    [aluno, escolaId, academicYearId, error]
   );
 
   return {
@@ -642,6 +681,8 @@ function useCheckout({
     emittingDocId,
     printQueue,
     setPrintQueue,
+    pagos,
+    setPagos,
     checkout,
     emitirDocumento,
     billingWindowIssue,
@@ -1256,14 +1297,14 @@ function CarrinhoPanel({
       <AuditTrail audit={audit} aluno={aluno} onRefresh={() => void audit.fetch(aluno?.id, aluno?.matricula_id)} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50">
-        {itens.length === 0 ? (
+        {itens.length === 0 && checkout.pagos.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-300">
             <ShoppingCart className="h-10 w-10 opacity-30" />
             <p className="text-xs font-medium">Carrinho vazio</p>
           </div>
         ) : (
           itens.map((item) => {
-            const podeImprimir = item.tipo === "servico" && Number(item.preco ?? 0) <= 0 && (item as Servico).documento_tipo;
+            const podeImprimir = item.tipo === "servico" && Number(item.preco ?? 0) <= 0 && getDocTipo(item as Servico) !== null;
 
             return (
               <div key={`${item.id}-${item.tipo}`} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-start justify-between gap-3 group">
@@ -1273,13 +1314,16 @@ function CarrinhoPanel({
                   {podeImprimir && (
                     <button
                       type="button"
+                      disabled={checkout.emittingDocId === item.id}
                       onClick={async () => {
                         const url = await checkout.emitirDocumento(item as Servico);
-                        if (url) checkout.setPrintQueue((prev) => [{ label: item.nome, url }, ...prev]);
+                        if (!url) return;
+                        const popup = window.open(url, "_blank", "noopener,noreferrer");
+                        if (!popup) checkout.setPrintQueue((prev) => [{ label: item.nome, url }, ...prev]);
                       }}
-                      className="mt-1.5 text-[10px] font-semibold text-emerald hover:underline"
+                      className="mt-1.5 text-[10px] font-semibold text-emerald hover:underline disabled:opacity-50"
                     >
-                      Imprimir agora
+                      {checkout.emittingDocId === item.id ? "A emitir…" : "Imprimir agora"}
                     </button>
                   )}
                 </div>
@@ -1292,6 +1336,43 @@ function CarrinhoPanel({
               </div>
             );
           })
+        )}
+
+        {checkout.pagos.length > 0 && (
+          <div className="bg-emerald/5 border border-emerald/25 rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald font-mono flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5" />
+                Pago — emitir documento
+              </p>
+              <button
+                type="button"
+                onClick={() => checkout.setPagos([])}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {checkout.pagos.map((servico) => (
+              <div key={servico.id} className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold text-slate-700 min-w-0 truncate">{servico.nome}</p>
+                <button
+                  type="button"
+                  disabled={checkout.emittingDocId === servico.id}
+                  onClick={async () => {
+                    const url = await checkout.emitirDocumento(servico);
+                    if (!url) return;
+                    const popup = window.open(url, "_blank", "noopener,noreferrer");
+                    if (!popup) checkout.setPrintQueue((prev) => [{ label: servico.nome, url }, ...prev]);
+                  }}
+                  className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald hover:underline disabled:opacity-50"
+                >
+                  {checkout.emittingDocId === servico.id ? "A emitir…" : "Emitir documento"}
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
