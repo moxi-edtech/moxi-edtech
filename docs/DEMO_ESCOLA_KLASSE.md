@@ -229,11 +229,48 @@ Além disso, a **janela de rematrícula foi reaberta até 2026-10-15** (estava f
 de se rematricular). Reversão: repor `data_fim = '2026-09-20 18:46:00+00'` na linha
 `2d4a5b39-6d0f-4b95-9c91-754f6ad01428` de `rematricula_janelas`.
 
+### 4.4 Posto em produção (2026-09-24)
+
+Os correctivos de §4.3 estavam **só em Preview**. Em produção servia-se
+`789f62fcc` ("fix(security): destravar o check-no-secrets"), também ele promovido à
+mão (`meta.action = promote`) — ou seja, **o mesmo ramo**, oito commits atrás. Não
+havia salto de linhagem: o intervalo a promover era de 8 commits e 8 ficheiros de
+aplicação, não os 147 commits que separam este ramo de `main`.
+
+Promovidos os builds de `a1ab21b2a` para os dois projectos que servem a escola:
+
+| Domínio | Antes | Agora |
+|---|---|---|
+| `app.klasse.ao` | `789f62fc` | `a1ab21b2a` |
+| `klasse.ao` | `789f62fc` | `a1ab21b2a` |
+
+Verificado pelo domínio (não pelo campo `alias` da listagem, que devolve vazio para
+estes deployments e dá falso negativo): ambos resolvem para um deployment com
+`target: production`, estado `READY` e commit `a1ab21b2a18f5025cc0e504914e61590c5f86d16`.
+Comando usado: `vercel promote <url> --scope moxinexas-projects`.
+
+`moxi-edtech-auth` **não** foi promovido — o intervalo não toca em `apps/auth`.
+
+Os dois commits seguintes ao build promovido (`885b50e62`, um script SQL, e
+`66bda87c4`, este documento) não têm uma linha de código de aplicação, pelo que o
+build do HEAD seria idêntico em conteúdo.
+
+**Não verificado:** o gate de pertença de `admissao_turma_ocupacao_reservada`
+(migração `20270825130000`, commit `42db0d493`) é a única função do intervalo que
+não confirmei contra o objecto real na base — não consegui ligação à base. As outras
+duas (`registrar_pagamento`, `gerar_mensalidades_lote`) foram confirmadas por
+`pg_get_functiondef`.
+
 ---
 
 ## 5. Pendências que não consegui fechar
 
 - **Confirmar que as passwords dos logins abrem.** Não testei login nenhum.
+- **Olhar para o hero de klasse.ao.** §4.4 levou ao ar o `LaptopPreview` novo, que
+  referencia `/assets/dashboard-notebook.png` (está no repositório). O
+  `klasse-laptop.glb` e o `draco/` que continuam por versionar são restos de uma
+  abordagem abandonada e não têm nenhuma referência no código — não entram no build,
+  mas convém confirmar o hero com os olhos e não só pela API.
 - O RPC de detalhe da turma foi testado com identidade de `secretaria@klasse.ao` simulada
   por JWT (leitura, com rollback). **Não testei o ecrã renderizado no browser.**
 - A emissão do documento no balcão (§4.3, `7185483fe`) foi corrigida por leitura de código
