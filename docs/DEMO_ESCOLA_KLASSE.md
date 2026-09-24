@@ -251,9 +251,22 @@ Comando usado: `vercel promote <url> --scope moxinexas-projects`.
 
 `moxi-edtech-auth` **não** foi promovido — o intervalo não toca em `apps/auth`.
 
-Os dois commits seguintes ao build promovido (`885b50e62`, um script SQL, e
-`66bda87c4`, este documento) não têm uma linha de código de aplicação, pelo que o
-build do HEAD seria idêntico em conteúdo.
+**Segundo passo.** Promovidos também os builds de `196b1088b`, a ponta do ramo. O
+intervalo até lá era `docs/DEMO_ESCOLA_KLASSE.md` e o script SQL de §3.8 — nenhuma
+linha de código de aplicação, pelo que o que a app serve é o mesmo. Os dois domínios
+servem agora `196b1088bffee7fdd05d73dfb3e369da37a84282`, com `target: production` e
+estado `READY`.
+
+**O invariante que se verifica não é "produção == ponta do ramo".** Qualquer commit
+posterior — incluindo o que escreve isto — volta a pôr a produção atrás, e perseguir
+a igualdade exacta é uma passadeira. O que é estável e responde à pergunta "falta
+alguma coisa em produção?" é filtrar o resíduo por tipo de ficheiro:
+
+```
+git diff --name-only <sha-que-producao-serve>..HEAD | grep -vE '^(docs/|agents/)'
+```
+
+Vazio ⇒ não há código de aplicação por publicar.
 
 **Não verificado:** o gate de pertença de `admissao_turma_ocupacao_reservada`
 (migração `20270825130000`, commit `42db0d493`) é a única função do intervalo que
