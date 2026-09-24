@@ -14,6 +14,20 @@ import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Matrículas que contam para o percurso do aluno. Inclui as de anos já fechados
+// (transferido) porque são elas que dizem em que ano o aluno ficou.
+const MATRICULA_STATUS_REAIS = [
+  "ativo",
+  "ativa",
+  "active",
+  "pendente",
+  "aprovado",
+  "aprovada",
+  "transferido",
+  "concluido",
+  "concluida",
+];
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -70,7 +84,28 @@ export async function GET(request: Request) {
     });
     const sourceAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
     const openTargetWindow = await resolveOpenRematriculaWindow(supabase, escolaId, sourceAnoLetivoAno);
-    const targetAnoLetivoAno = openTargetWindow?.ano_letivo ?? sourceAnoLetivoAno + 1;
+
+    // O ano-alvo é o ano seguinte ao da matrícula do aluno, não o ano activo da
+    // escola mais um. Para um aluno atrasado as duas contas divergem: com a
+    // escola em 2026 e a última matrícula em 2025, o balcão anunciava
+    // "2027/2028" — um ano que não existe e que nenhuma janela cobre, enquanto
+    // o ano para que ele realmente precisa de se rematricular é 2026. Para quem
+    // já está no ano activo o resultado é o mesmo de antes (2026 + 1 = 2027),
+    // pelo que só os alunos atrasados mudam de comportamento.
+    const { data: ultimaMatriculaDoAluno } = await supabase
+      .from("matriculas")
+      .select("ano_letivo")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", aluno_id)
+      .not("ano_letivo", "is", null)
+      .in("status", MATRICULA_STATUS_REAIS)
+      .order("ano_letivo", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const anoLetivoDoAluno = Number(ultimaMatriculaDoAluno?.ano_letivo ?? 0);
+
+    const targetAnoLetivoAno = openTargetWindow?.ano_letivo
+      ?? (anoLetivoDoAluno > 0 ? anoLetivoDoAluno + 1 : sourceAnoLetivoAno + 1);
     const targetScope = await resolveAnoLetivoScope(supabase, escolaId, { ano: targetAnoLetivoAno });
     const targetAnoLetivoId = targetScope?.id ?? academicContext.anoLetivoId;
     const targetAnoLetivoLabel = `${targetAnoLetivoAno}/${targetAnoLetivoAno + 1}`;
@@ -111,7 +146,7 @@ export async function GET(request: Request) {
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
-      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido", "concluido", "concluida"])
+      .in("status", MATRICULA_STATUS_REAIS)
       .maybeSingle();
 
     if (!matriculaOrigem) {
@@ -131,7 +166,7 @@ export async function GET(request: Request) {
         .eq("escola_id", escolaId)
         .eq("aluno_id", aluno_id)
         .lt("ano_letivo", targetAnoLetivoAno)
-        .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido", "concluido", "concluida"])
+        .in("status", MATRICULA_STATUS_REAIS)
         .order("ano_letivo", { ascending: false })
         .limit(1)
         .maybeSingle();
