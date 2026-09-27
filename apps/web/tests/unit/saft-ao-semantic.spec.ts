@@ -524,3 +524,32 @@ test("SAF-T MasterFiles preserves product classification and rejects conflicts",
     /ProductCode MESMO possui ProductType divergente/
   );
 });
+
+
+test("SAF-T preserves explicit unit and tax profile from fiscal line", () => {
+  const doc = invoice({
+    numero_formatado: "FT TAX/1",
+    total_liquido_aoa: 100,
+    total_impostos_aoa: 7,
+    total_bruto_aoa: 107,
+    itens: [
+      {
+        ...invoice().itens[0],
+        unit_of_measure: "MES",
+        tax_code: "OUT" as const,
+        tax_country_region: "AO",
+        taxa_iva: 7,
+        total_liquido_aoa: 100,
+        total_impostos_aoa: 7,
+        total_bruto_aoa: 107,
+      },
+    ],
+  });
+
+  const { xml } = build([doc]);
+
+  assert.match(xml, /<UnitOfMeasure>MES<\/UnitOfMeasure>/);
+  assert.match(xml, /<TaxCode>OUT<\/TaxCode>/);
+  assert.match(xml, /<TaxCountryRegion>AO<\/TaxCountryRegion>/);
+  assert.match(xml, /Outros 7\.00% AO/);
+});
