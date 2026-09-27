@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildSaftAoXml } from "../../src/lib/fiscal/saftAo";
+import { validateSaftXmlWithXsd } from "../../src/lib/fiscal/saftXsdValidator";
 
 const empresa = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -455,4 +456,16 @@ test("SAF-T never rewrites a noncanonical historical fiscal number", () => {
       ]),
     /não corrige números fiscais históricos/
   );
+});
+
+
+test("generated SAF-T passes the bundled official AO 1.01_01 XSD", async () => {
+  const { xml } = build([invoice()]);
+  const result = await validateSaftXmlWithXsd({
+    xml,
+    xsdVersion: "AO_SAFT_1.01",
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.validator, "xmllint");
 });
