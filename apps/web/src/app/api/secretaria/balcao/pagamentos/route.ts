@@ -5,10 +5,11 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
-import { 
-  emitirDocumentoFiscalViaAdapter, 
-  resolveEmpresaFiscalAtiva 
-} from "@/lib/fiscal/financeiroFiscalAdapter";
+import { emitirDocumentoFiscalViaAdapter } from "@/lib/fiscal/financeiroFiscalAdapter";
+import {
+  hasFiscalSourceAllocation,
+  issueFiscalReceiptForPayment,
+} from "@/lib/fiscal/paymentFiscalDocument";
 import type { Database, Json } from "~types/supabase";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { isBillingCompetencyAllowed, resolveTurmaBillingWindow } from "@/lib/financeiro/turma-billing-window";
@@ -206,11 +207,18 @@ export async function POST(request: Request) {
       throw err;
     }
     let billingAcademicYearId = academicContext.anoLetivoId;
+    let mensalidadeFiscalContext: {
+      id: string;
+      valor: number | string;
+      valor_previsto: number | string | null;
+      valor_pago_total: number | string | null;
+      fiscal_documento_id: string | null;
+    } | null = null;
 
     if (payload.mensalidade_id) {
       const { data: mensalidade, error: mensalidadeError } = await supabase
         .from("mensalidades")
-        .select("id, matricula_id, aluno_id, turma_id, ano_letivo, mes_referencia, ano_referencia")
+        .select("id, matricula_id, aluno_id, turma_id, ano_letivo, mes_referencia, ano_referencia, valor, valor_previsto, valor_pago_total, fiscal_documento_id")
         .eq("escola_id", escolaId)
         .eq("id", payload.mensalidade_id)
         .maybeSingle();
@@ -221,6 +229,14 @@ export async function POST(request: Request) {
       if (String(mensalidade.aluno_id) !== String(payload.aluno_id)) {
         return NextResponse.json({ ok: false, error: "A mensalidade não pertence ao aluno selecionado.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 409 });
       }
+
+      mensalidadeFiscalContext = {
+        id: mensalidade.id,
+        valor: mensalidade.valor,
+        valor_previsto: mensalidade.valor_previsto,
+        valor_pago_total: mensalidade.valor_pago_total,
+        fiscal_documento_id: mensalidade.fiscal_documento_id,
+      };
 
       if (mensalidade.mes_referencia && mensalidade.ano_referencia) {
         // Regularização de dívida pode ocorrer no ano letivo seguinte.
@@ -295,6 +311,60 @@ export async function POST(request: Request) {
       }
     }
     const metodo = payload.metodo === "kiwk" ? "kwik" : payload.metodo;
+
+    // Pagamento parcial exige documento fiscal origem antes da liquidação.
+    if (mensalidadeFiscalContext) {
+      const expected = Number(
+        mensalidadeFiscalContext.valor_previsto ?? mensalidadeFiscalContext.valor ?? 0
+      );
+      const paidBefore = Number(mensalidadeFiscalContext.valor_pago_total ?? 0);
+      const outstanding = Math.max(0, Number((expected - paidBefore).toFixed(2)));
+      const isPartial = payload.valor < outstanding - 0.01;
+
+      if (isPartial && !mensalidadeFiscalContext.fiscal_documento_id) {
+        const origin = new URL(request.url).origin;
+        const cookieHeader = request.headers.get("cookie");
+        const ft = await emitirDocumentoFiscalViaAdapter({
+          tipoFluxoFinanceiro: "deferred_payment",
+          origemOperacao: "financeiro_mensalidade_partial_source",
+          origemId: mensalidadeFiscalContext.id,
+          descricaoPrincipal: "Propina",
+          itens: [{ descricao: "Propina", valor: outstanding }],
+          cliente: { nome: null, nif: null },
+          escolaId,
+          origin,
+          cookieHeader,
+          metadata: {
+            mensalidade_id: mensalidadeFiscalContext.id,
+            aluno_id: payload.aluno_id,
+            motivo_emissao: "fonte_para_pagamento_parcial",
+          },
+        });
+
+        const { error: sourceLinkError } = await supabase
+          .from("mensalidades")
+          .update({
+            fiscal_documento_id: ft.documento_id,
+            status_fiscal: "ok",
+            fiscal_error: null,
+          })
+          .eq("id", mensalidadeFiscalContext.id)
+          .eq("escola_id", escolaId);
+
+        if (sourceLinkError) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: sourceLinkError.message,
+              code: "PARTIAL_PAYMENT_SOURCE_LINK_FAILED",
+            },
+            { status: 500 }
+          );
+        }
+
+        mensalidadeFiscalContext.fiscal_documento_id = ft.documento_id;
+      }
+    }
     
     // 1. Registro Financeiro
     const { data: pagamento, error: pgError } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
@@ -335,105 +405,93 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Emissão Fiscal Síncrona (O Papel na Mão)
+    // 2. Documento fiscal do pagamento: RC quando existe FT/ND origem; FR caso contrário.
     const pagamentoRow = pagamento as PagamentoRow | null;
-    let recibo: BalcaoReciboResult = { ok: false, error: "Recibo não aplicável" };
-    if (payload.mensalidade_id) {
+    let recibo: BalcaoReciboResult = { ok: false, error: "Recibo pendente" };
+    let fiscalResult: BalcaoFiscalResult = { ok: false, error: "Fiscal pendente" };
+
+    if (
+      pagamentoRow?.id &&
+      ["settled", "concluido", "pago"].includes(String(pagamentoRow.status))
+    ) {
       try {
-        const { data: reciboData, error: reciboError } = await supabase.rpc("emitir_recibo", {
-          p_mensalidade_id: payload.mensalidade_id,
-        });
-        if (reciboError) {
-          recibo = { ok: false, error: reciboError.message || "Falha ao emitir recibo" };
-        } else {
-          const rec = asRecord(reciboData);
-          const recOk = rec.ok === true;
-          recibo = recOk
-            ? {
-                ok: true,
-                doc_id: getStringField(rec, "doc_id"),
-                public_id: getStringField(rec, "public_id"),
-                emitido_em: getStringField(rec, "emitido_em"),
-                print_url: getStringField(rec, "doc_id")
-                  ? `/secretaria/documentos/${getStringField(rec, "doc_id")}/recibo/print`
-                  : null,
-              }
-            : { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
-        }
-        if (recibo.ok && recibo.doc_id) {
-          await enrichReceiptSnapshot({
-            supabase,
-            escolaId,
-            docId: recibo.doc_id,
-            extraSnapshot: {
-              tipo_comprovativo: receiptType,
-              itens_pagamento: receiptItems,
-              referencia: receiptItems.map((item) => item.descricao).join(", "),
-              valor_pago: payload.valor,
-              metodo: metodo,
-              data_pagamento: new Date().toISOString(),
-            },
+        const hasSource = await hasFiscalSourceAllocation(pagamentoRow.id);
+
+        if (hasSource) {
+          const rc = await issueFiscalReceiptForPayment({
+            paymentId: pagamentoRow.id,
+            createdBy: user.id,
           });
-        }
-      } catch (reciboErr: unknown) {
-        const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
-        recibo = { ok: false, error: message };
-      }
-    } else if (pagamentoRow?.id && pagamentoRow.status === "settled") {
-      try {
-        const { data: reciboData, error: reciboError } = await (supabase as any).rpc("emitir_recibo_servicos", {
-          p_pagamento_id: pagamentoRow.id,
-        });
-        const rec = asRecord(reciboData);
-        if (reciboError) {
-          recibo = { ok: false, error: reciboError.message || "Falha ao emitir recibo" };
-        } else if (rec.ok === true) {
-          const docId = getStringField(rec, "doc_id");
+
+          fiscalResult = {
+            ok: true,
+            documento_id: rc.document.documento_id,
+            numero_formatado: rc.document.numero_formatado,
+            url_validacao: null,
+          };
           recibo = {
             ok: true,
-            doc_id: docId,
-            public_id: getStringField(rec, "public_id"),
-            emitido_em: getStringField(rec, "emitido_em"),
-            print_url: docId ? `/secretaria/documentos/${docId}/recibo/print` : null,
+            doc_id: rc.document.documento_id,
+            public_id: rc.document.numero_formatado,
+            emitido_em: new Date().toISOString(),
+            print_url: null,
           };
         } else {
-          recibo = { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
-        }
-      } catch (reciboErr: unknown) {
-        const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
-        recibo = { ok: false, error: message };
-      }
-    }
-    let fiscalResult: BalcaoFiscalResult = { ok: false, error: "Fiscal pendente" };
-    try {
-      const origin = new URL(request.url).origin;
-      const cookieHeader = request.headers.get("cookie");
-      
-      const fiscal = await emitirDocumentoFiscalViaAdapter({
-        tipoFluxoFinanceiro: "immediate_payment",
-        origemOperacao: "financeiro_balcao_pagamento",
-        origemId: pagamentoRow?.id || idempotencyKey,
-        descricaoPrincipal: "Pagamento via Balcão",
-        itens: receiptItems,
-        cliente: { nome: null, nif: null },
-        escolaId,
-        origin,
-        cookieHeader,
-        metadata: {
-          pagamento_id: pagamentoRow?.id,
-          aluno_id: payload.aluno_id
-        }
-      });
+          const origin = new URL(request.url).origin;
+          const cookieHeader = request.headers.get("cookie");
+          const fiscal = await emitirDocumentoFiscalViaAdapter({
+            tipoFluxoFinanceiro: "immediate_payment",
+            origemOperacao: "financeiro_balcao_pagamento",
+            origemId: pagamentoRow.id,
+            descricaoPrincipal:
+              receiptType === "matricula"
+                ? "Recebimento de matrícula"
+                : receiptType === "confirmacao"
+                  ? "Recebimento de confirmação"
+                  : "Recebimento de mensalidade",
+            itens: receiptItems,
+            cliente: { nome: null, nif: null },
+            escolaId,
+            origin,
+            cookieHeader,
+            metadata: {
+              pagamento_id: pagamentoRow.id,
+              mensalidade_id: payload.mensalidade_id ?? null,
+              aluno_id: payload.aluno_id,
+              tipo_comprovativo: receiptType,
+            },
+          });
 
-      fiscalResult = {
-        ok: true,
-        documento_id: fiscal.documento_id,
-        numero_formatado: fiscal.numero_formatado,
-        url_validacao: null // Placeholder
-      };
-    } catch (fError: unknown) {
-      const message = fError instanceof Error ? fError.message : String(fError);
-      console.error("[BALCAO-FISCAL] Falha síncrona:", message);
+          await (supabase as any)
+            .from("pagamentos")
+            .update({
+              status_fiscal: "ok",
+              fiscal_documento_id: fiscal.documento_id,
+              fiscal_error: null,
+            })
+            .eq("id", pagamentoRow.id)
+            .eq("escola_id", escolaId);
+
+          fiscalResult = {
+            ok: true,
+            documento_id: fiscal.documento_id,
+            numero_formatado: fiscal.numero_formatado,
+            url_validacao: null,
+          };
+          recibo = {
+            ok: true,
+            doc_id: fiscal.documento_id,
+            public_id: fiscal.numero_formatado,
+            emitido_em: new Date().toISOString(),
+            print_url: null,
+          };
+        }
+      } catch (fError: unknown) {
+        const message = fError instanceof Error ? fError.message : String(fError);
+        console.error("[BALCAO-FISCAL] Falha síncrona:", message);
+        recibo = { ok: false, error: message };
+        fiscalResult = { ok: false, error: message };
+      }
     }
 
     recordAuditServer({
