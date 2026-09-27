@@ -16,6 +16,11 @@ type FiscalDocumentRow = {
   total_bruto_aoa: number | string;
   documento_origem_id: string | null;
   rectifica_documento_id: string | null;
+  agt_document_status: string;
+  agt_rejected_document_id: string | null;
+  agt_rejected_document_no: string | null;
+  reference_reason: string | null;
+  contingency_indicator: string;
   payload: Record<string, unknown>;
 };
 
@@ -124,14 +129,41 @@ export function buildAgtPreparedDocument(input: {
 
   const customerCountry = resolveCustomerCountry(doc);
   const customerTaxID = (doc.cliente_nif ?? "").trim() || "999999999";
-  const documentStatusRaw = textValue(metadata.agt_document_status).toUpperCase();
-  const documentStatus: "N" | "C" = documentStatusRaw === "C" ? "C" : "N";
-  const rejectedDocumentNo = textValue(metadata.agt_rejected_document_no);
-
-  if (documentStatus === "C" && !rejectedDocumentNo) {
+  const documentStatusRaw = textValue(doc.agt_document_status).toUpperCase();
+  if (!["N", "C"].includes(documentStatusRaw)) {
     throw new AgtMappingError(
-      "AGT_MAPPING_REJECTED_DOCUMENT_REQUIRED",
-      "Documento de correcção AGT exige agt_rejected_document_no"
+      "AGT_MAPPING_DOCUMENT_STATUS_INVALID",
+      `documentStatus canónico inválido: ${documentStatusRaw || "(vazio)"}`
+    );
+  }
+  const documentStatus = documentStatusRaw as "N" | "C";
+  const rejectedDocumentNo = textValue(doc.agt_rejected_document_no);
+  const contingencyIndicator = textValue(doc.contingency_indicator).toUpperCase();
+
+  if (!["N", "C"].includes(contingencyIndicator)) {
+    throw new AgtMappingError(
+      "AGT_MAPPING_CONTINGENCY_INVALID",
+      `contingency_indicator canónico inválido: ${contingencyIndicator || "(vazio)"}`
+    );
+  }
+
+  if (documentStatus === "C") {
+    if (!doc.agt_rejected_document_id || !rejectedDocumentNo) {
+      throw new AgtMappingError(
+        "AGT_MAPPING_REJECTED_DOCUMENT_REQUIRED",
+        "Documento de correcção AGT exige documento rejeitado canónico"
+      );
+    }
+    if (rejectedDocumentNo === doc.numero_formatado) {
+      throw new AgtMappingError(
+        "AGT_MAPPING_REJECTED_DOCUMENT_NUMBER_REUSED",
+        "Correcção de documento rejeitado deve usar novo número fiscal"
+      );
+    }
+  } else if (doc.agt_rejected_document_id || rejectedDocumentNo) {
+    throw new AgtMappingError(
+      "AGT_MAPPING_REJECTED_DOCUMENT_UNEXPECTED",
+      "Documento normal não pode transportar referência a documento rejeitado"
     );
   }
 
@@ -423,11 +455,27 @@ export function buildAgtPreparedDocument(input: {
             "NC exige documento fiscal de referência"
           );
         }
-        line.referenceInfo = { reference: input.originDocument.numero_formatado };
+        line.referenceInfo = {
+          reference: input.originDocument.numero_formatado,
+          ...(doc.reference_reason?.trim()
+            ? { reason: doc.reference_reason.trim() }
+            : {}),
+        };
       } else {
         line.creditAmount = round2(lineNet);
-        if (input.originDocument && doc.tipo_documento === "ND") {
-          line.referenceInfo = { reference: input.originDocument.numero_formatado };
+        if (doc.tipo_documento === "ND") {
+          if (!input.originDocument) {
+            throw new AgtMappingError(
+              "AGT_MAPPING_REFERENCE_REQUIRED",
+              "ND emitida pelo KLASSE exige documento fiscal de referência"
+            );
+          }
+          line.referenceInfo = {
+            reference: input.originDocument.numero_formatado,
+            ...(doc.reference_reason?.trim()
+              ? { reason: doc.reference_reason.trim() }
+              : {}),
+          };
         }
       }
 
