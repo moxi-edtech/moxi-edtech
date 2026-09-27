@@ -369,8 +369,17 @@ export function buildAgtPreparedDocument(input: {
         );
       }
 
-      const taxProfileVersion = integerValue(item.tax_profile_version, "tax_profile_version");
-      if (!Number.isInteger(taxProfileVersion) || taxProfileVersion <= 0) {
+      if (item.tax_profile_version === null || item.tax_profile_version === undefined) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_TAX_PROFILE_VERSION_REQUIRED",
+          `Linha ${item.linha_no} não possui tax_profile_version canónico.`
+        );
+      }
+      const taxProfileVersion = integerValue(
+        item.tax_profile_version,
+        "tax_profile_version"
+      );
+      if (taxProfileVersion <= 0) {
         throw new AgtMappingError(
           "AGT_MAPPING_TAX_PROFILE_VERSION_REQUIRED",
           `Linha ${item.linha_no} não possui tax_profile_version canónico.`
