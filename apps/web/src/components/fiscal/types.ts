@@ -10,6 +10,11 @@ export interface FiscalDoc {
   hash_control: string;
   key_version: string;
   status: FiscalDocStatus;
+  tipo_documento?: TipoDocumento;
+  documento_origem_id?: string | null;
+  rectifica_documento_id?: string | null;
+  agt_document_status?: "N" | "C";
+  agt_rejected_document_id?: string | null;
 }
 
 export interface ComplianceStatus {
