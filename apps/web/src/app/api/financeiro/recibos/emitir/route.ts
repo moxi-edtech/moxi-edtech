@@ -21,6 +21,8 @@ type ReciboResponse = {
   ok: true;
   doc_id: string;
   url_validacao: string | null;
+  non_fiscal?: boolean;
+  print_url?: string | null;
   print: {
     escola_nome: string;
     aluno_nome: string;
@@ -348,6 +350,9 @@ export async function POST(req: NextRequest) {
 
     if (existingIdempotency?.result) {
       const cachedResult = existingIdempotency.result as Partial<ReciboResponse>;
+      if (cachedResult.ok === true && cachedResult.non_fiscal === true) {
+        return NextResponse.json(cachedResult, { status: 200 });
+      }
       if (cachedResult.ok === true && typeof cachedResult.doc_id === "string") {
         const print = await resolveReciboPrintPayload({
           supabase,
@@ -384,14 +389,68 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: latestPagamento } = await supabaseAny
+    const { data: latestPagamento, error: latestPagamentoError } = await supabaseAny
       .from("pagamentos")
-      .select("meta, valor_pago, created_at")
+      .select("id, status, meta, valor_pago, created_at, settled_at")
       .eq("escola_id", escolaId)
       .eq("mensalidade_id", mensalidadeId)
+      .in("status", ["settled", "concluido", "pago"])
+      .order("settled_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (latestPagamentoError) {
+      return NextResponse.json(
+        { ok: false, error: latestPagamentoError.message, code: "PAYMENT_LOOKUP_FAILED" },
+        { status: 500 }
+      );
+    }
+
+    if (!latestPagamento?.id) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Nenhum pagamento liquidado foi encontrado para esta mensalidade.",
+          code: "SETTLED_PAYMENT_NOT_FOUND",
+        },
+        { status: 404 }
+      );
+    }
+
+    const operationalResponse: ReciboResponse = {
+      ok: true,
+      doc_id: String(latestPagamento.id),
+      url_validacao: null,
+      non_fiscal: true,
+      print_url: `/secretaria/pagamentos/${latestPagamento.id}/recibo/print`,
+      print: null,
+      fiscal: null,
+    };
+
+    await supabaseAny.from("idempotency_keys").upsert(
+      {
+        escola_id: escolaId,
+        scope: "financeiro_recibo_emitir",
+        key: idempotencyKey,
+        result: operationalResponse,
+      },
+      { onConflict: "escola_id,scope,key" }
+    );
+
+    recordAuditServer({
+      escolaId,
+      portal: "financeiro",
+      acao: "RECIBO_OPERACIONAL_EMITIDO",
+      entity: "pagamentos",
+      entityId: String(latestPagamento.id),
+      details: {
+        mensalidade_id: mensalidadeId,
+        non_fiscal: true,
+      },
+    }).catch(() => null);
+
+    return NextResponse.json(operationalResponse, { status: 200 });
 
     const pagamentoMeta = normalizeSnapshotObject(latestPagamento?.meta ?? null);
     const fallbackItem = {
