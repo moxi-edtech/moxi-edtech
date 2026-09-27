@@ -996,7 +996,28 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const movementDocs = input.documentos.filter((doc) => isMovementTipo(doc.tipo_documento));
   const paymentDocs = input.documentos.filter((doc) => isPaymentTipo(doc.tipo_documento));
 
-  const sumGross = (docs: SaftDocumento[]) => docs.reduce((acc, doc) => acc + doc.total_bruto_aoa, 0);
+  if (
+    salesDocs.length + workDocs.length + movementDocs.length + paymentDocs.length !==
+    input.documentos.length
+  ) {
+    const unknown = input.documentos
+      .filter(
+        (doc) =>
+          !isSalesInvoiceTipo(doc.tipo_documento) &&
+          !isWorkDocumentTipo(doc.tipo_documento) &&
+          !isMovementTipo(doc.tipo_documento) &&
+          !isPaymentTipo(doc.tipo_documento)
+      )
+      .map((doc) => normalizeTipoDocumento(doc.tipo_documento));
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: tipos de documento sem mapeamento SAF-T: ${Array.from(new Set(unknown)).join(", ")}.`
+    );
+  }
+
+  const sumNet = (docs: SaftDocumento[]) =>
+    docs.reduce((acc, doc) => acc + Number(doc.total_liquido_aoa), 0);
+  const salesDebit = sumNet(salesDocs.filter((doc) => isDebitSalesDocument(doc.tipo_documento)));
+  const salesCredit = sumNet(salesDocs.filter((doc) => !isDebitSalesDocument(doc.tipo_documento)));
   const movementLines = movementDocs.reduce((acc, doc) => acc + doc.itens.length, 0);
   const movementQuantity = movementDocs.reduce(
     (acc, doc) => acc + doc.itens.reduce((sub, item) => sub + item.quantidade, 0),
@@ -1006,8 +1027,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const salesBlock = [
     "    <SalesInvoices>",
     `      <NumberOfEntries>${salesDocs.length}</NumberOfEntries>`,
-    `      <TotalDebit>${formatMoney(sumGross(salesDocs))}</TotalDebit>`,
-    "      <TotalCredit>0.0000</TotalCredit>",
+    `      <TotalDebit>${formatMoney(salesDebit)}</TotalDebit>`,
+    `      <TotalCredit>${formatMoney(salesCredit)}</TotalCredit>`,
     invoicesXml,
     "    </SalesInvoices>",
   ].join("\n");
@@ -1023,8 +1044,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const workBlock = [
     "    <WorkingDocuments>",
     `      <NumberOfEntries>${workDocs.length}</NumberOfEntries>`,
-    `      <TotalDebit>${formatMoney(sumGross(workDocs))}</TotalDebit>`,
-    "      <TotalCredit>0.0000</TotalCredit>",
+    "      <TotalDebit>0.0000</TotalDebit>",
+    `      <TotalCredit>${formatMoney(sumNet(workDocs))}</TotalCredit>`,
     workDocumentsXml,
     "    </WorkingDocuments>",
   ].join("\n");
@@ -1032,8 +1053,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const paymentBlock = [
     "    <Payments>",
     `      <NumberOfEntries>${paymentDocs.length}</NumberOfEntries>`,
-    `      <TotalDebit>${formatMoney(sumGross(paymentDocs))}</TotalDebit>`,
-    "      <TotalCredit>0.0000</TotalCredit>",
+    "      <TotalDebit>0.0000</TotalDebit>",
+    `      <TotalCredit>${formatMoney(sumNet(paymentDocs))}</TotalCredit>`,
     paymentsXml,
     "    </Payments>",
   ].join("\n");
@@ -1059,14 +1080,15 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     "    <CurrencyCode>AOA</CurrencyCode>",
     `    <DateCreated>${input.generatedAtIso.slice(0, 10)}</DateCreated>`,
     "    <TaxEntity>Global</TaxEntity>",
-    `    <ProductCompanyTaxID>${escapeXml(empresaNif)}</ProductCompanyTaxID>`,
+    `    <ProductCompanyTaxID>${escapeXml(productCompanyTaxId)}</ProductCompanyTaxID>`,
     `    <SoftwareValidationNumber>${escapeXml(softwareValidationNumber)}</SoftwareValidationNumber>`,
     `    <ProductID>${escapeXml(input.header.productId)}</ProductID>`,
-    "    <ProductVersion>1.0.0</ProductVersion>",
+    `    <ProductVersion>${escapeXml(productVersion)}</ProductVersion>`,
     "  </Header>",
     "  <MasterFiles>",
     customersXml,
     productsXml,
+    taxTableXml,
     "  </MasterFiles>",
     "  <SourceDocuments>",
     salesBlock,
