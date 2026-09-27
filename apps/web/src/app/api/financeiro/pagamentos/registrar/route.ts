@@ -10,7 +10,7 @@ import {
   resolveEmpresaFiscalAtiva,
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Json } from "~types/supabase";
-import { emitFiscalReceiptForPayment } from "@/lib/fiscal/fiscalPaymentReceipt";
+import { issueFiscalReceiptForPayment } from "@/lib/fiscal/paymentFiscalDocument";
 import {
   AcademicYearContextError,
   assertAcademicYearEntity,
@@ -257,7 +257,8 @@ export async function POST(req: Request) {
 
     if (pagamentoId && sourceAllocation?.fiscal_documento_origem_id) {
       try {
-        const receipt = await emitFiscalReceiptForPayment(pagamentoId);
+        const receiptResult = await issueFiscalReceiptForPayment({ paymentId: pagamentoId, createdBy: user.id });
+        const receipt = receiptResult.document;
 
         recordAuditServer({
           escolaId,
@@ -283,7 +284,7 @@ export async function POST(req: Request) {
             tipo_documento: "RC",
             documento_id: receipt.documento_id,
             numero_formatado: receipt.numero_formatado,
-            agt_submission: receipt.agt_submission,
+            agt_submission: receiptResult.agtSubmission,
           },
           status_fiscal: "ok",
         });
