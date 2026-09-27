@@ -39,10 +39,12 @@ type PagamentoRow = {
 
 type MensalidadeRow = {
   id: string;
+  tabela_id: string | null;
   valor: number | string;
   valor_previsto: number | string | null;
   data_pagamento_efetiva: string | Date | null;
   created_at: string | Date;
+  tax_profile_code: string | null;
 };
 
 type EmitResult = {
@@ -176,6 +178,7 @@ async function emitAndSign(params: {
   invoiceDate: string;
   valor: number;
   descricao: string;
+  taxProfileCode: string;
 }): Promise<FinalizeResult> {
   const cliente = {
     nome: CONSUMIDOR_FINAL_NOME,
@@ -193,7 +196,7 @@ async function emitAndSign(params: {
       product_number_code: "SERV_INTEGRADO_1",
       quantidade: 1,
       preco_unit: Number(params.valor.toFixed(2)),
-      taxa_iva: 14,
+      tax_profile_code: params.taxProfileCode,
     },
   ];
 
@@ -398,13 +401,31 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
 
             const mensalidadeRows = pagamento.mensalidade_id
               ? await sql<MensalidadeRow[]>`
-                  select id, valor, valor_previsto, data_pagamento_efetiva, created_at
-                  from public.mensalidades
-                  where id = ${pagamento.mensalidade_id}::uuid
+                  select
+                    m.id,
+                    m.tabela_id,
+                    m.valor,
+                    m.valor_previsto,
+                    m.data_pagamento_efetiva,
+                    m.created_at,
+                    t.tax_profile_code
+                  from public.mensalidades m
+                  left join public.financeiro_tabelas t on t.id = m.tabela_id
+                  where m.id = ${pagamento.mensalidade_id}::uuid
                   limit 1
                 `
               : [];
             const mensalidade = mensalidadeRows[0] ?? null;
+            if (!mensalidade) {
+              throw new Error(
+                "FISCAL_TAX_PROFILE_REQUIRED: pagamento sem mensalidade/classificação fiscal não pode ser reprocessado automaticamente."
+              );
+            }
+            if (!mensalidade.tax_profile_code) {
+              throw new Error(
+                `FISCAL_TAX_PROFILE_REQUIRED: mensalidade ${mensalidade.id} sem tax_profile_code na tabela financeira de origem.`
+              );
+            }
 
             const valorBase = Number(
               mensalidade?.valor_previsto ?? mensalidade?.valor ?? pagamento.valor_pago ?? 0
@@ -436,9 +457,8 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
               origemId: link.origem_id,
               invoiceDate,
               valor: valorBase,
-              descricao: pagamento.mensalidade_id
-                ? `Pagamento mensalidade ${pagamento.mensalidade_id}`
-                : `Pagamento ${pagamento.id}`,
+              descricao: `Pagamento mensalidade ${mensalidade.id}`,
+              taxProfileCode: mensalidade.tax_profile_code,
             });
 
             const agtSubmission = await step.run(`prepare-agt-${link.id}`, async () => {
@@ -490,13 +510,26 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
             }
           } else if (link.origem_tipo === "financeiro_recibos_emitir") {
             const mensalidadeRows = await sql<MensalidadeRow[]>`
-              select id, valor, valor_previsto, data_pagamento_efetiva, created_at
-              from public.mensalidades
-              where id = ${link.origem_id}::uuid
+              select
+                m.id,
+                m.tabela_id,
+                m.valor,
+                m.valor_previsto,
+                m.data_pagamento_efetiva,
+                m.created_at,
+                t.tax_profile_code
+              from public.mensalidades m
+              left join public.financeiro_tabelas t on t.id = m.tabela_id
+              where m.id = ${link.origem_id}::uuid
               limit 1
             `;
             const mensalidade = mensalidadeRows[0];
             if (!mensalidade) throw new Error("Mensalidade não encontrada.");
+            if (!mensalidade.tax_profile_code) {
+              throw new Error(
+                `FISCAL_TAX_PROFILE_REQUIRED: mensalidade ${mensalidade.id} sem tax_profile_code na tabela financeira de origem.`
+              );
+            }
 
             const valorBase = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
             if (!Number.isFinite(valorBase) || valorBase <= 0) {
@@ -524,6 +557,7 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
               invoiceDate,
               valor: valorBase,
               descricao: `Recebimento mensalidade ${mensalidade.id}`,
+              taxProfileCode: mensalidade.tax_profile_code,
             });
 
             const agtSubmission = await step.run(`prepare-agt-${link.id}`, async () => {
