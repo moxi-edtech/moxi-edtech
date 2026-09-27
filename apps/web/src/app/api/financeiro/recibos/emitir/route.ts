@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { HttpError } from "@/lib/errors";
+
 import { recordAuditServer } from "@/lib/audit";
-import { requireFeature } from "@/lib/plan/requireFeature";
-import {
-  emitirDocumentoFiscalViaAdapter,
-  resolveEmpresaFiscalAtiva,
-} from "@/lib/fiscal/financeiroFiscalAdapter";
-import type { Database, Json } from "~types/supabase";
 import { requireApiTenantGuard } from "@/lib/api/requireApiTenantGuard";
-import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
+import { HttpError } from "@/lib/errors";
+import { emitirDocumentoFiscalViaAdapter } from "@/lib/fiscal/financeiroFiscalAdapter";
+import {
+  hasFiscalSourceAllocation,
+  issueFiscalReceiptForPayment,
+} from "@/lib/fiscal/paymentFiscalDocument";
+import { requireFeature } from "@/lib/plan/requireFeature";
+import type { Json } from "~types/supabase";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
+  pagamentoId: z.string().uuid().optional(),
 });
 
 type ReciboResponse = {
@@ -42,117 +47,32 @@ type ReciboResponse = {
   } | null;
 };
 
-type EscolaBrandingRow = {
-  nome: string | null;
-  logo_url: string | null;
-  dados_pagamento: {
-    banco?: string | null;
-    titular_conta?: string | null;
-    iban?: string | null;
-    kwik_chave?: string | null;
-  } | null;
-};
-
-type ExistingSnapshotRow = {
-  dados_snapshot?: Json | null;
-} | null;
-
-type ReceiptItem = { descricao: string; valor: number };
-
-function normalizeReceiptItems(meta: unknown, fallback: ReceiptItem): ReceiptItem[] {
-  const record = normalizeSnapshotObject(meta as Json | null);
-  const rawItems = record.itens_pagamento ?? record.itens ?? record.items;
-  if (!Array.isArray(rawItems)) return [fallback];
-
-  const items = rawItems
-    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
-    .map((item) => {
-      const row = item as Record<string, unknown>;
-      const descricao = row.descricao ?? row.referencia ?? row.nome ?? row.label;
-      const valor = Number(row.valor ?? row.amount ?? row.preco ?? 0);
-      return {
-        descricao: typeof descricao === "string" && descricao.trim() ? descricao.trim() : "Item pago",
-        valor,
-      };
-    })
-    .filter((item) => Number.isFinite(item.valor) && item.valor >= 0);
-
-  return items.length > 0 ? items : [fallback];
+function jsonError(status: number, code: string, message: string) {
+  return NextResponse.json({ ok: false, error: message, code }, { status });
 }
 
-function normalizeReceiptType(meta: unknown): "pagamento" | "matricula" | "confirmacao" {
-  const record = normalizeSnapshotObject(meta as Json | null);
-  const raw = String(record.tipo_comprovativo ?? record.tipo_operacao ?? record.operacao ?? record.origem ?? "").toLowerCase();
-  if (raw.includes("confirm") || raw.includes("reconfirm") || raw.includes("rematric")) return "confirmacao";
-  if (raw.includes("matric")) return "matricula";
-  return "pagamento";
-}
-
-function normalizeSnapshotObject(value: Json | Record<string, unknown> | null | undefined) {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-
-  return {};
-}
-
-
-async function resolveReciboValidationUrl({
-  supabase,
-  docId,
-}: {
+async function buildPrintPayload(params: {
   supabase: any;
-  docId: string;
-}) {
-  if (!docId) return null;
-
-  const { data: doc } = await supabase
-    .from("documentos_emitidos")
-    .select("public_id, hash_validacao")
-    .eq("id", docId)
-    .maybeSingle();
-
-  const publicId = typeof doc?.public_id === "string" ? doc.public_id : "";
-  const hash = typeof doc?.hash_validacao === "string" ? doc.hash_validacao : "";
-  if (!publicId || !hash) return null;
-
-  const baseUrl = normalizeValidationBaseUrl(
-    process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? (await getRequestOrigin())
-  );
-
-  return `${String(baseUrl).replace(/\/$/, "")}/documentos/${publicId}?hash=${hash}`;
-}
-
-async function enrichReciboSnapshot({
-  supabase,
-  docId,
-  escolaId,
-  alunoId,
-  extraSnapshot = {},
-}: {
-  supabase: any;
-  docId: string;
   escolaId: string;
   alunoId: string | null;
-  extraSnapshot?: Record<string, unknown>;
+  documentoId: string;
 }) {
-  if (!docId) return;
-
+  const { supabase, escolaId, alunoId, documentoId } = params;
   const [
-    { data: escolaRow },
-    { data: alunoRow },
-    { data: matriculaRow },
-    { data: existingDoc },
+    { data: escola },
+    { data: aluno },
+    { data: matricula },
+    { data: fiscal },
   ] = await Promise.all([
     supabase
       .from("escolas")
-      .select("nome, logo_url, dados_pagamento")
+      .select("nome,logo_url,dados_pagamento")
       .eq("id", escolaId)
       .maybeSingle(),
     alunoId
       ? supabase
           .from("alunos")
-          .select("nome, nome_completo, bi_numero")
+          .select("nome,nome_completo,bi_numero")
           .eq("id", alunoId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -160,12 +80,9 @@ async function enrichReciboSnapshot({
       ? supabase
           .from("matriculas")
           .select(`
-            aluno_id,
+            id,
             turmas (
-              id,
               nome,
-              turno,
-              ano_letivo,
               classes ( nome ),
               cursos ( nome )
             )
@@ -176,139 +93,57 @@ async function enrichReciboSnapshot({
           .maybeSingle()
       : Promise.resolve({ data: null }),
     supabase
-      .from("documentos_emitidos")
-      .select("dados_snapshot")
-      .eq("id", docId)
+      .from("fiscal_documentos")
+      .select("numero,numero_formatado,created_at")
+      .eq("id", documentoId)
       .maybeSingle(),
   ]);
 
-  const branding = (escolaRow ?? null) as EscolaBrandingRow | null;
-  const rawPagamento = branding?.dados_pagamento ?? null;
-  const existingSnapshot = normalizeSnapshotObject((existingDoc as ExistingSnapshotRow)?.dados_snapshot ?? null);
-  const aluno = (alunoRow ?? null) as
-    | {
-        nome?: string | null;
-        nome_completo?: string | null;
-        bi_numero?: string | null;
-      }
-    | null;
-  const turma = ((matriculaRow as any)?.turmas ?? null) as
-    | {
-        nome?: string | null;
-        turno?: string | null;
-        ano_letivo?: number | null;
-        classes?: { nome?: string | null } | null;
-        cursos?: { nome?: string | null } | null;
-      }
-    | null;
-
-  const patch = {
-    escola_nome: branding?.nome ?? null,
-    escola_logo_url: branding?.logo_url ?? null,
-    escola_banco: rawPagamento?.banco ?? null,
-    escola_titular_conta: rawPagamento?.titular_conta ?? null,
-    escola_iban: rawPagamento?.iban ?? null,
-    escola_kwik_chave: rawPagamento?.kwik_chave ?? null,
-    aluno_nome: aluno?.nome_completo ?? aluno?.nome ?? null,
-    aluno_bi: aluno?.bi_numero ?? null,
-    turma_nome: turma?.nome ?? null,
-    turma_turno: turma?.turno ?? null,
-    classe_nome: turma?.classes?.nome ?? null,
-    curso_nome: turma?.cursos?.nome ?? null,
-    ano_letivo: turma?.ano_letivo ?? null,
-  } satisfies Record<string, unknown>;
-
-  await supabase
-    .from("documentos_emitidos")
-    .update({
-      dados_snapshot: {
-        ...existingSnapshot,
-        ...patch,
-        ...extraSnapshot,
-      } as Json,
-    })
-    .eq("id", docId);
-}
-
-async function resolveReciboPrintPayload({
-  supabase,
-  docId,
-  escolaId,
-}: {
-  supabase: any;
-  docId: string;
-  escolaId: string;
-}) {
-  if (!docId) return null;
-
-  const [{ data: doc }, { data: escola }] = await Promise.all([
-    supabase
-      .from("documentos_emitidos")
-      .select("public_id, created_at, numero_sequencial, dados_snapshot")
-      .eq("id", docId)
-      .maybeSingle(),
-    supabase
-      .from("escolas")
-      .select("logo_url")
-      .eq("id", escolaId)
-      .maybeSingle(),
-  ]);
-
-  if (!doc) return null;
-
-  const snapshot = normalizeSnapshotObject(doc.dados_snapshot ?? null);
+  const dados = (escola?.dados_pagamento ?? {}) as Record<string, unknown>;
+  const turma = (matricula as any)?.turmas ?? null;
 
   return {
-    escola_nome:
-      typeof snapshot.escola_nome === "string" && snapshot.escola_nome.trim()
-        ? snapshot.escola_nome
-        : "Escola",
-    aluno_nome:
-      typeof snapshot.aluno_nome === "string" && snapshot.aluno_nome.trim()
-        ? snapshot.aluno_nome
-        : "Aluno",
-    aluno_bi: typeof snapshot.aluno_bi === "string" ? snapshot.aluno_bi : null,
-    classe_nome: typeof snapshot.classe_nome === "string" ? snapshot.classe_nome : null,
-    curso_nome: typeof snapshot.curso_nome === "string" ? snapshot.curso_nome : null,
-    turma_nome: typeof snapshot.turma_nome === "string" ? snapshot.turma_nome : null,
-    logo_url:
-      typeof escola?.logo_url === "string" && escola.logo_url.trim()
-        ? escola.logo_url
-        : typeof snapshot.escola_logo_url === "string" && snapshot.escola_logo_url.trim()
-          ? snapshot.escola_logo_url
-          : null,
-    numero_sequencial: typeof doc.numero_sequencial === "number" ? doc.numero_sequencial : null,
-    public_id: typeof doc.public_id === "string" ? doc.public_id : null,
-    emitido_em: typeof doc.created_at === "string" ? doc.created_at : new Date().toISOString(),
-    banco: typeof snapshot.escola_banco === "string" ? snapshot.escola_banco : null,
+    escola_nome: String(escola?.nome ?? "Escola"),
+    aluno_nome: String(aluno?.nome_completo ?? aluno?.nome ?? "Aluno"),
+    aluno_bi: typeof aluno?.bi_numero === "string" ? aluno.bi_numero : null,
+    classe_nome:
+      typeof turma?.classes?.nome === "string" ? turma.classes.nome : null,
+    curso_nome:
+      typeof turma?.cursos?.nome === "string" ? turma.cursos.nome : null,
+    turma_nome: typeof turma?.nome === "string" ? turma.nome : null,
+    logo_url: typeof escola?.logo_url === "string" ? escola.logo_url : null,
+    numero_sequencial:
+      typeof fiscal?.numero === "number" ? fiscal.numero : Number(fiscal?.numero) || null,
+    public_id:
+      typeof fiscal?.numero_formatado === "string"
+        ? fiscal.numero_formatado
+        : documentoId,
+    emitido_em:
+      typeof fiscal?.created_at === "string"
+        ? fiscal.created_at
+        : new Date().toISOString(),
+    banco: typeof dados.banco === "string" ? dados.banco : null,
     titular_conta:
-      typeof snapshot.escola_titular_conta === "string" ? snapshot.escola_titular_conta : null,
-    iban: typeof snapshot.escola_iban === "string" ? snapshot.escola_iban : null,
-    kwik_chave: typeof snapshot.escola_kwik_chave === "string" ? snapshot.escola_kwik_chave : null,
+      typeof dados.titular_conta === "string" ? dados.titular_conta : null,
+    iban: typeof dados.iban === "string" ? dados.iban : null,
+    kwik_chave:
+      typeof dados.kwik_chave === "string" ? dados.kwik_chave : null,
   };
 }
 
 export async function POST(req: NextRequest) {
+  const idempotencyKey =
+    req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+  if (!idempotencyKey) {
+    return jsonError(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header é obrigatório.");
+  }
+
+  const parsed = PayloadSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return jsonError(400, "INVALID_PAYLOAD", "Payload inválido.");
+  }
+
   try {
-    const idempotencyKey =
-      req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
-    if (!idempotencyKey) {
-      return NextResponse.json(
-        { ok: false, error: "Idempotency-Key header é obrigatório" },
-        { status: 400 }
-      );
-    }
-
-    const payload = PayloadSchema.safeParse(await req.json().catch(() => ({})));
-    if (!payload.success) {
-      return NextResponse.json(
-        { ok: false, error: payload.error.issues?.[0]?.message || "Payload inválido." },
-        { status: 400 }
-      );
-    }
-
-    const { mensalidadeId } = payload.data;
-
     const guard = await requireApiTenantGuard({
       productContext: "k12",
       requireTenantType: "k12",
@@ -326,75 +161,47 @@ export async function POST(req: NextRequest) {
     });
     if (!guard.ok) return guard.response;
 
-    const supabase = guard.supabase;
-    const supabaseAny = supabase as any;
-    const user = guard.user;
-    const escolaId = guard.tenantId;
+    try {
+      await requireFeature("fin_recibo_pdf");
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return jsonError(error.status, error.code, error.message);
+      }
+      throw error;
+    }
 
-    const { data: existingIdempotency } = await supabaseAny
+    const supabase = guard.supabase as any;
+    const escolaId = guard.tenantId;
+    const user = guard.user;
+
+    const { data: cached } = await supabase
       .from("idempotency_keys")
       .select("result")
       .eq("escola_id", escolaId)
-      .eq("scope", "financeiro_recibo_emitir")
+      .eq("scope", "financeiro_recibo_emitir_v2")
       .eq("key", idempotencyKey)
       .maybeSingle();
 
-    if (existingIdempotency?.result) {
-      const cachedResult = existingIdempotency.result as Partial<ReciboResponse>;
-      if (cachedResult.ok === true && typeof cachedResult.doc_id === "string") {
-        const print = await resolveReciboPrintPayload({
-          supabase,
-          docId: cachedResult.doc_id,
-          escolaId,
-        });
-        return NextResponse.json({ ...cachedResult, print }, { status: 200 });
-      }
-      return NextResponse.json(existingIdempotency.result, { status: 200 });
-    }
-
-    try {
-      await requireFeature("fin_recibo_pdf");
-    } catch (err) {
-      if (err instanceof HttpError) {
-        return NextResponse.json(
-          { ok: false, error: err.message, code: err.code },
-          { status: err.status }
-        );
-      }
-      throw err;
+    if (cached?.result) {
+      return NextResponse.json(cached.result, { status: 200 });
     }
 
     const { data: mensalidade, error: mensalidadeError } = await supabase
       .from("mensalidades")
-      .select("id, valor, valor_previsto, aluno_id")
-      .eq("id", mensalidadeId)
+      .select("id,aluno_id,valor,valor_previsto")
+      .eq("id", parsed.data.mensalidadeId)
+      .eq("escola_id", escolaId)
       .maybeSingle();
 
     if (mensalidadeError || !mensalidade) {
-      return NextResponse.json(
-        { ok: false, error: mensalidadeError?.message || "Mensalidade não encontrada." },
-        { status: 404 }
+      return jsonError(
+        404,
+        "MENSALIDADE_NOT_FOUND",
+        mensalidadeError?.message ?? "Mensalidade não encontrada."
       );
     }
 
-    const { data: latestPagamento } = await supabaseAny
-      .from("pagamentos")
-      .select("meta, valor_pago, created_at")
-      .eq("escola_id", escolaId)
-      .eq("mensalidade_id", mensalidadeId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const pagamentoMeta = normalizeSnapshotObject(latestPagamento?.meta ?? null);
-    const fallbackItem = {
-      descricao: "Propina",
-      valor: Number(latestPagamento?.valor_pago ?? mensalidade.valor_previsto ?? mensalidade.valor ?? 0),
-    } satisfies ReceiptItem;
-    const receiptItems = normalizeReceiptItems(pagamentoMeta, fallbackItem);
-    const receiptType = normalizeReceiptType(pagamentoMeta);
-
-    const { data: reclassificacaoPendente } = await supabaseAny
+    const { data: reclassificacaoPendente } = await supabase
       .from("matricula_reclassificacoes")
       .select("id,tipo")
       .eq("escola_id", escolaId)
@@ -402,11 +209,13 @@ export async function POST(req: NextRequest) {
       .eq("status", "aguardando_destino")
       .limit(1)
       .maybeSingle();
+
     if (reclassificacaoPendente) {
       return NextResponse.json(
         {
           ok: false,
-          error: "Não é possível emitir recibo enquanto o aluno aguarda definição de destino académico.",
+          error:
+            "Não é possível emitir recibo enquanto o aluno aguarda definição de destino académico.",
           code: "MATRICULA_AGUARDANDO_RECLASSIFICACAO",
           reclassificacao_tipo: reclassificacaoPendente.tipo,
         },
@@ -414,266 +223,154 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const valorRecibo = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
-    if (!Number.isFinite(valorRecibo) || valorRecibo <= 0) {
-      return NextResponse.json(
-        { ok: false, error: "Valor inválido para emissão fiscal do recibo." },
-        { status: 400 }
+    let paymentQuery = supabase
+      .from("pagamentos")
+      .select(
+        "id,escola_id,mensalidade_id,aluno_id,valor_pago,status,created_at,fiscal_documento_id"
+      )
+      .eq("escola_id", escolaId)
+      .eq("mensalidade_id", mensalidade.id);
+
+    if (parsed.data.pagamentoId) {
+      paymentQuery = paymentQuery.eq("id", parsed.data.pagamentoId);
+    } else {
+      paymentQuery = paymentQuery
+        .in("status", ["settled", "concluido", "pago"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+    }
+
+    const { data: paymentRows, error: paymentError } = await paymentQuery;
+    if (paymentError) {
+      return jsonError(500, "PAYMENT_LOOKUP_FAILED", paymentError.message);
+    }
+
+    const payment = Array.isArray(paymentRows)
+      ? paymentRows[0]
+      : paymentRows;
+
+    if (!payment) {
+      return jsonError(
+        409,
+        "SETTLED_PAYMENT_REQUIRED",
+        "Nenhum pagamento liquidado foi encontrado para esta mensalidade."
       );
     }
 
-    const origin = new URL(req.url).origin;
-    const cookieHeader = req.headers.get("cookie");
-    let empresaFiscalId: string | null = null;
-    try {
-      empresaFiscalId = await resolveEmpresaFiscalAtiva({
-        origin,
-        escolaId,
-        cookieHeader,
-      });
-    } catch (ctxErr) {
-      const message = ctxErr instanceof Error ? ctxErr.message : String(ctxErr);
-      if (message.includes("FISCAL_EMPRESA_CONTEXT_REQUIRED")) {
-        const { data: legacyRecibo, error: legacyError } = await supabase.rpc("emitir_recibo", {
-          p_mensalidade_id: mensalidadeId,
-        });
-        if (legacyError) {
-          return NextResponse.json(
-            { ok: false, error: legacyError.message, code: "LEGACY_RECIBO_EMIT_FAILED" },
-            { status: 500 }
-          );
-        }
-
-        const legacy = (legacyRecibo ?? {}) as Record<string, unknown>;
-        if (legacy.ok !== true) {
-          return NextResponse.json(
-            {
-              ok: false,
-              error: String(legacy.erro ?? "Falha ao emitir recibo."),
-              code: "LEGACY_RECIBO_EMIT_FAILED",
-            },
-            { status: 400 }
-          );
-        }
-
-        const legacyDocId = String(legacy.doc_id ?? "");
-        const legacyUrlValidacao = legacyDocId
-          ? await resolveReciboValidationUrl({ supabase, docId: legacyDocId })
-          : null;
-
-        const response: ReciboResponse = {
-          ok: true,
-          doc_id: legacyDocId,
-          url_validacao: legacyUrlValidacao,
-          print: null,
-          fiscal: null,
-        };
-
-        if (legacyDocId) {
-          await enrichReciboSnapshot({
-            supabase,
-            docId: legacyDocId,
-            escolaId,
-            alunoId: mensalidade.aluno_id ?? null,
-            extraSnapshot: {
-              tipo_comprovativo: receiptType,
-              itens_pagamento: receiptItems,
-              referencia: receiptItems.map((item) => item.descricao).join(", "),
-              valor_pago: valorRecibo,
-            },
-          });
-          response.print = await resolveReciboPrintPayload({
-            supabase,
-            docId: legacyDocId,
-            escolaId,
-          });
-        }
-
-        return NextResponse.json(response, { status: 200 });
-      }
-      throw ctxErr;
+    if (!["settled", "concluido", "pago"].includes(String(payment.status))) {
+      return jsonError(
+        409,
+        "PAYMENT_NOT_SETTLED",
+        "O pagamento ainda não foi liquidado; nenhum recibo fiscal pode ser emitido."
+      );
     }
 
-    const pendingPayload = {
-      escola_id: escolaId,
-      empresa_id: empresaFiscalId,
-      origem_tipo: "financeiro_recibos_emitir",
-      origem_id: mensalidadeId,
-      fiscal_documento_id: null,
-      status: "pending",
-      idempotency_key: `financeiro_recibos_emitir:${idempotencyKey}`,
-      payload_snapshot: {
-        origem_operacao: "financeiro_recibos_emitir",
-        mensalidade_id: mensalidadeId,
-        aluno_id: mensalidade.aluno_id ?? null,
-        valor: valorRecibo,
-      } as Json,
-      fiscal_error: null,
-    };
+    let documentoId = payment.fiscal_documento_id as string | null;
+    let numeroFormatado = "";
+    let hashControl = "";
+    let keyVersion = 0;
 
-    const { error: lockError } = await supabase
-      .from("financeiro_fiscal_links")
-      .insert(pendingPayload);
+    if (documentoId) {
+      const { data: existingDoc, error: existingDocError } = await supabase
+        .from("fiscal_documentos")
+        .select("id,numero_formatado,hash_control,key_version,status")
+        .eq("id", documentoId)
+        .maybeSingle();
 
-    if (lockError) {
-      if (lockError.code === "23505") {
-        const { data: existingLink } = await supabase
-          .from("financeiro_fiscal_links")
-          .select("status, fiscal_documento_id, fiscal_error")
-          .eq("origem_tipo", "financeiro_recibos_emitir")
-          .eq("origem_id", mensalidadeId)
-          .maybeSingle();
-
-        return NextResponse.json(
-          {
-            ok: false,
-            error: "Emissão fiscal já em processamento para esta mensalidade.",
-            code: "FISCAL_ORIGEM_LOCKED",
-            details: {
-              origem_tipo: "financeiro_recibos_emitir",
-              origem_id: mensalidadeId,
-              status: existingLink?.status ?? null,
-              fiscal_documento_id: existingLink?.fiscal_documento_id ?? null,
-            },
-          },
-          { status: 409 }
+      if (existingDocError || !existingDoc) {
+        return jsonError(
+          500,
+          "PAYMENT_FISCAL_DOC_LOOKUP_FAILED",
+          existingDocError?.message ?? "Documento fiscal associado não foi encontrado."
         );
       }
 
-      return NextResponse.json(
-        { ok: false, error: lockError.message, code: "FISCAL_LINK_CREATE_FAILED" },
-        { status: 500 }
-      );
-    }
-    let fiscal:
-      | Awaited<ReturnType<typeof emitirDocumentoFiscalViaAdapter>>
-      | null = null;
-    let fiscalErrorMessage: string | null = null;
+      numeroFormatado = existingDoc.numero_formatado;
+      hashControl = existingDoc.hash_control;
+      keyVersion = existingDoc.key_version;
+    } else if (await hasFiscalSourceAllocation(payment.id)) {
+      const rc = await issueFiscalReceiptForPayment({
+        paymentId: payment.id,
+        createdBy: user.id,
+      });
+      documentoId = rc.document.documento_id;
+      numeroFormatado = rc.document.numero_formatado;
+      hashControl = rc.document.hash_control;
+      keyVersion = rc.document.key_version;
+    } else {
+      const origin = new URL(req.url).origin;
+      const cookieHeader = req.headers.get("cookie");
+      const valor = Number(payment.valor_pago ?? mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
+      if (!Number.isFinite(valor) || valor <= 0) {
+        return jsonError(400, "PAYMENT_VALUE_INVALID", "Valor do pagamento é inválido.");
+      }
 
-    try {
-      fiscal = await emitirDocumentoFiscalViaAdapter({
+      const fr = await emitirDocumentoFiscalViaAdapter({
         tipoFluxoFinanceiro: "immediate_payment",
-        origemOperacao: "financeiro_recibos_emitir",
-        origemId: mensalidadeId,
-        descricaoPrincipal: receiptType === "matricula"
-          ? "Recebimento de matrícula"
-          : receiptType === "confirmacao"
-            ? "Recebimento de confirmação"
-            : "Recebimento de mensalidade",
-        itens: receiptItems,
+        origemOperacao: "financeiro_pagamento_fr",
+        origemId: payment.id,
+        descricaoPrincipal: "Recebimento de mensalidade",
+        itens: [{ descricao: "Propina", valor }],
         cliente: { nome: null, nif: null },
         escolaId,
         origin,
         cookieHeader,
         metadata: {
-          mensalidade_id: mensalidadeId,
-          aluno_id: mensalidade.aluno_id ?? null,
-          tipo_comprovativo: receiptType,
-          itens_pagamento: receiptItems,
+          pagamento_id: payment.id,
+          mensalidade_id: mensalidade.id,
+          aluno_id: mensalidade.aluno_id,
         },
       });
-    } catch (fiscalError) {
-      fiscalErrorMessage =
-        fiscalError instanceof Error ? fiscalError.message : "Falha ao emitir documento fiscal.";
+
+      documentoId = fr.documento_id;
+      numeroFormatado = fr.numero_formatado;
+      hashControl = fr.hash_control;
+      keyVersion = fr.key_version;
+
+      await supabase
+        .from("pagamentos")
+        .update({
+          fiscal_documento_id: documentoId,
+          status_fiscal: "ok",
+          fiscal_error: null,
+        })
+        .eq("id", payment.id)
+        .eq("escola_id", escolaId);
     }
 
-    if (!fiscal) {
-      await supabase
-        .from("financeiro_fiscal_links")
-        .update({
-          empresa_id: empresaFiscalId,
-          fiscal_documento_id: null,
-          status: "failed",
-          payload_snapshot: {
-            origem_operacao: "financeiro_recibos_emitir",
-            erro: fiscalErrorMessage,
-          } as Json,
-          fiscal_error: fiscalErrorMessage,
-        })
-        .eq("origem_tipo", "financeiro_recibos_emitir")
-        .eq("origem_id", mensalidadeId);
-
-      await supabase
-        .from("mensalidades")
-        .update({
-          status_fiscal: "pending",
-          fiscal_error: fiscalErrorMessage,
-        })
-        .eq("id", mensalidadeId);
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error: fiscalErrorMessage ?? "Falha ao emitir documento fiscal.",
-          code: "FISCAL_ADAPTER_EMIT_FAILED",
-          status_fiscal: "pending",
-        },
-        { status: 502 }
+    if (!documentoId) {
+      return jsonError(
+        500,
+        "FISCAL_RECEIPT_INCONSISTENT",
+        "A emissão fiscal não retornou documento."
       );
     }
 
-    await supabase
-      .from("financeiro_fiscal_links")
-      .update({
-        empresa_id: fiscal.empresa_id,
-        fiscal_documento_id: fiscal.documento_id,
-        status: "ok",
-        payload_snapshot: fiscal.payload_snapshot as Json,
-        fiscal_error: null,
-      })
-      .eq("origem_tipo", "financeiro_recibos_emitir")
-      .eq("origem_id", mensalidadeId);
-
-    await supabase
-      .from("mensalidades")
-      .update({
-        status_fiscal: "ok",
-        fiscal_documento_id: fiscal.documento_id,
-        fiscal_error: null,
-      })
-      .eq("id", mensalidadeId);
-
-    const urlValidacao = await resolveReciboValidationUrl({
+    const print = await buildPrintPayload({
       supabase,
-      docId: fiscal.documento_id,
+      escolaId,
+      alunoId: mensalidade.aluno_id ?? null,
+      documentoId,
     });
 
     const response: ReciboResponse = {
       ok: true,
-      doc_id: fiscal.documento_id,
-      url_validacao: urlValidacao,
-      print: null,
+      doc_id: documentoId,
+      url_validacao: null,
+      print,
       fiscal: {
-        numero_formatado: fiscal.numero_formatado,
-        hash_control: fiscal.hash_control,
-        key_version: fiscal.key_version,
+        numero_formatado: numeroFormatado,
+        hash_control: hashControl,
+        key_version: keyVersion,
       },
     };
 
-    await enrichReciboSnapshot({
-      supabase,
-      docId: fiscal.documento_id,
-      escolaId,
-      alunoId: mensalidade.aluno_id ?? null,
-      extraSnapshot: {
-        tipo_comprovativo: receiptType,
-        itens_pagamento: receiptItems,
-        referencia: receiptItems.map((item) => item.descricao).join(", "),
-        valor_pago: valorRecibo,
-      },
-    });
-    response.print = await resolveReciboPrintPayload({
-      supabase,
-      docId: fiscal.documento_id,
-      escolaId,
-    });
-
-    await supabaseAny.from("idempotency_keys").upsert(
+    await supabase.from("idempotency_keys").upsert(
       {
         escola_id: escolaId,
-        scope: "financeiro_recibo_emitir",
+        scope: "financeiro_recibo_emitir_v2",
         key: idempotencyKey,
-        result: response,
+        result: response as unknown as Json,
       },
       { onConflict: "escola_id,scope,key" }
     );
@@ -681,22 +378,22 @@ export async function POST(req: NextRequest) {
     recordAuditServer({
       escolaId,
       portal: "financeiro",
-      acao: "RECIBO_EMITIDO",
+      acao: "RECIBO_FISCAL_EMITIDO",
       entity: "fiscal_documentos",
-      entityId: fiscal.documento_id,
-      details: { mensalidade_id: mensalidadeId, numero_formatado: fiscal.numero_formatado },
+      entityId: documentoId,
+      details: {
+        pagamento_id: payment.id,
+        mensalidade_id: mensalidade.id,
+        numero_formatado: numeroFormatado,
+      },
     }).catch(() => null);
 
     return NextResponse.json(response, { status: 200 });
-  } catch (err) {
-    if (err instanceof HttpError) {
-      return NextResponse.json(
-        { ok: false, error: err.message, code: err.code },
-        { status: err.status }
-      );
-    }
-
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch (error) {
+    return jsonError(
+      500,
+      "FISCAL_RECEIPT_INTERNAL_ERROR",
+      error instanceof Error ? error.message : "Erro interno na emissão do recibo fiscal."
+    );
   }
 }
