@@ -173,7 +173,7 @@ async function emitAndSign(params: {
     address_detail: DESCONHECIDO,
     city: DESCONHECIDO,
     postal_code: DESCONHECIDO,
-    country: DESCONHECIDO,
+    country: "AO",
   };
 
   const itens = [
