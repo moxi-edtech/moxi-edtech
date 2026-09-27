@@ -48,6 +48,13 @@ type FiscalDocumentoRow = {
   rectifica_documento_id: string | null;
 };
 
+type FiscalDocumentoEventoRow = {
+  documento_id: string;
+  tipo_evento: string;
+  payload: Json | null;
+  created_at: string;
+};
+
 type FiscalDocumentoItemRow = {
   documento_id: string;
   linha_no: number;
@@ -385,6 +392,43 @@ export const fiscalSaftExport = inngest.createFunction(
         }
       }
 
+      const cancellationByDocumentId = new Map<
+        string,
+        { created_at: string; motivo: string | null }
+      >();
+      if (documentoIds.length > 0) {
+        const { data: cancellationEvents, error: cancellationEventsError } = await supabase
+          .from("fiscal_documentos_eventos")
+          .select("documento_id, tipo_evento, payload, created_at")
+          .in("documento_id", documentoIds)
+          .eq("tipo_evento", "ANULADO")
+          .order("created_at", { ascending: false })
+          .returns<FiscalDocumentoEventoRow[]>();
+
+        if (cancellationEventsError) {
+          throw new Error(
+            cancellationEventsError.message ||
+              "Falha ao obter eventos de anulação para SAF-T."
+          );
+        }
+
+        for (const event of cancellationEvents ?? []) {
+          if (cancellationByDocumentId.has(event.documento_id)) continue;
+          const payload =
+            event.payload && typeof event.payload === "object" && !Array.isArray(event.payload)
+              ? (event.payload as Record<string, unknown>)
+              : {};
+          const motivo =
+            typeof payload.motivo === "string" && payload.motivo.trim()
+              ? payload.motivo.trim()
+              : null;
+          cancellationByDocumentId.set(event.documento_id, {
+            created_at: event.created_at,
+            motivo,
+          });
+        }
+      }
+
       const serieIds = Array.from(new Set(documentoRows.map((doc) => doc.serie_id)));
       const serieById = new Map<
         string,
@@ -500,6 +544,10 @@ export const fiscalSaftExport = inngest.createFunction(
           saft_hash_control:
             doc.saft_hash_control == null ? null : Number(doc.saft_hash_control),
           saft_required: Boolean(doc.saft_required),
+          status_date:
+            cancellationByDocumentId.get(doc.id)?.created_at ?? null,
+          status_reason:
+            cancellationByDocumentId.get(doc.id)?.motivo ?? null,
           source_billing: resolveSourceBillingFromSeriesOrigin(
             serieById.get(doc.serie_id)?.origem_documento
           ),
