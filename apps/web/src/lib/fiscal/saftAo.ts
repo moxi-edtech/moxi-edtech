@@ -1410,8 +1410,12 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const movementQuantity = movementDocs
     .filter((doc) => resolveMovementStatus(doc.status) !== "A")
     .reduce(
-      (acc, doc) => acc + doc.itens.reduce((sub, item) => sub + item.quantidade, 0),
-      0
+      (acc, doc) =>
+        doc.itens.reduce(
+          (sub, item) => addExact(sub, asExact(item.quantidade, "quantidade")),
+          acc
+        ),
+      parseExactDecimal("0")
     );
 
   const salesBlock = [
@@ -1508,22 +1512,22 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       sections: {
         salesInvoices: {
           entries: salesDocs.length,
-          totalDebit: salesDebit,
-          totalCredit: salesCredit,
+          totalDebit: exactToJsonNumber(salesDebit, 4),
+          totalCredit: exactToJsonNumber(salesCredit, 4),
         },
         workingDocuments: {
           entries: workDocs.length,
           totalDebit: 0,
-          totalCredit: sumNet(normalWorkDocs),
+          totalCredit: exactToJsonNumber(sumNet(normalWorkDocs), 4),
         },
         movementOfGoods: {
           lines: movementLines,
-          totalQuantityIssued: movementQuantity,
+          totalQuantityIssued: exactToJsonNumber(movementQuantity, 4),
         },
         payments: {
           entries: paymentDocs.length,
           totalDebit: 0,
-          totalCredit: sumNet(normalPaymentDocs),
+          totalCredit: exactToJsonNumber(sumNet(normalPaymentDocs), 4),
         },
         taxTableEntries: taxProfiles.size,
       },
