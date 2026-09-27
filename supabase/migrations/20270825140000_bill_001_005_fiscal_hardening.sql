@@ -61,15 +61,18 @@ CREATE TRIGGER trg_fiscal_documentos_eventos_no_mutation
 BEFORE UPDATE OR DELETE ON public.fiscal_documentos_eventos
 FOR EACH ROW EXECUTE FUNCTION public.fiscal_block_event_mutation();
 
--- BILL-003/BILL-005: series are provisioned by the fiscal authority and
--- their counter may only advance through the SECURITY DEFINER reservation RPC.
+-- BILL-003/BILL-005: series are authority-provisioned and their counter may
+-- only advance through the SECURITY DEFINER reservation RPC.
 ALTER TABLE public.fiscal_series
   ADD COLUMN IF NOT EXISTS agt_series_code text,
-  ADD COLUMN IF NOT EXISTS agt_request_id text,
+  ADD COLUMN IF NOT EXISTS agt_submission_uuid uuid,
   ADD COLUMN IF NOT EXISTS agt_status text NOT NULL DEFAULT 'legacy',
   ADD COLUMN IF NOT EXISTS series_year integer,
   ADD COLUMN IF NOT EXISTS establishment_number text,
   ADD COLUMN IF NOT EXISTS series_contingency_indicator text,
+  ADD COLUMN IF NOT EXISTS authorized_quantity bigint,
+  ADD COLUMN IF NOT EXISTS first_document_no text,
+  ADD COLUMN IF NOT EXISTS last_document_no text,
   ADD COLUMN IF NOT EXISTS agt_provisioned_at timestamptz;
 
 ALTER TABLE public.fiscal_series
@@ -84,12 +87,41 @@ ALTER TABLE public.fiscal_series
   ADD CONSTRAINT fiscal_series_contingency_indicator_chk
   CHECK (
     series_contingency_indicator IS NULL
-    OR series_contingency_indicator IN ('N','S')
+    OR series_contingency_indicator IN ('N','C')
+  );
+
+ALTER TABLE public.fiscal_series
+  DROP CONSTRAINT IF EXISTS fiscal_series_year_chk;
+ALTER TABLE public.fiscal_series
+  ADD CONSTRAINT fiscal_series_year_chk
+  CHECK (series_year IS NULL OR series_year BETWEEN 2000 AND 2200);
+
+ALTER TABLE public.fiscal_series
+  DROP CONSTRAINT IF EXISTS fiscal_series_authorized_range_chk;
+ALTER TABLE public.fiscal_series
+  ADD CONSTRAINT fiscal_series_authorized_range_chk
+  CHECK (
+    agt_status <> 'provisioned'
+    OR (
+      agt_series_code IS NOT NULL
+      AND agt_submission_uuid IS NOT NULL
+      AND series_year IS NOT NULL
+      AND establishment_number IS NOT NULL
+      AND series_contingency_indicator IS NOT NULL
+      AND authorized_quantity IS NOT NULL
+      AND first_document_no IS NOT NULL
+      AND last_document_no IS NOT NULL
+      AND agt_provisioned_at IS NOT NULL
+    )
   );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_fiscal_series_empresa_agt_code
   ON public.fiscal_series (empresa_id, agt_series_code)
   WHERE agt_series_code IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_fiscal_series_agt_submission_uuid
+  ON public.fiscal_series (agt_submission_uuid)
+  WHERE agt_submission_uuid IS NOT NULL;
 
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.fiscal_series FROM anon, authenticated;
 DROP POLICY IF EXISTS fiscal_series_insert ON public.fiscal_series;
@@ -131,8 +163,6 @@ DROP FUNCTION IF EXISTS public.fiscal_emitir_documento(
   numeric, jsonb, jsonb
 );
 
--- Only authenticated application users and service_role may execute the
--- authoritative emission contract. Never expose fiscal emission to anon.
 REVOKE ALL ON FUNCTION public.fiscal_emitir_documento(
   uuid, uuid, text, text, text, jsonb, date, text, jsonb,
   uuid, uuid, numeric, jsonb, text, text
