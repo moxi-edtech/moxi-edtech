@@ -15,6 +15,8 @@ type Item = {
   estoque_atual: number
   ativo: boolean
   tax_profile_code: string | null
+  fiscal_product_type: "P" | "S" | null
+  fiscal_operation_type: string | null
 }
 
 type TaxProfile = {
@@ -44,6 +46,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
     estoque_atual: "0",
     ativo: true,
     tax_profile_code: "",
+    fiscal_product_type: "P",
   })
 
   const [sale, setSale] = useState({
@@ -94,6 +97,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
       estoque_atual: "0",
       ativo: true,
       tax_profile_code: "",
+      fiscal_product_type: "P",
     })
   }
 
@@ -249,6 +253,23 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
                   ))}
                 </select>
               </label>
+              <label className="text-sm">
+                Natureza fiscal
+                <select
+                  required
+                  value={form.fiscal_product_type}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      fiscal_product_type: e.target.value as "P" | "S",
+                    })
+                  }
+                  className="mt-1 w-full border rounded px-2 py-1"
+                >
+                  <option value="P">Produto / transmissão de bem (TB)</option>
+                  <option value="S">Serviço geral (SG)</option>
+                </select>
+              </label>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm">
@@ -325,6 +346,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
                             estoque_atual: String(item.estoque_atual ?? 0),
                             ativo: item.ativo,
                       tax_profile_code: item.tax_profile_code ?? "",
+                      fiscal_product_type: item.fiscal_product_type ?? "P",
                           })
                         }}
                         className="text-slate-600"
