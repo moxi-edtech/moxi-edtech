@@ -14,6 +14,8 @@ type AdapterItem = {
   descricao: string;
   valor: number;
   taxProfileCode: FiscalTaxProfileCode | string;
+  productCode?: string;
+  productNumberCode?: string;
   quantidade?: number;
   unitPriceBase?: number;
   settlementAmount?: number;
@@ -78,9 +80,9 @@ export type EmitirFinanceiroFiscalResult = {
   payload_snapshot: Record<string, unknown>;
 };
 
-function sanitizeMoney(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  return Number(value.toFixed(2));
+function sanitizeAmount(value: number, decimals = 2) {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Number(value.toFixed(decimals));
 }
 
 function normalizeTipoDocumento(tipoFluxoFinanceiro: TipoFluxoFinanceiro): FiscalTipoDocumento {
@@ -181,17 +183,17 @@ export async function emitirDocumentoFiscalViaAdapter(
     .map((item) => ({
       ...item,
       descricao: item.descricao.trim(),
-      valor: sanitizeMoney(item.valor),
+      valor: sanitizeAmount(item.valor, 4),
       quantidade:
         Number.isFinite(item.quantidade) && Number(item.quantidade) > 0
           ? Number(item.quantidade)
           : 1,
       unitPriceBase:
-        item.unitPriceBase == null ? undefined : sanitizeMoney(item.unitPriceBase),
+        item.unitPriceBase == null ? undefined : sanitizeAmount(item.unitPriceBase, 4),
       settlementAmount:
         item.settlementAmount == null
           ? 0
-          : Math.max(0, sanitizeMoney(item.settlementAmount)),
+          : Math.max(0, sanitizeAmount(item.settlementAmount, 2)),
     }))
     .filter((item) => item.descricao.length > 0 && item.valor >= 0);
 
@@ -220,8 +222,12 @@ export async function emitirDocumentoFiscalViaAdapter(
         item.taxProfileCode === FISCAL_TAX_PROFILE_CODES.educationM21;
       return {
         descricao: item.descricao,
-        product_code: `SERV_INTEGRADO_${index + 1}`,
-        product_number_code: `SERV_INTEGRADO_${index + 1}`,
+        product_code:
+          item.productCode?.trim() || `SERV_INTEGRADO_${index + 1}`,
+        product_number_code:
+          item.productNumberCode?.trim() ||
+          item.productCode?.trim() ||
+          `SERV_INTEGRADO_${index + 1}`,
         tax_profile_code: item.taxProfileCode,
         product_type: item.productType ?? "S",
         operation_type: item.operationType ?? (isEducation ? "SE" : "SG"),
