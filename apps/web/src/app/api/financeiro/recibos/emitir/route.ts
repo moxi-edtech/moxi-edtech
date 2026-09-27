@@ -8,6 +8,7 @@ import {
   PaymentFiscalError,
   processSettledPaymentFiscal,
 } from "@/lib/fiscal/paymentFiscalDocument";
+import { isFiscalEngineEnabledForSchool } from "@/lib/fiscal/financeiroFiscalAdapter";
 import { requireFeature } from "@/lib/plan/requireFeature";
 
 export const runtime = "nodejs";
@@ -119,6 +120,20 @@ export async function POST(req: NextRequest) {
       "PAYMENT_NOT_SETTLED",
       "O pagamento ainda não está liquidado."
     );
+  }
+
+  const fiscalEnabled = await isFiscalEngineEnabledForSchool(escolaId);
+  if (!fiscalEnabled) {
+    return NextResponse.json({
+      ok: true,
+      non_fiscal: true,
+      pagamento_id: pagamento.id,
+      print_url: `/secretaria/pagamentos/${pagamento.id}/recibo/print`,
+      fiscal: {
+        enabled: false,
+        skipped: true,
+      },
+    });
   }
 
   if (pagamento.mensalidade_id) {
