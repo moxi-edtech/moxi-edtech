@@ -53,6 +53,8 @@ function invoice(overrides: Record<string, unknown> = {}) {
     saft_hash_control: null,
     saft_required: false,
     status: "emitido",
+    status_date: null,
+    status_reason: null,
     source_billing: "P" as const,
     series_sort_key: "TEST",
     order_references: [],
@@ -420,4 +422,37 @@ test("SAF-T converts line settlement to AOA while keeping net unit price after d
   assert.match(xml, /<UnitPrice>90\.0000<\/UnitPrice>/);
   assert.match(xml, /<SettlementAmount>10\.0000<\/SettlementAmount>/);
   assert.match(xml, /<CreditAmount>90\.0000<\/CreditAmount>/);
+});
+
+
+test("SAF-T exports real cancellation timestamp/reason and excludes cancelled values from controls", () => {
+  const cancelled = invoice({
+    id: "10000000-0000-0000-0000-000000000021",
+    numero: 21,
+    numero_formatado: "FT TEST/21",
+    status: "anulado",
+    status_date: "2026-09-28T09:30:00.000Z",
+    status_reason: "Erro de emissão",
+  });
+
+  const { xml, summary } = build([cancelled]);
+
+  assert.match(xml, /<InvoiceStatus>A<\/InvoiceStatus>/);
+  assert.match(xml, /<InvoiceStatusDate>2026-09-28T09:30:00\.000Z<\/InvoiceStatusDate>/);
+  assert.match(xml, /<Reason>Erro de emissão<\/Reason>/);
+  assert.equal(summary.sections.salesInvoices.totalDebit, 0);
+  assert.equal(summary.sections.salesInvoices.totalCredit, 0);
+});
+
+test("SAF-T never rewrites a noncanonical historical fiscal number", () => {
+  assert.throws(
+    () =>
+      build([
+        invoice({
+          numero: 81,
+          numero_formatado: "2026-000081",
+        }),
+      ]),
+    /não corrige números fiscais históricos/
+  );
 });
