@@ -115,6 +115,14 @@ type BuildSaftAoXmlOutput = {
     totalLiquidoAoa: number;
     totalImpostosAoa: number;
     totalBrutoAoa: number;
+    taxAccountingBasis: "F";
+    sections: {
+      salesInvoices: { entries: number; totalDebit: number; totalCredit: number };
+      workingDocuments: { entries: number; totalDebit: number; totalCredit: number };
+      movementOfGoods: { lines: number; totalQuantityIssued: number };
+      payments: { entries: number; totalDebit: number; totalCredit: number };
+      taxTableEntries: number;
+    };
   };
 };
 
@@ -1128,6 +1136,29 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       totalLiquidoAoa,
       totalImpostosAoa,
       totalBrutoAoa,
+      taxAccountingBasis: "F",
+      sections: {
+        salesInvoices: {
+          entries: salesDocs.length,
+          totalDebit: salesDebit,
+          totalCredit: salesCredit,
+        },
+        workingDocuments: {
+          entries: workDocs.length,
+          totalDebit: 0,
+          totalCredit: sumNet(workDocs),
+        },
+        movementOfGoods: {
+          lines: movementLines,
+          totalQuantityIssued: movementQuantity,
+        },
+        payments: {
+          entries: paymentDocs.length,
+          totalDebit: 0,
+          totalCredit: sumNet(paymentDocs),
+        },
+        taxTableEntries: taxProfiles.size,
+      },
     },
   };
 }
