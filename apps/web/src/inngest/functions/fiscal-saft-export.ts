@@ -124,15 +124,36 @@ function parsePaymentReceiptFromPayload(payload: Json | null): {
   return { sourceDocuments };
 }
 
-function resolveSourceBillingFromSeriesOrigin(
-  origin: string | null | undefined
+function resolveSourceBilling(
+  origin: string | null | undefined,
+  payload: Json | null
 ): "P" | "I" | "M" {
+  const payloadRecord =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>)
+      : {};
+  const metadataRaw = payloadRecord.metadata;
+  const metadata =
+    metadataRaw && typeof metadataRaw === "object" && !Array.isArray(metadataRaw)
+      ? (metadataRaw as Record<string, unknown>)
+      : {};
+  const explicit = String(metadata.saft_source_billing ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (explicit === "P" || explicit === "I" || explicit === "M") {
+    return explicit;
+  }
+
   const normalized = String(origin ?? "").trim().toLowerCase();
-  if (normalized === "integrado") return "I";
-  if (normalized === "manual_recuperado" || normalized === "contingencia") return "M";
+  if (normalized === "manual_recuperado" || normalized === "contingencia") {
+    return "M";
+  }
+
+  // "integrado" é usado pelo adapter financeiro interno do KLASSE.
+  // Integrações externas devem declarar metadata.saft_source_billing = "I".
   return "P";
 }
-
 function parseSettlementAmountsFromPayload(payload: Json | null): Map<number, number> {
   const result = new Map<number, number>();
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return result;
@@ -548,8 +569,9 @@ export const fiscalSaftExport = inngest.createFunction(
             cancellationByDocumentId.get(doc.id)?.created_at ?? null,
           status_reason:
             cancellationByDocumentId.get(doc.id)?.motivo ?? null,
-          source_billing: resolveSourceBillingFromSeriesOrigin(
-            serieById.get(doc.serie_id)?.origem_documento
+          source_billing: resolveSourceBilling(
+            serieById.get(doc.serie_id)?.origem_documento,
+            doc.payload
           ),
           series_sort_key:
             serieById.get(doc.serie_id)?.agt_series_code ??
