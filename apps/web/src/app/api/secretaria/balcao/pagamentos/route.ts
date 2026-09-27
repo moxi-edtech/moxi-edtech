@@ -95,32 +95,6 @@ function normalizeReceiptType(meta: Record<string, unknown>): "pagamento" | "mat
   return hasConfirmation ? "confirmacao" : "pagamento";
 }
 
-async function enrichReceiptSnapshot({
-  supabase,
-  escolaId,
-  docId,
-  extraSnapshot,
-}: {
-  supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>;
-  escolaId: string;
-  docId: string;
-  extraSnapshot: Record<string, unknown>;
-}) {
-  const { data: doc } = await supabase
-    .from("documentos_emitidos")
-    .select("dados_snapshot")
-    .eq("id", docId)
-    .eq("escola_id", escolaId)
-    .maybeSingle();
-  const existingSnapshot = asRecord(doc?.dados_snapshot);
-
-  await supabase
-    .from("documentos_emitidos")
-    .update({ dados_snapshot: { ...existingSnapshot, ...extraSnapshot } as Json })
-    .eq("id", docId)
-    .eq("escola_id", escolaId);
-}
-
 export async function POST(request: Request) {
   try {
     const idempotencyKey =
