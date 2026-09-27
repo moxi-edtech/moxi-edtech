@@ -325,7 +325,7 @@ export async function POST(req: Request) {
             mensalidade_id: mensalidade?.id ?? null,
             fiscal_documento_origem_id:
               sourceAllocation.fiscal_documento_origem_id,
-            recibo_documento_id: receipt.document.documento_id,
+            recibo_documento_id: receipt.documento_id,
           },
         }).catch(() => null);
 
