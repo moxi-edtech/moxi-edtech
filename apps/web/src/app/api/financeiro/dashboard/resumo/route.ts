@@ -5,6 +5,13 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearContext } from "@/lib/academic-year/context";
 import type { Database } from "~types/supabase";
+import {
+  exactMoney,
+  moneyToJson,
+  percentFromExact,
+  safeCount,
+  sumExact,
+} from "@/lib/financeiro/exact";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -92,20 +99,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: kpisError.message }, { status: 500 });
     }
 
-    const previsto = (kpis ?? []).reduce(
-      (acc: number, row: { previsto_total: number | null }) => acc + Number(row.previsto_total ?? 0),
-      0
+    const previstoExact = sumExact(
+      (kpis ?? []).map((row: { previsto_total: number | string | null }) => row.previsto_total ?? "0"),
+      "previsto_total"
     );
-    const realizado = (kpis ?? []).reduce(
-      (acc: number, row: { realizado_total: number | null }) => acc + Number(row.realizado_total ?? 0),
-      0
+    const realizadoExact = sumExact(
+      (kpis ?? []).map((row: { realizado_total: number | string | null }) => row.realizado_total ?? "0"),
+      "realizado_total"
     );
-    const inadimplencia = (kpis ?? []).reduce(
-      (acc: number, row: { inadimplencia_total: number | null }) => acc + Number(row.inadimplencia_total ?? 0),
-      0
+    const inadimplenciaExact = sumExact(
+      (kpis ?? []).map((row: { inadimplencia_total: number | string | null }) => row.inadimplencia_total ?? "0"),
+      "inadimplencia_total"
     );
 
-    const percentRealizado = previsto ? Math.round((realizado / previsto) * 100) : 0;
+    const previsto = moneyToJson(previstoExact);
+    const realizado = moneyToJson(realizadoExact);
+    const inadimplencia = moneyToJson(inadimplenciaExact);
+    const percentRealizado = percentFromExact(realizadoExact, previstoExact, 0);
 
     const { data: dashboardRow } = await (supabase as any)
       .from("vw_financeiro_dashboard_ano")
@@ -120,10 +130,14 @@ export async function GET(request: Request) {
       .eq("escola_id", escolaId)
       .eq("ano_letivo_id", academicContext?.anoLetivoId ?? "");
 
-    const alunosInadimplentesCount = Number(
-      inadimplentesCount ?? dashboardRow?.alunos_inadimplentes ?? 0
+    const alunosInadimplentesCount = safeCount(
+      inadimplentesCount ?? dashboardRow?.alunos_inadimplentes ?? 0,
+      "alunos_inadimplentes"
     );
-    const alunosEmDia = Number(dashboardRow?.alunos_em_dia ?? 0);
+    const alunosEmDia = safeCount(
+      dashboardRow?.alunos_em_dia ?? 0,
+      "alunos_em_dia"
+    );
 
     return NextResponse.json({
       ok: true,
