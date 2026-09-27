@@ -32,6 +32,32 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+async function resolveEnabledFiscalBinding(admin: any, escolaId: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: bindings, error } = await admin
+    .from("fiscal_escola_bindings")
+    .select("empresa_id,is_primary,effective_from,effective_to")
+    .eq("escola_id", escolaId)
+    .eq("fiscal_enabled", true)
+    .lte("effective_from", today)
+    .or(`effective_to.is.null,effective_to.gte.${today}`)
+    .order("is_primary", { ascending: false })
+    .limit(2);
+
+  if (error) {
+    throw new PaymentFiscalError("FISCAL_BINDING_LOOKUP_FAILED", error.message);
+  }
+
+  if (!bindings?.length) {
+    throw new PaymentFiscalError(
+      "FISCAL_ENGINE_NOT_ENABLED",
+      "Motor fiscal não está ativado para esta escola."
+    );
+  }
+
+  return bindings[0];
+}
+
 export async function hasFiscalSourceAllocation(paymentId: string) {
   const admin = supabaseServerRole() as any;
   const { data, error } = await admin
@@ -102,6 +128,8 @@ export async function issueFiscalReceiptForPayment(input: {
       };
     }
   }
+
+  await resolveEnabledFiscalBinding(admin, existingPayment.escola_id);
 
   const hasSource = await hasFiscalSourceAllocation(input.paymentId);
   if (!hasSource) {
@@ -266,27 +294,8 @@ export async function enqueueFrReprocessForPayment(input: {
     };
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: bindings, error: bindingError } = await admin
-    .from("fiscal_escola_bindings")
-    .select("empresa_id,is_primary,effective_from,effective_to")
-    .eq("escola_id", payment.escola_id)
-    .lte("effective_from", today)
-    .or(`effective_to.is.null,effective_to.gte.${today}`)
-    .order("is_primary", { ascending: false })
-    .limit(2);
-
-  if (bindingError) {
-    throw new PaymentFiscalError("FISCAL_BINDING_LOOKUP_FAILED", bindingError.message);
-  }
-  if (!bindings?.length) {
-    throw new PaymentFiscalError(
-      "FISCAL_EMPRESA_CONTEXT_REQUIRED",
-      "Escola sem empresa fiscal activa."
-    );
-  }
-
-  const empresaId = bindings[0].empresa_id;
+  const binding = await resolveEnabledFiscalBinding(admin, payment.escola_id);
+  const empresaId = binding.empresa_id;
   const originType = "financeiro_pagamentos_registrar";
   const originId = payment.id;
   const idempotencyKey = `financeiro_pagamentos_registrar:${payment.id}`;
