@@ -32,6 +32,7 @@ type FiscalItemRow = {
   product_code: string | null;
   product_number_code: string | null;
   tax_profile_code?: string | null;
+  tax_profile_version?: number | string | null;
   tax_type?: string | null;
   tax_code?: string | null;
   tax_country_region?: string | null;
@@ -72,14 +73,6 @@ function round2(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-function ceil2(value: number) {
-  return Math.ceil((value - Number.EPSILON) * 100) / 100;
-}
-
-function trunc2(value: number) {
-  return Math.trunc((value + Number.EPSILON) * 100) / 100;
-}
-
 function objectValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -98,34 +91,6 @@ function resolveCustomerCountry(doc: FiscalDocumentRow) {
   throw new AgtMappingError(
     "AGT_MAPPING_CUSTOMER_COUNTRY_REQUIRED",
     "customerCountry ISO 3166-1 alpha-2 é obrigatório para cliente identificado"
-  );
-}
-
-function resolveTaxCode(rate: number, payloadItem: Record<string, unknown>) {
-  const explicit = textValue(payloadItem.tax_code).toUpperCase();
-  if (explicit) {
-    if (!["NOR", "INT", "RED", "ISE", "OUT"].includes(explicit)) {
-      throw new AgtMappingError("AGT_MAPPING_TAX_CODE_INVALID", `tax_code inválido: ${explicit}`);
-    }
-    if (rate === 0 && explicit !== "ISE") {
-      throw new AgtMappingError(
-        "AGT_MAPPING_TAX_CODE_RATE_MISMATCH",
-        "IVA a 0% exige tax_code ISE no modelo actual do KLASSE"
-      );
-    }
-    if (rate > 0 && explicit === "ISE") {
-      throw new AgtMappingError(
-        "AGT_MAPPING_TAX_CODE_RATE_MISMATCH",
-        "tax_code ISE não pode ser usado com taxa IVA superior a 0%"
-      );
-    }
-    return explicit;
-  }
-  if (rate === 14) return "NOR";
-  if (rate === 0) return "ISE";
-  throw new AgtMappingError(
-    "AGT_MAPPING_TAX_CODE_REQUIRED",
-    `tax_code é obrigatório para taxa IVA ${rate}`
   );
 }
 
@@ -305,6 +270,14 @@ export function buildAgtPreparedDocument(input: {
         );
       }
 
+      const taxProfileVersion = Number(item.tax_profile_version);
+      if (!Number.isInteger(taxProfileVersion) || taxProfileVersion <= 0) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_TAX_PROFILE_VERSION_REQUIRED",
+          `Linha ${item.linha_no} não possui tax_profile_version canónico.`
+        );
+      }
+
       const operationType = (item.operation_type ?? "").trim().toUpperCase();
       if (!["SE","SS","STP","SR","SIF","SHS","ST","SG","TB","AS","QT","RD"].includes(operationType)) {
         throw new AgtMappingError(
@@ -417,10 +390,10 @@ export function buildAgtPreparedDocument(input: {
         productDescription: item.descricao,
         quantity,
         unitOfMeasure,
-        unitPriceBase: round2(unitPriceBase),
-        unitPrice: round2(unitPrice),
+        unitPriceBase,
+        unitPrice,
         taxes: [tax],
-        settlementAmount: round2(settlementAmount),
+        settlementAmount,
       };
 
       if (doc.tipo_documento === "NC") {
@@ -463,18 +436,28 @@ export function buildAgtPreparedDocument(input: {
   const currency = doc.moeda.toUpperCase();
   if (currency !== "AOA") {
     const exchangeRate = decimal(doc.taxa_cambio_aoa, "exchangeRate");
-    documentTotals.currency = {
-      currencyCode: currency,
-      currencyAmount: round2(grossTotal * exchangeRate),
-      exchangeRate,
-    };
-    const localGross = round2(decimal(doc.total_bruto_aoa, "total_bruto_aoa"));
-    if (Math.abs(localGross - documentTotals.currency.currencyAmount) > 0.01) {
+    if (exchangeRate <= 0) {
       throw new AgtMappingError(
-        "AGT_MAPPING_FX_TOTAL_MISMATCH",
-        "Contra-valor AOA calculado diverge do total fiscal local"
+        "AGT_MAPPING_FX_RATE_INVALID",
+        "exchangeRate deve ser positivo para documento em moeda estrangeira"
       );
     }
+
+    const localGross = round2(decimal(doc.total_bruto_aoa, "total_bruto_aoa"));
+    if (localGross <= 0) {
+      throw new AgtMappingError(
+        "AGT_MAPPING_FX_TOTAL_INVALID",
+        "Contra-valor AOA persistido deve ser positivo"
+      );
+    }
+
+    // O motor fiscal SQL é a única fonte do contravalor AOA. Não recalcular em JS:
+    // a AGT valida grossTotal × exchangeRate com arredondamento matemático.
+    documentTotals.currency = {
+      currencyCode: currency,
+      currencyAmount: localGross,
+      exchangeRate,
+    };
   } else {
     const localNet = round2(decimal(doc.total_liquido_aoa, "total_liquido_aoa"));
     const localTax = round2(decimal(doc.total_impostos_aoa, "total_impostos_aoa"));
