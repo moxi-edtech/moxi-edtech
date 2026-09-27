@@ -69,6 +69,8 @@ type SaftDocumento = {
   status: string;
   status_date: string | null;
   status_reason: string | null;
+  source_id: string;
+  status_source_id: string;
   source_billing: "P" | "I" | "M";
   series_sort_key: string;
   order_references?: SaftOrderReference[];
@@ -654,7 +656,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const invoicesXml = salesDocsForXml.map((doc) => {
       const invoiceType = resolveSalesInvoiceType(doc.tipo_documento);
       const invoiceNo = resolveSaftInvoiceNo(doc, invoiceType);
-      const sourceId = "KLASSE";
+      const sourceId = doc.source_id;
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const invoiceStatus = resolveInvoiceStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
@@ -783,7 +785,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `            <InvoiceStatus>${invoiceStatus}</InvoiceStatus>`,
         `            <InvoiceStatusDate>${resolveDocumentStatusDate(doc)}</InvoiceStatusDate>`,
         buildDocumentStatusReasonXml(doc, "            "),
-        `            <SourceID>${sourceId}</SourceID>`,
+        `            <SourceID>${escapeXml(doc.status_source_id)}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
         `          <Hash>${escapeXml(signedHash.hash)}</Hash>`,
@@ -817,7 +819,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const workDocumentsXml = workDocsForXml.map((doc) => {
       const workType = resolveWorkType(doc.tipo_documento);
       const documentNumber = resolveSaftInvoiceNo(doc, workType);
-      const sourceId = "KLASSE";
+      const sourceId = doc.source_id;
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const workStatus = resolveWorkStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
@@ -906,7 +908,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `            <WorkStatus>${workStatus}</WorkStatus>`,
         `            <WorkStatusDate>${resolveDocumentStatusDate(doc)}</WorkStatusDate>`,
         buildDocumentStatusReasonXml(doc, "            "),
-        `            <SourceID>${sourceId}</SourceID>`,
+        `            <SourceID>${escapeXml(doc.status_source_id)}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
         `          <Hash>${escapeXml(signedHash.hash)}</Hash>`,
@@ -934,7 +936,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const movementDocumentsXml = movementDocsForXml.map((doc) => {
       const movementType = resolveMovementType(doc.tipo_documento);
       const documentNumber = resolveSaftInvoiceNo(doc, movementType);
-      const sourceId = "KLASSE";
+      const sourceId = doc.source_id;
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const movementStatus = resolveMovementStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
@@ -1003,7 +1005,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `            <MovementStatus>${movementStatus}</MovementStatus>`,
         `            <MovementStatusDate>${resolveDocumentStatusDate(doc)}</MovementStatusDate>`,
         buildDocumentStatusReasonXml(doc, "            "),
-        `            <SourceID>${sourceId}</SourceID>`,
+        `            <SourceID>${escapeXml(doc.status_source_id)}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
         `          <Hash>${escapeXml(signedHash.hash)}</Hash>`,
@@ -1032,7 +1034,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const paymentsXml = paymentDocsForXml.map((doc) => {
       const paymentType = resolvePaymentType(doc.tipo_documento);
       const paymentRefNo = resolveSaftInvoiceNo(doc, paymentType);
-      const sourceId = "KLASSE";
+      const sourceId = doc.source_id;
       const sourcePayment = resolveSourceBilling(doc.source_billing);
       const paymentStatus = resolvePaymentStatus(doc.status);
       const customerId = resolveCustomerIdentity(doc).id;
@@ -1138,7 +1140,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `            <PaymentStatus>${paymentStatus}</PaymentStatus>`,
         `            <PaymentStatusDate>${resolveDocumentStatusDate(doc)}</PaymentStatusDate>`,
         buildDocumentStatusReasonXml(doc, "            "),
-        `            <SourceID>${sourceId}</SourceID>`,
+        `            <SourceID>${escapeXml(doc.status_source_id)}</SourceID>`,
         `            <SourcePayment>${sourcePayment}</SourcePayment>`,
         "          </DocumentStatus>",
         paymentMethodXml,
