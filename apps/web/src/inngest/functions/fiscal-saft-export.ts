@@ -39,8 +39,8 @@ type FiscalDocumentoRow = {
   total_impostos_aoa: number;
   total_bruto_aoa: number;
   hash_control: string;
-  assinatura_base64: string | null;
-  key_version: number | null;
+  saft_hash: string | null;
+  saft_hash_control: number | null;
   status: string;
   serie_id: string;
   documento_origem_id: string | null;
@@ -332,7 +332,7 @@ export const fiscalSaftExport = inngest.createFunction(
         supabase
           .from("fiscal_documentos")
           .select(
-            "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, assinatura_base64, key_version, status, serie_id, documento_origem_id, rectifica_documento_id"
+            "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, saft_hash, saft_hash_control, status, serie_id, documento_origem_id, rectifica_documento_id"
             + ", moeda, taxa_cambio_aoa, payment_mechanism"
           )
           .eq("empresa_id", exportRow.empresa_id)
@@ -476,8 +476,9 @@ export const fiscalSaftExport = inngest.createFunction(
             }) ?? [],
             };
           })(),
-          assinatura_base64: doc.assinatura_base64,
-          key_version: doc.key_version == null ? null : Number(doc.key_version),
+          saft_hash: doc.saft_hash,
+          saft_hash_control:
+            doc.saft_hash_control == null ? null : Number(doc.saft_hash_control),
           source_billing: resolveSourceBillingFromSeriesOrigin(
             serieOriginById.get(doc.serie_id)
           ),
