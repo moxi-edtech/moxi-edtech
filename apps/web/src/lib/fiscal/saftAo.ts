@@ -930,12 +930,13 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           : [
               "            <Currency>",
               `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
-              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              `              <CurrencyAmount>${formatMoney(currencyAmountAoaToDocumentCurrency(doc))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
 
-      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
+      if (doc.moeda.toUpperCase() !== "AOA") {
+        assertPositiveExchangeRate(doc);
         throw new Error(
           `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
         );
@@ -1070,12 +1071,13 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           : [
               "            <Currency>",
               `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
-              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              `              <CurrencyAmount>${formatMoney(currencyAmountAoaToDocumentCurrency(doc))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
 
-      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
+      if (doc.moeda.toUpperCase() !== "AOA") {
+        assertPositiveExchangeRate(doc);
         throw new Error(
           `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
         );
@@ -1173,12 +1175,13 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           : [
               "            <Currency>",
               `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
-              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              `              <CurrencyAmount>${formatMoney(currencyAmountAoaToDocumentCurrency(doc))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
 
-      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
+      if (doc.moeda.toUpperCase() !== "AOA") {
+        assertPositiveExchangeRate(doc);
         throw new Error(
           `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
         );
@@ -1306,15 +1309,13 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           : [
               "            <Currency>",
               `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
-              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              `              <CurrencyAmount>${formatMoney(currencyAmountAoaToDocumentCurrency(doc))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
 
-      if (
-        doc.moeda.toUpperCase() !== "AOA" &&
-        (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)
-      ) {
+      if (doc.moeda.toUpperCase() !== "AOA") {
+        assertPositiveExchangeRate(doc);
         throw new Error(
           `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
         );
