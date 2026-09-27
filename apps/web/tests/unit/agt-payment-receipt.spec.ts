@@ -23,6 +23,11 @@ function baseReceipt() {
     total_bruto_aoa: 34200,
     documento_origem_id: null,
     rectifica_documento_id: null,
+    agt_document_status: "N",
+    agt_rejected_document_id: null,
+    agt_rejected_document_no: null,
+    reference_reason: null,
+    contingency_indicator: "N",
     payload: {
       cliente: { country: "AO" },
       paymentReceipt: {
