@@ -146,7 +146,7 @@ export async function OperationalPaymentReceiptDocument({
     valorUnitario?: number;
   }> = [];
 
-  if (mensalidade) {
+  if (!isConsolidatedBatch && mensalidade) {
     const mes = formatMonth(mensalidade.mes_referencia);
     const ano = String(mensalidade.ano_referencia ?? "").trim();
     const label = [mes, ano].filter(Boolean).join("/");
@@ -190,7 +190,7 @@ export async function OperationalPaymentReceiptDocument({
     const itemsTotal = itensDetalhados.reduce((sum, item) => sum + item.valor, 0);
     if (
       itensDetalhados.length === 0 ||
-      Math.abs(itemsTotal - paymentValue) > 0.01
+      (!isConsolidatedBatch && Math.abs(itemsTotal - paymentValue) > 0.01)
     ) {
       const description = String(
         meta.descricao_item ??
