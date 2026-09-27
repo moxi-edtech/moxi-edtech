@@ -390,8 +390,9 @@ export async function POST(req: Request) {
       });
     }
 
+    let headerConfig: SaftHeaderConfig;
     try {
-      resolveSaftHeaderConfig();
+      headerConfig = resolveSaftHeaderConfig();
     } catch (configError) {
       return jsonError(
         409,
@@ -436,6 +437,7 @@ export async function POST(req: Request) {
       request_id: requestId,
       requested_at: new Date().toISOString(),
       requested_by: user.id,
+      saft_header_config: headerConfig,
       worker: { state: "queued" },
     };
 
