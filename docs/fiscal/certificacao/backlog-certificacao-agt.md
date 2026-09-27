@@ -37,7 +37,7 @@ Estados usados:
 | BILL-006 | Facturação Electrónica AGT assíncrona | P0 | READY FOR HOMOLOGATION | PR #119 + BILL-007; registarFactura/obterEstado/outbox/audit; RC/paymentReceipt implementado |
 | BILL-007 | Pagamentos, ledger, recibos e estornos | P0 | CLOSED | branch `fix/bill-007-payments-ledger-receipts`; alocações append-only, RC/sourceDocuments, N:N, reversão idempotente |
 | BILL-008 | SAF-T(AO) semântico e contabilístico | P1 | READY FOR HOMOLOGATION | SAF-T Facturação F semântico + XSD + hash dedicado; dados históricos incompatíveis fail-closed |
-| BILL-009 | Motor fiscal/IVA e arredondamentos | P1 | NEEDS WORK | branch `fix/bill-009-tax-engine-vat`; perfis fiscais, motor DB, catálogo e oracles já iniciados |
+| BILL-009 | Motor fiscal/IVA e arredondamentos | P1 | CLOSED | PR #122; motor fiscal canónico, perfis versionados, governance IVA/M21, resolver server-only, oracles e 28/28 testes fiscais |
 | BILL-010 | Ciclo de vida completo dos documentos | P1 | BACKLOG | rectificação, rejeição AGT, contingência, referências e tipos não-fiscais |
 | BILL-011 | Segurança multi-tenant e least privilege fiscal | P1 | BACKLOG | RLS/grants/service-role/storage/cross-tenant |
 | BILL-012 | Observabilidade, retries e recuperação fiscal | P2 | BACKLOG | DLQ, reconciliação, métricas, alertas, replay seguro |
@@ -317,80 +317,168 @@ Critério para CLOSED:
 
 ## BILL-009 — Motor fiscal / IVA
 
-**Estado:** NEEDS WORK  
+**Estado:** CLOSED  
 **Severidade:** P1  
+**PR:** #122  
 **Branch:** `fix/bill-009-tax-engine-vat`  
-**Handoff:** `docs/fiscal/certificacao/HANDOFF_BILL_009_ONWARD.md`
+**Fechado internamente em:** 2026-09-27
 
-O BILL-009 já está em implementação. Não reiniciar do zero.
+### Escopo fechado
 
-Implementado até o momento:
+- `fiscal_tax_profiles` é a fonte canónica da classificação tributária;
+- perfis são versionados por `code + version`, com vigência temporal;
+- sobreposição de períodos para o mesmo perfil é bloqueada por exclusion constraint;
+- perfil/versionamento já usado por linha fiscal não pode ser alterado ou apagado;
+- cada nova linha fiscal congela `tax_profile_code + tax_profile_version`;
+- `fiscal_tax_compute_document(...)` é o motor canónico de cálculo;
+- `fiscal_emitir_documento` usa o motor antes de persistir documento/linhas;
+- mapper AGT e SAF-T consomem o snapshot fiscal persistido e não reinterpretam IVA;
+- precisão de `unitPrice` / `unitPriceBase` é preservada no payload AGT;
+- FX usa o contravalor AOA persistido pelo motor SQL, sem recálculo paralelo em JavaScript;
+- descontos/settlement são reconciliados contra a linha canónica;
+- impostos/retenções ainda não suportados permanecem fail-closed.
 
-- `fiscal_tax_profiles` versionada por código/versão;
-- vigência `valid_from/valid_to`;
-- referência legal e URL de fonte no perfil;
-- perfis iniciais:
-  - `IVA_EDUCACAO_M21`;
-  - `IVA_NORMAL_14_AO`;
-- semântica tributária persistida em `fiscal_documento_itens`:
-  - perfil;
-  - tipo/código/região do imposto;
-  - operationType;
-  - ProductType;
-  - unidade;
-  - preço-base;
-  - settlement/desconto;
-  - totais moeda original;
-  - totais AOA;
-- `fiscal_tax_compute_document(...)` como motor canónico de cálculo;
-- `fiscal_emitir_documento` ligado ao motor antes de persistir o documento;
-- catálogo financeiro/tabelas com `tax_profile_code`;
-- propinas/tabelas escolares com default do perfil M21;
-- catálogo com classificação bem/serviço;
-- mapper AGT passando a consumir valores canónicos persistidos;
-- SAF-T passando a consumir a mesma semântica fiscal;
-- preservação do InvoiceNo reservado pela AGT;
-- testes-oráculo iniciais para M21, IVA 14%, descontos e FX.
+### Perfis suportados no motor actual
 
-Migrations live/Git:
+- `IVA_EDUCACAO_M21`;
+- `IVA_NORMAL_14_AO`;
+- `IVA_SIMPLIFICADO_M00`;
+- `IVA_EXCLUSAO_M04`.
+
+A existência do perfil não autoriza seu uso por qualquer entidade. O motor aplica governance por empresa fiscal.
+
+### Governance de IVA e M21
+
+A isenção de ensino deixou de ser inferida pelo nome/tipo do tenant.
+
+`fiscal_empresas` mantém decisão explícita e auditável de:
+
+- regime IVA: `unverified | general | simplified | exclusion`;
+- elegibilidade da isenção de ensino: `unverified | eligible | not_eligible`;
+- fundamento/evidência;
+- actor verificador;
+- timestamp da verificação.
+
+Regras:
+
+- `unverified` é fail-closed;
+- M21 exige regime compatível + elegibilidade de ensino previamente verificada;
+- IVA normal 14% exige regime geral;
+- M00 exige regime simplificado;
+- M04 exige regime de exclusão;
+- alterações de enquadramento fiscal são protegidas por fluxo administrativo/super-admin;
+- `fiscal_resolve_education_tax_profile(uuid)` é server-only: `anon=false`, `authenticated=false`, `service_role=true`.
+
+O resolver retorna:
+
+- regime geral + ensino elegível -> `IVA_EDUCACAO_M21`;
+- regime geral + ensino não elegível -> `IVA_NORMAL_14_AO`;
+- regime simplificado + ensino não elegível -> `IVA_SIMPLIFICADO_M00`;
+- regime de exclusão -> `IVA_EXCLUSAO_M04`;
+- enquadramento não verificado -> erro, sem fallback silencioso.
+
+### Remoção do M21 implícito
+
+O backfill antigo tinha classificado todas as `financeiro_tabelas` como M21.
+
+Snapshot anterior ao fechamento:
+
+- tabelas financeiras: **77**;
+- M21 implícito: **77**.
+
+Migration de fechamento removeu essa inferência.
+
+Snapshot posterior:
+
+- tabelas financeiras: **77**;
+- M21 implícito: **0**;
+- tabelas sem perfil explícito: **77**.
+
+Isto não altera documentos fiscais emitidos. É apenas limpeza da configuração futura do catálogo.
+
+Fluxos de mensalidade/propina agora resolvem o perfil fiscal server-side pela empresa fiscal. Pagamento financeiro directo sem mensalidade/origem fiscal classificada fica fiscalmente pendente e não é emitido automaticamente como serviço de ensino.
+
+### Evidência de cálculo / oracles
+
+Testes directos no motor SQL:
+
+- `23.144 -> 23.15`;
+- `0.001844 -> 0.01`;
+- `5.9999999 -> 6.00`;
+- M21: 100000 líquido / 0 imposto / 100000 bruto;
+- IVA 14% sobre 165.3143: líquido 165.31 / imposto 23.15 / bruto 188.46;
+- desconto 100 -> 90: settlement 10 / imposto 12.60 / bruto 102.60;
+- USD 50 @ 920: líquido AOA 46000 / imposto AOA 6440 / bruto AOA 52440.
+
+Testes rollback-only:
+
+- overlap temporal de perfil rejeitado, **0 resíduos**;
+- UPDATE/DELETE de perfil usado rejeitado, **0 resíduos**;
+- resolver de regime/elegibilidade validado nos quatro cenários suportados;
+- regime `unverified` rejeitado;
+- nenhuma entidade/linha de teste persistida após rollback.
+
+### CI
+
+No run fiscal de referência do PR #122:
+
+- Security Regression Tests: PASS;
+- Fiscal Regression Tests: **28/28 PASS**;
+- SAF-T XSD AO 1.01_01: PASS.
+
+O workflow global ainda pode aparecer vermelho por débitos não introduzidos pelo BILL-009:
+
+- KF2 Search Audit possui findings históricos de LIMIT/ORDER BY;
+- Vercel tem falhado por `build-rate-limit`.
+
+Essas falhas não alteram o resultado da suite fiscal do BILL-009.
+
+### Advisors
+
+Security/performance advisors foram revistos após as migrations.
+
+Não apareceu finding novo ligado às novas estruturas de governance `education_vat_exemption_*`, `vat_regime_*`, resolver ou catálogo tributário.
+
+Persistem warnings/info fiscais anteriores, incluindo RPCs SECURITY DEFINER e FKs sem índices, que devem ser tratados na auditoria de least privilege/performance do BILL-011 quando aplicável; não foram criados por este fechamento.
+
+### Migrations BILL-009 live/Git
 
 - `20260927181109_bill_009_tax_profiles_and_item_semantics.sql`
 - `20260927181334_bill_009_financial_catalog_tax_profiles.sql`
 - `20260927181708_bill_009_tax_compute_function.sql`
 - `20260927181922_bill_009_wire_tax_engine_to_emitter.sql`
 - `20260927182435_bill_009_catalog_fiscal_classification.sql`
-- `20260927182915_bill_009_tuition_tax_profile_default.sql`
+- `20260927182915_bill_009_tuition_tax_profile_default.sql` — migration histórica do branch; comportamento posteriormente revogado;
 - `20260927183018_bill_009_preserve_reserved_agt_invoice_no.sql`
+- `20260927185100_bill_009_tax_profile_temporal_governance.sql`
+- `20260927185604_bill_009_persist_tax_profile_version.sql`
+- `20260927190709_bill_009_education_vat_eligibility_guard.sql`
+- `20260927191357_bill_009_resolve_education_tax_profile.sql`
+- `20260927191520_bill_009_tax_profile_resolver_server_only.sql`
+- `20260927192036_bill_009_vat_regime_governance.sql`
+- `20260927194402_bill_009_remove_implicit_education_tax_profile.sql`
 
-Pendências para fechar:
+### Limites deliberados
 
-- impedir sobreposição temporal de versões do mesmo perfil tributário;
-- definir imutabilidade/governance de perfil já utilizado por documento fiscal;
-- confirmar matriz tributária aplicável usando fontes AGT/MinFin actuais;
-- validar combinações `taxType x taxCode x rate x exemption x operationType`;
-- completar testes-oráculo de arredondamento FT/FR/ND/NC;
-- provar descontos e settlement end-to-end;
-- provar FX end-to-end e estabilidade da taxa persistida;
-- procurar e eliminar callers que ainda calculam IVA/taxa fora do motor canónico;
-- decidir, com fonte oficial, retenções/outros impostos aplicáveis ou manter fail-closed;
-- validar histórico sem mutar documentos emitidos;
-- rodar security/performance advisors;
-- executar testes rollback-only no banco;
-- abrir/actualizar PR do BILL-009 com evidência de fechamento.
+- nenhum documento fiscal histórico foi renumerado, reclassificado ou alterado;
+- retenções/IS/IEC/CEOC não são inferidos: continuam fail-closed até requisito aplicável ser provado;
+- correções de histórico, NC/ND, rejeição/anulação/contingência pertencem ao BILL-010;
+- homologação externa AGT continua separada no BILL-013.
 
-Critério para CLOSED:
+### Critério de fechamento
 
-1. todas as emissões novas passam pelo motor canónico;
-2. não há cálculo paralelo de IVA nos callers;
-3. snapshot tributário utilizado fica persistido em cada item;
-4. versões de perfil são historicamente reproduzíveis;
-5. combinações inválidas são bloqueadas;
-6. desconto/FX reconciliam entre DB, AGT e SAF-T;
-7. regras de arredondamento têm testes oracle;
-8. classificação produto/serviço é estável;
-9. histórico emitido não é mutado;
-10. migrations live/Git sincronizadas e advisors revistos.
+Os critérios internos do BILL-009 foram atingidos:
 
+1. emissões novas passam pelo motor canónico;
+2. callers fiscais não calculam IVA por conta própria;
+3. perfil + versão ficam congelados no item;
+4. versões são reproduzíveis e não sobrepostas;
+5. combinações inválidas falham fechado;
+6. desconto/FX reconciliam entre DB e mappers;
+7. arredondamento possui oracle;
+8. produto/serviço e operationType são persistidos;
+9. histórico emitido não foi mutado;
+10. migrations live/Git estão sincronizadas e advisors foram revistos.
 
 ---
 
