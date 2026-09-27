@@ -103,6 +103,25 @@ export function buildAgtPreparedDocument(input: {
   const doc = input.document;
   const payload = objectValue(doc.payload);
   const metadata = objectValue(payload.metadata);
+  const withholdingCandidates = [
+    payload.withholdingTaxList,
+    payload.withholding_tax_list,
+    metadata.withholdingTaxList,
+    metadata.withholding_tax_list,
+  ];
+  const hasUnsupportedWithholding = withholdingCandidates.some(
+    (value) =>
+      value !== undefined &&
+      value !== null &&
+      !(Array.isArray(value) && value.length === 0)
+  );
+  if (hasUnsupportedWithholding) {
+    throw new AgtMappingError(
+      "AGT_MAPPING_WITHHOLDING_UNSUPPORTED",
+      "Retenções/cativações existem no contrato AGT, mas o motor fiscal KLASSE ainda não as calcula; submissão bloqueada para evitar omissão silenciosa."
+    );
+  }
+
   const customerCountry = resolveCustomerCountry(doc);
   const customerTaxID = (doc.cliente_nif ?? "").trim() || "999999999";
   const documentStatusRaw = textValue(metadata.agt_document_status).toUpperCase();
