@@ -3,6 +3,10 @@ type SaftEmpresa = {
   nome: string;
   nif: string;
   endereco: string | null;
+  registoComercial: string | null;
+  cidade: string | null;
+  provincia: string | null;
+  codigoPostal: string | null;
   certificadoAgtNumero: string | null;
 };
 
@@ -340,7 +344,20 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     throw new Error(`SAFT_BUILD_ERROR: FiscalYear inválido a partir de StartDate ${input.periodoInicio}.`);
   }
 
-  const companyAddressDetail = input.empresa.endereco?.trim() || DESCONHECIDO;
+  const companyRegistration = input.empresa.registoComercial?.trim();
+  const companyAddressDetail = input.empresa.endereco?.trim();
+  const companyCity = input.empresa.cidade?.trim();
+  const companyProvince = input.empresa.provincia?.trim();
+  const companyPostalCode = input.empresa.codigoPostal?.trim();
+
+  if (!companyRegistration) {
+    throw new Error("SAFT_SEMANTIC_ERROR: CompanyID/Registo Comercial da empresa fiscal é obrigatório.");
+  }
+  if (!companyAddressDetail || !companyCity) {
+    throw new Error(
+      "SAFT_SEMANTIC_ERROR: endereço e cidade da empresa fiscal são obrigatórios no Header SAF-T."
+    );
+  }
   const softwareValidationNumber = /^\d+\/AGT\/\d{4}$|^0$/.test(input.header.softwareCertificateNumber)
     ? input.header.softwareCertificateNumber
     : (() => {
@@ -1065,14 +1082,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     `<AuditFile xmlns="${SAFT_AO_NAMESPACE}">`,
     "  <Header>",
     "    <AuditFileVersion>1.01_01</AuditFileVersion>",
-    `    <CompanyID>${escapeXml(input.empresa.id)}</CompanyID>`,
+    `    <CompanyID>${escapeXml(companyRegistration)}</CompanyID>`,
     `    <TaxRegistrationNumber>${escapeXml(empresaNif)}</TaxRegistrationNumber>`,
     `    <TaxAccountingBasis>${escapeXml(input.header.taxAccountingBasis)}</TaxAccountingBasis>`,
     `    <CompanyName>${escapeXml(input.empresa.nome)}</CompanyName>`,
     `    <BusinessName>${escapeXml(input.empresa.nome)}</BusinessName>`,
     "    <CompanyAddress>",
     `      <AddressDetail>${escapeXml(companyAddressDetail)}</AddressDetail>`,
-    `      <City>${escapeXml(DESCONHECIDO)}</City>`,
+    `      <City>${escapeXml(companyCity)}</City>`,
+    companyPostalCode ? `      <PostalCode>${escapeXml(companyPostalCode)}</PostalCode>` : "",
+    companyProvince ? `      <Province>${escapeXml(companyProvince)}</Province>` : "",
     "      <Country>AO</Country>",
     "    </CompanyAddress>",
     `    <FiscalYear>${fiscalYear}</FiscalYear>`,
