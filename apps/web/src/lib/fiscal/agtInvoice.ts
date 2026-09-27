@@ -1,6 +1,7 @@
 import "server-only";
 
 import { signAgtJwsRs256 } from "@/lib/fiscal/agtJws";
+import { buildAgtSoftwareInfo } from "@/lib/fiscal/agtSoftwareInfo";
 import {
   buildAgtBasicAuthorization,
   resolveAgtConfig,
@@ -67,20 +68,6 @@ export class AgtHttpError extends Error {
   }
 }
 
-async function buildSoftwareInfo() {
-  const cfg = resolveAgtConfig();
-  const softwareInfoDetail = {
-    productId: cfg.productId,
-    productVersion: cfg.productVersion,
-    softwareValidationNumber: cfg.softwareValidationNumber,
-    signatureVersion: cfg.signatureVersion,
-  };
-  const jwsSoftwareSignature = await signAgtJwsRs256(softwareInfoDetail, {
-    privateKeyRef: cfg.softwarePrivateKeyRef,
-  });
-  return { cfg, softwareInfo: { softwareInfoDetail, jwsSoftwareSignature } };
-}
-
 async function postAgt(path: string, payload: Record<string, unknown>) {
   const cfg = resolveAgtConfig();
   const controller = new AbortController();
@@ -117,11 +104,14 @@ export async function registerAgtInvoices(input: {
   taxpayerPrivateKeyRef: string;
   documents: AgtPreparedDocument[];
   submissionTimeStamp?: string;
+  expectedSoftwareValidationNumber?: string | null;
 }): Promise<AgtRegisterResult> {
   if (input.documents.length < 1 || input.documents.length > 30) {
     throw new Error("AGT_REGISTER_DOCUMENT_COUNT_INVALID");
   }
-  const { softwareInfo } = await buildSoftwareInfo();
+  const { softwareInfo } = await buildAgtSoftwareInfo({
+    expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
+  });
   const documents = [];
   for (const item of input.documents) {
     const jwsDocumentSignature = await signAgtJwsRs256(item.signaturePayload, {
@@ -180,8 +170,11 @@ export async function getAgtInvoiceStatus(input: {
   requestID: string;
   taxRegistrationNumber: string;
   taxpayerPrivateKeyRef: string;
+  expectedSoftwareValidationNumber?: string | null;
 }): Promise<AgtStatusResult> {
-  const { softwareInfo } = await buildSoftwareInfo();
+  const { softwareInfo } = await buildAgtSoftwareInfo({
+    expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
+  });
   const signaturePayload = {
     taxRegistrationNumber: input.taxRegistrationNumber,
     requestID: input.requestID,
