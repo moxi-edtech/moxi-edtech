@@ -130,13 +130,14 @@ export async function OperationalPaymentReceiptDocument({
         : Promise.resolve({ data: null }),
     ]);
 
-  const valorPago = Number(payment.valor_pago ?? 0);
+  const paymentValue = Number(payment.valor_pago ?? 0);
   const meta = asRecord(payment.meta);
   const rawItems = Array.isArray(meta.itens_pagamento)
     ? meta.itens_pagamento
     : Array.isArray(meta.itens)
       ? meta.itens
       : [];
+  const isConsolidatedBatch = meta.emitir_recibo === true && rawItems.length > 1;
 
   let itensDetalhados: Array<{
     referencia: string;
@@ -152,9 +153,9 @@ export async function OperationalPaymentReceiptDocument({
     itensDetalhados = [
       {
         referencia: label ? `Mensalidade ${label}` : "Mensalidade",
-        valor: valorPago,
-        quantidade: 1,
-        valorUnitario: valorPago,
+        valor: paymentValue,
+          quantidade: 1,
+          valorUnitario: paymentValue,
       },
     ];
   } else {
@@ -189,7 +190,7 @@ export async function OperationalPaymentReceiptDocument({
     const itemsTotal = itensDetalhados.reduce((sum, item) => sum + item.valor, 0);
     if (
       itensDetalhados.length === 0 ||
-      Math.abs(itemsTotal - valorPago) > 0.01
+      Math.abs(itemsTotal - paymentValue) > 0.01
     ) {
       const description = String(
         meta.descricao_item ??
@@ -200,13 +201,17 @@ export async function OperationalPaymentReceiptDocument({
       itensDetalhados = [
         {
           referencia: description || "Pagamento",
-          valor: valorPago,
+          valor: paymentValue,
           quantidade: 1,
-          valorUnitario: valorPago,
+          valorUnitario: paymentValue,
         },
       ];
     }
   }
+
+  const receiptValue = isConsolidatedBatch
+    ? itensDetalhados.reduce((sum, item) => sum + item.valor, 0)
+    : paymentValue;
 
   const referencia =
     itensDetalhados.map((item) => item.referencia).filter(Boolean).join(", ") ||
@@ -236,7 +241,7 @@ export async function OperationalPaymentReceiptDocument({
           tipoComprovativo={resolveReceiptType(meta)}
           itensDetalhados={itensDetalhados}
           metodo={formatPaymentMethod(payment.metodo)}
-          valorPago={valorPago}
+          valorPago={receiptValue}
           dataPagamento={
             paymentDate ? new Date(String(paymentDate)).toLocaleDateString("pt-PT") : "—"
           }
