@@ -386,6 +386,7 @@ export const fiscalAgtElectronicInvoicing = inngest.createFunction(
               : [];
 
             if (documentErrors.length > 0) {
+              const admin = supabaseServerRole() as any;
               const { error: resultError } = await admin.rpc(
                 "fiscal_agt_record_document_result",
                 {
