@@ -3,6 +3,7 @@ import "server-only";
 import { inngest } from "@/inngest/client";
 import { queueAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
+import { ensureSaftDocumentSignature } from "@/lib/fiscal/saftDocumentSignature";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 
 type FiscalReceiptResult = {
@@ -136,6 +137,8 @@ export async function issueFiscalReceiptForPayment(input: {
         "RC pendente sem canonical string/hash/key version."
       );
     }
+
+    await ensureSaftDocumentSignature(emitted.documento_id);
 
     const { data: keyRow, error: keyError } = await admin
       .from("fiscal_chaves")

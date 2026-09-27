@@ -1,5 +1,10 @@
 #!/usr/bin/env tsx
 import { KMSClient, SignCommand } from "@aws-sdk/client-kms";
+import {
+  constants,
+  createPrivateKey,
+  sign as cryptoSign,
+} from "node:crypto";
 import { createSqlClient, resolveDbUrl } from "./_common";
 
 type Args = {
@@ -64,6 +69,49 @@ type FinalizeResult = {
 const CONSUMIDOR_FINAL_NIF = "999999999";
 const CONSUMIDOR_FINAL_NOME = "Consumidor final";
 const DESCONHECIDO = "Desconhecido";
+
+function resolveSaftPrivateKeyPem() {
+  const direct = process.env.SAFT_PRIVATE_KEY_PEM?.trim();
+  if (direct) return direct.replace(/\\n/g, "\n");
+
+  const encoded = process.env.SAFT_PRIVATE_KEY_PEM_B64?.trim();
+  if (encoded) return Buffer.from(encoded, "base64").toString("utf8").trim();
+
+  throw new Error(
+    "SAFT_SIGNING_CONFIG_MISSING: configure SAFT_PRIVATE_KEY_PEM ou SAFT_PRIVATE_KEY_PEM_B64."
+  );
+}
+
+function resolveSaftHashControlVersion() {
+  const value = Number((process.env.SAFT_HASH_CONTROL_VERSION ?? "1").trim());
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error("SAFT_HASH_CONTROL_VERSION inválido.");
+  }
+  return value;
+}
+
+function signSaftCanonical(canonicalString: string) {
+  const key = createPrivateKey(resolveSaftPrivateKeyPem());
+  if (
+    key.asymmetricKeyType !== "rsa" ||
+    key.asymmetricKeyDetails?.modulusLength !== 1024
+  ) {
+    throw new Error("SAFT_SIGNING_KEY_INVALID: chave deve ser RSA 1024 bits.");
+  }
+
+  const hash = cryptoSign("RSA-SHA1", Buffer.from(canonicalString, "utf8"), {
+    key,
+    padding: constants.RSA_PKCS1_PADDING,
+  }).toString("base64");
+
+  if (hash.length !== 172) {
+    throw new Error(
+      `SAFT_HASH_LENGTH_INVALID: esperado 172 caracteres, obtido ${hash.length}.`
+    );
+  }
+
+  return hash;
+}
 
 function parseArgs(argv: string[]): Args {
   let escolaId: string | undefined;
@@ -244,6 +292,39 @@ async function emitAndSign(params: {
 
   if (emitResult.status !== "pendente_assinatura" || !emitResult.canonical_string) {
     return emitResult;
+  }
+
+  const saftHashControlVersion = resolveSaftHashControlVersion();
+  const saftPrepareRows = await params.sql<{
+    result: {
+      ok: boolean;
+      saft_canonical_string: string;
+      saft_hash_control: number;
+    };
+  }[]>\`
+    select public.fiscal_preparar_assinatura_saft(
+      p_documento_id := ${emitResult.documento_id}::uuid,
+      p_hash_control_version := ${saftHashControlVersion}
+    ) as result
+  \`;
+
+  const saftPrepared = saftPrepareRows[0]?.result;
+  if (!saftPrepared?.ok || !saftPrepared.saft_canonical_string) {
+    throw new Error("SAFT_PREPARE_INCONSISTENTE: preparação SAF-T falhou.");
+  }
+
+  const saftHash = signSaftCanonical(saftPrepared.saft_canonical_string);
+  const saftFinalizeRows = await params.sql<{ result: { ok: boolean } }[]>\`
+    select public.fiscal_finalizar_hash_saft(
+      p_documento_id := ${emitResult.documento_id}::uuid,
+      p_saft_hash := ${saftHash},
+      p_saft_hash_control := ${saftPrepared.saft_hash_control},
+      p_saft_canonical_string := ${saftPrepared.saft_canonical_string}
+    ) as result
+  \`;
+
+  if (!saftFinalizeRows[0]?.result?.ok) {
+    throw new Error("SAFT_FINALIZE_INCONSISTENTE: finalização SAF-T falhou.");
   }
 
   const keyRows = await params.sql<{ private_key_ref: string | null }[]>`

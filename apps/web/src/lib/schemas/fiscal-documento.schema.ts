@@ -12,11 +12,13 @@ export const FISCAL_TIPOS_DOCUMENTO = ["FR", "FT", "NC", "ND", "RC", "PP", "GR",
 export const FISCAL_PAYMENT_MECHANISM_CODES = ["NU", "TB", "CC", "MB"] as const;
 export const FISCAL_OPERATION_TYPES = ["SE", "SS", "STP", "SR", "SIF", "SHS", "ST", "SG", "TB", "AS", "QT", "RD"] as const;
 export const FISCAL_IVA_TAX_CODES = ["NOR", "INT", "RED", "ISE", "OUT"] as const;
+export const FISCAL_PRODUCT_TYPES = ["P", "S", "O", "E", "I"] as const;
 
 export const fiscalDocumentoItemSchema = z.object({
   descricao: z.string().trim().min(1).max(500),
   product_code: z.string().trim().min(1).max(64),
   product_number_code: z.string().trim().min(1).max(64).optional(),
+  product_type: z.enum(FISCAL_PRODUCT_TYPES).default("S"),
   operation_type: z.enum(FISCAL_OPERATION_TYPES).default("SE"),
   unit_of_measure: z.string().trim().min(1).max(20).default("UN"),
   tax_code: z.enum(FISCAL_IVA_TAX_CODES).optional(),
@@ -25,8 +27,8 @@ export const fiscalDocumentoItemSchema = z.object({
   preco_unit: z.coerce.number().min(0),
   settlement_amount: z.coerce.number().min(0).optional(),
   taxa_iva: z.coerce.number().min(0).max(100),
-  tax_exemption_code: z.string().trim().min(1).max(64).optional(),
-  tax_exemption_reason: z.string().trim().min(1).max(500).optional(),
+  tax_exemption_code: z.string().trim().regex(/^M\d{2}$/).optional(),
+  tax_exemption_reason: z.string().trim().min(6).max(60).optional(),
 });
 
 export const fiscalDocumentoUiItemSchema = z.object({

@@ -12,6 +12,10 @@ export const postFiscalEmpresaSchema = z.object({
     .trim()
     .regex(/^\d{9,20}$/),
   endereco: z.string().trim().max(255).optional(),
+  registo_comercial: z.string().trim().min(1).max(50).optional(),
+  cidade: z.string().trim().min(1).max(100).optional(),
+  provincia: z.string().trim().min(1).max(100).optional(),
+  codigo_postal: z.string().trim().max(20).optional(),
   certificado_agt_numero: z.string().trim().max(80).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });

@@ -118,7 +118,7 @@ export async function GET() {
       ctx.empresaId
         ? supabase
             .from("fiscal_empresas")
-            .select("id, nome, nif")
+            .select("id, nome, nif, endereco, metadata")
             .eq("id", ctx.empresaId)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -141,6 +141,17 @@ export async function GET() {
     const saftSoftwareCertificateNumber =
       process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER?.trim() || "0";
     const saftTaxAccountingBasis = process.env.SAFT_TAX_ACCOUNTING_BASIS?.trim() || "F";
+    const saftProductCompanyTaxId =
+      process.env.SAFT_PRODUCT_COMPANY_TAX_ID?.trim() || "";
+    const saftProductVersion = process.env.SAFT_PRODUCT_VERSION?.trim() || "1.0.0";
+    const empresaMetadata =
+      empresa?.metadata && typeof empresa.metadata === "object" && !Array.isArray(empresa.metadata)
+        ? (empresa.metadata as Record<string, unknown>)
+        : {};
+    const metaString = (key: string) => {
+      const value = empresaMetadata[key];
+      return typeof value === "string" ? value : "";
+    };
 
     return NextResponse.json({
       ok: true,
@@ -151,11 +162,18 @@ export async function GET() {
         source: ctx.source,
         razao_social_default: empresa?.nome ?? escola?.nome ?? "",
         nif_default: empresa?.nif ?? escola?.nif ?? "",
+        endereco_default: empresa?.endereco ?? "",
+        registo_comercial_default: metaString("registo_comercial"),
+        cidade_default: metaString("cidade"),
+        provincia_default: metaString("provincia"),
+        codigo_postal_default: metaString("codigo_postal"),
         key_version_default: chave?.key_version ?? 1,
         private_key_ref_default: chave?.private_key_ref ?? envPrivateKeyRef ?? "",
         public_key_pem_default: chave?.public_key_pem ?? "",
         key_fingerprint_default: chave?.key_fingerprint ?? "",
         saft_product_id_default: saftProductId,
+        saft_product_company_tax_id_default: saftProductCompanyTaxId,
+        saft_product_version_default: saftProductVersion,
         saft_software_certificate_number_default: saftSoftwareCertificateNumber,
         saft_tax_accounting_basis_default: saftTaxAccountingBasis,
       },

@@ -11,6 +11,7 @@ import {
   postFiscalDocumentoRequestSchema,
 } from "@/lib/schemas/fiscal-documento.schema";
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
+import { ensureSaftDocumentSignature } from "@/lib/fiscal/saftDocumentSignature";
 import { queueAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
 import type { Database, Json } from "~types/supabase";
 
@@ -285,6 +286,10 @@ function normalizePostInput({
         descricao: item.descricao,
         quantidade: 1,
         preco_unit: item.valor,
+        product_type:
+          input.tipo_documento === "GR" || input.tipo_documento === "GT"
+            ? "P"
+            : "S",
         operation_type: "SE",
         unit_of_measure: "UN",
         tax_code: "NOR",
@@ -529,6 +534,23 @@ export async function POST(req: Request) {
     }
 
     if (rpcData.status === "pendente_assinatura" && rpcData.canonical_string) {
+      try {
+        await ensureSaftDocumentSignature(rpcData.documento_id);
+      } catch (error) {
+        return jsonError(
+          500,
+          "FISCAL_SAFT_SIGN_FAILED",
+          error instanceof Error
+            ? error.message
+            : "Falha ao preparar/finalizar assinatura SAF-T.",
+          {
+            request_id: requestId,
+            empresa_id: input.empresa_id,
+            documento_id: rpcData.documento_id,
+          }
+        );
+      }
+
       const keyRefLookup = await resolveKmsPrivateKeyRef({
         supabase,
         empresaId: input.empresa_id,

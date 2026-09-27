@@ -5,6 +5,21 @@ Estado global: **NO-GO PARA CERTIFICAÇÃO / HOMOLOGAÇÃO AINDA EM CURSO**
 
 Este documento é a fonte de verdade do backlog técnico de certificação fiscal do KLASSE.
 
+
+## Handoff operacional
+
+Ponto de retomada para outro agente:
+
+- `docs/fiscal/certificacao/handoff-backlogs-fiscais.md`
+- branch actual: `fix/bill-008-saft-semantic-accounting`
+- stack aberto: `PR #118 -> #119 -> #120 -> #121`
+- próximo BILL: `BILL-009 — Motor fiscal / IVA`
+
+Enquanto #118-#121 não estiverem integrados em `main`, o BILL-009 deve partir deste stack, não de `main`. As migrations do stack já estão aplicadas no Supabase live; descartar/reordenar o stack cria drift código <-> DB.
+
+`CLOSED` neste documento significa que o gap interno do BILL foi fechado e provado no stack correspondente; não significa, por si só, que o PR já foi mergeado em `main`.
+
+
 ## Regra de manutenção
 
 Sempre que um `BILL-xxx` for alterado, fechado ou reaberto:
@@ -14,6 +29,7 @@ Sempre que um `BILL-xxx` for alterado, fechado ou reaberto:
 3. registrar dependências descobertas;
 4. criar os próximos `BILL-xxx` antes de encerrar o bloco;
 5. nunca marcar `CLOSED` apenas porque o código existe — quando houver dependência AGT externa, exigir evidência de homologação.
+6. actualizar também `handoff-backlogs-fiscais.md` no mesmo PR, preservando invariantes, dependências, evidência e ponto de retomada.
 
 Estados usados:
 
@@ -36,7 +52,7 @@ Estados usados:
 | BILL-005 | Provisionamento de séries pela AGT | P0 | READY FOR HOMOLOGATION | PR #118; solicitarSerie schema 2.0; JWS/KMS; sem série AGT real ainda |
 | BILL-006 | Facturação Electrónica AGT assíncrona | P0 | READY FOR HOMOLOGATION | PR #119 + BILL-007; registarFactura/obterEstado/outbox/audit; RC/paymentReceipt implementado |
 | BILL-007 | Pagamentos, ledger, recibos e estornos | P0 | CLOSED | branch `fix/bill-007-payments-ledger-receipts`; alocações append-only, RC/sourceDocuments, N:N, reversão idempotente |
-| BILL-008 | SAF-T(AO) semântico e contabilístico | P1 | BACKLOG | validar cobertura integral, não apenas XSD |
+| BILL-008 | SAF-T(AO) semântico e contabilístico | P1 | READY FOR HOMOLOGATION | SAF-T Facturação F semântico + XSD + hash dedicado; dados históricos incompatíveis fail-closed |
 | BILL-009 | Motor fiscal/IVA e arredondamentos | P1 | BACKLOG | taxas, isenções, descontos, FX, retenções quando aplicáveis |
 | BILL-010 | Ciclo de vida completo dos documentos | P1 | BACKLOG | rectificação, rejeição AGT, contingência, referências e tipos não-fiscais |
 | BILL-011 | Segurança multi-tenant e least privilege fiscal | P1 | BACKLOG | RLS/grants/service-role/storage/cross-tenant |
@@ -205,22 +221,113 @@ Limite intencional:
 
 ## BILL-008 — SAF-T(AO) semântico e contabilístico
 
-**Estado:** BACKLOG  
-**Severidade:** P1
+**Estado:** READY FOR HOMOLOGATION  
+**Severidade:** P1  
+**PR:** #121
 
-Escopo:
-- confirmar cobertura do SAF-T(AO) actual além de passar no XSD;
-- Header;
-- MasterFiles;
-- SourceDocuments;
-- SalesInvoices;
-- Payments;
-- WorkingDocuments quando aplicável;
-- GeneralLedgerEntries quando exigido pelo regime/obrigação aplicável;
-- reconciliação de totais entre SAF-T e banco;
-- fixtures oficiais;
-- validar códigos/tipos contra legislação e docs AGT actuais;
-- arquivo de evidência XSD + semântica.
+Implementado:
+
+- contrato explícito de **SAF-T de Facturação (`TaxAccountingBasis=F`)**;
+- `C/I` é fail-closed porque o KLASSE não mantém plano de contas + razão de dupla entrada; não é gerado um SAF-T contabilístico falso;
+- Header com identidade do produtor, versão do produto e número de validação;
+- configuração do Header congelada no pedido e reutilizada pelo worker para reprodutibilidade;
+- `MasterFiles.Customer`, `Product` e `TaxTable`;
+- ProductType P/S/O/E/I, unidade de medida e perfil fiscal explícito preservados do documento;
+- consumidor final canónico;
+- TaxTable derivada dos perfis fiscais efectivamente usados;
+- SalesInvoices com `DebitAmount/CreditAmount` líquido, sem IVA;
+- polaridade explícita para NC/RE vs documentos de crédito;
+- `TotalDebit/TotalCredit` reconciliados com documentos normais;
+- documentos anulados excluídos dos control totals e exportados com timestamp/motivo/actor real do evento;
+- WorkingDocuments;
+- MovementOfGoods e `TotalQuantityIssued` excluindo anulados;
+- Payments/RC usando `paymentReceipt.sourceDocuments` do BILL-007;
+- RC sem linhas fiscais artificiais;
+- isenção IVA 0 exige `Mxx` + motivo;
+- reconciliação `NetTotal + TaxPayable = GrossTotal`;
+- moeda estrangeira exige taxa de câmbio positiva;
+- UnitPrice/SettlementAmount são exportados em AOA e reconciliados com a linha fiscal original;
+- SourceDocuments ordenados por tipo / série / número sequencial;
+- número fiscal nunca é reescrito pelo exportador;
+- tipos sem mapeamento são rejeitados;
+- evidência de validação semântica persistida no metadata do export;
+- XML validado contra o XSD AO 1.01_01 no worker e na regressão fiscal CI;
+- exportação `validated` imutável e não apagável.
+
+### Hash SAF-T vs Facturação Electrónica
+
+A assinatura FE RSA-2048 não é reutilizada no campo SAF-T `Hash`:
+
+- assinaturas FE actuais têm 344 caracteres Base64;
+- o XSD SAF-T limita `Hash` a 172;
+- software ainda não validado (`SoftwareValidationNumber=0`) exporta `Hash=0` e `HashControl=0`;
+- software validado activa cadeia SAF-T separada RSA-1024/SHA1;
+- `saft_hash`, `saft_hash_control`, `saft_hash_anterior`, `saft_canonical_string` e `saft_required` são persistidos;
+- activação da cadeia validada exige **nova série**: não pode começar a meio de uma série histórica;
+- RC pertence a `Payments` e não entra na cadeia de Hash/HashControl porque essa estrutura não possui esses campos no XSD.
+
+### Evidência interna
+
+Pré-validação do banco em 2026-09-27:
+
+- documentos emitidos/anulados/rectificados avaliados: **121**;
+- divergências entre totais dos documentos e soma das linhas: **0**;
+- linhas IVA 0 sem código/motivo de isenção: **0**;
+- documentos anulados sem evento/motivo: **0**;
+- tipos sem mapeamento SAF-T: **0**;
+- documentos comerciais históricos fora do formato canónico: **98**;
+- RC históricos sem `paymentReceipt.sourceDocuments`: **8**.
+
+Os dois últimos grupos são **dados históricos** e são recusados deliberadamente. O SAF-T não fabrica/re-numera documentos fiscais para os esconder.
+
+Testes rollback-only:
+
+1. exportação SAF-T `validated` não pode ser alterada;
+2. exportação SAF-T `validated` não pode ser apagada;
+3. cadeia SAF-T validada não pode começar numa série que já contém documento fora da cadeia.
+
+Testes unitários/CI:
+
+- modo não validado -> Hash/HashControl zero;
+- modo validado exige hash dedicado de 172 caracteres;
+- SalesInvoices líquido e polaridade;
+- TaxTable e isenções;
+- RC/sourceDocuments;
+- reconciliação de totais;
+- ordenação tipo/série/sequência;
+- anulação com timestamp/motivo;
+- número fiscal histórico não é reescrito;
+- XML gerado validado no XSD oficial empacotado.
+
+### Migrations
+
+- `20260927171437_bill_008_saft_document_signature_chain.sql`
+- `20260927171531_bill_008_saft_signature_rollout_compatibility.sql`
+- `20260927172254_bill_008_saft_validated_series_boundary.sql`
+- `20260927172749_bill_008_saft_export_evidence_immutability.sql`
+- `20260927172931_bill_008_saft_invoice_identity_guard.sql`
+- `20260927173123_bill_008_saft_hash_scope_guard.sql`
+
+### Limite contabilístico
+
+O KLASSE possui ledger financeiro operacional, mas isso **não equivale** a um razão contabilístico com plano de contas e partidas dobradas. Portanto:
+
+- SAF-T Facturação: suportado;
+- SAF-T Contabilidade `C/I`: não declarado como suportado;
+- uma futura obrigação de SAF-T contabilístico para a própria entidade escolar exige módulo contabilístico real ou integração com sistema contabilístico.
+
+### Dependências deliberadas
+
+- os 98 documentos comerciais históricos com numeração não-canónica e os 8 RC históricos sem origem devem ser tratados no **BILL-010**, sem mutar silenciosamente documentos emitidos;
+- expansão de códigos fiscais, descontos, retenções e combinações tributárias será revista no **BILL-009**;
+- submissão/aceitação externa AGT permanece no **BILL-013**.
+
+Critério para READY FOR HOMOLOGATION: **atingido internamente para SAF-T Facturação F**.
+
+Critério para CLOSED:
+- submissão de fixture representativa ao validador/portal AGT;
+- confirmação externa dos cenários FT/FR/NC/ND/RC;
+- evidência arquivada no dossiê.
 
 ---
 
@@ -339,6 +446,6 @@ Escopo:
 
 ## Ordem actual de execução
 
-`BILL-008 -> BILL-009 -> BILL-010 -> BILL-011 -> BILL-012 -> BILL-013 -> BILL-014`
+`BILL-009 -> BILL-010 -> BILL-011 -> BILL-012 -> BILL-013 -> BILL-014`
 
 BILL-005 e BILL-006 permanecem ligados ao BILL-013 exclusivamente para evidência externa de homologação AGT.
