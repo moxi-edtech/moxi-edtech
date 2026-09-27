@@ -2,8 +2,8 @@
 
 Data: 2026-09-27  
 Repositório: `moxi-edtech/moxi-edtech`  
-Branch de continuação: `fix/bill-009-tax-engine-vat`  
-PR de referência: `#122`
+Branch de continuação: `fix/bill-010-document-lifecycle`  
+PR de referência: `#125`
 
 ## Objetivo
 
@@ -44,8 +44,8 @@ Os PRs #118–121 estão abertos e foram criados em sequência. Não perder essa
 - BILL-007 — CLOSED
 - BILL-008 — READY FOR HOMOLOGATION para SAF-T Facturação (`TaxAccountingBasis=F`)
 - BILL-009 — CLOSED
-- BILL-010 — PRÓXIMO / BACKLOG
-- BILL-011 — BACKLOG
+- BILL-010 — CLOSED
+- BILL-011 — PRÓXIMO / BACKLOG
 - BILL-012 — BACKLOG
 - BILL-013 — BACKLOG
 - BILL-014 — BACKLOG
@@ -235,51 +235,84 @@ A classificação de ensino depende do regime IVA e da elegibilidade fiscal prev
 
 ---
 
-## Depois do BILL-009
+## BILL-010 — FECHADO
 
-A retomada começa agora no BILL-010.
+O BILL-010 foi fechado internamente no PR #125 em 2026-09-27.
 
-### BILL-010 — ciclo documental
+### Invariantes novas
 
-Prioridades já descobertas:
+1. Rectificação não é UPDATE de status: exige documento correctivo novo e emitido.
+2. NC exige `rectifica_documento_id` e respeita o remanescente do documento base.
+3. ND emitida pelo KLASSE exige `documento_origem_id`.
+4. `documentStatus=C` só pode corrigir documento comprovadamente rejeitado pela AGT.
+5. Correcção de rejeitado usa novo número e `rejectedDocumentNo` canónico.
+6. Resultado AGT `valid/invalid` é terminal/idempotente.
+7. Documento FE já no fluxo AGT não pode ser anulado apenas localmente.
+8. Contingência deriva da série e exige coerência entre origem e indicador `C`.
+9. FT/FR/FG/GF/NC/ND/RC exigem série FE provisionada.
+10. PP/GR/GT usam séries locais controladas e ficam fora do outbox AGT.
+11. Reversão financeira de FR só é liberada depois de correcção fiscal efectiva suficiente.
+12. `estornar_mensalidade` legado não é mais executável; usar `reverter_pagamento_realizado`.
+13. Histórico fiscal antigo não é reescrito para satisfazer o modelo novo.
 
-- NC/ND e referências;
-- rejeição AGT;
-- anulação;
-- contingência;
-- documentos recuperados;
-- desbloquear reversão financeira após tratamento fiscal;
-- investigar documentos históricos `tipo_documento='FT'` com número `FR-...`;
-- tratar os 98 documentos comerciais históricos fora do formato canónico;
-- tratar os 8 RC históricos sem `paymentReceipt.sourceDocuments`.
+### Evidência live
 
-Nunca “corrigir” esses documentos com UPDATE directo.
+- 10 migrations BILL-010 com versão/nome idênticos em Git e Supabase;
+- 1 único trigger de lifecycle em `fiscal_documentos`;
+- trigger de reversão fiscal em `pagamentos`;
+- 5 documentos históricos rectificados, todos com evento, mas os 5 eventos antigos não possuem ID do correctivo;
+- 4 documentos históricos anulados, todos com evento;
+- PP local: reserva rollback-only produziu `PP-000004` e o contador voltou para 3 após rollback;
+- série FT legacy: reserva bloqueada por ausência de provisionamento AGT;
+- rectificação sem `correction_document_id`: bloqueada;
+- NC acima do remanescente: bloqueada pelo guard E42-style, sem resíduos.
 
-### BILL-011 — segurança fiscal
+### CI de referência
 
-Auditar RLS, grants, SECURITY DEFINER, storage, KMS refs e cross-tenant.
+PR #125:
 
-### BILL-012 — observabilidade
+- UI Standards: PASS;
+- Security Regression: PASS (4/4);
+- Fiscal Regression: PASS (33/33);
+- KF2 global continua com dívida histórica, mas nenhum arquivo BILL-010 permanece nos findings.
 
-DLQ, replay, métricas, alertas e correlação local/AGT.
+### Segurança
 
-### BILL-013 — homologação
+- `fiscal_agt_record_document_result`: service_role-only;
+- `fiscal_anular_documento` / `fiscal_rectificar_documento`: authenticated + service_role, com autorização interna por empresa/role;
+- `anon`: sem EXECUTE;
+- `estornar_mensalidade`: removido dos papéis de aplicação.
 
-Só aqui fechar:
+### Limite externo deliberado
 
-- série AGT real;
-- `solicitarSerie`;
-- `registarFactura`;
-- `requestID`;
-- `obterEstado`;
-- V/I;
-- SAF-T no validador/portal;
-- fixtures FT/FR/NC/ND/RC/isenção/FX;
-- evidências sanitizadas.
+A anulação de documento FE já comunicado permanece fail-closed. O conjunto público de serviços AGT revisto reconhece documentos com anulação posterior, mas não forneceu um contrato público dedicado de anulação que possamos implementar e declarar homologado sem evidência.
 
-### BILL-014 — governance/go-live
+A prova desse procedimento e o fluxo real AGT pertencem ao BILL-013.
 
-Retenção, rotação de chaves, backup, procedimento operacional, dossiê e GO/NO-GO.
+---
+
+## Próxima retomada — BILL-011
+
+**BILL-011 — Segurança fiscal multi-tenant / least privilege**
+
+Começar por:
+
+- inventário completo de RLS nas tabelas fiscal/financeiro;
+- grants de `anon`, `authenticated` e `service_role`;
+- todos os `SECURITY DEFINER` e respectivos EXECUTE;
+- isolamento empresa/escola e testes cross-tenant positivos/negativos;
+- storage fiscal e signed URLs;
+- referências KMS/secrets;
+- tabelas financeiras legadas ainda com grants amplos;
+- resolver WARNs fiscais dos advisors quando o privilégio não for explicitamente necessário.
+
+Não alterar sem necessidade as decisões de lifecycle fechadas no BILL-010.
+
+### Depois do BILL-011
+
+- BILL-012 — observabilidade, DLQ, replay, reconciliação e alertas;
+- BILL-013 — homologação externa AGT e fixtures reais;
+- BILL-014 — governance, retenção, backup, dossiê e GO/NO-GO.
 
 ---
 
@@ -317,9 +350,9 @@ Sempre comparar o resultado com o branch-base antes de classificar como regress�
 
 Comece em:
 
-`fix/bill-009-tax-engine-vat`
+`fix/bill-010-document-lifecycle`
 
-Não recrie BILL-009 do zero.
+Não recrie BILL-009 ou BILL-010 do zero. O próximo gap é BILL-011.
 
 Primeiro execute:
 
