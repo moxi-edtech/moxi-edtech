@@ -11,6 +11,7 @@ import {
   postFiscalDocumentoRequestSchema,
 } from "@/lib/schemas/fiscal-documento.schema";
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
+import { queueAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
 import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -617,10 +618,27 @@ export async function POST(req: Request) {
         }).catch(() => null);
       }
 
+      let agtSubmission: Record<string, unknown> | null = null;
+      try {
+        agtSubmission = await queueAgtDocumentSubmission({
+          documentoId: finalizeData.documento_id,
+          createdBy: user.id,
+        });
+      } catch (error) {
+        agtSubmission = {
+          queued: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Falha ao enfileirar submissão AGT.",
+        };
+      }
+
       return NextResponse.json(
         {
           ok: true,
           data: finalizeData,
+          agt_submission: agtSubmission,
           request_id: requestId,
         },
         { status: 201 }
@@ -644,10 +662,29 @@ export async function POST(req: Request) {
       }).catch(() => null);
     }
 
+    let agtSubmission: Record<string, unknown> | null = null;
+    if (rpcData.status === "emitido") {
+      try {
+        agtSubmission = await queueAgtDocumentSubmission({
+          documentoId: rpcData.documento_id,
+          createdBy: user.id,
+        });
+      } catch (error) {
+        agtSubmission = {
+          queued: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Falha ao enfileirar submissão AGT.",
+        };
+      }
+    }
+
     return NextResponse.json(
       {
         ok: true,
         data: rpcData,
+        agt_submission: agtSubmission,
         request_id: requestId,
       },
       { status: 201 }
