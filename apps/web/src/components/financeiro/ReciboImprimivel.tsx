@@ -230,7 +230,10 @@ export function ReciboPrintButton({
     try {
       const res = await fetch("/api/financeiro/recibos/emitir", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": `financeiro-recibo-print-${mensalidadeId}-${crypto.randomUUID()}`,
+        },
         body: JSON.stringify({ mensalidadeId }),
       });
       const json = await res.json().catch(() => null);
