@@ -71,7 +71,7 @@ async function loadSubmissionContext(submissionId: string) {
         .order("linha_no", { ascending: true }),
       admin
         .from("fiscal_empresas")
-        .select("id,nif")
+        .select("id,nif,certificado_agt_numero")
         .eq("id", document.empresa_id)
         .single(),
       admin
