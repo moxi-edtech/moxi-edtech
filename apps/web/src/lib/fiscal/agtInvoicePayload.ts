@@ -28,8 +28,21 @@ type FiscalItemRow = {
   total_liquido_aoa: number | string;
   total_impostos_aoa: number | string;
   tax_exemption_code: string | null;
+  tax_exemption_reason: string | null;
   product_code: string | null;
   product_number_code: string | null;
+  tax_profile_code: string | null;
+  tax_type: string | null;
+  tax_code: string | null;
+  tax_country_region: string | null;
+  operation_type: string | null;
+  unit_of_measure: string | null;
+  product_type: string | null;
+  unit_price_base: number | string | null;
+  settlement_amount: number | string | null;
+  total_liquido_moeda: number | string | null;
+  total_impostos_moeda: number | string | null;
+  total_bruto_moeda: number | string | null;
 };
 
 type OriginDocumentRow = {
@@ -125,7 +138,6 @@ export function buildAgtPreparedDocument(input: {
   const doc = input.document;
   const payload = objectValue(doc.payload);
   const metadata = objectValue(payload.metadata);
-  const payloadItems = Array.isArray(payload.itens) ? payload.itens : [];
   const customerCountry = resolveCustomerCountry(doc);
   const customerTaxID = (doc.cliente_nif ?? "").trim() || "999999999";
   const documentStatusRaw = textValue(metadata.agt_document_status).toUpperCase();
@@ -280,65 +292,124 @@ export function buildAgtPreparedDocument(input: {
     .sort((a, b) => a.linha_no - b.linha_no)
     .map((item, index) => {
       if (item.linha_no !== index + 1) {
-        throw new AgtMappingError("AGT_MAPPING_LINE_SEQUENCE_INVALID", "linhas fiscais fora de sequência");
-      }
-      const payloadItem = objectValue(payloadItems[index]);
-      const operationType = textValue(payloadItem.operation_type).toUpperCase() || "SE";
-      if (!["SE","SS","STP","SR","SIF","SHS","ST","SG","TB","AS","QT","RD"].includes(operationType)) {
-        throw new AgtMappingError("AGT_MAPPING_OPERATION_TYPE_INVALID", `operationType inválido: ${operationType}`);
-      }
-      const unitOfMeasure = textValue(payloadItem.unit_of_measure) || "UN";
-      if (unitOfMeasure.length > 20) {
-        throw new AgtMappingError("AGT_MAPPING_UNIT_TOO_LONG", "unitOfMeasure excede 20 caracteres");
-      }
-      const productCode = (item.product_code ?? item.product_number_code ?? "").trim();
-      if (!productCode || productCode.length > 60) {
-        throw new AgtMappingError("AGT_MAPPING_PRODUCT_CODE_INVALID", "productCode ausente ou maior que 60");
-      }
-      if (!item.descricao || item.descricao.length > 200) {
-        throw new AgtMappingError("AGT_MAPPING_DESCRIPTION_INVALID", "productDescription ausente ou maior que 200");
-      }
-      const quantity = decimal(item.quantidade, "quantity");
-      const unitPrice = decimal(item.preco_unit, "unitPrice");
-      const settlementAmount = decimal(payloadItem.settlement_amount as number | string | undefined ?? 0, "settlementAmount");
-      if (settlementAmount !== 0) {
         throw new AgtMappingError(
-          "AGT_MAPPING_DISCOUNT_NOT_SUPPORTED",
-          "Documento com settlementAmount diferente de zero requer cálculo fiscal de descontos antes da submissão AGT"
+          "AGT_MAPPING_LINE_SEQUENCE_INVALID",
+          "linhas fiscais fora de sequência"
         );
       }
+
+      if (!item.tax_profile_code) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_TAX_PROFILE_REQUIRED",
+          `Linha ${item.linha_no} não possui tax_profile_code canónico.`
+        );
+      }
+
+      const operationType = (item.operation_type ?? "").trim().toUpperCase();
+      if (!["SE","SS","STP","SR","SIF","SHS","ST","SG","TB","AS","QT","RD"].includes(operationType)) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_OPERATION_TYPE_INVALID",
+          `operationType inválido: ${operationType || "(vazio)"}`
+        );
+      }
+
+      const unitOfMeasure = (item.unit_of_measure ?? "").trim();
+      if (!unitOfMeasure || unitOfMeasure.length > 20) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_UNIT_INVALID",
+          "unitOfMeasure ausente ou maior que 20 caracteres"
+        );
+      }
+
+      const productCode = (item.product_code ?? item.product_number_code ?? "").trim();
+      if (!productCode || productCode.length > 60) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_PRODUCT_CODE_INVALID",
+          "productCode ausente ou maior que 60"
+        );
+      }
+      if (!item.descricao || item.descricao.length > 200) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_DESCRIPTION_INVALID",
+          "productDescription ausente ou maior que 200"
+        );
+      }
+
+      const quantity = decimal(item.quantidade, "quantity");
+      const unitPrice = decimal(item.preco_unit, "unitPrice");
+      const unitPriceBase = decimal(item.unit_price_base, "unitPriceBase");
+      const settlementAmount = decimal(item.settlement_amount ?? 0, "settlementAmount");
       const rate = decimal(item.taxa_iva, "taxPercentage");
-      const baseRaw = quantity * unitPrice;
-      const lineNet = doc.tipo_documento === "NC" ? ceil2(baseRaw) : trunc2(baseRaw);
-      const taxContribution = ceil2(baseRaw * rate / 100);
-      netTotal += lineNet;
-      taxPayable += taxContribution;
-      const taxCode = resolveTaxCode(rate, payloadItem);
-      const taxCountryRegion =
-        textValue(payloadItem.tax_country_region).toUpperCase() || "AO";
+      const lineNet = decimal(item.total_liquido_moeda, "total_liquido_moeda");
+      const taxContribution = decimal(item.total_impostos_moeda, "total_impostos_moeda");
+      const lineGross = decimal(item.total_bruto_moeda, "total_bruto_moeda");
+
+      if (quantity <= 0 || unitPrice < 0 || unitPriceBase < unitPrice || settlementAmount < 0) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_CANONICAL_LINE_INVALID",
+          "Linha fiscal canónica contém quantidade/preço/desconto inválido"
+        );
+      }
+
+      const expectedSettlement = round2(quantity * (unitPriceBase - unitPrice));
+      if (Math.abs(expectedSettlement - round2(settlementAmount)) > 0.01) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_SETTLEMENT_MISMATCH",
+          "settlementAmount diverge de quantity × (unitPriceBase - unitPrice)"
+        );
+      }
+
+      if (Math.abs(round2(lineNet + taxContribution) - round2(lineGross)) > 0.01) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_LINE_TOTAL_MISMATCH",
+          "Totais canónicos da linha não fecham"
+        );
+      }
+
+      const taxType = (item.tax_type ?? "").trim().toUpperCase();
+      if (!["IVA","IS","IEC","CEOC","NS"].includes(taxType)) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_TAX_TYPE_INVALID",
+          `taxType inválido: ${taxType || "(vazio)"}`
+        );
+      }
+
+      const taxCode = (item.tax_code ?? "").trim().toUpperCase();
+      const taxCountryRegion = (item.tax_country_region ?? "").trim().toUpperCase();
       if (!/^(?:[A-Z]{2}|AO-CAB)$/.test(taxCountryRegion)) {
         throw new AgtMappingError(
           "AGT_MAPPING_TAX_REGION_INVALID",
           `taxCountryRegion inválido: ${taxCountryRegion}`
         );
       }
+
       const tax: Record<string, unknown> = {
-        taxType: "IVA",
+        taxType,
         taxCountryRegion,
-        taxCode,
+        ...(taxCode ? { taxCode } : {}),
         taxPercentage: rate,
-        taxContribution,
+        taxContribution: round2(taxContribution),
       };
-      if (taxCode === "ISE") {
+
+      if (taxCode === "ISE" || taxType === "NS") {
         const exemption = (item.tax_exemption_code ?? "").trim();
-        if (exemption.length !== 3) {
+        if (!/^.{3}$/.test(exemption)) {
           throw new AgtMappingError(
             "AGT_MAPPING_EXEMPTION_CODE_INVALID",
-            "taxExemptionCode deve ter exactamente 3 caracteres quando IVA é isento"
+            "taxExemptionCode deve ter exactamente 3 caracteres para isenção/não sujeição"
           );
         }
         tax.taxExemptionCode = exemption;
+      } else if (item.tax_exemption_code) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_EXEMPTION_UNEXPECTED",
+          "Linha tributável não pode transportar taxExemptionCode"
+        );
       }
+
+      netTotal += lineNet;
+      taxPayable += taxContribution;
+
       const line: Record<string, unknown> = {
         lineNumber: item.linha_no,
         operationType,
@@ -346,23 +417,28 @@ export function buildAgtPreparedDocument(input: {
         productDescription: item.descricao,
         quantity,
         unitOfMeasure,
-        unitPriceBase: unitPrice,
-        unitPrice,
+        unitPriceBase: round2(unitPriceBase),
+        unitPrice: round2(unitPrice),
         taxes: [tax],
-        settlementAmount,
+        settlementAmount: round2(settlementAmount),
       };
+
       if (doc.tipo_documento === "NC") {
-        line.debitAmount = lineNet;
+        line.debitAmount = round2(lineNet);
         if (!input.originDocument) {
-          throw new AgtMappingError("AGT_MAPPING_REFERENCE_REQUIRED", "NC exige documento fiscal de referência");
+          throw new AgtMappingError(
+            "AGT_MAPPING_REFERENCE_REQUIRED",
+            "NC exige documento fiscal de referência"
+          );
         }
         line.referenceInfo = { reference: input.originDocument.numero_formatado };
       } else {
-        line.creditAmount = lineNet;
+        line.creditAmount = round2(lineNet);
         if (input.originDocument && doc.tipo_documento === "ND") {
           line.referenceInfo = { reference: input.originDocument.numero_formatado };
         }
       }
+
       if (doc.tipo_documento === "FG" || doc.tipo_documento === "GF") {
         const operationDate = textValue(metadata.operation_date);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(operationDate)) {
@@ -373,9 +449,9 @@ export function buildAgtPreparedDocument(input: {
         }
         line.operationDate = operationDate;
       }
+
       return line;
     });
-
   netTotal = round2(netTotal);
   taxPayable = round2(taxPayable);
   const grossTotal = round2(netTotal + taxPayable);
