@@ -112,7 +112,7 @@ type NormalizeResult =
 const CONSUMIDOR_FINAL_NIF = "999999999";
 const CONSUMIDOR_FINAL_NOME = "Consumidor final";
 const DESCONHECIDO = "Desconhecido";
-const AGT_FE_SUBMISSION_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RC"]);
+const AGT_FE_SUBMISSION_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RC", "RE"]);
 
 function normalizeClienteAddressField(value: string | undefined): string {
   const trimmed = value?.trim();
