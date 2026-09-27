@@ -158,7 +158,8 @@ Além das migrations iniciais já documentadas:
 - `20260927191357_bill_009_resolve_education_tax_profile.sql`;
 - `20260927191520_bill_009_tax_profile_resolver_server_only.sql`;
 - `20260927192036_bill_009_vat_regime_governance.sql`;
-- `20260927194402_bill_009_remove_implicit_education_tax_profile.sql`.
+- `20260927194402_bill_009_remove_implicit_education_tax_profile.sql`;
+- `20260927195400_bill_009_school_fiscal_engine_opt_in_gate.sql`.
 
 ### Evidência
 
@@ -187,6 +188,20 @@ CI fiscal de referência:
 - XSD SAF-T AO 1.01_01: PASS.
 
 KF2 Search Audit e Vercel build-rate-limit continuam como débitos globais/preexistentes e não são evidência de regressão do motor fiscal.
+
+### Invariante de rollout
+
+BILL-009 fecha o motor fiscal, **não activa o motor nas escolas**.
+
+- `fiscal_escola_bindings.fiscal_enabled` é o gate operacional;
+- default é `false`;
+- binding e empresa fiscal `active` não são opt-in;
+- com gate desligado, pagamentos/propinas/vendas continuam no fluxo financeiro normal, sem criar FT/FR/RC, link fiscal ou job de reprocessamento;
+- o reprocessador também ignora escolas desactivadas;
+- o adapter e os serviços de pagamento fiscal possuem defesa de baixo nível contra bypass;
+- activar uma escola exige decisão explícita de rollout e readiness fiscal/AGT.
+
+Estado verificado em 2026-09-27: **0 bindings activados**.
 
 ### Invariante nova
 
