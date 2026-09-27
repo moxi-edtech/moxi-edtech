@@ -639,7 +639,6 @@ export async function POST(req: Request) {
       }
 
       const keyRefLookup = await resolveKmsPrivateKeyRef({
-        supabase,
         empresaId: input.empresa_id,
         keyVersion: rpcData.key_version,
       });
@@ -967,15 +966,14 @@ async function resolveSerieSemantica({
 // A validação de chave fiscal activa ocorre na RPC atómica.
 
 async function resolveKmsPrivateKeyRef({
-  supabase,
   empresaId,
   keyVersion,
 }: {
-  supabase: FiscalSupabaseClient;
   empresaId: string;
   keyVersion: number;
 }) {
-  const { data, error } = await supabase
+  const admin = supabaseServerRole<FiscalDatabase>();
+  const { data, error } = await admin
     .from("fiscal_chaves")
     .select("private_key_ref")
     .eq("empresa_id", empresaId)
