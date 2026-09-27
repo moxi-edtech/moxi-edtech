@@ -1,6 +1,13 @@
 import "server-only";
 
 import { FISCAL_TAX_PROFILE_CODES, type FiscalTaxProfileCode } from "@/lib/fiscal/taxProfiles";
+import {
+  cmpExact,
+  exactToJsonNumber,
+  parseExactDecimal,
+  roundExact,
+  type DecimalInput,
+} from "@/lib/fiscal/decimal";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 
 type TipoFluxoFinanceiro = "immediate_payment" | "deferred_payment";
@@ -13,13 +20,13 @@ const DESCONHECIDO = "Desconhecido";
 
 type AdapterItem = {
   descricao: string;
-  valor: number;
+  valor: DecimalInput;
   taxProfileCode?: FiscalTaxProfileCode | string;
   productCode?: string;
   productNumberCode?: string;
-  quantidade?: number;
-  unitPriceBase?: number;
-  settlementAmount?: number;
+  quantidade?: DecimalInput;
+  unitPriceBase?: DecimalInput;
+  settlementAmount?: DecimalInput;
   productType?: "P" | "S" | "O" | "E" | "I";
   operationType?: "SE" | "SS" | "STP" | "SR" | "SIF" | "SHS" | "ST" | "SG" | "TB" | "AS" | "QT" | "RD";
   unitOfMeasure?: string;
@@ -81,9 +88,45 @@ export type EmitirFinanceiroFiscalResult = {
   payload_snapshot: Record<string, unknown>;
 };
 
-function sanitizeAmount(value: number, decimals = 2) {
-  if (!Number.isFinite(value) || value < 0) return 0;
-  return Number(value.toFixed(decimals));
+function normalizeNonNegative(
+  value: DecimalInput,
+  field: string,
+  decimals: number
+) {
+  const exact = parseExactDecimal(value, field);
+  if (cmpExact(exact, parseExactDecimal("0")) < 0) {
+    throw new Error(`FISCAL_ADAPTER_INVALID_AMOUNT: ${field} não pode ser negativo.`);
+  }
+  return exactToJsonNumber(roundExact(exact, decimals, "half-up"), decimals);
+}
+
+function normalizePositive(
+  value: DecimalInput,
+  field: string,
+  decimals: number
+) {
+  const exact = parseExactDecimal(value, field);
+  if (cmpExact(exact, parseExactDecimal("0")) <= 0) {
+    throw new Error(`FISCAL_ADAPTER_INVALID_AMOUNT: ${field} deve ser positivo.`);
+  }
+  return exactToJsonNumber(roundExact(exact, decimals, "half-up"), decimals);
+}
+
+function safeInteger(value: unknown, field: string) {
+  const raw =
+    typeof value === "number"
+      ? value.toString()
+      : typeof value === "string"
+        ? value.trim()
+        : "";
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`FISCAL_ADAPTER_INVALID_INTEGER: ${field}`);
+  }
+  const parsed = JSON.parse(raw) as unknown;
+  if (typeof parsed !== "number" || !Number.isSafeInteger(parsed)) {
+    throw new Error(`FISCAL_ADAPTER_INVALID_INTEGER: ${field}`);
+  }
+  return parsed;
 }
 
 function normalizeTipoDocumento(tipoFluxoFinanceiro: TipoFluxoFinanceiro): FiscalTipoDocumento {
@@ -231,17 +274,19 @@ export async function emitirDocumentoFiscalViaAdapter(
     .map((item) => ({
       ...item,
       descricao: item.descricao.trim(),
-      valor: sanitizeAmount(item.valor, 4),
+      valor: normalizeNonNegative(item.valor, "valor", 4),
       quantidade:
-        Number.isFinite(item.quantidade) && Number(item.quantidade) > 0
-          ? Number(item.quantidade)
-          : 1,
+        item.quantidade == null
+          ? 1
+          : normalizePositive(item.quantidade, "quantidade", 6),
       unitPriceBase:
-        item.unitPriceBase == null ? undefined : sanitizeAmount(item.unitPriceBase, 4),
+        item.unitPriceBase == null
+          ? undefined
+          : normalizeNonNegative(item.unitPriceBase, "unitPriceBase", 4),
       settlementAmount:
         item.settlementAmount == null
           ? 0
-          : Math.max(0, sanitizeAmount(item.settlementAmount, 2)),
+          : normalizeNonNegative(item.settlementAmount, "settlementAmount", 2),
       taxProfileCode:
         item.taxProfileCode ??
         (item.operationType === "SE" ? resolvedEducationProfile ?? undefined : undefined),
@@ -331,7 +376,7 @@ export async function emitirDocumentoFiscalViaAdapter(
     documento_id: json.data.documento_id,
     numero_formatado: json.data.numero_formatado ?? "Sem número",
     hash_control: json.data.hash_control ?? "",
-    key_version: Number(json.data.key_version ?? 0),
+    key_version: safeInteger(json.data.key_version ?? 0, "key_version"),
     payload_snapshot: fiscalPayload,
   };
 }
