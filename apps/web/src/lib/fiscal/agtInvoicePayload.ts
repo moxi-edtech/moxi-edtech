@@ -125,22 +125,6 @@ export function buildAgtPreparedDocument(input: {
   originDocument?: OriginDocumentRow | null;
 }): AgtPreparedDocument {
   const doc = input.document;
-  if (!LINE_DOCUMENT_TYPES.has(doc.tipo_documento)) {
-    if (RECEIPT_DOCUMENT_TYPES.has(doc.tipo_documento)) {
-      throw new AgtMappingError(
-        "AGT_MAPPING_RECEIPT_NOT_READY",
-        `${doc.tipo_documento} exige paymentReceipt e documentos de origem; não será submetido como factura com linhas`
-      );
-    }
-    throw new AgtMappingError(
-      "AGT_MAPPING_DOCUMENT_TYPE_UNSUPPORTED",
-      `Tipo ${doc.tipo_documento} não é suportado pelo mapper AGT`
-    );
-  }
-  if (input.items.length === 0) {
-    throw new AgtMappingError("AGT_MAPPING_LINES_REQUIRED", "Documento sem linhas fiscais");
-  }
-
   const payload = objectValue(doc.payload);
   const metadata = objectValue(payload.metadata);
   const payloadItems = Array.isArray(payload.itens) ? payload.itens : [];
@@ -149,11 +133,146 @@ export function buildAgtPreparedDocument(input: {
   const documentStatusRaw = textValue(metadata.agt_document_status).toUpperCase();
   const documentStatus: "N" | "C" = documentStatusRaw === "C" ? "C" : "N";
   const rejectedDocumentNo = textValue(metadata.agt_rejected_document_no);
+
   if (documentStatus === "C" && !rejectedDocumentNo) {
     throw new AgtMappingError(
       "AGT_MAPPING_REJECTED_DOCUMENT_REQUIRED",
       "Documento de correcção AGT exige agt_rejected_document_no"
     );
+  }
+
+  if (RECEIPT_DOCUMENT_TYPES.has(doc.tipo_documento)) {
+    if (doc.tipo_documento !== "RC") {
+      throw new AgtMappingError(
+        "AGT_MAPPING_RECEIPT_TYPE_UNSUPPORTED",
+        `Tipo de recibo ${doc.tipo_documento} ainda não é emitido pelo KLASSE`
+      );
+    }
+
+    if (input.items.length !== 0) {
+      throw new AgtMappingError(
+        "AGT_MAPPING_RECEIPT_LINES_FORBIDDEN",
+        "RC não pode conter lines no contrato AGT actual"
+      );
+    }
+
+    const receipt = objectValue(payload.paymentReceipt);
+    const rawSources = Array.isArray(receipt.sourceDocuments)
+      ? receipt.sourceDocuments
+      : [];
+
+    if (rawSources.length === 0) {
+      throw new AgtMappingError(
+        "AGT_MAPPING_RECEIPT_SOURCES_REQUIRED",
+        "RC exige paymentReceipt.sourceDocuments"
+      );
+    }
+
+    const sourceDocuments = rawSources.map((raw, index) => {
+      const source = objectValue(raw);
+      const sourceDocumentID = objectValue(source.sourceDocumentID);
+      const lineNo = Number(source.lineNo);
+      const originatingON = textValue(sourceDocumentID.OriginatingON);
+      const documentDate = textValue(sourceDocumentID.documentDate);
+      const creditAmount =
+        source.creditAmount === undefined ? null : decimal(source.creditAmount as number | string, "creditAmount");
+      const debitAmount =
+        source.debitAmount === undefined ? null : decimal(source.debitAmount as number | string, "debitAmount");
+
+      if (!Number.isInteger(lineNo) || lineNo !== index + 1) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_RECEIPT_LINE_SEQUENCE_INVALID",
+          "sourceDocuments deve iniciar em 1 e ser sequencial"
+        );
+      }
+      if (!originatingON || originatingON.length > 60) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_RECEIPT_ORIGIN_INVALID",
+          "OriginatingON ausente ou maior que 60 caracteres"
+        );
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(documentDate)) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_RECEIPT_ORIGIN_DATE_INVALID",
+          "documentDate do documento origem é obrigatório"
+        );
+      }
+      if ((creditAmount === null) === (debitAmount === null)) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_RECEIPT_AMOUNT_SHAPE_INVALID",
+          "sourceDocument deve conter exactamente um de creditAmount/debitAmount"
+        );
+      }
+
+      return {
+        lineNo,
+        sourceDocumentID: {
+          OriginatingON: originatingON,
+          documentDate,
+        },
+        ...(creditAmount !== null ? { creditAmount: round2(creditAmount) } : {}),
+        ...(debitAmount !== null ? { debitAmount: round2(debitAmount) } : {}),
+      };
+    });
+
+    const documentTotals: AgtInvoiceDocument["documentTotals"] = {
+      taxPayable: round2(decimal(doc.total_impostos_aoa, "total_impostos_aoa")),
+      netTotal: round2(decimal(doc.total_liquido_aoa, "total_liquido_aoa")),
+      grossTotal: round2(decimal(doc.total_bruto_aoa, "total_bruto_aoa")),
+    };
+
+    if (
+      Math.abs(
+        round2(documentTotals.netTotal + documentTotals.taxPayable) -
+          documentTotals.grossTotal
+      ) > 0.01
+    ) {
+      throw new AgtMappingError(
+        "AGT_MAPPING_RECEIPT_TOTAL_MISMATCH",
+        "Totais imutáveis do RC não fecham"
+      );
+    }
+
+    const document: AgtInvoiceDocument = {
+      documentNo: doc.numero_formatado,
+      documentStatus,
+      documentDate: doc.invoice_date,
+      documentType: doc.tipo_documento,
+      systemEntryDate: new Date(doc.system_entry).toISOString(),
+      customerTaxID,
+      customerCountry,
+      companyName: doc.cliente_nome.slice(0, 200),
+      paymentReceipt: { sourceDocuments },
+      documentTotals,
+    };
+
+    if (documentStatus === "C") {
+      document.rejectedDocumentNo = rejectedDocumentNo;
+    }
+
+    const signaturePayload = {
+      documentNo: document.documentNo,
+      taxRegistrationNumber: input.taxRegistrationNumber,
+      documentType: document.documentType,
+      documentDate: document.documentDate,
+      customerTaxID: document.customerTaxID,
+      customerCountry: document.customerCountry,
+      companyName: document.companyName,
+      documentTotals: document.documentTotals,
+    };
+
+    return { document, signaturePayload };
+  }
+
+  if (!LINE_DOCUMENT_TYPES.has(doc.tipo_documento)) {
+    throw new AgtMappingError(
+      "AGT_MAPPING_DOCUMENT_TYPE_UNSUPPORTED",
+      `Tipo ${doc.tipo_documento} não é suportado pelo mapper AGT`
+    );
+  }
+
+  if (input.items.length === 0) {
+    throw new AgtMappingError("AGT_MAPPING_LINES_REQUIRED", "Documento sem linhas fiscais");
   }
 
   let netTotal = 0;
