@@ -62,7 +62,14 @@ export default function Topbar({
             portal={portal}
             onAction={
               portal === "operacoes"
-                ? (action, result) => setActiveSearchAction({ action, result })
+                ? (action, result) => {
+                    if (action.kind === "profile") {
+                      router.push(action.href);
+                      return;
+                    }
+
+                    setActiveSearchAction({ action, result });
+                  }
                 : undefined
             }
           />

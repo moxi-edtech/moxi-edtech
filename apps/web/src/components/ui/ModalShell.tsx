@@ -9,6 +9,7 @@ type ModalShellProps = {
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  size?: "default" | "wide";
 };
 
 export function ModalShell({
@@ -18,12 +19,13 @@ export function ModalShell({
   onClose,
   children,
   footer,
+  size = "default",
 }: ModalShellProps) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10 animate-in fade-in-50">
-      <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl animate-in zoom-in-95">
+      <div className={`w-full rounded-2xl bg-white shadow-xl animate-in zoom-in-95 ${size === "wide" ? "max-w-7xl" : "max-w-3xl"}`}>
         <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
@@ -37,7 +39,7 @@ export function ModalShell({
             Fechar
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">{children}</div>
+        <div className={`${size === "wide" ? "max-h-[82vh]" : "max-h-[70vh]"} overflow-y-auto px-6 py-5`}>{children}</div>
         {footer && <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">{footer}</div>}
       </div>
     </div>

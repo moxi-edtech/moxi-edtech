@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MaintenanceBanner from "./MaintenanceBanner";
 import AiChatWidget, { type AiWidgetContext } from "@/components/ai/AiChatWidget";
+import { deriveWidgetContext } from "@/lib/assistant/derive-widget-context";
 import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
 import { type UserRole } from "@/hooks/useUserRole";
 import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
@@ -143,38 +144,10 @@ export default function AppShell({
     return inferredRole;
   }, [inferredRole, safePathname]);
 
-  const aiWidgetContext = useMemo<AiWidgetContext>(() => {
-    if (safePathname.includes("/admin/comunicacao/whatsapp")) {
-      return { module: "whatsapp", page: "central_whatsapp", entityType: "none" };
-    }
-    if (safePathname.includes("/admin/avisos") || safePathname.includes("/comunicacao")) {
-      return { module: "comunicacao", page: "comunicados", entityType: "notice" };
-    }
-    if (safePathname.includes("/financeiro")) {
-      return {
-        module: "financeiro",
-        page: safePathname.includes("/radar") ? "radar" : "financeiro",
-        entityType: safePathname.includes("/radar") ? "invoice" : "none",
-      };
-    }
-    if (safePathname.includes("/secretaria")) {
-      return {
-        module: "secretaria",
-        page: safePathname.includes("/alunos") ? "alunos" : "secretaria",
-        entityType: safePathname.includes("/alunos") ? "student" : "none",
-      };
-    }
-    if (safePathname.includes("/operacoes")) {
-      return { module: "operacoes", page: "operacoes", entityType: "none" };
-    }
-    if (safePathname.includes("/admin/ai")) {
-      return { module: "classe_ai", page: "actions" };
-    }
-    if (safePathname.includes("/admin")) {
-      return { module: "dashboard", page: "admin" };
-    }
-    return { module: "dashboard" };
-  }, [safePathname]);
+  const aiWidgetContext = useMemo<AiWidgetContext>(
+    () => deriveWidgetContext(safePathname),
+    [safePathname],
+  );
 
   const navEscolaId = escolaSlug || escolaIdFromPath || escolaIdFromSession;
   const displayedEscolaNome = navEscolaId ? escolaNome : null;

@@ -21,6 +21,7 @@ import { RadarOperacional, type OperationalAlert } from "@/components/feedback/F
 import { EstadoVazio } from "@/components/harmonia";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import PricingConfigurationModal from "@/components/financeiro/PricingConfigurationModal";
 
 import type {
   KpiStats,
@@ -216,6 +217,7 @@ export default function EscolaAdminDashboardContent({
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dynamicPacingTarget, setDynamicPacingTarget] = useState(70);
+  const [pricingModalOpen, setPricingModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -230,6 +232,19 @@ export default function EscolaAdminDashboardContent({
     setIsRefreshing(true);
     router.refresh();
     setTimeout(() => setIsRefreshing(false), 800);
+  };
+
+  const handleRadarAction = (alert: OperationalAlert) => {
+    if (alert.id === "precos-pendentes") {
+      setPricingModalOpen(true);
+      return;
+    }
+    if (alert.link) router.push(alert.link);
+  };
+
+  const closePricingModal = () => {
+    setPricingModalOpen(false);
+    router.refresh();
   };
 
   const { escolaSlug } = useEscolaId();
@@ -299,9 +314,8 @@ export default function EscolaAdminDashboardContent({
       id: "precos-pendentes",
       severity: "warning",
       categoria: "financeiro",
-      titulo: "Tabelas de preço pendentes",
-    descricao: "Defina matrícula e mensalidade para cada turma pendente.",
-      count: missingPricingCount,
+      titulo: `${missingPricingCount} turma${missingPricingCount > 1 ? "s" : ""} sem preço completo`,
+      descricao: "Defina matrícula e mensalidade aqui, sem sair do radar.",
       link: buildPortalHref(escolaParam, `/${portalBase}/configuracoes/mensalidades`),
       link_label: "Configurar preços",
     });
@@ -357,8 +371,15 @@ export default function EscolaAdminDashboardContent({
           alerts={radarAlerts}
           role={mode === "operacoes" ? "secretaria" : "admin"}
           variant={mode === "operacoes" ? "compact" : "default"}
+          onAction={handleRadarAction}
         />
       </motion.div>
+
+      <PricingConfigurationModal
+        open={pricingModalOpen}
+        escolaId={escolaParam}
+        onClose={closePricingModal}
+      />
 
       {/* Foco da operação e Fila operacional vivem agora no OperacoesPainelHub,
           abertos por modal — mantêm-se acessíveis sem pesar na página. */}

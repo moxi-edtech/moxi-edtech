@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Activity, ArrowRight, AlertTriangle, CheckCircle2, Eye, ExternalLink } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { familyBadgeClasses, familyLabel, toFeedSubline, type ActivityFeedItem } from "@/lib/admin/activityFeed";
+import { buildActivityDetails, type ActivityDetailKind } from "@/lib/admin/activityFeedDetails";
 import { useAdminActivityFeed } from "./useAdminActivityFeed";
 import { useOperationalActivityFeed } from "./useOperationalActivityFeed";
 import { buildPortalHref } from "@/lib/navigation";
@@ -22,12 +23,13 @@ import {
   Calendar, 
   CreditCard, 
   FileCheck, 
-  Info, 
   ChevronDown, 
   ChevronUp,
-  Hash,
   FileText as FileIcon,
-  Banknote
+  Banknote,
+  ListChecks,
+  MessageSquareText,
+  Tags
 } from "lucide-react";
 
 type Props = {
@@ -82,25 +84,18 @@ const priorityStyles = {
   informativa: "bg-slate-50 text-slate-500 ring-slate-200",
 } as const;
 
-type PayloadDetail = {
-  label: string;
-  value: React.ReactNode;
-  icon: React.ElementType;
+const detailIcons: Record<ActivityDetailKind, React.ElementType> = {
+  person: User,
+  group: Users,
+  money: Banknote,
+  date: Calendar,
+  document: FileIcon,
+  payment: CreditCard,
+  subject: FileCheck,
+  status: Tags,
+  description: MessageSquareText,
+  operation: ListChecks,
 };
-
-function payloadDetails(item: ActivityFeedItem): PayloadDetail[] {
-  const p = (item.payload || {}) as Record<string, any>;
-  return [
-    { label: "Aluno", value: item.aluno_nome || p.aluno_nome || p.nome_aluno, icon: User },
-    { label: "Turma", value: item.turma_nome || p.turma_nome || p.nome_turma, icon: Users },
-    { label: "Valor", value: item.amount_kz ? `${item.amount_kz.toLocaleString("pt-PT")} KZ` : p.valor_formatado || p.valor, icon: Banknote },
-    { label: "Referência", value: p.mes_referencia || p.referencia || p.periodo_nome, icon: Calendar },
-    { label: "Documento", value: p.tipo_documento || p.documento_nome || p.documento, icon: FileIcon },
-    { label: "Método", value: p.metodo_pagamento || p.pago_via || p.forma_pagamento, icon: CreditCard },
-    { label: "Cód. Referência", value: p.referencia_pagamento || p.codigo || p.id_externo, icon: Hash },
-    { label: "Disciplina", value: p.disciplina_nome || p.materia, icon: FileCheck },
-  ].filter(d => !!d.value);
-}
 
 function ActivityPayloadDetails({
   item,
@@ -109,84 +104,35 @@ function ActivityPayloadDetails({
   item: ActivityFeedItem;
   variant?: "default" | "discreet";
 }) {
-  const [showRaw, setShowRaw] = useState(false);
-  const p = (item.payload || {}) as Record<string, any>;
-  const details = payloadDetails(item);
+  const details = buildActivityDetails(item);
   const discreet = variant === "discreet";
 
   return (
-    <div className={discreet ? "space-y-3" : "space-y-6"}>
-      {details.length > 0 ? (
-        discreet ? (
-          // Variante discreta (operações): pares chave/valor numa lista, sem cartão
-          // por linha nem ícone — o detalhe herda o ritmo do feed em vez de o imitar.
-          <dl className="divide-y divide-slate-50">
-            {details.map((d, i) => (
-              <div key={i} className="flex items-baseline gap-4 py-1.5">
-                <dt className="w-28 shrink-0 text-[11px] font-medium text-slate-400">{d.label}</dt>
-                <dd className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-700">{d.value}</dd>
+    <dl className={discreet ? "grid gap-2 sm:grid-cols-2" : "grid grid-cols-1 gap-3 sm:grid-cols-2"}>
+      {details.map((detail) => {
+        const Icon = detailIcons[detail.kind];
+        return (
+          <div
+            key={`${detail.label}:${detail.value}`}
+            className={
+              discreet
+                ? "rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5"
+                : "flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
+            }
+          >
+            {!discreet && (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+                <Icon className="h-4 w-4" />
               </div>
-            ))}
-          </dl>
-        ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {details.map((d, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
-                  <d.icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{d.label}</p>
-                  <p className="truncate text-sm font-bold text-slate-900">{d.value}</p>
-                </div>
-              </div>
-            ))}
+            )}
+            <div className="min-w-0 flex-1">
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{detail.label}</dt>
+              <dd className="mt-0.5 break-words text-sm font-semibold leading-5 text-slate-800">{detail.value}</dd>
+            </div>
           </div>
-        )
-      ) : discreet ? (
-        <p className="text-xs text-slate-400">Sem detalhes adicionais.</p>
-      ) : (
-        <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
-          <Info className="mx-auto h-6 w-6 text-slate-300 mb-2" />
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sem detalhes adicionais</p>
-        </div>
-      )}
-
-      {discreet ? (
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowRaw(!showRaw)}
-            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 transition-colors hover:text-slate-600"
-          >
-            <span>Metadados técnicos</span>
-            {showRaw ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-
-          {showRaw && (
-            <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-slate-50 p-3 font-mono text-[10px] text-slate-600">
-              {JSON.stringify(p, null, 2)}
-            </pre>
-          )}
-        </div>
-      ) : (
-        <div className="pt-4 border-t border-slate-100">
-          <button
-            onClick={() => setShowRaw(!showRaw)}
-            className="flex items-center justify-between w-full text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            <span>Metadados Técnicos</span>
-            {showRaw ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-
-          {showRaw && (
-            <pre className="mt-3 rounded-xl bg-slate-900 p-4 text-[10px] text-emerald-400 overflow-auto font-mono max-h-60">
-              {JSON.stringify(p, null, 2)}
-            </pre>
-          )}
-        </div>
-      )}
-    </div>
+        );
+      })}
+    </dl>
   );
 }
 
