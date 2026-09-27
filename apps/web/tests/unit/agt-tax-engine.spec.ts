@@ -23,6 +23,11 @@ function baseDocument(overrides: Record<string, unknown> = {}) {
     total_bruto_aoa: 114,
     documento_origem_id: null,
     rectifica_documento_id: null,
+    agt_document_status: "N",
+    agt_rejected_document_id: null,
+    agt_rejected_document_no: null,
+    reference_reason: null,
+    contingency_indicator: "N",
     payload: {
       cliente: { country: "AO" },
       metadata: {},
@@ -251,5 +256,109 @@ test("AGT mapper rejects withholding metadata until tax engine supports it", () 
     (error: unknown) =>
       error instanceof AgtMappingError &&
       error.code === "AGT_MAPPING_WITHHOLDING_UNSUPPORTED"
+  );
+});
+
+
+test("AGT mapper uses canonical rejected-document lifecycle for documentStatus C", () => {
+  const prepared = buildAgtPreparedDocument({
+    document: baseDocument({
+      numero_formatado: "FT TEST/2",
+      agt_document_status: "C",
+      agt_rejected_document_id: "00000000-0000-0000-0000-000000000201",
+      agt_rejected_document_no: "FT TEST/1",
+      payload: {
+        cliente: { country: "AO" },
+        metadata: {
+          agt_document_status: "N",
+          agt_rejected_document_no: "IGNORED",
+        },
+      },
+    }),
+    items: [canonicalItem()],
+    taxRegistrationNumber: "5000000000",
+  });
+
+  assert.equal(prepared.document.documentStatus, "C");
+  assert.equal(prepared.document.rejectedDocumentNo, "FT TEST/1");
+});
+
+test("AGT mapper rejects documentStatus C without canonical rejected document", () => {
+  assert.throws(
+    () =>
+      buildAgtPreparedDocument({
+        document: baseDocument({
+          agt_document_status: "C",
+          agt_rejected_document_id: null,
+          agt_rejected_document_no: null,
+        }),
+        items: [canonicalItem()],
+        taxRegistrationNumber: "5000000000",
+      }),
+    (error: unknown) =>
+      error instanceof AgtMappingError &&
+      error.code === "AGT_MAPPING_REJECTED_DOCUMENT_REQUIRED"
+  );
+});
+
+test("AGT mapper emits NC referenceInfo from canonical source and reason", () => {
+  const prepared = buildAgtPreparedDocument({
+    document: baseDocument({
+      tipo_documento: "NC",
+      numero_formatado: "NC TEST/1",
+      rectifica_documento_id: "00000000-0000-0000-0000-000000000301",
+      reference_reason: "Devolução parcial",
+    }),
+    items: [canonicalItem()],
+    taxRegistrationNumber: "5000000000",
+    originDocument: {
+      numero_formatado: "FT TEST/1",
+      invoice_date: "2026-09-27",
+    },
+  });
+
+  const line = prepared.document.lines?.[0] as any;
+  assert.equal(line.debitAmount, 100);
+  assert.deepEqual(line.referenceInfo, {
+    reference: "FT TEST/1",
+    reason: "Devolução parcial",
+  });
+});
+
+test("AGT mapper requires a reference for KLASSE ND lifecycle", () => {
+  assert.throws(
+    () =>
+      buildAgtPreparedDocument({
+        document: baseDocument({
+          tipo_documento: "ND",
+          numero_formatado: "ND TEST/1",
+          documento_origem_id: "00000000-0000-0000-0000-000000000401",
+        }),
+        items: [canonicalItem()],
+        taxRegistrationNumber: "5000000000",
+        originDocument: null,
+      }),
+    (error: unknown) =>
+      error instanceof AgtMappingError &&
+      error.code === "AGT_MAPPING_REFERENCE_REQUIRED"
+  );
+});
+
+test("AGT mapper rejects reused number when correcting a rejected document", () => {
+  assert.throws(
+    () =>
+      buildAgtPreparedDocument({
+        document: baseDocument({
+          numero_formatado: "FT TEST/1",
+          agt_document_status: "C",
+          agt_rejected_document_id: "00000000-0000-0000-0000-000000000501",
+          agt_rejected_document_no: "FT TEST/1",
+        }),
+        items: [canonicalItem()],
+        taxRegistrationNumber: "5000000000",
+      }),
+    (error: unknown) =>
+      error instanceof AgtMappingError &&
+      error.code === "AGT_MAPPING_REJECTED_DOCUMENT_NUMBER_REUSED"
   );
 });
