@@ -286,6 +286,10 @@ function normalizePostInput({
         descricao: item.descricao,
         quantidade: 1,
         preco_unit: item.valor,
+        product_type:
+          input.tipo_documento === "GR" || input.tipo_documento === "GT"
+            ? "P"
+            : "S",
         operation_type: "SE",
         unit_of_measure: "UN",
         tax_code: "NOR",
