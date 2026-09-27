@@ -1,6 +1,9 @@
 # Roadmap Fiscal — Checklist
 
-Data: 2026-03-19
+Data original: 2026-03-19
+Última revisão: 2026-09-27
+
+> Este ficheiro preserva o roadmap por fases. O estado corrente por gap/BILL e a ordem de execução são mantidos em `docs/fiscal/certificacao/backlog-certificacao-agt.md`. Em caso de divergência, o backlog canónico prevalece.
 
 ## Fase 0 — Decisões de contrato
 - [x] Contexto fiscal separado em `fiscal_*`.
@@ -61,6 +64,17 @@ Data: 2026-03-19
 - [ ] Validação de probe com sessão autenticada (`/api/fiscal/compliance/status?probe=1`).
 - [ ] Política de rotação/versionamento de chaves publicada.
 - [ ] Política de retenção e acesso ao ledger aprovada.
+
+## Continuação — auditoria 2026-09
+
+Após a revisão técnica/legal mais recente, o trabalho de certificação continua em BILLs numerados:
+
+- BILL-001–004: hardening fiscal fechado;
+- BILL-005: séries AGT prontas para homologação;
+- BILL-006: Facturação Electrónica assíncrona em curso;
+- BILL-007–014: pagamentos/RC, SAF-T semântico, motor IVA, ciclo documental, segurança, observabilidade, homologação e governance.
+
+Ver escopo, dependências e critérios de fecho no backlog canónico.
 
 ## Referências
 - `docs/fiscal/api/fiscal-documentos.md`
