@@ -34,8 +34,8 @@ Estados usados:
 | BILL-003 | Numeração/séries e reserva atómica | P0 | CLOSED | PR #118; reserva interna, sem EXECUTE directo; série AGT exigida no DB |
 | BILL-004 | Contrato único de emissão e assinatura | P0 | CLOSED | PR #118; 1 overload; pendente_assinatura obrigatório; finalização backend-only |
 | BILL-005 | Provisionamento de séries pela AGT | P0 | READY FOR HOMOLOGATION | PR #118; solicitarSerie schema 2.0; JWS/KMS; sem série AGT real ainda |
-| BILL-006 | Facturação Electrónica AGT assíncrona | P0 | NEEDS WORK | PR #119; registarFactura/obterEstado/outbox/audit; RC ainda depende do BILL-007 |
-| BILL-007 | Pagamentos, ledger, recibos e estornos | P0 | NEXT | necessário para paymentReceipt.sourceDocuments e RC |
+| BILL-006 | Facturação Electrónica AGT assíncrona | P0 | READY FOR HOMOLOGATION | PR #119 + BILL-007; registarFactura/obterEstado/outbox/audit; RC/paymentReceipt implementado |
+| BILL-007 | Pagamentos, ledger, recibos e estornos | P0 | CLOSED | branch `fix/bill-007-payments-ledger-receipts`; alocações append-only, RC/sourceDocuments, N:N, reversão idempotente |
 | BILL-008 | SAF-T(AO) semântico e contabilístico | P1 | BACKLOG | validar cobertura integral, não apenas XSD |
 | BILL-009 | Motor fiscal/IVA e arredondamentos | P1 | BACKLOG | taxas, isenções, descontos, FX, retenções quando aplicáveis |
 | BILL-010 | Ciclo de vida completo dos documentos | P1 | BACKLOG | rectificação, rejeição AGT, contingência, referências e tipos não-fiscais |
@@ -124,7 +124,7 @@ Estado actual do projecto em 2026-09-27:
 
 ## BILL-006 — Facturação Electrónica AGT
 
-**Estado:** NEEDS WORK  
+**Estado:** READY FOR HOMOLOGATION  
 **PR:** #119
 
 Implementado:
@@ -141,16 +141,12 @@ Implementado:
 - `requestID`, resultCode, V/I, erros e respostas persistidos;
 - reconciliação periódica;
 - histórico de transições append-only;
-- FT/FR/FG/GF/NC/ND mapeados fail-closed.
+- FT/FR/FG/GF/NC/ND mapeados fail-closed;
+- RC mapeado sem `lines`, com `paymentReceipt.sourceDocuments`;
+- origem do RC deriva de alocações financeiras imutáveis criadas no BILL-007;
+- tipos FE não utilizados pelo KLASSE permanecem explicitamente bloqueados, não inferidos.
 
-Gap restante:
-- RC exige `paymentReceipt.sourceDocuments`;
-- documentos RC actuais não possuem vínculo fiscal suficiente ao(s) documento(s) liquidado(s);
-- dependência directa do BILL-007.
-
-Critério para READY FOR HOMOLOGATION:
-- BILL-007 fornecer sourceDocuments para RC;
-- todos os tipos FE efectivamente usados pelo KLASSE possuírem mapper explícito ou bloqueio explícito.
+O critério interno para READY FOR HOMOLOGATION foi atingido com o BILL-007.
 
 Critério para CLOSED:
 - `registarFactura` real -> `requestID`;
@@ -162,35 +158,48 @@ Critério para CLOSED:
 
 ## BILL-007 — Pagamentos, ledger, recibos e estornos
 
-**Estado:** NEXT  
-**Severidade:** P0
+**Estado:** CLOSED  
+**Severidade:** P0  
+**Branch:** `fix/bill-007-payments-ledger-receipts`
 
-Objetivo:
-modelar o pagamento como evento financeiro/fiscal rastreável, de modo que cada RC consiga provar exactamente quais documentos foram liquidados e em que montante.
+Fechado com:
+- `financeiro_pagamento_alocacoes` append-only como fonte canónica da aplicação do pagamento;
+- `financeiro_pagamento_reversoes` e `financeiro_estornos` append-only;
+- ledger sem UPDATE/DELETE e FKs financeiras críticas em `ON DELETE RESTRICT`;
+- pagamento não pode ser apagado; campos financeiros de pagamento/mensalidade só mudam pelos fluxos canónicos;
+- validação repetida do mesmo pagamento é idempotente;
+- pagamento acima do saldo é rejeitado atomicamente;
+- pagamento parcial exige FT/ND emitida antes da liquidação;
+- múltiplos pagamentos podem liquidar progressivamente a mesma FT/ND;
+- `financeiro_alocar_pagamento_multiplas_mensalidades` suporta um pagamento liquidando múltiplas facturas, com soma exacta, locks determinísticos e idempotência;
+- RC deriva exclusivamente das alocações activas;
+- `financeiro_recibo_alocacoes` liga RC -> alocação -> documento fiscal origem;
+- RC não possui `lines`; usa `paymentReceipt.sourceDocuments`;
+- soma regularizada nunca pode ultrapassar o remanescente fiscal da FT/ND;
+- reversão financeira gera alocação inversa/estorno sem apagar histórico;
+- se o pagamento já possui FR/RC fiscal, a reversão financeira fica bloqueada até o documento ser formalmente anulado/corrigido no BILL-010;
+- `pagamento_intents` liquidados são materializados idempotentemente em `pagamentos`;
+- RPCs legados `emitir_recibo*` que escreviam em `documentos_emitidos` perderam EXECUTE;
+- trigger legado de recibo de rematrícula foi removido;
+- rotas de recibo/balcão/outbox usam `fiscal_documentos` como fonte fiscal única;
+- tipos Supabase foram regenerados após as migrations.
 
-Escopo mínimo:
-- relação explícita `pagamento -> documento fiscal`;
-- relação N:N `RC -> sourceDocuments`;
-- pagamentos parciais;
-- um pagamento liquidando múltiplas facturas;
-- múltiplos pagamentos liquidando uma factura;
-- impedir pagamento acima do saldo sem regra explícita;
-- idempotência forte em validação/webhooks;
-- concorrência: duas validações simultâneas do mesmo pagamento;
-- estorno/reversão sem apagar histórico;
-- remover dependência de cascades destrutivos em ledger/estornos;
-- definir tratamento fiscal da reversão: NC/anulação/outro conforme o caso;
-- ledger append-only;
-- saldo derivável/reconciliável;
-- mapper AGT de `paymentReceipt.sourceDocuments`;
-- testes de consistência `pagamentos x mensalidades x ledger x fiscal_documentos`.
+Evidência transaccional rollback-only:
+1. validação duplicada: `0 -> 2000 -> 2000`, uma única alocação;
+2. overpayment: 2500 contra saldo 2000 rejeitado com pagamento/mensalidade/alocações intactos;
+3. reversão: 1 aplicação + 1 reversão + 1 estorno + ledger liquidado/voided; segunda chamada idempotente;
+4. parcial sem FT/ND: bloqueado antes da liquidação, sem alteração de saldo;
+5. intent settled: 1 pagamento canónico, 0 recibos legacy, 1 evento de outbox fiscal;
+6. RC multi-source: 2 `sourceDocuments`, 2 vínculos append-only, 0 lines, totais 34200/30000/4200, segunda emissão idempotente;
+7. N:N: pagamento 2000 dividido 1000/1000 em duas mensalidades; exactamente 2 alocações e retry idempotente.
 
-Critério para CLOSED:
-- RC completo e rastreável;
-- todos os cenários acima cobertos por constraints/RPCs/testes;
-- nenhuma mutação destrutiva do histórico financeiro.
+Testes de mapper:
+- RC válido não contém `lines`;
+- RC rejeita lines;
+- RC rejeita sequência inválida de `sourceDocuments`.
 
----
+Limite intencional:
+- a **semântica fiscal da reversão** (anulação/NC/RE conforme caso e estado AGT) é escopo do BILL-010. O BILL-007 não permite divergência: ele bloqueia a reversão financeira enquanto o documento fiscal associado não estiver anulado.
 
 ## BILL-008 — SAF-T(AO) semântico e contabilístico
 
@@ -245,7 +254,9 @@ Escopo:
 - tratamento de proforma e documentos não fiscais;
 - tipos de documento permitidos por contexto;
 - regras de passagem de estado;
-- proibir regressões de estado.
+- proibir regressões de estado;
+- implementar o caminho fiscal que desbloqueia reversões financeiras de pagamentos já fiscalizados;
+- investigar/corrigir documentos históricos com `tipo_documento='FT'` mas `numero_formatado` no padrão `FR-...`, encontrados durante os testes BILL-007.
 
 ---
 
@@ -326,6 +337,6 @@ Escopo:
 
 ## Ordem actual de execução
 
-`BILL-007 -> BILL-008 -> BILL-009 -> BILL-010 -> BILL-011 -> BILL-012 -> BILL-013 -> BILL-014`
+`BILL-008 -> BILL-009 -> BILL-010 -> BILL-011 -> BILL-012 -> BILL-013 -> BILL-014`
 
-BILL-005 e BILL-006 permanecem ligados ao BILL-013 para a evidência externa de homologação.
+BILL-005 e BILL-006 permanecem ligados ao BILL-013 exclusivamente para evidência externa de homologação AGT.
