@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { isFiscalEngineEnabledForSchool } from '@/lib/fiscal/financeiroFiscalAdapter'
 
 async function validateTaxProfile(
   s: Awaited<ReturnType<typeof supabaseServer>>,
@@ -91,6 +92,8 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaId(s, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
+    const fiscalEnabled = await isFiscalEngineEnabledForSchool(escolaId)
+
     const body = await req.json().catch(() => ({}))
     const {
       nome,
@@ -103,23 +106,35 @@ export async function POST(req: Request) {
       fiscal_product_type,
     } = body || {}
 
-    if (!nome || !preco || !tax_profile_code || !["P", "S"].includes(String(fiscal_product_type))) {
+    if (!nome || !preco) {
+      return NextResponse.json(
+        { ok: false, error: 'Nome e preço são obrigatórios' },
+        { status: 400 }
+      )
+    }
+
+    if (
+      fiscalEnabled &&
+      (!tax_profile_code || !["P", "S"].includes(String(fiscal_product_type)))
+    ) {
       return NextResponse.json(
         {
           ok: false,
           error:
-            'Nome, preço, perfil tributário e natureza fiscal (produto/serviço) são obrigatórios',
+            'Perfil tributário e natureza fiscal (produto/serviço) são obrigatórios quando o motor fiscal está ativo',
         },
         { status: 400 }
       )
     }
 
-    const taxProfile = await validateTaxProfile(s, String(tax_profile_code))
-    if (!taxProfile) {
-      return NextResponse.json(
-        { ok: false, error: 'Perfil tributário inválido ou fora de vigência' },
-        { status: 400 }
-      )
+    if (tax_profile_code) {
+      const taxProfile = await validateTaxProfile(s, String(tax_profile_code))
+      if (!taxProfile) {
+        return NextResponse.json(
+          { ok: false, error: 'Perfil tributário inválido ou fora de vigência' },
+          { status: 400 }
+        )
+      }
     }
 
     const payload = {
@@ -130,9 +145,11 @@ export async function POST(req: Request) {
       controla_estoque: Boolean(controla_estoque),
       estoque_atual: Math.max(0, Number(estoque_atual) || 0),
       ativo: Boolean(ativo),
-      tax_profile_code: String(tax_profile_code),
-      fiscal_product_type: String(fiscal_product_type),
-      fiscal_operation_type: String(fiscal_product_type) === "P" ? "TB" : "SG",
+      tax_profile_code: tax_profile_code ? String(tax_profile_code) : null,
+      fiscal_product_type: fiscal_product_type ? String(fiscal_product_type) : null,
+      fiscal_operation_type: fiscal_product_type
+        ? (String(fiscal_product_type) === "P" ? "TB" : "SG")
+        : null,
     }
 
     const { data, error } = await s.from('financeiro_itens').insert(payload as any).select().single()
