@@ -217,9 +217,7 @@ function normalizePostInput({
     const normalizedPostalCode = isConsumidorFinal
       ? DESCONHECIDO
       : normalizeClienteAddressField(input.cliente.postal_code);
-    const normalizedCountry = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.country);
+    const normalizedCountry = (input.cliente.country || "AO").trim().toUpperCase();
     return {
       ok: true,
       data: {
@@ -273,7 +271,7 @@ function normalizePostInput({
         address_detail: DESCONHECIDO,
         city: DESCONHECIDO,
         postal_code: DESCONHECIDO,
-        country: DESCONHECIDO,
+        country: "AO",
       },
       invoice_date: today,
       moeda: "AOA",
@@ -286,6 +284,10 @@ function normalizePostInput({
         descricao: item.descricao,
         quantidade: 1,
         preco_unit: item.valor,
+        operation_type: "SE",
+        unit_of_measure: "UN",
+        tax_code: "NOR",
+        tax_country_region: "AO",
         taxa_iva: 14,
       })),
       metadata: {
