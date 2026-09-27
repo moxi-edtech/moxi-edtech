@@ -289,9 +289,25 @@ export async function POST(req: Request) {
         },
       }).catch(() => null);
 
+      const operationalReceipt = pagamentoId &&
+        ["settled", "concluido", "pago"].includes(pagamentoStatus)
+        ? {
+            ok: true,
+            non_fiscal: true,
+            doc_id: pagamentoId,
+            public_id: pagamentoId,
+            emitido_em: new Date().toISOString(),
+            print_url: `/secretaria/pagamentos/${pagamentoId}/recibo/print`,
+          }
+        : {
+            ok: false,
+            error: "Pagamento aguardando liquidação.",
+          };
+
       return NextResponse.json({
         ok: true,
         data: pagamento,
+        recibo: operationalReceipt,
         fiscal: {
           ok: true,
           enabled: false,
