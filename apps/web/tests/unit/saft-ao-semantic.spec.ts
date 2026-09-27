@@ -261,3 +261,41 @@ test("SAF-T rejects unsigned documents and zero VAT without Mxx evidence", () =>
     /IVA 0 exige TaxExemptionCode Mxx/
   );
 });
+
+
+test("SAF-T orders SourceDocuments by type, series and sequential number", () => {
+  const docs = [
+    invoice({
+      id: "10000000-0000-0000-0000-000000000011",
+      numero: 10,
+      numero_formatado: "FT B/10",
+      series_sort_key: "B",
+    }),
+    invoice({
+      id: "10000000-0000-0000-0000-000000000012",
+      numero: 2,
+      numero_formatado: "FT A/2",
+      series_sort_key: "A",
+    }),
+    invoice({
+      id: "10000000-0000-0000-0000-000000000013",
+      numero: 1,
+      numero_formatado: "FT A/1",
+      series_sort_key: "A",
+    }),
+  ];
+
+  const { xml } = buildSaftAoXml({
+    empresa,
+    periodoInicio: "2026-09-01",
+    periodoFim: "2026-09-30",
+    header,
+    generatedAtIso: "2026-09-27T13:00:00.000Z",
+    documentos: docs,
+  });
+
+  const a1 = xml.indexOf("<InvoiceNo>FT A/1</InvoiceNo>");
+  const a2 = xml.indexOf("<InvoiceNo>FT A/2</InvoiceNo>");
+  const b10 = xml.indexOf("<InvoiceNo>FT B/10</InvoiceNo>");
+  assert.ok(a1 >= 0 && a2 > a1 && b10 > a2);
+});
