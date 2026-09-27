@@ -9,7 +9,8 @@ import {
 } from "node:crypto";
 
 type SaftSigningConfig = {
-  privateKeyPem: string;
+  required: boolean;
+  privateKeyPem: string | null;
   hashControlVersion: number;
 };
 
@@ -39,8 +40,13 @@ function resolveHashControlVersion() {
 }
 
 function getConfig(): SaftSigningConfig {
+  const softwareValidationNumber =
+    (process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER ?? "0").trim();
+  const required = softwareValidationNumber !== "0";
+
   return {
-    privateKeyPem: resolvePrivateKeyPem(),
+    required,
+    privateKeyPem: required ? resolvePrivateKeyPem() : null,
     hashControlVersion: resolveHashControlVersion(),
   };
 }
@@ -62,14 +68,26 @@ function validatePrivateKey(privateKeyPem: string) {
 }
 
 export function getSaftSigningReadiness() {
-  const { privateKeyPem, hashControlVersion } = getConfig();
-  const privateKey = validatePrivateKey(privateKeyPem);
+  const { required, privateKeyPem, hashControlVersion } = getConfig();
+
+  if (!required) {
+    return {
+      ready: true as const,
+      required: false as const,
+      algorithm: "UNVALIDATED" as const,
+      hashControlVersion,
+      publicKeyFingerprintSha256: null,
+    };
+  }
+
+  const privateKey = validatePrivateKey(privateKeyPem!);
   const publicKeyPem = createPublicKey(privateKey)
     .export({ format: "pem", type: "spki" })
     .toString();
 
   return {
     ready: true as const,
+    required: true as const,
     algorithm: "RSA-1024-SHA1" as const,
     hashControlVersion,
     publicKeyFingerprintSha256: createHash("sha256")
@@ -85,7 +103,12 @@ export function signSaftCanonicalString(canonicalString: string) {
     );
   }
 
-  const { privateKeyPem, hashControlVersion } = getConfig();
+  const { required, privateKeyPem, hashControlVersion } = getConfig();
+  if (!required || !privateKeyPem) {
+    throw new Error(
+      "SAFT_SIGNING_NOT_REQUIRED: software ainda está em modo não-validado (certificado 0)."
+    );
+  }
   const privateKey = validatePrivateKey(privateKeyPem);
   const signature = sign("RSA-SHA1", Buffer.from(canonicalString, "utf8"), {
     key: privateKey,
