@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
@@ -107,6 +108,7 @@ export async function GET() {
       }
     }
 
+    const admin = supabaseServerRole<Database>();
     const [{ data: escola }, { data: empresa }, { data: chave }] = await Promise.all([
       escolaId
         ? supabase
@@ -123,9 +125,9 @@ export async function GET() {
             .maybeSingle()
         : Promise.resolve({ data: null }),
       ctx.empresaId
-        ? supabase
+        ? admin
             .from("fiscal_chaves")
-            .select("key_version, private_key_ref, public_key_pem, key_fingerprint, status")
+            .select("key_version, public_key_pem, key_fingerprint, status")
             .eq("empresa_id", ctx.empresaId)
             .eq("status", "active")
             .order("key_version", { ascending: false })
@@ -134,9 +136,6 @@ export async function GET() {
         : Promise.resolve({ data: null }),
     ]);
 
-    const envRegion = process.env.AWS_REGION?.trim() || "";
-    const envKeyId = process.env.AWS_KMS_KEY_ID?.trim() || "";
-    const envPrivateKeyRef = envRegion && envKeyId ? `kms://${envRegion}/${envKeyId}` : envKeyId;
     const saftProductId = process.env.SAFT_PRODUCT_ID?.trim() || "KLASSE/MoxiNexa";
     const saftSoftwareCertificateNumber =
       process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER?.trim() || "0";
@@ -168,7 +167,7 @@ export async function GET() {
         provincia_default: metaString("provincia"),
         codigo_postal_default: metaString("codigo_postal"),
         key_version_default: chave?.key_version ?? 1,
-        private_key_ref_default: chave?.private_key_ref ?? envPrivateKeyRef ?? "",
+        private_key_configured: Boolean(chave),
         public_key_pem_default: chave?.public_key_pem ?? "",
         key_fingerprint_default: chave?.key_fingerprint ?? "",
         saft_product_id_default: saftProductId,
