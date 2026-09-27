@@ -373,10 +373,25 @@ function resolveSignedHash(
 
 function resolveSaftInvoiceNo(doc: SaftDocumento, invoiceType: string): string {
   const raw = doc.numero_formatado.trim();
-  const alreadyValidPattern = /^([^ ]+) [^/^ ]+\/[0-9]+$/.exec(raw);
-  if (alreadyValidPattern && alreadyValidPattern[1] === invoiceType.trim().toUpperCase()) return raw;
-
   const tipo = invoiceType.trim().toUpperCase() || "FT";
+  const alreadyValidPattern = /^([^ ]+) ([^/^ ]+)\/([0-9]+)$/.exec(raw);
+
+  if (alreadyValidPattern && alreadyValidPattern[1] === tipo) {
+    const exportedNumber = Number(alreadyValidPattern[3]);
+    if (!Number.isSafeInteger(exportedNumber) || exportedNumber !== Number(doc.numero)) {
+      throw new Error(
+        `SAFT_SEMANTIC_ERROR: número sequencial de ${doc.numero_formatado} diverge do número fiscal persistido (${doc.numero}).`
+      );
+    }
+    return raw;
+  }
+
+  if (doc.saft_required) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: documento assinado ${doc.numero_formatado} não possui InvoiceNo SAF-T canónico '<tipo> <série>/<número>'.`
+    );
+  }
+
   const serieMatch = raw.match(/^([A-Za-z0-9._-]+)/);
   const rawSerie = serieMatch?.[1] ?? "SERIE";
   const serie = rawSerie.replace(/[^A-Za-z0-9._-]/g, "") || "SERIE";
@@ -1107,8 +1122,13 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
 
   const sumNet = (docs: SaftDocumento[]) =>
     docs.reduce((acc, doc) => acc + Number(doc.total_liquido_aoa), 0);
-  const salesDebit = sumNet(salesDocs.filter((doc) => isDebitSalesDocument(doc.tipo_documento)));
-  const salesCredit = sumNet(salesDocs.filter((doc) => !isDebitSalesDocument(doc.tipo_documento)));
+  const normalSalesDocs = salesDocs.filter((doc) => resolveInvoiceStatus(doc.status) === "N");
+  const salesDebit = sumNet(
+    normalSalesDocs.filter((doc) => isDebitSalesDocument(doc.tipo_documento))
+  );
+  const salesCredit = sumNet(
+    normalSalesDocs.filter((doc) => !isDebitSalesDocument(doc.tipo_documento))
+  );
   const movementLines = movementDocs.reduce((acc, doc) => acc + doc.itens.length, 0);
   const movementQuantity = movementDocs.reduce(
     (acc, doc) => acc + doc.itens.reduce((sub, item) => sub + item.quantidade, 0),
@@ -1132,20 +1152,24 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     "    </MovementOfGoods>",
   ].join("\n");
 
+  const normalWorkDocs = workDocs.filter((doc) => resolveWorkStatus(doc.status) === "N");
   const workBlock = [
     "    <WorkingDocuments>",
     `      <NumberOfEntries>${workDocs.length}</NumberOfEntries>`,
     "      <TotalDebit>0.0000</TotalDebit>",
-    `      <TotalCredit>${formatMoney(sumNet(workDocs))}</TotalCredit>`,
+    `      <TotalCredit>${formatMoney(sumNet(normalWorkDocs))}</TotalCredit>`,
     workDocumentsXml,
     "    </WorkingDocuments>",
   ].join("\n");
 
+  const normalPaymentDocs = paymentDocs.filter(
+    (doc) => resolvePaymentStatus(doc.status) === "N"
+  );
   const paymentBlock = [
     "    <Payments>",
     `      <NumberOfEntries>${paymentDocs.length}</NumberOfEntries>`,
     "      <TotalDebit>0.0000</TotalDebit>",
-    `      <TotalCredit>${formatMoney(sumNet(paymentDocs))}</TotalCredit>`,
+    `      <TotalCredit>${formatMoney(sumNet(normalPaymentDocs))}</TotalCredit>`,
     paymentsXml,
     "    </Payments>",
   ].join("\n");
@@ -1211,7 +1235,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         workingDocuments: {
           entries: workDocs.length,
           totalDebit: 0,
-          totalCredit: sumNet(workDocs),
+          totalCredit: sumNet(normalWorkDocs),
         },
         movementOfGoods: {
           lines: movementLines,
@@ -1220,7 +1244,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         payments: {
           entries: paymentDocs.length,
           totalDebit: 0,
-          totalCredit: sumNet(paymentDocs),
+          totalCredit: sumNet(normalPaymentDocs),
         },
         taxTableEntries: taxProfiles.size,
       },
