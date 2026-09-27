@@ -203,6 +203,30 @@ BILL-009 fecha o motor fiscal, **não activa o motor nas escolas**.
 
 Estado verificado em 2026-09-27: **0 bindings activados**.
 
+### Compatibilidade financeira enquanto fiscal está desligado
+
+Pagamento e comprovativo operacional continuam independentes do motor fiscal.
+
+Migration live/Git:
+
+- `20260927202623_restore_operational_receipts_compat.sql`.
+
+Ela preserva temporariamente os contratos `emitir_recibo(uuid)` e `emitir_recibo_servicos(uuid)` usados pelo código actualmente implantado, mas muda sua natureza para wrappers endurecidos de **comprovativo operacional não-fiscal**:
+
+- wrappers verificam `user_has_role_in_school`;
+- `authenticated` autorizado pode executar;
+- `anon`, `service_role` e callers cross-tenant não podem;
+- implementações originais foram renomeadas para `_emitir_recibo*_operacional_internal` e não têm EXECUTE directo;
+- nenhum desses comprovativos entra em `fiscal_documentos`, SAF-T ou AGT.
+
+Evidência live:
+- mensalidade paga -> recibo operacional existente recuperado com sucesso;
+- serviço pago -> recibo operacional existente recuperado com sucesso;
+- utilizador de outra escola -> `FORBIDDEN`;
+- RPC financeiro real -> `settled` com fiscal desligado, zero links/documentos fiscais e rollback sem resíduos.
+
+O hotfix de aplicação `hotfix/payment-receipt-prod-8493` remove a dependência futura desses wrappers e passa a imprimir directamente de `pagamentos`.
+
 ### Invariante nova
 
 Nunca voltar a aplicar M21 automaticamente por ser propina, mensalidade, escola, centro de formação ou `operationType=SE`.
