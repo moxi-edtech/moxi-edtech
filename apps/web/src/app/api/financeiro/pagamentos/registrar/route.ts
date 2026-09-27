@@ -468,6 +468,12 @@ export async function POST(req: Request) {
         } = { ok: false, error: "Fiscal pendente." };
 
     try {
+      if (!mensalidade) {
+        throw new Error(
+          "FISCAL_SOURCE_CLASSIFICATION_REQUIRED: pagamento financeiro directo sem mensalidade/origem fiscal classificada não pode ser emitido automaticamente como serviço de ensino."
+        );
+      }
+
       const fiscal = await emitirDocumentoFiscalViaAdapter({
         tipoFluxoFinanceiro: "immediate_payment",
         origemOperacao: "financeiro_pagamentos_registrar",
