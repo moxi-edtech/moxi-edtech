@@ -171,6 +171,7 @@ Fechado com:
 - validação repetida do mesmo pagamento é idempotente;
 - pagamento acima do saldo é rejeitado atomicamente;
 - pagamento parcial exige FT/ND emitida antes da liquidação;
+- comprovativo parcial do portal do aluno falha cedo quando não existe FT/ND origem, evitando pagamento pendente impossível de validar;
 - múltiplos pagamentos podem liquidar progressivamente a mesma FT/ND;
 - `financeiro_alocar_pagamento_multiplas_mensalidades` suporta um pagamento liquidando múltiplas facturas, com soma exacta, locks determinísticos e idempotência;
 - RC deriva exclusivamente das alocações activas;
@@ -191,7 +192,8 @@ Evidência transaccional rollback-only:
 4. parcial sem FT/ND: bloqueado antes da liquidação, sem alteração de saldo;
 5. intent settled: 1 pagamento canónico, 0 recibos legacy, 1 evento de outbox fiscal;
 6. RC multi-source: 2 `sourceDocuments`, 2 vínculos append-only, 0 lines, totais 34200/30000/4200, segunda emissão idempotente;
-7. N:N: pagamento 2000 dividido 1000/1000 em duas mensalidades; exactamente 2 alocações e retry idempotente.
+7. N:N: pagamento 2000 dividido 1000/1000 em duas mensalidades; exactamente 2 alocações e retry idempotente;
+8. comprovativo parcial do aluno sem FT/ND: rejeitado antes de criar pagamento pendente; zero resíduos.
 
 Testes de mapper:
 - RC válido não contém `lines`;
