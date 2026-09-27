@@ -159,7 +159,7 @@ export default function ReciboPagamentoCompacto({
         </div>
       </header>
 
-      <section className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white print:rounded-xl">
+      <section className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white print:rounded-xl">
         <div className={`grid grid-cols-3 gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-1.5 print:px-2.5 print:py-1.5" : isDensePrint ? "print:gap-2 print:px-3 print:py-1.5" : isPrintCompact ? "print:gap-2 print:px-3 print:py-1.75" : "print:gap-2 print:px-3 print:py-2"}`}>
           <CompactField label="Aluno" value={alunoNome} clamp="two" className="col-span-3 sm:col-span-1" />
           <CompactField label="Classe / Curso" value={classeCurso} />
