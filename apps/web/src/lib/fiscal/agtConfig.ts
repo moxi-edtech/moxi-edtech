@@ -1,5 +1,7 @@
 import "server-only";
 
+import { parseSafeInteger } from "@/lib/fiscal/decimal";
+
 export type AgtEnvironment = "hml" | "prod";
 
 export function resolveAgtConfig() {
@@ -50,7 +52,11 @@ export function resolveAgtConfig() {
     process.env.FISCAL_AGT_SOFTWARE_SIGNATURE_VERSION?.trim() ||
     process.env.AGT_SOFTWARE_SIGNATURE_VERSION?.trim() ||
     "1";
-  const signatureVersion = Number(signatureVersionRaw);
+  const signatureVersion = parseSafeInteger(
+    signatureVersionRaw,
+    "AGT_SOFTWARE_SIGNATURE_VERSION",
+    { min: 1 }
+  );
 
   if (!username || !password) throw new Error("AGT_FE_BASIC_AUTH_MISSING");
   if (!productId || !productVersion || !softwareValidationNumber) {
@@ -58,9 +64,6 @@ export function resolveAgtConfig() {
   }
   if (!softwarePrivateKeyRef) {
     throw new Error("AGT_SOFTWARE_KMS_KEY_REF_MISSING");
-  }
-  if (!Number.isSafeInteger(signatureVersion) || signatureVersion <= 0) {
-    throw new Error("AGT_SOFTWARE_SIGNATURE_VERSION_INVALID");
   }
 
   return {
@@ -82,10 +85,11 @@ export function buildAgtBasicAuthorization(username: string, password: string) {
 }
 
 export function resolveAgtTimeoutMs() {
-  const value = Number(
+  return parseSafeInteger(
     process.env.FISCAL_AGT_TIMEOUT_MS ??
       process.env.AGT_FE_TIMEOUT_MS ??
-      12000
+      "12000",
+    "FISCAL_AGT_TIMEOUT_MS",
+    { min: 1000, fallback: 12000 }
   );
-  return Number.isFinite(value) && value >= 1000 ? value : 12000;
 }
