@@ -388,6 +388,15 @@ async function main() {
       select id, escola_id, empresa_id, origem_tipo, origem_id, status
       from public.financeiro_fiscal_links
       where origem_tipo in ('financeiro_pagamentos_registrar', 'financeiro_recibos_emitir')
+        and exists (
+          select 1
+          from public.fiscal_escola_bindings b
+          where b.escola_id = financeiro_fiscal_links.escola_id
+            and b.empresa_id = financeiro_fiscal_links.empresa_id
+            and b.fiscal_enabled = true
+            and b.effective_from <= current_date
+            and (b.effective_to is null or b.effective_to >= current_date)
+        )
         and status in ('pending', 'failed')
         and fiscal_documento_id is null
         and (${args.escolaId ?? null}::uuid is null or escola_id = ${args.escolaId ?? null}::uuid)
