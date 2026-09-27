@@ -293,3 +293,77 @@ test("SAF-T orders SourceDocuments by type, series and sequential number", () =>
   const b10 = xml.indexOf("<InvoiceNo>FT B/10</InvoiceNo>");
   assert.ok(a1 >= 0 && a2 > a1 && b10 > a2);
 });
+
+
+test("SAF-T excludes annulled documents from section TotalDebit/TotalCredit", () => {
+  const normal = invoice({
+    numero: 1,
+    numero_formatado: "FT TEST/1",
+    total_liquido_aoa: 100,
+    total_impostos_aoa: 14,
+    total_bruto_aoa: 114,
+  });
+  const annulled = invoice({
+    id: "10000000-0000-0000-0000-000000000099",
+    numero: 2,
+    numero_formatado: "FT TEST/2",
+    status: "anulado",
+    total_liquido_aoa: 900,
+    total_impostos_aoa: 126,
+    total_bruto_aoa: 1026,
+    itens: [
+      {
+        ...invoice().itens[0],
+        preco_unit: 900,
+        total_liquido_aoa: 900,
+        total_impostos_aoa: 126,
+        total_bruto_aoa: 1026,
+      },
+    ],
+  });
+
+  const result = build([normal, annulled]);
+
+  assert.match(result.xml, /<NumberOfEntries>2<\/NumberOfEntries>/);
+  assert.match(result.xml, /<InvoiceStatus>A<\/InvoiceStatus>/);
+  assert.equal(result.summary.sections.salesInvoices.totalCredit, 100);
+  assert.equal(result.summary.sections.salesInvoices.totalDebit, 0);
+});
+
+test("validated SAF-T rejects signed document when exported InvoiceNo would differ", () => {
+  assert.throws(
+    () =>
+      build(
+        [
+          invoice({
+            numero: 1,
+            numero_formatado: "FT-000001",
+            saft_hash: "A".repeat(172),
+            saft_hash_control: 1,
+            saft_required: true,
+          }),
+        ],
+        certifiedHeader
+      ),
+    /não possui InvoiceNo SAF-T canónico/
+  );
+});
+
+test("validated SAF-T rejects sequential mismatch between InvoiceNo and persisted number", () => {
+  assert.throws(
+    () =>
+      build(
+        [
+          invoice({
+            numero: 2,
+            numero_formatado: "FT TEST/1",
+            saft_hash: "A".repeat(172),
+            saft_hash_control: 1,
+            saft_required: true,
+          }),
+        ],
+        certifiedHeader
+      ),
+    /diverge do número fiscal persistido/
+  );
+});
