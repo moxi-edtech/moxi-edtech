@@ -68,6 +68,7 @@ function invoice(overrides: Record<string, unknown> = {}) {
         descricao: "Propina",
         product_code: "PROPINA",
         product_number_code: "PROPINA",
+        product_type: "S" as const,
         quantidade: 1,
         preco_unit: 100,
         taxa_iva: 14,
@@ -472,4 +473,54 @@ test("generated SAF-T passes the bundled official AO 1.01_01 XSD", async () => {
 
   assert.equal(result.ok, true);
   assert.equal(result.validator, "xmllint");
+});
+
+
+test("SAF-T MasterFiles preserves product classification and rejects conflicts", () => {
+  const goods = invoice({
+    tipo_documento: "GR",
+    numero_formatado: "GR TEST/1",
+    itens: [
+      {
+        ...invoice().itens[0],
+        product_code: "LIVRO",
+        product_number_code: "LIVRO",
+        product_type: "P" as const,
+      },
+    ],
+  });
+
+  const result = build([goods]);
+  assert.match(result.xml, /<ProductType>P<\/ProductType>/);
+
+  assert.throws(
+    () =>
+      build([
+        invoice({
+          numero_formatado: "FT TEST/1",
+          itens: [
+            {
+              ...invoice().itens[0],
+              product_code: "MESMO",
+              product_number_code: "MESMO",
+              product_type: "S" as const,
+            },
+          ],
+        }),
+        invoice({
+          id: "10000000-0000-0000-0000-000000000091",
+          numero: 2,
+          numero_formatado: "FT TEST/2",
+          itens: [
+            {
+              ...invoice().itens[0],
+              product_code: "MESMO",
+              product_number_code: "MESMO",
+              product_type: "P" as const,
+            },
+          ],
+        }),
+      ]),
+    /ProductCode MESMO possui ProductType divergente/
+  );
 });
