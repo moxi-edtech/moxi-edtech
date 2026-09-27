@@ -96,6 +96,18 @@ function resolveTaxCode(rate: number, payloadItem: Record<string, unknown>) {
     if (!["NOR", "INT", "RED", "ISE", "OUT"].includes(explicit)) {
       throw new AgtMappingError("AGT_MAPPING_TAX_CODE_INVALID", `tax_code inválido: ${explicit}`);
     }
+    if (rate === 0 && explicit !== "ISE") {
+      throw new AgtMappingError(
+        "AGT_MAPPING_TAX_CODE_RATE_MISMATCH",
+        "IVA a 0% exige tax_code ISE no modelo actual do KLASSE"
+      );
+    }
+    if (rate > 0 && explicit === "ISE") {
+      throw new AgtMappingError(
+        "AGT_MAPPING_TAX_CODE_RATE_MISMATCH",
+        "tax_code ISE não pode ser usado com taxa IVA superior a 0%"
+      );
+    }
     return explicit;
   }
   if (rate === 14) return "NOR";
@@ -185,9 +197,17 @@ export function buildAgtPreparedDocument(input: {
       netTotal += lineNet;
       taxPayable += taxContribution;
       const taxCode = resolveTaxCode(rate, payloadItem);
+      const taxCountryRegion =
+        textValue(payloadItem.tax_country_region).toUpperCase() || "AO";
+      if (!/^(?:[A-Z]{2}|AO-CAB)$/.test(taxCountryRegion)) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_TAX_REGION_INVALID",
+          `taxCountryRegion inválido: ${taxCountryRegion}`
+        );
+      }
       const tax: Record<string, unknown> = {
         taxType: "IVA",
-        taxCountryRegion: textValue(payloadItem.tax_country_region).toUpperCase() || "AO",
+        taxCountryRegion,
         taxCode,
         taxPercentage: rate,
         taxContribution,
