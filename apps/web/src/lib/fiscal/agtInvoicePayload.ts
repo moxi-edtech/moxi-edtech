@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { AgtPreparedDocument, AgtInvoiceDocument } from "@/lib/fiscal/agtInvoice";
 
 type FiscalDocumentRow = {
