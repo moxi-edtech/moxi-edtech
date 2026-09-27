@@ -4,25 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { BookOpen, FileText, RefreshCw, Search, User } from "lucide-react";
+import { emitirDocumento, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
+import type { TipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 
-type DocumentoTipo =
-  | "declaracao_frequencia"
-  | "declaracao_notas"
-  | "boletim_trimestral"
-  | "cartao_estudante"
-  | "ficha_inscricao"
-  | "comprovante_matricula"
-  | "historico"
-  | "certificado";
-
-type DocumentoResponse = {
-  ok: boolean;
-  docId?: string;
-  hash?: string;
-  publicId?: string;
-  tipo?: DocumentoTipo;
-  error?: string;
-};
+// Mesmo union que a rota de emissão aceita. Estava aqui duplicado (e uma
+// terceira vez, mais curto, em DocumentosEmissaoHub.tsx — esse é outro
+// componente e não se toca); passa a haver uma só definição.
+type DocumentoTipo = TipoDocumentoEmitivel;
 
 type ServicoItem = {
   id: string;
@@ -400,42 +388,22 @@ export default function DocumentosEmissaoHubClient({
         }
       }
 
-      const res = await fetch("/api/secretaria/documentos/emitir", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          alunoId: selectedAluno.id,
-          tipoDocumento: tipo,
-          escolaId,
-          ano_letivo_id: selectedAnoLetivoId,
-          ano_letivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : undefined,
-        }),
+      // `emitirDocumento` devolve sempre o URL de impressão junto com o docId,
+      // e omite `ano_letivo_id` quando é nulo (o zod da rota usa `.optional()`,
+      // não `.nullable()` — enviar `null` dava um erro ilegível). A abertura da
+      // aba mantém-se depois dos awaits, como estava.
+      const emissao = await emitirDocumento({
+        escolaId,
+        alunoId: selectedAluno.id,
+        tipoDocumento: tipo,
+        anoLetivoId: selectedAnoLetivoId,
+        anoLetivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : null,
       });
-      const json = (await res.json().catch(() => ({}))) as DocumentoResponse;
-      if (!res.ok || !json.ok || !json.docId) {
-        throw new Error(json.error || "Falha ao emitir documento");
-      }
+      if (!emissao.ok) throw new Error(emissao.error);
 
-        const destino =
-          tipo === "declaracao_frequencia"
-            ? `/secretaria/documentos/${json.docId}/frequencia/print`
-          : tipo === "declaracao_notas"
-          ? `/secretaria/documentos/${json.docId}/notas/print`
-          : tipo === "boletim_trimestral"
-          ? `/secretaria/documentos/${json.docId}/boletim-trimestral/print`
-          : tipo === "cartao_estudante"
-          ? `/secretaria/documentos/${json.docId}/cartao/print`
-          : tipo === "comprovante_matricula"
-          ? `/secretaria/documentos/${json.docId}/comprovante-matricula/print`
-          : tipo === "historico"
-          ? `/secretaria/documentos/${json.docId}/historico/print`
-          : tipo === "certificado"
-          ? `/secretaria/documentos/${json.docId}/certificado/print`
-          : `/secretaria/documentos/${json.docId}/ficha/print`;
-
-      const popup = window.open(destino, "_blank", "noopener,noreferrer");
-      if (!popup) {
-        setPrintQueue((prev) => [{ label: selectedAluno.label, url: destino }, ...prev]);
+      const impressao = abrirParaImpressao(emissao.printUrl);
+      if (!impressao.ok) {
+        setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao emitir documento");

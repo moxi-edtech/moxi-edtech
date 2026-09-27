@@ -1,4 +1,6 @@
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
+import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
+import { PrintLetterhead } from "@/app/secretaria/documentos/_print/PrintLetterhead";
 import { formatDocumentoIdentificacao } from "@/lib/documentos/identificacao";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { buildCertificadoSnapshot, type CertificadoSnapshot } from "@/lib/documentos/certificadoSnapshot";
@@ -25,13 +27,16 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
     }
   }
   return (
-    <main className="min-h-screen bg-slate-100 p-4 text-slate-900 print:bg-white md:p-10">
+    <main className="min-h-screen bg-slate-100 p-4 font-serif text-slate-900 print:bg-white md:p-10">
+      <PrintTrigger />
       <article className="mx-auto max-w-3xl space-y-8 bg-white p-8 shadow-sm print:max-w-none print:shadow-none">
-        <header className="space-y-2 border-b pb-5 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Documento oficial escolar</p>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="text-sm text-slate-500">Código: {formatDocumentoIdentificacao(result.doc.tipo, snapshot.numero_sequencial)}</p>
-        </header>
+        <PrintLetterhead
+          escolaNome={result.escolaNome}
+          logoUrl={result.logoUrl}
+          titulo={title}
+          data={new Date().toLocaleDateString("pt-PT")}
+          numero={`Código: ${formatDocumentoIdentificacao(result.doc.tipo, snapshot.numero_sequencial)}`}
+        />
         <section className="grid gap-4 text-sm sm:grid-cols-2">
           <p><strong>Aluno:</strong> {String(snapshot.aluno_nome ?? "—")}</p>
           <p><strong>BI:</strong> {String(snapshot.aluno_bi ?? "—")}</p>
