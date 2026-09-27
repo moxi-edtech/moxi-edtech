@@ -56,7 +56,7 @@ export async function signAgtJwsRs256(
   options: JwsSignOptions
 ) {
   const { region, keyId } = parseKmsPrivateKeyRef(options.privateKeyRef);
-  const header = { typ: "JOSE", alg: "RS256" };
+  const header = { alg: "RS256", typ: "JWT" };
   const signingInput = `${base64Url(canonicalJson(header))}.${base64Url(canonicalJson(payload))}`;
 
   const kms = new KMSClient({ region });
