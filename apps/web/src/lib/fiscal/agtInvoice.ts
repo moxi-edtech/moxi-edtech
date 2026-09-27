@@ -115,6 +115,7 @@ export async function registerAgtInvoices(input: {
   taxRegistrationNumber: string;
   taxpayerPrivateKeyRef: string;
   documents: AgtPreparedDocument[];
+  submissionTimeStamp?: string;
 }): Promise<AgtRegisterResult> {
   if (input.documents.length < 1 || input.documents.length > 30) {
     throw new Error("AGT_REGISTER_DOCUMENT_COUNT_INVALID");
@@ -131,7 +132,7 @@ export async function registerAgtInvoices(input: {
     schemaVersion: "2.0",
     submissionUUID: input.submissionUuid,
     taxRegistrationNumber: input.taxRegistrationNumber,
-    submissionTimeStamp: new Date().toISOString(),
+    submissionTimeStamp: input.submissionTimeStamp ?? new Date().toISOString(),
     softwareInfo,
     numberOfEntries: documents.length,
     documents,
