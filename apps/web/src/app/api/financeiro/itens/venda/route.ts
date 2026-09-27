@@ -51,12 +51,57 @@ export async function POST(req: Request) {
     const qty = Number(quantidade)
     if (!qty || qty <= 0) return NextResponse.json({ ok: false, error: 'Quantidade inválida' }, { status: 400 })
 
+    const { data: catalogItem, error: catalogItemError } = await s
+      .from("financeiro_itens")
+      .select("id, nome, preco, tax_profile_code, fiscal_product_type, fiscal_operation_type")
+      .eq("id", item_id)
+      .eq("escola_id", escolaId)
+      .maybeSingle()
+
+    if (catalogItemError || !catalogItem) {
+      return NextResponse.json(
+        { ok: false, error: catalogItemError?.message ?? "Item do catálogo não encontrado." },
+        { status: 404 }
+      )
+    }
+
+    if (
+      !catalogItem.tax_profile_code ||
+      !catalogItem.fiscal_product_type ||
+      !catalogItem.fiscal_operation_type
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Item sem classificação fiscal. Defina perfil tributário e natureza fiscal antes da venda.",
+          code: "FISCAL_CATALOG_CLASSIFICATION_REQUIRED",
+        },
+        { status: 409 }
+      )
+    }
+
+    const unitPriceBase = Number(
+      Number(valor_unitario ?? catalogItem.preco ?? 0).toFixed(2)
+    )
+    const settlementAmount = Number(Number(desconto || 0).toFixed(2))
+    const grossBeforeDiscount = Number((unitPriceBase * qty).toFixed(2))
+    if (unitPriceBase < 0 || settlementAmount < 0 || settlementAmount > grossBeforeDiscount) {
+      return NextResponse.json(
+        { ok: false, error: "Preço/desconto inválido para a venda." },
+        { status: 400 }
+      )
+    }
+    const netUnitPrice = Number(
+      ((grossBeforeDiscount - settlementAmount) / qty).toFixed(4)
+    )
+
     const { data, error } = await s.rpc('registrar_venda_avulsa', {
       p_escola_id: escolaId,
       p_aluno_id: aluno_id,
       p_item_id: item_id,
       p_quantidade: qty,
-      p_valor_unit: Number(Number(valor_unitario ?? 0).toFixed(2)),
+      p_valor_unit: unitPriceBase,
       p_desconto: Number(Number(desconto || 0).toFixed(2)),
       p_metodo_pagamento: metodo_pagamento,
       p_status: status,
@@ -75,9 +120,7 @@ export async function POST(req: Request) {
       escolaId,
       cookieHeader,
     })
-    const totalVenda = Number(
-      (Number(Number(valor_unitario ?? 0).toFixed(2)) * qty - Number(Number(desconto || 0).toFixed(2))).toFixed(2)
-    )
+    const totalVenda = Number((grossBeforeDiscount - settlementAmount).toFixed(2))
 
     const { error: lockError } = await s
       .from("financeiro_fiscal_links")
@@ -155,8 +198,15 @@ export async function POST(req: Request) {
         descricaoPrincipal: descricao ?? 'Venda avulsa',
         itens: [
           {
-            descricao: descricao ?? `Venda item ${item_id}`,
-            valor: totalVenda > 0 ? totalVenda : Number(Number(valor_unitario ?? 0).toFixed(2)),
+            descricao: descricao ?? catalogItem.nome ?? `Venda item ${item_id}`,
+            valor: netUnitPrice,
+            quantidade: qty,
+            unitPriceBase,
+            settlementAmount,
+            taxProfileCode: catalogItem.tax_profile_code,
+            productType: catalogItem.fiscal_product_type as "P" | "S",
+            operationType: catalogItem.fiscal_operation_type as "TB" | "SG",
+            unitOfMeasure: "UN",
           },
         ],
         cliente: { nome: null, nif: null },
