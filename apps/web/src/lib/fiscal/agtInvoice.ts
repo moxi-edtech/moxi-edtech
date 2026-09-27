@@ -2,6 +2,7 @@ import "server-only";
 
 import { signAgtJwsRs256 } from "@/lib/fiscal/agtJws";
 import { buildAgtSoftwareInfo } from "@/lib/fiscal/agtSoftwareInfo";
+import { parseSafeInteger } from "@/lib/fiscal/decimal";
 import {
   buildAgtBasicAuthorization,
   resolveAgtConfig,
@@ -201,8 +202,12 @@ export async function getAgtInvoiceStatus(input: {
         successRequestID?: string;
       }
     | null;
-  const resultCode = Number(responsePayload?.resultCode);
-  if (!Number.isInteger(resultCode) || ![0, 1, 2, 7, 8, 9].includes(resultCode)) {
+  const resultCode = parseSafeInteger(
+    responsePayload?.resultCode,
+    "AGT_STATUS_RESULT_CODE",
+    { min: 0, max: 9, fallback: -1 }
+  );
+  if (![0, 1, 2, 7, 8, 9].includes(resultCode)) {
     throw new AgtHttpError("AGT_STATUS_RESULT_CODE_INVALID", 200, responsePayload);
   }
   return {
