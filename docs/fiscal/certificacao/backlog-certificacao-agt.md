@@ -214,13 +214,15 @@ Implementado:
 - contrato explícito de **SAF-T de Facturação (`TaxAccountingBasis=F`)**;
 - `C/I` é fail-closed porque o KLASSE não mantém plano de contas + razão de dupla entrada; não é gerado um SAF-T contabilístico falso;
 - Header com identidade do produtor, versão do produto e número de validação;
+- configuração do Header congelada no pedido e reutilizada pelo worker para reprodutibilidade;
 - `MasterFiles.Customer`, `Product` e `TaxTable`;
+- ProductType P/S/O/E/I, unidade de medida e perfil fiscal explícito preservados do documento;
 - consumidor final canónico;
 - TaxTable derivada dos perfis fiscais efectivamente usados;
 - SalesInvoices com `DebitAmount/CreditAmount` líquido, sem IVA;
 - polaridade explícita para NC/RE vs documentos de crédito;
 - `TotalDebit/TotalCredit` reconciliados com documentos normais;
-- documentos anulados excluídos dos control totals e exportados com timestamp/motivo real do evento;
+- documentos anulados excluídos dos control totals e exportados com timestamp/motivo/actor real do evento;
 - WorkingDocuments;
 - MovementOfGoods e `TotalQuantityIssued` excluindo anulados;
 - Payments/RC usando `paymentReceipt.sourceDocuments` do BILL-007;
@@ -228,6 +230,7 @@ Implementado:
 - isenção IVA 0 exige `Mxx` + motivo;
 - reconciliação `NetTotal + TaxPayable = GrossTotal`;
 - moeda estrangeira exige taxa de câmbio positiva;
+- UnitPrice/SettlementAmount são exportados em AOA e reconciliados com a linha fiscal original;
 - SourceDocuments ordenados por tipo / série / número sequencial;
 - número fiscal nunca é reescrito pelo exportador;
 - tipos sem mapeamento são rejeitados;
@@ -256,7 +259,7 @@ Pré-validação do banco em 2026-09-27:
 - linhas IVA 0 sem código/motivo de isenção: **0**;
 - documentos anulados sem evento/motivo: **0**;
 - tipos sem mapeamento SAF-T: **0**;
-- números fiscais históricos fora do formato canónico: **103**;
+- documentos comerciais históricos fora do formato canónico: **98**;
 - RC históricos sem `paymentReceipt.sourceDocuments`: **8**.
 
 Os dois últimos grupos são **dados históricos** e são recusados deliberadamente. O SAF-T não fabrica/re-numera documentos fiscais para os esconder.
@@ -299,7 +302,7 @@ O KLASSE possui ledger financeiro operacional, mas isso **não equivale** a um r
 
 ### Dependências deliberadas
 
-- os 103 números fiscais históricos não canónicos e os 8 RC históricos sem origem devem ser tratados no **BILL-010**, sem mutar silenciosamente documentos emitidos;
+- os 98 documentos comerciais históricos com numeração não-canónica e os 8 RC históricos sem origem devem ser tratados no **BILL-010**, sem mutar silenciosamente documentos emitidos;
 - expansão de códigos fiscais, descontos, retenções e combinações tributárias será revista no **BILL-009**;
 - submissão/aceitação externa AGT permanece no **BILL-013**.
 
