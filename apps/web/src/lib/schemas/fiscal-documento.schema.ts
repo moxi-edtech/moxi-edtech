@@ -10,11 +10,17 @@ export const FISCAL_ORIGENS_DOCUMENTO = [
 
 export const FISCAL_TIPOS_DOCUMENTO = ["FR", "FT", "NC", "ND", "RC", "PP", "GR", "GT", "FG"] as const;
 export const FISCAL_PAYMENT_MECHANISM_CODES = ["NU", "TB", "CC", "MB"] as const;
+export const FISCAL_OPERATION_TYPES = ["SE", "SS", "STP", "SR", "SIF", "SHS", "ST", "SG", "TB", "AS", "QT", "RD"] as const;
+export const FISCAL_IVA_TAX_CODES = ["NOR", "INT", "RED", "ISE", "OUT"] as const;
 
 export const fiscalDocumentoItemSchema = z.object({
   descricao: z.string().trim().min(1).max(500),
   product_code: z.string().trim().min(1).max(64),
   product_number_code: z.string().trim().min(1).max(64).optional(),
+  operation_type: z.enum(FISCAL_OPERATION_TYPES).default("SE"),
+  unit_of_measure: z.string().trim().min(1).max(20).default("UN"),
+  tax_code: z.enum(FISCAL_IVA_TAX_CODES).optional(),
+  tax_country_region: z.string().trim().min(2).max(6).default("AO"),
   quantidade: z.coerce.number().positive(),
   preco_unit: z.coerce.number().min(0),
   settlement_amount: z.coerce.number().min(0).optional(),
@@ -39,7 +45,7 @@ export const fiscalDocumentoClienteSchema = z.object({
   address_detail: z.string().trim().min(1).max(255).optional(),
   city: z.string().trim().min(1).max(120).optional(),
   postal_code: z.string().trim().min(1).max(40).optional(),
-  country: z.string().trim().min(1).max(80).optional(),
+  country: z.string().trim().length(2).transform((value) => value.toUpperCase()).default("AO"),
 });
 
 export const postFiscalDocumentoSchema = z
