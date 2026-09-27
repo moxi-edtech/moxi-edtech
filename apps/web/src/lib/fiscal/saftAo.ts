@@ -92,6 +92,7 @@ type SaftProduct = {
 };
 
 const CONSUMIDOR_FINAL_NIF = "999999999";
+const CONSUMIDOR_FINAL_NOME = "Consumidor final";
 const DESCONHECIDO = "Desconhecido";
 
 type BuildSaftAoXmlInput = {
