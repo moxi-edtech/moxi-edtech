@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       await Promise.all([
         supabase
           .from("fiscal_empresas")
-          .select("id,nif")
+          .select("id,nif,certificado_agt_numero")
           .eq("id", parsed.data.empresa_id)
           .maybeSingle(),
         supabase
@@ -171,6 +171,7 @@ export async function POST(req: Request) {
         establishmentNumber: parsed.data.establishment_number,
         contingencyIndicator: parsed.data.series_contingency_indicator,
         taxpayerPrivateKeyRef: keyRow.private_key_ref,
+        expectedSoftwareValidationNumber: empresa.certificado_agt_numero,
       });
 
       const firstNo = Number(agt.firstDocumentNo);
