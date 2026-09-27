@@ -479,7 +479,8 @@ export async function POST(req: Request) {
 
     let uiTaxProfileCode: FiscalTaxProfileCode | null = null;
     if (!("empresa_id" in parsed.data)) {
-      const { data: profileCode, error: profileError } = await supabase.rpc(
+      const fiscalResolver = supabaseServerRole<FiscalDatabase>();
+      const { data: profileCode, error: profileError } = await fiscalResolver.rpc(
         "fiscal_resolve_education_tax_profile",
         { p_empresa_id: requestedEmpresaId }
       );
