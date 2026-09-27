@@ -28,21 +28,21 @@ type FiscalItemRow = {
   total_liquido_aoa: number | string;
   total_impostos_aoa: number | string;
   tax_exemption_code: string | null;
-  tax_exemption_reason: string | null;
+  tax_exemption_reason?: string | null;
   product_code: string | null;
   product_number_code: string | null;
-  tax_profile_code: string | null;
-  tax_type: string | null;
-  tax_code: string | null;
-  tax_country_region: string | null;
-  operation_type: string | null;
-  unit_of_measure: string | null;
-  product_type: string | null;
-  unit_price_base: number | string | null;
-  settlement_amount: number | string | null;
-  total_liquido_moeda: number | string | null;
-  total_impostos_moeda: number | string | null;
-  total_bruto_moeda: number | string | null;
+  tax_profile_code?: string | null;
+  tax_type?: string | null;
+  tax_code?: string | null;
+  tax_country_region?: string | null;
+  operation_type?: string | null;
+  unit_of_measure?: string | null;
+  product_type?: string | null;
+  unit_price_base?: number | string | null;
+  settlement_amount?: number | string | null;
+  total_liquido_moeda?: number | string | null;
+  total_impostos_moeda?: number | string | null;
+  total_bruto_moeda?: number | string | null;
 };
 
 type OriginDocumentRow = {
