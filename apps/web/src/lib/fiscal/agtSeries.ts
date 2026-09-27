@@ -1,6 +1,7 @@
 import "server-only";
 
 import { signAgtJwsRs256 } from "@/lib/fiscal/agtJws";
+import { buildAgtBasicAuthorization, resolveAgtConfig, resolveAgtTimeoutMs } from "@/lib/fiscal/agtConfig";
 
 export type AgtSeriesProvisionInput = {
   submissionUuid: string;
@@ -24,49 +25,6 @@ type AgtErrorItem = {
   idError?: string;
   descriptionError?: string;
 };
-
-function resolveAgtConfig() {
-  const environment = (process.env.AGT_FE_ENV ?? "hml").trim().toLowerCase();
-  if (environment !== "hml" && environment !== "prod") {
-    throw new Error("AGT_FE_ENV_INVALID");
-  }
-
-  const configuredBaseUrl = process.env.AGT_FE_BASE_URL?.trim() || "";
-  const baseUrl =
-    configuredBaseUrl ||
-    (environment === "prod"
-      ? "https://sifp.minfin.gov.ao/sigt/fe/v1"
-      : "");
-
-  if (!baseUrl) {
-    throw new Error("AGT_FE_BASE_URL_REQUIRED_FOR_HML");
-  }
-
-  const username = process.env.AGT_FE_USERNAME?.trim() || "";
-  const password = process.env.AGT_FE_PASSWORD ?? "";
-  const productId = process.env.AGT_SOFTWARE_PRODUCT_ID?.trim() || "";
-  const productVersion = process.env.AGT_SOFTWARE_PRODUCT_VERSION?.trim() || "";
-  const softwareValidationNumber =
-    process.env.AGT_SOFTWARE_VALIDATION_NUMBER?.trim() || "";
-  const softwarePrivateKeyRef =
-    process.env.AGT_SOFTWARE_KMS_KEY_REF?.trim() || "";
-
-  if (!username || !password) throw new Error("AGT_FE_BASIC_AUTH_MISSING");
-  if (!productId || !productVersion || !softwareValidationNumber) {
-    throw new Error("AGT_SOFTWARE_INFO_MISSING");
-  }
-  if (!softwarePrivateKeyRef) throw new Error("AGT_SOFTWARE_KMS_KEY_REF_MISSING");
-
-  return {
-    baseUrl: baseUrl.replace(/\/$/, ""),
-    username,
-    password,
-    productId,
-    productVersion,
-    softwareValidationNumber,
-    softwarePrivateKeyRef,
-  };
-}
 
 export async function provisionAgtSeries(
   input: AgtSeriesProvisionInput
@@ -112,21 +70,18 @@ export async function provisionAgtSeries(
   };
 
   const controller = new AbortController();
-  const timeoutMs = Number(process.env.AGT_FE_TIMEOUT_MS ?? 12000);
+  const timeoutMs = resolveAgtTimeoutMs();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const authorization = Buffer.from(
-      `${cfg.username}:${cfg.password}`,
-      "utf8"
-    ).toString("base64");
+    const authorization = buildAgtBasicAuthorization(cfg.username, cfg.password);
 
     const response = await fetch(`${cfg.baseUrl}/solicitarSerie`, {
       method: "POST",
       signal: controller.signal,
       cache: "no-store",
       headers: {
-        Authorization: `Basic ${authorization}`,
+        Authorization: authorization,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
