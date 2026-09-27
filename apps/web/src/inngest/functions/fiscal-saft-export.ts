@@ -19,7 +19,7 @@ type FiscalExportEvent = {
 
 type FiscalEmpresaRow = Pick<
   Database["public"]["Tables"]["fiscal_empresas"]["Row"],
-  "id" | "nome" | "nif" | "endereco" | "certificado_agt_numero"
+  "id" | "nome" | "nif" | "endereco" | "certificado_agt_numero" | "metadata"
 >;
 
 type FiscalDocumentoRow = {
@@ -326,7 +326,7 @@ export const fiscalSaftExport = inngest.createFunction(
       const [empresaRes, docsRes] = await Promise.all([
         supabase
           .from("fiscal_empresas")
-          .select("id, nome, nif, endereco, certificado_agt_numero")
+          .select("id, nome, nif, endereco, certificado_agt_numero, metadata")
           .eq("id", exportRow.empresa_id)
           .maybeSingle<FiscalEmpresaRow>(),
         supabase
@@ -425,12 +425,25 @@ export const fiscalSaftExport = inngest.createFunction(
         }
       }
 
+      const empresaMetadata =
+        empresa.metadata && typeof empresa.metadata === "object" && !Array.isArray(empresa.metadata)
+          ? (empresa.metadata as Record<string, unknown>)
+          : {};
+      const metadataString = (key: string) => {
+        const value = empresaMetadata[key];
+        return typeof value === "string" && value.trim() ? value.trim() : null;
+      };
+
       const saftInput = {
         empresa: {
           id: empresa.id,
           nome: empresa.nome,
           nif: empresa.nif,
           endereco: empresa.endereco,
+          registoComercial: metadataString("registo_comercial"),
+          cidade: metadataString("cidade"),
+          provincia: metadataString("provincia"),
+          codigoPostal: metadataString("codigo_postal"),
           certificadoAgtNumero: empresa.certificado_agt_numero,
         },
         periodoInicio: exportRow.periodo_inicio,
