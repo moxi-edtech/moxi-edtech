@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { FISCAL_TAX_PROFILE_CODES } from "@/lib/fiscal/taxProfiles";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -195,7 +194,6 @@ export async function POST(req: Request) {
             {
               descricao: "Propina",
               valor: outstanding,
-              taxProfileCode: FISCAL_TAX_PROFILE_CODES.educationM21,
               productType: "S",
               operationType: "SE",
               unitOfMeasure: "UN",
@@ -481,7 +479,6 @@ export async function POST(req: Request) {
               ? `Pagamento mensalidade ${mensalidade.id}`
               : "Pagamento financeiro direto",
             valor,
-            taxProfileCode: FISCAL_TAX_PROFILE_CODES.educationM21,
             productType: "S",
             operationType: "SE",
             unitOfMeasure: "UN",
