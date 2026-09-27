@@ -371,39 +371,32 @@ function resolveSignedHash(
   };
 }
 
-function resolveSaftInvoiceNo(doc: SaftDocumento, invoiceType: string): string {
+function resolveSaftInvoiceNo(doc: SaftDocumento, documentType: string): string {
   const raw = doc.numero_formatado.trim();
-  const tipo = invoiceType.trim().toUpperCase() || "FT";
-  const alreadyValidPattern = /^([^ ]+) ([^/^ ]+)\/([0-9]+)$/.exec(raw);
+  const expectedType = documentType.trim().toUpperCase();
+  const match = /^([A-Z]{1,4})\s+([^/]+)\/(\d+)$/.exec(raw);
 
-  if (alreadyValidPattern && alreadyValidPattern[1] === tipo) {
-    const exportedNumber = Number(alreadyValidPattern[3]);
-    if (!Number.isSafeInteger(exportedNumber) || exportedNumber !== Number(doc.numero)) {
-      throw new Error(
-        `SAFT_SEMANTIC_ERROR: número sequencial de ${doc.numero_formatado} diverge do número fiscal persistido (${doc.numero}).`
-      );
-    }
-    return raw;
-  }
-
-  if (doc.saft_required) {
+  if (!match || match[1] !== expectedType) {
     throw new Error(
-      `SAFT_SEMANTIC_ERROR: documento assinado ${doc.numero_formatado} não possui InvoiceNo SAF-T canónico '<tipo> <série>/<número>'.`
+      `SAFT_SEMANTIC_ERROR: documento ${doc.id} possui número fiscal '${raw}' incompatível com o tipo ${expectedType}; o SAF-T não corrige números fiscais históricos.`
     );
   }
 
-  const serieMatch = raw.match(/^([A-Za-z0-9._-]+)/);
-  const rawSerie = serieMatch?.[1] ?? "SERIE";
-  const serie = rawSerie.replace(/[^A-Za-z0-9._-]/g, "") || "SERIE";
+  const sequential = Number(match[3]);
+  if (!Number.isSafeInteger(sequential) || sequential <= 0 || sequential !== Number(doc.numero)) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: documento ${raw} diverge do contador fiscal persistido (${doc.numero}).`
+    );
+  }
 
-  const numeroFromRaw = raw.match(/(\d+)(?!.*\d)/)?.[1];
-  const numeroResolved = Number.isFinite(doc.numero) && doc.numero > 0
-    ? String(doc.numero)
-    : (numeroFromRaw ?? "1");
+  if (raw.length > 60) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: número fiscal ${raw} excede 60 caracteres.`
+    );
+  }
 
-  return `${tipo} ${serie}/${numeroResolved}`;
+  return raw;
 }
-
 export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput {
   if (input.header.taxAccountingBasis !== "F") {
     throw new Error(
