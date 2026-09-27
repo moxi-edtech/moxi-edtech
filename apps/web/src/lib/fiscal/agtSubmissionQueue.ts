@@ -47,6 +47,7 @@ export async function queueAgtDocumentSubmission(input: {
     });
     return { ...prepared, queued: true, terminal: false };
   } catch (error) {
+    const admin = supabaseServerRole() as any;
     await admin
       .from("fiscal_agt_submissions")
       .update({
