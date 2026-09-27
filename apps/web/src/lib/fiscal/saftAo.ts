@@ -825,14 +825,23 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const invoiceStatus = resolveInvoiceStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
-      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
-      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
-      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
-      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
+      const lineNetTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_liquido_aoa, "total_liquido_aoa")),
+        parseExactDecimal("0")
+      );
+      const lineTaxTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_impostos_aoa, "total_impostos_aoa")),
+        parseExactDecimal("0")
+      );
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, doc.total_liquido_aoa);
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, doc.total_impostos_aoa);
       assertMoneyClose(
         `${doc.numero_formatado} GrossTotal`,
-        Number(doc.total_liquido_aoa) + Number(doc.total_impostos_aoa),
-        Number(doc.total_bruto_aoa)
+        addExact(
+          asExact(doc.total_liquido_aoa, "total_liquido_aoa"),
+          asExact(doc.total_impostos_aoa, "total_impostos_aoa")
+        ),
+        doc.total_bruto_aoa
       );
 
       const linesXml = doc.itens
@@ -988,10 +997,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const workStatus = resolveWorkStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
-      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
-      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
-      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
-      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
+      const lineNetTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_liquido_aoa, "total_liquido_aoa")),
+        parseExactDecimal("0")
+      );
+      const lineTaxTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_impostos_aoa, "total_impostos_aoa")),
+        parseExactDecimal("0")
+      );
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, doc.total_liquido_aoa);
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, doc.total_impostos_aoa);
       const customerId = resolveCustomerIdentity(doc).id;
 
       const linesXml = doc.itens
@@ -1105,10 +1120,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const movementStatus = resolveMovementStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
-      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
-      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
-      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
-      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
+      const lineNetTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_liquido_aoa, "total_liquido_aoa")),
+        parseExactDecimal("0")
+      );
+      const lineTaxTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_impostos_aoa, "total_impostos_aoa")),
+        parseExactDecimal("0")
+      );
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, doc.total_liquido_aoa);
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, doc.total_impostos_aoa);
       const customerId = resolveCustomerIdentity(doc).id;
 
       const linesXml = doc.itens
@@ -1262,8 +1283,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       );
       assertMoneyClose(
         `${doc.numero_formatado} GrossTotal`,
-        Number(doc.total_liquido_aoa) + Number(doc.total_impostos_aoa),
-        Number(doc.total_bruto_aoa)
+        addExact(
+          asExact(doc.total_liquido_aoa, "total_liquido_aoa"),
+          asExact(doc.total_impostos_aoa, "total_impostos_aoa")
+        ),
+        doc.total_bruto_aoa
       );
 
       const paymentMethodXml = doc.payment_mechanism
