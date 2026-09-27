@@ -47,7 +47,9 @@ export function resolveAgtConfig() {
     process.env.AGT_SOFTWARE_KMS_KEY_REF?.trim() ||
     "";
   const signatureVersionRaw =
-    process.env.AGT_SOFTWARE_SIGNATURE_VERSION?.trim() || "1";
+    process.env.FISCAL_AGT_SOFTWARE_SIGNATURE_VERSION?.trim() ||
+    process.env.AGT_SOFTWARE_SIGNATURE_VERSION?.trim() ||
+    "1";
   const signatureVersion = Number(signatureVersionRaw);
 
   if (!username || !password) throw new Error("AGT_FE_BASIC_AUTH_MISSING");
@@ -80,6 +82,10 @@ export function buildAgtBasicAuthorization(username: string, password: string) {
 }
 
 export function resolveAgtTimeoutMs() {
-  const value = Number(process.env.AGT_FE_TIMEOUT_MS ?? 12000);
+  const value = Number(
+    process.env.FISCAL_AGT_TIMEOUT_MS ??
+      process.env.AGT_FE_TIMEOUT_MS ??
+      12000
+  );
   return Number.isFinite(value) && value >= 1000 ? value : 12000;
 }
