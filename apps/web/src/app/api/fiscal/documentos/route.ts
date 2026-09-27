@@ -285,7 +285,9 @@ function normalizePostInput({
     data: {
       empresa_id: empresaId,
       tipo_documento: input.tipo_documento,
-      prefixo_serie: String(input.ano_fiscal),
+      prefixo_serie: ["PP", "GR", "GT"].includes(input.tipo_documento)
+        ? input.tipo_documento
+        : String(input.ano_fiscal),
       origem_documento: "interno",
       cliente: {
         nome: CONSUMIDOR_FINAL_NOME,
@@ -375,7 +377,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("fiscal_documentos")
       .select(
-        "id, numero_formatado, invoice_date, created_at, cliente_nome, total_bruto_aoa, hash_control, key_version, status"
+        "id, numero_formatado, invoice_date, created_at, cliente_nome, total_bruto_aoa, hash_control, key_version, status, tipo_documento, documento_origem_id, rectifica_documento_id, agt_document_status, agt_rejected_document_id"
       )
       .eq("empresa_id", ctx.empresaId)
       .order("invoice_date", { ascending: false })
@@ -404,6 +406,11 @@ export async function GET() {
       key_version: String(row.key_version ?? "1"),
       status:
         row.status === "anulado" ? "ANULADO" : row.status === "rectificado" ? "RETIFICADO" : "EMITIDO",
+      tipo_documento: row.tipo_documento,
+      documento_origem_id: row.documento_origem_id ?? null,
+      rectifica_documento_id: row.rectifica_documento_id ?? null,
+      agt_document_status: row.agt_document_status === "C" ? "C" : "N",
+      agt_rejected_document_id: row.agt_rejected_document_id ?? null,
     }));
 
     return NextResponse.json({
@@ -810,6 +817,72 @@ async function resolveSerieSemantica({
   const contingencyIndicator =
     input.origem_documento === "contingencia" ? "C" : "N";
   const seriesClient = supabase as any;
+
+  if (!AGT_FE_SUBMISSION_TYPES.has(input.tipo_documento)) {
+    const { data: localData, error: localError } = await seriesClient
+      .from("fiscal_series")
+      .select(
+        "id, empresa_id, tipo_documento, prefixo, origem_documento, ativa, descontinuada_em, agt_status, agt_series_code, series_year, series_contingency_indicator"
+      )
+      .eq("empresa_id", input.empresa_id)
+      .eq("tipo_documento", input.tipo_documento)
+      .eq("prefixo", input.prefixo_serie)
+      .eq("origem_documento", input.origem_documento)
+      .eq("agt_status", "legacy")
+      .eq("ativa", true)
+      .is("descontinuada_em", null)
+      .limit(2);
+
+    if (localError) {
+      return {
+        ok: false as const,
+        status: 500,
+        code: "SERIE_LOCAL_LOOKUP_FAILED",
+        message: localError.message || "Falha ao resolver série local.",
+        details: {
+          request_id: requestId,
+          escola_id: escolaId,
+          empresa_id: input.empresa_id,
+          tipo_documento: input.tipo_documento,
+        },
+      };
+    }
+
+    const localRows = (localData ?? []) as FiscalSerieLookup[];
+    if (localRows.length === 1) {
+      return { ok: true as const, data: localRows[0] };
+    }
+
+    if (localRows.length > 1) {
+      return {
+        ok: false as const,
+        status: 409,
+        code: "SERIE_LOCAL_AMBIGUA",
+        message: "Mais de uma série local activa corresponde ao documento.",
+        details: {
+          request_id: requestId,
+          empresa_id: input.empresa_id,
+          tipo_documento: input.tipo_documento,
+          prefixo: input.prefixo_serie,
+        },
+      };
+    }
+
+    return {
+      ok: false as const,
+      status: 409,
+      code: "LOCAL_SERIES_REQUIRED",
+      message:
+        "Nenhuma série local activa foi encontrada para este tipo de documento.",
+      details: {
+        request_id: requestId,
+        escola_id: escolaId,
+        empresa_id: input.empresa_id,
+        tipo_documento: input.tipo_documento,
+        prefixo: input.prefixo_serie,
+      },
+    };
+  }
 
   const { data: agtData, error: agtError } = await seriesClient
     .from("fiscal_series")
