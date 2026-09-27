@@ -869,62 +869,78 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourcePayment = resolveSourceBilling(doc.source_billing);
       const paymentStatus = resolvePaymentStatus(doc.status);
       const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
+      const sourceDocuments = doc.payment_receipt?.sourceDocuments ?? [];
 
-      const paymentMethodXml = [
-        "          <PaymentMethod>",
-        doc.payment_mechanism
-          ? `            <PaymentMechanism>${escapeXml(doc.payment_mechanism)}</PaymentMechanism>`
-          : "",
-        `            <PaymentAmount>${formatMoney(doc.total_bruto_aoa)}</PaymentAmount>`,
-        `            <PaymentDate>${doc.invoice_date}</PaymentDate>`,
-        "          </PaymentMethod>",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      if (sourceDocuments.length === 0) {
+        throw new Error(
+          `SAFT_SEMANTIC_ERROR: recibo ${doc.numero_formatado} não possui paymentReceipt.sourceDocuments.`
+        );
+      }
 
-      const linesXml = doc.itens
-        .map((item) => {
-          const sourceDocumentIdXml =
-            Array.isArray(doc.order_references) && doc.order_references.length > 0
-              ? doc.order_references
-                  .map((ref) => {
-                    const reference = ref.reference?.trim();
-                    if (!reference) return "";
-                    const invoiceDate = ref.origin_invoice_date?.trim() || doc.invoice_date;
-                    return [
-                      "            <SourceDocumentID>",
-                      `              <OriginatingON>${escapeXml(reference)}</OriginatingON>`,
-                      `              <InvoiceDate>${escapeXml(invoiceDate)}</InvoiceDate>`,
-                      ref.reason?.trim() ? `              <Description>${escapeXml(ref.reason.trim())}</Description>` : "",
-                      "            </SourceDocumentID>",
-                    ]
-                      .filter(Boolean)
-                      .join("\n");
-                  })
-                  .filter(Boolean)
-                  .join("\n")
-              : [
-                  "            <SourceDocumentID>",
-                  `              <OriginatingON>${escapeXml(paymentRefNo)}</OriginatingON>`,
-                  `              <InvoiceDate>${escapeXml(doc.invoice_date)}</InvoiceDate>`,
-                  "            </SourceDocumentID>",
-                ].join("\n");
+      const seenSources = new Set<string>();
+      const linesXml = sourceDocuments
+        .map((source, index) => {
+          if (source.lineNo !== index + 1) {
+            throw new Error(
+              `SAFT_SEMANTIC_ERROR: recibo ${doc.numero_formatado} possui sourceDocuments fora de sequência.`
+            );
+          }
+
+          const originatingON = source.sourceDocumentID?.OriginatingON?.trim();
+          const invoiceDate =
+            source.sourceDocumentID?.invoiceDate?.trim() ||
+            source.sourceDocumentID?.documentDate?.trim();
+          const creditAmount = Number(source.creditAmount);
+
+          if (!originatingON || !invoiceDate || !Number.isFinite(creditAmount) || creditAmount <= 0) {
+            throw new Error(
+              `SAFT_SEMANTIC_ERROR: sourceDocument inválido no recibo ${doc.numero_formatado}, linha ${source.lineNo}.`
+            );
+          }
+          if (seenSources.has(originatingON)) {
+            throw new Error(
+              `SAFT_SEMANTIC_ERROR: sourceDocument duplicado (${originatingON}) no recibo ${doc.numero_formatado}.`
+            );
+          }
+          seenSources.add(originatingON);
 
           return [
             "          <Line>",
-            `            <LineNumber>${item.linha_no}</LineNumber>`,
-            sourceDocumentIdXml,
-            `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
-            "            <Tax>",
-            "              <TaxType>IVA</TaxType>",
-            "              <TaxCountryRegion>AO</TaxCountryRegion>",
-            `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
-            `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
-            "            </Tax>",
+            `            <LineNumber>${source.lineNo}</LineNumber>`,
+            "            <SourceDocumentID>",
+            `              <OriginatingON>${escapeXml(originatingON)}</OriginatingON>`,
+            `              <InvoiceDate>${escapeXml(invoiceDate)}</InvoiceDate>`,
+            "            </SourceDocumentID>",
+            `            <CreditAmount>${formatMoney(creditAmount)}</CreditAmount>`,
             "          </Line>",
           ].join("\n");
         })
         .join("\n");
+
+      const appliedNet = sourceDocuments.reduce(
+        (sum, source) => sum + Number(source.creditAmount),
+        0
+      );
+      assertMoneyClose(
+        `${doc.numero_formatado} Payments CreditAmount`,
+        appliedNet,
+        Number(doc.total_liquido_aoa)
+      );
+      assertMoneyClose(
+        `${doc.numero_formatado} GrossTotal`,
+        Number(doc.total_liquido_aoa) + Number(doc.total_impostos_aoa),
+        Number(doc.total_bruto_aoa)
+      );
+
+      const paymentMethodXml = doc.payment_mechanism
+        ? [
+            "          <PaymentMethod>",
+            `            <PaymentMechanism>${escapeXml(doc.payment_mechanism)}</PaymentMechanism>`,
+            `            <PaymentAmount>${formatMoney(doc.total_bruto_aoa)}</PaymentAmount>`,
+            `            <PaymentDate>${doc.invoice_date}</PaymentDate>`,
+            "          </PaymentMethod>",
+          ].join("\n")
+        : "";
 
       const currencyXml =
         doc.moeda.toUpperCase() === "AOA"
@@ -937,7 +953,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
               "            </Currency>",
             ].join("\n");
 
-      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
+      if (
+        doc.moeda.toUpperCase() !== "AOA" &&
+        (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)
+      ) {
         throw new Error(
           `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
         );
@@ -966,7 +985,9 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         currencyXml,
         "          </DocumentTotals>",
         "        </Payment>",
-      ].join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
     })
     .join("\n");
 
