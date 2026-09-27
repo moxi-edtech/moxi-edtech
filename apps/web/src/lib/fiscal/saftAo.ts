@@ -1,3 +1,17 @@
+import {
+  absExact,
+  addExact,
+  cmpExact,
+  divExact,
+  exactToFixed,
+  exactToJsonNumber,
+  mulExact,
+  parseExactDecimal,
+  subExact,
+  type DecimalInput,
+  type ExactDecimal,
+} from "@/lib/fiscal/decimal";
+
 type SaftEmpresa = {
   id: string;
   nome: string;
@@ -19,13 +33,13 @@ type SaftDocumentoItem = {
   unit_of_measure?: string | null;
   tax_code?: "NOR" | "INT" | "RED" | "ISE" | "OUT" | "NS" | "NA" | null;
   tax_country_region?: string | null;
-  quantidade: number;
-  preco_unit: number;
-  taxa_iva: number;
-  total_liquido_aoa: number;
-  total_impostos_aoa: number;
-  total_bruto_aoa: number;
-  settlement_amount?: number | null;
+  quantidade: number | string;
+  preco_unit: number | string;
+  taxa_iva: number | string;
+  total_liquido_aoa: number | string;
+  total_impostos_aoa: number | string;
+  total_bruto_aoa: number | string;
+  settlement_amount?: number | string | null;
   tax_exemption_code?: string | null;
   tax_exemption_reason?: string | null;
 };
@@ -44,7 +58,7 @@ type SaftPaymentSourceDocument = {
     documentDate?: string | null;
     invoiceDate?: string | null;
   };
-  creditAmount: number;
+  creditAmount: number | string;
 };
 
 type SaftDocumento = {
@@ -61,11 +75,11 @@ type SaftDocumento = {
   postal_code: string | null;
   country: string | null;
   moeda: string;
-  taxa_cambio_aoa: number | null;
+  taxa_cambio_aoa: number | string | null;
   payment_mechanism: "NU" | "TB" | "CC" | "MB" | null;
-  total_liquido_aoa: number;
-  total_impostos_aoa: number;
-  total_bruto_aoa: number;
+  total_liquido_aoa: number | string;
+  total_impostos_aoa: number | string;
+  total_bruto_aoa: number | string;
   hash_control: string;
   saft_hash: string | null;
   saft_hash_control: number | null;
@@ -149,50 +163,72 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function formatMoney(value: number): string {
-  return value.toFixed(4);
+function asExact(value: DecimalInput | ExactDecimal, field: string): ExactDecimal {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "coefficient" in value &&
+    "scale" in value
+  ) {
+    return value as ExactDecimal;
+  }
+  try {
+    return parseExactDecimal(value as DecimalInput, field);
+  } catch {
+    throw new Error(`SAFT_SEMANTIC_ERROR: ${field} inválido.`);
+  }
 }
 
-function formatMoney2(value: number): string {
-  return value.toFixed(2);
+function formatMoney(value: DecimalInput | ExactDecimal): string {
+  return exactToFixed(asExact(value, "money"), 4);
 }
 
-function formatExchangeRate(value: number): string {
-  return value.toFixed(8);
+function formatMoney2(value: DecimalInput | ExactDecimal): string {
+  return exactToFixed(asExact(value, "money"), 2);
 }
 
-function resolveUnitPriceAoa(item: SaftDocumentoItem): number {
-  const quantity = Number(item.quantidade);
-  const net = Number(item.total_liquido_aoa);
-  if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(net) || net < 0) {
+function formatExchangeRate(value: DecimalInput | ExactDecimal): string {
+  return exactToFixed(asExact(value, "exchangeRate"), 8);
+}
+
+function resolveUnitPriceAoa(item: SaftDocumentoItem): ExactDecimal {
+  const quantity = asExact(item.quantidade, "quantidade");
+  const net = asExact(item.total_liquido_aoa, "total_liquido_aoa");
+  if (cmpExact(quantity, parseExactDecimal("0")) <= 0 || cmpExact(net, parseExactDecimal("0")) < 0) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: linha ${item.linha_no} possui quantidade/líquido inválido.`
     );
   }
-  return net / quantity;
+  return divExact(net, quantity, 8);
 }
 
 function resolveSettlementAmountAoa(
   item: SaftDocumentoItem,
   doc: Pick<SaftDocumento, "moeda" | "taxa_cambio_aoa">
-): number | null {
-  if (typeof item.settlement_amount !== "number" || !Number.isFinite(item.settlement_amount)) {
+): ExactDecimal | null {
+  if (item.settlement_amount === null || item.settlement_amount === undefined) {
     return null;
   }
-  if (item.settlement_amount < 0) {
+  const settlement = asExact(item.settlement_amount, "SettlementAmount");
+  if (cmpExact(settlement, parseExactDecimal("0")) < 0) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: SettlementAmount negativo na linha ${item.linha_no}.`
     );
   }
-  if (doc.moeda.toUpperCase() === "AOA") return item.settlement_amount;
+  if (doc.moeda.toUpperCase() === "AOA") return settlement;
 
-  const exchangeRate = Number(doc.taxa_cambio_aoa);
-  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
+  if (doc.taxa_cambio_aoa === null || doc.taxa_cambio_aoa === undefined) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: taxa de câmbio inválida para SettlementAmount na linha ${item.linha_no}.`
     );
   }
-  return item.settlement_amount * exchangeRate;
+  const exchangeRate = asExact(doc.taxa_cambio_aoa, "taxa_cambio_aoa");
+  if (cmpExact(exchangeRate, parseExactDecimal("0")) <= 0) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: taxa de câmbio inválida para SettlementAmount na linha ${item.linha_no}.`
+    );
+  }
+  return mulExact(settlement, exchangeRate);
 }
 
 function resolveSourceBilling(sourceBilling: SaftDocumento["source_billing"]): "P" | "I" | "M" {
@@ -374,10 +410,10 @@ function resolveTaxCode(item: Pick<SaftDocumentoItem, "taxa_iva" | "tax_code">):
     return explicit;
   }
 
-  const taxaIva = Number(item.taxa_iva);
-  if (taxaIva <= 0) return "ISE";
-  if (taxaIva <= 5) return "RED";
-  if (taxaIva < 14) return "INT";
+  const taxaIva = asExact(item.taxa_iva, "taxa_iva");
+  if (cmpExact(taxaIva, parseExactDecimal("0")) <= 0) return "ISE";
+  if (cmpExact(taxaIva, parseExactDecimal("5")) <= 0) return "RED";
+  if (cmpExact(taxaIva, parseExactDecimal("14")) < 0) return "INT";
   return "NOR";
 }
 
@@ -397,7 +433,7 @@ function resolveUnitOfMeasure(item: Pick<SaftDocumentoItem, "unit_of_measure">):
   return unit;
 }
 
-function resolveTaxDescription(code: string, taxaIva: number, region: string): string {
+function resolveTaxDescription(code: string, taxaIva: DecimalInput | ExactDecimal, region: string): string {
   const label =
     code === "ISE" ? "IVA isento" :
     code === "RED" ? "IVA taxa reduzida" :
@@ -406,19 +442,27 @@ function resolveTaxDescription(code: string, taxaIva: number, region: string): s
     code === "NS" ? "Não sujeito" :
     code === "OUT" ? "Outros" :
     "Não aplicável";
-  return `${label} ${taxaIva.toFixed(2)}% ${region}`;
+  return `${label} ${exactToFixed(asExact(taxaIva, "taxa_iva"), 2)}% ${region}`;
 }
 
-function assertMoneyClose(label: string, actual: number, expected: number, tolerance = 0.02) {
-  if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > tolerance) {
+function assertMoneyClose(
+  label: string,
+  actual: DecimalInput | ExactDecimal,
+  expected: DecimalInput | ExactDecimal,
+  tolerance: DecimalInput = "0.02"
+) {
+  const actualExact = asExact(actual, `${label}:actual`);
+  const expectedExact = asExact(expected, `${label}:expected`);
+  const toleranceExact = asExact(tolerance, `${label}:tolerance`);
+  if (cmpExact(absExact(subExact(actualExact, expectedExact)), toleranceExact) > 0) {
     throw new Error(
-      `SAFT_SEMANTIC_ERROR: ${label} divergente (actual=${actual.toFixed(4)}, expected=${expected.toFixed(4)}).`
+      `SAFT_SEMANTIC_ERROR: ${label} divergente (actual=${formatMoney(actualExact)}, expected=${formatMoney(expectedExact)}).`
     );
   }
 }
 
 function buildTaxExemptionXml(item: SaftDocumentoItem, indent: string): string {
-  if (item.taxa_iva > 0) return "";
+  if (cmpExact(asExact(item.taxa_iva, "taxa_iva"), parseExactDecimal("0")) > 0) return "";
 
   const code = item.tax_exemption_code?.trim();
   const reason = item.tax_exemption_reason?.trim();
@@ -554,9 +598,9 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   }
 
   let totalItens = 0;
-  let totalLiquidoAoa = 0;
-  let totalImpostosAoa = 0;
-  let totalBrutoAoa = 0;
+  let totalLiquidoAoaExact = parseExactDecimal("0");
+  let totalImpostosAoaExact = parseExactDecimal("0");
+  let totalBrutoAoaExact = parseExactDecimal("0");
 
   const customerRows = new Map<string, SaftCustomer>();
   const productRows = new Map<string, SaftProduct>();
@@ -609,9 +653,18 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     }
 
     totalItens += doc.itens.length;
-    totalLiquidoAoa += doc.total_liquido_aoa;
-    totalImpostosAoa += doc.total_impostos_aoa;
-    totalBrutoAoa += doc.total_bruto_aoa;
+    totalLiquidoAoaExact = addExact(
+      totalLiquidoAoaExact,
+      asExact(doc.total_liquido_aoa, "total_liquido_aoa")
+    );
+    totalImpostosAoaExact = addExact(
+      totalImpostosAoaExact,
+      asExact(doc.total_impostos_aoa, "total_impostos_aoa")
+    );
+    totalBrutoAoaExact = addExact(
+      totalBrutoAoaExact,
+      asExact(doc.total_bruto_aoa, "total_bruto_aoa")
+    );
 
     for (const item of doc.itens) {
       const code = item.product_code.trim();
