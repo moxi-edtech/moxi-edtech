@@ -268,11 +268,48 @@ git diff --name-only <sha-que-producao-serve>..HEAD | grep -vE '^(docs/|agents/)
 
 Vazio ⇒ não há código de aplicação por publicar.
 
-**Não verificado:** o gate de pertença de `admissao_turma_ocupacao_reservada`
-(migração `20270825130000`, commit `42db0d493`) é a única função do intervalo que
-não confirmei contra o objecto real na base — não consegui ligação à base. As outras
-duas (`registrar_pagamento`, `gerar_mensalidades_lote`) foram confirmadas por
-`pg_get_functiondef`.
+**Verificado em 2026-09-26.** O gate de pertença de
+`admissao_turma_ocupacao_reservada` (migração `20270825130000`, commit `42db0d493`)
+era a única função do intervalo que não tinha sido confirmada contra o objecto real.
+Confirmada agora por `pg_get_functiondef`, em produção:
+
+```
+public.admissao_turma_ocupacao_reservada(p_escola_id uuid, p_turma_id uuid,
+                                         p_excluir_candidatura_id uuid DEFAULT NULL)
+RETURNS integer
+STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+  SELECT CASE
+    WHEN public.is_internal_service_role()
+      OR public.can_manage_school(p_escola_id) THEN ( ...contagem real... )
+    ELSE NULL
+  END;
+$function$
+```
+
+O guarda é o padrão correcto e **não se desliga sozinho**: `is_internal_service_role()`
+resolve-se por `auth.role() = 'service_role' OR current_setting('role', true) =
+'service_role'`, e não por `auth.uid()` — que o service role não tem. Um gate escrito
+só com `is_super_admin()` devolveria sempre falso sob service role e devolveria `NULL`
+em silêncio; este não.
+
+Os dois chamadores usam `supabaseServerRole`
+(`(publico)/admissoes/[escolaSlug]/page.tsx:195` e
+`api/public/admissoes/[escolaSlug]/candidatar/route.ts:390`), pelo que o ramo `THEN`
+corre sempre no fluxo real: o `ELSE NULL` é defesa, não o caminho normal.
+
+ACL viva da função: `anon` **não** pode executar; `authenticated` e `service_role` podem.
+
+**Aresta latente, registada e não alterada.** Os dois chamadores fazem `data ?? 0`, e
+`disponibilidadePublica(capacidade, 0)` devolve `disponivel` — ou seja, *se* o `NULL`
+fosse alguma vez alcançável a partir de um chamador, uma turma cheia seria apresentada
+como disponível e a candidatura entraria como `pendente` em vez de `lista_espera`.
+Hoje não é alcançável por essa via (ambos os chamadores são service role, e um
+`authenticated` que chame a RPC directamente recebe `NULL`, não dados). Fica escrito
+para não ser redescoberto como novidade; **não** se mexe sem autorização explícita.
+
+As outras duas funções do intervalo (`registrar_pagamento`, `gerar_mensalidades_lote`)
+foram confirmadas por `pg_get_functiondef` na mesma data.
 
 ---
 
