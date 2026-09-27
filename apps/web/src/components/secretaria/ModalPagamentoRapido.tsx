@@ -768,7 +768,7 @@ function usePagamentoSubmit({
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Idempotency-Key": `pagamento-rapido-recibo-${mensalidade.id}`,
+              "Idempotency-Key": `pagamento-rapido-recibo-${pagamentoId ?? mensalidade.id}`,
             },
             signal: abortRef.current.signal,
             body: JSON.stringify({
