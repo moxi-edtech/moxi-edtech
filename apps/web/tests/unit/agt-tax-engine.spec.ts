@@ -226,3 +226,30 @@ test("AGT mapper preserves unit price precision instead of recalculating fiscal 
   assert.equal(line.creditAmount, 99.99);
   assert.equal(line.taxes[0].taxContribution, 14);
 });
+
+
+test("AGT mapper rejects withholding metadata until tax engine supports it", () => {
+  assert.throws(
+    () =>
+      buildAgtPreparedDocument({
+        document: baseDocument({
+          payload: {
+            cliente: { country: "AO" },
+            metadata: {
+              withholdingTaxList: [
+                {
+                  withholdingTaxType: "IVA",
+                  withholdingTaxAmount: 50,
+                },
+              ],
+            },
+          },
+        }),
+        items: [canonicalItem()],
+        taxRegistrationNumber: "5000000000",
+      }),
+    (error: unknown) =>
+      error instanceof AgtMappingError &&
+      error.code === "AGT_MAPPING_WITHHOLDING_UNSUPPORTED"
+  );
+});
