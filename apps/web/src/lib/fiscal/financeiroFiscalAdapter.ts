@@ -1,5 +1,7 @@
 import "server-only";
 
+import { FISCAL_TAX_PROFILE_CODES, type FiscalTaxProfileCode } from "@/lib/fiscal/taxProfiles";
+
 type TipoFluxoFinanceiro = "immediate_payment" | "deferred_payment";
 type PaymentMechanism = "NU" | "TB" | "CC" | "MB";
 type FiscalTipoDocumento = "FR" | "FT" | "RC";
@@ -11,6 +13,10 @@ const DESCONHECIDO = "Desconhecido";
 type AdapterItem = {
   descricao: string;
   valor: number;
+  taxProfileCode: FiscalTaxProfileCode | string;
+  productType?: "P" | "S" | "O" | "E" | "I";
+  operationType?: "SE" | "SS" | "STP" | "SR" | "SIF" | "SHS" | "ST" | "SG" | "TB" | "AS" | "QT" | "RD";
+  unitOfMeasure?: string;
 };
 
 type AdapterCliente = {
@@ -195,13 +201,33 @@ export async function emitirDocumentoFiscalViaAdapter(
       postal_code: cliente.postal_code,
       country: cliente.country,
     },
-    itens: itens.map((item, index) => ({
-      descricao: item.descricao,
-      product_code: `SERV_INTEGRADO_${index + 1}`,
-      quantidade: 1,
-      preco_unit: item.valor,
-      taxa_iva: 14,
-    })),
+    itens: itens.map((item, index) => {
+      const isEducation =
+        item.taxProfileCode === FISCAL_TAX_PROFILE_CODES.educationM21;
+      return {
+        descricao: item.descricao,
+        product_code: `SERV_INTEGRADO_${index + 1}`,
+        product_number_code: `SERV_INTEGRADO_${index + 1}`,
+        tax_profile_code: item.taxProfileCode,
+        product_type: item.productType ?? "S",
+        operation_type: item.operationType ?? (isEducation ? "SE" : "SG"),
+        unit_of_measure: item.unitOfMeasure ?? "UN",
+        quantidade: 1,
+        unit_price_base: item.valor,
+        preco_unit: item.valor,
+        settlement_amount: 0,
+        tax_code: isEducation ? "ISE" : "NOR",
+        tax_country_region: "AO",
+        taxa_iva: isEducation ? 0 : 14,
+        ...(isEducation
+          ? {
+              tax_exemption_code: "M21",
+              tax_exemption_reason:
+                "Ensino isento - al. l), n. 1 do art. 12 do CIVA",
+            }
+          : {}),
+      };
+    }),
     metadata: {
       origem_integracao: "financeiro_fiscal_adapter",
       tipo_fluxo_financeiro: input.tipoFluxoFinanceiro,
