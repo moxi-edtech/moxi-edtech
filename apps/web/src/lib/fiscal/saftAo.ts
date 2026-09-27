@@ -15,7 +15,10 @@ type SaftDocumentoItem = {
   descricao: string;
   product_code: string;
   product_number_code: string | null;
-  product_type: "P" | "S" | "O" | "E" | "I";
+  product_type?: "P" | "S" | "O" | "E" | "I";
+  unit_of_measure?: string | null;
+  tax_code?: "NOR" | "INT" | "RED" | "ISE" | "OUT" | "NS" | "NA" | null;
+  tax_country_region?: string | null;
   quantidade: number;
   preco_unit: number;
   taxa_iva: number;
@@ -362,18 +365,48 @@ function resolvePaymentType(tipoDocumento: string): string {
   throw new Error(`SAFT_BUILD_ERROR: tipo_documento '${normalized}' não suportado em Payments.`);
 }
 
-function resolveTaxCode(taxaIva: number): string {
+function resolveTaxCode(item: Pick<SaftDocumentoItem, "taxa_iva" | "tax_code">): string {
+  const explicit = item.tax_code?.trim().toUpperCase();
+  if (explicit) {
+    if (!["NOR", "INT", "RED", "ISE", "OUT", "NS", "NA"].includes(explicit)) {
+      throw new Error(`SAFT_SEMANTIC_ERROR: TaxCode inválido: ${explicit}.`);
+    }
+    return explicit;
+  }
+
+  const taxaIva = Number(item.taxa_iva);
   if (taxaIva <= 0) return "ISE";
   if (taxaIva <= 5) return "RED";
   if (taxaIva < 14) return "INT";
   return "NOR";
 }
 
-function resolveTaxDescription(taxaIva: number): string {
-  if (taxaIva <= 0) return "IVA isento";
-  if (taxaIva <= 5) return "IVA taxa reduzida";
-  if (taxaIva < 14) return "IVA taxa intermédia";
-  return "IVA taxa normal";
+function resolveTaxCountryRegion(item: Pick<SaftDocumentoItem, "tax_country_region">): string {
+  const region = item.tax_country_region?.trim().toUpperCase() || "AO";
+  if (!/^[A-Z]{2}(?:-[A-Z0-9]{1,6})?$/.test(region)) {
+    throw new Error(`SAFT_SEMANTIC_ERROR: TaxCountryRegion inválido: ${region}.`);
+  }
+  return region;
+}
+
+function resolveUnitOfMeasure(item: Pick<SaftDocumentoItem, "unit_of_measure">): string {
+  const unit = item.unit_of_measure?.trim() || "UN";
+  if (!unit || unit.length > 20) {
+    throw new Error(`SAFT_SEMANTIC_ERROR: UnitOfMeasure inválida: ${unit}.`);
+  }
+  return unit;
+}
+
+function resolveTaxDescription(code: string, taxaIva: number, region: string): string {
+  const label =
+    code === "ISE" ? "IVA isento" :
+    code === "RED" ? "IVA taxa reduzida" :
+    code === "INT" ? "IVA taxa intermédia" :
+    code === "NOR" ? "IVA taxa normal" :
+    code === "NS" ? "Não sujeito" :
+    code === "OUT" ? "Outros" :
+    "Não aplicável";
+  return `${label} ${taxaIva.toFixed(2)}% ${region}`;
 }
 
 function assertMoneyClose(label: string, actual: number, expected: number, tolerance = 0.02) {
@@ -751,7 +784,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `            <ProductCode>${escapeXml(productCode)}</ProductCode>`,
             `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
             `            <Quantity>${item.quantidade}</Quantity>`,
-            "            <UnitOfMeasure>UN</UnitOfMeasure>",
+            `            <UnitOfMeasure>${escapeXml(resolveUnitOfMeasure(item))}</UnitOfMeasure>`,
             `            <UnitPrice>${formatMoney(resolveUnitPriceAoa(item))}</UnitPrice>`,
             `            <TaxPointDate>${doc.invoice_date}</TaxPointDate>`,
             referencesXml,
@@ -761,8 +794,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
               : `            <CreditAmount>${formatMoney(item.total_liquido_aoa)}</CreditAmount>`,
             "            <Tax>",
             "              <TaxType>IVA</TaxType>",
-            "              <TaxCountryRegion>AO</TaxCountryRegion>",
-            `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
+            `              <TaxCountryRegion>${escapeXml(resolveTaxCountryRegion(item))}</TaxCountryRegion>`,
+            `              <TaxCode>${resolveTaxCode(item)}</TaxCode>`,
             `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
             "            </Tax>",
             buildTaxExemptionXml(item, "            "),
@@ -889,15 +922,15 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `            <ProductCode>${escapeXml(productCode)}</ProductCode>`,
             `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
             `            <Quantity>${item.quantidade}</Quantity>`,
-            "            <UnitOfMeasure>UN</UnitOfMeasure>",
+            `            <UnitOfMeasure>${escapeXml(resolveUnitOfMeasure(item))}</UnitOfMeasure>`,
             `            <UnitPrice>${formatMoney(resolveUnitPriceAoa(item))}</UnitPrice>`,
             `            <TaxPointDate>${doc.invoice_date}</TaxPointDate>`,
             `            <Description>${escapeXml(item.descricao)}</Description>`,
             `            <CreditAmount>${formatMoney(item.total_liquido_aoa)}</CreditAmount>`,
             "            <Tax>",
             "              <TaxType>IVA</TaxType>",
-            "              <TaxCountryRegion>AO</TaxCountryRegion>",
-            `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
+            `              <TaxCountryRegion>${escapeXml(resolveTaxCountryRegion(item))}</TaxCountryRegion>`,
+            `              <TaxCode>${resolveTaxCode(item)}</TaxCode>`,
             `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
             "            </Tax>",
             buildTaxExemptionXml(item, "            "),
@@ -986,14 +1019,14 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `            <ProductCode>${escapeXml(productCode)}</ProductCode>`,
             `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
             `            <Quantity>${item.quantidade}</Quantity>`,
-            "            <UnitOfMeasure>UN</UnitOfMeasure>",
+            `            <UnitOfMeasure>${escapeXml(resolveUnitOfMeasure(item))}</UnitOfMeasure>`,
             `            <UnitPrice>${formatMoney(resolveUnitPriceAoa(item))}</UnitPrice>`,
             `            <Description>${escapeXml(item.descricao)}</Description>`,
             `            <CreditAmount>${formatMoney(item.total_liquido_aoa)}</CreditAmount>`,
             "            <Tax>",
             "              <TaxType>IVA</TaxType>",
-            "              <TaxCountryRegion>AO</TaxCountryRegion>",
-            `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
+            `              <TaxCountryRegion>${escapeXml(resolveTaxCountryRegion(item))}</TaxCountryRegion>`,
+            `              <TaxCode>${resolveTaxCode(item)}</TaxCode>`,
             `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
             "            </Tax>",
             buildTaxExemptionXml(item, "            "),
