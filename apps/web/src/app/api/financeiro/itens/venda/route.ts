@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import {
   emitirDocumentoFiscalViaAdapter,
+  isFiscalEngineEnabledForSchool,
   resolveEmpresaFiscalAtiva,
 } from '@/lib/fiscal/financeiroFiscalAdapter'
 import type { Json } from '~types/supabase'
@@ -35,6 +36,8 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaId(s, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
+    const fiscalEnabled = await isFiscalEngineEnabledForSchool(escolaId)
+
     const body = await req.json().catch(() => ({}))
     const {
       aluno_id,
@@ -66,9 +69,12 @@ export async function POST(req: Request) {
     }
 
     if (
-      !catalogItem.tax_profile_code ||
-      !catalogItem.fiscal_product_type ||
-      !catalogItem.fiscal_operation_type
+      fiscalEnabled &&
+      (
+        !catalogItem.tax_profile_code ||
+        !catalogItem.fiscal_product_type ||
+        !catalogItem.fiscal_operation_type
+      )
     ) {
       return NextResponse.json(
         {
@@ -112,6 +118,16 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     const vendaResult = (data as Array<{ id?: string }> | null)?.[0] ?? null
+
+    if (!fiscalEnabled) {
+      return NextResponse.json({
+        ok: true,
+        result: vendaResult,
+        fiscal: { ok: true, enabled: false, skipped: true },
+        status_fiscal: "not_enabled",
+      })
+    }
+
     const origin = new URL(req.url).origin
     const cookieHeader = req.headers.get("cookie")
     const origemId = String(vendaResult?.id ?? `${aluno_id}:${item_id}`)
