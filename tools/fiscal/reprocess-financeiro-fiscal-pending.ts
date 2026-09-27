@@ -41,12 +41,10 @@ type PagamentoRow = {
 
 type MensalidadeRow = {
   id: string;
-  tabela_id: string | null;
   valor: number;
   valor_previsto: number | null;
   data_pagamento_efetiva: string | Date | null;
   created_at: string | Date;
-  tax_profile_code: string | null;
 };
 
 type EmitResult = {
@@ -227,6 +225,19 @@ async function pickSerieFR(sql: ReturnType<typeof createSqlClient>, empresaId: s
     throw new Error(`AGT_SERIES_REQUIRED: empresa ${empresaId} sem série FR AGT provisionada para ${seriesYear}.`);
   }
   return serie;
+}
+
+async function resolveEducationTaxProfile(sql: ReturnType<typeof createSqlClient>, empresaId: string) {
+  const rows = await sql<{ tax_profile_code: string }[]>\`
+    select public.fiscal_resolve_education_tax_profile(\${empresaId}::uuid) as tax_profile_code
+  \`;
+  const code = rows[0]?.tax_profile_code?.trim();
+  if (!code) {
+    throw new Error(
+      `FISCAL_EDUCATION_TAX_PROFILE_UNRESOLVED: empresa \${empresaId} sem enquadramento IVA do ensino resolvido.`
+    );
+  }
+  return code;
 }
 
 async function emitAndSign(params: {
@@ -434,17 +445,9 @@ async function main() {
 
           const mensalidadeRows = pagamento.mensalidade_id
             ? await sql<MensalidadeRow[]>`
-                select
-                  m.id,
-                  m.tabela_id,
-                  m.valor,
-                  m.valor_previsto,
-                  m.data_pagamento_efetiva,
-                  m.created_at,
-                  t.tax_profile_code
-                from public.mensalidades m
-                left join public.financeiro_tabelas t on t.id = m.tabela_id
-                where m.id = ${pagamento.mensalidade_id}::uuid
+                select m.id, m.valor, m.valor_previsto, m.data_pagamento_efetiva, m.created_at
+                  from public.mensalidades m
+                  where m.id = ${pagamento.mensalidade_id}::uuid
                 limit 1
               `
             : [];
@@ -452,11 +455,6 @@ async function main() {
           if (!mensalidade) {
             throw new Error(
               "FISCAL_TAX_PROFILE_REQUIRED: pagamento sem mensalidade/classificação fiscal não pode ser reprocessado automaticamente."
-            );
-          }
-          if (!mensalidade.tax_profile_code) {
-            throw new Error(
-              `FISCAL_TAX_PROFILE_REQUIRED: mensalidade ${mensalidade.id} sem tax_profile_code na tabela financeira de origem.`
             );
           }
 
@@ -492,7 +490,7 @@ async function main() {
             invoiceDate,
             valor: valorBase,
             descricao: `Pagamento mensalidade ${mensalidade.id}`,
-            taxProfileCode: mensalidade.tax_profile_code,
+            taxProfileCode: await resolveEducationTaxProfile(sql, link.empresa_id),
           });
 
           await sql`
@@ -532,27 +530,14 @@ async function main() {
 
         if (link.origem_tipo === "financeiro_recibos_emitir") {
           const mensalidadeRows = await sql<MensalidadeRow[]>`
-            select
-              m.id,
-              m.tabela_id,
-              m.valor,
-              m.valor_previsto,
-              m.data_pagamento_efetiva,
-              m.created_at,
-              t.tax_profile_code
-            from public.mensalidades m
-            left join public.financeiro_tabelas t on t.id = m.tabela_id
-            where m.id = ${link.origem_id}::uuid
+            select m.id, m.valor, m.valor_previsto, m.data_pagamento_efetiva, m.created_at
+                  from public.mensalidades m
+                  where m.id = ${link.origem_id}::uuid
             limit 1
           `;
           const mensalidade = mensalidadeRows[0];
           if (!mensalidade) {
             throw new Error("Mensalidade não encontrada.");
-          }
-          if (!mensalidade.tax_profile_code) {
-            throw new Error(
-              `FISCAL_TAX_PROFILE_REQUIRED: mensalidade ${mensalidade.id} sem tax_profile_code na tabela financeira de origem.`
-            );
           }
 
           const valorBase = Number(valueOr(mensalidade.valor_previsto, mensalidade.valor));
@@ -579,7 +564,7 @@ async function main() {
             invoiceDate,
             valor: valorBase,
             descricao: `Recebimento mensalidade ${mensalidade.id}`,
-            taxProfileCode: mensalidade.tax_profile_code,
+            taxProfileCode: await resolveEducationTaxProfile(sql, link.empresa_id),
           });
 
           await sql`
