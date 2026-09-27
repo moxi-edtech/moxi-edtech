@@ -233,3 +233,41 @@ export function equalRounded(
 ): boolean {
   return cmpExact(roundExact(a, scale), roundExact(b, scale)) === 0;
 }
+
+
+export function parseSafeInteger(
+  value: unknown,
+  field = "integer",
+  options?: { min?: number; max?: number; fallback?: number }
+): number {
+  const raw =
+    typeof value === "number"
+      ? value.toString()
+      : typeof value === "string"
+        ? value.trim()
+        : typeof value === "bigint"
+          ? value.toString()
+          : "";
+
+  if (!/^-?\d+$/.test(raw)) {
+    if (options?.fallback !== undefined) return options.fallback;
+    throw new Error(`INTEGER_INVALID:${field}`);
+  }
+
+  const parsed = JSON.parse(raw) as unknown;
+  if (typeof parsed !== "number" || !Number.isSafeInteger(parsed)) {
+    if (options?.fallback !== undefined) return options.fallback;
+    throw new Error(`INTEGER_INVALID:${field}`);
+  }
+
+  if (options?.min !== undefined && parsed < options.min) {
+    if (options.fallback !== undefined) return options.fallback;
+    throw new Error(`INTEGER_BELOW_MIN:${field}`);
+  }
+  if (options?.max !== undefined && parsed > options.max) {
+    if (options.fallback !== undefined) return options.fallback;
+    throw new Error(`INTEGER_ABOVE_MAX:${field}`);
+  }
+
+  return parsed;
+}
