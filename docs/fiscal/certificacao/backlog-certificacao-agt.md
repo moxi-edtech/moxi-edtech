@@ -181,7 +181,7 @@ Fechado com:
 - reversão financeira gera alocação inversa/estorno sem apagar histórico;
 - se o pagamento já possui FR/RC fiscal, a reversão financeira fica bloqueada até o documento ser formalmente anulado/corrigido no BILL-010;
 - `pagamento_intents` liquidados são materializados idempotentemente em `pagamentos`;
-- RPCs legados `emitir_recibo*` que escreviam em `documentos_emitidos` perderam EXECUTE;
+- as implementações legadas de `emitir_recibo*` que escrevem em `documentos_emitidos` permanecem internas e sem EXECUTE directo; os nomes públicos foram restaurados apenas como wrappers de compatibilidade para **comprovativo operacional não-fiscal**, autorizados por escola/role e sem ligação a `fiscal_documentos`, IVA, séries, SAF-T ou AGT;
 - trigger legado de recibo de rematrícula foi removido;
 - rotas de recibo/balcão/outbox usam `fiscal_documentos` como fonte fiscal única;
 
@@ -478,6 +478,26 @@ Snapshot em 2026-09-27:
 - bindings fiscais existentes: **2**;
 - bindings com motor activado: **0**;
 - links financeiros fiscais `pending/failed`: **0**.
+
+### Compatibilidade do pagamento/recibo operacional
+
+O rollout fiscal não pode interromper o financeiro existente.
+
+A migration `20260927202623_restore_operational_receipts_compat.sql` restaura os contratos `emitir_recibo(uuid)` e `emitir_recibo_servicos(uuid)` apenas como wrappers de compatibilidade para o comprovativo escolar existente:
+
+- comprovativo operacional, explicitamente fora do escopo AGT/SAF-T;
+- implementação original renomeada para funções internas sem EXECUTE por papéis de aplicação;
+- wrappers públicos exigem `user_has_role_in_school(...)`;
+- somente `authenticated` recebe EXECUTE;
+- `anon` e `service_role` não recebem EXECUTE;
+- utilizador de outra escola recebe `FORBIDDEN`;
+- o pagamento continua a ser processado pelo ledger financeiro mesmo com `fiscal_enabled=false`.
+
+Evidência live:
+- utilizador financeiro autorizado recuperou recibo de mensalidade existente;
+- utilizador autorizado recuperou recibo de serviço existente;
+- utilizador de outra escola foi rejeitado;
+- pagamento rollback-only chegou a `settled` sem `fiscal_documento_id`, sem link fiscal e sem resíduos.
 
 A decisão de ligar uma escola ao motor é uma decisão explícita de rollout/go-live e deve incluir validação do regime IVA, elegibilidade M21 quando aplicável, séries/chaves e readiness AGT.
 
