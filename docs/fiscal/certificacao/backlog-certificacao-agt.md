@@ -5,6 +5,21 @@ Estado global: **NO-GO PARA CERTIFICAÇÃO / HOMOLOGAÇÃO AINDA EM CURSO**
 
 Este documento é a fonte de verdade do backlog técnico de certificação fiscal do KLASSE.
 
+
+## Handoff operacional
+
+Ponto de retomada para outro agente:
+
+- `docs/fiscal/certificacao/handoff-backlogs-fiscais.md`
+- branch actual: `fix/bill-008-saft-semantic-accounting`
+- stack aberto: `PR #118 -> #119 -> #120 -> #121`
+- próximo BILL: `BILL-009 — Motor fiscal / IVA`
+
+Enquanto #118-#121 não estiverem integrados em `main`, o BILL-009 deve partir deste stack, não de `main`. As migrations do stack já estão aplicadas no Supabase live; descartar/reordenar o stack cria drift código <-> DB.
+
+`CLOSED` neste documento significa que o gap interno do BILL foi fechado e provado no stack correspondente; não significa, por si só, que o PR já foi mergeado em `main`.
+
+
 ## Regra de manutenção
 
 Sempre que um `BILL-xxx` for alterado, fechado ou reaberto:
@@ -14,6 +29,7 @@ Sempre que um `BILL-xxx` for alterado, fechado ou reaberto:
 3. registrar dependências descobertas;
 4. criar os próximos `BILL-xxx` antes de encerrar o bloco;
 5. nunca marcar `CLOSED` apenas porque o código existe — quando houver dependência AGT externa, exigir evidência de homologação.
+6. actualizar também `handoff-backlogs-fiscais.md` no mesmo PR, preservando invariantes, dependências, evidência e ponto de retomada.
 
 Estados usados:
 
