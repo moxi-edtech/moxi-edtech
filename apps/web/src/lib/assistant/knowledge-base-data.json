@@ -1,7 +1,7 @@
 {
-  "buildTimestamp": "2026-07-26T11:21:29.304Z",
-  "documentCount": 29,
-  "chunkCount": 173,
+  "buildTimestamp": "2026-09-26T09:41:02.381Z",
+  "documentCount": 33,
+  "chunkCount": 184,
   "documents": [
     {
       "id": "doc-routes-registry",
@@ -9,7 +9,7 @@
       "sourceType": "registry",
       "sourcePath": "lib/assistant/route-registry.ts",
       "module": "any",
-      "content": "# Rotas do Sistema KLASSE\n\nEste é o registro oficial de rotas do sistema KLASSE:\n\n- **Dashboard Geral** (Chave: `dashboard_geral`, Módulo: `dashboard`):\n  Descrição: Painel inicial com indicadores gerais e operacionais rápidos da escola.\n  Nomes/Aliases: dashboard, painel, resumo, inicio, página inicial, indicadores\n  Função URL: `/escola/ID_DA_ESCOLA/admin`\n  Perfis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Lista de Alunos** (Chave: `alunos_lista`, Módulo: `secretaria`):\n  Descrição: Visualizar, pesquisar e gerenciar a lista de alunos matriculados.\n  Nomes/Aliases: alunos, lista de alunos, pesquisar aluno, procurar aluno, buscar aluno, estudantes\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Novo Aluno** (Chave: `aluno_novo`, Módulo: `secretaria`):\n  Descrição: Cadastrar um novo aluno no sistema.\n  Nomes/Aliases: novo aluno, cadastrar aluno, adicionar aluno, matricular aluno, criar aluno\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos/novo`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Ficha do Aluno** (Chave: `aluno_ficha`, Módulo: `secretaria`):\n  Descrição: Detalhes e histórico completo do aluno.\n  Nomes/Aliases: ficha do aluno, perfil do aluno, dados do aluno, dossiê do aluno, detalhes do aluno\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos/ID_DO_ALUNO`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Turmas** (Chave: `turmas`, Módulo: `secretaria`):\n  Descrição: Gerenciar salas, turmas e enturmações de alunos.\n  Nomes/Aliases: turmas, ver turmas, salas, classes, criar turma\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/turmas`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Notas** (Chave: `notas`, Módulo: `academico`):\n  Descrição: Lançamento de notas, pautas escolares e avaliações dos alunos.\n  Nomes/Aliases: notas, lançar notas, pautas, avaliações, boletim, boletins\n  Função URL: `/escola/ID_DA_ESCOLA/admin/notas`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Presenças / Frequência** (Chave: `presencas`, Módulo: `academico`):\n  Descrição: Registro de presenças e controle de faltas dos alunos.\n  Nomes/Aliases: presenças, frequência, faltas, registrar faltas, calendário, chamada\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/calendario`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Radar Financeiro** (Chave: `radar_financeiro`, Módulo: `financeiro`):\n  Descrição: Radar de inadimplência e identificação de propinas/mensalidades em atraso.\n  Nomes/Aliases: radar, inadimplentes, radar financeiro, atrasos, devedores, cobrança, propinas atrasadas\n  Função URL: `/escola/ID_DA_ESCOLA/financeiro/radar`\n  Perfis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Pagamentos** (Chave: `pagamentos`, Módulo: `financeiro`):\n  Descrição: Lançamento de pagamentos, mensalidades e emissão de recibos.\n  Nomes/Aliases: pagamentos, lançar pagamento, receber propina, recibos, mensalidades, caixa\n  Função URL: `/escola/ID_DA_ESCOLA/financeiro/pagamentos`\n  Perfis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Comunicados / Avisos** (Chave: `comunicados`, Módulo: `comunicacao`):\n  Descrição: Criação e publicação de avisos no portal para a comunidade escolar.\n  Nomes/Aliases: comunicados, avisos, criar aviso, notificações, mensagens\n  Função URL: `/escola/ID_DA_ESCOLA/admin/avisos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Documentos** (Chave: `documentos`, Módulo: `secretaria`):\n  Descrição: Emissão de declarações de frequência, boletins e outros documentos oficiais.\n  Nomes/Aliases: documentos, declaração, emitir declaração, certidão, documentos oficiais\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/documentos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **KLASSE AI** (Chave: `klasse_ai`, Módulo: `classe_ai`):\n  Descrição: Painel administrativo do KLASSE AI, consumo de créditos e estatísticas.\n  Nomes/Aliases: klasse ai, ia, painel ia, créditos ia, configurar ia, assistente virtual\n  Função URL: `/escola/ID_DA_ESCOLA/admin/ai`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Central de Ações IA** (Chave: `central_acoes_ai`, Módulo: `classe_ai`):\n  Descrição: Gerenciar rascunhos de comunicados, planos de cobrança e resumos gerados por IA.\n  Nomes/Aliases: central de ações, ações ia, rascunhos ia, aprovar rascunhos, ações do assistente\n  Função URL: `/escola/ID_DA_ESCOLA/admin/ai/actions`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Central WhatsApp** (Chave: `central_whatsapp`, Módulo: `whatsapp`):\n  Descrição: Visualizar conversas, status da conexão e rascunhos pendentes de envio pelo WhatsApp.\n  Nomes/Aliases: central whatsapp, whatsapp, inbox whatsapp, mensagens whatsapp, conversas\n  Função URL: `/escola/ID_DA_ESCOLA/admin/comunicacao/whatsapp`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Configuração WhatsApp** (Chave: `configuracao_whatsapp`, Módulo: `whatsapp`):\n  Descrição: Configuração da API do WhatsApp (WAHA) e vinculação de dispositivo via QR Code.\n  Nomes/Aliases: configurar whatsapp, qr code whatsapp, conectar whatsapp, waha, configuração de comunicação\n  Função URL: `/escola/ID_DA_ESCOLA/admin/configuracoes/comunicacao`\n  Perfis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Acesso de Alunos** (Chave: `acesso_alunos`, Módulo: `secretaria`):\n  Descrição: Gerenciar credenciais de acesso dos alunos ao Portal do Aluno.\n  Nomes/Aliases: acesso de alunos, liberar acesso, credenciais alunos, login alunos, senha alunos\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/acesso`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n",
+      "content": "# Rotas do Sistema KLASSE\n\nEste é o registro oficial de rotas do sistema KLASSE:\n\n- **Dashboard Geral** (Chave: `dashboard_geral`, Módulo: `dashboard`):\n  Descrição: Painel inicial com indicadores gerais e operacionais rápidos da escola.\n  Nomes/Aliases: dashboard, painel, resumo, inicio, página inicial, indicadores\n  Função URL: `/escola/ID_DA_ESCOLA/admin`\n  Perfis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Lista de Alunos** (Chave: `alunos_lista`, Módulo: `secretaria`):\n  Descrição: Visualizar, pesquisar e gerenciar a lista de alunos matriculados.\n  Nomes/Aliases: alunos, lista de alunos, pesquisar aluno, procurar aluno, buscar aluno, estudantes\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Novo Aluno** (Chave: `aluno_novo`, Módulo: `secretaria`):\n  Descrição: Cadastrar um novo aluno no sistema.\n  Nomes/Aliases: novo aluno, cadastrar aluno, adicionar aluno, matricular aluno, criar aluno\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos/novo`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Ficha do Aluno** (Chave: `aluno_ficha`, Módulo: `secretaria`):\n  Descrição: Detalhes e histórico completo do aluno.\n  Nomes/Aliases: ficha do aluno, perfil do aluno, dados do aluno, dossiê do aluno, detalhes do aluno\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos/ID_DO_ALUNO`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Turmas** (Chave: `turmas`, Módulo: `secretaria`):\n  Descrição: Gerenciar salas, turmas e enturmações de alunos.\n  Nomes/Aliases: turmas, ver turmas, salas, classes, criar turma\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/turmas`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Notas** (Chave: `notas`, Módulo: `academico`):\n  Descrição: Lançamento de notas, pautas escolares e avaliações dos alunos.\n  Nomes/Aliases: notas, lançar notas, pautas, avaliações, boletim, boletins\n  Função URL: `/escola/ID_DA_ESCOLA/admin/notas`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Presenças / Frequência** (Chave: `presencas`, Módulo: `academico`):\n  Descrição: Registro de presenças e controle de faltas dos alunos.\n  Nomes/Aliases: presenças, frequência, faltas, registrar faltas, calendário, chamada\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/calendario`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Radar Financeiro** (Chave: `radar_financeiro`, Módulo: `financeiro`):\n  Descrição: Radar de inadimplência e identificação de propinas/mensalidades em atraso.\n  Nomes/Aliases: radar, inadimplentes, radar financeiro, atrasos, devedores, cobrança, propinas atrasadas\n  Função URL: `/escola/ID_DA_ESCOLA/financeiro/radar`\n  Perfis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Pagamentos** (Chave: `pagamentos`, Módulo: `financeiro`):\n  Descrição: Lançamento de pagamentos, mensalidades e emissão de recibos.\n  Nomes/Aliases: pagamentos, lançar pagamento, receber propina, recibos, mensalidades, caixa\n  Função URL: `/escola/ID_DA_ESCOLA/financeiro/pagamentos`\n  Perfis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Comunicados / Avisos** (Chave: `comunicados`, Módulo: `comunicacao`):\n  Descrição: Criação e publicação de avisos no portal para a comunidade escolar.\n  Nomes/Aliases: comunicados, avisos, criar aviso, notificações, mensagens\n  Função URL: `/escola/ID_DA_ESCOLA/admin/avisos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Documentos** (Chave: `documentos`, Módulo: `secretaria`):\n  Descrição: Emissão de declarações de frequência, boletins e outros documentos oficiais.\n  Nomes/Aliases: documentos, declaração, emitir declaração, certidão, documentos oficiais\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/documentos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **KLASSE AI** (Chave: `klasse_ai`, Módulo: `classe_ai`):\n  Descrição: Painel administrativo do KLASSE AI, consumo de créditos e estatísticas.\n  Nomes/Aliases: klasse ai, ia, painel ia, créditos ia, configurar ia, assistente virtual\n  Função URL: `/escola/ID_DA_ESCOLA/admin/ai`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Central de Ações IA** (Chave: `central_acoes_ai`, Módulo: `classe_ai`):\n  Descrição: Gerenciar rascunhos de comunicados, planos de cobrança e resumos gerados por IA.\n  Nomes/Aliases: central de ações, ações ia, rascunhos ia, aprovar rascunhos, ações do assistente\n  Função URL: `/escola/ID_DA_ESCOLA/admin/ai/actions`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Central WhatsApp** (Chave: `central_whatsapp`, Módulo: `whatsapp`):\n  Descrição: Visualizar conversas, status da conexão e rascunhos pendentes de envio pelo WhatsApp.\n  Nomes/Aliases: central whatsapp, whatsapp, inbox whatsapp, mensagens whatsapp, conversas\n  Função URL: `/escola/ID_DA_ESCOLA/admin/comunicacao/whatsapp`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Configuração WhatsApp** (Chave: `configuracao_whatsapp`, Módulo: `whatsapp`):\n  Descrição: Configuração da API do WhatsApp (WAHA) e vinculação de dispositivo via QR Code.\n  Nomes/Aliases: configurar whatsapp, qr code whatsapp, conectar whatsapp, waha, configuração de comunicação\n  Função URL: `/escola/ID_DA_ESCOLA/admin/configuracoes/comunicacao`\n  Perfis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Acesso de Alunos** (Chave: `acesso_alunos`, Módulo: `secretaria`):\n  Descrição: Gerenciar credenciais de acesso dos alunos ao Portal do Aluno.\n  Nomes/Aliases: acesso de alunos, liberar acesso, credenciais alunos, login alunos, senha alunos\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/acesso`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Oferta Formativa** (Chave: `estrutura_oferta_formativa`, Módulo: `academico`):\n  Descrição: Gerir os cursos e níveis de ensino disponíveis na escola.\n  Nomes/Aliases: estrutura, estrutura escolar, oferta formativa, cursos, níveis de ensino, niveis de ensino, configurar cursos, criar curso\n  Função URL: `/escola/ID_DA_ESCOLA/admin/configuracoes/estrutura`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n",
       "status": "active"
     },
     {
@@ -18,7 +18,7 @@
       "sourceType": "registry",
       "sourcePath": "lib/assistant/action-registry.ts",
       "module": "any",
-      "content": "# Ações Disponíveis do Assistente KLASSE\n\nEste é o catálogo de ações oficiais que a IA pode sugerir:\n\n- **Abrir tela** (Chave: `navigate_to_screen`, Módulo: `any`):\n  Descrição: Navegar para uma tela específica do sistema usando a barra lateral ou link.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Explicar tela atual** (Chave: `explain_current_screen`, Módulo: `any`):\n  Descrição: Obter explicações e ações rápidas sobre a tela onde você se encontra.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Melhorar comunicado** (Chave: `improve_notice`, Módulo: `comunicacao`):\n  Descrição: IA reescreve ou melhora um aviso de comunicação de forma mais formal ou clara.\n  Tipo de ação: rewrite\n  Nível de Risco: medium\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria\n\n- **Gerar comunicado** (Chave: `generate_notice`, Módulo: `comunicacao`):\n  Descrição: IA gera rascunho de comunicado com base em ideias principais.\n  Tipo de ação: create_ai_action\n  Nível de Risco: medium\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria\n\n- **Gerar resumo da escola** (Chave: `generate_school_summary`, Módulo: `dashboard`):\n  Descrição: IA gera um resumo executivo com indicadores consolidados para a direção.\n  Tipo de ação: summary\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Gerar plano de cobrança** (Chave: `generate_billing_plan`, Módulo: `financeiro`):\n  Descrição: IA monta um plano com regras e cronograma para reaver propinas em atraso.\n  Tipo de ação: create_ai_action\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho financeiro** (Chave: `create_finance_draft`, Módulo: `financeiro`):\n  Descrição: Gerar um rascunho de plano de ação de cobrança para posterior aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho WhatsApp** (Chave: `create_whatsapp_draft`, Módulo: `whatsapp`):\n  Descrição: IA gera mensagem com placeholders para envio posterior via WhatsApp.\n  Tipo de ação: create_whatsapp_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Salvar na Central de Ações IA** (Chave: `save_in_ai_actions`, Módulo: `classe_ai`):\n  Descrição: Salvar o rascunho gerado pela IA na Central de Ações para auditoria e aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Abrir Central WhatsApp** (Chave: `open_whatsapp_inbox`, Módulo: `whatsapp`):\n  Descrição: Acessar a Central WhatsApp da escola para enviar mensagens ou gerenciar contatos.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Encontrar caminho no sistema** (Chave: `find_system_path`, Módulo: `any`):\n  Descrição: Perguntar onde se encontra uma funcionalidade no sistema e obter o caminho e link oficial.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n",
+      "content": "# Ações Disponíveis do Assistente KLASSE\n\nEste é o catálogo de ações oficiais que a IA pode sugerir:\n\n- **Abrir tela** (Chave: `navigate_to_screen`, Módulo: `any`):\n  Descrição: Navegar para uma tela específica do sistema usando a barra lateral ou link.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Explicar tela atual** (Chave: `explain_current_screen`, Módulo: `any`):\n  Descrição: Obter explicações e ações rápidas sobre a tela onde você se encontra.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Melhorar comunicado** (Chave: `improve_notice`, Módulo: `comunicacao`):\n  Descrição: IA reescreve ou melhora um aviso de comunicação de forma mais formal ou clara.\n  Tipo de ação: rewrite\n  Nível de Risco: medium\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria\n\n- **Gerar comunicado** (Chave: `generate_notice`, Módulo: `comunicacao`):\n  Descrição: IA gera rascunho de comunicado com base em ideias principais.\n  Tipo de ação: create_ai_action\n  Nível de Risco: medium\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria\n\n- **Gerar resumo da escola** (Chave: `generate_school_summary`, Módulo: `dashboard`):\n  Descrição: IA gera um resumo executivo com indicadores consolidados para a direção.\n  Tipo de ação: summary\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Gerar plano de cobrança** (Chave: `generate_billing_plan`, Módulo: `financeiro`):\n  Descrição: IA monta um plano com regras e cronograma para reaver propinas em atraso.\n  Tipo de ação: create_ai_action\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho financeiro** (Chave: `create_finance_draft`, Módulo: `financeiro`):\n  Descrição: Gerar um rascunho de plano de ação de cobrança para posterior aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho WhatsApp** (Chave: `create_whatsapp_draft`, Módulo: `whatsapp`):\n  Descrição: IA gera mensagem com placeholders para envio posterior via WhatsApp.\n  Tipo de ação: create_whatsapp_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Salvar na Central de Ações IA** (Chave: `save_in_ai_actions`, Módulo: `classe_ai`):\n  Descrição: Salvar o rascunho gerado pela IA na Central de Ações para auditoria e aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Abrir Central WhatsApp** (Chave: `open_whatsapp_inbox`, Módulo: `whatsapp`):\n  Descrição: Acessar a Central WhatsApp da escola para enviar mensagens ou gerenciar contatos.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Encontrar caminho no sistema** (Chave: `find_system_path`, Módulo: `any`):\n  Descrição: Perguntar onde se encontra uma funcionalidade no sistema e obter o caminho e link oficial.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n",
       "status": "active"
     },
     {
@@ -148,6 +148,33 @@
       "status": "active"
     },
     {
+      "id": "topic-configurar_estrutura",
+      "title": "Ajuda: Configurar Cursos e Níveis de Ensino",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Configurar Cursos e Níveis de Ensino (Categoria: Acadêmico)\nChave: configurar_estrutura\nAliases: estrutura, estrutura escolar, oferta formativa, cursos, níveis de ensino, niveis de ensino, configurar cursos, criar curso\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: A oferta formativa da escola — os cursos e níveis de ensino que a escola pode matricular — configura-se na página **Oferta Formativa**. É uma decisão de direção: alterá-la muda o que pode ser matriculado no ano seguinte.\nPasso a passo:\n1. No menu lateral, abra Configurações.\n2. Escolha Oferta Formativa (também acessível por Operações > Configurações > Oferta formativa).\n3. Adicione ou ajuste os cursos e os níveis de ensino disponíveis.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-anos_lectivos",
+      "title": "Ajuda: Anos Letivos e Calendário Escolar",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Anos Letivos e Calendário Escolar (Categoria: Acadêmico)\nChave: anos_lectivos\nAliases: ano letivo, ano lectivo, anos letivos, anos lectivos, calendário escolar, calendario escolar, períodos letivos, periodos letivos\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: O ano letivo é a moldura temporal de tudo o resto: períodos, trimestres e datas de início e fim. Nenhuma turma nem matrícula deve ser criada antes de o ano letivo estar configurado e ativo. A viragem de ano transporta a estrutura para o ano seguinte e, se detetar problemas, encaminha para a Oferta Formativa.\nPasso a passo:\n1. No menu lateral, abra Configurações.\n2. Escolha Calendário.\n3. Configure o ano letivo e os respetivos períodos antes de abrir turmas.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-alocacao_professores",
+      "title": "Ajuda: Atribuir Professores às Turmas",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Atribuir Professores às Turmas (Categoria: Acadêmico)\nChave: alocacao_professores\nAliases: atribuir professor, atribuir professores, alocação de professores, alocacao de professores, professor da turma, professores da turma, alocar professor\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Não existe um ecrã autónomo de alocação de professores. A atribuição faz-se a partir das turmas, por disciplina — pela ação de atribuir na lista de turmas, ou no separador **Pedagógico** do detalhe da turma.\nPasso a passo:\n1. No menu lateral, abra Secretaria > Turmas.\n2. Use a ação de atribuir professores, ou abra a turma pretendida.\n3. No detalhe da turma, escolha o separador Pedagógico e associe os professores às disciplinas.\n",
+      "status": "active"
+    },
+    {
       "id": "doc-file-manual-central-acoes-ai",
       "title": "Manual: manual central acoes ai",
       "sourceType": "doc",
@@ -207,7 +234,7 @@
       "sourceType": "doc",
       "sourcePath": "apps/web/src/lib/assistant/docs/readme-klasse-ai.md",
       "module": "classe_ai",
-      "content": "# KLASSE IA — Copiloto Operacional\n\n> Estado documentado: implementação de julho de 2026.\n\nO KLASSE IA é o copiloto operacional do KLASSE. A sua função é ajudar a escola a entender o que está acontecendo, decidir o próximo passo e transformar dados operacionais em ações seguras.\n\nO produto não é um agente autônomo. Dados, autorização e execução são controlados pelo backend; o modelo de linguagem é usado apenas quando necessário para explicar, resumir ou redigir.\n\n## 1. Promessa de produto\n\nO KLASSE IA oferece quatro capacidades:\n\n1. **Diagnosticar** — consultar sinais reais da escola em fontes canônicas.\n2. **Explicar** — traduzir indicadores em linguagem executiva.\n3. **Recomendar** — sugerir próximos passos concretos com evidência.\n4. **Preparar ação** — disponibilizar navegação, exportações ou rascunhos sujeitos a revisão humana.\n\nNarrativa comercial suportada pela implementação atual:\n\n> O KLASSE IA cruza dados administrativos, financeiros e acadêmicos para ajudar a direção a identificar riscos, priorizar ações e orientar equipas com mais clareza.\n\nNão são promessas suportadas:\n\n- autonomia total;\n- alteração direta de dados por conversa;\n- envio automático de WhatsApp;\n- lançamento de notas ou pagamentos por prompt;\n- recomendações sem fonte ou evidência.\n\n## 2. Arquitetura\n\nFluxo principal:\n\n```text\nPergunta do usuário\n→ autenticação e resolução da escola\n→ classificação determinística de intenção\n→ registry fechado de ferramentas\n→ validação de permissão por ferramenta\n→ consulta a view/MV canônica\n→ InsightAnswer estruturado\n→ resposta editorial e ações registradas\n→ persistência opcional em ai_insights\n→ revisão ou aprovação humana\n```\n\nPrincípios:\n\n- o modelo não acessa o banco;\n- o modelo não gera SQL;\n- cada ferramenta possui intenção e permissão explícitas;\n- todas as queries incluem contexto de escola;\n- cálculo pré-processado é preferido a cálculo ao vivo;\n- falha de uma fonte no briefing não derruba as outras;\n- ações críticas permanecem como rascunho ou exigem aprovação.\n\nArquivos centrais:\n\n```text\napps/web/src/lib/assistant/data-copilot/\n├── types.ts\n├── answer-composer.ts\n├── tool-registry.ts\n├── finance-debt-by-class.ts\n└── tools/\n    ├── finance-risk-summary.ts\n    ├── admissions-pending.ts\n    ├── academic-grade-gaps.ts\n    ├── academic-low-attendance.ts\n    └── school-daily-briefing.ts\n```\n\nO endpoint conversacional continua sendo `POST /api/admin/ai/assistant`, orquestrado por `klasse-brain.ts`.\n\n## 3. Modos do assistente\n\n### Help mode\n\nExplica como usar o KLASSE, indica rotas oficiais e consulta a base de conhecimento. Fast Paths locais não consomem créditos de geração.\n\n### Data mode\n\nExecuta ferramentas fechadas, consulta dados reais e devolve diagnóstico estruturado. O widget identifica este modo como **Análise de dados reais**.\n\n### Action mode\n\nPrepara navegação, exportação ou rascunho. A ação possui risco, permissão e requisito de aprovação definidos no registry Actions V2.\n\n## 4. Contrato de resposta executiva\n\nTodas as ferramentas do Data Copilot devolvem:\n\n```ts\ntype InsightAnswer = {\n  diagnosis: string;\n  impact: string;\n  recommendation: string;\n  evidence: Array<{ label: string; value: string }>;\n  actions: AssistantActionV2[];\n};\n```\n\nO `answer-composer.ts` transforma esse contrato em:\n\n```text\nDiagnóstico\n→ Impacto\n→ Próximo passo recomendado\n→ Evidências\n→ Ações disponíveis\n```\n\nAs respostas também incluem `operatingMode: \"data\"` e o objeto `insight`, permitindo que clientes renderizem cards em vez de interpretar texto livre.\n\n## 5. Ferramentas implementadas\n\n### Financeiro\n\n#### `finance-debt-by-class`\n\n- Intenção: inadimplência de uma turma ou classe.\n- Fontes: `turmas` e `vw_radar_inadimplencia`.\n- Evidências: alunos em atraso, turma e valor acumulado.\n- Ações: abrir radar, exportar lista, preparar WhatsApp e criar plano de cobrança.\n- Rascunhos e ações de alto risco exigem revisão humana.\n\n#### `finance-risk-summary`\n\n- Intenção: resumo ou risco financeiro geral.\n- Fonte: `vw_financeiro_inadimplencia_top`.\n- Evidências: devedores, valor nos 50 maiores casos e maior atraso.\n- Limite de evidência: 50 registros.\n\n### Secretaria e admissões\n\n#### `admissions-pending`\n\n- Intenção: candidaturas pendentes, estado ou risco da campanha.\n- Fonte: `vw_admissoes_counts_por_status`.\n- Evidências: submetidas, em análise, expiração em 24 horas e matrículas em sete dias.\n- Ação: abrir a Central de Admissões.\n\n### Acadêmico\n\n#### `academic-grade-gaps`\n\n- Intenção: notas, pautas ou lançamentos incompletos.\n- Fonte: `vw_professor_pendencias`, wrapper de MV.\n- Evidências: lançamentos incompletos, turmas afetadas e notas pendentes.\n- Ação: abrir a área de notas.\n\n#### `academic-low-attendance`\n\n- Intenção: baixa frequência, faltas ou risco de presença.\n- Fonte: `vw_frequencia_resumo_aluno`.\n- Regra inicial: frequência inferior a 75%.\n- Evidências: alunos abaixo do limite, turmas e menor frequência.\n- Ação: abrir o acompanhamento de frequência.\n\n### Direção\n\n#### `school-daily-briefing`\n\nResponde a perguntas como:\n\n> O que merece minha atenção hoje?\n\nO briefing executa em paralelo as ferramentas permitidas para o perfil:\n\n- risco financeiro;\n- admissões pendentes;\n- lacunas de notas;\n- baixa frequência.\n\nOs três sinais com maior indicador principal são apresentados como prioridades. As ações são deduplicadas e uma falha isolada não impede o restante do briefing.\n\n## 6. Permissões\n\nPermissões específicas:\n\n| Permissão | Uso |\n|---|---|\n| `assistant.view` | visualizar e usar o assistente |\n| `assistant.help` | ajuda e navegação |\n| `assistant.finance` | ferramentas e ações financeiras |\n| `assistant.secretaria` | diagnósticos de secretaria e admissões |\n| `assistant.academico` | diagnósticos de notas e frequência |\n| `assistant.summary` | briefing e resumos executivos |\n| `assistant.ai_actions` | Central de Ações IA |\n| `assistant.whatsapp_draft` | rascunhos financeiros para WhatsApp |\n\nAlunos, professores, encarregados e perfis equivalentes permanecem explicitamente bloqueados nesta versão administrativa.\n\n## 7. Actions V2 e aprovação humana\n\nCada ação registrada possui:\n\n- identificador estável;\n- tipo de ação;\n- módulo;\n- papéis permitidos;\n- permissão;\n- nível de risco;\n- indicação de aprovação;\n- destino ou payload fechado.\n\nNíveis:\n\n- **low** — navegação e leitura;\n- **medium** — exportação ou preparação operacional explícita;\n- **high** — comunicação, cobrança ou ação com efeito externo; exige revisão.\n\nA IA não executa silenciosamente. Ações de risco alto são encaminhadas para a Central de Ações IA.\n\n## 8. Insights persistentes\n\nA tabela `public.ai_insights` transforma respostas efêmeras em memória operacional auditável.\n\nCampos principais:\n\n- escola e usuário gerador;\n- ferramenta e fingerprint;\n- título, severidade e módulo;\n- explicação e evidência estruturada;\n- recomendação e ação sugerida;\n- status e timestamps de workflow;\n- datas de primeira e última detecção.\n\nEstados:\n\n```text\nnew → seen → in_progress → resolved\n                  └──────→ ignored\n```\n\nO fingerprint `(school_id, fingerprint)` evita duplicação do mesmo insight. O briefing usa fingerprint diário.\n\nSegurança do schema:\n\n- RLS habilitado;\n- acesso condicionado ao vínculo em `escola_users`;\n- `anon` sem privilégios;\n- `authenticated` com `SELECT`, `INSERT` e `UPDATE`;\n- DELETE reservado ao `service_role`;\n- índices para escola, status, módulo, severidade e insights abertos.\n\nMigrations:\n\n- `20270718123000_create_ai_insights.sql`;\n- `20270718123500_harden_ai_insights_grants.sql`.\n\n## 9. API de insights\n\n### `GET /api/admin/ai/insights`\n\nLista histórico da escola com filtros opcionais:\n\n- status;\n- módulo;\n- severidade;\n- limite entre 1 e 50.\n\n### `POST /api/admin/ai/insights`\n\nGera o briefing diário e faz upsert idempotente em `ai_insights`.\n\n### `PATCH /api/admin/ai/insights/[id]`\n\nTransições permitidas:\n\n- `seen`;\n- `in_progress`;\n- `resolved`;\n- `ignored`.\n\nTodos os endpoints são `force-dynamic`, usam `revalidate = 0`, autenticam o usuário e executam `resolveEscolaIdForUser`. Endpoints humanos não usam service role.\n\n## 10. Cockpit do KLASSE IA\n\nRota:\n\n```text\n/escola/[id]/admin/ai\n```\n\nA antiga redireção direta para a Central de Ações foi substituída por uma home própria com:\n\n- chamada “O que merece atenção hoje?”;\n- geração e atualização do briefing;\n- insights novos, em execução e resolvidos;\n- ações aguardando aprovação;\n- cards semânticos por severidade;\n- evidências e recomendação;\n- workflow visto, iniciar, resolver e ignorar;\n- acesso à Central de Ações IA.\n\nComponente: `KlasseAiCockpitClient.tsx`.\n\n## 11. Widget\n\nO `AiChatWidget.tsx` mantém ajuda e conversa contextual, mas respostas de dados agora usam apresentação editorial própria:\n\n- etiqueta **Análise de dados reais**;\n- badge **Copiloto**;\n- bloco de diagnóstico;\n- bloco semântico de impacto;\n- próximo passo recomendado;\n- cards de evidência;\n- botões de ação com cor de risco;\n- indicação **Requer revisão** para ações sujeitas a aprovação.\n\nMensagens antigas ou de ajuda continuam com fallback compatível.\n\n## 12. Proteção de dados\n\n- Ferramentas usam dados agregados sempre que possível.\n- O briefing não envia dados operacionais para o provedor de linguagem.\n- A ferramenta de frequência não retorna nomes de alunos.\n- Evidências são limitadas e não incluem listas integrais.\n- O contexto enviado ao modelo remove PII desnecessária.\n- Rascunhos de WhatsApp usam placeholders antes da aprovação.\n\n## 13. Cache e atualização de dados\n\nDados operacionais e financeiros usam `no-store`/`force-dynamic` conforme o contrato KLASSE.\n\nAs MVs críticas possuem índice único, função de refresh concorrente e cron. Os jobs de pagamentos e Formação foram reconciliados e distribuídos em horários diferentes para reduzir picos de I/O.\n\n## 14. Créditos e logs\n\n- Configuração por escola em `ai_school_settings`.\n- Uso registrado em `ai_usage_logs`.\n- Reserva de cota por RPC `claim_ai_usage_slot`.\n- Fast Paths e ferramentas determinísticas não precisam chamar o provedor de linguagem.\n- Geração textual continua sujeita a quota, timeout e logs do provedor.\n\n## 15. Operação e validação\n\nAntes de liberar mudanças do KLASSE IA:\n\n1. executar `pnpm -C apps/web typecheck`;\n2. executar `git diff --check`;\n3. verificar `resolveEscolaIdForUser` em endpoints humanos;\n4. verificar `force-dynamic`, `revalidate = 0` e limites máximos;\n5. confirmar RLS e grants das tabelas persistentes;\n6. confirmar fontes canônicas e filtros `escola_id`;\n7. validar que ações de alto risco continuam sujeitas a aprovação.\n\n## 16. Limitações e próximos passos\n\nImplementado, mas ainda evolutivo:\n\n- o briefing é gerado manualmente pelo cockpit ou por solicitação no widget;\n- geração proativa agendada de insights ainda não está habilitada;\n- a priorização usa o indicador principal de cada ferramenta, não um modelo avançado de risco;\n- consumo detalhado de IA ainda não possui card dedicado no cockpit;\n- oportunidades e previsão financeira podem ganhar ferramentas específicas;\n- testes E2E autenticados do cockpit devem integrar a pipeline regular.\n\nEssas limitações não autorizam autonomia adicional. A regra permanece:\n\n> O backend decide dados e ações; a IA explica e escreve; uma pessoa aprova efeitos externos.\n\n## 17. Backlog priorizado\n\nEste backlog registra as pendências conhecidas após a implementação do Data Copilot, briefing diário, `ai_insights`, cockpit e cards estruturados do widget.\n\n### P0 — Gate antes da campanha\n\nItens bloqueantes para demonstrações comerciais com dados reais:\n\n- [ ] Criar testes E2E autenticados para o fluxo completo:\n  - pergunta no widget;\n  - execução de ferramenta;\n  - composição do briefing;\n  - persistência em `ai_insights`;\n  - transição de estado;\n  - abertura de ação sugerida.\n- [ ] Validar visualmente cockpit e widget em desktop e mobile.\n- [ ] Testar RLS com usuários pertencentes a escolas diferentes.\n- [ ] Testar ausência de acesso para `anon`, aluno, professor e encarregado.\n- [ ] Calcular severidade a partir dos dados; o briefing persistido ainda usa `high` como valor inicial fixo.\n- [ ] Evoluir a priorização para considerar severidade, valor, antiguidade e contexto, não apenas o primeiro indicador numérico.\n- [ ] Exibir estado parcial quando uma ou mais fontes do briefing falharem.\n- [ ] Persistir insights individuais por módulo, além do briefing consolidado.\n- [ ] Confirmar o fluxo autenticado no ambiente usado pela demonstração comercial.\n\nCritério de conclusão do P0:\n\n- isolamento entre escolas comprovado;\n- zero ações externas automáticas;\n- briefing gerado e persistido com sucesso;\n- cards responsivos e sem erro de runtime;\n- evidências correspondentes aos dados canônicos;\n- workflow de insight funcional do início à resolução.\n\n### P1 — Sustentar plenamente a campanha\n\n#### Proatividade\n\n- [ ] Gerar insights automaticamente no início do dia.\n- [ ] Gerar insights antes do fechamento financeiro.\n- [ ] Gerar insights durante campanhas de admissões.\n- [ ] Gerar insights antes do fechamento de notas.\n- [ ] Gerar insight imediato quando um limiar de risco alto for atingido.\n- [ ] Garantir que proatividade apenas prepare e sinalize; nenhum envio ou efeito externo pode ser automático.\n\n#### Novas ferramentas\n\n- [ ] Top devedores.\n- [ ] Previsão simples de entrada do mês.\n- [ ] Pagamentos aguardando compensação.\n- [ ] Turmas com maior risco financeiro.\n- [ ] Documentos de admissão em falta.\n- [ ] Admissões paradas há mais de X dias.\n- [ ] Alunos sem acesso liberado.\n- [ ] Disciplinas sem lançamento.\n- [ ] Oportunidades da escola, além de riscos.\n\n#### Cockpit e operação\n\n- [ ] Adicionar card de consumo diário e mensal de IA.\n- [ ] Mostrar limite do plano e disponibilidade do provedor.\n- [ ] Adicionar filtros por módulo, severidade e status.\n- [ ] Mostrar timeline das mudanças de cada insight.\n- [ ] Permitir definir responsável e prazo.\n- [ ] Permitir delegar insight sem executar a recomendação automaticamente.\n- [ ] Transformar recomendação em tarefa ou plano auditável.\n- [ ] Mostrar horário de atualização da fonte/MV.\n\n### P1 — Experiência e identidade\n\n- [ ] Abrir o widget com resumo contextual dos sinais do dia.\n- [ ] Adicionar cards rápidos:\n  - Ver risco financeiro;\n  - Rever admissões pendentes;\n  - Gerar resumo da direção;\n  - Preparar comunicação.\n- [ ] Criar presença visual própria ou mascote leve do KLASSE IA.\n- [ ] Melhorar renderização de markdown nos campos estruturados.\n- [ ] Criar estados visuais para fonte indisponível e dados desatualizados.\n- [ ] Validar contraste, leitor de tela e navegação por teclado.\n- [ ] Executar QA responsivo completo do cockpit e widget.\n\n### P2 — Evolução\n\n- [ ] Preferências operacionais por escola.\n- [ ] Regras recorrentes de cobrança.\n- [ ] Tom institucional configurável.\n- [ ] Comparação com períodos anteriores.\n- [ ] Tendências e previsão de risco.\n- [ ] Feedback útil/não útil associado diretamente ao insight.\n- [ ] Métricas de adoção:\n  - insights vistos;\n  - ações iniciadas;\n  - resoluções;\n  - tempo até resolução;\n  - recomendações ignoradas.\n- [ ] Política de expiração, arquivamento e retenção de insights antigos.\n- [ ] Jobs de manutenção e observabilidade do pipeline proativo.\n\n### Gate de liberação comercial\n\nA campanha pode demonstrar dados reais quando todos os itens P0 estiverem concluídos e houver evidência do teste autenticado no ambiente de demonstração.\n\nAté esse gate, a formulação comercial deve permanecer:\n\n> O KLASSE IA cruza dados administrativos, financeiros e acadêmicos para ajudar a direção a identificar riscos, priorizar ações e orientar equipas com mais clareza.\n\nApós concluir proatividade, workflow operacional e QA do cockpit, pode ser usada a formulação:\n\n> O KLASSE IA atua como copiloto operacional da escola, gerando insights, recomendações e rascunhos de ação sempre com aprovação humana.\n\n## 18. WhatsApp — ponte inteligente entre escola e família\n\nO WhatsApp é o braço de ação comunicacional do KLASSE IA. Ele não deve ser apresentado apenas como canal de envio, mas como a ponte segura entre um diagnóstico operacional e a comunicação necessária para resolver a situação.\n\n### Promessa comercial\n\n> O KLASSE IA transforma dados escolares em comunicações prontas para WhatsApp, sempre com revisão e aprovação da equipa.\n\nFrase de campanha:\n\n> O KLASSE IA não apenas mostra o problema. Ele prepara a comunicação certa para resolver.\n\nEssa promessa significa:\n\n```text\nKLASSE IA identifica o sinal\n→ seleciona o cenário e a ação permitida\n→ prepara mensagem contextual\n→ apresenta destinatários e motivo\n→ escola revisa, edita e aprova\n→ outbox envia dentro dos limites\n→ sistema registra entrega, leitura, resposta ou falha\n```\n\nO WhatsApp não é automação cega. É comunicação assistida, contextual e auditável.\n\n### Papel do KLASSE IA\n\nO copiloto pode identificar:\n\n- documentos pendentes;\n- candidaturas sem resposta;\n- mensalidades em atraso;\n- avisos que precisam chegar a uma turma;\n- encarregados que exigem follow-up;\n- situações acadêmicas que justificam comunicação.\n\nDepois pode preparar:\n\n- mensagem adequada ao cenário;\n- tom institucional;\n- contexto mínimo necessário;\n- chamada para ação;\n- prazo;\n- link ou instrução oficial.\n\nA escola mantém a decisão final sobre destinatários, conteúdo e envio.\n\n### Capacidades existentes\n\nO produto já possui bases relevantes para essa promessa:\n\n- Central WhatsApp;\n- `communication_outbox`;\n- `communication_templates`;\n- permissões por papel;\n- resolução de destinatário por referência autorizada;\n- mascaramento e hash de telefone;\n- templates com variáveis;\n- inferência de risco e aprovação obrigatória;\n- criação individual e em lote;\n- confirmação da quantidade esperada no lote;\n- limite de 50 destinatários por operação em lote;\n- idempotency key por mensagem;\n- worker de outbox;\n- rate limits de comunicação;\n- integração WAHA;\n- webhook para atualização de envio, entrega e leitura;\n- threads e inbox de respostas;\n- rascunhos financeiros/WhatsApp a partir do KLASSE IA;\n- Central de Ações IA para revisão humana.\n\nEstados disponíveis no outbox:\n\n```text\ndraft\n→ review_required\n→ approved\n→ queued\n→ sending\n→ sent\n→ delivered\n→ read\n```\n\nEstados alternativos incluem `rejected`, `failed` e `cancelled`. Respostas recebidas são registradas em threads de comunicação, não como um estado simples do outbox.\n\n### Experiência-alvo\n\nExemplo:\n\n```text\nKLASSE IA detecta:\n“12 candidatos estão com BI pendente.”\n\nSugere:\n“Preparar WhatsApp para os encarregados?”\n\nGera:\n12 mensagens contextualizadas.\n\nSecretaria:\nrevê destinatários, motivo e conteúdo; edita e aprova.\n\nSistema:\nenvia dentro dos limites, registra o histórico e acompanha retorno.\n```\n\nCada revisão deve mostrar:\n\n- destinatário;\n- entidade relacionada, quando aplicável;\n- motivo da seleção;\n- fonte do dado;\n- template ou texto gerado;\n- variáveis utilizadas;\n- nível de risco;\n- necessidade de aprovação;\n- estimativa de quantidade;\n- resultado do envio.\n\n### Casos comerciais prioritários\n\n- Gerar mensagens para encarregados com mensalidades em atraso.\n- Avisar candidatos com documentos pendentes.\n- Enviar lembrete de reunião para uma turma.\n- Reescrever comunicado em tom mais claro.\n- Preparar follow-up para quem não respondeu.\n- Gerar campanha de matrícula para leads antigos.\n- Criar mensagem individualizada pela situação do aluno.\n- Avisar sobre risco de frequência ou pendência acadêmica, quando autorizado.\n\n### Regras de segurança\n\n- A IA nunca envia WhatsApp diretamente.\n- A IA não escolhe destinatários fora de segmentações fechadas.\n- Segmentação deve usar fontes canônicas e `escola_id`.\n- Mensagens financeiras e de risco alto exigem aprovação.\n- O usuário deve ver a quantidade de destinatários antes de aprovar.\n- O telefone completo não deve aparecer em logs ou respostas da IA.\n- Envios devem respeitar rate limit, janela operacional e política anti-spam.\n- Templates precisam declarar papéis permitidos e risco.\n- Conteúdo gerado não pode inventar valores, datas, prazos ou situação do aluno.\n- Falhas devem permanecer auditáveis e nunca ser ocultadas por retry silencioso ilimitado.\n- Opt-out, bloqueio e preferências de comunicação devem ser respeitados quando disponíveis.\n\n### Backlog WhatsApp + KLASSE IA\n\n#### P0 — Fechar a promessa comercial\n\n- [ ] Validar E2E autenticado: insight → rascunho → edição → aprovação → outbox → webhook.\n- [ ] Exibir claramente o motivo de seleção de cada destinatário.\n- [ ] Associar rascunho ao `ai_insight` que o originou.\n- [ ] Garantir edição antes da aprovação em todos os fluxos gerados pela IA.\n- [ ] Validar histórico no aluno, encarregado ou candidatura.\n- [ ] Testar status `sent`, `delivered`, `read`, resposta e `failed` com WAHA.\n- [ ] Validar que usuário de outra escola não consulta, aprova ou envia a mensagem.\n- [ ] Validar rate limit e bloqueio anti-spam em lote.\n- [ ] Confirmar opt-out/bloqueio antes de montar destinatários.\n\n#### P1 — Segmentações fechadas\n\n- [ ] Turma.\n- [ ] Status financeiro.\n- [ ] Candidatura e estágio de admissão.\n- [ ] Documentos pendentes.\n- [ ] Baixa frequência.\n- [ ] Lacunas acadêmicas.\n- [ ] Falta de resposta ou follow-up vencido.\n- [ ] Leads antigos para campanha de matrícula.\n\nCada segmentação precisa de:\n\n- fonte canônica;\n- permissão;\n- limite máximo;\n- preview de quantidade;\n- motivo auditável;\n- template compatível;\n- política de exclusão e opt-out.\n\n#### P1 — Templates estratégicos\n\n- [ ] Cobrança amigável inicial.\n- [ ] Cobrança vencida com prazo.\n- [ ] Documento pendente de candidatura.\n- [ ] Lembrete de reunião.\n- [ ] Comunicado de turma.\n- [ ] Follow-up sem resposta.\n- [ ] Campanha de matrícula.\n- [ ] Alerta de frequência.\n- [ ] Pendência de notas ou fechamento, direcionada ao perfil autorizado.\n\n#### P1 — Cockpit e métricas\n\n- [ ] Caixa de rascunhos WhatsApp dentro do cockpit do KLASSE IA.\n- [ ] Contagem por rascunho, aprovado, enviado, entregue, lido, respondido e falhou.\n- [ ] Taxa de entrega, leitura e resposta por cenário.\n- [ ] Tempo entre insight, aprovação e envio.\n- [ ] Resultado associado ao insight original.\n- [ ] Alertas de falha, desconexão WAHA e saturação de rate limit.\n\n### Gate de campanha para WhatsApp\n\nA campanha pode demonstrar o fluxo completo quando houver evidência E2E de que:\n\n1. o KLASSE IA identifica o grupo por uma fonte canônica;\n2. o usuário vê destinatários e motivo;\n3. a mensagem pode ser editada;\n4. o envio exige aprovação quando aplicável;\n5. o outbox respeita limite e idempotência;\n6. entrega, leitura, resposta e falha ficam auditáveis;\n7. nenhuma escola acessa dados ou mensagens de outra.\n\nAté esse gate, a demonstração deve terminar na preparação e revisão do rascunho, sem prometer automação autônoma.\n",
+      "content": "# KLASSE IA — Copiloto Operacional\n\n> Estado documentado: implementação de julho de 2026.\n\nO KLASSE IA é o copiloto operacional do KLASSE. A sua função é ajudar a escola a entender o que está acontecendo, decidir o próximo passo e transformar dados operacionais em ações seguras.\n\nO produto não é um agente autônomo. Dados, autorização e execução são controlados pelo backend; o modelo de linguagem é usado apenas quando necessário para explicar, resumir ou redigir.\n\n## 1. Promessa de produto\n\nO KLASSE IA oferece quatro capacidades:\n\n1. **Diagnosticar** — consultar sinais reais da escola em fontes canônicas.\n2. **Explicar** — traduzir indicadores em linguagem executiva.\n3. **Recomendar** — sugerir próximos passos concretos com evidência.\n4. **Preparar ação** — disponibilizar navegação, exportações ou rascunhos sujeitos a revisão humana.\n\nNarrativa comercial suportada pela implementação atual:\n\n> O KLASSE IA cruza dados administrativos, financeiros e acadêmicos para ajudar a direção a identificar riscos, priorizar ações e orientar equipas com mais clareza.\n\nNão são promessas suportadas:\n\n- autonomia total;\n- alteração direta de dados por conversa;\n- envio automático de WhatsApp;\n- lançamento de notas ou pagamentos por prompt;\n- recomendações sem fonte ou evidência.\n\n## 2. Arquitetura\n\nFluxo principal:\n\n```text\nPergunta do usuário\n→ autenticação e resolução da escola\n→ classificação determinística de intenção\n→ registry fechado de ferramentas\n→ validação de permissão por ferramenta\n→ consulta a view/MV canônica\n→ InsightAnswer estruturado\n→ resposta editorial e ações registradas\n→ persistência opcional em ai_insights\n→ revisão ou aprovação humana\n```\n\nPrincípios:\n\n- o modelo não acessa o banco;\n- o modelo não gera SQL;\n- cada ferramenta possui intenção e permissão explícitas;\n- todas as queries incluem contexto de escola;\n- cálculo pré-processado é preferido a cálculo ao vivo;\n- falha de uma fonte no briefing não derruba as outras;\n- ações críticas permanecem como rascunho ou exigem aprovação.\n\nArquivos centrais:\n\n```text\napps/web/src/lib/assistant/data-copilot/\n├── types.ts\n├── answer-composer.ts\n├── tool-registry.ts\n├── finance-debt-by-class.ts\n└── tools/\n    ├── finance-risk-summary.ts\n    ├── admissions-pending.ts\n    ├── academic-grade-gaps.ts\n    ├── academic-low-attendance.ts\n    └── school-daily-briefing.ts\n```\n\nO endpoint conversacional continua sendo `POST /api/admin/ai/assistant`, orquestrado por `klasse-brain.ts`.\n\n## 3. Modos do assistente\n\n### Help mode\n\nExplica como usar o KLASSE, indica rotas oficiais e consulta a base de conhecimento. Fast Paths locais não consomem créditos de geração.\n\n### Data mode\n\nExecuta ferramentas fechadas, consulta dados reais e devolve diagnóstico estruturado. O widget identifica este modo como **Análise de dados reais**.\n\n### Action mode\n\nPrepara navegação, exportação ou rascunho. A ação possui risco, permissão e requisito de aprovação definidos no registry Actions V2.\n\n## 4. Contrato de resposta executiva\n\nTodas as ferramentas do Data Copilot devolvem:\n\n```ts\ntype InsightAnswer = {\n  diagnosis: string;\n  impact: string;\n  recommendation: string;\n  evidence: Array<{ label: string; value: string }>;\n  actions: AssistantActionV2[];\n};\n```\n\nO `answer-composer.ts` transforma esse contrato em:\n\n```text\nDiagnóstico\n→ Impacto\n→ Próximo passo recomendado\n→ Evidências\n→ Ações disponíveis\n```\n\nAs respostas também incluem `operatingMode: \"data\"` e o objeto `insight`, permitindo que clientes renderizem cards em vez de interpretar texto livre.\n\n## 5. Ferramentas implementadas\n\n### Financeiro\n\n#### `finance-debt-by-class`\n\n- Intenção: inadimplência de uma turma ou classe.\n- Fontes: `turmas` e `vw_radar_inadimplencia`.\n- Evidências: alunos em atraso, turma e valor acumulado.\n- Ações: abrir radar, exportar lista, preparar WhatsApp e criar plano de cobrança.\n- Rascunhos e ações de alto risco exigem revisão humana.\n\n#### `finance-risk-summary`\n\n- Intenção: resumo ou risco financeiro geral.\n- Fonte: `vw_financeiro_inadimplencia_top`.\n- Evidências: devedores, valor nos 50 maiores casos e maior atraso.\n- Limite de evidência: 50 registros.\n\n### Secretaria e admissões\n\n#### `admissions-pending`\n\n- Intenção: candidaturas pendentes, estado ou risco da campanha.\n- Fonte: `vw_admissoes_counts_por_status`.\n- Evidências: submetidas, em análise, expiração em 24 horas e matrículas em sete dias.\n- Ação: abrir a Central de Admissões.\n\n### Acadêmico\n\n#### `academic-grade-gaps`\n\n- Intenção: notas, pautas ou lançamentos incompletos.\n- Fonte: `vw_professor_pendencias`, wrapper de MV.\n- Evidências: lançamentos incompletos, turmas afetadas e notas pendentes.\n- Ação: abrir a área de notas.\n\n#### `academic-low-attendance`\n\n- Intenção: baixa frequência, faltas ou risco de presença.\n- Fonte: `vw_frequencia_resumo_aluno`.\n- Regra inicial: frequência inferior a 75%.\n- Evidências: alunos abaixo do limite, turmas e menor frequência.\n- Ação: abrir o acompanhamento de frequência.\n\n### Direção\n\n#### `school-daily-briefing`\n\nResponde a perguntas como:\n\n> O que merece minha atenção hoje?\n\nO briefing executa em paralelo as ferramentas permitidas para o perfil:\n\n- risco financeiro;\n- admissões pendentes;\n- lacunas de notas;\n- baixa frequência.\n\nOs três sinais com maior indicador principal são apresentados como prioridades. As ações são deduplicadas e uma falha isolada não impede o restante do briefing.\n\n#### `academic-calendar-operations`\n\nConsulta `anos_letivos`, `periodos_letivos` e `calendario_eventos` do ano activo para\nidentificar a fase temporal, o período actual e o próximo marco do calendário MED.\nQuando o briefing é gerado no cockpit, este marco também é persistido em `ai_insights`\ncomo alerta operacional independente, com ciclo `new → seen → in_progress → resolved`.\nAs acções apenas abrem as telas oficiais de calendário e notas; conselho e pauta\ncontinuam dependentes da validação humana e dos fluxos académicos oficiais.\n\n## 6. Permissões\n\nPermissões específicas:\n\n| Permissão | Uso |\n|---|---|\n| `assistant.view` | visualizar e usar o assistente |\n| `assistant.help` | ajuda e navegação |\n| `assistant.finance` | ferramentas e ações financeiras |\n| `assistant.secretaria` | diagnósticos de secretaria e admissões |\n| `assistant.academico` | diagnósticos de notas e frequência |\n| `assistant.summary` | briefing e resumos executivos |\n| `assistant.ai_actions` | Central de Ações IA |\n| `assistant.whatsapp_draft` | rascunhos financeiros para WhatsApp |\n\nAlunos, professores, encarregados e perfis equivalentes permanecem explicitamente bloqueados nesta versão administrativa.\n\n## 7. Actions V2 e aprovação humana\n\nCada ação registrada possui:\n\n- identificador estável;\n- tipo de ação;\n- módulo;\n- papéis permitidos;\n- permissão;\n- nível de risco;\n- indicação de aprovação;\n- destino ou payload fechado.\n\nNíveis:\n\n- **low** — navegação e leitura;\n- **medium** — exportação ou preparação operacional explícita;\n- **high** — comunicação, cobrança ou ação com efeito externo; exige revisão.\n\nA IA não executa silenciosamente. Ações de risco alto são encaminhadas para a Central de Ações IA.\n\n## 8. Insights persistentes\n\nA tabela `public.ai_insights` transforma respostas efêmeras em memória operacional auditável.\n\nCampos principais:\n\n- escola e usuário gerador;\n- ferramenta e fingerprint;\n- título, severidade e módulo;\n- explicação e evidência estruturada;\n- recomendação e ação sugerida;\n- status e timestamps de workflow;\n- datas de primeira e última detecção.\n\nEstados:\n\n```text\nnew → seen → in_progress → resolved\n                  └──────→ ignored\n```\n\nO fingerprint `(school_id, fingerprint)` evita duplicação do mesmo insight. O briefing usa fingerprint diário.\n\nSegurança do schema:\n\n- RLS habilitado;\n- acesso condicionado ao vínculo em `escola_users`;\n- `anon` sem privilégios;\n- `authenticated` com `SELECT`, `INSERT` e `UPDATE`;\n- DELETE reservado ao `service_role`;\n- índices para escola, status, módulo, severidade e insights abertos.\n\nMigrations:\n\n- `20270718123000_create_ai_insights.sql`;\n- `20270718123500_harden_ai_insights_grants.sql`.\n\n## 9. API de insights\n\n### `GET /api/admin/ai/insights`\n\nLista histórico da escola com filtros opcionais:\n\n- status;\n- módulo;\n- severidade;\n- limite entre 1 e 50.\n\n### `POST /api/admin/ai/insights`\n\nGera o briefing diário e faz upsert idempotente em `ai_insights`.\n\n### `PATCH /api/admin/ai/insights/[id]`\n\nTransições permitidas:\n\n- `seen`;\n- `in_progress`;\n- `resolved`;\n- `ignored`.\n\nTodos os endpoints são `force-dynamic`, usam `revalidate = 0`, autenticam o usuário e executam `resolveEscolaIdForUser`. Endpoints humanos não usam service role.\n\n## 10. Cockpit do KLASSE IA\n\nRota:\n\n```text\n/escola/[id]/admin/ai\n```\n\nA antiga redireção direta para a Central de Ações foi substituída por uma home própria com:\n\n- chamada “O que merece atenção hoje?”;\n- geração e atualização do briefing;\n- insights novos, em execução e resolvidos;\n- ações aguardando aprovação;\n- cards semânticos por severidade;\n- evidências e recomendação;\n- workflow visto, iniciar, resolver e ignorar;\n- acesso à Central de Ações IA.\n\nComponente: `KlasseAiCockpitClient.tsx`.\n\n## 11. Widget\n\nO `AiChatWidget.tsx` mantém ajuda e conversa contextual, mas respostas de dados agora usam apresentação editorial própria:\n\n- etiqueta **Análise de dados reais**;\n- badge **Copiloto**;\n- bloco de diagnóstico;\n- bloco semântico de impacto;\n- próximo passo recomendado;\n- cards de evidência;\n- botões de ação com cor de risco;\n- indicação **Requer revisão** para ações sujeitas a aprovação.\n\nMensagens antigas ou de ajuda continuam com fallback compatível.\n\n## 12. Proteção de dados\n\n- Ferramentas usam dados agregados sempre que possível.\n- O briefing não envia dados operacionais para o provedor de linguagem.\n- A ferramenta de frequência não retorna nomes de alunos.\n- Evidências são limitadas e não incluem listas integrais.\n- O contexto enviado ao modelo remove PII desnecessária.\n- Rascunhos de WhatsApp usam placeholders antes da aprovação.\n\n## 13. Cache e atualização de dados\n\nDados operacionais e financeiros usam `no-store`/`force-dynamic` conforme o contrato KLASSE.\n\nAs MVs críticas possuem índice único, função de refresh concorrente e cron. Os jobs de pagamentos e Formação foram reconciliados e distribuídos em horários diferentes para reduzir picos de I/O.\n\n## 14. Créditos e logs\n\n- Configuração por escola em `ai_school_settings`.\n- Uso registrado em `ai_usage_logs`.\n- Reserva de cota por RPC `claim_ai_usage_slot`.\n- Fast Paths e ferramentas determinísticas não precisam chamar o provedor de linguagem.\n- Geração textual continua sujeita a quota, timeout e logs do provedor.\n\n## 15. Operação e validação\n\nAntes de liberar mudanças do KLASSE IA:\n\n1. executar `pnpm -C apps/web typecheck`;\n2. executar `git diff --check`;\n3. verificar `resolveEscolaIdForUser` em endpoints humanos;\n4. verificar `force-dynamic`, `revalidate = 0` e limites máximos;\n5. confirmar RLS e grants das tabelas persistentes;\n6. confirmar fontes canônicas e filtros `escola_id`;\n7. validar que ações de alto risco continuam sujeitas a aprovação.\n\n## 16. Limitações e próximos passos\n\nImplementado, mas ainda evolutivo:\n\n- o briefing é gerado manualmente pelo cockpit ou por solicitação no widget;\n- geração proativa agendada de insights ainda não está habilitada;\n- a priorização usa o indicador principal de cada ferramenta, não um modelo avançado de risco;\n- consumo detalhado de IA ainda não possui card dedicado no cockpit;\n- oportunidades e previsão financeira podem ganhar ferramentas específicas;\n- testes E2E autenticados do cockpit devem integrar a pipeline regular.\n\nEssas limitações não autorizam autonomia adicional. A regra permanece:\n\n> O backend decide dados e ações; a IA explica e escreve; uma pessoa aprova efeitos externos.\n\n## 17. Backlog priorizado\n\nEste backlog registra as pendências conhecidas após a implementação do Data Copilot, briefing diário, `ai_insights`, cockpit e cards estruturados do widget.\n\n### P0 — Gate antes da campanha\n\nItens bloqueantes para demonstrações comerciais com dados reais:\n\n- [ ] Criar testes E2E autenticados para o fluxo completo:\n  - pergunta no widget;\n  - execução de ferramenta;\n  - composição do briefing;\n  - persistência em `ai_insights`;\n  - transição de estado;\n  - abertura de ação sugerida.\n- [ ] Validar visualmente cockpit e widget em desktop e mobile.\n- [ ] Testar RLS com usuários pertencentes a escolas diferentes.\n- [ ] Testar ausência de acesso para `anon`, aluno, professor e encarregado.\n- [ ] Calcular severidade a partir dos dados; o briefing persistido ainda usa `high` como valor inicial fixo.\n- [ ] Evoluir a priorização para considerar severidade, valor, antiguidade e contexto, não apenas o primeiro indicador numérico.\n- [ ] Exibir estado parcial quando uma ou mais fontes do briefing falharem.\n- [ ] Persistir insights individuais por módulo, além do briefing consolidado.\n- [ ] Confirmar o fluxo autenticado no ambiente usado pela demonstração comercial.\n\nCritério de conclusão do P0:\n\n- isolamento entre escolas comprovado;\n- zero ações externas automáticas;\n- briefing gerado e persistido com sucesso;\n- cards responsivos e sem erro de runtime;\n- evidências correspondentes aos dados canônicos;\n- workflow de insight funcional do início à resolução.\n\n### P1 — Sustentar plenamente a campanha\n\n#### Proatividade\n\n- [ ] Gerar insights automaticamente no início do dia.\n- [ ] Gerar insights antes do fechamento financeiro.\n- [ ] Gerar insights durante campanhas de admissões.\n- [ ] Gerar insights antes do fechamento de notas.\n- [ ] Gerar insight imediato quando um limiar de risco alto for atingido.\n- [ ] Garantir que proatividade apenas prepare e sinalize; nenhum envio ou efeito externo pode ser automático.\n\n#### Novas ferramentas\n\n- [ ] Top devedores.\n- [ ] Previsão simples de entrada do mês.\n- [ ] Pagamentos aguardando compensação.\n- [ ] Turmas com maior risco financeiro.\n- [ ] Documentos de admissão em falta.\n- [ ] Admissões paradas há mais de X dias.\n- [ ] Alunos sem acesso liberado.\n- [ ] Disciplinas sem lançamento.\n- [ ] Oportunidades da escola, além de riscos.\n\n#### Cockpit e operação\n\n- [ ] Adicionar card de consumo diário e mensal de IA.\n- [ ] Mostrar limite do plano e disponibilidade do provedor.\n- [ ] Adicionar filtros por módulo, severidade e status.\n- [ ] Mostrar timeline das mudanças de cada insight.\n- [ ] Permitir definir responsável e prazo.\n- [ ] Permitir delegar insight sem executar a recomendação automaticamente.\n- [ ] Transformar recomendação em tarefa ou plano auditável.\n- [ ] Mostrar horário de atualização da fonte/MV.\n\n### P1 — Experiência e identidade\n\n- [ ] Abrir o widget com resumo contextual dos sinais do dia.\n- [ ] Adicionar cards rápidos:\n  - Ver risco financeiro;\n  - Rever admissões pendentes;\n  - Gerar resumo da direção;\n  - Preparar comunicação.\n- [ ] Criar presença visual própria ou mascote leve do KLASSE IA.\n- [ ] Melhorar renderização de markdown nos campos estruturados.\n- [ ] Criar estados visuais para fonte indisponível e dados desatualizados.\n- [ ] Validar contraste, leitor de tela e navegação por teclado.\n- [ ] Executar QA responsivo completo do cockpit e widget.\n\n### P2 — Evolução\n\n- [ ] Preferências operacionais por escola.\n- [ ] Regras recorrentes de cobrança.\n- [ ] Tom institucional configurável.\n- [ ] Comparação com períodos anteriores.\n- [ ] Tendências e previsão de risco.\n- [ ] Feedback útil/não útil associado diretamente ao insight.\n- [ ] Métricas de adoção:\n  - insights vistos;\n  - ações iniciadas;\n  - resoluções;\n  - tempo até resolução;\n  - recomendações ignoradas.\n- [ ] Política de expiração, arquivamento e retenção de insights antigos.\n- [ ] Jobs de manutenção e observabilidade do pipeline proativo.\n\n### Gate de liberação comercial\n\nA campanha pode demonstrar dados reais quando todos os itens P0 estiverem concluídos e houver evidência do teste autenticado no ambiente de demonstração.\n\nAté esse gate, a formulação comercial deve permanecer:\n\n> O KLASSE IA cruza dados administrativos, financeiros e acadêmicos para ajudar a direção a identificar riscos, priorizar ações e orientar equipas com mais clareza.\n\nApós concluir proatividade, workflow operacional e QA do cockpit, pode ser usada a formulação:\n\n> O KLASSE IA atua como copiloto operacional da escola, gerando insights, recomendações e rascunhos de ação sempre com aprovação humana.\n\n## 18. WhatsApp — ponte inteligente entre escola e família\n\nO WhatsApp é o braço de ação comunicacional do KLASSE IA. Ele não deve ser apresentado apenas como canal de envio, mas como a ponte segura entre um diagnóstico operacional e a comunicação necessária para resolver a situação.\n\n### Promessa comercial\n\n> O KLASSE IA transforma dados escolares em comunicações prontas para WhatsApp, sempre com revisão e aprovação da equipa.\n\nFrase de campanha:\n\n> O KLASSE IA não apenas mostra o problema. Ele prepara a comunicação certa para resolver.\n\nEssa promessa significa:\n\n```text\nKLASSE IA identifica o sinal\n→ seleciona o cenário e a ação permitida\n→ prepara mensagem contextual\n→ apresenta destinatários e motivo\n→ escola revisa, edita e aprova\n→ outbox envia dentro dos limites\n→ sistema registra entrega, leitura, resposta ou falha\n```\n\nO WhatsApp não é automação cega. É comunicação assistida, contextual e auditável.\n\n### Papel do KLASSE IA\n\nO copiloto pode identificar:\n\n- documentos pendentes;\n- candidaturas sem resposta;\n- mensalidades em atraso;\n- avisos que precisam chegar a uma turma;\n- encarregados que exigem follow-up;\n- situações acadêmicas que justificam comunicação.\n\nDepois pode preparar:\n\n- mensagem adequada ao cenário;\n- tom institucional;\n- contexto mínimo necessário;\n- chamada para ação;\n- prazo;\n- link ou instrução oficial.\n\nA escola mantém a decisão final sobre destinatários, conteúdo e envio.\n\n### Capacidades existentes\n\nO produto já possui bases relevantes para essa promessa:\n\n- Central WhatsApp;\n- `communication_outbox`;\n- `communication_templates`;\n- permissões por papel;\n- resolução de destinatário por referência autorizada;\n- mascaramento e hash de telefone;\n- templates com variáveis;\n- inferência de risco e aprovação obrigatória;\n- criação individual e em lote;\n- confirmação da quantidade esperada no lote;\n- limite de 50 destinatários por operação em lote;\n- idempotency key por mensagem;\n- worker de outbox;\n- rate limits de comunicação;\n- integração WAHA;\n- webhook para atualização de envio, entrega e leitura;\n- threads e inbox de respostas;\n- rascunhos financeiros/WhatsApp a partir do KLASSE IA;\n- Central de Ações IA para revisão humana.\n\nEstados disponíveis no outbox:\n\n```text\ndraft\n→ review_required\n→ approved\n→ queued\n→ sending\n→ sent\n→ delivered\n→ read\n```\n\nEstados alternativos incluem `rejected`, `failed` e `cancelled`. Respostas recebidas são registradas em threads de comunicação, não como um estado simples do outbox.\n\n### Experiência-alvo\n\nExemplo:\n\n```text\nKLASSE IA detecta:\n“12 candidatos estão com BI pendente.”\n\nSugere:\n“Preparar WhatsApp para os encarregados?”\n\nGera:\n12 mensagens contextualizadas.\n\nSecretaria:\nrevê destinatários, motivo e conteúdo; edita e aprova.\n\nSistema:\nenvia dentro dos limites, registra o histórico e acompanha retorno.\n```\n\nCada revisão deve mostrar:\n\n- destinatário;\n- entidade relacionada, quando aplicável;\n- motivo da seleção;\n- fonte do dado;\n- template ou texto gerado;\n- variáveis utilizadas;\n- nível de risco;\n- necessidade de aprovação;\n- estimativa de quantidade;\n- resultado do envio.\n\n### Casos comerciais prioritários\n\n- Gerar mensagens para encarregados com mensalidades em atraso.\n- Avisar candidatos com documentos pendentes.\n- Enviar lembrete de reunião para uma turma.\n- Reescrever comunicado em tom mais claro.\n- Preparar follow-up para quem não respondeu.\n- Gerar campanha de matrícula para leads antigos.\n- Criar mensagem individualizada pela situação do aluno.\n- Avisar sobre risco de frequência ou pendência acadêmica, quando autorizado.\n\n### Regras de segurança\n\n- A IA nunca envia WhatsApp diretamente.\n- A IA não escolhe destinatários fora de segmentações fechadas.\n- Segmentação deve usar fontes canônicas e `escola_id`.\n- Mensagens financeiras e de risco alto exigem aprovação.\n- O usuário deve ver a quantidade de destinatários antes de aprovar.\n- O telefone completo não deve aparecer em logs ou respostas da IA.\n- Envios devem respeitar rate limit, janela operacional e política anti-spam.\n- Templates precisam declarar papéis permitidos e risco.\n- Conteúdo gerado não pode inventar valores, datas, prazos ou situação do aluno.\n- Falhas devem permanecer auditáveis e nunca ser ocultadas por retry silencioso ilimitado.\n- Opt-out, bloqueio e preferências de comunicação devem ser respeitados quando disponíveis.\n\n### Backlog WhatsApp + KLASSE IA\n\n#### P0 — Fechar a promessa comercial\n\n- [ ] Validar E2E autenticado: insight → rascunho → edição → aprovação → outbox → webhook.\n- [ ] Exibir claramente o motivo de seleção de cada destinatário.\n- [ ] Associar rascunho ao `ai_insight` que o originou.\n- [ ] Garantir edição antes da aprovação em todos os fluxos gerados pela IA.\n- [ ] Validar histórico no aluno, encarregado ou candidatura.\n- [ ] Testar status `sent`, `delivered`, `read`, resposta e `failed` com WAHA.\n- [ ] Validar que usuário de outra escola não consulta, aprova ou envia a mensagem.\n- [ ] Validar rate limit e bloqueio anti-spam em lote.\n- [ ] Confirmar opt-out/bloqueio antes de montar destinatários.\n\n#### P1 — Segmentações fechadas\n\n- [ ] Turma.\n- [ ] Status financeiro.\n- [ ] Candidatura e estágio de admissão.\n- [ ] Documentos pendentes.\n- [ ] Baixa frequência.\n- [ ] Lacunas acadêmicas.\n- [ ] Falta de resposta ou follow-up vencido.\n- [ ] Leads antigos para campanha de matrícula.\n\nCada segmentação precisa de:\n\n- fonte canônica;\n- permissão;\n- limite máximo;\n- preview de quantidade;\n- motivo auditável;\n- template compatível;\n- política de exclusão e opt-out.\n\n#### P1 — Templates estratégicos\n\n- [ ] Cobrança amigável inicial.\n- [ ] Cobrança vencida com prazo.\n- [ ] Documento pendente de candidatura.\n- [ ] Lembrete de reunião.\n- [ ] Comunicado de turma.\n- [ ] Follow-up sem resposta.\n- [ ] Campanha de matrícula.\n- [ ] Alerta de frequência.\n- [ ] Pendência de notas ou fechamento, direcionada ao perfil autorizado.\n\n#### P1 — Cockpit e métricas\n\n- [ ] Caixa de rascunhos WhatsApp dentro do cockpit do KLASSE IA.\n- [ ] Contagem por rascunho, aprovado, enviado, entregue, lido, respondido e falhou.\n- [ ] Taxa de entrega, leitura e resposta por cenário.\n- [ ] Tempo entre insight, aprovação e envio.\n- [ ] Resultado associado ao insight original.\n- [ ] Alertas de falha, desconexão WAHA e saturação de rate limit.\n\n### Gate de campanha para WhatsApp\n\nA campanha pode demonstrar o fluxo completo quando houver evidência E2E de que:\n\n1. o KLASSE IA identifica o grupo por uma fonte canônica;\n2. o usuário vê destinatários e motivo;\n3. a mensagem pode ser editada;\n4. o envio exige aprovação quando aplicável;\n5. o outbox respeita limite e idempotência;\n6. entrega, leitura, resposta e falha ficam auditáveis;\n7. nenhuma escola acessa dados ou mensagens de outra.\n\nAté esse gate, a demonstração deve terminar na preparação e revisão do rascunho, sem prometer automação autônoma.\n",
       "status": "active"
     },
     {
@@ -217,6 +244,15 @@
       "sourcePath": "apps/web/src/lib/assistant/docs/regras-negocio-academico.md",
       "module": "academico",
       "content": "# Regras de Negócio — Acadêmico, Notas e Horários\n\nEste documento resume regras oficiais acadêmicas que o KLASSE Brain pode usar ao orientar Secretaria, Direção e Professores autorizados.\n\n## Lançamento de notas\n\n- O lançamento de notas é centralizado na RPC `lancar_notas_batch`.\n- As rotas de professor e secretaria exigem header `Idempotency-Key`.\n- O lançamento deve informar turma, disciplina, turma-disciplina, trimestre/tipo de avaliação e lista de notas.\n- A nota aceita valor numérico entre 0 e 100 conforme validação de payload.\n- A RPC é a fonte central para validação e persistência, reduzindo divergência entre portais.\n\nFontes:\n- `apps/web/src/app/api/professor/notas/route.ts`\n- `apps/web/src/app/api/secretaria/notas/route.ts`\n- `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## Permissão para notas\n\n- Professor e Secretaria usam rotas distintas, mas o lançamento não deve ignorar validação de escola e papel.\n- A rota de Secretaria verifica autorização para gestão de turmas antes de chamar a RPC.\n- A regra de negócio de professor atribuído/admin fica centralizada na RPC.\n\nFontes:\n- `apps/web/src/app/api/secretaria/notas/route.ts`\n- `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## Travas de período e turma\n\n- O sistema bloqueia lançamento/alteração de notas quando a turma está fechada.\n- O sistema também bloqueia lançamento/alteração quando o período letivo está travado.\n- Essas travas são regras operacionais; o assistente deve orientar o usuário a verificar fecho de turma/período em vez de sugerir alteração direta.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## Fórmulas e modelos de avaliação\n\n- `modelos_avaliacao.formula` é a fonte principal para componentes e pesos.\n- A pauta geral e pauta anual devem usar o modelo oficial resolvido pelo backend.\n- Ainda existe risco residual de divergência com engines legadas; se a pergunta envolver cálculo avançado, o assistente deve responder com cautela e indicar que o cálculo oficial vem do backend/modelo de avaliação.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## Notificações de notas\n\n- Após lançamento por professor, o sistema pode notificar alunos.\n- Notas abaixo da média mínima operacional de 10 podem gerar notificação específica de nota baixa.\n- O assistente não deve enviar notificação diretamente; deve apenas explicar que o fluxo oficial pode disparar notificações.\n\nFonte: `apps/web/src/app/api/professor/notas/route.ts`\n\n## Horários\n\n- O sistema bloqueia conflitos de professor e sala no mesmo slot.\n- No modo de publicação, o fluxo também valida cobertura de carga horária.\n- O scheduler automático evita colisões de turma, professor e sala por slot.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## O que o assistente pode dizer\n\n- Pode explicar por que o lançamento exige idempotency key.\n- Pode explicar bloqueio por turma fechada ou período travado.\n- Pode orientar o usuário a usar a tela de notas/pauta correta.\n- Pode resumir a regra geral de cálculo sem inventar fórmula específica não documentada.\n\n## O que o assistente não pode inventar\n\n- Não inventar média, fórmula ou regra de aprovação quando não estiver no modelo oficial.\n- Não prometer destravar período/turma.\n- Não lançar, alterar ou apagar notas diretamente.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-regras-negocio-estrutura",
+      "title": "Manual: regras negocio estrutura",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/regras-negocio-estrutura.md",
+      "module": "academico",
+      "content": "# Estrutura Escolar: Cursos, Turmas, Anos Letivos e Professores\n\nA estrutura escolar é o que existe **antes** de haver alunos: os cursos e níveis de ensino que a\nescola oferece, as turmas que abre a partir deles, o ano letivo em que tudo isso se enquadra e os\nprofessores que ficam associados a cada disciplina. Configura-se uma vez e altera-se pouco, mas\ntudo o resto depende dela — sem curso não há turma, sem turma não há matrícula, sem professor\natribuído não há pauta.\n\n## 1. Oferta Formativa (Cursos e Níveis de Ensino)\n\nÉ aqui que se define **o que a escola ensina**: os cursos e os níveis de ensino disponíveis.\n\n- Caminho: **Configurações > Oferta Formativa** (`/escola/[schoolId]/admin/configuracoes/estrutura`).\n- A mesma página também está acessível por **Operações > Configurações > Oferta formativa**.\n- A página chama-se \"Oferta Formativa\" no ecrã. Se um utilizador disser \"estrutura\" ou \"estrutura\n  escolar\", é quase sempre a este ecrã que se refere.\n- Alterar a oferta formativa é uma decisão de direção: mexe no que pode ser vendido e matriculado no\n  ano seguinte, não apenas num ecrã de configuração.\n\n## 2. Anos Letivos e Calendário Escolar\n\nO ano letivo é a moldura temporal de tudo: períodos, trimestres, datas de início e fim.\n\n- Caminho: **Configurações > Calendário** (`/escola/[schoolId]/admin/configuracoes/calendario`).\n- Nenhuma turma nem matrícula deve ser criada antes de o ano letivo estar configurado e ativo.\n- O sistema tem uma **viragem de ano** que transporta a estrutura de um ano para o seguinte. Se a\n  viragem detetar problemas na estrutura, encaminha o utilizador para a Oferta Formativa para os\n  resolver antes de continuar.\n\n## 3. Turmas e Salas\n\nA turma é a ligação entre um curso, uma classe e um conjunto de alunos, num turno e numa sala.\n\n- Caminho: **Secretaria > Turmas** (`/escola/[schoolId]/secretaria/turmas`) ou\n  **Configurações > Turmas** (`/escola/[schoolId]/admin/configuracoes/turmas`).\n- Cada turma está associada a um curso e a uma classe específicos, e tem turno e sala.\n- O remanejamento de alunos entre turmas da mesma classe faz-se pela ficha do aluno.\n- O detalhe da turma tem três separadores: **Alunos**, **Pedagógico** e **Documentos**.\n\n## 4. Atribuir Professores às Turmas\n\nNão existe um ecrã autónomo de \"alocação de professores\". A atribuição faz-se em dois sítios:\n\n- **A partir da lista de turmas**: a ação de atribuir professores abre uma janela onde se escolhem os\n  professores por disciplina.\n- **A partir do detalhe da turma**: no separador **Pedagógico**, onde a lista de professores\n  disponíveis é carregada para associação às disciplinas da turma.\n\nSe a pergunta for \"que turmas não têm professor atribuído\" ou \"quem dá esta disciplina\", o ponto de\npartida é sempre o detalhe da turma, separador Pedagógico.\n\n## 5. Configuração Académica Completa\n\nPara montar a estrutura de uma escola nova, existe um assistente que percorre os passos por ordem:\ncursos, classes, disciplinas, turmas e professores.\n\n- Caminho: **Configurações > Configuração Académica Completa**\n  (`/escola/[schoolId]/admin/configuracoes/academico-completo`).\n- É o caminho recomendado quando a escola está a ser configurada de raiz; para ajustes pontuais, os\n  ecrãs individuais das secções anteriores são mais diretos.\n- Ao sincronizar turmas já existentes, o assistente pede confirmação explícita antes de reconstruir,\n  porque a operação pode afetar turmas com alunos.\n\n## 6. Perguntas Frequentes\n\n- **\"Onde configuro os cursos?\"** → Configurações > Oferta Formativa.\n- **\"Onde vejo as turmas?\"** → Secretaria > Turmas.\n- **\"Como atribuo um professor a uma turma?\"** → Turmas > (ação de atribuir) ou detalhe da turma >\n  separador Pedagógico.\n- **\"Onde mudo o ano letivo?\"** → Configurações > Calendário.\n- **\"A escola é nova, por onde começo?\"** → Configurações > Configuração Académica Completa.\n",
       "status": "active"
     },
     {
@@ -251,7 +287,7 @@
       "title": "Manual: tutoriais alunos turmas",
       "sourceType": "doc",
       "sourcePath": "apps/web/src/lib/assistant/docs/tutoriais-alunos-turmas.md",
-      "module": "classe_ai",
+      "module": "academico",
       "content": "# Tutoriais de Alunos, Turmas, Notas e Presenças\n\nEste documento reúne procedimentos comuns para professores e secretaria sobre a gestão acadêmica dos estudantes.\n\n## 1. Cadastro de Estudante e Ano Letivo\n- Para cadastrar um aluno, certifique-se de que o ano letivo atual esteja configurado e ativo.\n- Vá para **Secretaria > Alunos > Novo Aluno** e insira os dados cadastrais obrigatórios.\n- Se o aluno for menor de idade, é obrigatório registrar pelo menos um encarregado de educação e a sua relação de parentesco.\n\n## 2. Enturmação e Criação de Turmas\n- As turmas devem ser abertas no início do ano letivo em **Secretaria > Turmas > Nova Turma**.\n- Cada turma está associada a uma classe e curso específicos.\n- O remanejamento de alunos entre turmas da mesma classe pode ser feito via funcionalidade \"Transferir Aluno\" disponível na ficha do aluno.\n\n## 3. Lançamento de Notas\n- Professores e administradores podem lançar notas de avaliações em **Administração > Notas** (rota: `/escola/[schoolId]/admin/notas`).\n- As notas de cada trimestre contam para a média de aproveitamento.\n- O sistema possui regras de validação para impedir lançamentos em períodos letivos já encerrados ou bloqueados pela direção.\n\n## 4. Presenças e Faltas\n- O registro diário de faltas e presenças é feito em **Secretaria > Calendário** (ou pelo portal do professor).\n- Faltas em excesso podem impactar a elegibilidade do aluno para aprovação direta, conforme regras definidas no regulamento da escola.\n",
       "status": "active"
     },
@@ -260,7 +296,7 @@
       "title": "Manual: tutoriais comunicados documentos",
       "sourceType": "doc",
       "sourcePath": "apps/web/src/lib/assistant/docs/tutoriais-comunicados-documentos.md",
-      "module": "classe_ai",
+      "module": "comunicacao",
       "content": "# Tutoriais de Comunicados e Documentos\n\nGuia rápido sobre a publicação de comunicados e a emissão de boletins e certidões na secretaria escolar.\n\n## 1. Criação de Avisos e Comunicados\n- Para publicar avisos que serão exibidos no painel dos alunos e encarregados, acesse **Administração > Avisos** e clique em **Novo**.\n- Digite o título, defina o público-alvo (Alunos, Encarregados, Professores ou Todos) e redija o corpo do aviso.\n- Você pode usar o assistente de IA na barra lateral para reescrever o texto em tom formal, cordial ou reduzir a extensão para mensagens curtas.\n- Salve o comunicado como rascunho ou publique imediatamente.\n\n## 2. Emissão de Boletins Escolares\n- A emissão de boletins de notas é feita em **Secretaria > Documentos** ou pela ficha de cada aluno.\n- Selecione a turma ou o estudante, escolha o trimestre desejado e clique em \"Emitir Boletim\".\n- O boletim consolidará as notas lançadas até o momento e calculará a média trimestral automaticamente.\n\n## 3. Declarações e Certidões\n- As declarações de matrícula ou frequência com ou sem notas podem ser geradas instantaneamente em formato PDF.\n- A escola pode configurar a inserção de assinatura digital ou QR code de autenticidade nas configurações de identidade da escola.\n- Todos os downloads de declarações geram um registro nas tabelas de auditoria do sistema.\n",
       "status": "active"
     }
@@ -344,7 +380,7 @@
       "schoolId": null,
       "module": "any",
       "chunkIndex": 6,
-      "content": "Nomes/Aliases: acesso de alunos, liberar acesso, credenciais alunos, login alunos, senha alunos\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/acesso`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria",
+      "content": "Nomes/Aliases: acesso de alunos, liberar acesso, credenciais alunos, login alunos, senha alunos\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/acesso`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Oferta Formativa** (Chave: `estrutura_oferta_formativa`, Módulo: `academico`):\n  Descrição: Gerir os cursos e níveis de ensino disponíveis na escola.\n  Nomes/Aliases: estrutura, estrutura escolar, oferta formativa, cursos, níveis de ensino, niveis de ensino, configurar cursos, criar curso\n  Função URL: `/escola/ID_DA_ESCOLA/admin/configuracoes/estrutura`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria",
       "metadata": {
         "title": "Route Registry",
         "section": "Rotas do Sistema KLASSE"
@@ -356,7 +392,7 @@
       "schoolId": null,
       "module": "any",
       "chunkIndex": 0,
-      "content": "# Ações Disponíveis do Assistente KLASSE\n\nEste é o catálogo de ações oficiais que a IA pode sugerir:\n\n- **Abrir tela** (Chave: `navigate_to_screen`, Módulo: `any`):\n  Descrição: Navegar para uma tela específica do sistema usando a barra lateral ou link.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Explicar tela atual** (Chave: `explain_current_screen`, Módulo: `any`):\n  Descrição: Obter explicações e ações rápidas sobre a tela onde você se encontra.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Melhorar comunicado** (Chave: `improve_notice`, Módulo: `comunicacao`):\n  Descrição: IA reescreve ou melhora um aviso de comunicação de forma mais formal ou clara.",
+      "content": "# Ações Disponíveis do Assistente KLASSE\n\nEste é o catálogo de ações oficiais que a IA pode sugerir:\n\n- **Abrir tela** (Chave: `navigate_to_screen`, Módulo: `any`):\n  Descrição: Navegar para uma tela específica do sistema usando a barra lateral ou link.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Explicar tela atual** (Chave: `explain_current_screen`, Módulo: `any`):\n  Descrição: Obter explicações e ações rápidas sobre a tela onde você se encontra.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Melhorar comunicado** (Chave: `improve_notice`, Módulo: `comunicacao`):\n  Descrição: IA reescreve ou melhora um aviso de comunicação de forma mais formal ou clara.",
       "metadata": {
         "title": "Action Registry",
         "section": "Ações Disponíveis do Assistente KLASSE"
@@ -380,7 +416,7 @@
       "schoolId": null,
       "module": "any",
       "chunkIndex": 2,
-      "content": "Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho financeiro** (Chave: `create_finance_draft`, Módulo: `financeiro`):\n  Descrição: Gerar um rascunho de plano de ação de cobrança para posterior aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho WhatsApp** (Chave: `create_whatsapp_draft`, Módulo: `whatsapp`):\n  Descrição: IA gera mensagem com placeholders para envio posterior via WhatsApp.\n  Tipo de ação: create_whatsapp_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Salvar na Central de Ações IA** (Chave: `save_in_ai_actions`, Módulo: `classe_ai`):\n  Descrição: Salvar o rascunho gerado pela IA na Central de Ações para auditoria e aprovação.",
+      "content": "Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho financeiro** (Chave: `create_finance_draft`, Módulo: `financeiro`):\n  Descrição: Gerar um rascunho de plano de ação de cobrança para posterior aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho WhatsApp** (Chave: `create_whatsapp_draft`, Módulo: `whatsapp`):\n  Descrição: IA gera mensagem com placeholders para envio posterior via WhatsApp.\n  Tipo de ação: create_whatsapp_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Salvar na Central de Ações IA** (Chave: `save_in_ai_actions`, Módulo: `classe_ai`):",
       "metadata": {
         "title": "Action Registry",
         "section": "Ações Disponíveis do Assistente KLASSE"
@@ -392,7 +428,7 @@
       "schoolId": null,
       "module": "any",
       "chunkIndex": 3,
-      "content": "Tipo de ação: create_draft\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Abrir Central WhatsApp** (Chave: `open_whatsapp_inbox`, Módulo: `whatsapp`):\n  Descrição: Acessar a Central WhatsApp da escola para enviar mensagens ou gerenciar contatos.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Encontrar caminho no sistema** (Chave: `find_system_path`, Módulo: `any`):\n  Descrição: Perguntar onde se encontra uma funcionalidade no sistema e obter o caminho e link oficial.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro",
+      "content": "Descrição: Salvar o rascunho gerado pela IA na Central de Ações para auditoria e aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Abrir Central WhatsApp** (Chave: `open_whatsapp_inbox`, Módulo: `whatsapp`):\n  Descrição: Acessar a Central WhatsApp da escola para enviar mensagens ou gerenciar contatos.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Encontrar caminho no sistema** (Chave: `find_system_path`, Módulo: `any`):\n  Descrição: Perguntar onde se encontra uma funcionalidade no sistema e obter o caminho e link oficial.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria",
       "metadata": {
         "title": "Action Registry",
         "section": "Ações Disponíveis do Assistente KLASSE"
@@ -578,6 +614,45 @@
         "title": "O que é e como funciona o KLASSE IA?",
         "key": "sobre_klasse_ia",
         "category": "KLASSE AI"
+      }
+    },
+    {
+      "id": "topic-configurar_estrutura-chunk-0",
+      "documentId": "topic-configurar_estrutura",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Configurar Cursos e Níveis de Ensino (Categoria: Acadêmico)\nChave: configurar_estrutura\nAliases: estrutura, estrutura escolar, oferta formativa, cursos, níveis de ensino, niveis de ensino, configurar cursos, criar curso\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: A oferta formativa da escola — os cursos e níveis de ensino que a escola pode matricular — configura-se na página **Oferta Formativa**. É uma decisão de direção: alterá-la muda o que pode ser matriculado no ano seguinte.\nPasso a passo:\n1. No menu lateral, abra Configurações.\n2. Escolha Oferta Formativa (também acessível por Operações > Configurações > Oferta formativa).\n3. Adicione ou ajuste os cursos e os níveis de ensino disponíveis.\n",
+      "metadata": {
+        "title": "Configurar Cursos e Níveis de Ensino",
+        "key": "configurar_estrutura",
+        "category": "Acadêmico"
+      }
+    },
+    {
+      "id": "topic-anos_lectivos-chunk-0",
+      "documentId": "topic-anos_lectivos",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Anos Letivos e Calendário Escolar (Categoria: Acadêmico)\nChave: anos_lectivos\nAliases: ano letivo, ano lectivo, anos letivos, anos lectivos, calendário escolar, calendario escolar, períodos letivos, periodos letivos\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: O ano letivo é a moldura temporal de tudo o resto: períodos, trimestres e datas de início e fim. Nenhuma turma nem matrícula deve ser criada antes de o ano letivo estar configurado e ativo. A viragem de ano transporta a estrutura para o ano seguinte e, se detetar problemas, encaminha para a Oferta Formativa.\nPasso a passo:\n1. No menu lateral, abra Configurações.\n2. Escolha Calendário.\n3. Configure o ano letivo e os respetivos períodos antes de abrir turmas.\n",
+      "metadata": {
+        "title": "Anos Letivos e Calendário Escolar",
+        "key": "anos_lectivos",
+        "category": "Acadêmico"
+      }
+    },
+    {
+      "id": "topic-alocacao_professores-chunk-0",
+      "documentId": "topic-alocacao_professores",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Atribuir Professores às Turmas (Categoria: Acadêmico)\nChave: alocacao_professores\nAliases: atribuir professor, atribuir professores, alocação de professores, alocacao de professores, professor da turma, professores da turma, alocar professor\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Não existe um ecrã autónomo de alocação de professores. A atribuição faz-se a partir das turmas, por disciplina — pela ação de atribuir na lista de turmas, ou no separador **Pedagógico** do detalhe da turma.\nPasso a passo:\n1. No menu lateral, abra Secretaria > Turmas.\n2. Use a ação de atribuir professores, ou abra a turma pretendida.\n3. No detalhe da turma, escolha o separador Pedagógico e associe os professores às disciplinas.\n",
+      "metadata": {
+        "title": "Atribuir Professores às Turmas",
+        "key": "alocacao_professores",
+        "category": "Acadêmico"
       }
     },
     {
@@ -1402,10 +1477,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 20,
-      "content": "## 6. Permissões\n\nPermissões específicas:\n\n| Permissão | Uso |\n|---|---|\n| `assistant.view` | visualizar e usar o assistente |\n| `assistant.help` | ajuda e navegação |\n| `assistant.finance` | ferramentas e ações financeiras |\n| `assistant.secretaria` | diagnósticos de secretaria e admissões |\n| `assistant.academico` | diagnósticos de notas e frequência |\n| `assistant.summary` | briefing e resumos executivos |\n| `assistant.ai_actions` | Central de Ações IA |\n| `assistant.whatsapp_draft` | rascunhos financeiros para WhatsApp |\n\nAlunos, professores, encarregados e perfis equivalentes permanecem explicitamente bloqueados nesta versão administrativa.",
+      "content": "#### `academic-calendar-operations`\n\nConsulta `anos_letivos`, `periodos_letivos` e `calendario_eventos` do ano activo para\nidentificar a fase temporal, o período actual e o próximo marco do calendário MED.\nQuando o briefing é gerado no cockpit, este marco também é persistido em `ai_insights`\ncomo alerta operacional independente, com ciclo `new → seen → in_progress → resolved`.\nAs acções apenas abrem as telas oficiais de calendário e notas; conselho e pauta\ncontinuam dependentes da validação humana e dos fluxos académicos oficiais.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "6. Permissões"
+        "section": "`academic-calendar-operations`"
       }
     },
     {
@@ -1414,10 +1489,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 21,
-      "content": "## 7. Actions V2 e aprovação humana\n\nCada ação registrada possui:\n\n- identificador estável;\n- tipo de ação;\n- módulo;\n- papéis permitidos;\n- permissão;\n- nível de risco;\n- indicação de aprovação;\n- destino ou payload fechado.\n\nNíveis:\n\n- **low** — navegação e leitura;\n- **medium** — exportação ou preparação operacional explícita;\n- **high** — comunicação, cobrança ou ação com efeito externo; exige revisão.\n\nA IA não executa silenciosamente. Ações de risco alto são encaminhadas para a Central de Ações IA.",
+      "content": "## 6. Permissões\n\nPermissões específicas:\n\n| Permissão | Uso |\n|---|---|\n| `assistant.view` | visualizar e usar o assistente |\n| `assistant.help` | ajuda e navegação |\n| `assistant.finance` | ferramentas e ações financeiras |\n| `assistant.secretaria` | diagnósticos de secretaria e admissões |\n| `assistant.academico` | diagnósticos de notas e frequência |\n| `assistant.summary` | briefing e resumos executivos |\n| `assistant.ai_actions` | Central de Ações IA |\n| `assistant.whatsapp_draft` | rascunhos financeiros para WhatsApp |\n\nAlunos, professores, encarregados e perfis equivalentes permanecem explicitamente bloqueados nesta versão administrativa.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "7. Actions V2 e aprovação humana"
+        "section": "6. Permissões"
       }
     },
     {
@@ -1426,10 +1501,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 22,
-      "content": "## 8. Insights persistentes\n\nA tabela `public.ai_insights` transforma respostas efêmeras em memória operacional auditável.\n\nCampos principais:\n\n- escola e usuário gerador;\n- ferramenta e fingerprint;\n- título, severidade e módulo;\n- explicação e evidência estruturada;\n- recomendação e ação sugerida;\n- status e timestamps de workflow;\n- datas de primeira e última detecção.\n\nEstados:\n\n```text\nnew → seen → in_progress → resolved\n                  └──────→ ignored\n```\n\nO fingerprint `(school_id, fingerprint)` evita duplicação do mesmo insight. O briefing usa fingerprint diário.\n\nSegurança do schema:\n\n- RLS habilitado;\n- acesso condicionado ao vínculo em `escola_users`;\n- `anon` sem privilégios;\n- `authenticated` com `SELECT`, `INSERT` e `UPDATE`;\n- DELETE reservado ao `service_role`;\n- índices para escola, status, módulo, severidade e insights abertos.\n\nMigrations:\n\n- `20270718123000_create_ai_insights.sql`;\n- `20270718123500_harden_ai_insights_grants.sql`.",
+      "content": "## 7. Actions V2 e aprovação humana\n\nCada ação registrada possui:\n\n- identificador estável;\n- tipo de ação;\n- módulo;\n- papéis permitidos;\n- permissão;\n- nível de risco;\n- indicação de aprovação;\n- destino ou payload fechado.\n\nNíveis:\n\n- **low** — navegação e leitura;\n- **medium** — exportação ou preparação operacional explícita;\n- **high** — comunicação, cobrança ou ação com efeito externo; exige revisão.\n\nA IA não executa silenciosamente. Ações de risco alto são encaminhadas para a Central de Ações IA.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "8. Insights persistentes"
+        "section": "7. Actions V2 e aprovação humana"
       }
     },
     {
@@ -1438,10 +1513,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 23,
-      "content": "## 9. API de insights",
+      "content": "## 8. Insights persistentes\n\nA tabela `public.ai_insights` transforma respostas efêmeras em memória operacional auditável.\n\nCampos principais:\n\n- escola e usuário gerador;\n- ferramenta e fingerprint;\n- título, severidade e módulo;\n- explicação e evidência estruturada;\n- recomendação e ação sugerida;\n- status e timestamps de workflow;\n- datas de primeira e última detecção.\n\nEstados:\n\n```text\nnew → seen → in_progress → resolved\n                  └──────→ ignored\n```\n\nO fingerprint `(school_id, fingerprint)` evita duplicação do mesmo insight. O briefing usa fingerprint diário.\n\nSegurança do schema:\n\n- RLS habilitado;\n- acesso condicionado ao vínculo em `escola_users`;\n- `anon` sem privilégios;\n- `authenticated` com `SELECT`, `INSERT` e `UPDATE`;\n- DELETE reservado ao `service_role`;\n- índices para escola, status, módulo, severidade e insights abertos.\n\nMigrations:\n\n- `20270718123000_create_ai_insights.sql`;\n- `20270718123500_harden_ai_insights_grants.sql`.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "9. API de insights"
+        "section": "8. Insights persistentes"
       }
     },
     {
@@ -1450,10 +1525,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 24,
-      "content": "### `GET /api/admin/ai/insights`\n\nLista histórico da escola com filtros opcionais:\n\n- status;\n- módulo;\n- severidade;\n- limite entre 1 e 50.",
+      "content": "## 9. API de insights",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "`GET /api/admin/ai/insights`"
+        "section": "9. API de insights"
       }
     },
     {
@@ -1462,10 +1537,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 25,
-      "content": "### `POST /api/admin/ai/insights`\n\nGera o briefing diário e faz upsert idempotente em `ai_insights`.",
+      "content": "### `GET /api/admin/ai/insights`\n\nLista histórico da escola com filtros opcionais:\n\n- status;\n- módulo;\n- severidade;\n- limite entre 1 e 50.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "`POST /api/admin/ai/insights`"
+        "section": "`GET /api/admin/ai/insights`"
       }
     },
     {
@@ -1474,10 +1549,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 26,
-      "content": "### `PATCH /api/admin/ai/insights/[id]`\n\nTransições permitidas:\n\n- `seen`;\n- `in_progress`;\n- `resolved`;\n- `ignored`.\n\nTodos os endpoints são `force-dynamic`, usam `revalidate = 0`, autenticam o usuário e executam `resolveEscolaIdForUser`. Endpoints humanos não usam service role.",
+      "content": "### `POST /api/admin/ai/insights`\n\nGera o briefing diário e faz upsert idempotente em `ai_insights`.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "`PATCH /api/admin/ai/insights/[id]`"
+        "section": "`POST /api/admin/ai/insights`"
       }
     },
     {
@@ -1486,10 +1561,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 27,
-      "content": "## 10. Cockpit do KLASSE IA\n\nRota:\n\n```text\n/escola/[id]/admin/ai\n```\n\nA antiga redireção direta para a Central de Ações foi substituída por uma home própria com:\n\n- chamada “O que merece atenção hoje?”;\n- geração e atualização do briefing;\n- insights novos, em execução e resolvidos;\n- ações aguardando aprovação;\n- cards semânticos por severidade;\n- evidências e recomendação;\n- workflow visto, iniciar, resolver e ignorar;\n- acesso à Central de Ações IA.\n\nComponente: `KlasseAiCockpitClient.tsx`.",
+      "content": "### `PATCH /api/admin/ai/insights/[id]`\n\nTransições permitidas:\n\n- `seen`;\n- `in_progress`;\n- `resolved`;\n- `ignored`.\n\nTodos os endpoints são `force-dynamic`, usam `revalidate = 0`, autenticam o usuário e executam `resolveEscolaIdForUser`. Endpoints humanos não usam service role.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "10. Cockpit do KLASSE IA"
+        "section": "`PATCH /api/admin/ai/insights/[id]`"
       }
     },
     {
@@ -1498,10 +1573,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 28,
-      "content": "## 11. Widget\n\nO `AiChatWidget.tsx` mantém ajuda e conversa contextual, mas respostas de dados agora usam apresentação editorial própria:\n\n- etiqueta **Análise de dados reais**;\n- badge **Copiloto**;\n- bloco de diagnóstico;\n- bloco semântico de impacto;\n- próximo passo recomendado;\n- cards de evidência;\n- botões de ação com cor de risco;\n- indicação **Requer revisão** para ações sujeitas a aprovação.\n\nMensagens antigas ou de ajuda continuam com fallback compatível.",
+      "content": "## 10. Cockpit do KLASSE IA\n\nRota:\n\n```text\n/escola/[id]/admin/ai\n```\n\nA antiga redireção direta para a Central de Ações foi substituída por uma home própria com:\n\n- chamada “O que merece atenção hoje?”;\n- geração e atualização do briefing;\n- insights novos, em execução e resolvidos;\n- ações aguardando aprovação;\n- cards semânticos por severidade;\n- evidências e recomendação;\n- workflow visto, iniciar, resolver e ignorar;\n- acesso à Central de Ações IA.\n\nComponente: `KlasseAiCockpitClient.tsx`.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "11. Widget"
+        "section": "10. Cockpit do KLASSE IA"
       }
     },
     {
@@ -1510,10 +1585,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 29,
-      "content": "## 12. Proteção de dados\n\n- Ferramentas usam dados agregados sempre que possível.\n- O briefing não envia dados operacionais para o provedor de linguagem.\n- A ferramenta de frequência não retorna nomes de alunos.\n- Evidências são limitadas e não incluem listas integrais.\n- O contexto enviado ao modelo remove PII desnecessária.\n- Rascunhos de WhatsApp usam placeholders antes da aprovação.",
+      "content": "## 11. Widget\n\nO `AiChatWidget.tsx` mantém ajuda e conversa contextual, mas respostas de dados agora usam apresentação editorial própria:\n\n- etiqueta **Análise de dados reais**;\n- badge **Copiloto**;\n- bloco de diagnóstico;\n- bloco semântico de impacto;\n- próximo passo recomendado;\n- cards de evidência;\n- botões de ação com cor de risco;\n- indicação **Requer revisão** para ações sujeitas a aprovação.\n\nMensagens antigas ou de ajuda continuam com fallback compatível.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "12. Proteção de dados"
+        "section": "11. Widget"
       }
     },
     {
@@ -1522,10 +1597,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 30,
-      "content": "## 13. Cache e atualização de dados\n\nDados operacionais e financeiros usam `no-store`/`force-dynamic` conforme o contrato KLASSE.\n\nAs MVs críticas possuem índice único, função de refresh concorrente e cron. Os jobs de pagamentos e Formação foram reconciliados e distribuídos em horários diferentes para reduzir picos de I/O.",
+      "content": "## 12. Proteção de dados\n\n- Ferramentas usam dados agregados sempre que possível.\n- O briefing não envia dados operacionais para o provedor de linguagem.\n- A ferramenta de frequência não retorna nomes de alunos.\n- Evidências são limitadas e não incluem listas integrais.\n- O contexto enviado ao modelo remove PII desnecessária.\n- Rascunhos de WhatsApp usam placeholders antes da aprovação.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "13. Cache e atualização de dados"
+        "section": "12. Proteção de dados"
       }
     },
     {
@@ -1534,10 +1609,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 31,
-      "content": "## 14. Créditos e logs\n\n- Configuração por escola em `ai_school_settings`.\n- Uso registrado em `ai_usage_logs`.\n- Reserva de cota por RPC `claim_ai_usage_slot`.\n- Fast Paths e ferramentas determinísticas não precisam chamar o provedor de linguagem.\n- Geração textual continua sujeita a quota, timeout e logs do provedor.",
+      "content": "## 13. Cache e atualização de dados\n\nDados operacionais e financeiros usam `no-store`/`force-dynamic` conforme o contrato KLASSE.\n\nAs MVs críticas possuem índice único, função de refresh concorrente e cron. Os jobs de pagamentos e Formação foram reconciliados e distribuídos em horários diferentes para reduzir picos de I/O.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "14. Créditos e logs"
+        "section": "13. Cache e atualização de dados"
       }
     },
     {
@@ -1546,10 +1621,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 32,
-      "content": "## 15. Operação e validação\n\nAntes de liberar mudanças do KLASSE IA:\n\n1. executar `pnpm -C apps/web typecheck`;\n2. executar `git diff --check`;\n3. verificar `resolveEscolaIdForUser` em endpoints humanos;\n4. verificar `force-dynamic`, `revalidate = 0` e limites máximos;\n5. confirmar RLS e grants das tabelas persistentes;\n6. confirmar fontes canônicas e filtros `escola_id`;\n7. validar que ações de alto risco continuam sujeitas a aprovação.",
+      "content": "## 14. Créditos e logs\n\n- Configuração por escola em `ai_school_settings`.\n- Uso registrado em `ai_usage_logs`.\n- Reserva de cota por RPC `claim_ai_usage_slot`.\n- Fast Paths e ferramentas determinísticas não precisam chamar o provedor de linguagem.\n- Geração textual continua sujeita a quota, timeout e logs do provedor.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "15. Operação e validação"
+        "section": "14. Créditos e logs"
       }
     },
     {
@@ -1558,10 +1633,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 33,
-      "content": "## 16. Limitações e próximos passos\n\nImplementado, mas ainda evolutivo:\n\n- o briefing é gerado manualmente pelo cockpit ou por solicitação no widget;\n- geração proativa agendada de insights ainda não está habilitada;\n- a priorização usa o indicador principal de cada ferramenta, não um modelo avançado de risco;\n- consumo detalhado de IA ainda não possui card dedicado no cockpit;\n- oportunidades e previsão financeira podem ganhar ferramentas específicas;\n- testes E2E autenticados do cockpit devem integrar a pipeline regular.\n\nEssas limitações não autorizam autonomia adicional. A regra permanece:\n\n> O backend decide dados e ações; a IA explica e escreve; uma pessoa aprova efeitos externos.",
+      "content": "## 15. Operação e validação\n\nAntes de liberar mudanças do KLASSE IA:\n\n1. executar `pnpm -C apps/web typecheck`;\n2. executar `git diff --check`;\n3. verificar `resolveEscolaIdForUser` em endpoints humanos;\n4. verificar `force-dynamic`, `revalidate = 0` e limites máximos;\n5. confirmar RLS e grants das tabelas persistentes;\n6. confirmar fontes canônicas e filtros `escola_id`;\n7. validar que ações de alto risco continuam sujeitas a aprovação.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "16. Limitações e próximos passos"
+        "section": "15. Operação e validação"
       }
     },
     {
@@ -1570,10 +1645,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 34,
-      "content": "## 17. Backlog priorizado\n\nEste backlog registra as pendências conhecidas após a implementação do Data Copilot, briefing diário, `ai_insights`, cockpit e cards estruturados do widget.",
+      "content": "## 16. Limitações e próximos passos\n\nImplementado, mas ainda evolutivo:\n\n- o briefing é gerado manualmente pelo cockpit ou por solicitação no widget;\n- geração proativa agendada de insights ainda não está habilitada;\n- a priorização usa o indicador principal de cada ferramenta, não um modelo avançado de risco;\n- consumo detalhado de IA ainda não possui card dedicado no cockpit;\n- oportunidades e previsão financeira podem ganhar ferramentas específicas;\n- testes E2E autenticados do cockpit devem integrar a pipeline regular.\n\nEssas limitações não autorizam autonomia adicional. A regra permanece:\n\n> O backend decide dados e ações; a IA explica e escreve; uma pessoa aprova efeitos externos.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "17. Backlog priorizado"
+        "section": "16. Limitações e próximos passos"
       }
     },
     {
@@ -1582,10 +1657,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 35,
-      "content": "### P0 — Gate antes da campanha\n\nItens bloqueantes para demonstrações comerciais com dados reais:\n\n- [ ] Criar testes E2E autenticados para o fluxo completo:\n  - pergunta no widget;\n  - execução de ferramenta;\n  - composição do briefing;\n  - persistência em `ai_insights`;\n  - transição de estado;\n  - abertura de ação sugerida.\n- [ ] Validar visualmente cockpit e widget em desktop e mobile.\n- [ ] Testar RLS com usuários pertencentes a escolas diferentes.\n- [ ] Testar ausência de acesso para `anon`, aluno, professor e encarregado.\n- [ ] Calcular severidade a partir dos dados; o briefing persistido ainda usa `high` como valor inicial fixo.\n- [ ] Evoluir a priorização para considerar severidade, valor, antiguidade e contexto, não apenas o primeiro indicador numérico.\n- [ ] Exibir estado parcial quando uma ou mais fontes do briefing falharem.\n- [ ] Persistir insights individuais por módulo, além do briefing consolidado.\n- [ ] Confirmar o fluxo autenticado no ambiente usado pela demonstração comercial.",
+      "content": "## 17. Backlog priorizado\n\nEste backlog registra as pendências conhecidas após a implementação do Data Copilot, briefing diário, `ai_insights`, cockpit e cards estruturados do widget.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "P0 — Gate antes da campanha"
+        "section": "17. Backlog priorizado"
       }
     },
     {
@@ -1594,7 +1669,7 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 36,
-      "content": "Critério de conclusão do P0:\n\n- isolamento entre escolas comprovado;\n- zero ações externas automáticas;\n- briefing gerado e persistido com sucesso;\n- cards responsivos e sem erro de runtime;\n- evidências correspondentes aos dados canônicos;\n- workflow de insight funcional do início à resolução.",
+      "content": "### P0 — Gate antes da campanha\n\nItens bloqueantes para demonstrações comerciais com dados reais:\n\n- [ ] Criar testes E2E autenticados para o fluxo completo:\n  - pergunta no widget;\n  - execução de ferramenta;\n  - composição do briefing;\n  - persistência em `ai_insights`;\n  - transição de estado;\n  - abertura de ação sugerida.\n- [ ] Validar visualmente cockpit e widget em desktop e mobile.\n- [ ] Testar RLS com usuários pertencentes a escolas diferentes.\n- [ ] Testar ausência de acesso para `anon`, aluno, professor e encarregado.\n- [ ] Calcular severidade a partir dos dados; o briefing persistido ainda usa `high` como valor inicial fixo.\n- [ ] Evoluir a priorização para considerar severidade, valor, antiguidade e contexto, não apenas o primeiro indicador numérico.\n- [ ] Exibir estado parcial quando uma ou mais fontes do briefing falharem.\n- [ ] Persistir insights individuais por módulo, além do briefing consolidado.\n- [ ] Confirmar o fluxo autenticado no ambiente usado pela demonstração comercial.",
       "metadata": {
         "title": "readme-klasse-ai.md",
         "section": "P0 — Gate antes da campanha"
@@ -1606,10 +1681,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 37,
-      "content": "### P1 — Sustentar plenamente a campanha",
+      "content": "Critério de conclusão do P0:\n\n- isolamento entre escolas comprovado;\n- zero ações externas automáticas;\n- briefing gerado e persistido com sucesso;\n- cards responsivos e sem erro de runtime;\n- evidências correspondentes aos dados canônicos;\n- workflow de insight funcional do início à resolução.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "P1 — Sustentar plenamente a campanha"
+        "section": "P0 — Gate antes da campanha"
       }
     },
     {
@@ -1618,10 +1693,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 38,
-      "content": "#### Proatividade\n\n- [ ] Gerar insights automaticamente no início do dia.\n- [ ] Gerar insights antes do fechamento financeiro.\n- [ ] Gerar insights durante campanhas de admissões.\n- [ ] Gerar insights antes do fechamento de notas.\n- [ ] Gerar insight imediato quando um limiar de risco alto for atingido.\n- [ ] Garantir que proatividade apenas prepare e sinalize; nenhum envio ou efeito externo pode ser automático.",
+      "content": "### P1 — Sustentar plenamente a campanha",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Proatividade"
+        "section": "P1 — Sustentar plenamente a campanha"
       }
     },
     {
@@ -1630,10 +1705,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 39,
-      "content": "#### Novas ferramentas\n\n- [ ] Top devedores.\n- [ ] Previsão simples de entrada do mês.\n- [ ] Pagamentos aguardando compensação.\n- [ ] Turmas com maior risco financeiro.\n- [ ] Documentos de admissão em falta.\n- [ ] Admissões paradas há mais de X dias.\n- [ ] Alunos sem acesso liberado.\n- [ ] Disciplinas sem lançamento.\n- [ ] Oportunidades da escola, além de riscos.",
+      "content": "#### Proatividade\n\n- [ ] Gerar insights automaticamente no início do dia.\n- [ ] Gerar insights antes do fechamento financeiro.\n- [ ] Gerar insights durante campanhas de admissões.\n- [ ] Gerar insights antes do fechamento de notas.\n- [ ] Gerar insight imediato quando um limiar de risco alto for atingido.\n- [ ] Garantir que proatividade apenas prepare e sinalize; nenhum envio ou efeito externo pode ser automático.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Novas ferramentas"
+        "section": "Proatividade"
       }
     },
     {
@@ -1642,10 +1717,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 40,
-      "content": "#### Cockpit e operação\n\n- [ ] Adicionar card de consumo diário e mensal de IA.\n- [ ] Mostrar limite do plano e disponibilidade do provedor.\n- [ ] Adicionar filtros por módulo, severidade e status.\n- [ ] Mostrar timeline das mudanças de cada insight.\n- [ ] Permitir definir responsável e prazo.\n- [ ] Permitir delegar insight sem executar a recomendação automaticamente.\n- [ ] Transformar recomendação em tarefa ou plano auditável.\n- [ ] Mostrar horário de atualização da fonte/MV.",
+      "content": "#### Novas ferramentas\n\n- [ ] Top devedores.\n- [ ] Previsão simples de entrada do mês.\n- [ ] Pagamentos aguardando compensação.\n- [ ] Turmas com maior risco financeiro.\n- [ ] Documentos de admissão em falta.\n- [ ] Admissões paradas há mais de X dias.\n- [ ] Alunos sem acesso liberado.\n- [ ] Disciplinas sem lançamento.\n- [ ] Oportunidades da escola, além de riscos.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Cockpit e operação"
+        "section": "Novas ferramentas"
       }
     },
     {
@@ -1654,10 +1729,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 41,
-      "content": "### P1 — Experiência e identidade\n\n- [ ] Abrir o widget com resumo contextual dos sinais do dia.\n- [ ] Adicionar cards rápidos:\n  - Ver risco financeiro;\n  - Rever admissões pendentes;\n  - Gerar resumo da direção;\n  - Preparar comunicação.\n- [ ] Criar presença visual própria ou mascote leve do KLASSE IA.\n- [ ] Melhorar renderização de markdown nos campos estruturados.\n- [ ] Criar estados visuais para fonte indisponível e dados desatualizados.\n- [ ] Validar contraste, leitor de tela e navegação por teclado.\n- [ ] Executar QA responsivo completo do cockpit e widget.",
+      "content": "#### Cockpit e operação\n\n- [ ] Adicionar card de consumo diário e mensal de IA.\n- [ ] Mostrar limite do plano e disponibilidade do provedor.\n- [ ] Adicionar filtros por módulo, severidade e status.\n- [ ] Mostrar timeline das mudanças de cada insight.\n- [ ] Permitir definir responsável e prazo.\n- [ ] Permitir delegar insight sem executar a recomendação automaticamente.\n- [ ] Transformar recomendação em tarefa ou plano auditável.\n- [ ] Mostrar horário de atualização da fonte/MV.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "P1 — Experiência e identidade"
+        "section": "Cockpit e operação"
       }
     },
     {
@@ -1666,10 +1741,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 42,
-      "content": "### P2 — Evolução\n\n- [ ] Preferências operacionais por escola.\n- [ ] Regras recorrentes de cobrança.\n- [ ] Tom institucional configurável.\n- [ ] Comparação com períodos anteriores.\n- [ ] Tendências e previsão de risco.\n- [ ] Feedback útil/não útil associado diretamente ao insight.\n- [ ] Métricas de adoção:\n  - insights vistos;\n  - ações iniciadas;\n  - resoluções;\n  - tempo até resolução;\n  - recomendações ignoradas.\n- [ ] Política de expiração, arquivamento e retenção de insights antigos.\n- [ ] Jobs de manutenção e observabilidade do pipeline proativo.",
+      "content": "### P1 — Experiência e identidade\n\n- [ ] Abrir o widget com resumo contextual dos sinais do dia.\n- [ ] Adicionar cards rápidos:\n  - Ver risco financeiro;\n  - Rever admissões pendentes;\n  - Gerar resumo da direção;\n  - Preparar comunicação.\n- [ ] Criar presença visual própria ou mascote leve do KLASSE IA.\n- [ ] Melhorar renderização de markdown nos campos estruturados.\n- [ ] Criar estados visuais para fonte indisponível e dados desatualizados.\n- [ ] Validar contraste, leitor de tela e navegação por teclado.\n- [ ] Executar QA responsivo completo do cockpit e widget.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "P2 — Evolução"
+        "section": "P1 — Experiência e identidade"
       }
     },
     {
@@ -1678,10 +1753,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 43,
-      "content": "### Gate de liberação comercial\n\nA campanha pode demonstrar dados reais quando todos os itens P0 estiverem concluídos e houver evidência do teste autenticado no ambiente de demonstração.\n\nAté esse gate, a formulação comercial deve permanecer:\n\n> O KLASSE IA cruza dados administrativos, financeiros e acadêmicos para ajudar a direção a identificar riscos, priorizar ações e orientar equipas com mais clareza.\n\nApós concluir proatividade, workflow operacional e QA do cockpit, pode ser usada a formulação:\n\n> O KLASSE IA atua como copiloto operacional da escola, gerando insights, recomendações e rascunhos de ação sempre com aprovação humana.",
+      "content": "### P2 — Evolução\n\n- [ ] Preferências operacionais por escola.\n- [ ] Regras recorrentes de cobrança.\n- [ ] Tom institucional configurável.\n- [ ] Comparação com períodos anteriores.\n- [ ] Tendências e previsão de risco.\n- [ ] Feedback útil/não útil associado diretamente ao insight.\n- [ ] Métricas de adoção:\n  - insights vistos;\n  - ações iniciadas;\n  - resoluções;\n  - tempo até resolução;\n  - recomendações ignoradas.\n- [ ] Política de expiração, arquivamento e retenção de insights antigos.\n- [ ] Jobs de manutenção e observabilidade do pipeline proativo.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Gate de liberação comercial"
+        "section": "P2 — Evolução"
       }
     },
     {
@@ -1690,10 +1765,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 44,
-      "content": "## 18. WhatsApp — ponte inteligente entre escola e família\n\nO WhatsApp é o braço de ação comunicacional do KLASSE IA. Ele não deve ser apresentado apenas como canal de envio, mas como a ponte segura entre um diagnóstico operacional e a comunicação necessária para resolver a situação.",
+      "content": "### Gate de liberação comercial\n\nA campanha pode demonstrar dados reais quando todos os itens P0 estiverem concluídos e houver evidência do teste autenticado no ambiente de demonstração.\n\nAté esse gate, a formulação comercial deve permanecer:\n\n> O KLASSE IA cruza dados administrativos, financeiros e acadêmicos para ajudar a direção a identificar riscos, priorizar ações e orientar equipas com mais clareza.\n\nApós concluir proatividade, workflow operacional e QA do cockpit, pode ser usada a formulação:\n\n> O KLASSE IA atua como copiloto operacional da escola, gerando insights, recomendações e rascunhos de ação sempre com aprovação humana.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "18. WhatsApp — ponte inteligente entre escola e família"
+        "section": "Gate de liberação comercial"
       }
     },
     {
@@ -1702,10 +1777,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 45,
-      "content": "### Promessa comercial\n\n> O KLASSE IA transforma dados escolares em comunicações prontas para WhatsApp, sempre com revisão e aprovação da equipa.\n\nFrase de campanha:\n\n> O KLASSE IA não apenas mostra o problema. Ele prepara a comunicação certa para resolver.\n\nEssa promessa significa:\n\n```text\nKLASSE IA identifica o sinal\n→ seleciona o cenário e a ação permitida\n→ prepara mensagem contextual\n→ apresenta destinatários e motivo\n→ escola revisa, edita e aprova\n→ outbox envia dentro dos limites\n→ sistema registra entrega, leitura, resposta ou falha\n```\n\nO WhatsApp não é automação cega. É comunicação assistida, contextual e auditável.",
+      "content": "## 18. WhatsApp — ponte inteligente entre escola e família\n\nO WhatsApp é o braço de ação comunicacional do KLASSE IA. Ele não deve ser apresentado apenas como canal de envio, mas como a ponte segura entre um diagnóstico operacional e a comunicação necessária para resolver a situação.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Promessa comercial"
+        "section": "18. WhatsApp — ponte inteligente entre escola e família"
       }
     },
     {
@@ -1714,10 +1789,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 46,
-      "content": "### Papel do KLASSE IA\n\nO copiloto pode identificar:\n\n- documentos pendentes;\n- candidaturas sem resposta;\n- mensalidades em atraso;\n- avisos que precisam chegar a uma turma;\n- encarregados que exigem follow-up;\n- situações acadêmicas que justificam comunicação.\n\nDepois pode preparar:\n\n- mensagem adequada ao cenário;\n- tom institucional;\n- contexto mínimo necessário;\n- chamada para ação;\n- prazo;\n- link ou instrução oficial.\n\nA escola mantém a decisão final sobre destinatários, conteúdo e envio.",
+      "content": "### Promessa comercial\n\n> O KLASSE IA transforma dados escolares em comunicações prontas para WhatsApp, sempre com revisão e aprovação da equipa.\n\nFrase de campanha:\n\n> O KLASSE IA não apenas mostra o problema. Ele prepara a comunicação certa para resolver.\n\nEssa promessa significa:\n\n```text\nKLASSE IA identifica o sinal\n→ seleciona o cenário e a ação permitida\n→ prepara mensagem contextual\n→ apresenta destinatários e motivo\n→ escola revisa, edita e aprova\n→ outbox envia dentro dos limites\n→ sistema registra entrega, leitura, resposta ou falha\n```\n\nO WhatsApp não é automação cega. É comunicação assistida, contextual e auditável.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Papel do KLASSE IA"
+        "section": "Promessa comercial"
       }
     },
     {
@@ -1726,10 +1801,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 47,
-      "content": "### Capacidades existentes\n\nO produto já possui bases relevantes para essa promessa:\n\n- Central WhatsApp;\n- `communication_outbox`;\n- `communication_templates`;\n- permissões por papel;\n- resolução de destinatário por referência autorizada;\n- mascaramento e hash de telefone;\n- templates com variáveis;\n- inferência de risco e aprovação obrigatória;\n- criação individual e em lote;\n- confirmação da quantidade esperada no lote;\n- limite de 50 destinatários por operação em lote;\n- idempotency key por mensagem;\n- worker de outbox;\n- rate limits de comunicação;\n- integração WAHA;\n- webhook para atualização de envio, entrega e leitura;\n- threads e inbox de respostas;\n- rascunhos financeiros/WhatsApp a partir do KLASSE IA;\n- Central de Ações IA para revisão humana.\n\nEstados disponíveis no outbox:\n\n```text\ndraft\n→ review_required\n→ approved\n→ queued\n→ sending\n→ sent\n→ delivered\n→ read\n```\n\nEstados alternativos incluem `rejected`, `failed` e `cancelled`. Respostas recebidas são registradas em threads de comunicação, não como um estado simples do outbox.",
+      "content": "### Papel do KLASSE IA\n\nO copiloto pode identificar:\n\n- documentos pendentes;\n- candidaturas sem resposta;\n- mensalidades em atraso;\n- avisos que precisam chegar a uma turma;\n- encarregados que exigem follow-up;\n- situações acadêmicas que justificam comunicação.\n\nDepois pode preparar:\n\n- mensagem adequada ao cenário;\n- tom institucional;\n- contexto mínimo necessário;\n- chamada para ação;\n- prazo;\n- link ou instrução oficial.\n\nA escola mantém a decisão final sobre destinatários, conteúdo e envio.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Capacidades existentes"
+        "section": "Papel do KLASSE IA"
       }
     },
     {
@@ -1738,10 +1813,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 48,
-      "content": "### Experiência-alvo\n\nExemplo:\n\n```text\nKLASSE IA detecta:\n“12 candidatos estão com BI pendente.”\n\nSugere:\n“Preparar WhatsApp para os encarregados?”\n\nGera:\n12 mensagens contextualizadas.\n\nSecretaria:\nrevê destinatários, motivo e conteúdo; edita e aprova.\n\nSistema:\nenvia dentro dos limites, registra o histórico e acompanha retorno.\n```\n\nCada revisão deve mostrar:\n\n- destinatário;\n- entidade relacionada, quando aplicável;\n- motivo da seleção;\n- fonte do dado;\n- template ou texto gerado;\n- variáveis utilizadas;\n- nível de risco;\n- necessidade de aprovação;\n- estimativa de quantidade;\n- resultado do envio.",
+      "content": "### Capacidades existentes\n\nO produto já possui bases relevantes para essa promessa:\n\n- Central WhatsApp;\n- `communication_outbox`;\n- `communication_templates`;\n- permissões por papel;\n- resolução de destinatário por referência autorizada;\n- mascaramento e hash de telefone;\n- templates com variáveis;\n- inferência de risco e aprovação obrigatória;\n- criação individual e em lote;\n- confirmação da quantidade esperada no lote;\n- limite de 50 destinatários por operação em lote;\n- idempotency key por mensagem;\n- worker de outbox;\n- rate limits de comunicação;\n- integração WAHA;\n- webhook para atualização de envio, entrega e leitura;\n- threads e inbox de respostas;\n- rascunhos financeiros/WhatsApp a partir do KLASSE IA;\n- Central de Ações IA para revisão humana.\n\nEstados disponíveis no outbox:\n\n```text\ndraft\n→ review_required\n→ approved\n→ queued\n→ sending\n→ sent\n→ delivered\n→ read\n```\n\nEstados alternativos incluem `rejected`, `failed` e `cancelled`. Respostas recebidas são registradas em threads de comunicação, não como um estado simples do outbox.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Experiência-alvo"
+        "section": "Capacidades existentes"
       }
     },
     {
@@ -1750,10 +1825,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 49,
-      "content": "### Casos comerciais prioritários\n\n- Gerar mensagens para encarregados com mensalidades em atraso.\n- Avisar candidatos com documentos pendentes.\n- Enviar lembrete de reunião para uma turma.\n- Reescrever comunicado em tom mais claro.\n- Preparar follow-up para quem não respondeu.\n- Gerar campanha de matrícula para leads antigos.\n- Criar mensagem individualizada pela situação do aluno.\n- Avisar sobre risco de frequência ou pendência acadêmica, quando autorizado.",
+      "content": "### Experiência-alvo\n\nExemplo:\n\n```text\nKLASSE IA detecta:\n“12 candidatos estão com BI pendente.”\n\nSugere:\n“Preparar WhatsApp para os encarregados?”\n\nGera:\n12 mensagens contextualizadas.\n\nSecretaria:\nrevê destinatários, motivo e conteúdo; edita e aprova.\n\nSistema:\nenvia dentro dos limites, registra o histórico e acompanha retorno.\n```\n\nCada revisão deve mostrar:\n\n- destinatário;\n- entidade relacionada, quando aplicável;\n- motivo da seleção;\n- fonte do dado;\n- template ou texto gerado;\n- variáveis utilizadas;\n- nível de risco;\n- necessidade de aprovação;\n- estimativa de quantidade;\n- resultado do envio.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Casos comerciais prioritários"
+        "section": "Experiência-alvo"
       }
     },
     {
@@ -1762,10 +1837,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 50,
-      "content": "### Regras de segurança\n\n- A IA nunca envia WhatsApp diretamente.\n- A IA não escolhe destinatários fora de segmentações fechadas.\n- Segmentação deve usar fontes canônicas e `escola_id`.\n- Mensagens financeiras e de risco alto exigem aprovação.\n- O usuário deve ver a quantidade de destinatários antes de aprovar.\n- O telefone completo não deve aparecer em logs ou respostas da IA.\n- Envios devem respeitar rate limit, janela operacional e política anti-spam.\n- Templates precisam declarar papéis permitidos e risco.\n- Conteúdo gerado não pode inventar valores, datas, prazos ou situação do aluno.\n- Falhas devem permanecer auditáveis e nunca ser ocultadas por retry silencioso ilimitado.\n- Opt-out, bloqueio e preferências de comunicação devem ser respeitados quando disponíveis.",
+      "content": "### Casos comerciais prioritários\n\n- Gerar mensagens para encarregados com mensalidades em atraso.\n- Avisar candidatos com documentos pendentes.\n- Enviar lembrete de reunião para uma turma.\n- Reescrever comunicado em tom mais claro.\n- Preparar follow-up para quem não respondeu.\n- Gerar campanha de matrícula para leads antigos.\n- Criar mensagem individualizada pela situação do aluno.\n- Avisar sobre risco de frequência ou pendência acadêmica, quando autorizado.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Regras de segurança"
+        "section": "Casos comerciais prioritários"
       }
     },
     {
@@ -1774,10 +1849,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 51,
-      "content": "### Backlog WhatsApp + KLASSE IA",
+      "content": "### Regras de segurança\n\n- A IA nunca envia WhatsApp diretamente.\n- A IA não escolhe destinatários fora de segmentações fechadas.\n- Segmentação deve usar fontes canônicas e `escola_id`.\n- Mensagens financeiras e de risco alto exigem aprovação.\n- O usuário deve ver a quantidade de destinatários antes de aprovar.\n- O telefone completo não deve aparecer em logs ou respostas da IA.\n- Envios devem respeitar rate limit, janela operacional e política anti-spam.\n- Templates precisam declarar papéis permitidos e risco.\n- Conteúdo gerado não pode inventar valores, datas, prazos ou situação do aluno.\n- Falhas devem permanecer auditáveis e nunca ser ocultadas por retry silencioso ilimitado.\n- Opt-out, bloqueio e preferências de comunicação devem ser respeitados quando disponíveis.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "Backlog WhatsApp + KLASSE IA"
+        "section": "Regras de segurança"
       }
     },
     {
@@ -1786,10 +1861,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 52,
-      "content": "#### P0 — Fechar a promessa comercial\n\n- [ ] Validar E2E autenticado: insight → rascunho → edição → aprovação → outbox → webhook.\n- [ ] Exibir claramente o motivo de seleção de cada destinatário.\n- [ ] Associar rascunho ao `ai_insight` que o originou.\n- [ ] Garantir edição antes da aprovação em todos os fluxos gerados pela IA.\n- [ ] Validar histórico no aluno, encarregado ou candidatura.\n- [ ] Testar status `sent`, `delivered`, `read`, resposta e `failed` com WAHA.\n- [ ] Validar que usuário de outra escola não consulta, aprova ou envia a mensagem.\n- [ ] Validar rate limit e bloqueio anti-spam em lote.\n- [ ] Confirmar opt-out/bloqueio antes de montar destinatários.",
+      "content": "### Backlog WhatsApp + KLASSE IA",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "P0 — Fechar a promessa comercial"
+        "section": "Backlog WhatsApp + KLASSE IA"
       }
     },
     {
@@ -1798,10 +1873,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 53,
-      "content": "#### P1 — Segmentações fechadas\n\n- [ ] Turma.\n- [ ] Status financeiro.\n- [ ] Candidatura e estágio de admissão.\n- [ ] Documentos pendentes.\n- [ ] Baixa frequência.\n- [ ] Lacunas acadêmicas.\n- [ ] Falta de resposta ou follow-up vencido.\n- [ ] Leads antigos para campanha de matrícula.\n\nCada segmentação precisa de:\n\n- fonte canônica;\n- permissão;\n- limite máximo;\n- preview de quantidade;\n- motivo auditável;\n- template compatível;\n- política de exclusão e opt-out.",
+      "content": "#### P0 — Fechar a promessa comercial\n\n- [ ] Validar E2E autenticado: insight → rascunho → edição → aprovação → outbox → webhook.\n- [ ] Exibir claramente o motivo de seleção de cada destinatário.\n- [ ] Associar rascunho ao `ai_insight` que o originou.\n- [ ] Garantir edição antes da aprovação em todos os fluxos gerados pela IA.\n- [ ] Validar histórico no aluno, encarregado ou candidatura.\n- [ ] Testar status `sent`, `delivered`, `read`, resposta e `failed` com WAHA.\n- [ ] Validar que usuário de outra escola não consulta, aprova ou envia a mensagem.\n- [ ] Validar rate limit e bloqueio anti-spam em lote.\n- [ ] Confirmar opt-out/bloqueio antes de montar destinatários.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "P1 — Segmentações fechadas"
+        "section": "P0 — Fechar a promessa comercial"
       }
     },
     {
@@ -1810,10 +1885,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 54,
-      "content": "#### P1 — Templates estratégicos\n\n- [ ] Cobrança amigável inicial.\n- [ ] Cobrança vencida com prazo.\n- [ ] Documento pendente de candidatura.\n- [ ] Lembrete de reunião.\n- [ ] Comunicado de turma.\n- [ ] Follow-up sem resposta.\n- [ ] Campanha de matrícula.\n- [ ] Alerta de frequência.\n- [ ] Pendência de notas ou fechamento, direcionada ao perfil autorizado.",
+      "content": "#### P1 — Segmentações fechadas\n\n- [ ] Turma.\n- [ ] Status financeiro.\n- [ ] Candidatura e estágio de admissão.\n- [ ] Documentos pendentes.\n- [ ] Baixa frequência.\n- [ ] Lacunas acadêmicas.\n- [ ] Falta de resposta ou follow-up vencido.\n- [ ] Leads antigos para campanha de matrícula.\n\nCada segmentação precisa de:\n\n- fonte canônica;\n- permissão;\n- limite máximo;\n- preview de quantidade;\n- motivo auditável;\n- template compatível;\n- política de exclusão e opt-out.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "P1 — Templates estratégicos"
+        "section": "P1 — Segmentações fechadas"
       }
     },
     {
@@ -1822,10 +1897,10 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 55,
-      "content": "#### P1 — Cockpit e métricas\n\n- [ ] Caixa de rascunhos WhatsApp dentro do cockpit do KLASSE IA.\n- [ ] Contagem por rascunho, aprovado, enviado, entregue, lido, respondido e falhou.\n- [ ] Taxa de entrega, leitura e resposta por cenário.\n- [ ] Tempo entre insight, aprovação e envio.\n- [ ] Resultado associado ao insight original.\n- [ ] Alertas de falha, desconexão WAHA e saturação de rate limit.",
+      "content": "#### P1 — Templates estratégicos\n\n- [ ] Cobrança amigável inicial.\n- [ ] Cobrança vencida com prazo.\n- [ ] Documento pendente de candidatura.\n- [ ] Lembrete de reunião.\n- [ ] Comunicado de turma.\n- [ ] Follow-up sem resposta.\n- [ ] Campanha de matrícula.\n- [ ] Alerta de frequência.\n- [ ] Pendência de notas ou fechamento, direcionada ao perfil autorizado.",
       "metadata": {
         "title": "readme-klasse-ai.md",
-        "section": "P1 — Cockpit e métricas"
+        "section": "P1 — Templates estratégicos"
       }
     },
     {
@@ -1834,6 +1909,18 @@
       "schoolId": null,
       "module": "classe_ai",
       "chunkIndex": 56,
+      "content": "#### P1 — Cockpit e métricas\n\n- [ ] Caixa de rascunhos WhatsApp dentro do cockpit do KLASSE IA.\n- [ ] Contagem por rascunho, aprovado, enviado, entregue, lido, respondido e falhou.\n- [ ] Taxa de entrega, leitura e resposta por cenário.\n- [ ] Tempo entre insight, aprovação e envio.\n- [ ] Resultado associado ao insight original.\n- [ ] Alertas de falha, desconexão WAHA e saturação de rate limit.",
+      "metadata": {
+        "title": "readme-klasse-ai.md",
+        "section": "P1 — Cockpit e métricas"
+      }
+    },
+    {
+      "id": "doc-file-readme-klasse-ai-chunk-57",
+      "documentId": "doc-file-readme-klasse-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 57,
       "content": "### Gate de campanha para WhatsApp\n\nA campanha pode demonstrar o fluxo completo quando houver evidência E2E de que:\n\n1. o KLASSE IA identifica o grupo por uma fonte canônica;\n2. o usuário vê destinatários e motivo;\n3. a mensagem pode ser editada;\n4. o envio exige aprovação quando aplicável;\n5. o outbox respeita limite e idempotência;\n6. entrega, leitura, resposta e falha ficam auditáveis;\n7. nenhuma escola acessa dados ou mensagens de outra.\n\nAté esse gate, a demonstração deve terminar na preparação e revisão do rascunho, sem prometer automação autônoma.",
       "metadata": {
         "title": "readme-klasse-ai.md",
@@ -1946,6 +2033,90 @@
       "metadata": {
         "title": "regras-negocio-academico.md",
         "section": "O que o assistente não pode inventar"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-estrutura-chunk-0",
+      "documentId": "doc-file-regras-negocio-estrutura",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 0,
+      "content": "# Estrutura Escolar: Cursos, Turmas, Anos Letivos e Professores\n\nA estrutura escolar é o que existe **antes** de haver alunos: os cursos e níveis de ensino que a\nescola oferece, as turmas que abre a partir deles, o ano letivo em que tudo isso se enquadra e os\nprofessores que ficam associados a cada disciplina. Configura-se uma vez e altera-se pouco, mas\ntudo o resto depende dela — sem curso não há turma, sem turma não há matrícula, sem professor\natribuído não há pauta.",
+      "metadata": {
+        "title": "regras-negocio-estrutura.md",
+        "section": "Estrutura Escolar: Cursos, Turmas, Anos Letivos e Professores"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-estrutura-chunk-1",
+      "documentId": "doc-file-regras-negocio-estrutura",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 1,
+      "content": "## 1. Oferta Formativa (Cursos e Níveis de Ensino)\n\nÉ aqui que se define **o que a escola ensina**: os cursos e os níveis de ensino disponíveis.\n\n- Caminho: **Configurações > Oferta Formativa** (`/escola/[schoolId]/admin/configuracoes/estrutura`).\n- A mesma página também está acessível por **Operações > Configurações > Oferta formativa**.\n- A página chama-se \"Oferta Formativa\" no ecrã. Se um utilizador disser \"estrutura\" ou \"estrutura\n  escolar\", é quase sempre a este ecrã que se refere.\n- Alterar a oferta formativa é uma decisão de direção: mexe no que pode ser vendido e matriculado no\n  ano seguinte, não apenas num ecrã de configuração.",
+      "metadata": {
+        "title": "regras-negocio-estrutura.md",
+        "section": "1. Oferta Formativa (Cursos e Níveis de Ensino)"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-estrutura-chunk-2",
+      "documentId": "doc-file-regras-negocio-estrutura",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 2,
+      "content": "## 2. Anos Letivos e Calendário Escolar\n\nO ano letivo é a moldura temporal de tudo: períodos, trimestres, datas de início e fim.\n\n- Caminho: **Configurações > Calendário** (`/escola/[schoolId]/admin/configuracoes/calendario`).\n- Nenhuma turma nem matrícula deve ser criada antes de o ano letivo estar configurado e ativo.\n- O sistema tem uma **viragem de ano** que transporta a estrutura de um ano para o seguinte. Se a\n  viragem detetar problemas na estrutura, encaminha o utilizador para a Oferta Formativa para os\n  resolver antes de continuar.",
+      "metadata": {
+        "title": "regras-negocio-estrutura.md",
+        "section": "2. Anos Letivos e Calendário Escolar"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-estrutura-chunk-3",
+      "documentId": "doc-file-regras-negocio-estrutura",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 3,
+      "content": "## 3. Turmas e Salas\n\nA turma é a ligação entre um curso, uma classe e um conjunto de alunos, num turno e numa sala.\n\n- Caminho: **Secretaria > Turmas** (`/escola/[schoolId]/secretaria/turmas`) ou\n  **Configurações > Turmas** (`/escola/[schoolId]/admin/configuracoes/turmas`).\n- Cada turma está associada a um curso e a uma classe específicos, e tem turno e sala.\n- O remanejamento de alunos entre turmas da mesma classe faz-se pela ficha do aluno.\n- O detalhe da turma tem três separadores: **Alunos**, **Pedagógico** e **Documentos**.",
+      "metadata": {
+        "title": "regras-negocio-estrutura.md",
+        "section": "3. Turmas e Salas"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-estrutura-chunk-4",
+      "documentId": "doc-file-regras-negocio-estrutura",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 4,
+      "content": "## 4. Atribuir Professores às Turmas\n\nNão existe um ecrã autónomo de \"alocação de professores\". A atribuição faz-se em dois sítios:\n\n- **A partir da lista de turmas**: a ação de atribuir professores abre uma janela onde se escolhem os\n  professores por disciplina.\n- **A partir do detalhe da turma**: no separador **Pedagógico**, onde a lista de professores\n  disponíveis é carregada para associação às disciplinas da turma.\n\nSe a pergunta for \"que turmas não têm professor atribuído\" ou \"quem dá esta disciplina\", o ponto de\npartida é sempre o detalhe da turma, separador Pedagógico.",
+      "metadata": {
+        "title": "regras-negocio-estrutura.md",
+        "section": "4. Atribuir Professores às Turmas"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-estrutura-chunk-5",
+      "documentId": "doc-file-regras-negocio-estrutura",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 5,
+      "content": "## 5. Configuração Académica Completa\n\nPara montar a estrutura de uma escola nova, existe um assistente que percorre os passos por ordem:\ncursos, classes, disciplinas, turmas e professores.\n\n- Caminho: **Configurações > Configuração Académica Completa**\n  (`/escola/[schoolId]/admin/configuracoes/academico-completo`).\n- É o caminho recomendado quando a escola está a ser configurada de raiz; para ajustes pontuais, os\n  ecrãs individuais das secções anteriores são mais diretos.\n- Ao sincronizar turmas já existentes, o assistente pede confirmação explícita antes de reconstruir,\n  porque a operação pode afetar turmas com alunos.",
+      "metadata": {
+        "title": "regras-negocio-estrutura.md",
+        "section": "5. Configuração Académica Completa"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-estrutura-chunk-6",
+      "documentId": "doc-file-regras-negocio-estrutura",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 6,
+      "content": "## 6. Perguntas Frequentes\n\n- **\"Onde configuro os cursos?\"** → Configurações > Oferta Formativa.\n- **\"Onde vejo as turmas?\"** → Secretaria > Turmas.\n- **\"Como atribuo um professor a uma turma?\"** → Turmas > (ação de atribuir) ou detalhe da turma >\n  separador Pedagógico.\n- **\"Onde mudo o ano letivo?\"** → Configurações > Calendário.\n- **\"A escola é nova, por onde começo?\"** → Configurações > Configuração Académica Completa.",
+      "metadata": {
+        "title": "regras-negocio-estrutura.md",
+        "section": "6. Perguntas Frequentes"
       }
     },
     {
@@ -2252,7 +2423,7 @@
       "id": "doc-file-tutoriais-alunos-turmas-chunk-0",
       "documentId": "doc-file-tutoriais-alunos-turmas",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "academico",
       "chunkIndex": 0,
       "content": "# Tutoriais de Alunos, Turmas, Notas e Presenças\n\nEste documento reúne procedimentos comuns para professores e secretaria sobre a gestão acadêmica dos estudantes.",
       "metadata": {
@@ -2264,7 +2435,7 @@
       "id": "doc-file-tutoriais-alunos-turmas-chunk-1",
       "documentId": "doc-file-tutoriais-alunos-turmas",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "academico",
       "chunkIndex": 1,
       "content": "## 1. Cadastro de Estudante e Ano Letivo\n- Para cadastrar um aluno, certifique-se de que o ano letivo atual esteja configurado e ativo.\n- Vá para **Secretaria > Alunos > Novo Aluno** e insira os dados cadastrais obrigatórios.\n- Se o aluno for menor de idade, é obrigatório registrar pelo menos um encarregado de educação e a sua relação de parentesco.",
       "metadata": {
@@ -2276,7 +2447,7 @@
       "id": "doc-file-tutoriais-alunos-turmas-chunk-2",
       "documentId": "doc-file-tutoriais-alunos-turmas",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "academico",
       "chunkIndex": 2,
       "content": "## 2. Enturmação e Criação de Turmas\n- As turmas devem ser abertas no início do ano letivo em **Secretaria > Turmas > Nova Turma**.\n- Cada turma está associada a uma classe e curso específicos.\n- O remanejamento de alunos entre turmas da mesma classe pode ser feito via funcionalidade \"Transferir Aluno\" disponível na ficha do aluno.",
       "metadata": {
@@ -2288,7 +2459,7 @@
       "id": "doc-file-tutoriais-alunos-turmas-chunk-3",
       "documentId": "doc-file-tutoriais-alunos-turmas",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "academico",
       "chunkIndex": 3,
       "content": "## 3. Lançamento de Notas\n- Professores e administradores podem lançar notas de avaliações em **Administração > Notas** (rota: `/escola/[schoolId]/admin/notas`).\n- As notas de cada trimestre contam para a média de aproveitamento.\n- O sistema possui regras de validação para impedir lançamentos em períodos letivos já encerrados ou bloqueados pela direção.",
       "metadata": {
@@ -2300,7 +2471,7 @@
       "id": "doc-file-tutoriais-alunos-turmas-chunk-4",
       "documentId": "doc-file-tutoriais-alunos-turmas",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "academico",
       "chunkIndex": 4,
       "content": "## 4. Presenças e Faltas\n- O registro diário de faltas e presenças é feito em **Secretaria > Calendário** (ou pelo portal do professor).\n- Faltas em excesso podem impactar a elegibilidade do aluno para aprovação direta, conforme regras definidas no regulamento da escola.",
       "metadata": {
@@ -2312,7 +2483,7 @@
       "id": "doc-file-tutoriais-comunicados-documentos-chunk-0",
       "documentId": "doc-file-tutoriais-comunicados-documentos",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "comunicacao",
       "chunkIndex": 0,
       "content": "# Tutoriais de Comunicados e Documentos\n\nGuia rápido sobre a publicação de comunicados e a emissão de boletins e certidões na secretaria escolar.",
       "metadata": {
@@ -2324,7 +2495,7 @@
       "id": "doc-file-tutoriais-comunicados-documentos-chunk-1",
       "documentId": "doc-file-tutoriais-comunicados-documentos",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "comunicacao",
       "chunkIndex": 1,
       "content": "## 1. Criação de Avisos e Comunicados\n- Para publicar avisos que serão exibidos no painel dos alunos e encarregados, acesse **Administração > Avisos** e clique em **Novo**.\n- Digite o título, defina o público-alvo (Alunos, Encarregados, Professores ou Todos) e redija o corpo do aviso.\n- Você pode usar o assistente de IA na barra lateral para reescrever o texto em tom formal, cordial ou reduzir a extensão para mensagens curtas.\n- Salve o comunicado como rascunho ou publique imediatamente.",
       "metadata": {
@@ -2336,7 +2507,7 @@
       "id": "doc-file-tutoriais-comunicados-documentos-chunk-2",
       "documentId": "doc-file-tutoriais-comunicados-documentos",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "comunicacao",
       "chunkIndex": 2,
       "content": "## 2. Emissão de Boletins Escolares\n- A emissão de boletins de notas é feita em **Secretaria > Documentos** ou pela ficha de cada aluno.\n- Selecione a turma ou o estudante, escolha o trimestre desejado e clique em \"Emitir Boletim\".\n- O boletim consolidará as notas lançadas até o momento e calculará a média trimestral automaticamente.",
       "metadata": {
@@ -2348,7 +2519,7 @@
       "id": "doc-file-tutoriais-comunicados-documentos-chunk-3",
       "documentId": "doc-file-tutoriais-comunicados-documentos",
       "schoolId": null,
-      "module": "classe_ai",
+      "module": "comunicacao",
       "chunkIndex": 3,
       "content": "## 3. Declarações e Certidões\n- As declarações de matrícula ou frequência com ou sem notas podem ser geradas instantaneamente em formato PDF.\n- A escola pode configurar a inserção de assinatura digital ou QR code de autenticidade nas configurações de identidade da escola.\n- Todos os downloads de declarações geram um registro nas tabelas de auditoria do sistema.",
       "metadata": {

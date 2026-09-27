@@ -220,6 +220,19 @@ export const KLASSE_ROUTES: KlasseRoute[] = [
     aliases: ["acesso de alunos", "liberar acesso", "credenciais alunos", "login alunos", "senha alunos"],
     href: (schoolId) => `/escola/${schoolId}/secretaria/acesso`,
   },
+  {
+    key: "estrutura_oferta_formativa",
+    title: "Oferta Formativa",
+    module: "academico",
+    description: "Gerir os cursos e níveis de ensino disponíveis na escola.",
+    roles: ["admin", "admin_escola", "staff_admin", "secretaria", "direcao", "diretoria"],
+    // Sem "turmas"/"classes"/"salas": já são aliases da rota `turmas`, e um alias
+    // repetido faz uma das rotas vencer de forma não determinística.
+    // A comparação de aliases em klasse-brain.ts:418 é `query.toLowerCase().includes(alias)`,
+    // sem normalizar acentos. Por isso as duas grafias de "níveis de ensino" vão declaradas.
+    aliases: ["estrutura", "estrutura escolar", "oferta formativa", "cursos", "níveis de ensino", "niveis de ensino", "configurar cursos", "criar curso"],
+    href: (schoolId) => `/escola/${schoolId}/admin/configuracoes/estrutura`,
+  },
 ];
 
 export function getRoutesForRole(role: string): KlasseRoute[] {

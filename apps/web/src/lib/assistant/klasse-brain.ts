@@ -71,6 +71,17 @@ export const FAST_PATH_PATTERNS = [
     routeKey: "acesso_alunos",
     answer: "Para gerenciar as credenciais e liberar o acesso do Portal do Aluno para os estudantes, aceda a **Secretaria > Acesso**.",
   },
+  {
+    // Porquê sem a palavra "estrutura" isolada: a comparação é
+    // `cleanQuery.includes(kw)` e o fast path é um `return` duro (salta RAG e
+    // LLM). "estrutura" sozinha sequestraria "estrutura de dados",
+    // "estrutura do sistema" e afins. Só entram formas compostas; a palavra
+    // isolada continua a ser respondida pela via RAG, que tem o documento
+    // regras-negocio-estrutura.md.
+    keywords: ["estrutura escolar", "oferta formativa", "configurar cursos", "criar curso", "níveis de ensino", "niveis de ensino", "onde configuro os cursos"],
+    routeKey: "estrutura_oferta_formativa",
+    answer: "A estrutura escolar — cursos e níveis de ensino — configura-se em **Configurações > Oferta Formativa** (também acessível por **Operações > Configurações > Oferta formativa**).",
+  },
 ];
 
 const COURTESY_QUERIES = new Set([

@@ -9,6 +9,47 @@ import { KnowledgeDocument, KnowledgeChunk } from "./knowledge-types";
 const DOCS_DIR = path.join(__dirname, "docs");
 const OUTPUT_FILE = path.join(__dirname, "knowledge-base-data.json");
 
+/**
+ * Módulo de cada documento em docs/, declarado à mão.
+ *
+ * Antes isto era inferido por substring do nome do ficheiro, com
+ * `file.includes("ai")` sem fronteira de palavra e ANTES do ramo
+ * `comunicados|documentos`. O resultado era silencioso e errado:
+ * `tutoriais-alunos-turmas.md` casava em "tu-to-ri-ai-s" e ia para
+ * `classe_ai` (o que fez dele o maior grupo do artefacto), e
+ * `tutoriais-comunicados-documentos.md` nunca chegava ao ramo
+ * `comunicacao` — motivo pelo qual não existia um único chunk
+ * `comunicacao` na base. Como o boost de módulo em knowledge-search.ts
+ * soma +5 no módulo certo e +1 em `any`, um documento mal classificado
+ * não dá erro: perde o bónus e é ultrapassado pelos `any`.
+ *
+ * As outras três fontes (route-registry, action-registry, help-topics)
+ * já declaram `module: "any"` de forma explícita. Isto alinha os docs.
+ *
+ * Um ficheiro sem entrada cai em `any` e emite aviso, tal como já
+ * acontece com rotas sem descrição e tópicos sem roles.
+ */
+export const MODULE_BY_DOC_FILE: Record<string, KnowledgeDocument["module"]> = {
+  "manual-geral-klasse.md": "any",
+  "manual-secretaria.md": "secretaria",
+  "regras-negocio-secretaria.md": "secretaria",
+  "manual-financeiro.md": "financeiro",
+  "regras-negocio-financeiro.md": "financeiro",
+  "regras-negocio-academico.md": "academico",
+  "regras-negocio-estrutura.md": "academico",
+  // O documento intitula-se "gestão académica dos estudantes" e as suas
+  // secções próprias (validação de lançamento em períodos encerrados,
+  // impacto das faltas na aprovação) são regras académicas. Cadastro e
+  // enturmação já estão cobertos por manual/regras de secretaria.
+  "tutoriais-alunos-turmas.md": "academico",
+  "tutoriais-comunicados-documentos.md": "comunicacao",
+  "manual-whatsapp-utility.md": "whatsapp",
+  "regras-negocio-ia-whatsapp.md": "whatsapp",
+  "manual-central-acoes-ai.md": "classe_ai",
+  "readme-klasse-ai.md": "classe_ai",
+  "plano-actions-v2.md": "any",
+};
+
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
@@ -206,14 +247,11 @@ ${topic.steps.map((s, idx) => `${idx + 1}. ${s}`).join("\n")}
         const content = fs.readFileSync(filePath, "utf-8");
         const docId = `doc-file-${file.replace(".md", "")}`;
 
-        // Determine module based on file name or content
-        let moduleName: KnowledgeDocument["module"] = "any";
-        if (file.includes("secretaria")) moduleName = "secretaria";
-        else if (file.includes("financeiro")) moduleName = "financeiro";
-        else if (file.includes("academico")) moduleName = "academico";
-        else if (file.includes("whatsapp")) moduleName = "whatsapp";
-        else if (file.includes("ai")) moduleName = "classe_ai";
-        else if (file.includes("comunicados") || file.includes("documentos")) moduleName = "comunicacao";
+        // Módulo declarado à mão em MODULE_BY_DOC_FILE (ver nota no topo).
+        const moduleName: KnowledgeDocument["module"] = MODULE_BY_DOC_FILE[file] ?? "any";
+        if (!(file in MODULE_BY_DOC_FILE)) {
+          console.warn(`[AVISO] Documento sem módulo declarado (assumido "any"): docs/${file}`);
+        }
 
         documents.push({
           id: docId,

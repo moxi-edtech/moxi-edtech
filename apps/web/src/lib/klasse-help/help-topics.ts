@@ -252,6 +252,74 @@ export const KLASSE_HELP_TOPICS: HelpTopic[] = [
     steps: [
       "Digite perguntas sobre dados reais no chat ou aceda ao Cockpit do KLASSE IA em Admin > IA."
     ]
+  },
+  {
+    key: "configurar_estrutura",
+    title: "Configurar Cursos e Níveis de Ensino",
+    aliases: [
+      "estrutura",
+      "estrutura escolar",
+      "oferta formativa",
+      "cursos",
+      "níveis de ensino",
+      "niveis de ensino",
+      "configurar cursos",
+      "criar curso"
+    ],
+    category: "Acadêmico",
+    roles: ["admin", "admin_escola", "staff_admin", "secretaria", "direcao", "diretoria"],
+    answer: "A oferta formativa da escola — os cursos e níveis de ensino que a escola pode matricular — configura-se na página **Oferta Formativa**. É uma decisão de direção: alterá-la muda o que pode ser matriculado no ano seguinte.",
+    steps: [
+      "No menu lateral, abra Configurações.",
+      "Escolha Oferta Formativa (também acessível por Operações > Configurações > Oferta formativa).",
+      "Adicione ou ajuste os cursos e os níveis de ensino disponíveis."
+    ],
+    href: (schoolId: string) => `/escola/${schoolId}/admin/configuracoes/estrutura`
+  },
+  {
+    key: "anos_lectivos",
+    title: "Anos Letivos e Calendário Escolar",
+    aliases: [
+      "ano letivo",
+      "ano lectivo",
+      "anos letivos",
+      "anos lectivos",
+      "calendário escolar",
+      "calendario escolar",
+      "períodos letivos",
+      "periodos letivos"
+    ],
+    category: "Acadêmico",
+    roles: ["admin", "admin_escola", "staff_admin", "secretaria", "direcao", "diretoria"],
+    answer: "O ano letivo é a moldura temporal de tudo o resto: períodos, trimestres e datas de início e fim. Nenhuma turma nem matrícula deve ser criada antes de o ano letivo estar configurado e ativo. A viragem de ano transporta a estrutura para o ano seguinte e, se detetar problemas, encaminha para a Oferta Formativa.",
+    steps: [
+      "No menu lateral, abra Configurações.",
+      "Escolha Calendário.",
+      "Configure o ano letivo e os respetivos períodos antes de abrir turmas."
+    ],
+    href: (schoolId: string) => `/escola/${schoolId}/admin/configuracoes/calendario`
+  },
+  {
+    key: "alocacao_professores",
+    title: "Atribuir Professores às Turmas",
+    aliases: [
+      "atribuir professor",
+      "atribuir professores",
+      "alocação de professores",
+      "alocacao de professores",
+      "professor da turma",
+      "professores da turma",
+      "alocar professor"
+    ],
+    category: "Acadêmico",
+    roles: ["admin", "admin_escola", "staff_admin", "secretaria", "direcao", "diretoria"],
+    answer: "Não existe um ecrã autónomo de alocação de professores. A atribuição faz-se a partir das turmas, por disciplina — pela ação de atribuir na lista de turmas, ou no separador **Pedagógico** do detalhe da turma.",
+    steps: [
+      "No menu lateral, abra Secretaria > Turmas.",
+      "Use a ação de atribuir professores, ou abra a turma pretendida.",
+      "No detalhe da turma, escolha o separador Pedagógico e associe os professores às disciplinas."
+    ],
+    href: (schoolId: string) => `/escola/${schoolId}/admin/turmas`
   }
 ];
 
