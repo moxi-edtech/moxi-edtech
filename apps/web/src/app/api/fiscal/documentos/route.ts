@@ -498,8 +498,9 @@ export async function POST(req: Request) {
       }
 
       if (
-        profileCode !== FISCAL_TAX_PROFILE_CODES.educationM21 &&
-        profileCode !== FISCAL_TAX_PROFILE_CODES.standardVat14
+        !Object.values(FISCAL_TAX_PROFILE_CODES).includes(
+          profileCode as FiscalTaxProfileCode
+        )
       ) {
         return jsonError(
           500,
