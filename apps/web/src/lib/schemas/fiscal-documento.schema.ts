@@ -27,8 +27,8 @@ export const fiscalDocumentoItemSchema = z.object({
   preco_unit: z.coerce.number().min(0),
   settlement_amount: z.coerce.number().min(0).optional(),
   taxa_iva: z.coerce.number().min(0).max(100),
-  tax_exemption_code: z.string().trim().min(1).max(64).optional(),
-  tax_exemption_reason: z.string().trim().min(1).max(500).optional(),
+  tax_exemption_code: z.string().trim().regex(/^M\d{2}$/).optional(),
+  tax_exemption_reason: z.string().trim().min(6).max(60).optional(),
 });
 
 export const fiscalDocumentoUiItemSchema = z.object({
