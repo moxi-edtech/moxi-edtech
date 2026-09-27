@@ -143,6 +143,25 @@ function toFiscalHeaders({
   return headers;
 }
 
+export async function isFiscalEngineEnabledForSchool(escolaId: string): Promise<boolean> {
+  const admin = supabaseServerRole<any>();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await admin
+    .from("fiscal_escola_bindings")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .eq("fiscal_enabled", true)
+    .lte("effective_from", today)
+    .or(`effective_to.is.null,effective_to.gte.${today}`)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`FISCAL_ENGINE_GATE_LOOKUP_FAILED: ${error.message}`);
+  }
+
+  return Array.isArray(data) && data.length > 0;
+}
+
 export async function resolveEmpresaFiscalAtiva({
   origin,
   escolaId,
@@ -186,6 +205,13 @@ async function resolveEducationTaxProfileForEmpresa(empresaId: string) {
 export async function emitirDocumentoFiscalViaAdapter(
   input: EmitirFinanceiroFiscalInput
 ): Promise<EmitirFinanceiroFiscalResult> {
+  const fiscalEnabled = await isFiscalEngineEnabledForSchool(input.escolaId);
+  if (!fiscalEnabled) {
+    throw new Error(
+      "FISCAL_ENGINE_NOT_ENABLED: motor fiscal não está ativado para esta escola."
+    );
+  }
+
   const empresaId = await resolveEmpresaFiscalAtiva({
     origin: input.origin,
     escolaId: input.escolaId,
