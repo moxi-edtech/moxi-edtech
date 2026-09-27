@@ -237,7 +237,7 @@ export default function FiscalRetificarPage() {
                 id="documento-correctivo"
                 value={correctionDocumentId}
                 onChange={(event) => setCorrectionDocumentId(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-klasse-green-500 focus:ring-2 focus:ring-klasse-green-500/20"
               >
                 <option value="">Seleccione a NC, ND ou correcção AGT</option>
                 {correctionCandidates.map((candidate) => (
@@ -266,7 +266,7 @@ export default function FiscalRetificarPage() {
                 minLength={10}
                 value={motivo}
                 onChange={(event) => setMotivo(event.target.value)}
-                className="h-32 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20"
+                className="h-32 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-klasse-green-500 focus:ring-2 focus:ring-klasse-green-500/20"
                 placeholder="Descreva o motivo com no mínimo 10 caracteres"
               />
               <p className="text-xs text-slate-500">{motivo.trim().length}/10 mínimo</p>
@@ -276,7 +276,7 @@ export default function FiscalRetificarPage() {
               <button
                 type="submit"
                 disabled={formularioInvalido || submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#18542e] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-klasse-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-klasse-green-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {submitting ? "A processar..." : "Confirmar Retificação"}
