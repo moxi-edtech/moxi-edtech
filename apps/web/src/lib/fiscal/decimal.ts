@@ -89,6 +89,48 @@ export function mulExact(a: ExactDecimal, b: ExactDecimal): ExactDecimal {
   });
 }
 
+export function divExact(
+  a: ExactDecimal,
+  b: ExactDecimal,
+  targetScale = 8,
+  mode: "half-up" | "ceil" | "trunc" = "half-up"
+): ExactDecimal {
+  if (b.coefficient === 0n) throw new Error("DECIMAL_DIVISION_BY_ZERO");
+  if (!Number.isInteger(targetScale) || targetScale < 0) {
+    throw new Error("DECIMAL_SCALE_INVALID");
+  }
+
+  let numerator = a.coefficient;
+  let denominator = b.coefficient;
+  const exponent = b.scale - a.scale + targetScale;
+
+  if (exponent >= 0) numerator *= pow10(exponent);
+  else denominator *= pow10(-exponent);
+
+  if (denominator < 0n) {
+    numerator = -numerator;
+    denominator = -denominator;
+  }
+
+  const quotient = numerator / denominator;
+  const remainder = numerator % denominator;
+  if (remainder === 0n || mode === "trunc") {
+    return normalizeExact({ coefficient: quotient, scale: targetScale });
+  }
+
+  let adjusted = quotient;
+  if (mode === "ceil" && numerator > 0n) {
+    adjusted += 1n;
+  } else if (mode === "half-up") {
+    const absRemainder = remainder < 0n ? -remainder : remainder;
+    if (absRemainder * 2n >= denominator) {
+      adjusted += numerator > 0n ? 1n : -1n;
+    }
+  }
+
+  return normalizeExact({ coefficient: adjusted, scale: targetScale });
+}
+
 export function cmpExact(a: ExactDecimal, b: ExactDecimal): -1 | 0 | 1 {
   const x = align(a, b);
   if (x.a === x.b) return 0;
