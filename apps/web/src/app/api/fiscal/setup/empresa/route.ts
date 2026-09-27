@@ -110,7 +110,17 @@ export async function POST(req: Request) {
       nif: parsed.data.nif,
       endereco: parsed.data.endereco ?? null,
       certificado_agt_numero: parsed.data.certificado_agt_numero ?? null,
-      metadata: (parsed.data.metadata ?? null) as Json | null,
+      metadata: {
+        ...(parsed.data.metadata ?? {}),
+        ...(parsed.data.registo_comercial
+          ? { registo_comercial: parsed.data.registo_comercial }
+          : {}),
+        ...(parsed.data.cidade ? { cidade: parsed.data.cidade } : {}),
+        ...(parsed.data.provincia ? { provincia: parsed.data.provincia } : {}),
+        ...(parsed.data.codigo_postal
+          ? { codigo_postal: parsed.data.codigo_postal }
+          : {}),
+      } as Json,
     };
 
     const { error: empresaError } = await supabase.from("fiscal_empresas").insert(payload);
