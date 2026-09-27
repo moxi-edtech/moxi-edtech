@@ -216,16 +216,6 @@ export async function emitirDocumentoFiscalViaAdapter(
         unit_price_base: item.valor,
         preco_unit: item.valor,
         settlement_amount: 0,
-        tax_code: isEducation ? "ISE" : "NOR",
-        tax_country_region: "AO",
-        taxa_iva: isEducation ? 0 : 14,
-        ...(isEducation
-          ? {
-              tax_exemption_code: "M21",
-              tax_exemption_reason:
-                "Ensino isento - al. l), n. 1 do art. 12 do CIVA",
-            }
-          : {}),
       };
     }),
     metadata: {
