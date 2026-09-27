@@ -14,6 +14,9 @@ type AdapterItem = {
   descricao: string;
   valor: number;
   taxProfileCode: FiscalTaxProfileCode | string;
+  quantidade?: number;
+  unitPriceBase?: number;
+  settlementAmount?: number;
   productType?: "P" | "S" | "O" | "E" | "I";
   operationType?: "SE" | "SS" | "STP" | "SR" | "SIF" | "SHS" | "ST" | "SG" | "TB" | "AS" | "QT" | "RD";
   unitOfMeasure?: string;
@@ -176,10 +179,21 @@ export async function emitirDocumentoFiscalViaAdapter(
   const cliente = normalizeCliente(input.cliente);
   const itens = input.itens
     .map((item) => ({
+      ...item,
       descricao: item.descricao.trim(),
       valor: sanitizeMoney(item.valor),
+      quantidade:
+        Number.isFinite(item.quantidade) && Number(item.quantidade) > 0
+          ? Number(item.quantidade)
+          : 1,
+      unitPriceBase:
+        item.unitPriceBase == null ? undefined : sanitizeMoney(item.unitPriceBase),
+      settlementAmount:
+        item.settlementAmount == null
+          ? 0
+          : Math.max(0, sanitizeMoney(item.settlementAmount)),
     }))
-    .filter((item) => item.descricao.length > 0 && item.valor > 0);
+    .filter((item) => item.descricao.length > 0 && item.valor >= 0);
 
   if (itens.length === 0) {
     throw new Error("FISCAL_ADAPTER_INVALID_ITEMS: Nenhum item válido para emissão fiscal.");
@@ -212,10 +226,10 @@ export async function emitirDocumentoFiscalViaAdapter(
         product_type: item.productType ?? "S",
         operation_type: item.operationType ?? (isEducation ? "SE" : "SG"),
         unit_of_measure: item.unitOfMeasure ?? "UN",
-        quantidade: 1,
-        unit_price_base: item.valor,
+        quantidade: item.quantidade,
+        unit_price_base: item.unitPriceBase ?? item.valor,
         preco_unit: item.valor,
-        settlement_amount: 0,
+        settlement_amount: item.settlementAmount,
       };
     }),
     metadata: {
