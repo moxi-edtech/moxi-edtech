@@ -111,7 +111,7 @@ function integerValue(value: unknown, field: string) {
       : typeof value === "string"
         ? value.trim()
         : "";
-  if (!/^\\d+$/.test(raw)) {
+  if (!/^\d+$/.test(raw)) {
     throw new AgtMappingError("AGT_MAPPING_INTEGER_INVALID", `${field} inválido`);
   }
   const parsed = JSON.parse(raw) as unknown;
