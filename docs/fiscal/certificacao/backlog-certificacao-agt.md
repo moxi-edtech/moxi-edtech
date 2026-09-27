@@ -183,7 +183,6 @@ Fechado com:
 - RPCs legados `emitir_recibo*` que escreviam em `documentos_emitidos` perderam EXECUTE;
 - trigger legado de recibo de rematrícula foi removido;
 - rotas de recibo/balcão/outbox usam `fiscal_documentos` como fonte fiscal única;
-- tipos Supabase foram regenerados após as migrations.
 
 Evidência transaccional rollback-only:
 1. validação duplicada: `0 -> 2000 -> 2000`, uma única alocação;
