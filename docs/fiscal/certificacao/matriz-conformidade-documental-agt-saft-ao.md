@@ -1,42 +1,93 @@
-# Matriz de Conformidade Documental AGT (SAF-T AO)
+# Matriz de Conformidade Documental AGT — SAF-T(AO)
 
 Projeto: KLASSE (EdTech SaaS)  
-Data de Atualização: 26 de Março de 2026  
-Objetivo: Mapear a conformidade rigorosa da arquitetura de emissão do KLASSE contra o Decreto Presidencial nº 312/18 e o XSD oficial `SAF-T-AO1.01_01.xsd`.
+Revisão: 2026-09-27  
+Escopo: **SAF-T(AO) de Facturação — TaxAccountingBasis F**
 
-## 1. Faturas (FT) e Faturas-Recibo (FR)
-Documentos de venda base. Mapeados na Tabela 4.1 do SAF-T (`SalesInvoices`).
+> Fonte de verdade do estado: `docs/fiscal/certificacao/backlog-certificacao-agt.md`.
+> Esta matriz não declara suporte a SAF-T contabilístico C/I. O KLASSE não mantém plano de contas nem razão de partidas dobradas.
 
-| Regra AGT (Condição) | Exigência XML | Implementação KLASSE (Evidência) | Status |
-|---|---|---|---|
-| Isenção de Imposto (Quando `TaxPercentage` ou `TaxAmount` = 0) | Preenchimento obrigatório de `<TaxExemptionReason>` e `<TaxExemptionCode>`. | `CHECK` constraint em `public.fiscal_documento_itens` que barra `INSERT`s sem os códigos legais quando IVA = 0. Zod schema `fiscalDocumentoItemSchema` forçando validação na API. | GO |
-| Moeda Local (Quando emissão for em AOA) | Omissão total do nó `<Currency>`. | Lógica condicional no construtor `buildSaftAoXml` em `saftAo.ts` que suprime a árvore `<Currency>` inteira para a moeda base. | GO |
-| Código de Barras Ausente (Serviços EdTech) | `<ProductNumberCode>` deve espelhar `<ProductCode>`. | Fallback implementado no gerador XML: `product_number_code ?? product_code`. | GO |
+## 1. Header e MasterFiles
 
-## 2. Notas de Crédito (NC)
-Documentos de retificação/anulação de valores faturados. Mapeados na Tabela 4.1 (`SalesInvoices`) com `InvoiceType = "NC"`.
+| Regra | Implementação KLASSE | Estado |
+|---|---|---|
+| `TaxAccountingBasis` | Apenas `F`. `C/I` falha explicitamente. | READY |
+| Identidade do produtor | `ProductID`, `ProductCompanyTaxID`, `ProductVersion` e `SoftwareValidationNumber` validados antes da fila. | READY |
+| Reprodutibilidade | Configuração do Header é congelada no metadata da exportação no momento do pedido e reutilizada pelo worker. | READY |
+| Customer | Identidade canónica por NIF; consumidor final `999999999 / Consumidor final`; morada com fallback válido. | READY |
+| Product | `ProductCode`, `ProductNumberCode` e `ProductType P/S/O/E/I`; conflito de tipo/código mestre é rejeitado. | READY |
+| TaxTable | Gerada a partir de `TaxCountryRegion + TaxCode + TaxPercentage` efectivamente usados. | READY |
 
-| Regra AGT (Condição) | Exigência XML | Implementação KLASSE (Evidência) | Status |
-|---|---|---|---|
-| Referência à Origem (Sempre que emitir NC) | Preenchimento obrigatório do bloco `<References>` com `<Reference>` (ID único da fatura de origem) e `<Reason>`. | Rota `[documentoId]/rectificar/route.ts` exige a Foreign Key da fatura original. O XML constrói o nó `References` com base na relação `parent_document_id`. | GO |
-| Integridade Relacional | Garantir rastreabilidade de anulações. | RPC do Supabase `fiscal_rectificar_anular_rpc` garante a atomicidade da transação, anulando a origem e gerando a NC no mesmo commit. | GO |
+## 2. SalesInvoices — FT/FR/FG/NC/ND e tipos mapeados
 
-## 3. Recibos (RC)
-Documentos de prova de pagamento (Regime de Caixa). Vivem numa tabela isolada: 4.4 (`Payments`).
+| Regra | Implementação KLASSE | Estado |
+|---|---|---|
+| Identificação | Número fiscal não é reescrito no exportador. Cadeia validada exige `<tipo> <seriesCode AGT>/<número>`. | READY |
+| Ordem | Documentos ordenados por tipo, série e número. | READY |
+| Hash | Software não validado: `Hash=0`, `HashControl=0`. Software validado: cadeia dedicada RSA-1024/SHA-1, Base64 172 chars. | READY |
+| HashControl | Versão inteira positiva da chave privada SAF-T, persistida com o documento. | READY |
+| GrossTotal | O valor assinado usa GrossTotal arredondado a 2 casas e o XML reconcilia com o mesmo total. | READY |
+| Debit/Credit | NC/RE usam débito; documentos de venda usam crédito. Linha é líquida de IVA. | READY |
+| Control totals | `TotalDebit/TotalCredit` somam apenas documentos com estado normal `N`; anulados continuam no ficheiro sem inflar os controlos. | READY |
+| Anulação | `InvoiceStatus=A` usa timestamp, motivo e actor reais de `fiscal_documentos_eventos`. | READY |
+| SourceID | Actor estável derivado do UUID do utilizador; não é mais o texto fixo “KLASSE”. | READY |
+| Descontos | `UnitPrice` é líquido de descontos; `SettlementAmount` é preservado e convertido para AOA quando necessário. | READY |
+| Moeda estrangeira | Valores de linha permanecem em AOA e `Currency` conserva moeda original/contra-valor/taxa. | READY |
+| Unidade | `UnitOfMeasure` original é preservada do payload fiscal. | READY |
+| IVA | `TaxCode` e `TaxCountryRegion` explícitos são preservados; fallback por taxa existe apenas para legado. | READY |
+| Isenção | IVA 0 exige `TaxExemptionCode Mxx` e motivo de 6–60 caracteres. | READY |
 
-| Regra AGT (Condição) | Exigência XML | Implementação KLASSE (Evidência) | Status |
-|---|---|---|---|
-| Meios de Pagamento (Sempre que emitir RC) | Preenchimento obrigatório do nó `<PaymentMechanism>` com códigos oficiais (ex: `NU`, `TB`, `MB`, `CC`). | Zod enum estrito em `fiscal-documento.schema.ts` e campo obrigatório `payment_mechanism`. Sem texto livre. | GO |
-| Referência da Fatura | Nó `<SourceDocumentID>` com `<OriginatingON>` e `<InvoiceDate>` da fatura liquidada. | Relacionamento 1:N no DB entre Pagamentos e Faturas. Exportador XML itera sobre faturas liquidadas no recibo. | GO |
+## 3. WorkingDocuments e MovementOfGoods
 
-## 4. Metadados e Consumidor Final (Regras Globais)
+| Regra | Implementação KLASSE | Estado |
+|---|---|---|
+| PP | Exportado em `WorkingDocuments` com Hash/HashControl quando software validado. | READY |
+| GR/GT | Exportados em `MovementOfGoods`; itens têm `ProductType=P` por default do fluxo de movimentação. | READY |
+| Quantidade | `TotalQuantityIssued` exclui documentos anulados. | READY |
+| Totais e descontos | Mesmas regras de AOA, UnitPrice líquido, IVA/isenção e SettlementAmount. | READY |
+| Estado | Anulação usa evento real, motivo e actor. | READY |
 
-| Regra AGT (Condição) | Exigência XML | Implementação KLASSE (Evidência) | Status |
-|---|---|---|---|
-| Cliente sem Cadastro | NIF genérico obrigatório e nome fixo. | Fallback na API (`route.ts`): NIF `999999999` e `<CompanyName> = "Consumidor final"`. | GO |
-| Moradas em Branco | Os nós de morada não podem estar vazios para consumidor final. | Fallback no construtor XML (`saftAo.ts`): `<AddressDetail>`, `<City>`, `<PostalCode>`, e `<Country>` forçados para a string `"Desconhecido"`. | GO |
-| Sistema Contabilístico | Identificação do tipo de software. | Variável `<TaxAccountingBasis>` configurada para `"F"` (Facturação) ou `"C"` (Contabilidade). | GO |
-| Validação Estrutural | Conformidade com XSD oficial. | Rotina CI/CD `saftXsdValidator.ts` acoplada contra `SAF-T-AO1.01_01.xsd`. | GO |
+## 4. Payments — RC
 
-## Conclusão
-Com esta matriz versionada no repositório, o Dossiê Técnico para a AGT fica auditável, rastreável e alinhado às regras estruturais do SAF-T AO.
+| Regra | Implementação KLASSE | Estado |
+|---|---|---|
+| Estrutura | RC é exportado em `Payments`, sem linhas fiscais artificiais. | READY |
+| Origem | `paymentReceipt.sourceDocuments` deriva das alocações append-only do BILL-007. | READY |
+| Regularização | `OriginatingON`, data e `CreditAmount` líquido são preservados; sequência/duplicidade é validada. | READY |
+| Meio de pagamento | `NU/TB/CC/MB` preservado. | READY |
+| Hash | RC/Payments não entra na cadeia `Hash/HashControl`, pois a estrutura Payments do XSD AO 1.01_01 não contém esses campos. | READY |
+| Control totals | `TotalCredit` soma apenas RC normais e reconcilia com os sourceDocuments. | READY |
+
+## 5. XSD, semântica e evidência
+
+| Regra | Implementação KLASSE | Estado |
+|---|---|---|
+| XSD | XML validado contra `SAF-T-AO1.01_01.xsd` no worker e na regressão fiscal. | READY |
+| Validação semântica | Totais de linhas/documento, sourceDocuments, IVA, classificação, número fiscal, estado e moeda são validados antes do upload. | READY |
+| Evidência | XML privado + SHA-256 + summary + resultado XSD/semântico em `fiscal_saft_exports`. | READY |
+| Imutabilidade | Exportação `validated` não pode ser UPDATE/DELETE; identidade/período não podem mudar. | READY |
+| Configuração | Header é snapshot do pedido, evitando alteração por mudança posterior de ambiente. | READY |
+
+## 6. Evidência histórica do banco — 2026-09-27
+
+- documentos emitidos/anulados/rectificados avaliados: **121**;
+- divergências documento x soma das linhas: **0**;
+- linhas IVA 0 sem Mxx/motivo válido: **0**;
+- documentos anulados sem evento/motivo: **0**;
+- documentos comerciais históricos com numeração não-canónica: **98**;
+- RC históricos sem `paymentReceipt.sourceDocuments`: **8**;
+- documentos actualmente marcados `saft_required=true`: **0**.
+
+Os dois grupos históricos incompatíveis permanecem fail-closed. O exportador não renumera, inventa origem nem fabrica assinatura para esconder legado.
+
+## 7. Limite contabilístico
+
+A obrigação de SAF-T contabilístico não é satisfeita por `financeiro_ledger`. Um ficheiro C/I exige plano de contas e movimentos contabilísticos de dupla entrada (`GeneralLedgerEntries`). O KLASSE não declara essa capacidade.
+
+Se o produto vier a oferecer contabilidade, o suporte C/I deverá ser implementado como módulo próprio ou integração contabilística, com novo backlog e homologação específica.
+
+## Estado
+
+**READY FOR HOMOLOGATION — SAF-T(AO) de Facturação F.**
+
+O estado passa a CLOSED somente após validação externa/portal AGT com fixtures representativas, arquivada no BILL-013.
