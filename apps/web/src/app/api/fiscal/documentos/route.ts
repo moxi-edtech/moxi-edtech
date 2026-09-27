@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
@@ -563,7 +564,8 @@ export async function POST(req: Request) {
         );
       }
 
-      const { data: finalizeData, error: finalizeError } = await supabase.rpc(
+      const fiscalPrivileged = supabaseServerRole<FiscalDatabase>();
+      const { data: finalizeData, error: finalizeError } = await fiscalPrivileged.rpc(
         "fiscal_finalizar_assinatura",
         {
           p_documento_id: rpcData.documento_id,
