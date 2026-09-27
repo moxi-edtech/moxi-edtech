@@ -231,6 +231,45 @@ function resolveSettlementAmountAoa(
   return mulExact(settlement, exchangeRate);
 }
 
+function integerValue(value: unknown, field: string): number {
+  const raw =
+    typeof value === "number"
+      ? value.toString()
+      : typeof value === "string"
+        ? value.trim()
+        : "";
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`SAFT_SEMANTIC_ERROR: ${field} inteiro inválido.`);
+  }
+  const parsed = JSON.parse(raw) as unknown;
+  if (typeof parsed !== "number" || !Number.isSafeInteger(parsed)) {
+    throw new Error(`SAFT_SEMANTIC_ERROR: ${field} inteiro inválido.`);
+  }
+  return parsed;
+}
+
+function assertPositiveExchangeRate(doc: SaftDocumento): ExactDecimal | null {
+  if (doc.moeda.toUpperCase() === "AOA") return null;
+  if (doc.taxa_cambio_aoa === null || doc.taxa_cambio_aoa === undefined) {
+    throw new Error(
+      `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
+    );
+  }
+  const rate = asExact(doc.taxa_cambio_aoa, "taxa_cambio_aoa");
+  if (cmpExact(rate, parseExactDecimal("0")) <= 0) {
+    throw new Error(
+      `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
+    );
+  }
+  return rate;
+}
+
+function currencyAmountAoaToDocumentCurrency(doc: SaftDocumento): ExactDecimal {
+  const rate = assertPositiveExchangeRate(doc);
+  if (!rate) return asExact(doc.total_bruto_aoa, "total_bruto_aoa");
+  return divExact(asExact(doc.total_bruto_aoa, "total_bruto_aoa"), rate, 8);
+}
+
 function resolveSourceBilling(sourceBilling: SaftDocumento["source_billing"]): "P" | "I" | "M" {
   return sourceBilling;
 }
@@ -498,7 +537,7 @@ function resolveSignedHash(
   }
 
   const hash = doc.saft_hash?.trim();
-  const hashControl = Number(doc.saft_hash_control);
+  const hashControl = integerValue(doc.saft_hash_control, "saft_hash_control");
 
   if (
     !doc.saft_required ||
@@ -529,8 +568,9 @@ function resolveSaftInvoiceNo(doc: SaftDocumento, documentType: string): string 
     );
   }
 
-  const sequential = Number(match[3]);
-  if (!Number.isSafeInteger(sequential) || sequential <= 0 || sequential !== Number(doc.numero)) {
+  const sequential = integerValue(match[3], "numero sequencial SAF-T");
+  const persistedSequential = integerValue(doc.numero, "numero fiscal persistido");
+  if (sequential <= 0 || sequential !== persistedSequential) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: documento ${raw} diverge do contador fiscal persistido (${doc.numero}).`
     );
