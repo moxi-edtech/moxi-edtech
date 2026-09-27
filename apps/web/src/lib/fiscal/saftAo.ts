@@ -422,9 +422,15 @@ function buildTaxExemptionXml(item: SaftDocumentoItem, indent: string): string {
 
   const code = item.tax_exemption_code?.trim();
   const reason = item.tax_exemption_reason?.trim();
-  if (!code || !/^M\d{2}$/.test(code) || !reason) {
+  if (
+    !code ||
+    !/^M\d{2}$/.test(code) ||
+    !reason ||
+    reason.length < 6 ||
+    reason.length > 60
+  ) {
     throw new Error(
-      `SAFT_SEMANTIC_ERROR: linha ${item.linha_no} com IVA 0 exige TaxExemptionCode Mxx e TaxExemptionReason.`
+      `SAFT_SEMANTIC_ERROR: linha ${item.linha_no} com IVA 0 exige TaxExemptionCode Mxx e TaxExemptionReason de 6-60 caracteres.`
     );
   }
 
