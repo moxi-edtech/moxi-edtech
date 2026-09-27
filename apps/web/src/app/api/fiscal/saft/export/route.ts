@@ -9,6 +9,7 @@ import {
   type PostFiscalSaftExportInput,
 } from "@/lib/schemas/fiscal-saft.schema";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { inngest } from "@/inngest/client";
 import type { Database, Json } from "~types/supabase";
@@ -504,7 +505,8 @@ export async function POST(req: Request) {
         },
       });
     } catch (queueError) {
-      await supabase
+      const admin = supabaseServerRole<Database>();
+      await admin
         .from("fiscal_saft_exports")
         .update({
           status: "failed",
