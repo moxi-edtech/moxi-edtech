@@ -207,7 +207,7 @@ RETURNS TABLE(numero bigint, numero_formatado text)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $
+AS $bill$
 DECLARE
   v_uid uuid := public.safe_auth_uid();
   v_serie public.fiscal_series%ROWTYPE;
@@ -270,7 +270,7 @@ BEGIN
 
   RETURN NEXT;
 END;
-$;
+$bill$;
 
 -- BILL-004: keep only the current 15-argument emission contract.
 DROP FUNCTION IF EXISTS public.fiscal_emitir_documento(
