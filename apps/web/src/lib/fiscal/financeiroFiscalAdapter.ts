@@ -96,7 +96,7 @@ function normalizeCliente(cliente?: AdapterCliente) {
       address_detail: DESCONHECIDO,
       city: DESCONHECIDO,
       postal_code: DESCONHECIDO,
-      country: DESCONHECIDO,
+      country: "AO",
       fallback: true,
     };
   }
@@ -107,7 +107,7 @@ function normalizeCliente(cliente?: AdapterCliente) {
     address_detail: DESCONHECIDO,
     city: DESCONHECIDO,
     postal_code: DESCONHECIDO,
-    country: DESCONHECIDO,
+    country: "AO",
     fallback: false,
   };
 }
