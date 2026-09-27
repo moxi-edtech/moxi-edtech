@@ -102,6 +102,7 @@ type NormalizeResult =
 const CONSUMIDOR_FINAL_NIF = "999999999";
 const CONSUMIDOR_FINAL_NOME = "Consumidor final";
 const DESCONHECIDO = "Desconhecido";
+const AGT_FE_SUBMISSION_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RC"]);
 
 function normalizeClienteAddressField(value: string | undefined): string {
   const trimmed = value?.trim();
@@ -621,19 +622,21 @@ export async function POST(req: Request) {
       }
 
       let agtSubmission: Record<string, unknown> | null = null;
-      try {
-        agtSubmission = await queueAgtDocumentSubmission({
-          documentoId: finalizeData.documento_id,
-          createdBy: user.id,
-        });
-      } catch (error) {
-        agtSubmission = {
-          queued: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Falha ao enfileirar submissão AGT.",
-        };
+      if (AGT_FE_SUBMISSION_TYPES.has(input.tipo_documento)) {
+        try {
+          agtSubmission = await queueAgtDocumentSubmission({
+            documentoId: finalizeData.documento_id,
+            createdBy: user.id,
+          });
+        } catch (error) {
+          agtSubmission = {
+            queued: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Falha ao enfileirar submissão AGT.",
+          };
+        }
       }
 
       return NextResponse.json(
@@ -665,7 +668,10 @@ export async function POST(req: Request) {
     }
 
     let agtSubmission: Record<string, unknown> | null = null;
-    if (rpcData.status === "emitido") {
+    if (
+      rpcData.status === "emitido" &&
+      AGT_FE_SUBMISSION_TYPES.has(input.tipo_documento)
+    ) {
       try {
         agtSubmission = await queueAgtDocumentSubmission({
           documentoId: rpcData.documento_id,
