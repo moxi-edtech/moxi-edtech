@@ -56,7 +56,11 @@ export async function signAgtJwsRs256(
   options: JwsSignOptions
 ) {
   const { region, keyId } = parseKmsPrivateKeyRef(options.privateKeyRef);
-  const header = { alg: "RS256", typ: "JWT" };
+  const configuredTyp = (process.env.AGT_JWS_TYP?.trim().toUpperCase() || "JWT");
+  if (configuredTyp !== "JWT" && configuredTyp !== "JOSE") {
+    throw new Error("AGT_JWS_TYP_INVALID");
+  }
+  const header = { alg: "RS256", typ: configuredTyp };
   const signingInput = `${base64Url(canonicalJson(header))}.${base64Url(canonicalJson(payload))}`;
 
   const kms = new KMSClient({ region });
