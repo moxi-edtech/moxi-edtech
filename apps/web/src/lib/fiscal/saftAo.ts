@@ -577,16 +577,28 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     for (const item of doc.itens) {
       const code = item.product_code.trim();
       if (!code) continue;
-      if (productRows.has(code)) continue;
       const description = item.descricao.trim() || code;
       const numberCode = item.product_number_code?.trim() || code;
       const productType = item.product_type;
       const existingProduct = productRows.get(code);
-      if (existingProduct && existingProduct.type !== productType) {
-        throw new Error(
-          `SAFT_SEMANTIC_ERROR: ProductCode ${code} possui ProductType divergente (${existingProduct.type}/${productType}).`
-        );
+
+      if (existingProduct) {
+        if (existingProduct.type !== productType) {
+          throw new Error(
+            `SAFT_SEMANTIC_ERROR: ProductCode ${code} possui ProductType divergente (${existingProduct.type}/${productType}).`
+          );
+        }
+        if (
+          existingProduct.description !== description ||
+          existingProduct.numberCode !== numberCode
+        ) {
+          throw new Error(
+            `SAFT_SEMANTIC_ERROR: ProductCode ${code} possui descrição/código normalizado divergente no período.`
+          );
+        }
+        continue;
       }
+
       productRows.set(code, {
         code,
         description,
