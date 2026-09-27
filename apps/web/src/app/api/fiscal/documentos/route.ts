@@ -13,6 +13,7 @@ import {
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
 import { ensureSaftDocumentSignature } from "@/lib/fiscal/saftDocumentSignature";
 import { queueAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
+import { FISCAL_TAX_PROFILE_CODES } from "@/lib/fiscal/taxProfiles";
 import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -292,9 +293,14 @@ function normalizePostInput({
             : "S",
         operation_type: "SE",
         unit_of_measure: "UN",
-        tax_code: "NOR",
+        tax_profile_code: FISCAL_TAX_PROFILE_CODES.educationM21,
+        tax_code: "ISE",
         tax_country_region: "AO",
-        taxa_iva: 14,
+        taxa_iva: 0,
+        tax_exemption_code: "M21",
+        tax_exemption_reason: "Ensino isento - al. l), n. 1 do art. 12 do CIVA",
+        unit_price_base: item.valor,
+        settlement_amount: 0,
       })),
       metadata: {
         ...(input.metadata ?? {}),
