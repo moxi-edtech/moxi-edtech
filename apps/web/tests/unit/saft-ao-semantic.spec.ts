@@ -367,3 +367,57 @@ test("validated SAF-T rejects sequential mismatch between InvoiceNo and persiste
     /diverge do número fiscal persistido/
   );
 });
+
+
+test("SAF-T exports foreign-currency lines in AOA and original total in Currency", () => {
+  const fx = invoice({
+    numero_formatado: "FT FX/1",
+    moeda: "USD",
+    taxa_cambio_aoa: 920,
+    total_liquido_aoa: 46000,
+    total_impostos_aoa: 6440,
+    total_bruto_aoa: 52440,
+    itens: [
+      {
+        ...invoice().itens[0],
+        preco_unit: 50,
+        total_liquido_aoa: 46000,
+        total_impostos_aoa: 6440,
+        total_bruto_aoa: 52440,
+      },
+    ],
+  });
+
+  const { xml } = build([fx]);
+
+  assert.match(xml, /<UnitPrice>46000\.0000<\/UnitPrice>/);
+  assert.match(xml, /<CreditAmount>46000\.0000<\/CreditAmount>/);
+  assert.match(xml, /<CurrencyCode>USD<\/CurrencyCode>/);
+  assert.match(xml, /<CurrencyAmount>57\.0000<\/CurrencyAmount>/);
+  assert.match(xml, /<ExchangeRate>920\.00000000<\/ExchangeRate>/);
+});
+
+test("SAF-T converts line settlement to AOA while keeping net unit price after discount", () => {
+  const discounted = invoice({
+    numero_formatado: "FT DISC/1",
+    total_liquido_aoa: 90,
+    total_impostos_aoa: 12.6,
+    total_bruto_aoa: 102.6,
+    itens: [
+      {
+        ...invoice().itens[0],
+        preco_unit: 100,
+        total_liquido_aoa: 90,
+        total_impostos_aoa: 12.6,
+        total_bruto_aoa: 102.6,
+        settlement_amount: 10,
+      },
+    ],
+  });
+
+  const { xml } = build([discounted]);
+
+  assert.match(xml, /<UnitPrice>90\.0000<\/UnitPrice>/);
+  assert.match(xml, /<SettlementAmount>10\.0000<\/SettlementAmount>/);
+  assert.match(xml, /<CreditAmount>90\.0000<\/CreditAmount>/);
+});
