@@ -1,7 +1,8 @@
 # AGT — Go/No-Go Checklist (Certificação Fiscal)
 
-Data: 2026-03-26
+Data: 2026-09-27
 Status global: **NO-GO**
+Backlog canónico: `docs/fiscal/certificacao/backlog-certificacao-agt.md`
 Pack de execução: `docs/fiscal/certificacao/agt-certification-go-live-pack.md`
 
 ## Como ler este checklist
@@ -60,7 +61,19 @@ Pack de execução: `docs/fiscal/certificacao/agt-certification-go-live-pack.md`
 - [ ] Processo AGT concluído (Declaração Modelo 8 + upload da chave pública `.txt`).
   Evidência esperada: comprovativo de submissão.
 
+## Estado técnico actualizado — 2026-09-27
+
+A auditoria de certificação de setembro reabriu requisitos que este checklist histórico tratava como encerrados apenas com base na implementação local.
+
+- BILL-001 a BILL-004: CLOSED.
+- BILL-005: READY FOR HOMOLOGATION — falta série real AGT.
+- BILL-006: NEEDS WORK — transporte `registarFactura/obterEstado` implementado, mas RC depende do BILL-007.
+- O estado detalhado, critérios de fecho e próximos backlogs estão em `backlog-certificacao-agt.md`.
+
+Os itens marcados `[x]` acima comprovam a capacidade local indicada, mas **não substituem homologação AGT** quando o requisito depende de serviço externo.
+
 ## Próximos passos imediatos
 
-1. Aprovar formalmente política de retenção/acesso ao ledger (P1).
-2. Encerrar submissão administrativa AGT (P2).
+1. Executar BILL-007 — pagamentos/ledger/RC/sourceDocuments.
+2. Executar BILL-008 — SAF-T(AO) semântico/contabilístico.
+3. Seguir a ordem definida no backlog canónico até BILL-014.

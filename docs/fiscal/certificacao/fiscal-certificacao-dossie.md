@@ -1,6 +1,7 @@
 # Dossiê de Certificação Fiscal AGT — KLASSE
 
-Data: 2026-03-26
+Data original: 2026-03-26
+Última revisão: 2026-09-27
 Status: Em consolidação
 
 ## Objetivo
@@ -9,10 +10,14 @@ Centralizar evidências técnicas e operacionais para submissão e auditoria de 
 
 ## Estado executivo
 
-- Base técnica fiscal: implementada.
-- Infra KMS/IAM: aplicada.
-- Validação XSD SAF-T: implementada com evidência.
-- Pendências finais: smoke autenticado E2E, aprovação formal de políticas e fecho administrativo AGT.
+- Hardening BILL-001–004: concluído.
+- Séries AGT (BILL-005): READY FOR HOMOLOGATION; ainda sem série real AGT.
+- Facturação Electrónica AGT (BILL-006): implementação assíncrona `registarFactura/obterEstado` em curso; RC depende do BILL-007.
+- SAF-T: existe geração e validação XSD, mas a completude semântica/contabilística será revalidada no BILL-008.
+- Estado global: NO-GO até concluir os BILLs bloqueantes e obter evidência de homologação externa.
+
+Fonte de verdade do estado:
+`docs/fiscal/certificacao/backlog-certificacao-agt.md`.
 
 ## Índice de evidências por requisito AGT
 
@@ -56,12 +61,15 @@ Centralizar evidências técnicas e operacionais para submissão e auditoria de 
 
 ## Checklist operacional de fecho (go-live certificação)
 
-- [ ] Executar smoke test autenticado E2E e anexar output.
-- [ ] Aprovar formalmente políticas de rotação e retenção.
-- [ ] Consolidar comprovativos administrativos AGT (Modelo 8 + chave `.txt`).
+- [ ] Concluir BILL-007 — pagamentos/ledger/RC/sourceDocuments.
+- [ ] Concluir BILL-008–012 conforme backlog canónico.
+- [ ] Executar BILL-013 — homologação AGT com série real, `registarFactura`, `requestID`, `obterEstado` e V/I.
+- [ ] Concluir BILL-014 — governance, retenção, dossiê e procedimento administrativo.
+- [ ] Consolidar evidências técnicas e administrativas finais.
 
 ## Referências de acompanhamento
 
+- `docs/fiscal/certificacao/backlog-certificacao-agt.md`
 - `docs/fiscal/certificacao/agt-go-no-go-checklist.md`
 - `docs/fiscal/certificacao/roadmap-fiscal-checklist.md`
 - `docs/fiscal/certificacao/backlog-fiscal-fase6-infra-governanca.md`

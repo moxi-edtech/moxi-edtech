@@ -11,6 +11,7 @@ import {
   postFiscalDocumentoRequestSchema,
 } from "@/lib/schemas/fiscal-documento.schema";
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
+import { queueAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
 import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -101,6 +102,7 @@ type NormalizeResult =
 const CONSUMIDOR_FINAL_NIF = "999999999";
 const CONSUMIDOR_FINAL_NOME = "Consumidor final";
 const DESCONHECIDO = "Desconhecido";
+const AGT_FE_SUBMISSION_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RC"]);
 
 function normalizeClienteAddressField(value: string | undefined): string {
   const trimmed = value?.trim();
@@ -216,9 +218,7 @@ function normalizePostInput({
     const normalizedPostalCode = isConsumidorFinal
       ? DESCONHECIDO
       : normalizeClienteAddressField(input.cliente.postal_code);
-    const normalizedCountry = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.country);
+    const normalizedCountry = (input.cliente.country || "AO").trim().toUpperCase();
     return {
       ok: true,
       data: {
@@ -272,7 +272,7 @@ function normalizePostInput({
         address_detail: DESCONHECIDO,
         city: DESCONHECIDO,
         postal_code: DESCONHECIDO,
-        country: DESCONHECIDO,
+        country: "AO",
       },
       invoice_date: today,
       moeda: "AOA",
@@ -285,6 +285,10 @@ function normalizePostInput({
         descricao: item.descricao,
         quantidade: 1,
         preco_unit: item.valor,
+        operation_type: "SE",
+        unit_of_measure: "UN",
+        tax_code: "NOR",
+        tax_country_region: "AO",
         taxa_iva: 14,
       })),
       metadata: {
@@ -617,10 +621,29 @@ export async function POST(req: Request) {
         }).catch(() => null);
       }
 
+      let agtSubmission: Record<string, unknown> | null = null;
+      if (AGT_FE_SUBMISSION_TYPES.has(input.tipo_documento)) {
+        try {
+          agtSubmission = await queueAgtDocumentSubmission({
+            documentoId: finalizeData.documento_id,
+            createdBy: user.id,
+          });
+        } catch (error) {
+          agtSubmission = {
+            queued: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Falha ao enfileirar submissão AGT.",
+          };
+        }
+      }
+
       return NextResponse.json(
         {
           ok: true,
           data: finalizeData,
+          agt_submission: agtSubmission,
           request_id: requestId,
         },
         { status: 201 }
@@ -644,10 +667,32 @@ export async function POST(req: Request) {
       }).catch(() => null);
     }
 
+    let agtSubmission: Record<string, unknown> | null = null;
+    if (
+      rpcData.status === "emitido" &&
+      AGT_FE_SUBMISSION_TYPES.has(input.tipo_documento)
+    ) {
+      try {
+        agtSubmission = await queueAgtDocumentSubmission({
+          documentoId: rpcData.documento_id,
+          createdBy: user.id,
+        });
+      } catch (error) {
+        agtSubmission = {
+          queued: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Falha ao enfileirar submissão AGT.",
+        };
+      }
+    }
+
     return NextResponse.json(
       {
         ok: true,
         data: rpcData,
+        agt_submission: agtSubmission,
         request_id: requestId,
       },
       { status: 201 }
