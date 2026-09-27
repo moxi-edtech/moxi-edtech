@@ -44,8 +44,8 @@ function invoice(overrides: Record<string, unknown> = {}) {
     total_impostos_aoa: 14,
     total_bruto_aoa: 114,
     hash_control: "legacy-hash-control-not-exported",
-    assinatura_base64: "BASE64-SIGNATURE-TEST",
-    key_version: 3,
+    saft_hash: "A".repeat(172),
+    saft_hash_control: 3,
     status: "emitido",
     source_billing: "P" as const,
     order_references: [],
@@ -81,8 +81,8 @@ test("SAF-T F exports signed hash, key version, TaxTable and net sales polarity"
     total_liquido_aoa: 50,
     total_impostos_aoa: 0,
     total_bruto_aoa: 50,
-    assinatura_base64: "BASE64-SIGNATURE-NC",
-    key_version: 4,
+    saft_hash: "B".repeat(172),
+    saft_hash_control: 4,
     order_references: [
       {
         reference: "FT TEST/1",
@@ -120,7 +120,7 @@ test("SAF-T F exports signed hash, key version, TaxTable and net sales polarity"
 
   assert.match(result.xml, /<CompanyID>RC-TEST-001<\/CompanyID>/);
   assert.match(result.xml, /<ProductCompanyTaxID>5000000001<\/ProductCompanyTaxID>/);
-  assert.match(result.xml, /<Hash>BASE64-SIGNATURE-TEST<\/Hash>/);
+  assert.match(result.xml, new RegExp(`<Hash>${"A".repeat(172)}<\\/Hash>`));
   assert.match(result.xml, /<HashControl>3<\/HashControl>/);
   assert.doesNotMatch(result.xml, /<Hash>legacy-hash-control-not-exported<\/Hash>/);
   assert.match(result.xml, /<TaxTable>/);
@@ -146,8 +146,8 @@ test("SAF-T RC uses canonical paymentReceipt.sourceDocuments without fiscal item
     total_liquido_aoa: 100,
     total_impostos_aoa: 14,
     total_bruto_aoa: 114,
-    assinatura_base64: "BASE64-SIGNATURE-RC",
-    key_version: 5,
+    saft_hash: "C".repeat(172),
+    saft_hash_control: 5,
     itens: [],
     payment_receipt: {
       sourceDocuments: [
@@ -227,9 +227,9 @@ test("SAF-T rejects unsigned documents and zero VAT without Mxx evidence", () =>
         periodoFim: "2026-09-30",
         header,
         generatedAtIso: "2026-09-27T13:00:00.000Z",
-        documentos: [invoice({ assinatura_base64: null })],
+        documentos: [invoice({ saft_hash: null })],
       }),
-    /sem assinatura fiscal\/key_version/
+    /sem saft_hash\/saft_hash_control válido/
   );
 
   const invalidExempt = invoice({
