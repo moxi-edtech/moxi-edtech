@@ -83,6 +83,8 @@ export async function POST(req: Request) {
       valor_previsto: number | null;
       aluno_id: string | null;
       ano_referencia: number | null;
+      valor_pago_total: number | null;
+      fiscal_documento_id: string | null;
     };
 
     let mensalidade: MensalidadeRow | null = null;
@@ -90,7 +92,7 @@ export async function POST(req: Request) {
     if (parsed.data.mensalidade_id) {
       const { data: mensalidadeRow, error: mensalidadeErr } = await supabase
         .from("mensalidades")
-        .select("id, escola_id, status, valor, valor_previsto, aluno_id, ano_referencia")
+        .select("id, escola_id, status, valor, valor_previsto, aluno_id, ano_referencia, valor_pago_total, fiscal_documento_id")
         .eq("id", parsed.data.mensalidade_id)
         .maybeSingle();
 
@@ -172,6 +174,57 @@ export async function POST(req: Request) {
     const valor = Number(parsed.data.valor ?? mensalidade?.valor_previsto ?? mensalidade?.valor ?? 0);
     if (!Number.isFinite(valor) || valor <= 0) {
       return NextResponse.json({ ok: false, error: "Valor inválido." }, { status: 400 });
+    }
+
+    if (mensalidade) {
+      const expected = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
+      const paidBefore = Number(mensalidade.valor_pago_total ?? 0);
+      const outstanding = Math.max(0, Number((expected - paidBefore).toFixed(2)));
+      const isPartial = valor < outstanding - 0.01;
+
+      if (isPartial && !mensalidade.fiscal_documento_id) {
+        const origin = new URL(req.url).origin;
+        const cookieHeader = req.headers.get("cookie");
+        const ft = await emitirDocumentoFiscalViaAdapter({
+          tipoFluxoFinanceiro: "deferred_payment",
+          origemOperacao: "financeiro_mensalidade_partial_source",
+          origemId: mensalidade.id,
+          descricaoPrincipal: "Propina",
+          itens: [{ descricao: "Propina", valor: outstanding }],
+          cliente: { nome: null, nif: null },
+          escolaId,
+          origin,
+          cookieHeader,
+          metadata: {
+            mensalidade_id: mensalidade.id,
+            aluno_id: alunoId,
+            motivo_emissao: "fonte_para_pagamento_parcial",
+          },
+        });
+
+        const { error: sourceLinkError } = await supabase
+          .from("mensalidades")
+          .update({
+            fiscal_documento_id: ft.documento_id,
+            status_fiscal: "ok",
+            fiscal_error: null,
+          })
+          .eq("id", mensalidade.id)
+          .eq("escola_id", escolaId);
+
+        if (sourceLinkError) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: sourceLinkError.message,
+              code: "PARTIAL_PAYMENT_SOURCE_LINK_FAILED",
+            },
+            { status: 500 }
+          );
+        }
+
+        mensalidade.fiscal_documento_id = ft.documento_id;
+      }
     }
 
     const { data: existingPagamento } = await supabase
@@ -272,7 +325,7 @@ export async function POST(req: Request) {
             mensalidade_id: mensalidade?.id ?? null,
             fiscal_documento_origem_id:
               sourceAllocation.fiscal_documento_origem_id,
-            recibo_documento_id: receipt.documento_id,
+            recibo_documento_id: receipt.document.documento_id,
           },
         }).catch(() => null);
 
@@ -492,16 +545,6 @@ export async function POST(req: Request) {
           .eq("id", pagamentoId);
       }
 
-      if (mensalidade?.id) {
-        await supabase
-          .from("mensalidades")
-          .update({
-            status_fiscal: "ok",
-            fiscal_documento_id: fiscalResult.documento_id,
-            fiscal_error: null,
-          })
-          .eq("id", mensalidade.id);
-      }
     } else {
       await supabase
         .from("financeiro_fiscal_links")
