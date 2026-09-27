@@ -725,73 +725,21 @@ async function resolveSerieSemantica({
     };
   }
 
-  // Transitional fallback for pre-existing fiscal data. New series cannot be
-  // created locally anymore; this fallback exists only so historical/pilot
-  // tenants are not hard-broken before their AGT series is provisioned.
-  const { data, error } = await supabase
-    .from("fiscal_series")
-    .select("id, empresa_id, tipo_documento, prefixo, origem_documento, ativa, descontinuada_em")
-    .eq("empresa_id", input.empresa_id)
-    .eq("tipo_documento", input.tipo_documento)
-    .eq("prefixo", input.prefixo_serie)
-    .eq("origem_documento", input.origem_documento)
-    .eq("ativa", true)
-    .is("descontinuada_em", null)
-    .limit(2);
-
-  if (error) {
-    return {
-      ok: false as const,
-      status: 500,
-      code: "SERIE_LOOKUP_FAILED",
-      message: error.message || "Falha ao resolver semanticamente a série fiscal.",
-      details: {
-        request_id: requestId,
-        escola_id: escolaId,
-        empresa_id: input.empresa_id,
-        tipo_documento: input.tipo_documento,
-        prefixo_serie: input.prefixo_serie,
-        origem_documento: input.origem_documento,
-      },
-    };
-  }
-
-  const rows = (data ?? []) as FiscalSerieLookup[];
-  if (rows.length === 0) {
-    return {
-      ok: false as const,
-      status: 409,
-      code: "AGT_SERIES_REQUIRED",
-      message:
-        "Nenhuma série AGT provisionada ou série legada compatível foi encontrada. Provisione a série na AGT antes da emissão.",
-      details: {
-        request_id: requestId,
-        escola_id: escolaId,
-        empresa_id: input.empresa_id,
-        tipo_documento: input.tipo_documento,
-        series_year: invoiceYear,
-      },
-    };
-  }
-
-  if (rows.length > 1) {
-    return {
-      ok: false as const,
-      status: 409,
-      code: "SERIE_AMBIGUA",
-      message: "Mais de uma série legada activa corresponde ao contrato semântico informado.",
-      details: {
-        request_id: requestId,
-        escola_id: escolaId,
-        empresa_id: input.empresa_id,
-        tipo_documento: input.tipo_documento,
-        prefixo_serie: input.prefixo_serie,
-        origem_documento: input.origem_documento,
-      },
-    };
-  }
-
-  return { ok: true as const, data: rows[0] };
+  return {
+    ok: false as const,
+    status: 409,
+    code: "AGT_SERIES_REQUIRED",
+    message:
+      "Nenhuma série AGT provisionada foi encontrada para o tipo, ano e regime informados. Provisione a série na AGT antes da emissão.",
+    details: {
+      request_id: requestId,
+      escola_id: escolaId,
+      empresa_id: input.empresa_id,
+      tipo_documento: input.tipo_documento,
+      series_year: invoiceYear,
+      contingency_indicator: contingencyIndicator,
+    },
+  };
 }
 
 // A validação de chave fiscal activa ocorre na RPC atómica.
