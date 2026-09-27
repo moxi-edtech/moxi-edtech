@@ -1420,9 +1420,9 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     summary: {
       totalDocumentos: input.documentos.length,
       totalItens,
-      totalLiquidoAoa,
-      totalImpostosAoa,
-      totalBrutoAoa,
+      totalLiquidoAoa: exactToJsonNumber(totalLiquidoAoaExact, 2),
+      totalImpostosAoa: exactToJsonNumber(totalImpostosAoaExact, 2),
+      totalBrutoAoa: exactToJsonNumber(totalBrutoAoaExact, 2),
       taxAccountingBasis: "F",
       sections: {
         salesInvoices: {
