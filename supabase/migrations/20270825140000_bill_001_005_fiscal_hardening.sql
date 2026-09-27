@@ -123,6 +123,60 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_fiscal_series_agt_submission_uuid
   ON public.fiscal_series (agt_submission_uuid)
   WHERE agt_submission_uuid IS NOT NULL;
 
+
+-- Durable request ledger for AGT series provisioning. This prevents a timeout
+-- from silently causing a second submission with a new identity.
+CREATE TABLE IF NOT EXISTS public.fiscal_series_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid NOT NULL REFERENCES public.fiscal_empresas(id) ON DELETE RESTRICT,
+  requested_by uuid NOT NULL,
+  idempotency_key text NOT NULL,
+  submission_uuid uuid NOT NULL,
+  document_type text NOT NULL,
+  series_year integer NOT NULL,
+  establishment_number text NOT NULL,
+  contingency_indicator text NOT NULL,
+  status text NOT NULL DEFAULT 'processing',
+  fiscal_serie_id uuid NULL REFERENCES public.fiscal_series(id) ON DELETE RESTRICT,
+  error_payload jsonb NULL,
+  response_payload jsonb NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT fiscal_series_requests_status_chk
+    CHECK (status IN ('processing','provisioned','rejected','uncertain')),
+  CONSTRAINT fiscal_series_requests_contingency_chk
+    CHECK (contingency_indicator IN ('N','C')),
+  CONSTRAINT fiscal_series_requests_year_chk
+    CHECK (series_year BETWEEN 2000 AND 2200),
+  CONSTRAINT fiscal_series_requests_idempotency_uk
+    UNIQUE (empresa_id, idempotency_key),
+  CONSTRAINT fiscal_series_requests_submission_uk
+    UNIQUE (submission_uuid)
+);
+
+ALTER TABLE public.fiscal_series_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS fiscal_series_requests_select ON public.fiscal_series_requests;
+CREATE POLICY fiscal_series_requests_select
+ON public.fiscal_series_requests
+FOR SELECT TO authenticated
+USING (
+  public.check_super_admin_role()
+  OR public.user_has_role_in_empresa(
+    empresa_id,
+    ARRAY['owner','admin','operator']::text[]
+  )
+);
+
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE
+  ON TABLE public.fiscal_series_requests
+  FROM anon, authenticated;
+GRANT SELECT ON TABLE public.fiscal_series_requests TO authenticated;
+GRANT ALL ON TABLE public.fiscal_series_requests TO service_role;
+
+CREATE INDEX IF NOT EXISTS idx_fiscal_series_requests_empresa_status
+  ON public.fiscal_series_requests (empresa_id, status, created_at DESC);
+
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.fiscal_series FROM anon, authenticated;
 DROP POLICY IF EXISTS fiscal_series_insert ON public.fiscal_series;
 DROP POLICY IF EXISTS fiscal_series_update ON public.fiscal_series;
