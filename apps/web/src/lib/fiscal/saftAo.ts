@@ -672,7 +672,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     )
     .join("\n");
 
-  const taxProfiles = new Map<string, number>();
+  const taxProfiles = new Map<
+    string,
+    { rate: number; code: string; region: string }
+  >();
   for (const doc of input.documentos) {
     for (const item of doc.itens) {
       const rate = Number(item.taxa_iva);
@@ -681,8 +684,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           `SAFT_SEMANTIC_ERROR: taxa de IVA inválida no documento ${doc.numero_formatado}, linha ${item.linha_no}.`
         );
       }
-      const key = `IVA:${resolveTaxCode(rate)}:${rate.toFixed(4)}`;
-      taxProfiles.set(key, rate);
+      const code = resolveTaxCode(item);
+      const region = resolveTaxCountryRegion(item);
+      const key = `IVA:${region}:${code}:${rate.toFixed(4)}`;
+      taxProfiles.set(key, { rate, code, region });
     }
   }
 
@@ -690,14 +695,18 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     ? [
         "    <TaxTable>",
         ...Array.from(taxProfiles.values())
-          .sort((a, b) => a - b)
-          .map((rate) =>
+          .sort((a, b) =>
+            a.region.localeCompare(b.region) ||
+            a.code.localeCompare(b.code) ||
+            a.rate - b.rate
+          )
+          .map(({ rate, code, region }) =>
             [
               "      <TaxTableEntry>",
               "        <TaxType>IVA</TaxType>",
-              "        <TaxCountryRegion>AO</TaxCountryRegion>",
-              `        <TaxCode>${resolveTaxCode(rate)}</TaxCode>`,
-              `        <Description>${escapeXml(resolveTaxDescription(rate))}</Description>`,
+              `        <TaxCountryRegion>${escapeXml(region)}</TaxCountryRegion>`,
+              `        <TaxCode>${escapeXml(code)}</TaxCode>`,
+              `        <Description>${escapeXml(resolveTaxDescription(code, rate, region))}</Description>`,
               `        <TaxPercentage>${rate.toFixed(2)}</TaxPercentage>`,
               "      </TaxTableEntry>",
             ].join("\n")
