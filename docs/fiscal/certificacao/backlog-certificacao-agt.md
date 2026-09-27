@@ -533,213 +533,25 @@ Os critérios internos do BILL-009 foram atingidos:
 **Branch:** `fix/bill-010-document-lifecycle`  
 **Fechado internamente em:** 2026-09-27
 
-### Fontes normativas usadas
-
-Fonte primária: documentação oficial AGT / Facturação Electrónica v1, schemaVersion 2.0.
-
-- Registar Factura: https://portaldoparceiro.minfin.gov.ao/doc-agt/faturacao-electronica/1/servicos/registar.html
-- Consultar Estado / `obterEstado`: https://portaldoparceiro.minfin.gov.ao/doc-agt/faturacao-electronica/1/servicos/consultar.html
-- Solicitar Série: https://portaldoparceiro.minfin.gov.ao/doc-agt/faturacao-electronica/1/servicos/solicitar.html
-- Consultar Factura: https://portaldoparceiro.minfin.gov.ao/doc-agt/faturacao-electronica/1/servicos/consultar_fatura.html
-
-Requisitos usados como oráculo:
-
-- `documentStatus=N` para documento normal;
-- `documentStatus=C` apenas para corrigir documento anteriormente rejeitado pela AGT;
-- `rejectedDocumentNo` obrigatório para `C`;
-- correcção de rejeitado deve usar **novo `documentNo`** (E46 / FE-RNG-073);
-- NC exige `referenceInfo.reference`;
-- `referenceInfo.reason` limitado a 60 caracteres;
-- créditos/anulações acumulados não podem exceder o remanescente do documento base (E42 / FE-RNG-068);
-- decisão diferida AGT usa `V` / `I`;
-- séries FE distinguem regime normal `N` e contingência `C`.
-
-### Modelo canónico de lifecycle
-
-`fiscal_documentos` passou a persistir explicitamente:
-
-- `agt_document_status`;
-- `agt_rejected_document_id`;
-- `agt_rejected_document_no`;
-- `reference_reason`;
-- `contingency_indicator`.
-
-A semântica não depende mais apenas de `payload.metadata`.
-
-Há um único trigger de lifecycle activo:
-
-`fiscal_document_lifecycle_guard -> fiscal_validate_document_lifecycle()`.
-
-O guard valida INSERT/UPDATE e mantém fail-closed para combinações ambíguas.
-
-### NC / ND
-
-NC:
-
-- exige `rectifica_documento_id`;
-- documento base deve existir, pertencer à mesma empresa e estar emitido/rectificado;
-- cliente fiscal, moeda e ordem temporal devem ser compatíveis;
-- `reference_reason` é persistido canonicamente;
-- soma das NC efectivas sobre o mesmo documento base não pode ultrapassar o líquido remanescente;
-- NC rejeitada pela AGT não é contabilizada como crédito efectivo.
-
-ND emitida pelo KLASSE:
-
-- exige `documento_origem_id`;
-- mantém empresa, cliente fiscal, moeda e ordem temporal coerentes com a origem;
-- mapper AGT produz `referenceInfo` a partir da relação canónica, não de texto livre.
-
-### Documento rejeitado pela AGT
-
-`fiscal_agt_record_document_result(...)` é backend-only:
-
-- `anon=false`;
-- `authenticated=false`;
-- `service_role=true`.
-
-Resultados `valid/invalid` são terminais e idempotentes:
-
-- repetir o mesmo resultado é idempotente;
-- não é permitida regressão `invalid -> valid` ou `valid -> invalid` por nova chamada;
-- eventos `AGT_VALIDADO` / `AGT_REJEITADO` preservam a evidência.
-
-Uma correcção `documentStatus=C`:
-
-- exige documento origem comprovadamente `invalid` numa submissão AGT `rejected` com `request_id`;
-- mantém o mesmo tipo documental;
-- recebe novo número fiscal;
-- `agt_rejected_document_no` é copiado canonicamente do documento rejeitado;
-- não aceita número reutilizado.
-
-### Rectificação
-
-`fiscal_rectificar_documento` deixou de ser uma simples mudança de status.
-
-Para fechar o original como `rectificado` é obrigatório informar um documento correctivo **novo e já emitido**:
-
-- NC apontando para o original;
-- ND apontando para o original; ou
-- documento do mesmo tipo com `documentStatus=C` apontando para o rejeitado.
-
-Quando o original entrou no fluxo AGT, o correctivo precisa estar `valid/accepted` antes de fechar a rectificação.
-
-API e UI foram alinhadas:
-
-- `correction_document_id` é campo explícito do request;
-- a UI só oferece documentos emitidos que realmente referenciam o original;
-- sem correctivo, a operação não é apresentada como rectificação concluível.
-
-### Anulação
-
-Documento não comunicado à Facturação Electrónica pode seguir a transição local explicitamente permitida.
-
-Documento FE com submissão em `prepared/submitting/submitted/processing/uncertain/accepted` **não pode ser anulado apenas localmente**.
-
-A documentação pública consultada reconhece a possibilidade de existir uma anulação posterior ao documento emitido, mas no conjunto de serviços verificado não foi identificado um contrato público dedicado de anulação que permita ao KLASSE afirmar suporte externo completo. Portanto o comportamento é deliberadamente fail-closed até a homologação AGT confirmar o procedimento.
-
-A prova externa desse caminho pertence ao BILL-013. Nenhum fallback local inventa aceitação da AGT.
-
-### Contingência e tipos não FE
-
-Para tipos FE suportados pelo KLASSE:
-
-`FT / FR / FG / GF / NC / ND / RC`
-
-- série deve estar provisionada pela AGT;
-- ano e empresa/tipo devem coincidir;
-- `origem_documento='contingencia'` e `seriesContingencyIndicator='C'` devem ser coerentes;
-- documento recebe `contingency_indicator` da série.
-
-Para:
-
-`PP / GR / GT`
-
-- série é local controlada (`agt_status='legacy'`);
-- não consome série de Facturação Electrónica;
-- não entra no outbox `registarFactura`;
-- `documentStatus=C` não é permitido;
-- série de contingência FE não é permitida.
-
-Prova live rollback-only:
-
-- série PP local reservou `PP-000004`;
-- após `ROLLBACK`, `ultimo_numero` permaneceu **3**;
-- tentativa de reservar número numa série FT legacy foi rejeitada com `STATE: série FE ainda não foi provisionada pela AGT`.
-
-### Reversão financeira depois do fiscal
-
-O bypass legado `estornar_mensalidade(uuid,text)` perdeu EXECUTE para papéis de aplicação.
-
-A API `/api/financeiro/mensalidades/estornar` usa agora `reverter_pagamento_realizado` e preserva ledger/alocações/reversões.
-
-Fail-closed:
-
-- múltiplos pagamentos activos sobre a mesma mensalidade exigem escolha explícita;
-- pagamento distribuído por várias mensalidades exige reversão explícita do pagamento;
-- pagamento fiscalizado continua bloqueado enquanto o ciclo fiscal não estiver resolvido.
-
-`financeiro_guard_fiscalized_payment_reversal()` permite reversão de FR apenas depois de correcção fiscal efectiva suficiente:
-
-- documento original `anulado`; ou
-- FR `rectificado` com NC efectiva cobrindo integralmente o líquido original;
-- se a FR original foi aceite pela AGT, apenas NC `valid/accepted` entra no cálculo.
-
-RC permanece bloqueado até existir anulação ou fluxo `RE` homologado. O histórico não é apagado.
-
-### Segurança
-
-Grants verificados live:
-
-- `fiscal_anular_documento`: anon=false, authenticated=true, service_role=true;
-- `fiscal_rectificar_documento`: anon=false, authenticated=true, service_role=true;
-- `fiscal_agt_record_document_result`: authenticated=false, service_role=true;
-- `estornar_mensalidade`: authenticated=false.
-
-Os dois RPCs de acção humana são `SECURITY DEFINER` e geram WARN do advisor por serem executáveis por `authenticated`; isso é intencional e protegido internamente por `safe_auth_uid() + user_has_role_in_empresa(owner/admin/operator)`. Não há EXECUTE anónimo.
-
-### Performance
-
-Índices adicionados para relações usadas pelo lifecycle:
-
-- `idx_fiscal_documentos_documento_origem`;
-- `idx_fiscal_documentos_rectifica_documento`;
-- `idx_fiscal_agt_submission_documentos_empresa`.
-
-Após a migration, o advisor deixou de reportar os três FKs correspondentes como sem índice.
-
-### Histórico legado — não mutado
-
-Snapshot live no fechamento:
-
-- documentos `rectificado`: **5**;
-- rectificados sem evento `RECTIFICADO`: **0**;
-- documentos `anulado`: **4**;
-- anulados sem evento `ANULADO`: **0**;
-- os **5 eventos históricos de rectificação** são anteriores ao BILL-010 e não registam ID de documento correctivo.
-
-Esses 5 casos permanecem como evidência histórica. Não foi feito UPDATE retroactivo, não foi inventada NC/ND e não foi criada relação fictícia.
-
-Os documentos históricos com identidade/numeração fora do padrão moderno, incluindo casos `tipo_documento='FT'` com número legado semelhante a FR, continuam imutáveis. Exportadores/fluxos modernos devem tratá-los explicitamente ou falhar fechado; não renumerar.
-
-### Evidência de testes
-
-Live / DB:
-
-- migration history Git <-> Supabase alinhado para **10 migrations BILL-010**;
-- existe um único lifecycle trigger em `fiscal_documentos`;
-- existe `trg_pagamentos_fiscal_reversal_guard` em `pagamentos`;
-- tentativa real rollback-only de NC acima do remanescente foi rejeitada pelo guard E42-style e deixou zero séries/documentos de fixture como resíduo;
-- rectificação authenticated sem `correction_document_id` foi rejeitada com erro explícito;
-- reserva PP rollback-only preservou o contador original;
-- série FT legacy foi rejeitada antes da reserva.
-
-CI do PR #125, head de referência após fechamento:
-
-- KLASSE UI Standards: **PASS**;
-- Security Regression Tests: **PASS (4/4)**;
-- Fiscal Regression Tests: **PASS (33/33)**;
-- SAF-T XSD validator instalado e suite sem regressão fiscal;
-- KF2 global continua vermelho por dívida histórica, mas após aplicar invariantes KF2 à listagem fiscal **nenhum arquivo BILL-010 aparece nos findings**.
+### Escopo fechado
+
+- NC exige `rectifica_documento_id` canónico e mantém motivo/referência persistidos;
+- ND exige `documento_origem_id` canónico;
+- crédito acumulado por NC não pode ultrapassar o valor líquido do documento base;
+- documentos rejeitados pela AGT usam novo documento com `documentStatus=C`;
+- `agt_rejected_document_id` e `agt_rejected_document_no` são derivados/persistidos sem reescrever o original;
+- resultado AGT por documento é idempotente e não pode regredir de terminal inválido para válido;
+- rectificação do original exige documento correctivo emitido e, quando o original já entrou no fluxo AGT, respeita o resultado terminal/aceite aplicável;
+- a UI/API de rectificação exige explicitamente `correction_document_id`; não existe mais rectificação por simples mudança de status;
+- anulação local é bloqueada para documento FE já comunicado à AGT; não existe fallback local que finja anulação externa;
+- contingência é derivada da série e exige coerência `origem_documento=contingencia <-> seriesContingencyIndicator=C`;
+- séries FE (`FT/FR/FG/GF/NC/ND/RC`) exigem provisionamento AGT;
+- `PP/GR/GT` usam série local controlada `legacy` e não entram no outbox de Facturação Electrónica;
+- `estornar_mensalidade(uuid,text)` foi desactivado para papéis de aplicação;
+- a rota de estorno usa `reverter_pagamento_realizado`, preservando ledger/alocações/reversões;
+- pagamento fiscalizado continua fail-closed até existir resolução fiscal compatível;
+- FR rectificada só libera reversão financeira após NC efectiva integral; RC continua bloqueado até existir fluxo fiscal homologado de anulação/RE;
+- relações de lifecycle e lookup de submissões receberam índices de suporte.
 
 ### Migrations BILL-010 live/Git
 
@@ -747,39 +559,93 @@ CI do PR #125, head de referência após fechamento:
 - `20260927211022_bill_010_document_lifecycle_invariants.sql`
 - `20260927211031_bill_010_agt_result_backend_guard.sql`
 - `20260927211210_bill_010_agt_lifecycle_event_types.sql`
-- `20260927211445_bill_010_reconcile_lifecycle_guard.sql` — alignment/no-op em Git; estado efectivo superseded pelas migrations seguintes;
+- `20260927211445_bill_010_reconcile_lifecycle_guard.sql`
 - `20260927211718_bill_010_reconcile_document_lifecycle_guards.sql`
 - `20260927212200_bill_010_lifecycle_source_alignment.sql`
 - `20260927212211_bill_010_series_boundary_and_reversal_gate.sql`
 - `20260927212653_bill_010_financial_reversal_after_fiscal_correction.sql`
 - `20260927213601_bill_010_lifecycle_reference_indexes.sql`
 
-### Limites deliberados
+As versões/nomes acima foram reconciliados entre Git e o histórico de migrations do Supabase live.
 
-- não existe migração silenciosa de histórico;
-- anulação externa de FE já comunicada fica bloqueada até procedimento AGT ser provado;
-- `RE` não é inventado como substituto antes da homologação;
-- activação do motor fiscal por escola continua opt-in, independente deste BILL;
-- evidência externa de `registarFactura/obterEstado`, anulação e fixtures reais continua no BILL-013.
+### Evidência live
+
+- `fiscal_document_lifecycle_guard` activo em `fiscal_documentos`;
+- `trg_pagamentos_fiscal_reversal_guard` activo em `pagamentos`;
+- `anon` sem EXECUTE em anular/rectificar;
+- `authenticated` com EXECUTE apenas nos RPCs de anular/rectificar, que revalidam `user_has_role_in_empresa(owner/admin/operator)`;
+- `fiscal_agt_record_document_result` permanece backend-only: `authenticated=false`, `service_role=true`;
+- RPC legado `estornar_mensalidade` sem EXECUTE para `authenticated`;
+- reserva rollback-only em série local PP produziu `PP-000004` e deixou `ultimo_numero=3` após rollback;
+- tentativa de reservar número em série FT legacy falhou fechado por ausência de provisionamento AGT;
+- tentativa autenticada de rectificar sem `correction_document_id` falhou fechado;
+- histórico actual: 5 documentos `rectificado` e 4 `anulado`, todos com evento correspondente.
+
+### CI do PR #125
+
+Head validado: `3b21fcf644db5d89284aa75e99965da68cd8775d`.
+
+- KLASSE UI Standards: PASS;
+- Security Regression Tests: PASS;
+- Fiscal Regression Tests: **33/33 PASS**;
+- SAF-T XSD validator: instalado/executado pelo workflow antes da suite fiscal;
+- KF2 Search Audit: continua vermelho por débito global do repositório, mas nenhum arquivo modificado pelo BILL-010 permanece nos findings após aplicação das invariantes KF2 à listagem fiscal.
+
+### Advisors
+
+Findings directamente ligados ao BILL-010:
+
+- `fiscal_anular_documento` e `fiscal_rectificar_documento` aparecem como WARN por serem SECURITY DEFINER executáveis por `authenticated`; isto é intencional e ambos fazem autorização interna por empresa/role;
+- `anon` permanece sem EXECUTE;
+- os warnings de FK sem índice para `documento_origem_id`, `rectifica_documento_id` e `fiscal_agt_submission_documentos.empresa_id` foram eliminados pela migration `20260927213601...`.
+
+A auditoria global de SECURITY DEFINER/RLS/grants continua no BILL-011.
+
+### Histórico legado preservado
+
+Não houve UPDATE correctivo em documentos emitidos.
+
+Snapshot encontrado durante o fechamento:
+
+- existem **5 documentos históricos já marcados `rectificado`** cujos eventos antigos não guardaram `correction_document_id`;
+- esses registos são anteriores ao contrato BILL-010;
+- o sistema não inventou relação retroactiva;
+- novos fluxos não conseguem fechar rectificação sem documento correctivo explícito.
+
+Continuam igualmente preservados os históricos já conhecidos do BILL-008:
+
+- 98 documentos comerciais fora do formato canónico SAF-T;
+- 8 RC históricos sem `paymentReceipt.sourceDocuments`.
+
+Esses históricos permanecem evidência de legado e não devem ser “corrigidos” por mutação silenciosa.
+
+### Limite externo deliberado
+
+Para documento FE já comunicado à AGT, a anulação local é bloqueada. O conjunto público de serviços AGT validado durante este trabalho não forneceu evidência suficiente de um endpoint dedicado de anulação que permita implementar esse caminho sem inferência.
+
+Portanto:
+- não existe fallback local;
+- a implementação externa de anulação/RE fica condicionada à evidência de homologação;
+- essa prova entra no BILL-013.
 
 ### Critério de fechamento
 
-Os gaps internos do BILL-010 estão fechados:
+O BILL-010 está CLOSED porque o lifecycle interno conhecido está implementado e protegido fail-closed:
 
-1. NC/ND possuem referência canónica e limites;
-2. rejeição AGT possui correcção `C` rastreável e novo número;
-3. resultado AGT não regressa de estado;
-4. rectificação exige novo documento correctivo;
-5. anulação local não pode divergir silenciosamente da AGT;
-6. contingência está ligada à série;
-7. PP/GR/GT ficam fora de FE;
-8. reversão financeira respeita a correcção fiscal;
-9. bypass legado de estorno foi removido;
-10. histórico antigo foi auditado sem mutação;
-11. migrations Git/live estão alinhadas;
-12. CI fiscal/security/UI passou.
+1. referência NC/ND canónica;
+2. limite de crédito;
+3. correcção de rejeição AGT com nova identidade documental;
+4. transições terminais sem regressão;
+5. rectificação vinculada a correctivo real;
+6. anulação FE não simulada;
+7. contingência coerente;
+8. separação série FE x série local PP/GR/GT;
+9. reversão financeira vinculada à resolução fiscal;
+10. UI/API alinhadas ao contrato;
+11. migrations Git/live reconciliadas;
+12. CI fiscal/security/UI verde no escopo.
 
-O próximo backlog executável é **BILL-011 — Segurança fiscal multi-tenant**.
+A evidência contra AGT real continua separada e não é requisito para declarar este backlog interno CLOSED; pertence ao BILL-013.
 
 ---
 
