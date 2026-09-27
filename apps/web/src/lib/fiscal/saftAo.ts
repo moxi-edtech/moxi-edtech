@@ -18,6 +18,8 @@ type SaftDocumentoItem = {
   total_impostos_aoa: number;
   total_bruto_aoa: number;
   settlement_amount?: number | null;
+  tax_exemption_code?: string | null;
+  tax_exemption_reason?: string | null;
 };
 
 type SaftOrderReference = {
@@ -25,6 +27,16 @@ type SaftOrderReference = {
   reason?: string | null;
   origin_document_id?: string | null;
   origin_invoice_date?: string | null;
+};
+
+type SaftPaymentSourceDocument = {
+  lineNo: number;
+  sourceDocumentID: {
+    OriginatingON: string;
+    documentDate?: string | null;
+    invoiceDate?: string | null;
+  };
+  creditAmount: number;
 };
 
 type SaftDocumento = {
@@ -47,8 +59,14 @@ type SaftDocumento = {
   total_impostos_aoa: number;
   total_bruto_aoa: number;
   hash_control: string;
+  assinatura_base64: string | null;
+  key_version: number | null;
   status: string;
+  source_billing: "P" | "I" | "M";
   order_references?: SaftOrderReference[];
+  payment_receipt?: {
+    sourceDocuments: SaftPaymentSourceDocument[];
+  } | null;
   itens: SaftDocumentoItem[];
 };
 
@@ -76,7 +94,9 @@ type BuildSaftAoXmlInput = {
   periodoFim: string;
   header: {
     productId: string;
-    taxAccountingBasis: "F" | "C";
+    productCompanyTaxId: string;
+    productVersion: string;
+    taxAccountingBasis: "F";
     softwareCertificateNumber: string;
   };
   generatedAtIso: string;
@@ -117,11 +137,8 @@ function formatExchangeRate(value: number): string {
   return value.toFixed(8);
 }
 
-function resolveSourceBillingFromStatus(status: string): "P" | "I" | "M" {
-  const normalized = status.trim().toLowerCase();
-  if (normalized === "manual_recuperado" || normalized === "contingencia") return "M";
-  if (normalized === "integrado") return "I";
-  return "P";
+function resolveSourceBilling(sourceBilling: SaftDocumento["source_billing"]): "P" | "I" | "M" {
+  return sourceBilling;
 }
 
 const SALES_INVOICE_TYPES = new Set([
@@ -230,7 +247,60 @@ function resolvePaymentType(tipoDocumento: string): string {
 function resolveTaxCode(taxaIva: number): string {
   if (taxaIva <= 0) return "ISE";
   if (taxaIva <= 5) return "RED";
+  if (taxaIva < 14) return "INT";
   return "NOR";
+}
+
+function resolveTaxDescription(taxaIva: number): string {
+  if (taxaIva <= 0) return "IVA isento";
+  if (taxaIva <= 5) return "IVA taxa reduzida";
+  if (taxaIva < 14) return "IVA taxa intermédia";
+  return "IVA taxa normal";
+}
+
+function assertMoneyClose(label: string, actual: number, expected: number, tolerance = 0.02) {
+  if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > tolerance) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: ${label} divergente (actual=${actual.toFixed(4)}, expected=${expected.toFixed(4)}).`
+    );
+  }
+}
+
+function buildTaxExemptionXml(item: SaftDocumentoItem, indent: string): string {
+  if (item.taxa_iva > 0) return "";
+
+  const code = item.tax_exemption_code?.trim();
+  const reason = item.tax_exemption_reason?.trim();
+  if (!code || !/^M\d{2}$/.test(code) || !reason) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: linha ${item.linha_no} com IVA 0 exige TaxExemptionCode Mxx e TaxExemptionReason.`
+    );
+  }
+
+  return [
+    `${indent}<TaxExemptionReason>${escapeXml(reason)}</TaxExemptionReason>`,
+    `${indent}<TaxExemptionCode>${escapeXml(code)}</TaxExemptionCode>`,
+  ].join("\n");
+}
+
+function isDebitSalesDocument(tipoDocumento: string): boolean {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
+  return normalized === "NC" || normalized === "RE";
+}
+
+function resolveSignedHash(doc: SaftDocumento): { hash: string; hashControl: string } {
+  const hash = doc.assinatura_base64?.trim();
+  const keyVersion = Number(doc.key_version);
+  if (!hash || !Number.isInteger(keyVersion) || keyVersion <= 0) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} sem assinatura fiscal/key_version válida.`
+    );
+  }
+
+  return {
+    hash,
+    hashControl: String(keyVersion),
+  };
 }
 
 function resolveSaftInvoiceNo(doc: SaftDocumento, invoiceType: string): string {
