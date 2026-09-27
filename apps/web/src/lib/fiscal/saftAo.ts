@@ -67,6 +67,8 @@ type SaftDocumento = {
   saft_hash_control: number | null;
   saft_required: boolean;
   status: string;
+  status_date: string | null;
+  status_reason: string | null;
   source_billing: "P" | "I" | "M";
   series_sort_key: string;
   order_references?: SaftOrderReference[];
@@ -312,6 +314,30 @@ function resolvePaymentStatus(docStatus: string): "N" | "A" {
   const normalized = docStatus.trim().toLowerCase();
   if (normalized === "anulado") return "A";
   return "N";
+}
+
+function resolveDocumentStatusDate(doc: SaftDocumento): string {
+  if (doc.status.trim().toLowerCase() === "anulado") {
+    const statusDate = doc.status_date?.trim();
+    if (!statusDate) {
+      throw new Error(
+        `SAFT_SEMANTIC_ERROR: documento anulado ${doc.numero_formatado} sem data do evento de anulação.`
+      );
+    }
+    return statusDate;
+  }
+  return doc.system_entry;
+}
+
+function buildDocumentStatusReasonXml(doc: SaftDocumento, indent: string): string {
+  if (doc.status.trim().toLowerCase() !== "anulado") return "";
+  const reason = doc.status_reason?.trim();
+  if (!reason) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: documento anulado ${doc.numero_formatado} sem motivo de anulação.`
+    );
+  }
+  return `${indent}<Reason>${escapeXml(reason)}</Reason>`;
 }
 
 function resolveWorkType(tipoDocumento: string): string {
@@ -755,7 +781,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `          <InvoiceNo>${escapeXml(invoiceNo)}</InvoiceNo>`,
         "          <DocumentStatus>",
         `            <InvoiceStatus>${invoiceStatus}</InvoiceStatus>`,
-        `            <InvoiceStatusDate>${doc.system_entry}</InvoiceStatusDate>`,
+        `            <InvoiceStatusDate>${resolveDocumentStatusDate(doc)}</InvoiceStatusDate>`,
+        buildDocumentStatusReasonXml(doc, "            "),
         `            <SourceID>${sourceId}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
@@ -871,7 +898,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `          <DocumentNumber>${escapeXml(documentNumber)}</DocumentNumber>`,
         "          <DocumentStatus>",
         `            <WorkStatus>${workStatus}</WorkStatus>`,
-        `            <WorkStatusDate>${doc.system_entry}</WorkStatusDate>`,
+        `            <WorkStatusDate>${resolveDocumentStatusDate(doc)}</WorkStatusDate>`,
+        buildDocumentStatusReasonXml(doc, "            "),
         `            <SourceID>${sourceId}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
@@ -961,7 +989,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `          <DocumentNumber>${escapeXml(documentNumber)}</DocumentNumber>`,
         "          <DocumentStatus>",
         `            <MovementStatus>${movementStatus}</MovementStatus>`,
-        `            <MovementStatusDate>${doc.system_entry}</MovementStatusDate>`,
+        `            <MovementStatusDate>${resolveDocumentStatusDate(doc)}</MovementStatusDate>`,
+        buildDocumentStatusReasonXml(doc, "            "),
         `            <SourceID>${sourceId}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
@@ -1095,7 +1124,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `          <PaymentType>${escapeXml(paymentType)}</PaymentType>`,
         "          <DocumentStatus>",
         `            <PaymentStatus>${paymentStatus}</PaymentStatus>`,
-        `            <PaymentStatusDate>${doc.system_entry}</PaymentStatusDate>`,
+        `            <PaymentStatusDate>${resolveDocumentStatusDate(doc)}</PaymentStatusDate>`,
+        buildDocumentStatusReasonXml(doc, "            "),
         `            <SourceID>${sourceId}</SourceID>`,
         `            <SourcePayment>${sourcePayment}</SourcePayment>`,
         "          </DocumentStatus>",
@@ -1158,10 +1188,12 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     normalSalesDocs.filter((doc) => !isDebitSalesDocument(doc.tipo_documento))
   );
   const movementLines = movementDocs.reduce((acc, doc) => acc + doc.itens.length, 0);
-  const movementQuantity = movementDocs.reduce(
-    (acc, doc) => acc + doc.itens.reduce((sub, item) => sub + item.quantidade, 0),
-    0
-  );
+  const movementQuantity = movementDocs
+    .filter((doc) => resolveMovementStatus(doc.status) !== "A")
+    .reduce(
+      (acc, doc) => acc + doc.itens.reduce((sub, item) => sub + item.quantidade, 0),
+      0
+    );
 
   const salesBlock = [
     "    <SalesInvoices>",
