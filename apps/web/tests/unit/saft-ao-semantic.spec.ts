@@ -115,7 +115,7 @@ test("unvalidated SAF-T uses Hash=0, TaxTable and net sales polarity", () => {
     itens: [
       {
         linha_no: 1,
-        descricao: "Ajuste de propina",
+        descricao: "Propina",
         product_code: "PROPINA",
         product_number_code: "PROPINA",
         quantidade: 1,
