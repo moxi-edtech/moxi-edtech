@@ -52,7 +52,7 @@ async function loadSubmissionContext(submissionId: string) {
 
   const { data: document, error: documentError } = await admin
     .from("fiscal_documentos")
-    .select("id,empresa_id,tipo_documento,numero_formatado,invoice_date,system_entry,cliente_nif,cliente_nome,moeda,taxa_cambio_aoa,total_liquido_aoa,total_impostos_aoa,total_bruto_aoa,documento_origem_id,rectifica_documento_id,payload,key_version,status")
+    .select("id,empresa_id,tipo_documento,numero_formatado,invoice_date,system_entry,cliente_nif,cliente_nome,moeda,taxa_cambio_aoa,total_liquido_aoa,total_impostos_aoa,total_bruto_aoa,documento_origem_id,rectifica_documento_id,agt_document_status,agt_rejected_document_id,agt_rejected_document_no,reference_reason,contingency_indicator,payload,key_version,status")
     .eq("id", link.documento_id)
     .single();
   if (documentError || !document) {
@@ -91,14 +91,25 @@ async function loadSubmissionContext(submissionId: string) {
     ? document.rectifica_documento_id
     : document.documento_origem_id;
   let originDocument = null;
+  let originValidationStatus: string | null = null;
   if (originId) {
-    const { data: origin, error: originError } = await admin
-      .from("fiscal_documentos")
-      .select("numero_formatado,invoice_date")
-      .eq("id", originId)
-      .maybeSingle();
+    const [{ data: origin, error: originError }, { data: originState, error: originStateError }] =
+      await Promise.all([
+        admin
+          .from("fiscal_documentos")
+          .select("id,numero_formatado,invoice_date")
+          .eq("id", originId)
+          .maybeSingle(),
+        admin
+          .from("fiscal_agt_submission_documentos")
+          .select("validation_status")
+          .eq("documento_id", originId)
+          .maybeSingle(),
+      ]);
     if (originError) throw new Error(originError.message);
+    if (originStateError) throw new Error(originStateError.message);
     originDocument = origin;
+    originValidationStatus = originState?.validation_status ?? null;
   }
 
   let receiptSourceStates: Array<{
@@ -157,6 +168,7 @@ async function loadSubmissionContext(submissionId: string) {
     empresa,
     key,
     originDocument,
+    originValidationStatus,
     receiptSourceStates,
   };
 }
@@ -217,15 +229,13 @@ async function applyFinalStatus(params: {
   const valid = docResult.documentStatus === "V";
   const finalStatus = valid ? "accepted" : "rejected";
   const now = new Date().toISOString();
-  const { error: docUpdateError } = await admin
-    .from("fiscal_agt_submission_documentos")
-    .update({
-      validation_status: valid ? "valid" : "invalid",
-      error_list: asJson(Array.isArray(docResult.errorList) ? docResult.errorList : []),
-      validated_at: now,
-    })
-    .eq("submission_id", params.submissionId)
-    .eq("document_no", params.documentNo);
+  const { error: docUpdateError } = await admin.rpc("fiscal_agt_record_document_result", {
+    p_submission_id: params.submissionId,
+    p_document_no: params.documentNo,
+    p_validation_status: valid ? "valid" : "invalid",
+    p_error_list: asJson(Array.isArray(docResult.errorList) ? docResult.errorList : []),
+    p_source: "obterEstado",
+  });
   if (docUpdateError) throw new Error(docUpdateError.message);
 
   await markSubmission(params.submissionId, {
@@ -255,6 +265,29 @@ export const fiscalAgtElectronicInvoicing = inngest.createFunction(
 
     if (["accepted", "rejected", "cancelled", "mapping_error"].includes(context.submission.status)) {
       return { ok: true, terminal: true, status: context.submission.status };
+    }
+
+    if (
+      ["NC", "ND"].includes(context.document.tipo_documento) &&
+      context.originDocument &&
+      context.originValidationStatus !== "valid"
+    ) {
+      await step.run("wait-reference-validation", async () => {
+        await markSubmission(data.submission_id, {
+          status: "processing",
+          error_code: "AGT_REFERENCE_DOCUMENT_NOT_VALIDATED",
+          error_message:
+            "Documento correctivo aguarda validação AGT do documento de referência.",
+          next_check_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        });
+      });
+
+      return {
+        ok: true,
+        terminal: false,
+        status: "processing",
+        reason: "reference_document_not_validated",
+      };
     }
 
     if (context.document.tipo_documento === "RC") {
@@ -339,6 +372,33 @@ export const fiscalAgtElectronicInvoicing = inngest.createFunction(
           return { requestID: result.requestID };
         } catch (error) {
           const knownRejected = error instanceof AgtHttpError && error.httpStatus >= 400 && error.httpStatus < 500;
+          if (knownRejected && error instanceof AgtHttpError) {
+            const responseObject =
+              error.payload && typeof error.payload === "object" && !Array.isArray(error.payload)
+                ? (error.payload as { errorList?: unknown[] })
+                : null;
+            const documentErrors = Array.isArray(responseObject?.errorList)
+              ? responseObject!.errorList!.filter((entry) => {
+                  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+                  return String((entry as { documentNo?: unknown }).documentNo ?? "") ===
+                    context.link.document_no;
+                })
+              : [];
+
+            if (documentErrors.length > 0) {
+              const { error: resultError } = await admin.rpc(
+                "fiscal_agt_record_document_result",
+                {
+                  p_submission_id: data.submission_id,
+                  p_document_no: context.link.document_no,
+                  p_validation_status: "invalid",
+                  p_error_list: asJson(documentErrors),
+                  p_source: "registarFactura",
+                }
+              );
+              if (resultError) throw new Error(resultError.message);
+            }
+          }
           await markSubmission(data.submission_id, {
             status: knownRejected ? "rejected" : "uncertain",
             response_payload: error instanceof AgtHttpError ? asJson(error.payload) : null,
