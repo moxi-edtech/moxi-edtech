@@ -7,6 +7,14 @@ import { buildSaftAoXml } from "@/lib/fiscal/saftAo";
 import { SaftXsdValidationError, validateSaftXmlWithXsd } from "@/lib/fiscal/saftXsdValidator";
 import type { Database, Json } from "~types/supabase";
 
+type SaftHeaderConfig = {
+  productId: string;
+  productCompanyTaxId: string;
+  productVersion: string;
+  taxAccountingBasis: "F";
+  softwareCertificateNumber: string;
+};
+
 type FiscalExportEvent = {
   export_id: string;
   empresa_id: string;
@@ -258,12 +266,34 @@ function parseClienteAddressFromPayload(payload: Json | null): ClienteAddressFro
   };
 }
 
-function resolveSaftHeaderConfig() {
-  const productIdRaw = (process.env.SAFT_PRODUCT_ID ?? "").trim();
-  const taxAccountingBasisRaw = (process.env.SAFT_TAX_ACCOUNTING_BASIS ?? "F").trim().toUpperCase();
-  const softwareCertificateNumberRaw = (process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER ?? "0").trim();
-  const productCompanyTaxIdRaw = (process.env.SAFT_PRODUCT_COMPANY_TAX_ID ?? "").trim();
-  const productVersionRaw = (process.env.SAFT_PRODUCT_VERSION ?? "1.0.0").trim();
+function resolveSaftHeaderConfig(metadata?: Json | null): SaftHeaderConfig {
+  const metadataRecord =
+    metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? (metadata as Record<string, unknown>)
+      : {};
+  const snapshotRaw = metadataRecord.saft_header_config;
+  const snapshot =
+    snapshotRaw && typeof snapshotRaw === "object" && !Array.isArray(snapshotRaw)
+      ? (snapshotRaw as Record<string, unknown>)
+      : null;
+
+  const productIdRaw = String(
+    snapshot?.productId ?? process.env.SAFT_PRODUCT_ID ?? ""
+  ).trim();
+  const taxAccountingBasisRaw = String(
+    snapshot?.taxAccountingBasis ?? process.env.SAFT_TAX_ACCOUNTING_BASIS ?? "F"
+  ).trim().toUpperCase();
+  const softwareCertificateNumberRaw = String(
+    snapshot?.softwareCertificateNumber ??
+      process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER ??
+      "0"
+  ).trim();
+  const productCompanyTaxIdRaw = String(
+    snapshot?.productCompanyTaxId ?? process.env.SAFT_PRODUCT_COMPANY_TAX_ID ?? ""
+  ).trim();
+  const productVersionRaw = String(
+    snapshot?.productVersion ?? process.env.SAFT_PRODUCT_VERSION ?? "1.0.0"
+  ).trim();
 
   if (!productIdRaw || !productIdRaw.includes("/")) {
     throw new Error("SAFT_PRODUCT_ID inválido. Use o formato 'NomeAplicacao/NomeProdutorSoftware'.");
@@ -508,7 +538,7 @@ export const fiscalSaftExport = inngest.createFunction(
         }
       }
 
-      const headerConfig = resolveSaftHeaderConfig();
+      const headerConfig = resolveSaftHeaderConfig(exportRow.metadata);
       const generatedAtIso = new Date().toISOString();
       const documentoNumeroById = new Map(
         documentoRows.map((doc) => [doc.id, { numero_formatado: doc.numero_formatado, invoice_date: doc.invoice_date }])
