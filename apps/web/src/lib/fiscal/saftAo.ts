@@ -670,6 +670,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceId = "KLASSE";
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const workStatus = resolveWorkStatus(doc.status);
+      const signedHash = resolveSignedHash(doc);
+      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
+      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
       const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
 
       const linesXml = doc.itens
@@ -708,13 +713,14 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
             `            <TaxPointDate>${doc.invoice_date}</TaxPointDate>`,
             `            <Description>${escapeXml(item.descricao)}</Description>`,
-            `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
+            `            <CreditAmount>${formatMoney(item.total_liquido_aoa)}</CreditAmount>`,
             "            <Tax>",
             "              <TaxType>IVA</TaxType>",
             "              <TaxCountryRegion>AO</TaxCountryRegion>",
             `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
             `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
             "            </Tax>",
+            buildTaxExemptionXml(item, "            "),
             "          </Line>",
           ].join("\n");
         })
@@ -746,8 +752,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `            <SourceID>${sourceId}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
-        `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
-        `          <HashControl>${escapeXml(doc.hash_control)}</HashControl>`,
+        `          <Hash>${escapeXml(signedHash.hash)}</Hash>`,
+        `          <HashControl>${escapeXml(signedHash.hashControl)}</HashControl>`,
         `          <WorkDate>${doc.invoice_date}</WorkDate>`,
         `          <WorkType>${escapeXml(workType)}</WorkType>`,
         `          <SourceID>${sourceId}</SourceID>`,
@@ -773,6 +779,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceId = "KLASSE";
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const movementStatus = resolveMovementStatus(doc.status);
+      const signedHash = resolveSignedHash(doc);
+      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
+      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
       const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
 
       const linesXml = doc.itens
@@ -829,8 +840,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `            <SourceID>${sourceId}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
-        `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
-        `          <HashControl>${escapeXml(doc.hash_control)}</HashControl>`,
+        `          <Hash>${escapeXml(signedHash.hash)}</Hash>`,
+        `          <HashControl>${escapeXml(signedHash.hashControl)}</HashControl>`,
         `          <MovementDate>${doc.invoice_date}</MovementDate>`,
         `          <MovementType>${escapeXml(movementType)}</MovementType>`,
         `          <SystemEntryDate>${doc.system_entry}</SystemEntryDate>`,
