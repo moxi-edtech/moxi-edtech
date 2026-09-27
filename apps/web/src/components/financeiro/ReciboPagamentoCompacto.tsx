@@ -23,6 +23,7 @@ export type ReciboPagamentoCompactoProps = {
   titularConta?: string | null;
   iban?: string | null;
   kwikChave?: string | null;
+  operationalOnly?: boolean;
 };
 
 type CompactFieldProps = {
@@ -99,6 +100,7 @@ export default function ReciboPagamentoCompacto({
   titularConta = null,
   iban = null,
   kwikChave = null,
+  operationalOnly = false,
 }: ReciboPagamentoCompactoProps) {
   const classeCurso = `${classeNome}${cursoNome ? ` - ${cursoNome}` : ""}`;
   const emissao = emitidoEm || "—";
@@ -139,6 +141,11 @@ export default function ReciboPagamentoCompacto({
             {escolaNome}
           </p>
           <h1 className={`text-lg font-bold uppercase tracking-tight text-slate-900 ${isUltraDensePrint ? "print:text-[13px]" : "print:text-base"}`}>{titulo}</h1>
+          {operationalOnly ? (
+            <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500 print:text-[7px]">
+              Comprovativo operacional — não fiscal
+            </p>
+          ) : null}
         </div>
 
         <div className={`min-w-[92px] max-w-[150px] space-y-1.5 text-right text-[10px] leading-tight text-slate-500 ${isDensePrint ? "print:space-y-0" : "print:space-y-0.5"}`}>
