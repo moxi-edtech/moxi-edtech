@@ -457,6 +457,29 @@ Persistem warnings/info fiscais anteriores, incluindo RPCs SECURITY DEFINER e FK
 - `20260927191520_bill_009_tax_profile_resolver_server_only.sql`
 - `20260927192036_bill_009_vat_regime_governance.sql`
 - `20260927194402_bill_009_remove_implicit_education_tax_profile.sql`
+- `20260927195400_bill_009_school_fiscal_engine_opt_in_gate.sql`
+
+### Rollout por escola — opt-in obrigatório
+
+O motor fiscal está implementado, mas **não está activado automaticamente para nenhuma escola**.
+
+`fiscal_escola_bindings` possui gate operacional explícito:
+
+- `fiscal_enabled=false` por default;
+- binding escola <-> empresa fiscal não significa activação;
+- status `active` da empresa fiscal também não significa activação;
+- pagamentos, balcão, vendas e cadastro financeiro continuam a operar sem fiscal quando o gate está desligado;
+- FT/FR/RC automáticos, links/outbox e reprocessamento financeiro-fiscal só podem iniciar quando `fiscal_enabled=true` para o binding vigente;
+- chamadas de baixo nível de pagamento fiscal também rejeitam emissão sem opt-in;
+- o core fiscal permanece disponível isoladamente para desenvolvimento, testes e homologação.
+
+Snapshot em 2026-09-27:
+
+- bindings fiscais existentes: **2**;
+- bindings com motor activado: **0**;
+- links financeiros fiscais `pending/failed`: **0**.
+
+A decisão de ligar uma escola ao motor é uma decisão explícita de rollout/go-live e deve incluir validação do regime IVA, elegibilidade M21 quando aplicável, séries/chaves e readiness AGT.
 
 ### Limites deliberados
 
