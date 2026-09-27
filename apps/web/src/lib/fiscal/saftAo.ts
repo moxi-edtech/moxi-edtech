@@ -579,7 +579,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       if (!code) continue;
       const description = item.descricao.trim() || code;
       const numberCode = item.product_number_code?.trim() || code;
-      const productType = item.product_type;
+      const productType = item.product_type ?? "S";
       const existingProduct = productRows.get(code);
 
       if (existingProduct) {
