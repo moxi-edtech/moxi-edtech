@@ -14,7 +14,7 @@ Centralizar evidências técnicas e operacionais para submissão e auditoria de 
 - Séries AGT (BILL-005): READY FOR HOMOLOGATION; ainda sem série real AGT.
 - Facturação Electrónica AGT (BILL-006): READY FOR HOMOLOGATION; `registarFactura/obterEstado` e RC com `paymentReceipt.sourceDocuments` implementados.
 - Pagamentos/ledger/recibos/estornos (BILL-007): CLOSED; alocações fiscais e histórico financeiro append-only validados.
-- SAF-T: existe geração e validação XSD, mas a completude semântica/contabilística será revalidada no BILL-008.
+- SAF-T (BILL-008): READY FOR HOMOLOGATION para `TaxAccountingBasis=F`; validação semântica, XSD, TaxTable, RC/sourceDocuments, ordenação e hash dedicado foram endurecidos. `C/I` permanece não suportado sem razão contabilístico real.
 - Estado global: NO-GO até concluir os BILLs bloqueantes e obter evidência de homologação externa.
 
 Fonte de verdade do estado:
@@ -43,7 +43,7 @@ Fonte de verdade do estado:
 
 6. Validação XSD automática:
 `apps/web/src/lib/fiscal/saftXsdValidator.ts`
-`apps/web/src/lib/fiscal/xsd/AO_SAFT_1.01.xsd`
+`apps/web/src/lib/fiscal/xsd/SAF-T-AO1.01_01.xsd`
 `agents/outputs/fiscal/SAFT_XSD_VALIDATION_EVIDENCE_20260326T000801Z.md`
 
 7. Regras visuais AGT em PDF e bloqueio de prévia:
@@ -58,7 +58,26 @@ Fonte de verdade do estado:
 `supabase/migrations/20260927153607_bill_007_payment_allocations_and_ledger_hardening.sql`
 `supabase/migrations/20260927155157_bill_007_fiscal_receipt_sources.sql`
 
-Evidência rollback-only: validação duplicada idempotente, overpayment bloqueado, pagamento parcial sem FT/ND bloqueado, RC multi-source, intent settled sem recibo legacy, alocação N:N e reversão idempotente. O bloqueio de reversão de pagamento já fiscalizado foi validado por introspecção do trigger `trg_pagamentos_fiscal_reversal_guard`; o teste directo desse caso não foi executado pelo ambiente de ferramentas.
+Evidência rollback-only BILL-007: validação duplicada idempotente, overpayment bloqueado, pagamento parcial sem FT/ND bloqueado, RC multi-source, intent settled sem recibo legacy, alocação N:N e reversão idempotente.
+
+10. SAF-T(AO) semântico (BILL-008):
+`apps/web/src/lib/fiscal/saftAo.ts`
+`apps/web/src/inngest/functions/fiscal-saft-export.ts`
+`apps/web/src/lib/fiscal/saftDocumentSigner.ts`
+`apps/web/src/lib/fiscal/saftDocumentSignature.ts`
+`apps/web/tests/unit/saft-ao-semantic.spec.ts`
+`supabase/migrations/20260927171437_bill_008_saft_document_signature_chain.sql`
+`supabase/migrations/20260927172749_bill_008_saft_export_evidence_immutability.sql`
+
+Evidência BILL-008:
+- 121 documentos históricos pré-validados semanticamente;
+- 0 divergências documento x soma de linhas;
+- 0 linhas IVA 0 sem código/motivo de isenção;
+- 0 documentos anulados sem evento/motivo;
+- 0 tipos sem mapeamento;
+- 103 números fiscais históricos não canónicos e 8 RC históricos sem sourceDocuments identificados e tratados fail-closed para BILL-010;
+- exportações `validated` protegidas contra UPDATE/DELETE;
+- cadeia SAF-T validada impedida de iniciar no meio de série histórica.
 
 ## Governança e políticas
 
@@ -71,7 +90,8 @@ Evidência rollback-only: validação duplicada idempotente, overpayment bloquea
 ## Checklist operacional de fecho (go-live certificação)
 
 - [x] Concluir BILL-007 — pagamentos/ledger/RC/sourceDocuments.
-- [ ] Concluir BILL-008–012 conforme backlog canónico.
+- [x] Concluir implementação interna do BILL-008 — SAF-T Facturação `F` semântico/XSD.
+- [ ] Concluir BILL-009–012 conforme backlog canónico.
 - [ ] Executar BILL-013 — homologação AGT com série real, `registarFactura`, `requestID`, `obterEstado` e V/I.
 - [ ] Concluir BILL-014 — governance, retenção, dossiê e procedimento administrativo.
 - [ ] Consolidar evidências técnicas e administrativas finais.
