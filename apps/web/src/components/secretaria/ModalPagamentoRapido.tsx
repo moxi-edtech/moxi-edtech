@@ -752,6 +752,13 @@ function usePagamentoSubmit({
           });
         }
 
+        const pagamentoStatus = String(json?.data?.status ?? "").toLowerCase();
+        const pagamentoLiquidado = ["settled", "concluido", "pago"].includes(pagamentoStatus);
+
+        if (!pagamentoLiquidado) {
+          continue;
+        }
+
         let reciboId: string | null = null;
         let reciboUrlValidacao: string | null = null;
         let erroEmissaoRecibo: string | null = null;
@@ -764,7 +771,10 @@ function usePagamentoSubmit({
               "Idempotency-Key": `pagamento-rapido-recibo-${mensalidade.id}`,
             },
             signal: abortRef.current.signal,
-            body: JSON.stringify({ mensalidadeId: mensalidade.id }),
+            body: JSON.stringify({
+              mensalidadeId: mensalidade.id,
+              pagamentoId: pagamentoId ?? undefined,
+            }),
           });
           const reciboJson = await reciboRes.json().catch(() => ({}));
           if (reciboRes.status === 409 && reciboJson?.code === "MATRICULA_AGUARDANDO_RECLASSIFICACAO") {
@@ -793,9 +803,11 @@ function usePagamentoSubmit({
                 turma_nome: typeof print?.turma_nome === "string" ? print.turma_nome : null,
                 logo_url: typeof print?.logo_url === "string" ? print.logo_url : null,
                 numero:
-                  typeof print?.numero_sequencial === "number"
-                    ? String(print.numero_sequencial)
-                    : null,
+                  typeof reciboJson?.fiscal?.numero_formatado === "string"
+                    ? reciboJson.fiscal.numero_formatado
+                    : typeof print?.numero_sequencial === "number"
+                      ? String(print.numero_sequencial)
+                      : null,
                 public_id: typeof print?.public_id === "string" ? print.public_id : null,
                 emitido_em: typeof print?.emitido_em === "string" ? print.emitido_em : null,
                 banco: typeof print?.banco === "string" ? print.banco : null,
