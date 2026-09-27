@@ -187,6 +187,43 @@ function parseProductTypesFromPayload(
   return result;
 }
 
+type SaftLineMetadata = {
+  unitOfMeasure: string | null;
+  taxCode: "NOR" | "INT" | "RED" | "ISE" | "OUT" | "NS" | "NA" | null;
+  taxCountryRegion: string | null;
+};
+
+const SAFT_TAX_CODES = new Set(["NOR", "INT", "RED", "ISE", "OUT", "NS", "NA"]);
+
+function parseLineMetadataFromPayload(payload: Json | null): Map<number, SaftLineMetadata> {
+  const result = new Map<number, SaftLineMetadata>();
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return result;
+  const itens = (payload as Record<string, unknown>)["itens"];
+  if (!Array.isArray(itens)) return result;
+
+  itens.forEach((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return;
+    const record = item as Record<string, unknown>;
+    const unit = typeof record.unit_of_measure === "string"
+      ? record.unit_of_measure.trim()
+      : "";
+    const rawTaxCode = String(record.tax_code ?? "").trim().toUpperCase();
+    const rawRegion = typeof record.tax_country_region === "string"
+      ? record.tax_country_region.trim().toUpperCase()
+      : "";
+
+    result.set(index + 1, {
+      unitOfMeasure: unit || null,
+      taxCode: SAFT_TAX_CODES.has(rawTaxCode)
+        ? (rawTaxCode as SaftLineMetadata["taxCode"])
+        : null,
+      taxCountryRegion: rawRegion || null,
+    });
+  });
+
+  return result;
+}
+
 function parseSettlementAmountsFromPayload(payload: Json | null): Map<number, number> {
   const result = new Map<number, number>();
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return result;
@@ -602,6 +639,7 @@ export const fiscalSaftExport = inngest.createFunction(
           ...(function () {
             const settlements = parseSettlementAmountsFromPayload(doc.payload);
             const productTypes = parseProductTypesFromPayload(doc.payload);
+            const lineMetadata = parseLineMetadataFromPayload(doc.payload);
             const fallbackProductType =
               doc.tipo_documento === "GR" || doc.tipo_documento === "GT"
                 ? ("P" as const)
@@ -615,6 +653,12 @@ export const fiscalSaftExport = inngest.createFunction(
                 product_code: String(item.product_code ?? ""),
                 product_number_code: item.product_number_code ? String(item.product_number_code) : null,
                 product_type: productTypes.get(Number(item.linha_no)) ?? fallbackProductType,
+                unit_of_measure:
+                  lineMetadata.get(Number(item.linha_no))?.unitOfMeasure ?? "UN",
+                tax_code:
+                  lineMetadata.get(Number(item.linha_no))?.taxCode ?? null,
+                tax_country_region:
+                  lineMetadata.get(Number(item.linha_no))?.taxCountryRegion ?? "AO",
                 quantidade: Number(item.quantidade),
                 preco_unit: Number(item.preco_unit),
                 taxa_iva: Number(item.taxa_iva),
