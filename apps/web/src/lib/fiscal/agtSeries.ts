@@ -31,11 +31,16 @@ function resolveAgtConfig() {
     throw new Error("AGT_FE_ENV_INVALID");
   }
 
+  const configuredBaseUrl = process.env.AGT_FE_BASE_URL?.trim() || "";
   const baseUrl =
-    process.env.AGT_FE_BASE_URL?.trim() ||
+    configuredBaseUrl ||
     (environment === "prod"
       ? "https://sifp.minfin.gov.ao/sigt/fe/v1"
-      : "https://sifphml.minfin.gov.ao/sigt/fe/v1");
+      : "");
+
+  if (!baseUrl) {
+    throw new Error("AGT_FE_BASE_URL_REQUIRED_FOR_HML");
+  }
 
   const username = process.env.AGT_FE_USERNAME?.trim() || "";
   const password = process.env.AGT_FE_PASSWORD ?? "";
