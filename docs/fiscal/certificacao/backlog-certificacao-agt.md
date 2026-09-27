@@ -160,6 +160,7 @@ Critério para CLOSED:
 
 **Estado:** CLOSED  
 **Severidade:** P0  
+**PR:** #120  
 **Branch:** `fix/bill-007-payments-ledger-receipts`
 
 Fechado com:
