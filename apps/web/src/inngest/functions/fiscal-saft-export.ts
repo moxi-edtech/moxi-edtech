@@ -39,7 +39,10 @@ type FiscalDocumentoRow = {
   total_impostos_aoa: number;
   total_bruto_aoa: number;
   hash_control: string;
+  assinatura_base64: string | null;
+  key_version: number | null;
   status: string;
+  serie_id: string;
   documento_origem_id: string | null;
   rectifica_documento_id: string | null;
 };
@@ -56,12 +59,71 @@ type FiscalDocumentoItemRow = {
   total_liquido_aoa: number;
   total_impostos_aoa: number;
   total_bruto_aoa: number;
+  tax_exemption_code: string | null;
+  tax_exemption_reason: string | null;
 };
 
 type OrderReference = {
   reference: string;
   origin_invoice_date?: string;
 };
+
+type SaftPaymentSourceDocument = {
+  lineNo: number;
+  sourceDocumentID: {
+    OriginatingON: string;
+    documentDate?: string | null;
+    invoiceDate?: string | null;
+  };
+  creditAmount: number;
+};
+
+function parsePaymentReceiptFromPayload(payload: Json | null): {
+  sourceDocuments: SaftPaymentSourceDocument[];
+} | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const paymentReceipt = (payload as Record<string, unknown>)["paymentReceipt"];
+  if (!paymentReceipt || typeof paymentReceipt !== "object" || Array.isArray(paymentReceipt)) {
+    return null;
+  }
+
+  const sources = (paymentReceipt as Record<string, unknown>)["sourceDocuments"];
+  if (!Array.isArray(sources)) return null;
+
+  const sourceDocuments = sources.map((source, index) => {
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      throw new Error(`SAFT_SEMANTIC_ERROR: paymentReceipt.sourceDocuments[${index}] inválido.`);
+    }
+    const record = source as Record<string, unknown>;
+    const sourceIdRaw = record["sourceDocumentID"];
+    if (!sourceIdRaw || typeof sourceIdRaw !== "object" || Array.isArray(sourceIdRaw)) {
+      throw new Error(`SAFT_SEMANTIC_ERROR: sourceDocumentID ausente no RC, linha ${index + 1}.`);
+    }
+    const sourceId = sourceIdRaw as Record<string, unknown>;
+    return {
+      lineNo: Number(record["lineNo"]),
+      sourceDocumentID: {
+        OriginatingON: String(sourceId["OriginatingON"] ?? ""),
+        documentDate:
+          typeof sourceId["documentDate"] === "string" ? sourceId["documentDate"] : null,
+        invoiceDate:
+          typeof sourceId["invoiceDate"] === "string" ? sourceId["invoiceDate"] : null,
+      },
+      creditAmount: Number(record["creditAmount"]),
+    };
+  });
+
+  return { sourceDocuments };
+}
+
+function resolveSourceBillingFromSeriesOrigin(
+  origin: string | null | undefined
+): "P" | "I" | "M" {
+  const normalized = String(origin ?? "").trim().toLowerCase();
+  if (normalized === "integrado") return "I";
+  if (normalized === "manual_recuperado" || normalized === "contingencia") return "M";
+  return "P";
+}
 
 function parseSettlementAmountsFromPayload(payload: Json | null): Map<number, number> {
   const result = new Map<number, number>();
@@ -146,22 +208,38 @@ function resolveSaftHeaderConfig() {
   const productIdRaw = (process.env.SAFT_PRODUCT_ID ?? "").trim();
   const taxAccountingBasisRaw = (process.env.SAFT_TAX_ACCOUNTING_BASIS ?? "F").trim().toUpperCase();
   const softwareCertificateNumberRaw = (process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER ?? "0").trim();
+  const productCompanyTaxIdRaw = (process.env.SAFT_PRODUCT_COMPANY_TAX_ID ?? "").trim();
+  const productVersionRaw = (process.env.SAFT_PRODUCT_VERSION ?? "1.0.0").trim();
 
   if (!productIdRaw || !productIdRaw.includes("/")) {
     throw new Error("SAFT_PRODUCT_ID inválido. Use o formato 'NomeAplicacao/NomeProdutorSoftware'.");
   }
 
-  if (taxAccountingBasisRaw !== "F" && taxAccountingBasisRaw !== "C") {
-    throw new Error("SAFT_TAX_ACCOUNTING_BASIS inválido. Use 'F' (Facturação) ou 'C' (Contabilidade).");
+  if (taxAccountingBasisRaw !== "F") {
+    throw new Error(
+      "SAFT_ACCOUNTING_NOT_SUPPORTED: KLASSE não possui plano de contas e movimentos de dupla entrada; use F para Facturação."
+    );
   }
 
-  if (!/^\d+$/.test(softwareCertificateNumberRaw)) {
-    throw new Error("SAFT_SOFTWARE_CERTIFICATE_NUMBER inválido. Use apenas dígitos (ex.: 0).");
+  if (!/^\d+\/AGT\/\d{4}$|^0$/.test(softwareCertificateNumberRaw)) {
+    throw new Error(
+      "SAFT_SOFTWARE_CERTIFICATE_NUMBER inválido. Use '0' ou NNN/AGT/AAAA."
+    );
+  }
+
+  if (productCompanyTaxIdRaw.length < 10 || productCompanyTaxIdRaw.length > 20) {
+    throw new Error("SAFT_PRODUCT_COMPANY_TAX_ID inválido ou ausente.");
+  }
+
+  if (!productVersionRaw || productVersionRaw.length > 30) {
+    throw new Error("SAFT_PRODUCT_VERSION inválido.");
   }
 
   return {
     productId: productIdRaw,
-    taxAccountingBasis: taxAccountingBasisRaw as "F" | "C",
+    productCompanyTaxId: productCompanyTaxIdRaw,
+    productVersion: productVersionRaw,
+    taxAccountingBasis: "F" as const,
     softwareCertificateNumber: softwareCertificateNumberRaw,
   };
 }
