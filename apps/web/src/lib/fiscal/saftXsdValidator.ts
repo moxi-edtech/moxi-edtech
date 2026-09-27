@@ -4,6 +4,7 @@ import { execFile } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { parseSafeInteger } from "@/lib/fiscal/decimal";
 
 const execFileAsync = promisify(execFile);
 
@@ -88,7 +89,9 @@ function parseXmllintFailures(rawOutput: string): XmllintFailure[] {
     const nodeMatch = line.match(/Element\s+'([^']+)'/i) ?? line.match(/element\s+([^:]+):/i);
 
     failures.push({
-      line: lineMatch ? Number(lineMatch[1]) : null,
+      line: lineMatch
+        ? parseSafeInteger(lineMatch[1], "xmllint_line", { min: 1, fallback: 1 })
+        : null,
       node: nodeMatch ? nodeMatch[1] : null,
       message: line,
       raw: line,
