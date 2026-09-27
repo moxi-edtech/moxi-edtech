@@ -156,6 +156,29 @@ function resolveSourceBilling(
   // Integrações externas devem declarar metadata.saft_source_billing = "I".
   return "P";
 }
+const SAFT_PRODUCT_TYPES = new Set(["P", "S", "O", "E", "I"]);
+
+function parseProductTypesFromPayload(
+  payload: Json | null
+): Map<number, "P" | "S" | "O" | "E" | "I"> {
+  const result = new Map<number, "P" | "S" | "O" | "E" | "I">();
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return result;
+  const itens = (payload as Record<string, unknown>)["itens"];
+  if (!Array.isArray(itens)) return result;
+
+  itens.forEach((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return;
+    const raw = String((item as Record<string, unknown>)["product_type"] ?? "")
+      .trim()
+      .toUpperCase();
+    if (SAFT_PRODUCT_TYPES.has(raw)) {
+      result.set(index + 1, raw as "P" | "S" | "O" | "E" | "I");
+    }
+  });
+
+  return result;
+}
+
 function parseSettlementAmountsFromPayload(payload: Json | null): Map<number, number> {
   const result = new Map<number, number>();
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return result;
@@ -548,6 +571,11 @@ export const fiscalSaftExport = inngest.createFunction(
           ...doc,
           ...(function () {
             const settlements = parseSettlementAmountsFromPayload(doc.payload);
+            const productTypes = parseProductTypesFromPayload(doc.payload);
+            const fallbackProductType =
+              doc.tipo_documento === "GR" || doc.tipo_documento === "GT"
+                ? ("P" as const)
+                : ("S" as const);
             return {
           itens:
             itemMap.get(doc.id)?.map((item) => {
@@ -556,6 +584,7 @@ export const fiscalSaftExport = inngest.createFunction(
                 ...item,
                 product_code: String(item.product_code ?? ""),
                 product_number_code: item.product_number_code ? String(item.product_number_code) : null,
+                product_type: productTypes.get(Number(item.linha_no)) ?? fallbackProductType,
                 quantidade: Number(item.quantidade),
                 preco_unit: Number(item.preco_unit),
                 taxa_iva: Number(item.taxa_iva),
