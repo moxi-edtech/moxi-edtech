@@ -65,6 +65,7 @@ type SaftDocumento = {
   hash_control: string;
   saft_hash: string | null;
   saft_hash_control: number | null;
+  saft_required: boolean;
   status: string;
   source_billing: "P" | "I" | "M";
   series_sort_key: string;
@@ -340,19 +341,31 @@ function isDebitSalesDocument(tipoDocumento: string): boolean {
   return normalized === "NC" || normalized === "RE";
 }
 
-function resolveSignedHash(doc: SaftDocumento): { hash: string; hashControl: string } {
+function resolveSignedHash(
+  doc: SaftDocumento,
+  softwareValidationNumber: string
+): { hash: string; hashControl: string } {
+  if (softwareValidationNumber === "0") {
+    return { hash: "0", hashControl: "0" };
+  }
+
   const hash = doc.saft_hash?.trim();
   const hashControl = Number(doc.saft_hash_control);
-  const validHash = hash === "0" || hash?.length === 172;
 
-  if (!validHash || !Number.isInteger(hashControl) || hashControl < 0) {
+  if (
+    !doc.saft_required ||
+    !hash ||
+    hash.length !== 172 ||
+    !Number.isInteger(hashControl) ||
+    hashControl <= 0
+  ) {
     throw new Error(
-      `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} sem saft_hash/saft_hash_control válido.`
+      `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} não pertence a uma cadeia SAF-T validada completa.`
     );
   }
 
   return {
-    hash: hash!,
+    hash,
     hashControl: String(hashControl),
   };
 }
@@ -575,7 +588,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceId = "KLASSE";
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const invoiceStatus = resolveInvoiceStatus(doc.status);
-      const signedHash = resolveSignedHash(doc);
+      const signedHash = resolveSignedHash(doc, softwareValidationNumber);
       const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
       const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
       assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
@@ -736,7 +749,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceId = "KLASSE";
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const workStatus = resolveWorkStatus(doc.status);
-      const signedHash = resolveSignedHash(doc);
+      const signedHash = resolveSignedHash(doc, softwareValidationNumber);
       const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
       const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
       assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
@@ -846,7 +859,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceId = "KLASSE";
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const movementStatus = resolveMovementStatus(doc.status);
-      const signedHash = resolveSignedHash(doc);
+      const signedHash = resolveSignedHash(doc, softwareValidationNumber);
       const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
       const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
       assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
