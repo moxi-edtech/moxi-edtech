@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { FISCAL_TAX_PROFILE_CODES } from "@/lib/fiscal/taxProfiles";
 import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
@@ -303,7 +304,16 @@ export async function POST(request: Request) {
           origemOperacao: "financeiro_mensalidade_partial_source",
           origemId: mensalidadeFiscalContext.id,
           descricaoPrincipal: "Propina",
-          itens: [{ descricao: "Propina", valor: outstanding }],
+          itens: [
+            {
+              descricao: "Propina",
+              valor: outstanding,
+              taxProfileCode: FISCAL_TAX_PROFILE_CODES.educationM21,
+              productType: "S",
+              operationType: "SE",
+              unitOfMeasure: "UN",
+            },
+          ],
           cliente: { nome: null, nif: null },
           escolaId,
           origin,
@@ -423,7 +433,13 @@ export async function POST(request: Request) {
                 : receiptType === "confirmacao"
                   ? "Recebimento de confirmação"
                   : "Recebimento de mensalidade",
-            itens: receiptItems,
+            itens: receiptItems.map((item) => ({
+              ...item,
+              taxProfileCode: FISCAL_TAX_PROFILE_CODES.educationM21,
+              productType: "S" as const,
+              operationType: "SE" as const,
+              unitOfMeasure: "UN",
+            })),
             cliente: { nome: null, nif: null },
             escolaId,
             origin,
