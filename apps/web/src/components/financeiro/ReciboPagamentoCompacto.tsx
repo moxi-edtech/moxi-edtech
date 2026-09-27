@@ -23,6 +23,7 @@ export type ReciboPagamentoCompactoProps = {
   titularConta?: string | null;
   iban?: string | null;
   kwikChave?: string | null;
+  operationalOnly?: boolean;
 };
 
 type CompactFieldProps = {
@@ -99,6 +100,7 @@ export default function ReciboPagamentoCompacto({
   titularConta = null,
   iban = null,
   kwikChave = null,
+  operationalOnly = false,
 }: ReciboPagamentoCompactoProps) {
   const classeCurso = `${classeNome}${cursoNome ? ` - ${cursoNome}` : ""}`;
   const emissao = emitidoEm || "—";
@@ -139,6 +141,11 @@ export default function ReciboPagamentoCompacto({
             {escolaNome}
           </p>
           <h1 className={`text-lg font-bold uppercase tracking-tight text-slate-900 ${isUltraDensePrint ? "print:text-[13px]" : "print:text-base"}`}>{titulo}</h1>
+          {operationalOnly ? (
+            <p className="text-[8px] font-semibold uppercase tracking-wide text-slate-500 print:text-[7px]">
+              Comprovativo operacional — não fiscal
+            </p>
+          ) : null}
         </div>
 
         <div className={`min-w-[92px] max-w-[150px] space-y-1.5 text-right text-[10px] leading-tight text-slate-500 ${isDensePrint ? "print:space-y-0" : "print:space-y-0.5"}`}>
@@ -152,7 +159,7 @@ export default function ReciboPagamentoCompacto({
         </div>
       </header>
 
-      <section className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white print:rounded-xl">
+      <section className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white print:rounded-xl">
         <div className={`grid grid-cols-3 gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-1.5 print:px-2.5 print:py-1.5" : isDensePrint ? "print:gap-2 print:px-3 print:py-1.5" : isPrintCompact ? "print:gap-2 print:px-3 print:py-1.75" : "print:gap-2 print:px-3 print:py-2"}`}>
           <CompactField label="Aluno" value={alunoNome} clamp="two" className="col-span-3 sm:col-span-1" />
           <CompactField label="Classe / Curso" value={classeCurso} />
