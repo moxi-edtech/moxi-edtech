@@ -5,7 +5,10 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
-import { emitirDocumentoFiscalViaAdapter } from "@/lib/fiscal/financeiroFiscalAdapter";
+import {
+  emitirDocumentoFiscalViaAdapter,
+  isFiscalEngineEnabledForSchool,
+} from "@/lib/fiscal/financeiroFiscalAdapter";
 import {
   hasFiscalSourceAllocation,
   issueFiscalReceiptForPayment,
@@ -44,11 +47,16 @@ type BalcaoFiscalResult =
       url_validacao: string | null;
     }
   | {
+      ok: true;
+      enabled: false;
+      skipped: true;
+    }
+  | {
       ok: false;
       error: string;
     };
 type BalcaoReciboResult =
-  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null; print_url?: string | null }
+  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null; print_url?: string | null; skipped?: boolean }
   | { ok: false; error: string };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -134,6 +142,8 @@ export async function POST(request: Request) {
     if (authz.error) {
       return authz.error;
     }
+
+    const fiscalEnabled = await isFiscalEngineEnabledForSchool(escolaId);
 
     const body = await request.json().catch(() => null);
     const parsed = payloadSchema.safeParse(body);
@@ -287,7 +297,7 @@ export async function POST(request: Request) {
     const metodo = payload.metodo === "kiwk" ? "kwik" : payload.metodo;
 
     // Pagamento parcial exige documento fiscal origem antes da liquidação.
-    if (mensalidadeFiscalContext) {
+    if (fiscalEnabled && mensalidadeFiscalContext) {
       const expected = Number(
         mensalidadeFiscalContext.valor_previsto ?? mensalidadeFiscalContext.valor ?? 0
       );
@@ -389,10 +399,22 @@ export async function POST(request: Request) {
 
     // 2. Documento fiscal do pagamento: RC quando existe FT/ND origem; FR caso contrário.
     const pagamentoRow = pagamento as PagamentoRow | null;
-    let recibo: BalcaoReciboResult = { ok: false, error: "Recibo pendente" };
-    let fiscalResult: BalcaoFiscalResult = { ok: false, error: "Fiscal pendente" };
+    let recibo: BalcaoReciboResult = fiscalEnabled
+      ? { ok: false, error: "Recibo pendente" }
+      : {
+          ok: true,
+          skipped: true,
+          doc_id: null,
+          public_id: null,
+          emitido_em: null,
+          print_url: null,
+        };
+    let fiscalResult: BalcaoFiscalResult = fiscalEnabled
+      ? { ok: false, error: "Fiscal pendente" }
+      : { ok: true, enabled: false, skipped: true };
 
     if (
+      fiscalEnabled &&
       pagamentoRow?.id &&
       ["settled", "concluido", "pago"].includes(String(pagamentoRow.status))
     ) {
@@ -487,7 +509,13 @@ export async function POST(request: Request) {
       acao: "PAGAMENTO_REGISTRADO",
       entity: "pagamento",
       entityId: pagamentoRow?.id ?? null,
-      details: { valor: payload.valor, metodo, fiscal_ok: fiscalResult.ok, ano_letivo_id: academicContext.anoLetivoId },
+      details: {
+        valor: payload.valor,
+        metodo,
+        fiscal_ok: fiscalResult.ok,
+        fiscal_enabled: fiscalEnabled,
+        ano_letivo_id: academicContext.anoLetivoId,
+      },
     }).catch(() => null);
 
     const intentId = getStringField(meta, "pagamento_intent_id");
