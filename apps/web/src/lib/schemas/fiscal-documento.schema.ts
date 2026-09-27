@@ -168,6 +168,7 @@ export const postFiscalDocumentoRequestSchema = z.union([
 
 export const fiscalDocumentoActionSchema = z.object({
   motivo: z.string().trim().min(3).max(1000),
+  correction_document_id: z.string().uuid().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
