@@ -13,7 +13,10 @@ import {
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
 import { ensureSaftDocumentSignature } from "@/lib/fiscal/saftDocumentSignature";
 import { queueAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
-import { FISCAL_TAX_PROFILE_CODES } from "@/lib/fiscal/taxProfiles";
+import {
+  FISCAL_TAX_PROFILE_CODES,
+  type FiscalTaxProfileCode,
+} from "@/lib/fiscal/taxProfiles";
 import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +71,10 @@ type FiscalDatabase = Database & {
       fiscal_finalizar_assinatura: {
         Args: FiscalFinalizarAssinaturaArgs;
         Returns: FiscalEmitirDocumentoResult;
+      };
+      fiscal_resolve_education_tax_profile: {
+        Args: { p_empresa_id: string };
+        Returns: string;
       };
     };
   };
@@ -203,9 +210,11 @@ async function resolveEmpresaContext({
 function normalizePostInput({
   input,
   empresaId,
+  uiTaxProfileCode,
 }: {
   input: PostFiscalDocumentoRequestInput;
   empresaId: string | null;
+  uiTaxProfileCode?: FiscalTaxProfileCode | null;
 }): NormalizeResult {
   if ("empresa_id" in input) {
     const clienteNome = input.cliente.nome.trim();
@@ -260,6 +269,16 @@ function normalizePostInput({
     };
   }
 
+  if (!uiTaxProfileCode) {
+    return {
+      ok: false,
+      status: 409,
+      code: "FISCAL_EDUCATION_TAX_PROFILE_UNRESOLVED",
+      message:
+        "O enquadramento IVA do ensino desta entidade fiscal ainda não foi validado.",
+    };
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   return {
     ok: true,
@@ -293,12 +312,8 @@ function normalizePostInput({
             : "S",
         operation_type: "SE",
         unit_of_measure: "UN",
-        tax_profile_code: FISCAL_TAX_PROFILE_CODES.educationM21,
-        tax_code: "ISE",
+        tax_profile_code: uiTaxProfileCode,
         tax_country_region: "AO",
-        taxa_iva: 0,
-        tax_exemption_code: "M21",
-        tax_exemption_reason: "Ensino isento - al. l), n. 1 do art. 12 do CIVA",
         unit_price_base: item.valor,
         settlement_amount: 0,
       })),
@@ -435,9 +450,71 @@ export async function POST(req: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     const ctx = await resolveEmpresaContext({ supabase, userId: user.id, escolaId });
+    const requestedEmpresaId =
+      "empresa_id" in parsed.data ? parsed.data.empresa_id : ctx.empresaId;
+
+    if (!requestedEmpresaId) {
+      return jsonError(
+        403,
+        "FISCAL_EMPRESA_CONTEXT_REQUIRED",
+        "Não foi possível identificar a empresa fiscal ativa para emissão.",
+        { request_id: requestId, escola_id: escolaId }
+      );
+    }
+
+    const authz = await requireFiscalAccessByCompanyOrSchool({
+      supabase,
+      userId: user.id,
+      empresaId: requestedEmpresaId,
+      escolaId,
+    });
+
+    if (!authz.ok) {
+      return jsonError(authz.status, authz.code, authz.message, {
+        request_id: requestId,
+        empresa_id: requestedEmpresaId,
+        escola_id: escolaId,
+      });
+    }
+
+    let uiTaxProfileCode: FiscalTaxProfileCode | null = null;
+    if (!("empresa_id" in parsed.data)) {
+      const { data: profileCode, error: profileError } = await supabase.rpc(
+        "fiscal_resolve_education_tax_profile",
+        { p_empresa_id: requestedEmpresaId }
+      );
+
+      if (profileError) {
+        const mapped = mapRpcError(
+          profileError.message ?? "Falha ao resolver enquadramento IVA do ensino."
+        );
+        return jsonError(
+          mapped.status,
+          mapped.code,
+          profileError.message || "Falha ao resolver enquadramento IVA do ensino.",
+          { request_id: requestId, empresa_id: requestedEmpresaId }
+        );
+      }
+
+      if (
+        profileCode !== FISCAL_TAX_PROFILE_CODES.educationM21 &&
+        profileCode !== FISCAL_TAX_PROFILE_CODES.standardVat14
+      ) {
+        return jsonError(
+          500,
+          "FISCAL_TAX_PROFILE_INCONSISTENT",
+          "O enquadramento IVA resolvido não corresponde a um perfil tributário suportado.",
+          { request_id: requestId, empresa_id: requestedEmpresaId }
+        );
+      }
+
+      uiTaxProfileCode = profileCode;
+    }
+
     const normalized = normalizePostInput({
       input: parsed.data,
       empresaId: ctx.empresaId,
+      uiTaxProfileCode,
     });
 
     if (!normalized.ok) {
@@ -449,21 +526,6 @@ export async function POST(req: Request) {
 
     const input = normalized.data;
     const auditEscolaId = escolaId;
-
-    const authz = await requireFiscalAccessByCompanyOrSchool({
-      supabase,
-      userId: user.id,
-      empresaId: input.empresa_id,
-      escolaId,
-    });
-
-    if (!authz.ok) {
-      return jsonError(authz.status, authz.code, authz.message, {
-        request_id: requestId,
-        empresa_id: input.empresa_id,
-        escola_id: escolaId,
-      });
-    }
 
     const semanticSeries = await resolveSerieSemantica({
       supabase,
