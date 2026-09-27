@@ -196,6 +196,7 @@ export async function POST(req: Request) {
             provision_source: "AGT_FE_API",
             request_id: requestId,
             key_version: keyRow.key_version,
+            software_info: agt.softwareIdentity,
           } as Json,
           agt_series_code: agt.seriesCode,
           agt_submission_uuid: submissionUuid,
