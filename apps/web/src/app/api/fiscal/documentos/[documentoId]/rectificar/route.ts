@@ -27,6 +27,7 @@ type FiscalRectificarDocumentoResult = {
   documento_id: string;
   empresa_id: string;
   status: "rectificado";
+  correction_document_id?: string;
 };
 
 type FiscalDatabase = Database & {
@@ -144,10 +145,25 @@ export async function POST(
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     const auditEscolaId = escolaId;
 
+    if (!body.correction_document_id) {
+      return jsonError(
+        400,
+        "FISCAL_CORRECTION_DOCUMENT_REQUIRED",
+        "A rectificação exige um documento correctivo emitido (NC, ND ou correcção AGT C).",
+        {
+          request_id: requestId,
+          documento_id: parsedParams.data.documentoId,
+        }
+      );
+    }
+
     const rpcArgs: FiscalRectificarDocumentoArgs = {
       p_documento_id: parsedParams.data.documentoId,
       p_motivo: body.motivo,
-      p_metadata: (body.metadata ?? {}) as Json,
+      p_metadata: {
+        ...(body.metadata ?? {}),
+        correction_document_id: body.correction_document_id,
+      } as Json,
     };
 
     const { data, error } = await supabase.rpc("fiscal_rectificar_documento", rpcArgs);
@@ -186,6 +202,7 @@ export async function POST(
           empresa_id: data.empresa_id,
           motivo: body.motivo,
           status: data.status,
+          correction_document_id: data.correction_document_id ?? body.correction_document_id,
         },
       }).catch(() => null);
     }
