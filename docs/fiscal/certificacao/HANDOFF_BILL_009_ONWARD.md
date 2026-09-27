@@ -3,7 +3,7 @@
 Data: 2026-09-27  
 Repositório: `moxi-edtech/moxi-edtech`  
 Branch de continuação: `fix/bill-009-tax-engine-vat`  
-Head no momento do handoff: `dd85913f2120a34320a2f9ecaad5e95075bfc09b`
+PR de referência: `#122`
 
 ## Objetivo
 
@@ -43,8 +43,8 @@ Os PRs #118–121 estão abertos e foram criados em sequência. Não perder essa
 - BILL-006 — READY FOR HOMOLOGATION
 - BILL-007 — CLOSED
 - BILL-008 — READY FOR HOMOLOGATION para SAF-T Facturação (`TaxAccountingBasis=F`)
-- BILL-009 — NEEDS WORK / EM CURSO
-- BILL-010 — BACKLOG
+- BILL-009 — CLOSED
+- BILL-010 — PRÓXIMO / BACKLOG
 - BILL-011 — BACKLOG
 - BILL-012 — BACKLOG
 - BILL-013 — BACKLOG
@@ -96,274 +96,109 @@ O SAF-T possui cadeia de hash própria quando o software estiver validado; não 
 
 ---
 
-## BILL-009 — estado REAL no momento do handoff
+## BILL-009 — FECHADO
 
-O BILL-009 NÃO está vazio.
+O BILL-009 foi fechado internamente no PR #122 em 2026-09-27.
 
-Branch:
+### Resultado
 
-`fix/bill-009-tax-engine-vat`
+O KLASSE possui agora um motor fiscal canónico no banco com:
 
-Migrations já aplicadas no Supabase vivo e presentes no branch:
+- perfis tributários versionados e com vigência;
+- exclusão de períodos sobrepostos;
+- imutabilidade de perfil/versionamento já usado;
+- snapshot `tax_profile_code + tax_profile_version` por linha;
+- cálculo canónico de IVA, desconto, settlement e FX;
+- AGT e SAF-T consumindo valores persistidos;
+- outros impostos/retenções não suportados em modo fail-closed.
 
-- `20260927181109_bill_009_tax_profiles_and_item_semantics.sql`
-- `20260927181334_bill_009_financial_catalog_tax_profiles.sql`
-- `20260927181708_bill_009_tax_compute_function.sql`
-- `20260927181922_bill_009_wire_tax_engine_to_emitter.sql`
-- `20260927182435_bill_009_catalog_fiscal_classification.sql`
-- `20260927182915_bill_009_tuition_tax_profile_default.sql`
-- `20260927183018_bill_009_preserve_reserved_agt_invoice_no.sql`
+### Governance IVA / ensino
 
-Arquivos relevantes já criados/alterados:
+A isenção M21 não é mais default de propina.
 
-- `apps/web/src/lib/fiscal/taxProfiles.ts`
-- `apps/web/src/lib/fiscal/agtInvoicePayload.ts`
-- `apps/web/src/lib/fiscal/saftAo.ts`
-- `apps/web/src/lib/fiscal/financeiroFiscalAdapter.ts`
-- catálogo/tabelas financeiras
-- `apps/web/tests/unit/agt-tax-engine.spec.ts`
+`fiscal_empresas` exige decisão fiscal explícita e auditável de:
 
-Perfis actualmente definidos:
+- regime IVA;
+- elegibilidade da isenção de ensino;
+- fundamento;
+- verificador;
+- timestamp.
 
-- `IVA_EDUCACAO_M21`
-- `IVA_NORMAL_14_AO`
+`fiscal_resolve_education_tax_profile(uuid)` é server-only e resolve:
 
-O perfil `IVA_EDUCACAO_M21` representa serviço de ensino isento, com código M21.
-O perfil `IVA_NORMAL_14_AO` representa IVA normal 14%.
+- general + eligible -> M21;
+- general + not_eligible -> IVA 14%;
+- simplified + not_eligible -> M00;
+- exclusion -> M04;
+- unverified -> erro.
 
----
+A aplicação não pode assumir que uma entidade é elegível por ser escola/centro.
 
-## Motor tributário já implementado
+### Remoção do estado implícito
 
-Existe a tabela `fiscal_tax_profiles`, versionada por `code + version`, com:
+O backfill original do BILL-009 havia aplicado M21 a 77/77 `financeiro_tabelas`.
 
-- tipo de imposto;
-- TaxCode;
-- região;
-- percentagem;
-- código/motivo de isenção;
-- operationType;
-- vigência `valid_from/valid_to`;
-- referência legal;
-- metadata.
+A migration `20260927194402_bill_009_remove_implicit_education_tax_profile.sql` removeu esse estado:
 
-Itens fiscais ganharam semântica canónica persistida:
+- total: 77;
+- M21 implícito após cleanup: 0;
+- sem perfil explícito: 77.
 
-- `tax_profile_code`
-- `tax_type`
-- `tax_code`
-- `tax_country_region`
-- `operation_type`
-- `unit_of_measure`
-- `product_type`
-- `unit_price_base`
-- `settlement_amount`
-- totais na moeda do documento
-- totais AOA
+Nenhum documento emitido foi alterado.
 
-Existe `fiscal_tax_compute_document(...)`.
+Fluxos de mensalidade, balcão e reprocessamento resolvem o enquadramento pela empresa fiscal. Pagamento directo sem origem fiscal classificada fica fail-closed para emissão automática.
 
-Essa função actualmente:
+### Migrations adicionais do fechamento
 
-- exige `tax_profile_code`;
-- resolve a versão válida pela data da factura;
-- rejeita taxCode/taxa explícitos divergentes do perfil;
-- valida isenção;
-- valida desconto/settlement contra `quantity * (unitPriceBase - unitPrice)`;
-- calcula totais;
-- converte moeda estrangeira para AOA;
-- aplica as funções de arredondamento do motor;
-- actualmente calcula apenas IVA e rejeita outros tipos percentuais de imposto como não implementados.
+Além das migrations iniciais já documentadas:
 
-`fiscal_emitir_documento` já usa esse motor antes de persistir as linhas.
+- `20260927185100_bill_009_tax_profile_temporal_governance.sql`;
+- `20260927185604_bill_009_persist_tax_profile_version.sql`;
+- `20260927190709_bill_009_education_vat_eligibility_guard.sql`;
+- `20260927191357_bill_009_resolve_education_tax_profile.sql`;
+- `20260927191520_bill_009_tax_profile_resolver_server_only.sql`;
+- `20260927192036_bill_009_vat_regime_governance.sql`;
+- `20260927194402_bill_009_remove_implicit_education_tax_profile.sql`.
 
-O mapper AGT e o SAF-T foram alterados para consumir a semântica persistida em vez de reinterpretar a tributação depois.
+### Evidência
 
-O catálogo financeiro já começa a carregar `tax_profile_code`, classificação bem/serviço e código de produto estável.
+Oracles SQL:
 
----
+- 23.144 -> 23.15;
+- 0.001844 -> 0.01;
+- 5.9999999 -> 6.00;
+- M21, IVA normal, desconto e FX reconciliados.
 
-## Evidência de testes BILL-009 já existente
+Governance rollback-only:
 
-Arquivo:
+- general + eligible -> M21;
+- general + not_eligible -> 14%;
+- simplified + not_eligible -> M00;
+- exclusion -> M04;
+- unverified -> rejeitado;
+- overlap temporal rejeitado;
+- mutação de perfil usado rejeitada;
+- zero resíduos.
 
-`apps/web/tests/unit/agt-tax-engine.spec.ts`
+CI fiscal de referência:
 
-Cenários já cobertos:
+- Security Regression Tests: PASS;
+- Fiscal Regression Tests: 28/28 PASS;
+- XSD SAF-T AO 1.01_01: PASS.
 
-- M21 educação isenta;
-- IVA normal 14%;
-- desconto com `unitPriceBase`, `unitPrice` e `settlementAmount`;
-- moeda estrangeira + contravalor AOA;
-- rejeição de linha sem perfil tributário canónico.
+KF2 Search Audit e Vercel build-rate-limit continuam como débitos globais/preexistentes e não são evidência de regressão do motor fiscal.
 
-Não assumir que isso fecha o BILL-009. Ainda é necessário provar o motor no banco, os callers e os casos-limite abaixo.
+### Invariante nova
 
----
+Nunca voltar a aplicar M21 automaticamente por ser propina, mensalidade, escola, centro de formação ou `operationType=SE`.
 
-## Próximo trabalho — BILL-009
-
-### 1. Validar a tabela fiscal versionada
-
-Verificar e corrigir, se necessário:
-
-- sobreposição temporal de versões do mesmo `code`;
-- impedir duas versões válidas simultaneamente para a mesma data;
-- impedir UPDATE/DELETE de perfis que já foram usados por documento fiscal;
-- definir forma segura de encerrar uma versão e abrir outra;
-- grants/RLS/SECURITY DEFINER;
-- quem pode criar perfis: não deixar operador escolar inventar tributação legal;
-- preservar `legal_reference` e `legal_source_url`.
-
-### 2. Confirmar matriz tributária contra fontes AGT/MinFin actuais
-
-Não assumir que os únicos casos são M21 e 14%.
-
-Pesquisar fontes oficiais e construir matriz:
-
-`tax_type + tax_code + rate + exemption_code + operation_type + product_type + effective dates`.
-
-Se um imposto/taxa não for aplicável ao KLASSE hoje, documentar como NOT APPLICABLE ou fail-closed. Não implementar por especulação.
-
-### 3. Rounding oracle
-
-Validar exactamente as regras usadas em:
-
-- FT/FR/ND;
-- NC;
-- taxContribution;
-- unit price;
-- settlement;
-- moeda estrangeira.
-
-Criar casos com casas decimais difíceis, ex.:
-
-- 1 x 33.3333;
-- 3 x 33.3333;
-- IVA com resultado x.xx5;
-- NC com os mesmos números;
-- FX com taxa não inteira.
-
-O resultado esperado deve vir da especificação AGT, não de intuição.
-
-### 4. Descontos
-
-Validar:
-
-- desconto unitário;
-- desconto de linha;
-- eventual desconto global;
-- `unitPriceBase`;
-- `unitPrice`;
-- `settlementAmount`;
-- reconciliação:
-  `quantity * unitPrice -> net`;
-- AGT payload e SAF-T devem carregar a mesma semântica.
-
-Se desconto global não existir no produto, não fingir suporte; bloquear ou documentar.
-
-### 5. FX
-
-Provar:
-
-- moeda AOA não aceita taxa de câmbio arbitrária;
-- moeda != AOA exige taxa > 0;
-- totais da moeda original;
-- contravalor AOA;
-- mapper AGT;
-- SAF-T;
-- arredondamento após conversão;
-- retry/idempotência não recalcula usando outra taxa.
-
-Ideal: taxa utilizada fica persistida no documento e nunca depende de valor externo posterior.
-
-### 6. Isenções
-
-Garantir:
-
-- perfil isento exige TaxCode ISE;
-- percentagem zero;
-- código Mxx válido;
-- motivo;
-- perfil tributável rejeita exemption code;
-- o item persistido carrega exactamente o snapshot do perfil usado.
-
-### 7. Goods vs services / operationType
-
-Garantir que:
-
-- propina/ensino -> serviço + operationType coerente;
-- venda de bem -> ProductType P e operação de bens;
-- catálogo não permite combinação impossível;
-- o mesmo ProductCode não muda de identidade fiscal entre documentos;
-- SAF-T MasterFiles e AGT payload vêm do mesmo snapshot.
-
-### 8. Retenções e outros impostos
-
-O motor hoje falha para percentuais fora de IVA.
-
-Antes de implementar IS/IEC/CEOC/etc.:
-
-- confirmar se existem cenários realmente aplicáveis às operações escolares do KLASSE;
-- confirmar como a API AGT actual os representa;
-- implementar apenas com fonte oficial e teste oracle.
-
-Se não aplicável: manter fail-closed e documentar.
-
-### 9. Backfill/histórico
-
-NÃO alterar silenciosamente itens de documentos emitidos.
-
-Para linhas antigas sem perfil fiscal completo:
-
-- diagnosticar;
-- separar histórico legado de documentos novos;
-- preferir cutover/compatibility layer;
-- qualquer correcção documental pertence ao BILL-010 se exigir mudança de documento fiscal já emitido.
-
-### 10. Testes obrigatórios para fechamento
-
-No mínimo:
-
-- perfil M21;
-- IVA 14%;
-- combinação taxCode/rate inválida;
-- perfil vencido;
-- overlap de vigência;
-- desconto;
-- FX;
-- NC rounding;
-- FT/FR rounding;
-- consumidor final;
-- goods/service classification;
-- mapper AGT;
-- SAF-T;
-- rollback-only no banco;
-- idempotência;
-- advisors de segurança/performance.
-
----
-
-## Critério de fechamento do BILL-009
-
-Só marcar CLOSED quando:
-
-1. todas as emissões novas passam pelo motor canónico;
-2. nenhum caller calcula IVA por conta própria;
-3. perfil tributário usado fica persistido no item;
-4. versões tributárias são historicamente reproduzíveis;
-5. combinações inválidas são bloqueadas no banco;
-6. descontos e FX reconciliam entre banco, AGT e SAF-T;
-7. arredondamentos têm testes oracle;
-8. produtos/serviços têm classificação fiscal estável;
-9. histórico emitido não é mutado;
-10. security/performance advisors foram revistos;
-11. migrations live e Git estão sincronizadas;
-12. backlog canónico é actualizado com evidência real.
+A classificação de ensino depende do regime IVA e da elegibilidade fiscal previamente verificados. Se não houver decisão, falhar fechado.
 
 ---
 
 ## Depois do BILL-009
+
+A retomada começa agora no BILL-010.
 
 ### BILL-010 — ciclo documental
 
