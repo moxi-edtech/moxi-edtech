@@ -466,6 +466,40 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     )
     .join("\n");
 
+  const taxProfiles = new Map<string, number>();
+  for (const doc of input.documentos) {
+    for (const item of doc.itens) {
+      const rate = Number(item.taxa_iva);
+      if (!Number.isFinite(rate) || rate < 0) {
+        throw new Error(
+          `SAFT_SEMANTIC_ERROR: taxa de IVA inválida no documento ${doc.numero_formatado}, linha ${item.linha_no}.`
+        );
+      }
+      const key = `IVA:${resolveTaxCode(rate)}:${rate.toFixed(4)}`;
+      taxProfiles.set(key, rate);
+    }
+  }
+
+  const taxTableXml = taxProfiles.size > 0
+    ? [
+        "    <TaxTable>",
+        ...Array.from(taxProfiles.values())
+          .sort((a, b) => a - b)
+          .map((rate) =>
+            [
+              "      <TaxTableEntry>",
+              "        <TaxType>IVA</TaxType>",
+              "        <TaxCountryRegion>AO</TaxCountryRegion>",
+              `        <TaxCode>${resolveTaxCode(rate)}</TaxCode>`,
+              `        <Description>${escapeXml(resolveTaxDescription(rate))}</Description>`,
+              `        <TaxPercentage>${rate.toFixed(2)}</TaxPercentage>`,
+              "      </TaxTableEntry>",
+            ].join("\n")
+          ),
+        "    </TaxTable>",
+      ].join("\n")
+    : "";
+
   const invoicesXml = input.documentos
     .filter((doc) => isSalesInvoiceTipo(doc.tipo_documento))
     .map((doc) => {
