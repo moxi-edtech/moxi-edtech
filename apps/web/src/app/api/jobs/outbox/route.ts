@@ -33,17 +33,6 @@ type OutboxEvent = {
   last_error: string | null;
 };
 
-type PagamentoRow = {
-  id: string;
-  escola_id: string;
-  aluno_id: string | null;
-  mensalidade_id: string | null;
-  valor_pago: number | null;
-  data_pagamento: string | null;
-  metodo: string | null;
-  reference: string | null;
-};
-
 type NotificationOutboxRow = {
   id: string;
   escola_id: string;
