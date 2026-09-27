@@ -1248,9 +1248,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           const invoiceDate =
             source.sourceDocumentID?.invoiceDate?.trim() ||
             source.sourceDocumentID?.documentDate?.trim();
-          const creditAmount = Number(source.creditAmount);
+          const creditAmount = asExact(
+            source.creditAmount,
+            "paymentReceipt.creditAmount"
+          );
 
-          if (!originatingON || !invoiceDate || !Number.isFinite(creditAmount) || creditAmount <= 0) {
+          if (
+            !originatingON ||
+            !invoiceDate ||
+            cmpExact(creditAmount, parseExactDecimal("0")) <= 0
+          ) {
             throw new Error(
               `SAFT_SEMANTIC_ERROR: sourceDocument inválido no recibo ${doc.numero_formatado}, linha ${source.lineNo}.`
             );
@@ -1276,13 +1283,17 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         .join("\n");
 
       const appliedNet = sourceDocuments.reduce(
-        (sum, source) => sum + Number(source.creditAmount),
-        0
+        (sum, source) =>
+          addExact(
+            sum,
+            asExact(source.creditAmount, "paymentReceipt.creditAmount")
+          ),
+        parseExactDecimal("0")
       );
       assertMoneyClose(
         `${doc.numero_formatado} Payments CreditAmount`,
         appliedNet,
-        Number(doc.total_liquido_aoa)
+        doc.total_liquido_aoa
       );
       assertMoneyClose(
         `${doc.numero_formatado} GrossTotal`,
@@ -1383,7 +1394,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   }
 
   const sumNet = (docs: SaftDocumento[]) =>
-    docs.reduce((acc, doc) => acc + Number(doc.total_liquido_aoa), 0);
+    docs.reduce(
+      (acc, doc) =>
+        addExact(acc, asExact(doc.total_liquido_aoa, "total_liquido_aoa")),
+      parseExactDecimal("0")
+    );
   const normalSalesDocs = salesDocs.filter((doc) => resolveInvoiceStatus(doc.status) === "N");
   const salesDebit = sumNet(
     normalSalesDocs.filter((doc) => isDebitSalesDocument(doc.tipo_documento))
