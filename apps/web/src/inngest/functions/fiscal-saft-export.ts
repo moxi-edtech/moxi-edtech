@@ -376,11 +376,14 @@ export const fiscalSaftExport = inngest.createFunction(
       }
 
       const serieIds = Array.from(new Set(documentoRows.map((doc) => doc.serie_id)));
-      const serieOriginById = new Map<string, string>();
+      const serieById = new Map<
+        string,
+        { origem_documento: string; prefixo: string; agt_series_code: string | null }
+      >();
       if (serieIds.length > 0) {
         const { data: series, error: seriesError } = await supabase
           .from("fiscal_series")
-          .select("id, origem_documento")
+          .select("id, origem_documento, prefixo, agt_series_code")
           .in("id", serieIds);
 
         if (seriesError) {
@@ -388,7 +391,14 @@ export const fiscalSaftExport = inngest.createFunction(
         }
 
         for (const serie of series ?? []) {
-          serieOriginById.set(String(serie.id), String(serie.origem_documento ?? "interno"));
+          serieById.set(String(serie.id), {
+            origem_documento: String(serie.origem_documento ?? "interno"),
+            prefixo: String(serie.prefixo ?? ""),
+            agt_series_code:
+              typeof serie.agt_series_code === "string" && serie.agt_series_code.trim()
+                ? serie.agt_series_code.trim()
+                : null,
+          });
         }
       }
 
@@ -480,8 +490,12 @@ export const fiscalSaftExport = inngest.createFunction(
           saft_hash_control:
             doc.saft_hash_control == null ? null : Number(doc.saft_hash_control),
           source_billing: resolveSourceBillingFromSeriesOrigin(
-            serieOriginById.get(doc.serie_id)
+            serieById.get(doc.serie_id)?.origem_documento
           ),
+          series_sort_key:
+            serieById.get(doc.serie_id)?.agt_series_code ??
+            serieById.get(doc.serie_id)?.prefixo ??
+            doc.serie_id,
           payment_receipt: parsePaymentReceiptFromPayload(doc.payload),
           order_references: (() => {
             const refs: OrderReference[] = [];
