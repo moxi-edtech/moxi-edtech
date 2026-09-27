@@ -12,7 +12,7 @@ type PrepareResult = {
   status?: string;
 };
 
-export async function queueAgtDocumentSubmission(input: {
+export async function prepareAgtDocumentSubmission(input: {
   documentoId: string;
   createdBy?: string | null;
 }) {
@@ -26,6 +26,15 @@ export async function queueAgtDocumentSubmission(input: {
   if (!prepared?.submission_id) {
     throw new Error("AGT_SUBMISSION_PREPARE_INCONSISTENT");
   }
+
+  return prepared;
+}
+
+export async function queueAgtDocumentSubmission(input: {
+  documentoId: string;
+  createdBy?: string | null;
+}) {
+  const prepared = await prepareAgtDocumentSubmission(input);
 
   if (["accepted", "rejected", "cancelled", "mapping_error"].includes(prepared.status ?? "")) {
     return { ...prepared, queued: false, terminal: true };
