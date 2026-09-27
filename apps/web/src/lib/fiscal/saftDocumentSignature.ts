@@ -29,6 +29,18 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 export async function ensureSaftDocumentSignature(documentoId: string) {
   const readiness = getSaftSigningReadiness();
+
+  if (!readiness.required) {
+    return {
+      ok: true as const,
+      skipped: true as const,
+      documentoId,
+      hashControlVersion: 0,
+      previousHashPresent: false,
+      publicKeyFingerprintSha256: null,
+    };
+  }
+
   const admin = supabaseServerRole() as any;
 
   const { data: prepareData, error: prepareError } = await admin.rpc(
