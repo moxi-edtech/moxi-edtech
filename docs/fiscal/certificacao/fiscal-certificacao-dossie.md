@@ -58,7 +58,7 @@ Fonte de verdade do estado:
 `supabase/migrations/20260927153607_bill_007_payment_allocations_and_ledger_hardening.sql`
 `supabase/migrations/20260927155157_bill_007_fiscal_receipt_sources.sql`
 
-Evidência rollback-only: validação duplicada idempotente, overpayment bloqueado, pagamento parcial com FT/ND, RC multi-source, reversão idempotente e reversão fiscalizada bloqueada até tratamento documental.
+Evidência rollback-only: validação duplicada idempotente, overpayment bloqueado, pagamento parcial sem FT/ND bloqueado, RC multi-source, intent settled sem recibo legacy, alocação N:N e reversão idempotente. O bloqueio de reversão de pagamento já fiscalizado foi validado por introspecção do trigger `trg_pagamentos_fiscal_reversal_guard`; o teste directo desse caso não foi executado pelo ambiente de ferramentas.
 
 ## Governança e políticas
 
