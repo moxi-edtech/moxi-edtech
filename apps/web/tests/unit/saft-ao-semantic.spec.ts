@@ -56,6 +56,8 @@ function invoice(overrides: Record<string, unknown> = {}) {
     status: "emitido",
     status_date: null,
     status_reason: null,
+    source_id: "U-test-issuer",
+    status_source_id: "U-test-issuer",
     source_billing: "P" as const,
     series_sort_key: "TEST",
     order_references: [],
