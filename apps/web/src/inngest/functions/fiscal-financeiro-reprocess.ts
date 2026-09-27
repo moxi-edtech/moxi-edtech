@@ -360,6 +360,15 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
           from public.financeiro_fiscal_links
           where escola_id = ${data.escola_id}::uuid
             and empresa_id = ${data.empresa_id}::uuid
+            and exists (
+              select 1
+              from public.fiscal_escola_bindings b
+              where b.escola_id = ${data.escola_id}::uuid
+                and b.empresa_id = ${data.empresa_id}::uuid
+                and b.fiscal_enabled = true
+                and b.effective_from <= current_date
+                and (b.effective_to is null or b.effective_to >= current_date)
+            )
             and origem_tipo in ('financeiro_pagamentos_registrar', 'financeiro_recibos_emitir')
             and status in ('pending', 'failed')
             and fiscal_documento_id is null
