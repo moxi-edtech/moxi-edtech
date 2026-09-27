@@ -36,6 +36,7 @@ type ReciboImprimivelProps = {
 type ReciboPayload = {
   doc_id: string;
   url_validacao: string | null;
+  non_fiscal?: boolean;
 };
 
 export function ReciboImprimivel({
@@ -175,6 +176,7 @@ export function ReciboImprimivel({
           titularConta={titularConta}
           iban={iban}
           kwikChave={kwikChave}
+          operationalOnly={recibo.non_fiscal === true}
         />
       </div>
     </div>
@@ -241,6 +243,7 @@ export function ReciboPrintButton({
       setRecibo({
         doc_id: json.doc_id,
         url_validacao: json.url_validacao ?? null,
+        non_fiscal: json.non_fiscal === true,
       });
       setStatus("preparing");
     } catch (_err) {
