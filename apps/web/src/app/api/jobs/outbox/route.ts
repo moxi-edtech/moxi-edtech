@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createActivationToken } from "@/lib/activationLink";
+import { processSettledPaymentFiscal } from "@/lib/fiscal/paymentFiscalDocument";
 import {
   isWahaEnabled,
   nextRetryAt,
@@ -30,17 +31,6 @@ type OutboxEvent = {
   created_at: string;
   processed_at: string | null;
   last_error: string | null;
-};
-
-type PagamentoRow = {
-  id: string;
-  escola_id: string;
-  aluno_id: string | null;
-  mensalidade_id: string | null;
-  valor_pago: number | null;
-  data_pagamento: string | null;
-  metodo: string | null;
-  reference: string | null;
 };
 
 type NotificationOutboxRow = {
@@ -768,94 +758,24 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
 }
 
 async function emitirReciboPagamento(
-  admin: NonNullable<ReturnType<typeof getAdminClient>>,
+  _admin: NonNullable<ReturnType<typeof getAdminClient>>,
   event: OutboxEvent
 ) {
   const payload = (event.payload || {}) as Record<string, unknown>;
-  const pagamentoId = typeof payload.pagamento_id === "string" ? payload.pagamento_id : null;
-  const mensalidadeId = typeof payload.mensalidade_id === "string" ? payload.mensalidade_id : null;
+  const pagamentoId =
+    typeof payload.pagamento_id === "string" ? payload.pagamento_id : null;
 
-  if (!pagamentoId && !mensalidadeId) {
-    throw new Error("payload missing pagamento_id or mensalidade_id");
+  if (!pagamentoId) {
+    throw new Error("payload missing pagamento_id");
   }
 
-  // Se tiver mensalidade_id, usamos a RPC do sistema que é muito mais completa
-  if (mensalidadeId) {
-    const { data: res, error: rpcError } = await admin.rpc("emitir_recibo_system", {
-      p_mensalidade_id: mensalidadeId,
-    });
-
-    if (rpcError) {
-      // Ignoramos erros de status (mensalidade não paga) para evitar retries infinitos
-      if (rpcError.message?.includes("não está paga")) {
-        console.warn(`[RECIBO] Mensalidade ${mensalidadeId} ainda não está paga. Ignorando.`);
-        return;
-      }
-      throw rpcError;
-    }
-    return;
-  }
-
-  // Fallback para pagamentos sem mensalidade direta (se existir no futuro)
-  const { data: pagamento, error: pagamentoErr } = await admin
-    .from("pagamentos")
-    .select("id, escola_id, aluno_id, mensalidade_id, valor_pago, data_pagamento, metodo, reference")
-    .eq("id", pagamentoId)
-    .maybeSingle();
-
-  if (pagamentoErr) throw pagamentoErr;
-  if (!pagamento) throw new Error("pagamento not found");
-
-  const row = pagamento as PagamentoRow;
-  if (!row.aluno_id) throw new Error("pagamento sem aluno_id");
-
-  if (row.mensalidade_id) {
-    const { data: existingMensalidadeDoc } = await admin
-      .from("documentos_emitidos")
-      .select("id")
-      .eq("tipo", "recibo")
-      .eq("mensalidade_id", row.mensalidade_id)
-      .maybeSingle();
-
-    if (existingMensalidadeDoc?.id) return;
-  } else {
-    const { data: existingByPagamento } = await admin
-      .from("documentos_emitidos")
-      .select("id")
-      .eq("tipo", "recibo")
-      .eq("escola_id", row.escola_id)
-      .contains("dados_snapshot", { pagamento_id: row.id })
-      .limit(1);
-
-    if ((existingByPagamento ?? []).length > 0) return;
-  }
-
-  const valor = Number(row.valor_pago ?? 0);
-  if (!Number.isFinite(valor) || valor <= 0) throw new Error("pagamento com valor inválido");
-
-  const hash = crypto.randomUUID().replace(/-/g, "");
-  const { error: insertDocError } = await admin.from("documentos_emitidos").insert({
-    escola_id: row.escola_id,
-    aluno_id: row.aluno_id,
-    mensalidade_id: row.mensalidade_id,
-    tipo: "recibo",
-    dados_snapshot: {
-      origem: "pagamento_auto",
-      pagamento_id: row.id,
-      mensalidade_id: row.mensalidade_id,
-      valor_pago: valor,
-      data_pagamento: row.data_pagamento,
-      metodo: row.metodo,
-      reference: row.reference,
-      hash_validacao: hash,
-    },
-    created_by: null,
-    hash_validacao: hash,
+  await processSettledPaymentFiscal({
+    paymentId: pagamentoId,
+    createdBy:
+      typeof payload.settled_by === "string"
+        ? payload.settled_by
+        : null,
   });
-
-  if (insertDocError && insertDocError.code !== "23505") {
-    throw insertDocError;
-  }
 }
 
 async function runOutboxWorker(req: Request) {

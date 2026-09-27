@@ -29,6 +29,18 @@ const normalizeMetodoPagamento = (
   return null;
 };
 
+const normalizeCanonicalPagamentoMetodo = (
+  raw?: string
+): Database["public"]["Enums"]["pagamento_metodo"] => {
+  const value = raw?.toLowerCase().trim();
+  if (!value || ["cash", "dinheiro", "numerario"].includes(value)) return "cash";
+  if (["tpa", "tpa_fisico"].includes(value)) return "tpa";
+  if (["transfer", "transferencia", "deposito", "dep"].includes(value)) return "transfer";
+  if (["mcx", "multicaixa", "mcx_express", "mbway", "referencia"].includes(value)) return "mcx";
+  if (["kwik", "kiwk"].includes(value)) return "kwik";
+  return "cash";
+};
+
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -130,21 +142,42 @@ export async function POST(
 
     const lancamentoId = (lancRes.data as { id: string }).id;
     const referencia = `venda_avulsa:${lancamentoId}`;
-    const pagamentoRes = await s
-      .from("pagamentos")
-      .insert({
-        escola_id: resolvedEscolaId,
-        aluno_id: body.aluno_id,
-        valor_pago: body.valor,
-        status: body.pago_imediato ? "pago" : "pendente",
-        metodo: body.metodo ?? undefined,
-        reference: referencia,
-        referencia,
-        evidence_url: body.comprovativo_url ?? undefined,
-        meta: { idempotency_key: idempotencyKey, origem: "venda_avulsa" },
-      })
-      .select("id")
-      .single();
+    const pagamentoRes = body.pago_imediato
+      ? await s.rpc("financeiro_registrar_pagamento_secretaria", {
+          p_escola_id: resolvedEscolaId,
+          p_aluno_id: body.aluno_id,
+          p_mensalidade_id: null,
+          p_valor: body.valor,
+          p_metodo: normalizeCanonicalPagamentoMetodo(body.metodo),
+          p_reference: referencia,
+          p_evidence_url: body.comprovativo_url ?? null,
+          p_gateway_ref: null,
+          p_meta: {
+            idempotency_key: idempotencyKey,
+            origem: "venda_avulsa",
+            lancamento_id: lancamentoId,
+            descricao: body.descricao,
+          },
+        })
+      : await s
+          .from("pagamentos")
+          .insert({
+            escola_id: resolvedEscolaId,
+            aluno_id: body.aluno_id,
+            valor_pago: body.valor,
+            status: "pending",
+            metodo: normalizeCanonicalPagamentoMetodo(body.metodo),
+            reference: referencia,
+            referencia,
+            evidence_url: body.comprovativo_url ?? undefined,
+            meta: {
+              idempotency_key: idempotencyKey,
+              origem: "venda_avulsa",
+              lancamento_id: lancamentoId,
+            },
+          })
+          .select("id")
+          .single();
 
     if (pagamentoRes.error || !pagamentoRes.data) {
       await s

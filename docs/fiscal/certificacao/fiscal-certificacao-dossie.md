@@ -12,7 +12,8 @@ Centralizar evidências técnicas e operacionais para submissão e auditoria de 
 
 - Hardening BILL-001–004: concluído.
 - Séries AGT (BILL-005): READY FOR HOMOLOGATION; ainda sem série real AGT.
-- Facturação Electrónica AGT (BILL-006): implementação assíncrona `registarFactura/obterEstado` em curso; RC depende do BILL-007.
+- Facturação Electrónica AGT (BILL-006): READY FOR HOMOLOGATION; `registarFactura/obterEstado` e RC com `paymentReceipt.sourceDocuments` implementados.
+- Pagamentos/ledger/recibos/estornos (BILL-007): CLOSED; alocações fiscais e histórico financeiro append-only validados.
 - SAF-T: existe geração e validação XSD, mas a completude semântica/contabilística será revalidada no BILL-008.
 - Estado global: NO-GO até concluir os BILLs bloqueantes e obter evidência de homologação externa.
 
@@ -51,6 +52,14 @@ Fonte de verdade do estado:
 8. Infra KMS/IAM:
 `docs/fiscal/operacao/aws-fiscal-kms-apply.md`
 
+9. Pagamentos/RC e `sourceDocuments` (BILL-007):
+`apps/web/src/lib/fiscal/paymentFiscalDocument.ts`
+`apps/web/src/lib/fiscal/agtInvoicePayload.ts`
+`supabase/migrations/20260927153607_bill_007_payment_allocations_and_ledger_hardening.sql`
+`supabase/migrations/20260927155157_bill_007_fiscal_receipt_sources.sql`
+
+Evidência rollback-only: validação duplicada idempotente, overpayment bloqueado, pagamento parcial sem FT/ND bloqueado, RC multi-source, intent settled sem recibo legacy, alocação N:N e reversão idempotente. O bloqueio de reversão de pagamento já fiscalizado foi validado por introspecção do trigger `trg_pagamentos_fiscal_reversal_guard`; o teste directo desse caso não foi executado pelo ambiente de ferramentas.
+
 ## Governança e políticas
 
 - Política de rotação/versionamento:
@@ -61,7 +70,7 @@ Fonte de verdade do estado:
 
 ## Checklist operacional de fecho (go-live certificação)
 
-- [ ] Concluir BILL-007 — pagamentos/ledger/RC/sourceDocuments.
+- [x] Concluir BILL-007 — pagamentos/ledger/RC/sourceDocuments.
 - [ ] Concluir BILL-008–012 conforme backlog canónico.
 - [ ] Executar BILL-013 — homologação AGT com série real, `registarFactura`, `requestID`, `obterEstado` e V/I.
 - [ ] Concluir BILL-014 — governance, retenção, dossiê e procedimento administrativo.

@@ -101,7 +101,64 @@ async function loadSubmissionContext(submissionId: string) {
     originDocument = origin;
   }
 
-  return { submission, link, document, items, empresa, key, originDocument };
+  let receiptSourceStates: Array<{
+    documento_id: string;
+    validation_status: string | null;
+  }> = [];
+
+  if (document.tipo_documento === "RC") {
+    const { data: receiptLinks, error: receiptLinksError } = await admin
+      .from("financeiro_recibo_alocacoes")
+      .select("fiscal_documento_origem_id")
+      .eq("recibo_documento_id", document.id)
+      .order("created_at", { ascending: true });
+
+    if (receiptLinksError) throw new Error(receiptLinksError.message);
+
+    const sourceIds = Array.from(
+      new Set(
+        (receiptLinks ?? [])
+          .map((row: { fiscal_documento_origem_id?: string | null }) =>
+            row.fiscal_documento_origem_id ?? null
+          )
+          .filter((value: string | null): value is string => Boolean(value))
+      )
+    );
+
+    if (sourceIds.length > 0) {
+      const { data: sourceStatuses, error: sourceStatusError } = await admin
+        .from("fiscal_agt_submission_documentos")
+        .select("documento_id,validation_status")
+        .in("documento_id", sourceIds);
+
+      if (sourceStatusError) throw new Error(sourceStatusError.message);
+
+      const statusByDocument = new Map(
+        (sourceStatuses ?? []).map(
+          (row: { documento_id: string; validation_status: string | null }) => [
+            row.documento_id,
+            row.validation_status,
+          ]
+        )
+      );
+
+      receiptSourceStates = sourceIds.map((documentoId) => ({
+        documento_id: documentoId,
+        validation_status: statusByDocument.get(documentoId) ?? null,
+      }));
+    }
+  }
+
+  return {
+    submission,
+    link,
+    document,
+    items,
+    empresa,
+    key,
+    originDocument,
+    receiptSourceStates,
+  };
 }
 
 async function markSubmission(submissionId: string, patch: Record<string, unknown>) {
@@ -198,6 +255,36 @@ export const fiscalAgtElectronicInvoicing = inngest.createFunction(
 
     if (["accepted", "rejected", "cancelled", "mapping_error"].includes(context.submission.status)) {
       return { ok: true, terminal: true, status: context.submission.status };
+    }
+
+    if (context.document.tipo_documento === "RC") {
+      const unresolvedSources = context.receiptSourceStates.filter(
+        (source) => source.validation_status !== "valid"
+      );
+
+      if (
+        context.receiptSourceStates.length === 0 ||
+        unresolvedSources.length > 0
+      ) {
+        await step.run("wait-receipt-source-validation", async () => {
+          await markSubmission(data.submission_id, {
+            status: "processing",
+            error_code: "AGT_SOURCE_DOCUMENT_NOT_VALIDATED",
+            error_message:
+              context.receiptSourceStates.length === 0
+                ? "RC sem vínculos de documentos origem."
+                : `RC aguarda validação AGT de ${unresolvedSources.length} documento(s) origem.`,
+            next_check_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          });
+        });
+
+        return {
+          ok: true,
+          terminal: false,
+          status: "processing",
+          reason: "source_document_not_validated",
+        };
+      }
     }
 
     let prepared;

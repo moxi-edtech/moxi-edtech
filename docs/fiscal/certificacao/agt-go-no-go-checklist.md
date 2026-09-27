@@ -67,13 +67,16 @@ A auditoria de certificação de setembro reabriu requisitos que este checklist 
 
 - BILL-001 a BILL-004: CLOSED.
 - BILL-005: READY FOR HOMOLOGATION — falta série real AGT.
-- BILL-006: NEEDS WORK — transporte `registarFactura/obterEstado` implementado, mas RC depende do BILL-007.
+- BILL-006: READY FOR HOMOLOGATION — `registarFactura/obterEstado` + RC/`paymentReceipt.sourceDocuments` implementados; falta prova externa AGT.
+- BILL-007: CLOSED — pagamentos canónicos, ledger/estornos append-only, alocações fiscais e RC rastreável concluídos.
 - O estado detalhado, critérios de fecho e próximos backlogs estão em `backlog-certificacao-agt.md`.
 
 Os itens marcados `[x]` acima comprovam a capacidade local indicada, mas **não substituem homologação AGT** quando o requisito depende de serviço externo.
 
 ## Próximos passos imediatos
 
-1. Executar BILL-007 — pagamentos/ledger/RC/sourceDocuments.
-2. Executar BILL-008 — SAF-T(AO) semântico/contabilístico.
+1. Executar BILL-008 — SAF-T(AO) semântico/contabilístico.
+2. Executar BILL-009 — motor fiscal/IVA e arredondamentos.
 3. Seguir a ordem definida no backlog canónico até BILL-014.
+
+Nota: reversão de pagamento já fiscalizado permanece fail-closed até anulação/correcção do documento no BILL-010.

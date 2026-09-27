@@ -35,6 +35,9 @@ jobs:
       - name: Security Regression Tests
         run: pnpm test:security
 
+      - name: Fiscal Regression Tests
+        run: pnpm --dir apps/web test:unit:fiscal
+
       - name: KF2 Search Audit
         run: pnpm agent:kf2
 
