@@ -1,3 +1,4 @@
+import { cron } from "inngest";
 import { inngest } from "@/inngest/client";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import {
@@ -315,5 +316,45 @@ export const fiscalAgtElectronicInvoicing = inngest.createFunction(
       });
     });
     return { ok: true, terminal: false, status: "processing", requestID };
+  }
+);
+
+
+export const fiscalAgtReconcileSweep = inngest.createFunction(
+  {
+    id: "fiscal-agt-reconcile-sweep",
+    triggers: [cron("*/15 * * * *")],
+    retries: 2,
+  },
+  async ({ step }) => {
+    const now = new Date().toISOString();
+    const submissions = await step.run("load-due-submissions", async () => {
+      const admin = supabaseServerRole() as any;
+      const { data, error } = await admin
+        .from("fiscal_agt_submissions")
+        .select("id,status,next_check_at,created_at")
+        .in("status", ["prepared", "submitted", "processing", "uncertain"])
+        .or(`next_check_at.is.null,next_check_at.lte.${now}`)
+        .order("created_at", { ascending: true })
+        .limit(50);
+
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    });
+
+    if (submissions.length === 0) {
+      return { ok: true, dispatched: 0 };
+    }
+
+    await step.sendEvent(
+      "dispatch-due-agt-submissions",
+      submissions.map((submission: { id: string }) => ({
+        name: "fiscal/agt-submit.requested",
+        id: `agt-reconcile-${submission.id}-${now.slice(0, 16)}`,
+        data: { submission_id: submission.id },
+      }))
+    );
+
+    return { ok: true, dispatched: submissions.length };
   }
 );
