@@ -67,6 +67,7 @@ type SaftDocumento = {
   saft_hash_control: number | null;
   status: string;
   source_billing: "P" | "I" | "M";
+  series_sort_key: string;
   order_references?: SaftOrderReference[];
   payment_receipt?: {
     sourceDocuments: SaftPaymentSourceDocument[];
@@ -151,6 +152,45 @@ function formatExchangeRate(value: number): string {
 
 function resolveSourceBilling(sourceBilling: SaftDocumento["source_billing"]): "P" | "I" | "M" {
   return sourceBilling;
+}
+
+function resolveCustomerIdentity(doc: SaftDocumento) {
+  const nif = doc.cliente_nif?.trim();
+  if (!nif || nif === CONSUMIDOR_FINAL_NIF) {
+    return {
+      id: `NIF-${CONSUMIDOR_FINAL_NIF}`,
+      nif: CONSUMIDOR_FINAL_NIF,
+      nome: CONSUMIDOR_FINAL_NOME,
+    };
+  }
+
+  const id = `NIF-${nif}`;
+  if (id.length > 30) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: CustomerID excede 30 caracteres para NIF ${nif}.`
+    );
+  }
+
+  return {
+    id,
+    nif,
+    nome: doc.cliente_nome.trim() || CONSUMIDOR_FINAL_NOME,
+  };
+}
+
+function sortDocumentsForSaft(docs: SaftDocumento[]) {
+  return [...docs].sort((a, b) => {
+    const type = normalizeTipoDocumento(a.tipo_documento).localeCompare(
+      normalizeTipoDocumento(b.tipo_documento)
+    );
+    if (type !== 0) return type;
+
+    const series = a.series_sort_key.localeCompare(b.series_sort_key);
+    if (series !== 0) return series;
+
+    if (a.numero !== b.numero) return a.numero - b.numero;
+    return a.id.localeCompare(b.id);
+  });
 }
 
 const SALES_INVOICE_TYPES = new Set([
@@ -424,19 +464,18 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       );
     }
 
-    const customerId = doc.cliente_nif
-      ? `NIF-${doc.cliente_nif}`
-      : `NM-${doc.cliente_nome}`;
+    const identity = resolveCustomerIdentity(doc);
+    const customerId = identity.id;
     const existingCustomer = customerRows.get(customerId);
-    if (existingCustomer && existingCustomer.nome !== doc.cliente_nome) {
+    if (existingCustomer && existingCustomer.nome !== identity.nome) {
       throw new Error(
         `SAFT_SEMANTIC_ERROR: CustomerID ${customerId} aparece com nomes divergentes no período.`
       );
     }
     if (!existingCustomer) {
       customerRows.set(customerId, {
-        nome: doc.cliente_nome,
-        nif: doc.cliente_nif,
+        nome: identity.nome,
+        nif: identity.nif,
         address_detail: doc.address_detail,
         city: doc.city,
         postal_code: doc.postal_code,
@@ -527,9 +566,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       ].join("\n")
     : "";
 
-  const invoicesXml = input.documentos
-    .filter((doc) => isSalesInvoiceTipo(doc.tipo_documento))
-    .map((doc) => {
+  const salesDocsForXml = sortDocumentsForSaft(
+    input.documentos.filter((doc) => isSalesInvoiceTipo(doc.tipo_documento))
+  );
+  const invoicesXml = salesDocsForXml.map((doc) => {
       const invoiceType = resolveSalesInvoiceType(doc.tipo_documento);
       const invoiceNo = resolveSaftInvoiceNo(doc, invoiceType);
       const sourceId = "KLASSE";
@@ -624,9 +664,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         })
         .join("\n");
 
-      const customerId = doc.cliente_nif
-        ? `NIF-${doc.cliente_nif}`
-        : `NM-${doc.cliente_nome}`;
+      const customerId = resolveCustomerIdentity(doc).id;
       const currencyXml =
         doc.moeda.toUpperCase() === "AOA"
           ? ""
@@ -689,9 +727,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     })
     .join("\n");
 
-  const workDocumentsXml = input.documentos
-    .filter((doc) => isWorkDocumentTipo(doc.tipo_documento))
-    .map((doc) => {
+  const workDocsForXml = sortDocumentsForSaft(
+    input.documentos.filter((doc) => isWorkDocumentTipo(doc.tipo_documento))
+  );
+  const workDocumentsXml = workDocsForXml.map((doc) => {
       const workType = resolveWorkType(doc.tipo_documento);
       const documentNumber = resolveSaftInvoiceNo(doc, workType);
       const sourceId = "KLASSE";
@@ -702,7 +741,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
       assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
       assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
-      const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
+      const customerId = resolveCustomerIdentity(doc).id;
 
       const linesXml = doc.itens
         .map((item) => {
@@ -798,9 +837,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     })
     .join("\n");
 
-  const movementDocumentsXml = input.documentos
-    .filter((doc) => isMovementTipo(doc.tipo_documento))
-    .map((doc) => {
+  const movementDocsForXml = sortDocumentsForSaft(
+    input.documentos.filter((doc) => isMovementTipo(doc.tipo_documento))
+  );
+  const movementDocumentsXml = movementDocsForXml.map((doc) => {
       const movementType = resolveMovementType(doc.tipo_documento);
       const documentNumber = resolveSaftInvoiceNo(doc, movementType);
       const sourceId = "KLASSE";
@@ -811,7 +851,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
       assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
       assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
-      const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
+      const customerId = resolveCustomerIdentity(doc).id;
 
       const linesXml = doc.itens
         .map((item) => {
@@ -888,15 +928,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     })
     .join("\n");
 
-  const paymentsXml = input.documentos
-    .filter((doc) => isPaymentTipo(doc.tipo_documento))
-    .map((doc) => {
+  const paymentDocsForXml = sortDocumentsForSaft(
+    input.documentos.filter((doc) => isPaymentTipo(doc.tipo_documento))
+  );
+  const paymentsXml = paymentDocsForXml.map((doc) => {
       const paymentType = resolvePaymentType(doc.tipo_documento);
       const paymentRefNo = resolveSaftInvoiceNo(doc, paymentType);
       const sourceId = "KLASSE";
       const sourcePayment = resolveSourceBilling(doc.source_billing);
       const paymentStatus = resolvePaymentStatus(doc.status);
-      const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
+      const customerId = resolveCustomerIdentity(doc).id;
       const sourceDocuments = doc.payment_receipt?.sourceDocuments ?? [];
 
       if (sourceDocuments.length === 0) {
@@ -1019,10 +1060,18 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     })
     .join("\n");
 
-  const salesDocs = input.documentos.filter((doc) => isSalesInvoiceTipo(doc.tipo_documento));
-  const workDocs = input.documentos.filter((doc) => isWorkDocumentTipo(doc.tipo_documento));
-  const movementDocs = input.documentos.filter((doc) => isMovementTipo(doc.tipo_documento));
-  const paymentDocs = input.documentos.filter((doc) => isPaymentTipo(doc.tipo_documento));
+  const salesDocs = sortDocumentsForSaft(
+    input.documentos.filter((doc) => isSalesInvoiceTipo(doc.tipo_documento))
+  );
+  const workDocs = sortDocumentsForSaft(
+    input.documentos.filter((doc) => isWorkDocumentTipo(doc.tipo_documento))
+  );
+  const movementDocs = sortDocumentsForSaft(
+    input.documentos.filter((doc) => isMovementTipo(doc.tipo_documento))
+  );
+  const paymentDocs = sortDocumentsForSaft(
+    input.documentos.filter((doc) => isPaymentTipo(doc.tipo_documento))
+  );
 
   if (
     salesDocs.length + workDocs.length + movementDocs.length + paymentDocs.length !==
