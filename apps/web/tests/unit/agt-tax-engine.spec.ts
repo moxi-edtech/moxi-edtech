@@ -45,6 +45,7 @@ function canonicalItem(overrides: Record<string, unknown> = {}) {
     product_code: "ITEM",
     product_number_code: "ITEM",
     tax_profile_code: "IVA_NORMAL_14_AO",
+    tax_profile_version: 1,
     tax_type: "IVA",
     tax_code: "NOR",
     tax_country_region: "AO",
@@ -180,4 +181,48 @@ test("AGT mapper rejects a line without canonical tax profile", () => {
       error instanceof AgtMappingError &&
       error.code === "AGT_MAPPING_TAX_PROFILE_REQUIRED"
   );
+});
+
+
+test("AGT mapper rejects canonical tax profile without frozen version", () => {
+  assert.throws(
+    () =>
+      buildAgtPreparedDocument({
+        document: baseDocument(),
+        items: [canonicalItem({ tax_profile_version: null })],
+        taxRegistrationNumber: "5000000000",
+      }),
+    (error: unknown) =>
+      error instanceof AgtMappingError &&
+      error.code === "AGT_MAPPING_TAX_PROFILE_VERSION_REQUIRED"
+  );
+});
+
+test("AGT mapper preserves unit price precision instead of recalculating fiscal values", () => {
+  const prepared = buildAgtPreparedDocument({
+    document: baseDocument({
+      total_liquido_aoa: 99.99,
+      total_impostos_aoa: 14,
+      total_bruto_aoa: 113.99,
+    }),
+    items: [
+      canonicalItem({
+        quantidade: 3,
+        preco_unit: 33.3333,
+        unit_price_base: 33.3333,
+        total_liquido_aoa: 99.99,
+        total_impostos_aoa: 14,
+        total_liquido_moeda: 99.99,
+        total_impostos_moeda: 14,
+        total_bruto_moeda: 113.99,
+      }),
+    ],
+    taxRegistrationNumber: "5000000000",
+  });
+
+  const line = prepared.document.lines?.[0] as any;
+  assert.equal(line.unitPriceBase, 33.3333);
+  assert.equal(line.unitPrice, 33.3333);
+  assert.equal(line.creditAmount, 99.99);
+  assert.equal(line.taxes[0].taxContribution, 14);
 });
