@@ -588,12 +588,9 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `SAFT_SEMANTIC_ERROR: ProductCode ${code} possui ProductType divergente (${existingProduct.type}/${productType}).`
           );
         }
-        if (
-          existingProduct.description !== description ||
-          existingProduct.numberCode !== numberCode
-        ) {
+        if (existingProduct.numberCode !== numberCode) {
           throw new Error(
-            `SAFT_SEMANTIC_ERROR: ProductCode ${code} possui descrição/código normalizado divergente no período.`
+            `SAFT_SEMANTIC_ERROR: ProductCode ${code} possui ProductNumberCode divergente no período.`
           );
         }
         continue;
