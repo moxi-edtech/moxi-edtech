@@ -332,10 +332,11 @@ export const fiscalSaftExport = inngest.createFunction(
         supabase
           .from("fiscal_documentos")
           .select(
-            "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, status, documento_origem_id, rectifica_documento_id"
+            "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, assinatura_base64, key_version, status, serie_id, documento_origem_id, rectifica_documento_id"
             + ", moeda, taxa_cambio_aoa, payment_mechanism"
           )
           .eq("empresa_id", exportRow.empresa_id)
+          .in("status", ["emitido", "anulado", "rectificado"])
           .gte("invoice_date", exportRow.periodo_inicio)
           .lte("invoice_date", exportRow.periodo_fim)
           .order("invoice_date", { ascending: true })
@@ -358,7 +359,7 @@ export const fiscalSaftExport = inngest.createFunction(
           .from("fiscal_documento_itens")
           .select(
             "documento_id, linha_no, descricao, quantidade, preco_unit, taxa_iva, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa"
-            + ", product_code, product_number_code"
+            + ", product_code, product_number_code, tax_exemption_code, tax_exemption_reason"
           )
           .in("documento_id", documentoIds)
           .order("documento_id", { ascending: true })
@@ -371,6 +372,23 @@ export const fiscalSaftExport = inngest.createFunction(
           const current = itemMap.get(item.documento_id) ?? [];
           current.push(item);
           itemMap.set(item.documento_id, current);
+        }
+      }
+
+      const serieIds = Array.from(new Set(documentoRows.map((doc) => doc.serie_id)));
+      const serieOriginById = new Map<string, string>();
+      if (serieIds.length > 0) {
+        const { data: series, error: seriesError } = await supabase
+          .from("fiscal_series")
+          .select("id, origem_documento")
+          .in("id", serieIds);
+
+        if (seriesError) {
+          throw new Error(seriesError.message || "Falha ao obter origem das séries SAF-T.");
+        }
+
+        for (const serie of series ?? []) {
+          serieOriginById.set(String(serie.id), String(serie.origem_documento ?? "interno"));
         }
       }
 
@@ -439,10 +457,18 @@ export const fiscalSaftExport = inngest.createFunction(
                 total_impostos_aoa: Number(item.total_impostos_aoa),
                 total_bruto_aoa: Number(item.total_bruto_aoa),
                 settlement_amount: settlementAmount,
+                tax_exemption_code: item.tax_exemption_code,
+                tax_exemption_reason: item.tax_exemption_reason,
               };
             }) ?? [],
             };
           })(),
+          assinatura_base64: doc.assinatura_base64,
+          key_version: doc.key_version == null ? null : Number(doc.key_version),
+          source_billing: resolveSourceBillingFromSeriesOrigin(
+            serieOriginById.get(doc.serie_id)
+          ),
+          payment_receipt: parsePaymentReceiptFromPayload(doc.payload),
           order_references: (() => {
             const refs: OrderReference[] = [];
             const sourceId = doc.documento_origem_id ?? doc.rectifica_documento_id;
