@@ -152,6 +152,40 @@ function formatExchangeRate(value: number): string {
   return value.toFixed(8);
 }
 
+function resolveUnitPriceAoa(item: SaftDocumentoItem): number {
+  const quantity = Number(item.quantidade);
+  const net = Number(item.total_liquido_aoa);
+  if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(net) || net < 0) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: linha ${item.linha_no} possui quantidade/líquido inválido.`
+    );
+  }
+  return net / quantity;
+}
+
+function resolveSettlementAmountAoa(
+  item: SaftDocumentoItem,
+  doc: Pick<SaftDocumento, "moeda" | "taxa_cambio_aoa">
+): number | null {
+  if (typeof item.settlement_amount !== "number" || !Number.isFinite(item.settlement_amount)) {
+    return null;
+  }
+  if (item.settlement_amount < 0) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: SettlementAmount negativo na linha ${item.linha_no}.`
+    );
+  }
+  if (doc.moeda.toUpperCase() === "AOA") return item.settlement_amount;
+
+  const exchangeRate = Number(doc.taxa_cambio_aoa);
+  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: taxa de câmbio inválida para SettlementAmount na linha ${item.linha_no}.`
+    );
+  }
+  return item.settlement_amount * exchangeRate;
+}
+
 function resolveSourceBilling(sourceBilling: SaftDocumento["source_billing"]): "P" | "I" | "M" {
   return sourceBilling;
 }
@@ -615,10 +649,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             throw new Error("SAFT_BUILD_ERROR: ProductCode obrigatório em todas as linhas.");
           }
           const productNumberCode = item.product_number_code?.trim() || productCode;
+          const settlementAmountAoa = resolveSettlementAmountAoa(item, doc);
           const settlementAmountXml =
-            typeof item.settlement_amount === "number" && Number.isFinite(item.settlement_amount)
-              ? `            <SettlementAmount>${formatMoney(Math.max(0, item.settlement_amount))}</SettlementAmount>`
-              : "";
+            settlementAmountAoa == null
+              ? ""
+              : `            <SettlementAmount>${formatMoney(settlementAmountAoa)}</SettlementAmount>`;
           const orderReferencesXml =
             Array.isArray(doc.order_references) && doc.order_references.length > 0
               ? doc.order_references
@@ -666,7 +701,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
             `            <Quantity>${item.quantidade}</Quantity>`,
             "            <UnitOfMeasure>UN</UnitOfMeasure>",
-            `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
+            `            <UnitPrice>${formatMoney(resolveUnitPriceAoa(item))}</UnitPrice>`,
             `            <TaxPointDate>${doc.invoice_date}</TaxPointDate>`,
             referencesXml,
             `            <Description>${escapeXml(item.descricao)}</Description>`,
@@ -798,7 +833,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
             `            <Quantity>${item.quantidade}</Quantity>`,
             "            <UnitOfMeasure>UN</UnitOfMeasure>",
-            `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
+            `            <UnitPrice>${formatMoney(resolveUnitPriceAoa(item))}</UnitPrice>`,
             `            <TaxPointDate>${doc.invoice_date}</TaxPointDate>`,
             `            <Description>${escapeXml(item.descricao)}</Description>`,
             `            <CreditAmount>${formatMoney(item.total_liquido_aoa)}</CreditAmount>`,
@@ -888,7 +923,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
             `            <Quantity>${item.quantidade}</Quantity>`,
             "            <UnitOfMeasure>UN</UnitOfMeasure>",
-            `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
+            `            <UnitPrice>${formatMoney(resolveUnitPriceAoa(item))}</UnitPrice>`,
             `            <Description>${escapeXml(item.descricao)}</Description>`,
             `            <CreditAmount>${formatMoney(item.total_liquido_aoa)}</CreditAmount>`,
             "            <Tax>",
