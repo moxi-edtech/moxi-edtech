@@ -239,30 +239,32 @@ async function emitAndSign(params: {
   }
 
   const saftReadiness = getSaftSigningReadiness();
-  const saftPrepareRows = await params.sql<{ result: SaftPrepareResult }[]>\`
-    select public.fiscal_preparar_assinatura_saft(
-      p_documento_id := ${emitResult.documento_id}::uuid,
-      p_hash_control_version := ${saftReadiness.hashControlVersion}
-    ) as result
-  \`;
+  if (saftReadiness.required) {
+    const saftPrepareRows = await params.sql<{ result: SaftPrepareResult }[]>\`
+      select public.fiscal_preparar_assinatura_saft(
+        p_documento_id := ${emitResult.documento_id}::uuid,
+        p_hash_control_version := ${saftReadiness.hashControlVersion}
+      ) as result
+    \`;
 
-  const saftPrepared = saftPrepareRows[0]?.result;
-  if (!saftPrepared?.ok || !saftPrepared.saft_canonical_string) {
-    throw new Error("SAFT_PREPARE_INCONSISTENTE: preparação da assinatura SAF-T falhou.");
-  }
+    const saftPrepared = saftPrepareRows[0]?.result;
+    if (!saftPrepared?.ok || !saftPrepared.saft_canonical_string) {
+      throw new Error("SAFT_PREPARE_INCONSISTENTE: preparação da assinatura SAF-T falhou.");
+    }
 
-  const saftSigned = signSaftCanonicalString(saftPrepared.saft_canonical_string);
-  const saftFinalizeRows = await params.sql<{ result: { ok: boolean } }[]>\`
-    select public.fiscal_finalizar_hash_saft(
-      p_documento_id := ${emitResult.documento_id}::uuid,
-      p_saft_hash := ${saftSigned.hash},
-      p_saft_hash_control := ${saftSigned.hashControlVersion},
-      p_saft_canonical_string := ${saftPrepared.saft_canonical_string}
-    ) as result
-  \`;
+    const saftSigned = signSaftCanonicalString(saftPrepared.saft_canonical_string);
+    const saftFinalizeRows = await params.sql<{ result: { ok: boolean } }[]>\`
+      select public.fiscal_finalizar_hash_saft(
+        p_documento_id := ${emitResult.documento_id}::uuid,
+        p_saft_hash := ${saftSigned.hash},
+        p_saft_hash_control := ${saftSigned.hashControlVersion},
+        p_saft_canonical_string := ${saftPrepared.saft_canonical_string}
+      ) as result
+    \`;
 
-  if (!saftFinalizeRows[0]?.result?.ok) {
-    throw new Error("SAFT_FINALIZE_INCONSISTENTE: finalização da assinatura SAF-T falhou.");
+    if (!saftFinalizeRows[0]?.result?.ok) {
+      throw new Error("SAFT_FINALIZE_INCONSISTENTE: finalização da assinatura SAF-T falhou.");
+    }
   }
 
   const keyRows = await params.sql<{ private_key_ref: string | null }[]>`
