@@ -15,12 +15,17 @@ const empresa = {
   certificadoAgtNumero: null,
 };
 
-const header = {
+const unvalidatedHeader = {
   productId: "KLASSE/MoxiNexa",
   productCompanyTaxId: "5000000001",
   productVersion: "1.0.0",
   taxAccountingBasis: "F" as const,
   softwareCertificateNumber: "0",
+};
+
+const certifiedHeader = {
+  ...unvalidatedHeader,
+  softwareCertificateNumber: "123/AGT/2026",
 };
 
 function invoice(overrides: Record<string, unknown> = {}) {
@@ -43,11 +48,13 @@ function invoice(overrides: Record<string, unknown> = {}) {
     total_liquido_aoa: 100,
     total_impostos_aoa: 14,
     total_bruto_aoa: 114,
-    hash_control: "legacy-hash-control-not-exported",
-    saft_hash: "A".repeat(172),
-    saft_hash_control: 3,
+    hash_control: "fe-hash-control-not-used-in-saft",
+    saft_hash: null,
+    saft_hash_control: null,
+    saft_required: false,
     status: "emitido",
     source_billing: "P" as const,
+    series_sort_key: "TEST",
     order_references: [],
     payment_receipt: null,
     itens: [
@@ -71,7 +78,18 @@ function invoice(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test("SAF-T F exports signed hash, key version, TaxTable and net sales polarity", () => {
+function build(documentos: ReturnType<typeof invoice>[], header = unvalidatedHeader) {
+  return buildSaftAoXml({
+    empresa,
+    periodoInicio: "2026-09-01",
+    periodoFim: "2026-09-30",
+    header,
+    generatedAtIso: "2026-09-27T13:00:00.000Z",
+    documentos,
+  });
+}
+
+test("unvalidated SAF-T uses Hash=0, TaxTable and net sales polarity", () => {
   const ft = invoice();
   const nc = invoice({
     id: "10000000-0000-0000-0000-000000000002",
@@ -81,8 +99,6 @@ test("SAF-T F exports signed hash, key version, TaxTable and net sales polarity"
     total_liquido_aoa: 50,
     total_impostos_aoa: 0,
     total_bruto_aoa: 50,
-    saft_hash: "B".repeat(172),
-    saft_hash_control: 4,
     order_references: [
       {
         reference: "FT TEST/1",
@@ -109,20 +125,14 @@ test("SAF-T F exports signed hash, key version, TaxTable and net sales polarity"
     ],
   });
 
-  const result = buildSaftAoXml({
-    empresa,
-    periodoInicio: "2026-09-01",
-    periodoFim: "2026-09-30",
-    header,
-    generatedAtIso: "2026-09-27T13:00:00.000Z",
-    documentos: [ft, nc],
-  });
+  const result = build([ft, nc]);
 
   assert.match(result.xml, /<CompanyID>RC-TEST-001<\/CompanyID>/);
   assert.match(result.xml, /<ProductCompanyTaxID>5000000001<\/ProductCompanyTaxID>/);
-  assert.match(result.xml, new RegExp(`<Hash>${"A".repeat(172)}<\\/Hash>`));
-  assert.match(result.xml, /<HashControl>3<\/HashControl>/);
-  assert.doesNotMatch(result.xml, /<Hash>legacy-hash-control-not-exported<\/Hash>/);
+  assert.match(result.xml, /<SoftwareValidationNumber>0<\/SoftwareValidationNumber>/);
+  assert.match(result.xml, /<Hash>0<\/Hash>/);
+  assert.match(result.xml, /<HashControl>0<\/HashControl>/);
+  assert.doesNotMatch(result.xml, /fe-hash-control-not-used-in-saft/);
   assert.match(result.xml, /<TaxTable>/);
   assert.match(result.xml, /<TaxCode>NOR<\/TaxCode>/);
   assert.match(result.xml, /<TaxCode>ISE<\/TaxCode>/);
@@ -136,6 +146,29 @@ test("SAF-T F exports signed hash, key version, TaxTable and net sales polarity"
   assert.equal(result.summary.sections.taxTableEntries, 2);
 });
 
+test("validated SAF-T requires the dedicated 172-char hash chain", () => {
+  assert.throws(
+    () => build([invoice()], certifiedHeader),
+    /não pertence a uma cadeia SAF-T validada completa/
+  );
+
+  const hash = "A".repeat(172);
+  const result = build(
+    [
+      invoice({
+        saft_hash: hash,
+        saft_hash_control: 1,
+        saft_required: true,
+      }),
+    ],
+    certifiedHeader
+  );
+
+  assert.match(result.xml, new RegExp(`<Hash>${hash}<\\/Hash>`));
+  assert.match(result.xml, /<HashControl>1<\/HashControl>/);
+  assert.match(result.xml, /<SoftwareValidationNumber>123\/AGT\/2026<\/SoftwareValidationNumber>/);
+});
+
 test("SAF-T RC uses canonical paymentReceipt.sourceDocuments without fiscal item lines", () => {
   const rc = invoice({
     id: "10000000-0000-0000-0000-000000000003",
@@ -146,8 +179,6 @@ test("SAF-T RC uses canonical paymentReceipt.sourceDocuments without fiscal item
     total_liquido_aoa: 100,
     total_impostos_aoa: 14,
     total_bruto_aoa: 114,
-    saft_hash: "C".repeat(172),
-    saft_hash_control: 5,
     itens: [],
     payment_receipt: {
       sourceDocuments: [
@@ -163,14 +194,7 @@ test("SAF-T RC uses canonical paymentReceipt.sourceDocuments without fiscal item
     },
   });
 
-  const { xml, summary } = buildSaftAoXml({
-    empresa,
-    periodoInicio: "2026-09-01",
-    periodoFim: "2026-09-30",
-    header,
-    generatedAtIso: "2026-09-27T13:00:00.000Z",
-    documentos: [rc],
-  });
+  const { xml, summary } = build([rc]);
 
   assert.match(xml, /<Payments>/);
   assert.match(xml, /<OriginatingON>FT TEST\/1<\/OriginatingON>/);
@@ -188,7 +212,7 @@ test("SAF-T rejects accounting basis without a true accounting ledger", () => {
         empresa,
         periodoInicio: "2026-09-01",
         periodoFim: "2026-09-30",
-        header: { ...header, taxAccountingBasis: "C" as never },
+        header: { ...unvalidatedHeader, taxAccountingBasis: "C" as never },
         generatedAtIso: "2026-09-27T13:00:00.000Z",
         documentos: [],
       }),
@@ -205,33 +229,12 @@ test("SAF-T rejects legacy RC without sourceDocuments", () => {
   });
 
   assert.throws(
-    () =>
-      buildSaftAoXml({
-        empresa,
-        periodoInicio: "2026-09-01",
-        periodoFim: "2026-09-30",
-        header,
-        generatedAtIso: "2026-09-27T13:00:00.000Z",
-        documentos: [legacyRc],
-      }),
+    () => build([legacyRc]),
     /não possui paymentReceipt\.sourceDocuments/
   );
 });
 
-test("SAF-T rejects unsigned documents and zero VAT without Mxx evidence", () => {
-  assert.throws(
-    () =>
-      buildSaftAoXml({
-        empresa,
-        periodoInicio: "2026-09-01",
-        periodoFim: "2026-09-30",
-        header,
-        generatedAtIso: "2026-09-27T13:00:00.000Z",
-        documentos: [invoice({ saft_hash: null })],
-      }),
-    /sem saft_hash\/saft_hash_control válido/
-  );
-
+test("SAF-T rejects zero VAT without Mxx evidence", () => {
   const invalidExempt = invoice({
     total_liquido_aoa: 100,
     total_impostos_aoa: 0,
@@ -249,19 +252,17 @@ test("SAF-T rejects unsigned documents and zero VAT without Mxx evidence", () =>
   });
 
   assert.throws(
-    () =>
-      buildSaftAoXml({
-        empresa,
-        periodoInicio: "2026-09-01",
-        periodoFim: "2026-09-30",
-        header,
-        generatedAtIso: "2026-09-27T13:00:00.000Z",
-        documentos: [invalidExempt],
-      }),
+    () => build([invalidExempt]),
     /IVA 0 exige TaxExemptionCode Mxx/
   );
 });
 
+test("SAF-T rejects document totals that do not reconcile with lines", () => {
+  assert.throws(
+    () => build([invoice({ total_bruto_aoa: 999 })]),
+    /GrossTotal divergente/
+  );
+});
 
 test("SAF-T orders SourceDocuments by type, series and sequential number", () => {
   const docs = [
@@ -285,14 +286,7 @@ test("SAF-T orders SourceDocuments by type, series and sequential number", () =>
     }),
   ];
 
-  const { xml } = buildSaftAoXml({
-    empresa,
-    periodoInicio: "2026-09-01",
-    periodoFim: "2026-09-30",
-    header,
-    generatedAtIso: "2026-09-27T13:00:00.000Z",
-    documentos: docs,
-  });
+  const { xml } = build(docs);
 
   const a1 = xml.indexOf("<InvoiceNo>FT A/1</InvoiceNo>");
   const a2 = xml.indexOf("<InvoiceNo>FT A/2</InvoiceNo>");
