@@ -53,6 +53,8 @@ export default function FiscalRetificarPage() {
   const docId = params?.docId as string;
   
   const [doc, setDoc] = useState<FiscalDoc | null>(null);
+  const [docs, setDocs] = useState<FiscalDoc[]>([]);
+  const [correctionDocumentId, setCorrectionDocumentId] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
@@ -80,7 +82,9 @@ export default function FiscalRetificarPage() {
           return;
         }
 
-        const found = (json.data?.docs ?? []).find((item) => item.id === docId) ?? null;
+        const loadedDocs = json.data?.docs ?? [];
+        setDocs(loadedDocs);
+        const found = loadedDocs.find((item) => item.id === docId) ?? null;
         if (!found) {
           setErrorMessage("Documento fiscal não encontrado para retificação.");
           return;
@@ -103,11 +107,27 @@ export default function FiscalRetificarPage() {
     };
   }, [escolaId, docId]);
 
+  const correctionCandidates = useMemo(
+    () =>
+      docs.filter(
+        (item) =>
+          item.id !== docId &&
+          item.status === "EMITIDO" &&
+          (
+            (item.tipo_documento === "NC" && item.rectifica_documento_id === docId) ||
+            (item.tipo_documento === "ND" && item.documento_origem_id === docId) ||
+            (item.agt_document_status === "C" && item.agt_rejected_document_id === docId)
+          )
+      ),
+    [docs, docId]
+  );
+
   const motivoInvalido = useMemo(() => motivo.trim().length < 10, [motivo]);
+  const formularioInvalido = motivoInvalido || !correctionDocumentId;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting || motivoInvalido || !docId || !escolaId) return;
+    if (submitting || formularioInvalido || !docId || !escolaId) return;
 
     setSubmitting(true);
     try {
@@ -116,6 +136,7 @@ export default function FiscalRetificarPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           motivo: motivo.trim(),
+          correction_document_id: correctionDocumentId,
           metadata: {
             origem: "ui_retificacao_fiscal",
           },
@@ -209,6 +230,34 @@ export default function FiscalRetificarPage() {
 
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
+              <label htmlFor="documento-correctivo" className="text-sm font-medium text-slate-700">
+                Documento correctivo emitido
+              </label>
+              <select
+                id="documento-correctivo"
+                value={correctionDocumentId}
+                onChange={(event) => setCorrectionDocumentId(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20"
+              >
+                <option value="">Seleccione a NC, ND ou correcção AGT</option>
+                {correctionCandidates.map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    {candidate.tipo_documento ?? "DOC"} · {candidate.numero}
+                  </option>
+                ))}
+              </select>
+              {correctionCandidates.length === 0 ? (
+                <p className="text-xs text-amber-700">
+                  Ainda não existe documento correctivo emitido para este documento. Emita primeiro a NC/ND ou a correcção AGT e volte aqui para fechar a rectificação.
+                </p>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  O documento original só muda para RETIFICADO depois de existir um correctivo válido.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <label htmlFor="motivo-retificacao" className="text-sm font-medium text-slate-700">
                 Motivo da Retificação
               </label>
@@ -226,7 +275,7 @@ export default function FiscalRetificarPage() {
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={motivoInvalido || submitting}
+                disabled={formularioInvalido || submitting}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#18542e] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
