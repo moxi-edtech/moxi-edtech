@@ -7,6 +7,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { emitirEvento } from "@/lib/eventos/emitirEvento";
 import {
   emitirDocumentoFiscalViaAdapter,
+  isFiscalEngineEnabledForSchool,
   resolveEmpresaFiscalAtiva,
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Json } from "~types/supabase";
@@ -135,6 +136,8 @@ export async function POST(req: Request) {
     });
     if (roleError) return roleError;
 
+    const fiscalEnabled = await isFiscalEngineEnabledForSchool(escolaId);
+
     if (mensalidade?.status === "pago") {
       return NextResponse.json({ ok: true, mensagem: "Mensalidade já paga." });
     }
@@ -176,7 +179,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Valor inválido." }, { status: 400 });
     }
 
-    if (mensalidade) {
+    if (fiscalEnabled && mensalidade) {
       const expected = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
       const paidBefore = Number(mensalidade.valor_pago_total ?? 0);
       const outstanding = Math.max(0, Number((expected - paidBefore).toFixed(2)));
@@ -270,6 +273,33 @@ export async function POST(req: Request) {
     const pagamentoStatus = String(
       (pagamento as { status?: string } | null)?.status ?? ""
     );
+
+    if (!fiscalEnabled) {
+      recordAuditServer({
+        escolaId,
+        portal: "financeiro",
+        acao: "PAGAMENTO_REGISTRADO_SEM_FISCAL",
+        entity: "pagamento",
+        entityId: pagamentoId,
+        details: {
+          valor,
+          metodo,
+          mensalidade_id: mensalidade?.id ?? null,
+          fiscal_enabled: false,
+        },
+      }).catch(() => null);
+
+      return NextResponse.json({
+        ok: true,
+        data: pagamento,
+        fiscal: {
+          ok: true,
+          enabled: false,
+          skipped: true,
+        },
+        status_fiscal: "not_enabled",
+      });
+    }
 
     if (!["settled", "concluido", "pago"].includes(pagamentoStatus)) {
       recordAuditServer({
