@@ -63,8 +63,8 @@ type SaftDocumento = {
   total_impostos_aoa: number;
   total_bruto_aoa: number;
   hash_control: string;
-  assinatura_base64: string | null;
-  key_version: number | null;
+  saft_hash: string | null;
+  saft_hash_control: number | null;
   status: string;
   source_billing: "P" | "I" | "M";
   order_references?: SaftOrderReference[];
@@ -301,17 +301,19 @@ function isDebitSalesDocument(tipoDocumento: string): boolean {
 }
 
 function resolveSignedHash(doc: SaftDocumento): { hash: string; hashControl: string } {
-  const hash = doc.assinatura_base64?.trim();
-  const keyVersion = Number(doc.key_version);
-  if (!hash || !Number.isInteger(keyVersion) || keyVersion <= 0) {
+  const hash = doc.saft_hash?.trim();
+  const hashControl = Number(doc.saft_hash_control);
+  const validHash = hash === "0" || hash?.length === 172;
+
+  if (!validHash || !Number.isInteger(hashControl) || hashControl < 0) {
     throw new Error(
-      `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} sem assinatura fiscal/key_version válida.`
+      `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} sem saft_hash/saft_hash_control válido.`
     );
   }
 
   return {
-    hash,
-    hashControl: String(keyVersion),
+    hash: hash!,
+    hashControl: String(hashControl),
   };
 }
 
