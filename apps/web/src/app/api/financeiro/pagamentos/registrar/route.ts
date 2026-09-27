@@ -10,6 +10,7 @@ import {
   resolveEmpresaFiscalAtiva,
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Json } from "~types/supabase";
+import { emitFiscalReceiptForPayment } from "@/lib/fiscal/fiscalPaymentReceipt";
 import {
   AcademicYearContextError,
   assertAcademicYearEntity,
@@ -34,13 +35,13 @@ const payloadSchema = z.object({
 const normalizeMetodo = (raw: string) => {
   const value = raw.toLowerCase().trim();
   if (["cash", "tpa", "transfer", "mcx", "kiwk", "kwik"].includes(value)) {
-    return value === "kwik" ? "kiwk" : value;
+    return value === "kiwk" ? "kwik" : value;
   }
   if (value === "numerario" || value === "dinheiro") return "cash";
   if (value === "multicaixa" || value === "tpa_fisico" || value === "tpa") return "tpa";
   if (value === "transferencia") return "transfer";
   if (value === "mcx_express" || value === "mbway" || value === "referencia") return "mcx";
-  if (value === "kwik") return "kiwk";
+  if (value === "kwik") return "kwik";
   return "cash";
 };
 
@@ -204,10 +205,130 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
+    const pagamentoId = (pagamento as { id?: string } | null)?.id ?? null;
+    const pagamentoStatus = String(
+      (pagamento as { status?: string } | null)?.status ?? ""
+    );
+
+    if (!["settled", "concluido", "pago"].includes(pagamentoStatus)) {
+      recordAuditServer({
+        escolaId,
+        portal: "financeiro",
+        acao: "PAGAMENTO_PENDENTE_VALIDACAO",
+        entity: "pagamento",
+        entityId: pagamentoId,
+        details: {
+          valor,
+          metodo,
+          mensalidade_id: mensalidade?.id ?? null,
+          status: pagamentoStatus,
+        },
+      }).catch(() => null);
+
+      return NextResponse.json({
+        ok: true,
+        data: pagamento,
+        fiscal: {
+          ok: false,
+          pending_validation: true,
+          error: "Documento fiscal será emitido somente após a liquidação do pagamento.",
+        },
+        status_fiscal: "awaiting_payment_validation",
+      });
+    }
+
+    let sourceAllocation:
+      | { fiscal_documento_origem_id?: string | null }
+      | null = null;
+
+    if (pagamentoId) {
+      const { data: allocation, error: allocationError } = await supabase
+        .from("financeiro_pagamento_alocacoes")
+        .select("fiscal_documento_origem_id")
+        .eq("pagamento_id", pagamentoId)
+        .eq("natureza", "aplicacao")
+        .maybeSingle();
+
+      if (allocationError) throw allocationError;
+      sourceAllocation = allocation as
+        | { fiscal_documento_origem_id?: string | null }
+        | null;
+    }
+
+    if (pagamentoId && sourceAllocation?.fiscal_documento_origem_id) {
+      try {
+        const receipt = await emitFiscalReceiptForPayment(pagamentoId);
+
+        recordAuditServer({
+          escolaId,
+          portal: "financeiro",
+          acao: "PAGAMENTO_REGISTRADO_RC",
+          entity: "pagamento",
+          entityId: pagamentoId,
+          details: {
+            valor,
+            metodo,
+            mensalidade_id: mensalidade?.id ?? null,
+            fiscal_documento_origem_id:
+              sourceAllocation.fiscal_documento_origem_id,
+            recibo_documento_id: receipt.documento_id,
+          },
+        }).catch(() => null);
+
+        return NextResponse.json({
+          ok: true,
+          data: pagamento,
+          fiscal: {
+            ok: true,
+            tipo_documento: "RC",
+            documento_id: receipt.documento_id,
+            numero_formatado: receipt.numero_formatado,
+            agt_submission: receipt.agt_submission,
+          },
+          status_fiscal: "ok",
+        });
+      } catch (receiptError) {
+        const fiscalMessage =
+          receiptError instanceof Error
+            ? receiptError.message
+            : "Falha ao emitir RC fiscal.";
+
+        await supabase
+          .from("pagamentos")
+          .update({
+            status_fiscal: "pending",
+            fiscal_error: fiscalMessage,
+          })
+          .eq("id", pagamentoId);
+
+        recordAuditServer({
+          escolaId,
+          portal: "financeiro",
+          acao: "PAGAMENTO_RC_PENDENTE",
+          entity: "pagamento",
+          entityId: pagamentoId,
+          details: {
+            valor,
+            metodo,
+            mensalidade_id: mensalidade?.id ?? null,
+            fiscal_documento_origem_id:
+              sourceAllocation.fiscal_documento_origem_id,
+            fiscal_error: fiscalMessage,
+          },
+        }).catch(() => null);
+
+        return NextResponse.json({
+          ok: true,
+          data: pagamento,
+          fiscal: { ok: false, error: fiscalMessage, tipo_documento: "RC" },
+          status_fiscal: "pending",
+        });
+      }
+    }
+
     const origin = new URL(req.url).origin;
     const cookieHeader = req.headers.get("cookie");
-    const pagamentoId = (pagamento as { id?: string } | null)?.id ?? null;
-    const origemId = String((pagamento as { id?: string } | null)?.id ?? idempotencyKey);
+    const origemId = String(pagamentoId ?? idempotencyKey);
     const empresaFiscalId = await resolveEmpresaFiscalAtiva({
       origin,
       escolaId,
