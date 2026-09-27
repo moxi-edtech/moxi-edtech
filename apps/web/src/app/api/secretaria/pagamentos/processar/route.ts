@@ -31,6 +31,17 @@ function emptyStringToNull(value: string | null | undefined): string | null {
 
 /** Compatibility endpoint kept for the Secretaria Balcão contract used by older clients. */
 export async function POST(request: Request) {
+  const idempotencyKey =
+    request.headers.get("Idempotency-Key") ??
+    request.headers.get("idempotency-key");
+
+  if (!idempotencyKey) {
+    return NextResponse.json(
+      { ok: false, error: "Idempotency-Key header é obrigatório" },
+      { status: 400 }
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = legacyPayloadSchema.safeParse(body);
   if (!parsed.success) {
