@@ -137,9 +137,26 @@ export async function registerAgtInvoices(input: {
     numberOfEntries: documents.length,
     documents,
   };
-  const responsePayload = (await postAgt("registarFactura", requestPayload)) as
-    | { requestID?: string; errorList?: unknown[] }
-    | null;
+  let responsePayload: { requestID?: string; errorList?: unknown[] } | null = null;
+  try {
+    responsePayload = (await postAgt("registarFactura", requestPayload)) as
+      | { requestID?: string; errorList?: unknown[] }
+      | null;
+  } catch (error) {
+    if (error instanceof AgtHttpError) {
+      const duplicatePayload =
+        error.payload && typeof error.payload === "object"
+          ? (error.payload as { requestID?: string; errorList?: unknown[] })
+          : null;
+      if (duplicatePayload?.requestID) {
+        responsePayload = duplicatePayload;
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
   const requestID = String(responsePayload?.requestID ?? "").trim();
   if (!requestID || requestID.length > 15) {
     throw new AgtHttpError(
