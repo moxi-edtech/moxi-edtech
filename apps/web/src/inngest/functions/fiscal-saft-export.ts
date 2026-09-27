@@ -46,6 +46,7 @@ type FiscalDocumentoRow = {
   serie_id: string;
   documento_origem_id: string | null;
   rectifica_documento_id: string | null;
+  created_by: string | null;
 };
 
 type FiscalDocumentoEventoRow = {
@@ -53,6 +54,7 @@ type FiscalDocumentoEventoRow = {
   tipo_evento: string;
   payload: Json | null;
   created_at: string;
+  created_by: string | null;
 };
 
 type FiscalDocumentoItemRow = {
@@ -273,6 +275,11 @@ function resolveSaftHeaderConfig() {
   };
 }
 
+function resolveSaftSourceId(userId: string | null | undefined) {
+  const compact = String(userId ?? "").replace(/-/g, "").trim();
+  return compact ? `U${compact.slice(0, 29)}` : "KLASSE-SYSTEM";
+}
+
 function parsePaymentMechanism(value: string | null) {
   if (!value) return null;
   const normalized = value.trim().toUpperCase();
@@ -370,7 +377,7 @@ export const fiscalSaftExport = inngest.createFunction(
         supabase
           .from("fiscal_documentos")
           .select(
-            "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, saft_hash, saft_hash_control, saft_required, status, serie_id, documento_origem_id, rectifica_documento_id"
+            "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, saft_hash, saft_hash_control, saft_required, status, serie_id, documento_origem_id, rectifica_documento_id, created_by"
             + ", moeda, taxa_cambio_aoa, payment_mechanism"
           )
           .eq("empresa_id", exportRow.empresa_id)
@@ -415,12 +422,12 @@ export const fiscalSaftExport = inngest.createFunction(
 
       const cancellationByDocumentId = new Map<
         string,
-        { created_at: string; motivo: string | null }
+        { created_at: string; motivo: string | null; created_by: string | null }
       >();
       if (documentoIds.length > 0) {
         const { data: cancellationEvents, error: cancellationEventsError } = await supabase
           .from("fiscal_documentos_eventos")
-          .select("documento_id, tipo_evento, payload, created_at")
+          .select("documento_id, tipo_evento, payload, created_at, created_by")
           .in("documento_id", documentoIds)
           .eq("tipo_evento", "ANULADO")
           .order("created_at", { ascending: false })
@@ -446,6 +453,7 @@ export const fiscalSaftExport = inngest.createFunction(
           cancellationByDocumentId.set(event.documento_id, {
             created_at: event.created_at,
             motivo,
+            created_by: event.created_by,
           });
         }
       }
@@ -569,6 +577,10 @@ export const fiscalSaftExport = inngest.createFunction(
             cancellationByDocumentId.get(doc.id)?.created_at ?? null,
           status_reason:
             cancellationByDocumentId.get(doc.id)?.motivo ?? null,
+          source_id: resolveSaftSourceId(doc.created_by),
+          status_source_id: resolveSaftSourceId(
+            cancellationByDocumentId.get(doc.id)?.created_by ?? doc.created_by
+          ),
           source_billing: resolveSourceBilling(
             serieById.get(doc.serie_id)?.origem_documento,
             doc.payload
