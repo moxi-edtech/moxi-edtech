@@ -506,8 +506,18 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const invoiceType = resolveSalesInvoiceType(doc.tipo_documento);
       const invoiceNo = resolveSaftInvoiceNo(doc, invoiceType);
       const sourceId = "KLASSE";
-      const sourceBilling = resolveSourceBillingFromStatus(doc.status);
+      const sourceBilling = resolveSourceBilling(doc.source_billing);
       const invoiceStatus = resolveInvoiceStatus(doc.status);
+      const signedHash = resolveSignedHash(doc);
+      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
+      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
+      assertMoneyClose(
+        `${doc.numero_formatado} GrossTotal`,
+        Number(doc.total_liquido_aoa) + Number(doc.total_impostos_aoa),
+        Number(doc.total_bruto_aoa)
+      );
 
       const linesXml = doc.itens
         .map((item) => {
@@ -571,13 +581,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `            <TaxPointDate>${doc.invoice_date}</TaxPointDate>`,
             referencesXml,
             `            <Description>${escapeXml(item.descricao)}</Description>`,
-            `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
+            isDebitSalesDocument(doc.tipo_documento)
+              ? `            <DebitAmount>${formatMoney(item.total_liquido_aoa)}</DebitAmount>`
+              : `            <CreditAmount>${formatMoney(item.total_liquido_aoa)}</CreditAmount>`,
             "            <Tax>",
             "              <TaxType>IVA</TaxType>",
             "              <TaxCountryRegion>AO</TaxCountryRegion>",
             `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
             `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
             "            </Tax>",
+            buildTaxExemptionXml(item, "            "),
             settlementAmountXml,
             "          </Line>",
           ].join("\n");
@@ -624,8 +637,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `            <SourceID>${sourceId}</SourceID>`,
         `            <SourceBilling>${sourceBilling}</SourceBilling>`,
         "          </DocumentStatus>",
-        `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
-        `          <HashControl>${escapeXml(doc.hash_control)}</HashControl>`,
+        `          <Hash>${escapeXml(signedHash.hash)}</Hash>`,
+        `          <HashControl>${escapeXml(signedHash.hashControl)}</HashControl>`,
         `          <InvoiceDate>${doc.invoice_date}</InvoiceDate>`,
         `          <InvoiceType>${escapeXml(invoiceType)}</InvoiceType>`,
         "          <SpecialRegimes>",
@@ -655,7 +668,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const workType = resolveWorkType(doc.tipo_documento);
       const documentNumber = resolveSaftInvoiceNo(doc, workType);
       const sourceId = "KLASSE";
-      const sourceBilling = resolveSourceBillingFromStatus(doc.status);
+      const sourceBilling = resolveSourceBilling(doc.source_billing);
       const workStatus = resolveWorkStatus(doc.status);
       const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
 
@@ -758,7 +771,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const movementType = resolveMovementType(doc.tipo_documento);
       const documentNumber = resolveSaftInvoiceNo(doc, movementType);
       const sourceId = "KLASSE";
-      const sourceBilling = resolveSourceBillingFromStatus(doc.status);
+      const sourceBilling = resolveSourceBilling(doc.source_billing);
       const movementStatus = resolveMovementStatus(doc.status);
       const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
 
@@ -842,7 +855,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const paymentType = resolvePaymentType(doc.tipo_documento);
       const paymentRefNo = resolveSaftInvoiceNo(doc, paymentType);
       const sourceId = "KLASSE";
-      const sourcePayment = resolveSourceBillingFromStatus(doc.status);
+      const sourcePayment = resolveSourceBilling(doc.source_billing);
       const paymentStatus = resolvePaymentStatus(doc.status);
       const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
 
