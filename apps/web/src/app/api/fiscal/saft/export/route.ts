@@ -21,7 +21,9 @@ type JsonRecord = Record<string, unknown>;
 type RouteSupabase = SupabaseClient<Database>;
 type SaftHeaderConfig = {
   productId: string;
-  taxAccountingBasis: "F" | "C";
+  productCompanyTaxId: string;
+  productVersion: string;
+  taxAccountingBasis: "F";
   softwareCertificateNumber: string;
 };
 
@@ -155,28 +157,43 @@ const SAFT_HISTORY_STATUS_FILTERS = ["COMPLETED", "FAILED", "PROCESSING"] as con
 type SaftHistoryStatusFilter = (typeof SAFT_HISTORY_STATUS_FILTERS)[number];
 
 function resolveSaftHeaderConfig(): SaftHeaderConfig {
-  const productIdRaw = (process.env.SAFT_PRODUCT_ID ?? "").trim();
-  const taxAccountingBasisRaw = (process.env.SAFT_TAX_ACCOUNTING_BASIS ?? "F").trim().toUpperCase();
-  const softwareCertificateNumberRaw = (process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER ?? "0").trim();
+  const productId = (process.env.SAFT_PRODUCT_ID ?? "").trim();
+  const productCompanyTaxId =
+    (process.env.SAFT_PRODUCT_COMPANY_TAX_ID ?? "").trim();
+  const productVersion = (process.env.SAFT_PRODUCT_VERSION ?? "1.0.0").trim();
+  const taxAccountingBasis =
+    (process.env.SAFT_TAX_ACCOUNTING_BASIS ?? "F").trim().toUpperCase();
+  const softwareCertificateNumber =
+    (process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER ?? "0").trim();
 
-  if (!productIdRaw || !productIdRaw.includes("/")) {
+  if (!productId || !productId.includes("/")) {
     throw new Error(
       "SAFT_PRODUCT_ID inválido. Use o formato 'NomeAplicacao/NomeProdutorSoftware'."
     );
   }
-
-  if (taxAccountingBasisRaw !== "F" && taxAccountingBasisRaw !== "C") {
-    throw new Error("SAFT_TAX_ACCOUNTING_BASIS inválido. Use 'F' (Facturação) ou 'C' (Contabilidade).");
+  if (taxAccountingBasis !== "F") {
+    throw new Error(
+      "SAFT_ACCOUNTING_NOT_SUPPORTED: o KLASSE exporta SAF-T de Facturação (F); C/I exige razão contabilístico de dupla entrada."
+    );
   }
-
-  if (!/^\d+$/.test(softwareCertificateNumberRaw)) {
-    throw new Error("SAFT_SOFTWARE_CERTIFICATE_NUMBER inválido. Use apenas dígitos (ex.: 0).");
+  if (productCompanyTaxId.length < 10 || productCompanyTaxId.length > 20) {
+    throw new Error("SAFT_PRODUCT_COMPANY_TAX_ID inválido ou ausente.");
+  }
+  if (!productVersion || productVersion.length > 30) {
+    throw new Error("SAFT_PRODUCT_VERSION inválido.");
+  }
+  if (!/^\d+\/AGT\/\d{4}$|^0$/.test(softwareCertificateNumber)) {
+    throw new Error(
+      "SAFT_SOFTWARE_CERTIFICATE_NUMBER inválido. Use '0' ou NNN/AGT/AAAA."
+    );
   }
 
   return {
-    productId: productIdRaw,
-    taxAccountingBasis: taxAccountingBasisRaw,
-    softwareCertificateNumber: softwareCertificateNumberRaw,
+    productId,
+    productCompanyTaxId,
+    productVersion,
+    taxAccountingBasis: "F",
+    softwareCertificateNumber,
   };
 }
 
@@ -352,7 +369,7 @@ export async function POST(req: Request) {
 
     const { data: empresa, error: empresaError } = await supabase
       .from("fiscal_empresas")
-      .select("id")
+      .select("id, endereco, metadata")
       .eq("id", body.empresa_id)
       .maybeSingle();
 
@@ -370,6 +387,40 @@ export async function POST(req: Request) {
         request_id: requestId,
         empresa_id: body.empresa_id,
       });
+    }
+
+    try {
+      resolveSaftHeaderConfig();
+    } catch (configError) {
+      return jsonError(
+        409,
+        "FISCAL_SAFT_RUNTIME_CONFIG_INCOMPLETE",
+        configError instanceof Error ? configError.message : String(configError),
+        { request_id: requestId, empresa_id: body.empresa_id }
+      );
+    }
+
+    const companyMetadata =
+      empresa.metadata && typeof empresa.metadata === "object" && !Array.isArray(empresa.metadata)
+        ? (empresa.metadata as Record<string, unknown>)
+        : {};
+    const missingCompanyFields = [
+      !empresa.endereco ? "endereco" : null,
+      !String(companyMetadata.registo_comercial ?? "").trim() ? "registo_comercial" : null,
+      !String(companyMetadata.cidade ?? "").trim() ? "cidade" : null,
+    ].filter((value): value is string => Boolean(value));
+
+    if (missingCompanyFields.length > 0) {
+      return jsonError(
+        409,
+        "FISCAL_SAFT_COMPANY_PROFILE_INCOMPLETE",
+        "Perfil fiscal incompleto para gerar SAF-T(AO).",
+        {
+          request_id: requestId,
+          empresa_id: body.empresa_id,
+          missing_fields: missingCompanyFields,
+        }
+      );
     }
 
     const arquivoStoragePath = [
