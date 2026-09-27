@@ -27,9 +27,10 @@ Os trabalhos estão empilhados, não independentes:
 - PR #119 — BILL-006 — Facturação Electrónica AGT/outbox
 - PR #120 — BILL-007 — pagamentos/ledger/RC
 - PR #121 — BILL-008 — SAF-T(AO) semântico
-- BILL-009 continua em `fix/bill-009-tax-engine-vat`
+- PR #122 — BILL-009 — motor fiscal/IVA
+- PR #125 — BILL-010 — ciclo documental
 
-Os PRs #118–121 estão abertos e foram criados em sequência. Não perder essa ordem ao fazer merge/rebase.
+Os trabalhos fiscais são empilhados. Não perder a ordem de dependência ao fazer merge/rebase.
 
 ---
 
@@ -352,16 +353,16 @@ Comece em:
 
 `fix/bill-010-document-lifecycle`
 
-Não recrie BILL-009 ou BILL-010 do zero. O próximo gap é BILL-011.
+Não recrie BILL-009 ou BILL-010. O próximo gap é **BILL-011**.
 
 Primeiro execute:
 
-- diff branch vs BILL-008;
-- migrations BILL-009 Git vs Supabase live;
-- testes fiscais existentes;
-- advisors;
-- search de todos os callers que calculam `taxa_iva`, `tax_code`, `tax_exemption_code`, `settlement_amount`, `unit_price_base` e `taxa_cambio_aoa`.
+- diff de `fix/bill-010-document-lifecycle` contra a base fiscal anterior;
+- inventário de RLS/policies nas tabelas fiscal/financeiro;
+- inventário de grants de `anon`, `authenticated` e `service_role`;
+- inventário de todos os SECURITY DEFINER e respectivos EXECUTE;
+- testes cross-tenant positivos/negativos por empresa e escola;
+- auditoria de storage fiscal/signed URLs/KMS refs;
+- advisors de segurança e performance.
 
-Depois feche os gaps do BILL-009 segundo os critérios acima.
-
-Se durante o trabalho surgir requisito de alterar um documento fiscal já emitido, pare esse caminho e mova-o para BILL-010. Não mutar histórico para fazer teste passar.
+Depois feche apenas os gaps do BILL-011. Não reabra invariantes de BILL-010 sem evidência concreta e não mutar histórico fiscal emitido.
