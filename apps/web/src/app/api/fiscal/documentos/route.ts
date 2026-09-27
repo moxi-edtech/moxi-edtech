@@ -77,6 +77,10 @@ type FiscalSerieLookup = {
   origem_documento: string;
   ativa: boolean;
   descontinuada_em: string | null;
+  agt_status?: string | null;
+  agt_series_code?: string | null;
+  series_year?: number | null;
+  series_contingency_indicator?: string | null;
 };
 
 type FiscalKmsKeyLookup = {
@@ -465,8 +469,8 @@ export async function POST(req: Request) {
       p_empresa_id: input.empresa_id,
       p_serie_id: semanticSeries.data.id,
       p_tipo_documento: input.tipo_documento,
-      p_prefixo_serie: input.prefixo_serie,
-      p_origem_documento: input.origem_documento,
+      p_prefixo_serie: semanticSeries.data.prefixo,
+      p_origem_documento: semanticSeries.data.origem_documento,
       p_cliente: input.cliente as Json,
       p_invoice_date: input.invoice_date,
       p_moeda: input.moeda,
@@ -663,6 +667,67 @@ async function resolveSerieSemantica({
   escolaId: string | null;
   requestId: string;
 }) {
+  const invoiceYear = Number(input.invoice_date.slice(0, 4));
+  const contingencyIndicator =
+    input.origem_documento === "contingencia" ? "C" : "N";
+  const seriesClient = supabase as any;
+
+  const { data: agtData, error: agtError } = await seriesClient
+    .from("fiscal_series")
+    .select(
+      "id, empresa_id, tipo_documento, prefixo, origem_documento, ativa, descontinuada_em, agt_status, agt_series_code, series_year, series_contingency_indicator"
+    )
+    .eq("empresa_id", input.empresa_id)
+    .eq("tipo_documento", input.tipo_documento)
+    .eq("agt_status", "provisioned")
+    .eq("series_year", invoiceYear)
+    .eq("series_contingency_indicator", contingencyIndicator)
+    .eq("ativa", true)
+    .is("descontinuada_em", null)
+    .order("agt_provisioned_at", { ascending: false })
+    .limit(2);
+
+  if (agtError) {
+    return {
+      ok: false as const,
+      status: 500,
+      code: "SERIE_AGT_LOOKUP_FAILED",
+      message: agtError.message || "Falha ao resolver série AGT provisionada.",
+      details: {
+        request_id: requestId,
+        escola_id: escolaId,
+        empresa_id: input.empresa_id,
+        tipo_documento: input.tipo_documento,
+        series_year: invoiceYear,
+        contingency_indicator: contingencyIndicator,
+      },
+    };
+  }
+
+  const agtRows = (agtData ?? []) as FiscalSerieLookup[];
+  if (agtRows.length === 1) {
+    return { ok: true as const, data: agtRows[0] };
+  }
+
+  if (agtRows.length > 1) {
+    return {
+      ok: false as const,
+      status: 409,
+      code: "SERIE_AGT_AMBIGUA",
+      message: "Mais de uma série AGT activa corresponde ao tipo, ano e regime informados.",
+      details: {
+        request_id: requestId,
+        empresa_id: input.empresa_id,
+        tipo_documento: input.tipo_documento,
+        series_year: invoiceYear,
+        contingency_indicator: contingencyIndicator,
+      },
+    };
+  }
+
+  // Transitional fallback for pre-existing fiscal data. New series cannot be
+  // created locally anymore; this fallback exists only so historical/pilot
+  // tenants are not hard-broken before their AGT series is provisioned.
   const { data, error } = await supabase
     .from("fiscal_series")
     .select("id, empresa_id, tipo_documento, prefixo, origem_documento, ativa, descontinuada_em")
@@ -691,20 +756,20 @@ async function resolveSerieSemantica({
     };
   }
 
-  const rows = ((data ?? []) as FiscalSerieLookup[]);
+  const rows = (data ?? []) as FiscalSerieLookup[];
   if (rows.length === 0) {
     return {
       ok: false as const,
-      status: 404,
-      code: "SERIE_NAO_ENCONTRADA",
-      message: "Nenhuma série activa encontrada para a combinação semântica informada.",
+      status: 409,
+      code: "AGT_SERIES_REQUIRED",
+      message:
+        "Nenhuma série AGT provisionada ou série legada compatível foi encontrada. Provisione a série na AGT antes da emissão.",
       details: {
         request_id: requestId,
         escola_id: escolaId,
         empresa_id: input.empresa_id,
         tipo_documento: input.tipo_documento,
-        prefixo_serie: input.prefixo_serie,
-        origem_documento: input.origem_documento,
+        series_year: invoiceYear,
       },
     };
   }
@@ -714,7 +779,7 @@ async function resolveSerieSemantica({
       ok: false as const,
       status: 409,
       code: "SERIE_AMBIGUA",
-      message: "Mais de uma série activa corresponde ao contrato semântico informado.",
+      message: "Mais de uma série legada activa corresponde ao contrato semântico informado.",
       details: {
         request_id: requestId,
         escola_id: escolaId,
