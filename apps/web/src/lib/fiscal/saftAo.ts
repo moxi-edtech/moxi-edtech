@@ -322,6 +322,12 @@ function resolveSaftInvoiceNo(doc: SaftDocumento, invoiceType: string): string {
 }
 
 export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput {
+  if (input.header.taxAccountingBasis !== "F") {
+    throw new Error(
+      "SAFT_SEMANTIC_ERROR: KLASSE exporta SAF-T de Facturação (F). SAF-T contabilístico C/I exige plano de contas e movimentos de dupla entrada, inexistentes no módulo escolar."
+    );
+  }
+
   const empresaNif = input.empresa.nif.trim();
   if (empresaNif.length < 10 || empresaNif.length > 15) {
     throw new Error(
@@ -337,7 +343,23 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const companyAddressDetail = input.empresa.endereco?.trim() || DESCONHECIDO;
   const softwareValidationNumber = /^\d+\/AGT\/\d{4}$|^0$/.test(input.header.softwareCertificateNumber)
     ? input.header.softwareCertificateNumber
-    : "0";
+    : (() => {
+        throw new Error(
+          "SAFT_SEMANTIC_ERROR: SoftwareValidationNumber deve ser '0' ou NNN/AGT/AAAA."
+        );
+      })();
+
+  const productCompanyTaxId = input.header.productCompanyTaxId.trim();
+  if (productCompanyTaxId.length < 10 || productCompanyTaxId.length > 20) {
+    throw new Error(
+      "SAFT_SEMANTIC_ERROR: ProductCompanyTaxID do produtor do software deve ter 10-20 caracteres."
+    );
+  }
+
+  const productVersion = input.header.productVersion.trim();
+  if (!productVersion || productVersion.length > 30) {
+    throw new Error("SAFT_SEMANTIC_ERROR: ProductVersion inválida.");
+  }
 
   let totalItens = 0;
   let totalLiquidoAoa = 0;
@@ -369,9 +391,23 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   };
 
   for (const doc of input.documentos) {
-    const key = `${doc.cliente_nif ?? "SEM_NIF"}::${doc.cliente_nome}`;
-    if (!customerRows.has(key)) {
-      customerRows.set(key, {
+    if (doc.status === "pendente_assinatura") {
+      throw new Error(
+        `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} ainda está pendente de assinatura e não pode ser exportado.`
+      );
+    }
+
+    const customerId = doc.cliente_nif
+      ? `NIF-${doc.cliente_nif}`
+      : `NM-${doc.cliente_nome}`;
+    const existingCustomer = customerRows.get(customerId);
+    if (existingCustomer && existingCustomer.nome !== doc.cliente_nome) {
+      throw new Error(
+        `SAFT_SEMANTIC_ERROR: CustomerID ${customerId} aparece com nomes divergentes no período.`
+      );
+    }
+    if (!existingCustomer) {
+      customerRows.set(customerId, {
         nome: doc.cliente_nome,
         nif: doc.cliente_nif,
         address_detail: doc.address_detail,
@@ -396,9 +432,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     }
   }
 
-  const customersXml = Array.from(customerRows.values())
-    .map((customer) => {
-      const customerId = customer.nif ? `NIF-${customer.nif}` : `NM-${customer.nome}`;
+  const customersXml = Array.from(customerRows.entries())
+    .map(([customerId, customer]) => {
       const address = resolveAddress(customer);
       return [
         "    <Customer>",
