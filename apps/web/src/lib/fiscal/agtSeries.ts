@@ -21,6 +21,12 @@ export type AgtSeriesProvisionResult = {
   firstDocumentNo: string;
   lastDocumentNo: string;
   raw: unknown;
+  softwareIdentity: {
+    productId: string;
+    productVersion: string;
+    softwareValidationNumber: string;
+    signatureVersion: number;
+  };
 };
 
 type AgtErrorItem = {
@@ -32,7 +38,7 @@ export async function provisionAgtSeries(
   input: AgtSeriesProvisionInput
 ): Promise<AgtSeriesProvisionResult> {
   const cfg = resolveAgtConfig();
-  const { softwareInfo } = await buildAgtSoftwareInfo({
+  const { identity: softwareIdentity, softwareInfo } = await buildAgtSoftwareInfo({
     expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
   });
 
@@ -118,6 +124,7 @@ export async function provisionAgtSeries(
       firstDocumentNo: String(json.seriesFEResult.firstDocumentNo ?? ""),
       lastDocumentNo: String(json.seriesFEResult.lastDocumentNo ?? ""),
       raw: json,
+      softwareIdentity,
     };
   } finally {
     clearTimeout(timeout);
