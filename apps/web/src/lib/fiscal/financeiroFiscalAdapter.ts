@@ -1,6 +1,7 @@
 import "server-only";
 
 import { FISCAL_TAX_PROFILE_CODES, type FiscalTaxProfileCode } from "@/lib/fiscal/taxProfiles";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 
 type TipoFluxoFinanceiro = "immediate_payment" | "deferred_payment";
 type PaymentMechanism = "NU" | "TB" | "CC" | "MB";
@@ -13,7 +14,7 @@ const DESCONHECIDO = "Desconhecido";
 type AdapterItem = {
   descricao: string;
   valor: number;
-  taxProfileCode: FiscalTaxProfileCode | string;
+  taxProfileCode?: FiscalTaxProfileCode | string;
   productCode?: string;
   productNumberCode?: string;
   quantidade?: number;
@@ -167,6 +168,21 @@ export async function resolveEmpresaFiscalAtiva({
   return json.data.empresa_id;
 }
 
+async function resolveEducationTaxProfileForEmpresa(empresaId: string) {
+  const admin = supabaseServerRole<any>();
+  const { data, error } = await admin.rpc("fiscal_resolve_education_tax_profile", {
+    p_empresa_id: empresaId,
+  });
+
+  if (error || typeof data !== "string" || data.trim().length === 0) {
+    throw new Error(
+      `FISCAL_EDUCATION_TAX_PROFILE_UNRESOLVED: ${error?.message ?? "Enquadramento IVA do ensino não resolvido."}`
+    );
+  }
+
+  return data.trim() as FiscalTaxProfileCode;
+}
+
 export async function emitirDocumentoFiscalViaAdapter(
   input: EmitirFinanceiroFiscalInput
 ): Promise<EmitirFinanceiroFiscalResult> {
@@ -179,6 +195,12 @@ export async function emitirDocumentoFiscalViaAdapter(
   const tipoDocumento = normalizeTipoDocumento(input.tipoFluxoFinanceiro);
   const prefixoSerie = (input.prefixoSerie?.trim() || tipoDocumento).toUpperCase();
   const cliente = normalizeCliente(input.cliente);
+  const needsEducationProfile = input.itens.some(
+    (item) => item.operationType === "SE" && !item.taxProfileCode
+  );
+  const resolvedEducationProfile = needsEducationProfile
+    ? await resolveEducationTaxProfileForEmpresa(empresaId)
+    : null;
   const itens = input.itens
     .map((item) => ({
       ...item,
@@ -194,8 +216,17 @@ export async function emitirDocumentoFiscalViaAdapter(
         item.settlementAmount == null
           ? 0
           : Math.max(0, sanitizeAmount(item.settlementAmount, 2)),
+      taxProfileCode:
+        item.taxProfileCode ??
+        (item.operationType === "SE" ? resolvedEducationProfile ?? undefined : undefined),
     }))
     .filter((item) => item.descricao.length > 0 && item.valor >= 0);
+
+  if (itens.some((item) => !item.taxProfileCode)) {
+    throw new Error(
+      "FISCAL_TAX_PROFILE_REQUIRED: Todo item fiscal deve possuir classificação tributária resolvida."
+    );
+  }
 
   if (itens.length === 0) {
     throw new Error("FISCAL_ADAPTER_INVALID_ITEMS: Nenhum item válido para emissão fiscal.");
