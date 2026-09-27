@@ -64,9 +64,28 @@ export async function GET(
     .eq("id", link.submission_id)
     .single();
   if (submissionError) return jsonError(500, "AGT_STATUS_LOOKUP_FAILED", submissionError.message);
+
+  const { data: events, error: eventsError } = await client
+    .from("fiscal_agt_submission_eventos")
+    .select("id,status_anterior,status_novo,request_id,result_code,error_code,error_message,snapshot,created_at")
+    .eq("submission_id", link.submission_id)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(100);
+
+  if (eventsError) {
+    return jsonError(500, "AGT_STATUS_EVENTS_LOOKUP_FAILED", eventsError.message);
+  }
+
   return NextResponse.json({
     ok: true,
-    data: { queued: true, document: auth.document, submission, validation: link },
+    data: {
+      queued: true,
+      document: auth.document,
+      submission,
+      validation: link,
+      events: events ?? [],
+    },
   });
 }
 
