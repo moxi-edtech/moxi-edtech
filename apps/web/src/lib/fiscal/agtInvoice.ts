@@ -73,6 +73,7 @@ async function buildSoftwareInfo() {
     productId: cfg.productId,
     productVersion: cfg.productVersion,
     softwareValidationNumber: cfg.softwareValidationNumber,
+    signatureVersion: cfg.signatureVersion,
   };
   const jwsSoftwareSignature = await signAgtJwsRs256(softwareInfoDetail, {
     privateKeyRef: cfg.softwarePrivateKeyRef,
