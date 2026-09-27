@@ -35,6 +35,9 @@ jobs:
       - name: Security Regression Tests
         run: pnpm test:security
 
+      - name: Install SAF-T XSD validator
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+
       - name: Fiscal Regression Tests
         run: pnpm --dir apps/web test:unit:fiscal
 
