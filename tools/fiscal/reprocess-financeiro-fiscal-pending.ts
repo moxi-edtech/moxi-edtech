@@ -257,6 +257,9 @@ async function emitAndSign(params: {
       quantidade: 1,
       preco_unit: Number(params.valor.toFixed(2)),
       tax_profile_code: params.taxProfileCode,
+      operation_type: "SE",
+      product_type: "S",
+      unit_of_measure: "UN",
     },
   ];
 
