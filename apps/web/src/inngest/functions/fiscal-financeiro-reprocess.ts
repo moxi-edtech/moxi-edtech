@@ -2,6 +2,7 @@ import { KMSClient, SignCommand } from "@aws-sdk/client-kms";
 import postgres from "postgres";
 
 import { inngest } from "@/inngest/client";
+import { prepareAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
 
 type ReprocessEvent = {
   job_id: string;
@@ -401,6 +402,24 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
                 : `Pagamento ${pagamento.id}`,
             });
 
+            const agtSubmission = await step.run(`prepare-agt-${link.id}`, async () => {
+              return prepareAgtDocumentSubmission({
+                documentoId: emit.documento_id,
+                createdBy: actingUserId,
+              });
+            });
+            if (
+              agtSubmission.submission_id &&
+              !["accepted", "rejected", "cancelled", "mapping_error"].includes(
+                agtSubmission.status ?? ""
+              )
+            ) {
+              await step.sendEvent(`dispatch-agt-${link.id}`, {
+                name: "fiscal/agt-submit.requested",
+                data: { submission_id: agtSubmission.submission_id },
+              });
+            }
+
             await sql`
               update public.financeiro_fiscal_links
               set
@@ -467,6 +486,24 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
               valor: valorBase,
               descricao: `Recebimento mensalidade ${mensalidade.id}`,
             });
+
+            const agtSubmission = await step.run(`prepare-agt-${link.id}`, async () => {
+              return prepareAgtDocumentSubmission({
+                documentoId: emit.documento_id,
+                createdBy: actingUserId,
+              });
+            });
+            if (
+              agtSubmission.submission_id &&
+              !["accepted", "rejected", "cancelled", "mapping_error"].includes(
+                agtSubmission.status ?? ""
+              )
+            ) {
+              await step.sendEvent(`dispatch-agt-${link.id}`, {
+                name: "fiscal/agt-submit.requested",
+                data: { submission_id: agtSubmission.submission_id },
+              });
+            }
 
             await sql`
               update public.financeiro_fiscal_links
