@@ -4,6 +4,7 @@ import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 import { recordAuditServer } from "@/lib/audit";
 import {
   type PostFiscalDocumentoRequestInput,
@@ -374,15 +375,24 @@ export async function GET() {
       });
     }
 
-    const { data, error } = await supabase
+    let documentosQuery = supabase
       .from("fiscal_documentos")
       .select(
         "id, numero_formatado, invoice_date, created_at, cliente_nome, total_bruto_aoa, hash_control, key_version, status, tipo_documento, documento_origem_id, rectifica_documento_id, agt_document_status, agt_rejected_document_id"
       )
-      .eq("empresa_id", ctx.empresaId)
-      .order("invoice_date", { ascending: false })
-      .order("numero", { ascending: false })
-      .limit(100);
+      .eq("empresa_id", ctx.empresaId);
+
+    documentosQuery = applyKf2ListInvariants(documentosQuery, {
+      defaultLimit: 50,
+      maxLimit: 50,
+      order: [
+        { column: "invoice_date", ascending: false },
+        { column: "numero", ascending: false },
+        { column: "id", ascending: false },
+      ],
+    });
+
+    const { data, error } = await documentosQuery;
 
     if (error) {
       return jsonError(
