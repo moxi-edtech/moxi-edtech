@@ -68,7 +68,7 @@ export type OriginDocumentRow = {
   invoice_date: string;
 };
 
-const LINE_DOCUMENT_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND"]);
+const LINE_DOCUMENT_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RE"]);
 const RECEIPT_DOCUMENT_TYPES = new Set(["RC", "RG", "AR"]);
 
 export class AgtMappingError extends Error {
