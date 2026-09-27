@@ -204,6 +204,8 @@ export async function POST(req: Request) {
             unitPriceBase,
             settlementAmount,
             taxProfileCode: catalogItem.tax_profile_code,
+            productCode: `ITEM_${catalogItem.id}`,
+            productNumberCode: `ITEM_${catalogItem.id}`,
             productType: catalogItem.fiscal_product_type as "P" | "S",
             operationType: catalogItem.fiscal_operation_type as "TB" | "SG",
             unitOfMeasure: "UN",
