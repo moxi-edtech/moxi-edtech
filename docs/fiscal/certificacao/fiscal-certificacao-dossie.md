@@ -75,9 +75,12 @@ Evidência BILL-008:
 - 0 linhas IVA 0 sem código/motivo de isenção;
 - 0 documentos anulados sem evento/motivo;
 - 0 tipos sem mapeamento;
-- 103 números fiscais históricos não canónicos e 8 RC históricos sem sourceDocuments identificados e tratados fail-closed para BILL-010;
+- 98 documentos comerciais históricos com numeração não-canónica e 8 RC históricos sem sourceDocuments identificados e tratados fail-closed para BILL-010;
 - exportações `validated` protegidas contra UPDATE/DELETE;
-- cadeia SAF-T validada impedida de iniciar no meio de série histórica.
+- cadeia SAF-T validada impedida de iniciar no meio de série histórica;
+- Header congelado no pedido de exportação para reprodução determinística;
+- SourceID deriva do actor real; ProductType/unidade/perfil fiscal são preservados;
+- RC/Payments explicitamente fora da cadeia Hash/HashControl.
 
 ## Governança e políticas
 
