@@ -801,13 +801,14 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             "            <UnitOfMeasure>UN</UnitOfMeasure>",
             `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
             `            <Description>${escapeXml(item.descricao)}</Description>`,
-            `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
+            `            <CreditAmount>${formatMoney(item.total_liquido_aoa)}</CreditAmount>`,
             "            <Tax>",
             "              <TaxType>IVA</TaxType>",
             "              <TaxCountryRegion>AO</TaxCountryRegion>",
             `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
             `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
             "            </Tax>",
+            buildTaxExemptionXml(item, "            "),
             "          </Line>",
           ].join("\n");
         })
