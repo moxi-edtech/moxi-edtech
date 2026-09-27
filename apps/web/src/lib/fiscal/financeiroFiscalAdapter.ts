@@ -1,5 +1,8 @@
 import "server-only";
 
+import { FISCAL_TAX_PROFILE_CODES, type FiscalTaxProfileCode } from "@/lib/fiscal/taxProfiles";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
+
 type TipoFluxoFinanceiro = "immediate_payment" | "deferred_payment";
 type PaymentMechanism = "NU" | "TB" | "CC" | "MB";
 type FiscalTipoDocumento = "FR" | "FT" | "RC";
@@ -11,6 +14,15 @@ const DESCONHECIDO = "Desconhecido";
 type AdapterItem = {
   descricao: string;
   valor: number;
+  taxProfileCode?: FiscalTaxProfileCode | string;
+  productCode?: string;
+  productNumberCode?: string;
+  quantidade?: number;
+  unitPriceBase?: number;
+  settlementAmount?: number;
+  productType?: "P" | "S" | "O" | "E" | "I";
+  operationType?: "SE" | "SS" | "STP" | "SR" | "SIF" | "SHS" | "ST" | "SG" | "TB" | "AS" | "QT" | "RD";
+  unitOfMeasure?: string;
 };
 
 type AdapterCliente = {
@@ -69,9 +81,9 @@ export type EmitirFinanceiroFiscalResult = {
   payload_snapshot: Record<string, unknown>;
 };
 
-function sanitizeMoney(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  return Number(value.toFixed(2));
+function sanitizeAmount(value: number, decimals = 2) {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Number(value.toFixed(decimals));
 }
 
 function normalizeTipoDocumento(tipoFluxoFinanceiro: TipoFluxoFinanceiro): FiscalTipoDocumento {
@@ -131,6 +143,25 @@ function toFiscalHeaders({
   return headers;
 }
 
+export async function isFiscalEngineEnabledForSchool(escolaId: string): Promise<boolean> {
+  const admin = supabaseServerRole<any>();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await admin
+    .from("fiscal_escola_bindings")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .eq("fiscal_enabled", true)
+    .lte("effective_from", today)
+    .or(`effective_to.is.null,effective_to.gte.${today}`)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`FISCAL_ENGINE_GATE_LOOKUP_FAILED: ${error.message}`);
+  }
+
+  return Array.isArray(data) && data.length > 0;
+}
+
 export async function resolveEmpresaFiscalAtiva({
   origin,
   escolaId,
@@ -156,9 +187,31 @@ export async function resolveEmpresaFiscalAtiva({
   return json.data.empresa_id;
 }
 
+async function resolveEducationTaxProfileForEmpresa(empresaId: string) {
+  const admin = supabaseServerRole<any>();
+  const { data, error } = await admin.rpc("fiscal_resolve_education_tax_profile", {
+    p_empresa_id: empresaId,
+  });
+
+  if (error || typeof data !== "string" || data.trim().length === 0) {
+    throw new Error(
+      `FISCAL_EDUCATION_TAX_PROFILE_UNRESOLVED: ${error?.message ?? "Enquadramento IVA do ensino não resolvido."}`
+    );
+  }
+
+  return data.trim() as FiscalTaxProfileCode;
+}
+
 export async function emitirDocumentoFiscalViaAdapter(
   input: EmitirFinanceiroFiscalInput
 ): Promise<EmitirFinanceiroFiscalResult> {
+  const fiscalEnabled = await isFiscalEngineEnabledForSchool(input.escolaId);
+  if (!fiscalEnabled) {
+    throw new Error(
+      "FISCAL_ENGINE_NOT_ENABLED: motor fiscal não está ativado para esta escola."
+    );
+  }
+
   const empresaId = await resolveEmpresaFiscalAtiva({
     origin: input.origin,
     escolaId: input.escolaId,
@@ -168,12 +221,38 @@ export async function emitirDocumentoFiscalViaAdapter(
   const tipoDocumento = normalizeTipoDocumento(input.tipoFluxoFinanceiro);
   const prefixoSerie = (input.prefixoSerie?.trim() || tipoDocumento).toUpperCase();
   const cliente = normalizeCliente(input.cliente);
+  const needsEducationProfile = input.itens.some(
+    (item) => item.operationType === "SE" && !item.taxProfileCode
+  );
+  const resolvedEducationProfile = needsEducationProfile
+    ? await resolveEducationTaxProfileForEmpresa(empresaId)
+    : null;
   const itens = input.itens
     .map((item) => ({
+      ...item,
       descricao: item.descricao.trim(),
-      valor: sanitizeMoney(item.valor),
+      valor: sanitizeAmount(item.valor, 4),
+      quantidade:
+        Number.isFinite(item.quantidade) && Number(item.quantidade) > 0
+          ? Number(item.quantidade)
+          : 1,
+      unitPriceBase:
+        item.unitPriceBase == null ? undefined : sanitizeAmount(item.unitPriceBase, 4),
+      settlementAmount:
+        item.settlementAmount == null
+          ? 0
+          : Math.max(0, sanitizeAmount(item.settlementAmount, 2)),
+      taxProfileCode:
+        item.taxProfileCode ??
+        (item.operationType === "SE" ? resolvedEducationProfile ?? undefined : undefined),
     }))
-    .filter((item) => item.descricao.length > 0 && item.valor > 0);
+    .filter((item) => item.descricao.length > 0 && item.valor >= 0);
+
+  if (itens.some((item) => !item.taxProfileCode)) {
+    throw new Error(
+      "FISCAL_TAX_PROFILE_REQUIRED: Todo item fiscal deve possuir classificação tributária resolvida."
+    );
+  }
 
   if (itens.length === 0) {
     throw new Error("FISCAL_ADAPTER_INVALID_ITEMS: Nenhum item válido para emissão fiscal.");
@@ -195,13 +274,27 @@ export async function emitirDocumentoFiscalViaAdapter(
       postal_code: cliente.postal_code,
       country: cliente.country,
     },
-    itens: itens.map((item, index) => ({
-      descricao: item.descricao,
-      product_code: `SERV_INTEGRADO_${index + 1}`,
-      quantidade: 1,
-      preco_unit: item.valor,
-      taxa_iva: 14,
-    })),
+    itens: itens.map((item, index) => {
+      const isEducation =
+        item.taxProfileCode === FISCAL_TAX_PROFILE_CODES.educationM21;
+      return {
+        descricao: item.descricao,
+        product_code:
+          item.productCode?.trim() || `SERV_INTEGRADO_${index + 1}`,
+        product_number_code:
+          item.productNumberCode?.trim() ||
+          item.productCode?.trim() ||
+          `SERV_INTEGRADO_${index + 1}`,
+        tax_profile_code: item.taxProfileCode,
+        product_type: item.productType ?? "S",
+        operation_type: item.operationType ?? (isEducation ? "SE" : "SG"),
+        unit_of_measure: item.unitOfMeasure ?? "UN",
+        quantidade: item.quantidade,
+        unit_price_base: item.unitPriceBase ?? item.valor,
+        preco_unit: item.valor,
+        settlement_amount: item.settlementAmount,
+      };
+    }),
     metadata: {
       origem_integracao: "financeiro_fiscal_adapter",
       tipo_fluxo_financeiro: input.tipoFluxoFinanceiro,

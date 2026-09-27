@@ -7,6 +7,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { emitirEvento } from "@/lib/eventos/emitirEvento";
 import {
   emitirDocumentoFiscalViaAdapter,
+  isFiscalEngineEnabledForSchool,
   resolveEmpresaFiscalAtiva,
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Json } from "~types/supabase";
@@ -135,6 +136,8 @@ export async function POST(req: Request) {
     });
     if (roleError) return roleError;
 
+    const fiscalEnabled = await isFiscalEngineEnabledForSchool(escolaId);
+
     if (mensalidade?.status === "pago") {
       return NextResponse.json({ ok: true, mensagem: "Mensalidade já paga." });
     }
@@ -176,7 +179,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Valor inválido." }, { status: 400 });
     }
 
-    if (mensalidade) {
+    if (fiscalEnabled && mensalidade) {
       const expected = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
       const paidBefore = Number(mensalidade.valor_pago_total ?? 0);
       const outstanding = Math.max(0, Number((expected - paidBefore).toFixed(2)));
@@ -190,7 +193,15 @@ export async function POST(req: Request) {
           origemOperacao: "financeiro_mensalidade_partial_source",
           origemId: mensalidade.id,
           descricaoPrincipal: "Propina",
-          itens: [{ descricao: "Propina", valor: outstanding }],
+          itens: [
+            {
+              descricao: "Propina",
+              valor: outstanding,
+              productType: "S",
+              operationType: "SE",
+              unitOfMeasure: "UN",
+            },
+          ],
           cliente: { nome: null, nif: null },
           escolaId,
           origin,
@@ -262,6 +273,49 @@ export async function POST(req: Request) {
     const pagamentoStatus = String(
       (pagamento as { status?: string } | null)?.status ?? ""
     );
+
+    if (!fiscalEnabled) {
+      recordAuditServer({
+        escolaId,
+        portal: "financeiro",
+        acao: "PAGAMENTO_REGISTRADO_SEM_FISCAL",
+        entity: "pagamento",
+        entityId: pagamentoId,
+        details: {
+          valor,
+          metodo,
+          mensalidade_id: mensalidade?.id ?? null,
+          fiscal_enabled: false,
+        },
+      }).catch(() => null);
+
+      const operationalReceipt = pagamentoId &&
+        ["settled", "concluido", "pago"].includes(pagamentoStatus)
+        ? {
+            ok: true,
+            non_fiscal: true,
+            doc_id: pagamentoId,
+            public_id: pagamentoId,
+            emitido_em: new Date().toISOString(),
+            print_url: `/secretaria/pagamentos/${pagamentoId}/recibo/print`,
+          }
+        : {
+            ok: false,
+            error: "Pagamento aguardando liquidação.",
+          };
+
+      return NextResponse.json({
+        ok: true,
+        data: pagamento,
+        recibo: operationalReceipt,
+        fiscal: {
+          ok: true,
+          enabled: false,
+          skipped: true,
+        },
+        status_fiscal: "not_enabled",
+      });
+    }
 
     if (!["settled", "concluido", "pago"].includes(pagamentoStatus)) {
       recordAuditServer({
@@ -460,6 +514,12 @@ export async function POST(req: Request) {
         } = { ok: false, error: "Fiscal pendente." };
 
     try {
+      if (!mensalidade) {
+        throw new Error(
+          "FISCAL_SOURCE_CLASSIFICATION_REQUIRED: pagamento financeiro directo sem mensalidade/origem fiscal classificada não pode ser emitido automaticamente como serviço de ensino."
+        );
+      }
+
       const fiscal = await emitirDocumentoFiscalViaAdapter({
         tipoFluxoFinanceiro: "immediate_payment",
         origemOperacao: "financeiro_pagamentos_registrar",
@@ -471,6 +531,9 @@ export async function POST(req: Request) {
               ? `Pagamento mensalidade ${mensalidade.id}`
               : "Pagamento financeiro direto",
             valor,
+            productType: "S",
+            operationType: "SE",
+            unitOfMeasure: "UN",
           },
         ],
         cliente: {

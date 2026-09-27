@@ -167,6 +167,19 @@ async function pickSerieFR(sql: postgres.Sql, empresaId: string, seriesYear: num
   return serie;
 }
 
+async function resolveEducationTaxProfile(sql: postgres.Sql, empresaId: string) {
+  const rows = await sql<{ tax_profile_code: string }[]>\`
+    select public.fiscal_resolve_education_tax_profile(\${empresaId}::uuid) as tax_profile_code
+  \`;
+  const code = rows[0]?.tax_profile_code?.trim();
+  if (!code) {
+    throw new Error(
+      `FISCAL_EDUCATION_TAX_PROFILE_UNRESOLVED: empresa \${empresaId} sem enquadramento IVA do ensino resolvido.`
+    );
+  }
+  return code;
+}
+
 async function emitAndSign(params: {
   sql: postgres.Sql;
   empresaId: string;
@@ -176,6 +189,7 @@ async function emitAndSign(params: {
   invoiceDate: string;
   valor: number;
   descricao: string;
+  taxProfileCode: string;
 }): Promise<FinalizeResult> {
   const cliente = {
     nome: CONSUMIDOR_FINAL_NOME,
@@ -193,7 +207,10 @@ async function emitAndSign(params: {
       product_number_code: "SERV_INTEGRADO_1",
       quantidade: 1,
       preco_unit: Number(params.valor.toFixed(2)),
-      taxa_iva: 14,
+      tax_profile_code: params.taxProfileCode,
+      operation_type: "SE",
+      product_type: "S",
+      unit_of_measure: "UN",
     },
   ];
 
@@ -343,6 +360,15 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
           from public.financeiro_fiscal_links
           where escola_id = ${data.escola_id}::uuid
             and empresa_id = ${data.empresa_id}::uuid
+            and exists (
+              select 1
+              from public.fiscal_escola_bindings b
+              where b.escola_id = ${data.escola_id}::uuid
+                and b.empresa_id = ${data.empresa_id}::uuid
+                and b.fiscal_enabled = true
+                and b.effective_from <= current_date
+                and (b.effective_to is null or b.effective_to >= current_date)
+            )
             and origem_tipo in ('financeiro_pagamentos_registrar', 'financeiro_recibos_emitir')
             and status in ('pending', 'failed')
             and fiscal_documento_id is null
@@ -398,13 +424,18 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
 
             const mensalidadeRows = pagamento.mensalidade_id
               ? await sql<MensalidadeRow[]>`
-                  select id, valor, valor_previsto, data_pagamento_efetiva, created_at
-                  from public.mensalidades
-                  where id = ${pagamento.mensalidade_id}::uuid
+                  select m.id, m.valor, m.valor_previsto, m.data_pagamento_efetiva, m.created_at
+                  from public.mensalidades m
+                  where m.id = ${pagamento.mensalidade_id}::uuid
                   limit 1
                 `
               : [];
             const mensalidade = mensalidadeRows[0] ?? null;
+            if (!mensalidade) {
+              throw new Error(
+                "FISCAL_TAX_PROFILE_REQUIRED: pagamento sem mensalidade/classificação fiscal não pode ser reprocessado automaticamente."
+              );
+            }
 
             const valorBase = Number(
               mensalidade?.valor_previsto ?? mensalidade?.valor ?? pagamento.valor_pago ?? 0
@@ -436,9 +467,8 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
               origemId: link.origem_id,
               invoiceDate,
               valor: valorBase,
-              descricao: pagamento.mensalidade_id
-                ? `Pagamento mensalidade ${pagamento.mensalidade_id}`
-                : `Pagamento ${pagamento.id}`,
+              descricao: `Pagamento mensalidade ${mensalidade.id}`,
+              taxProfileCode: await resolveEducationTaxProfile(sql, data.empresa_id),
             });
 
             const agtSubmission = await step.run(`prepare-agt-${link.id}`, async () => {
@@ -490,9 +520,9 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
             }
           } else if (link.origem_tipo === "financeiro_recibos_emitir") {
             const mensalidadeRows = await sql<MensalidadeRow[]>`
-              select id, valor, valor_previsto, data_pagamento_efetiva, created_at
-              from public.mensalidades
-              where id = ${link.origem_id}::uuid
+              select m.id, m.valor, m.valor_previsto, m.data_pagamento_efetiva, m.created_at
+                  from public.mensalidades m
+                  where m.id = ${link.origem_id}::uuid
               limit 1
             `;
             const mensalidade = mensalidadeRows[0];
@@ -524,6 +554,7 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
               invoiceDate,
               valor: valorBase,
               descricao: `Recebimento mensalidade ${mensalidade.id}`,
+              taxProfileCode: await resolveEducationTaxProfile(sql, data.empresa_id),
             });
 
             const agtSubmission = await step.run(`prepare-agt-${link.id}`, async () => {

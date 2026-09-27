@@ -79,6 +79,18 @@ type FiscalDocumentoItemRow = {
   total_bruto_aoa: number;
   tax_exemption_code: string | null;
   tax_exemption_reason: string | null;
+  tax_profile_code: string | null;
+  tax_type: string | null;
+  tax_code: string | null;
+  tax_country_region: string | null;
+  operation_type: string | null;
+  unit_of_measure: string | null;
+  product_type: string | null;
+  unit_price_base: number | null;
+  settlement_amount: number | null;
+  total_liquido_moeda: number | null;
+  total_impostos_moeda: number | null;
+  total_bruto_moeda: number | null;
 };
 
 type OrderReference = {
@@ -495,6 +507,8 @@ export const fiscalSaftExport = inngest.createFunction(
           .select(
             "documento_id, linha_no, descricao, quantidade, preco_unit, taxa_iva, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa"
             + ", product_code, product_number_code, tax_exemption_code, tax_exemption_reason"
+            + ", tax_profile_code, tax_type, tax_code, tax_country_region, operation_type, unit_of_measure, product_type"
+            + ", unit_price_base, settlement_amount, total_liquido_moeda, total_impostos_moeda, total_bruto_moeda"
           )
           .in("documento_id", documentoIds)
           .order("documento_id", { ascending: true })
@@ -647,18 +661,30 @@ export const fiscalSaftExport = inngest.createFunction(
             return {
           itens:
             itemMap.get(doc.id)?.map((item) => {
-              const settlementAmount = settlements.get(Number(item.linha_no)) ?? null;
+              const settlementAmount =
+                item.settlement_amount ??
+                settlements.get(Number(item.linha_no)) ??
+                null;
               return {
                 ...item,
                 product_code: String(item.product_code ?? ""),
                 product_number_code: item.product_number_code ? String(item.product_number_code) : null,
-                product_type: productTypes.get(Number(item.linha_no)) ?? fallbackProductType,
+                product_type:
+                  (item.product_type as "P" | "S" | "O" | "E" | "I" | null) ??
+                  productTypes.get(Number(item.linha_no)) ??
+                  fallbackProductType,
                 unit_of_measure:
-                  lineMetadata.get(Number(item.linha_no))?.unitOfMeasure ?? "UN",
+                  item.unit_of_measure ??
+                  lineMetadata.get(Number(item.linha_no))?.unitOfMeasure ??
+                  "UN",
                 tax_code:
-                  lineMetadata.get(Number(item.linha_no))?.taxCode ?? null,
+                  item.tax_code ??
+                  lineMetadata.get(Number(item.linha_no))?.taxCode ??
+                  null,
                 tax_country_region:
-                  lineMetadata.get(Number(item.linha_no))?.taxCountryRegion ?? "AO",
+                  item.tax_country_region ??
+                  lineMetadata.get(Number(item.linha_no))?.taxCountryRegion ??
+                  "AO",
                 quantidade: Number(item.quantidade),
                 preco_unit: Number(item.preco_unit),
                 taxa_iva: Number(item.taxa_iva),

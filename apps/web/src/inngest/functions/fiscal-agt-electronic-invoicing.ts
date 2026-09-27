@@ -66,7 +66,7 @@ async function loadSubmissionContext(submissionId: string) {
     await Promise.all([
       admin
         .from("fiscal_documento_itens")
-        .select("linha_no,descricao,quantidade,preco_unit,taxa_iva,total_liquido_aoa,total_impostos_aoa,tax_exemption_code,product_code,product_number_code")
+        .select("linha_no,descricao,quantidade,preco_unit,taxa_iva,total_liquido_aoa,total_impostos_aoa,tax_exemption_code,tax_exemption_reason,product_code,product_number_code,tax_profile_code,tax_profile_version,tax_type,tax_code,tax_country_region,operation_type,unit_of_measure,product_type,unit_price_base,settlement_amount,total_liquido_moeda,total_impostos_moeda,total_bruto_moeda")
         .eq("documento_id", document.id)
         .order("linha_no", { ascending: true }),
       admin

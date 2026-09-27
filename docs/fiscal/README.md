@@ -21,6 +21,10 @@ O backlog canónico da certificação AGT é:
 
 `docs/fiscal/certificacao/backlog-certificacao-agt.md`
 
+Handoff técnico actual para continuidade dos BILLs:
+
+`docs/fiscal/certificacao/HANDOFF_BILL_009_ONWARD.md`
+
 Estados de BILL, dependências, critérios de fecho e a ordem de execução devem ser actualizados nesse ficheiro no mesmo PR em que o gap é alterado.
 
 ## Regra de organizacao

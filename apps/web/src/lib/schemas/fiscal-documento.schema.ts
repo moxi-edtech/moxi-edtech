@@ -18,15 +18,17 @@ export const fiscalDocumentoItemSchema = z.object({
   descricao: z.string().trim().min(1).max(500),
   product_code: z.string().trim().min(1).max(64),
   product_number_code: z.string().trim().min(1).max(64).optional(),
+  tax_profile_code: z.string().trim().min(3).max(64),
   product_type: z.enum(FISCAL_PRODUCT_TYPES).default("S"),
   operation_type: z.enum(FISCAL_OPERATION_TYPES).default("SE"),
   unit_of_measure: z.string().trim().min(1).max(20).default("UN"),
   tax_code: z.enum(FISCAL_IVA_TAX_CODES).optional(),
   tax_country_region: z.string().trim().min(2).max(6).default("AO"),
   quantidade: z.coerce.number().positive(),
+  unit_price_base: z.coerce.number().min(0).optional(),
   preco_unit: z.coerce.number().min(0),
-  settlement_amount: z.coerce.number().min(0).optional(),
-  taxa_iva: z.coerce.number().min(0).max(100),
+  settlement_amount: z.coerce.number().min(0).default(0),
+  taxa_iva: z.coerce.number().min(0).max(100).optional(),
   tax_exemption_code: z.string().trim().regex(/^M\d{2}$/).optional(),
   tax_exemption_reason: z.string().trim().min(6).max(60).optional(),
 });
@@ -102,12 +104,23 @@ export const postFiscalDocumentoSchema = z
     }
 
     data.itens.forEach((item, index) => {
-      if (item.taxa_iva === 0 && (!item.tax_exemption_code || !item.tax_exemption_reason)) {
+      if (item.unit_price_base != null && item.unit_price_base + 0.0001 < item.preco_unit) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["itens", index],
+          path: ["itens", index, "unit_price_base"],
+          message: "unit_price_base não pode ser inferior a preco_unit.",
+        });
+      }
+
+      if (
+        item.tax_exemption_code &&
+        !item.tax_exemption_reason
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["itens", index, "tax_exemption_reason"],
           message:
-            "Quando taxa_iva = 0, tax_exemption_code e tax_exemption_reason são obrigatórios.",
+            "tax_exemption_reason é obrigatório quando tax_exemption_code é informado.",
         });
       }
     });

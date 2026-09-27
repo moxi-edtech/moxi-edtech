@@ -28,8 +28,22 @@ type FiscalItemRow = {
   total_liquido_aoa: number | string;
   total_impostos_aoa: number | string;
   tax_exemption_code: string | null;
+  tax_exemption_reason?: string | null;
   product_code: string | null;
   product_number_code: string | null;
+  tax_profile_code?: string | null;
+  tax_profile_version?: number | string | null;
+  tax_type?: string | null;
+  tax_code?: string | null;
+  tax_country_region?: string | null;
+  operation_type?: string | null;
+  unit_of_measure?: string | null;
+  product_type?: string | null;
+  unit_price_base?: number | string | null;
+  settlement_amount?: number | string | null;
+  total_liquido_moeda?: number | string | null;
+  total_impostos_moeda?: number | string | null;
+  total_bruto_moeda?: number | string | null;
 };
 
 type OriginDocumentRow = {
@@ -59,14 +73,6 @@ function round2(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-function ceil2(value: number) {
-  return Math.ceil((value - Number.EPSILON) * 100) / 100;
-}
-
-function trunc2(value: number) {
-  return Math.trunc((value + Number.EPSILON) * 100) / 100;
-}
-
 function objectValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -88,34 +94,6 @@ function resolveCustomerCountry(doc: FiscalDocumentRow) {
   );
 }
 
-function resolveTaxCode(rate: number, payloadItem: Record<string, unknown>) {
-  const explicit = textValue(payloadItem.tax_code).toUpperCase();
-  if (explicit) {
-    if (!["NOR", "INT", "RED", "ISE", "OUT"].includes(explicit)) {
-      throw new AgtMappingError("AGT_MAPPING_TAX_CODE_INVALID", `tax_code inválido: ${explicit}`);
-    }
-    if (rate === 0 && explicit !== "ISE") {
-      throw new AgtMappingError(
-        "AGT_MAPPING_TAX_CODE_RATE_MISMATCH",
-        "IVA a 0% exige tax_code ISE no modelo actual do KLASSE"
-      );
-    }
-    if (rate > 0 && explicit === "ISE") {
-      throw new AgtMappingError(
-        "AGT_MAPPING_TAX_CODE_RATE_MISMATCH",
-        "tax_code ISE não pode ser usado com taxa IVA superior a 0%"
-      );
-    }
-    return explicit;
-  }
-  if (rate === 14) return "NOR";
-  if (rate === 0) return "ISE";
-  throw new AgtMappingError(
-    "AGT_MAPPING_TAX_CODE_REQUIRED",
-    `tax_code é obrigatório para taxa IVA ${rate}`
-  );
-}
-
 export function buildAgtPreparedDocument(input: {
   document: FiscalDocumentRow;
   items: FiscalItemRow[];
@@ -125,7 +103,25 @@ export function buildAgtPreparedDocument(input: {
   const doc = input.document;
   const payload = objectValue(doc.payload);
   const metadata = objectValue(payload.metadata);
-  const payloadItems = Array.isArray(payload.itens) ? payload.itens : [];
+  const withholdingCandidates = [
+    payload.withholdingTaxList,
+    payload.withholding_tax_list,
+    metadata.withholdingTaxList,
+    metadata.withholding_tax_list,
+  ];
+  const hasUnsupportedWithholding = withholdingCandidates.some(
+    (value) =>
+      value !== undefined &&
+      value !== null &&
+      !(Array.isArray(value) && value.length === 0)
+  );
+  if (hasUnsupportedWithholding) {
+    throw new AgtMappingError(
+      "AGT_MAPPING_WITHHOLDING_UNSUPPORTED",
+      "Retenções/cativações existem no contrato AGT, mas o motor fiscal KLASSE ainda não as calcula; submissão bloqueada para evitar omissão silenciosa."
+    );
+  }
+
   const customerCountry = resolveCustomerCountry(doc);
   const customerTaxID = (doc.cliente_nif ?? "").trim() || "999999999";
   const documentStatusRaw = textValue(metadata.agt_document_status).toUpperCase();
@@ -280,65 +276,132 @@ export function buildAgtPreparedDocument(input: {
     .sort((a, b) => a.linha_no - b.linha_no)
     .map((item, index) => {
       if (item.linha_no !== index + 1) {
-        throw new AgtMappingError("AGT_MAPPING_LINE_SEQUENCE_INVALID", "linhas fiscais fora de sequência");
-      }
-      const payloadItem = objectValue(payloadItems[index]);
-      const operationType = textValue(payloadItem.operation_type).toUpperCase() || "SE";
-      if (!["SE","SS","STP","SR","SIF","SHS","ST","SG","TB","AS","QT","RD"].includes(operationType)) {
-        throw new AgtMappingError("AGT_MAPPING_OPERATION_TYPE_INVALID", `operationType inválido: ${operationType}`);
-      }
-      const unitOfMeasure = textValue(payloadItem.unit_of_measure) || "UN";
-      if (unitOfMeasure.length > 20) {
-        throw new AgtMappingError("AGT_MAPPING_UNIT_TOO_LONG", "unitOfMeasure excede 20 caracteres");
-      }
-      const productCode = (item.product_code ?? item.product_number_code ?? "").trim();
-      if (!productCode || productCode.length > 60) {
-        throw new AgtMappingError("AGT_MAPPING_PRODUCT_CODE_INVALID", "productCode ausente ou maior que 60");
-      }
-      if (!item.descricao || item.descricao.length > 200) {
-        throw new AgtMappingError("AGT_MAPPING_DESCRIPTION_INVALID", "productDescription ausente ou maior que 200");
-      }
-      const quantity = decimal(item.quantidade, "quantity");
-      const unitPrice = decimal(item.preco_unit, "unitPrice");
-      const settlementAmount = decimal(payloadItem.settlement_amount as number | string | undefined ?? 0, "settlementAmount");
-      if (settlementAmount !== 0) {
         throw new AgtMappingError(
-          "AGT_MAPPING_DISCOUNT_NOT_SUPPORTED",
-          "Documento com settlementAmount diferente de zero requer cálculo fiscal de descontos antes da submissão AGT"
+          "AGT_MAPPING_LINE_SEQUENCE_INVALID",
+          "linhas fiscais fora de sequência"
         );
       }
+
+      if (!item.tax_profile_code) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_TAX_PROFILE_REQUIRED",
+          `Linha ${item.linha_no} não possui tax_profile_code canónico.`
+        );
+      }
+
+      const taxProfileVersion = Number(item.tax_profile_version);
+      if (!Number.isInteger(taxProfileVersion) || taxProfileVersion <= 0) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_TAX_PROFILE_VERSION_REQUIRED",
+          `Linha ${item.linha_no} não possui tax_profile_version canónico.`
+        );
+      }
+
+      const operationType = (item.operation_type ?? "").trim().toUpperCase();
+      if (!["SE","SS","STP","SR","SIF","SHS","ST","SG","TB","AS","QT","RD"].includes(operationType)) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_OPERATION_TYPE_INVALID",
+          `operationType inválido: ${operationType || "(vazio)"}`
+        );
+      }
+
+      const unitOfMeasure = (item.unit_of_measure ?? "").trim();
+      if (!unitOfMeasure || unitOfMeasure.length > 20) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_UNIT_INVALID",
+          "unitOfMeasure ausente ou maior que 20 caracteres"
+        );
+      }
+
+      const productCode = (item.product_code ?? item.product_number_code ?? "").trim();
+      if (!productCode || productCode.length > 60) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_PRODUCT_CODE_INVALID",
+          "productCode ausente ou maior que 60"
+        );
+      }
+      if (!item.descricao || item.descricao.length > 200) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_DESCRIPTION_INVALID",
+          "productDescription ausente ou maior que 200"
+        );
+      }
+
+      const quantity = decimal(item.quantidade, "quantity");
+      const unitPrice = decimal(item.preco_unit, "unitPrice");
+      const unitPriceBase = decimal(item.unit_price_base, "unitPriceBase");
+      const settlementAmount = decimal(item.settlement_amount ?? 0, "settlementAmount");
       const rate = decimal(item.taxa_iva, "taxPercentage");
-      const baseRaw = quantity * unitPrice;
-      const lineNet = doc.tipo_documento === "NC" ? ceil2(baseRaw) : trunc2(baseRaw);
-      const taxContribution = ceil2(baseRaw * rate / 100);
-      netTotal += lineNet;
-      taxPayable += taxContribution;
-      const taxCode = resolveTaxCode(rate, payloadItem);
-      const taxCountryRegion =
-        textValue(payloadItem.tax_country_region).toUpperCase() || "AO";
+      const lineNet = decimal(item.total_liquido_moeda, "total_liquido_moeda");
+      const taxContribution = decimal(item.total_impostos_moeda, "total_impostos_moeda");
+      const lineGross = decimal(item.total_bruto_moeda, "total_bruto_moeda");
+
+      if (quantity <= 0 || unitPrice < 0 || unitPriceBase < unitPrice || settlementAmount < 0) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_CANONICAL_LINE_INVALID",
+          "Linha fiscal canónica contém quantidade/preço/desconto inválido"
+        );
+      }
+
+      const expectedSettlement = round2(quantity * (unitPriceBase - unitPrice));
+      if (Math.abs(expectedSettlement - round2(settlementAmount)) > 0.01) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_SETTLEMENT_MISMATCH",
+          "settlementAmount diverge de quantity × (unitPriceBase - unitPrice)"
+        );
+      }
+
+      if (Math.abs(round2(lineNet + taxContribution) - round2(lineGross)) > 0.01) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_LINE_TOTAL_MISMATCH",
+          "Totais canónicos da linha não fecham"
+        );
+      }
+
+      const taxType = (item.tax_type ?? "").trim().toUpperCase();
+      if (!["IVA","IS","IEC","CEOC","NS"].includes(taxType)) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_TAX_TYPE_INVALID",
+          `taxType inválido: ${taxType || "(vazio)"}`
+        );
+      }
+
+      const taxCode = (item.tax_code ?? "").trim().toUpperCase();
+      const taxCountryRegion = (item.tax_country_region ?? "").trim().toUpperCase();
       if (!/^(?:[A-Z]{2}|AO-CAB)$/.test(taxCountryRegion)) {
         throw new AgtMappingError(
           "AGT_MAPPING_TAX_REGION_INVALID",
           `taxCountryRegion inválido: ${taxCountryRegion}`
         );
       }
+
       const tax: Record<string, unknown> = {
-        taxType: "IVA",
+        taxType,
         taxCountryRegion,
-        taxCode,
+        ...(taxCode ? { taxCode } : {}),
         taxPercentage: rate,
-        taxContribution,
+        taxContribution: round2(taxContribution),
       };
-      if (taxCode === "ISE") {
+
+      if (taxCode === "ISE" || taxType === "NS") {
         const exemption = (item.tax_exemption_code ?? "").trim();
-        if (exemption.length !== 3) {
+        if (!/^.{3}$/.test(exemption)) {
           throw new AgtMappingError(
             "AGT_MAPPING_EXEMPTION_CODE_INVALID",
-            "taxExemptionCode deve ter exactamente 3 caracteres quando IVA é isento"
+            "taxExemptionCode deve ter exactamente 3 caracteres para isenção/não sujeição"
           );
         }
         tax.taxExemptionCode = exemption;
+      } else if (item.tax_exemption_code) {
+        throw new AgtMappingError(
+          "AGT_MAPPING_EXEMPTION_UNEXPECTED",
+          "Linha tributável não pode transportar taxExemptionCode"
+        );
       }
+
+      netTotal += lineNet;
+      taxPayable += taxContribution;
+
       const line: Record<string, unknown> = {
         lineNumber: item.linha_no,
         operationType,
@@ -346,23 +409,28 @@ export function buildAgtPreparedDocument(input: {
         productDescription: item.descricao,
         quantity,
         unitOfMeasure,
-        unitPriceBase: unitPrice,
+        unitPriceBase,
         unitPrice,
         taxes: [tax],
         settlementAmount,
       };
+
       if (doc.tipo_documento === "NC") {
-        line.debitAmount = lineNet;
+        line.debitAmount = round2(lineNet);
         if (!input.originDocument) {
-          throw new AgtMappingError("AGT_MAPPING_REFERENCE_REQUIRED", "NC exige documento fiscal de referência");
+          throw new AgtMappingError(
+            "AGT_MAPPING_REFERENCE_REQUIRED",
+            "NC exige documento fiscal de referência"
+          );
         }
         line.referenceInfo = { reference: input.originDocument.numero_formatado };
       } else {
-        line.creditAmount = lineNet;
+        line.creditAmount = round2(lineNet);
         if (input.originDocument && doc.tipo_documento === "ND") {
           line.referenceInfo = { reference: input.originDocument.numero_formatado };
         }
       }
+
       if (doc.tipo_documento === "FG" || doc.tipo_documento === "GF") {
         const operationDate = textValue(metadata.operation_date);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(operationDate)) {
@@ -373,9 +441,9 @@ export function buildAgtPreparedDocument(input: {
         }
         line.operationDate = operationDate;
       }
+
       return line;
     });
-
   netTotal = round2(netTotal);
   taxPayable = round2(taxPayable);
   const grossTotal = round2(netTotal + taxPayable);
@@ -387,18 +455,28 @@ export function buildAgtPreparedDocument(input: {
   const currency = doc.moeda.toUpperCase();
   if (currency !== "AOA") {
     const exchangeRate = decimal(doc.taxa_cambio_aoa, "exchangeRate");
-    documentTotals.currency = {
-      currencyCode: currency,
-      currencyAmount: round2(grossTotal * exchangeRate),
-      exchangeRate,
-    };
-    const localGross = round2(decimal(doc.total_bruto_aoa, "total_bruto_aoa"));
-    if (Math.abs(localGross - documentTotals.currency.currencyAmount) > 0.01) {
+    if (exchangeRate <= 0) {
       throw new AgtMappingError(
-        "AGT_MAPPING_FX_TOTAL_MISMATCH",
-        "Contra-valor AOA calculado diverge do total fiscal local"
+        "AGT_MAPPING_FX_RATE_INVALID",
+        "exchangeRate deve ser positivo para documento em moeda estrangeira"
       );
     }
+
+    const localGross = round2(decimal(doc.total_bruto_aoa, "total_bruto_aoa"));
+    if (localGross <= 0) {
+      throw new AgtMappingError(
+        "AGT_MAPPING_FX_TOTAL_INVALID",
+        "Contra-valor AOA persistido deve ser positivo"
+      );
+    }
+
+    // O motor fiscal SQL é a única fonte do contravalor AOA. Não recalcular em JS:
+    // a AGT valida grossTotal × exchangeRate com arredondamento matemático.
+    documentTotals.currency = {
+      currencyCode: currency,
+      currencyAmount: localGross,
+      exchangeRate,
+    };
   } else {
     const localNet = round2(decimal(doc.total_liquido_aoa, "total_liquido_aoa"));
     const localTax = round2(decimal(doc.total_impostos_aoa, "total_impostos_aoa"));

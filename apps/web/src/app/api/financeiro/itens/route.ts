@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { isFiscalEngineEnabledForSchool } from '@/lib/fiscal/financeiroFiscalAdapter'
+
+async function validateTaxProfile(
+  s: Awaited<ReturnType<typeof supabaseServer>>,
+  code: string
+) {
+  const today = new Date().toISOString().slice(0, 10)
+  const { data, error } = await s
+    .from("fiscal_tax_profiles" as any)
+    .select("code, tax_type, tax_code, tax_percentage, exemption_code, exemption_reason, operation_type, valid_from, valid_to")
+    .eq("code", code)
+    .lte("valid_from", today)
+    .or(`valid_to.is.null,valid_to.gte.${today}`)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  return data as any
+}
 
 async function resolveEscolaId(
   s: Awaited<ReturnType<typeof supabaseServer>>,
@@ -36,7 +56,7 @@ export async function GET(req: Request) {
 
     let query = s
       .from('financeiro_itens')
-      .select('id, nome, categoria, preco, controla_estoque, estoque_atual, ativo, created_at, updated_at')
+      .select('id, nome, categoria, preco, controla_estoque, estoque_atual, ativo, tax_profile_code, fiscal_product_type, fiscal_operation_type, created_at, updated_at')
       .eq('escola_id', escolaId)
       .order('created_at', { ascending: false })
 
@@ -44,10 +64,18 @@ export async function GET(req: Request) {
 
     query = applyKf2ListInvariants(query, { defaultLimit: 50 })
 
-    const { data, error } = await query
+    const [{ data, error }, { data: taxProfiles, error: taxProfilesError }] = await Promise.all([
+      query,
+      s
+        .from("fiscal_tax_profiles" as any)
+        .select("code, tax_type, tax_code, tax_percentage, exemption_code, exemption_reason, operation_type, valid_from, valid_to")
+        .is("valid_to", null)
+        .order("code", { ascending: true }),
+    ])
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+    if (taxProfilesError) return NextResponse.json({ ok: false, error: taxProfilesError.message }, { status: 400 })
 
-    return NextResponse.json({ ok: true, items: data || [] })
+    return NextResponse.json({ ok: true, items: data || [], tax_profiles: taxProfiles || [] })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
@@ -64,10 +92,50 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaId(s, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
-    const body = await req.json().catch(() => ({}))
-    const { nome, categoria = 'outros', preco, controla_estoque = false, estoque_atual = 0, ativo = true } = body || {}
+    const fiscalEnabled = await isFiscalEngineEnabledForSchool(escolaId)
 
-    if (!nome || !preco) return NextResponse.json({ ok: false, error: 'Nome e preço são obrigatórios' }, { status: 400 })
+    const body = await req.json().catch(() => ({}))
+    const {
+      nome,
+      categoria = 'outros',
+      preco,
+      controla_estoque = false,
+      estoque_atual = 0,
+      ativo = true,
+      tax_profile_code,
+      fiscal_product_type,
+    } = body || {}
+
+    if (!nome || !preco) {
+      return NextResponse.json(
+        { ok: false, error: 'Nome e preço são obrigatórios' },
+        { status: 400 }
+      )
+    }
+
+    if (
+      fiscalEnabled &&
+      (!tax_profile_code || !["P", "S"].includes(String(fiscal_product_type)))
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'Perfil tributário e natureza fiscal (produto/serviço) são obrigatórios quando o motor fiscal está ativo',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (tax_profile_code) {
+      const taxProfile = await validateTaxProfile(s, String(tax_profile_code))
+      if (!taxProfile) {
+        return NextResponse.json(
+          { ok: false, error: 'Perfil tributário inválido ou fora de vigência' },
+          { status: 400 }
+        )
+      }
+    }
 
     const payload = {
       escola_id: escolaId,
@@ -77,6 +145,11 @@ export async function POST(req: Request) {
       controla_estoque: Boolean(controla_estoque),
       estoque_atual: Math.max(0, Number(estoque_atual) || 0),
       ativo: Boolean(ativo),
+      tax_profile_code: tax_profile_code ? String(tax_profile_code) : null,
+      fiscal_product_type: fiscal_product_type ? String(fiscal_product_type) : null,
+      fiscal_operation_type: fiscal_product_type
+        ? (String(fiscal_product_type) === "P" ? "TB" : "SG")
+        : null,
     }
 
     const { data, error } = await s.from('financeiro_itens').insert(payload as any).select().single()
@@ -100,7 +173,17 @@ export async function PUT(req: Request) {
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
     const body = await req.json().catch(() => ({}))
-    const { id, nome, categoria, preco, controla_estoque, estoque_atual, ativo } = body || {}
+    const {
+      id,
+      nome,
+      categoria,
+      preco,
+      controla_estoque,
+      estoque_atual,
+      ativo,
+      tax_profile_code,
+      fiscal_product_type,
+    } = body || {}
     if (!id) return NextResponse.json({ ok: false, error: 'ID é obrigatório' }, { status: 400 })
 
     const { data: registro } = await s
@@ -118,6 +201,27 @@ export async function PUT(req: Request) {
     if (controla_estoque !== undefined) updatePayload.controla_estoque = Boolean(controla_estoque)
     if (estoque_atual !== undefined) updatePayload.estoque_atual = Math.max(0, Number(estoque_atual) || 0)
     if (ativo !== undefined) updatePayload.ativo = Boolean(ativo)
+    if (tax_profile_code !== undefined) {
+      const taxProfile = await validateTaxProfile(s, String(tax_profile_code))
+      if (!taxProfile) {
+        return NextResponse.json(
+          { ok: false, error: 'Perfil tributário inválido ou fora de vigência' },
+          { status: 400 }
+        )
+      }
+      updatePayload.tax_profile_code = String(tax_profile_code)
+    }
+    if (fiscal_product_type !== undefined) {
+      if (!["P", "S"].includes(String(fiscal_product_type))) {
+        return NextResponse.json(
+          { ok: false, error: 'Natureza fiscal inválida.' },
+          { status: 400 }
+        )
+      }
+      updatePayload.fiscal_product_type = String(fiscal_product_type)
+      updatePayload.fiscal_operation_type =
+        String(fiscal_product_type) === "P" ? "TB" : "SG"
+    }
 
     const { data, error } = await s
       .from('financeiro_itens')
