@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 
     let query = s
       .from('financeiro_itens')
-      .select('id, nome, categoria, preco, controla_estoque, estoque_atual, ativo, tax_profile_code, created_at, updated_at')
+      .select('id, nome, categoria, preco, controla_estoque, estoque_atual, ativo, tax_profile_code, fiscal_product_type, fiscal_operation_type, created_at, updated_at')
       .eq('escola_id', escolaId)
       .order('created_at', { ascending: false })
 
@@ -100,11 +100,16 @@ export async function POST(req: Request) {
       estoque_atual = 0,
       ativo = true,
       tax_profile_code,
+      fiscal_product_type,
     } = body || {}
 
-    if (!nome || !preco || !tax_profile_code) {
+    if (!nome || !preco || !tax_profile_code || !["P", "S"].includes(String(fiscal_product_type))) {
       return NextResponse.json(
-        { ok: false, error: 'Nome, preço e perfil tributário são obrigatórios' },
+        {
+          ok: false,
+          error:
+            'Nome, preço, perfil tributário e natureza fiscal (produto/serviço) são obrigatórios',
+        },
         { status: 400 }
       )
     }
@@ -126,6 +131,8 @@ export async function POST(req: Request) {
       estoque_atual: Math.max(0, Number(estoque_atual) || 0),
       ativo: Boolean(ativo),
       tax_profile_code: String(tax_profile_code),
+      fiscal_product_type: String(fiscal_product_type),
+      fiscal_operation_type: String(fiscal_product_type) === "P" ? "TB" : "SG",
     }
 
     const { data, error } = await s.from('financeiro_itens').insert(payload as any).select().single()
@@ -149,7 +156,17 @@ export async function PUT(req: Request) {
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
     const body = await req.json().catch(() => ({}))
-    const { id, nome, categoria, preco, controla_estoque, estoque_atual, ativo, tax_profile_code } = body || {}
+    const {
+      id,
+      nome,
+      categoria,
+      preco,
+      controla_estoque,
+      estoque_atual,
+      ativo,
+      tax_profile_code,
+      fiscal_product_type,
+    } = body || {}
     if (!id) return NextResponse.json({ ok: false, error: 'ID é obrigatório' }, { status: 400 })
 
     const { data: registro } = await s
@@ -176,6 +193,17 @@ export async function PUT(req: Request) {
         )
       }
       updatePayload.tax_profile_code = String(tax_profile_code)
+    }
+    if (fiscal_product_type !== undefined) {
+      if (!["P", "S"].includes(String(fiscal_product_type))) {
+        return NextResponse.json(
+          { ok: false, error: 'Natureza fiscal inválida.' },
+          { status: 400 }
+        )
+      }
+      updatePayload.fiscal_product_type = String(fiscal_product_type)
+      updatePayload.fiscal_operation_type =
+        String(fiscal_product_type) === "P" ? "TB" : "SG"
     }
 
     const { data, error } = await s
