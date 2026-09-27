@@ -15,6 +15,7 @@ type SaftDocumentoItem = {
   descricao: string;
   product_code: string;
   product_number_code: string | null;
+  product_type: "P" | "S" | "O" | "E" | "I";
   quantidade: number;
   preco_unit: number;
   taxa_iva: number;
@@ -93,6 +94,7 @@ type SaftProduct = {
   code: string;
   description: string;
   numberCode: string;
+  type: "P" | "S" | "O" | "E" | "I";
 };
 
 const CONSUMIDOR_FINAL_NIF = "999999999";
@@ -578,7 +580,19 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       if (productRows.has(code)) continue;
       const description = item.descricao.trim() || code;
       const numberCode = item.product_number_code?.trim() || code;
-      productRows.set(code, { code, description, numberCode });
+      const productType = item.product_type;
+      const existingProduct = productRows.get(code);
+      if (existingProduct && existingProduct.type !== productType) {
+        throw new Error(
+          `SAFT_SEMANTIC_ERROR: ProductCode ${code} possui ProductType divergente (${existingProduct.type}/${productType}).`
+        );
+      }
+      productRows.set(code, {
+        code,
+        description,
+        numberCode,
+        type: productType,
+      });
     }
   }
 
@@ -607,7 +621,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     .map((product) =>
       [
         "    <Product>",
-        "      <ProductType>S</ProductType>",
+        `      <ProductType>${product.type}</ProductType>`,
         `      <ProductCode>${escapeXml(product.code)}</ProductCode>`,
         `      <ProductDescription>${escapeXml(product.description)}</ProductDescription>`,
         `      <ProductNumberCode>${escapeXml(product.numberCode)}</ProductNumberCode>`,
