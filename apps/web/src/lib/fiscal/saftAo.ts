@@ -537,15 +537,14 @@ function resolveSignedHash(
   }
 
   const hash = doc.saft_hash?.trim();
-  const hashControl = integerValue(doc.saft_hash_control, "saft_hash_control");
+  if (!doc.saft_required || !hash || hash.length !== 172) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} não pertence a uma cadeia SAF-T validada completa.`
+    );
+  }
 
-  if (
-    !doc.saft_required ||
-    !hash ||
-    hash.length !== 172 ||
-    !Number.isInteger(hashControl) ||
-    hashControl <= 0
-  ) {
+  const hashControl = integerValue(doc.saft_hash_control, "saft_hash_control");
+  if (hashControl <= 0) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} não pertence a uma cadeia SAF-T validada completa.`
     );
@@ -935,13 +934,6 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
               "            </Currency>",
             ].join("\n");
 
-      if (doc.moeda.toUpperCase() !== "AOA") {
-        assertPositiveExchangeRate(doc);
-        throw new Error(
-          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
-        );
-      }
-
       const paymentXml =
         doc.payment_mechanism
           ? [
@@ -1076,13 +1068,6 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
               "            </Currency>",
             ].join("\n");
 
-      if (doc.moeda.toUpperCase() !== "AOA") {
-        assertPositiveExchangeRate(doc);
-        throw new Error(
-          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
-        );
-      }
-
       return [
         "        <WorkDocument>",
         `          <DocumentNumber>${escapeXml(documentNumber)}</DocumentNumber>`,
@@ -1179,13 +1164,6 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
               `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
-
-      if (doc.moeda.toUpperCase() !== "AOA") {
-        assertPositiveExchangeRate(doc);
-        throw new Error(
-          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
-        );
-      }
 
       return [
         "        <StockMovement>",
@@ -1324,13 +1302,6 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
               `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
-
-      if (doc.moeda.toUpperCase() !== "AOA") {
-        assertPositiveExchangeRate(doc);
-        throw new Error(
-          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
-        );
-      }
 
       return [
         "        <Payment>",
