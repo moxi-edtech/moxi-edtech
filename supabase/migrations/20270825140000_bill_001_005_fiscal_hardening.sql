@@ -201,6 +201,77 @@ CREATE TRIGGER trg_fiscal_series_counter_guard
 BEFORE UPDATE OF ultimo_numero ON public.fiscal_series
 FOR EACH ROW EXECUTE FUNCTION public.fiscal_guard_series_counter();
 
+-- Reservation remains atomic and additionally enforces the AGT-authorized range.
+CREATE OR REPLACE FUNCTION public.fiscal_reservar_numero_serie(p_serie_id uuid)
+RETURNS TABLE(numero bigint, numero_formatado text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $
+DECLARE
+  v_uid uuid := public.safe_auth_uid();
+  v_serie public.fiscal_series%ROWTYPE;
+  v_last_authorized bigint;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'AUTH: utilizador não autenticado';
+  END IF;
+
+  SELECT *
+    INTO v_serie
+  FROM public.fiscal_series
+  WHERE id = p_serie_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'DATA: série não encontrada';
+  END IF;
+
+  IF NOT public.user_has_role_in_empresa(
+    v_serie.empresa_id,
+    ARRAY['owner','admin','operator']
+  ) THEN
+    RAISE EXCEPTION 'AUTH: permissão negada para reservar número da série';
+  END IF;
+
+  IF NOT v_serie.ativa OR v_serie.descontinuada_em IS NOT NULL THEN
+    RAISE EXCEPTION 'STATE: série inativa ou descontinuada';
+  END IF;
+
+  IF v_serie.agt_status = 'provisioned' THEN
+    IF v_serie.last_document_no IS NULL OR v_serie.agt_series_code IS NULL THEN
+      RAISE EXCEPTION 'STATE: série AGT provisionada sem intervalo autorizado';
+    END IF;
+
+    BEGIN
+      v_last_authorized := v_serie.last_document_no::bigint;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'STATE: last_document_no AGT não é numérico';
+    END;
+
+    IF v_serie.ultimo_numero >= v_last_authorized THEN
+      RAISE EXCEPTION 'STATE: intervalo autorizado pela AGT esgotado';
+    END IF;
+  ELSIF v_serie.agt_status <> 'legacy' THEN
+    RAISE EXCEPTION 'STATE: série ainda não foi provisionada pela AGT';
+  END IF;
+
+  UPDATE public.fiscal_series
+     SET ultimo_numero = ultimo_numero + 1,
+         updated_at = now()
+   WHERE id = p_serie_id
+   RETURNING ultimo_numero INTO numero;
+
+  numero_formatado := CASE
+    WHEN v_serie.agt_status = 'provisioned'
+      THEN upper(trim(v_serie.tipo_documento)) || ' ' || trim(v_serie.agt_series_code) || '/' || numero::text
+    ELSE v_serie.prefixo || '-' || lpad(numero::text, 6, '0')
+  END;
+
+  RETURN NEXT;
+END;
+$;
+
 -- BILL-004: keep only the current 15-argument emission contract.
 DROP FUNCTION IF EXISTS public.fiscal_emitir_documento(
   uuid, uuid, text, text, text, jsonb, date, text, jsonb,
