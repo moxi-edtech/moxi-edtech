@@ -773,19 +773,19 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
 
   const taxProfiles = new Map<
     string,
-    { rate: number; code: string; region: string }
+    { rate: ExactDecimal; code: string; region: string }
   >();
   for (const doc of input.documentos) {
     for (const item of doc.itens) {
-      const rate = Number(item.taxa_iva);
-      if (!Number.isFinite(rate) || rate < 0) {
+      const rate = asExact(item.taxa_iva, "taxa_iva");
+      if (cmpExact(rate, parseExactDecimal("0")) < 0) {
         throw new Error(
           `SAFT_SEMANTIC_ERROR: taxa de IVA inválida no documento ${doc.numero_formatado}, linha ${item.linha_no}.`
         );
       }
       const code = resolveTaxCode(item);
       const region = resolveTaxCountryRegion(item);
-      const key = `IVA:${region}:${code}:${rate.toFixed(4)}`;
+      const key = `IVA:${region}:${code}:${exactToFixed(rate, 4)}`;
       taxProfiles.set(key, { rate, code, region });
     }
   }
@@ -794,11 +794,12 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     ? [
         "    <TaxTable>",
         ...Array.from(taxProfiles.values())
-          .sort((a, b) =>
-            a.region.localeCompare(b.region) ||
-            a.code.localeCompare(b.code) ||
-            a.rate - b.rate
-          )
+          .sort((a, b) => {
+            const regionCmp = a.region.localeCompare(b.region);
+            if (regionCmp !== 0) return regionCmp;
+            const codeCmp = a.code.localeCompare(b.code);
+            return codeCmp !== 0 ? codeCmp : cmpExact(a.rate, b.rate);
+          })
           .map(({ rate, code, region }) =>
             [
               "      <TaxTableEntry>",
@@ -806,7 +807,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
               `        <TaxCountryRegion>${escapeXml(region)}</TaxCountryRegion>`,
               `        <TaxCode>${escapeXml(code)}</TaxCode>`,
               `        <Description>${escapeXml(resolveTaxDescription(code, rate, region))}</Description>`,
-              `        <TaxPercentage>${rate.toFixed(2)}</TaxPercentage>`,
+              `        <TaxPercentage>${exactToFixed(rate, 2)}</TaxPercentage>`,
               "      </TaxTableEntry>",
             ].join("\n")
           ),
