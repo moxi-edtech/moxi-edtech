@@ -656,3 +656,72 @@ export const fiscalAgtReconcileSweep = inngest.createFunction(
     return { ok: true, dispatched: submissions.length };
   }
 );
+
+
+export const fiscalAgtObservabilitySweep = inngest.createFunction(
+  {
+    id: "fiscal-agt-observability-sweep",
+    triggers: [cron("*/15 * * * *")],
+    retries: 1,
+  },
+  async ({ step }) => {
+    const snapshot = await step.run("load-agt-metrics-snapshot", async () => {
+      const admin = supabaseServerRole() as any;
+      const { data, error } = await admin.rpc("fiscal_agt_metrics_snapshot");
+      if (error) throw new Error(error.message);
+      return (data ?? {}) as Record<string, unknown>;
+    });
+
+    const maxNonterminalSeconds = safeCounter(
+      process.env.FISCAL_AGT_SLO_MAX_NONTERMINAL_SECONDS,
+      3600
+    );
+    const maxDeadLetters = safeCounter(
+      process.env.FISCAL_AGT_SLO_MAX_DEAD_LETTERS,
+      0
+    );
+    const oldestNonterminalSeconds = safeCounter(
+      snapshot.oldest_nonterminal_seconds,
+      0
+    );
+    const deadLettered = safeCounter(snapshot.dead_lettered, 0);
+
+    const nonterminalBreach =
+      oldestNonterminalSeconds > maxNonterminalSeconds;
+    const deadLetterBreach = deadLettered > maxDeadLetters;
+    const breached = nonterminalBreach || deadLetterBreach;
+
+    agtLog("slo_snapshot", {
+      ...snapshot,
+      slo_max_nonterminal_seconds: maxNonterminalSeconds,
+      slo_max_dead_letters: maxDeadLetters,
+      nonterminal_breach: nonterminalBreach,
+      dead_letter_breach: deadLetterBreach,
+      breached,
+    });
+
+    if (breached) {
+      console.warn(
+        JSON.stringify({
+          scope: "fiscal_agt",
+          event: "slo_breach",
+          at: new Date().toISOString(),
+          nonterminal_breach: nonterminalBreach,
+          dead_letter_breach: deadLetterBreach,
+          oldest_nonterminal_seconds: oldestNonterminalSeconds,
+          dead_lettered: deadLettered,
+        })
+      );
+    }
+
+    return {
+      ok: true,
+      breached,
+      snapshot,
+      slo: {
+        max_nonterminal_seconds: maxNonterminalSeconds,
+        max_dead_letters: maxDeadLetters,
+      },
+    };
+  }
+);
