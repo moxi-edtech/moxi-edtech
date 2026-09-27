@@ -14,12 +14,23 @@ type Item = {
   controla_estoque: boolean
   estoque_atual: number
   ativo: boolean
+  tax_profile_code: string | null
+}
+
+type TaxProfile = {
+  code: string
+  tax_type: string
+  tax_code: string | null
+  tax_percentage: number
+  exemption_code: string | null
+  exemption_reason: string | null
 }
 
 export default function VendaCaixaClient({ escolaId }: VendaProps) {
   const { success, error: toastError } = useToast();
   const confirm = useConfirm();
   const [items, setItems] = useState<Item[]>([])
+  const [taxProfiles, setTaxProfiles] = useState<TaxProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -32,6 +43,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
     controla_estoque: false,
     estoque_atual: "0",
     ativo: true,
+    tax_profile_code: "",
   })
 
   const [sale, setSale] = useState({
@@ -64,6 +76,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
       const json = await res.json()
       if (!json.ok) throw new Error(json.error || "Erro ao carregar itens")
       setItems(json.items || [])
+      setTaxProfiles(json.tax_profiles || [])
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err))
     } finally {
@@ -73,7 +86,15 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
 
   function resetForm() {
     setEditingId(null)
-    setForm({ nome: "", categoria: "outros", preco: "0", controla_estoque: false, estoque_atual: "0", ativo: true })
+    setForm({
+      nome: "",
+      categoria: "outros",
+      preco: "0",
+      controla_estoque: false,
+      estoque_atual: "0",
+      ativo: true,
+      tax_profile_code: "",
+    })
   }
 
   async function handleItemSubmit(e: React.FormEvent) {
@@ -211,6 +232,23 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
                   <option value="outros">Outros</option>
                 </select>
               </label>
+              <label className="text-sm">
+                Perfil tributário
+                <select
+                  required
+                  value={form.tax_profile_code}
+                  onChange={(e) => setForm({ ...form, tax_profile_code: e.target.value })}
+                  className="mt-1 w-full border rounded px-2 py-1"
+                >
+                  <option value="">Seleccione</option>
+                  {taxProfiles.map((profile) => (
+                    <option key={profile.code} value={profile.code}>
+                      {profile.code} · {profile.tax_code ?? profile.tax_type} · {Number(profile.tax_percentage).toFixed(2)}%
+                      {profile.exemption_code ? " · " + profile.exemption_code : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm">
@@ -286,6 +324,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
                             controla_estoque: item.controla_estoque,
                             estoque_atual: String(item.estoque_atual ?? 0),
                             ativo: item.ativo,
+                      tax_profile_code: item.tax_profile_code ?? "",
                           })
                         }}
                         className="text-slate-600"
