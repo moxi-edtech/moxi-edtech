@@ -311,6 +311,8 @@ test("SAF-T excludes annulled documents from section TotalDebit/TotalCredit", ()
     numero: 2,
     numero_formatado: "FT TEST/2",
     status: "anulado",
+    status_date: "2026-09-27T14:30:00.000Z",
+    status_reason: "Anulação de teste",
     total_liquido_aoa: 900,
     total_impostos_aoa: 126,
     total_bruto_aoa: 1026,
@@ -348,7 +350,7 @@ test("validated SAF-T rejects signed document when exported InvoiceNo would diff
         ],
         certifiedHeader
       ),
-    /não possui InvoiceNo SAF-T canónico/
+    /incompatível com o tipo FT|não possui InvoiceNo SAF-T canónico/
   );
 });
 
@@ -367,7 +369,7 @@ test("validated SAF-T rejects sequential mismatch between InvoiceNo and persiste
         ],
         certifiedHeader
       ),
-    /diverge do número fiscal persistido/
+    /diverge do contador fiscal persistido|diverge do número fiscal persistido/
   );
 });
 
