@@ -74,6 +74,7 @@ export async function POST(req: Request) {
       return jsonError(403, "FORBIDDEN", "Sem permissão para provisionar série fiscal.");
     }
 
+    const admin = getAdminClient() as any;
     const [{ data: empresa, error: empresaError }, { data: keyRow, error: keyError }] =
       await Promise.all([
         supabase
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
           .select("id,nif,certificado_agt_numero")
           .eq("id", parsed.data.empresa_id)
           .maybeSingle(),
-        supabase
+        admin
           .from("fiscal_chaves")
           .select("key_version,private_key_ref")
           .eq("empresa_id", parsed.data.empresa_id)
@@ -102,7 +103,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const admin = getAdminClient() as any;
     const { data: existing } = await admin
       .from("fiscal_series_requests")
       .select("id,status,fiscal_serie_id,response_payload,error_payload,submission_uuid")
