@@ -27,7 +27,41 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+const SAFT_HASHED_DOCUMENT_TYPES = new Set([
+  "FT", "FR", "GF", "FG", "AC", "AR", "ND", "NC", "AF", "TV",
+  "RP", "RE", "CS", "LD", "RA",
+  "PP",
+  "GR", "GT", "GA", "GD",
+]);
+
 export async function ensureSaftDocumentSignature(documentoId: string) {
+  const admin = supabaseServerRole() as any;
+  const { data: documento, error: documentoError } = await admin
+    .from("fiscal_documentos")
+    .select("id,tipo_documento")
+    .eq("id", documentoId)
+    .maybeSingle();
+
+  if (documentoError || !documento) {
+    throw new SaftDocumentSignatureError(
+      "SAFT_DOCUMENT_LOOKUP_FAILED",
+      documentoError?.message ?? "Documento fiscal não encontrado."
+    );
+  }
+
+  const tipoDocumento = String(documento.tipo_documento ?? "").trim().toUpperCase();
+  if (!SAFT_HASHED_DOCUMENT_TYPES.has(tipoDocumento)) {
+    return {
+      ok: true as const,
+      skipped: true as const,
+      documentoId,
+      reason: "DOCUMENT_TYPE_NOT_HASHED_IN_SAFT" as const,
+      hashControlVersion: 0,
+      previousHashPresent: false,
+      publicKeyFingerprintSha256: null,
+    };
+  }
+
   const readiness = getSaftSigningReadiness();
 
   if (!readiness.required) {
@@ -40,8 +74,6 @@ export async function ensureSaftDocumentSignature(documentoId: string) {
       publicKeyFingerprintSha256: null,
     };
   }
-
-  const admin = supabaseServerRole() as any;
 
   const { data: prepareData, error: prepareError } = await admin.rpc(
     "fiscal_preparar_assinatura_saft",
