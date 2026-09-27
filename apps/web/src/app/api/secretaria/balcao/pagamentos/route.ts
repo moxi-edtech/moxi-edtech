@@ -56,7 +56,7 @@ type BalcaoFiscalResult =
       error: string;
     };
 type BalcaoReciboResult =
-  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null; print_url?: string | null; skipped?: boolean }
+  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null; print_url?: string | null; skipped?: boolean; non_fiscal?: boolean }
   | { ok: false; error: string };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -399,24 +399,30 @@ export async function POST(request: Request) {
 
     // 2. Documento fiscal do pagamento: RC quando existe FT/ND origem; FR caso contrário.
     const pagamentoRow = pagamento as PagamentoRow | null;
+    const pagamentoSettled =
+      pagamentoRow?.id &&
+      ["settled", "concluido", "pago"].includes(String(pagamentoRow.status));
+
     let recibo: BalcaoReciboResult = fiscalEnabled
       ? { ok: false, error: "Recibo pendente" }
-      : {
-          ok: true,
-          skipped: true,
-          doc_id: null,
-          public_id: null,
-          emitido_em: null,
-          print_url: null,
-        };
+      : pagamentoSettled
+        ? {
+            ok: true,
+            skipped: false,
+            non_fiscal: true,
+            doc_id: pagamentoRow.id,
+            public_id: pagamentoRow.id,
+            emitido_em: new Date().toISOString(),
+            print_url: `/secretaria/pagamentos/${pagamentoRow.id}/recibo/print`,
+          }
+        : { ok: false, error: "Pagamento aguardando liquidação." };
     let fiscalResult: BalcaoFiscalResult = fiscalEnabled
       ? { ok: false, error: "Fiscal pendente" }
       : { ok: true, enabled: false, skipped: true };
 
     if (
       fiscalEnabled &&
-      pagamentoRow?.id &&
-      ["settled", "concluido", "pago"].includes(String(pagamentoRow.status))
+      pagamentoSettled
     ) {
       try {
         const hasSource = await hasFiscalSourceAllocation(pagamentoRow.id);
