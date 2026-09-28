@@ -149,6 +149,17 @@ O BILL-027 deve tornar o vínculo auditável sem inventar número de certificaç
 6. DLQ/replay explícito para outcome incerto sem nova identidade.
 7. SLOs documentados/testáveis.
 
+### Track F status — BILL-018 hardening 2026-09-27
+
+- live snapshot: 4.162 pagamentos históricos com `idempotency_key IS NULL`; nenhum backfill;
+- writers HTTP/UI/direct insert corrigidos para identidade scoped;
+- MCX com claim antes do provider e webhook dedupado pela identidade do provider;
+- migration `20260928002000_bill_018_payment_idempotency_hardening.sql` preparada;
+- guard prospectivo + chave imutável + revogação de RPCs legados;
+- negative/readiness tests adicionados;
+- **não aplicado ao live** porque não existe Supabase development branch/staging actualmente;
+- estado: **READY FOR STAGING — NOT LIVE**.
+
 ### Track G — Homologação AGT
 
 1. Confirmar presença de credenciais/host sem logar valores.
