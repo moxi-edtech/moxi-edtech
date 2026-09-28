@@ -94,6 +94,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .select('id, escola_id, valor_pago, metodo, referencia, status, created_at')
       .single()
 
+    if (error?.code === '23505') {
+      const { data: concurrentPagamento } = await s
+        .from('pagamentos')
+        .select('id, escola_id, valor_pago, metodo, referencia, status, created_at')
+        .eq('escola_id', resolvedEscolaId)
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle()
+
+      if (concurrentPagamento) {
+        return NextResponse.json({ ok: true, pagamento: concurrentPagamento, idempotent: true })
+      }
+    }
+
     if (error || !row) return NextResponse.json({ ok: false, error: error?.message || 'Falha ao registrar pagamento' }, { status: 400 })
 
     recordAuditServer({ escolaId: resolvedEscolaId, portal: 'financeiro', acao: 'PAGAMENTO_REGISTRADO', entity: 'pagamento', entityId: String(row.id), details: { valor: row.valor_pago, metodo: row.metodo, status: row.status } }).catch(() => null)
