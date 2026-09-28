@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { recordAuditServer } from "@/lib/audit";
 import { provisionAgtSeries } from "@/lib/fiscal/agtSeries";
+import { resolveAgtSoftwareIdentity } from "@/lib/fiscal/agtSoftwareInfo";
 import { postFiscalSerieProvisionSchema } from "@/lib/schemas/fiscal-setup.schema";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -103,6 +104,44 @@ export async function POST(req: Request) {
       );
     }
 
+    const softwareIdentity = resolveAgtSoftwareIdentity();
+    let boundCertificate = empresa.certificado_agt_numero?.trim() || "";
+
+    if (
+      boundCertificate &&
+      boundCertificate !== softwareIdentity.softwareValidationNumber
+    ) {
+      return jsonError(
+        409,
+        "FISCAL_AGT_CERTIFICATE_MISMATCH",
+        "O número de certificação AGT vinculado à empresa diverge da identidade do software configurada no servidor.",
+        {
+          empresa_id: parsed.data.empresa_id,
+          configured_product_id: softwareIdentity.productId,
+        }
+      );
+    }
+
+    if (!boundCertificate) {
+      const { error: bindError } = await admin
+        .from("fiscal_empresas")
+        .update({
+          certificado_agt_numero: softwareIdentity.softwareValidationNumber,
+        })
+        .eq("id", parsed.data.empresa_id)
+        .is("certificado_agt_numero", null);
+
+      if (bindError) {
+        return jsonError(
+          500,
+          "FISCAL_AGT_CERTIFICATE_BIND_FAILED",
+          bindError.message
+        );
+      }
+
+      boundCertificate = softwareIdentity.softwareValidationNumber;
+    }
+
     const { data: existing } = await admin
       .from("fiscal_series_requests")
       .select("id,status,fiscal_serie_id,response_payload,error_payload,submission_uuid")
@@ -171,7 +210,7 @@ export async function POST(req: Request) {
         establishmentNumber: parsed.data.establishment_number,
         contingencyIndicator: parsed.data.series_contingency_indicator,
         taxpayerPrivateKeyRef: keyRow.private_key_ref,
-        expectedSoftwareValidationNumber: empresa.certificado_agt_numero,
+        expectedSoftwareValidationNumber: boundCertificate,
       });
 
       const firstNo = Number(agt.firstDocumentNo);
