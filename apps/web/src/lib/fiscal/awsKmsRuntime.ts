@@ -1,5 +1,3 @@
-import "server-only";
-
 import { randomUUID } from "node:crypto";
 import { rename, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
