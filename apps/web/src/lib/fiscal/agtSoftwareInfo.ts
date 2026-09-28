@@ -2,13 +2,13 @@ import "server-only";
 
 import { resolveAgtConfig } from "@/lib/fiscal/agtConfig";
 import { signAgtJwsRs256 } from "@/lib/fiscal/agtJws";
+import {
+  buildAgtSoftwareInfoDetail,
+  type AgtSoftwareInfoIdentity as AgtSoftwareIdentity,
+  type AgtSoftwareInfoMode,
+} from "@/lib/fiscal/agtContract";
 
-export type AgtSoftwareIdentity = Readonly<{
-  productId: string;
-  productVersion: string;
-  softwareValidationNumber: string;
-  signatureVersion: number;
-}>;
+export type { AgtSoftwareIdentity };
 
 export function resolveAgtSoftwareIdentity(): AgtSoftwareIdentity {
   const cfg = resolveAgtConfig();
@@ -32,13 +32,17 @@ export function assertAgtSoftwareValidationNumber(
 
 export async function buildAgtSoftwareInfo(options?: {
   expectedSoftwareValidationNumber?: string | null;
+  mode?: AgtSoftwareInfoMode;
 }) {
   const cfg = resolveAgtConfig();
-  const softwareInfoDetail = {
+  const identity: AgtSoftwareIdentity = {
     productId: cfg.productId,
     productVersion: cfg.productVersion,
     softwareValidationNumber: cfg.softwareValidationNumber,
+    signatureVersion: cfg.signatureVersion,
   };
+  const mode = options?.mode ?? cfg.softwareInfoMode;
+  const softwareInfoDetail = buildAgtSoftwareInfoDetail(identity, mode);
 
   assertAgtSoftwareValidationNumber(
     options?.expectedSoftwareValidationNumber,
@@ -50,13 +54,11 @@ export async function buildAgtSoftwareInfo(options?: {
   });
 
   return {
-    identity: {
-      ...softwareInfoDetail,
-      signatureVersion: cfg.signatureVersion,
-    } satisfies AgtSoftwareIdentity,
+    identity,
     softwareInfo: {
       softwareInfoDetail,
       jwsSoftwareSignature,
     },
+    mode,
   };
 }
