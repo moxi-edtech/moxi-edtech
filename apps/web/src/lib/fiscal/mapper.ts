@@ -174,6 +174,17 @@ export function buildAgtPreparedDocument(input: {
 
   const customerCountry = resolveCustomerCountry(doc);
   const customerTaxID = (doc.cliente_nif ?? "").trim() || "999999999";
+  const documentNo = textValue(doc.numero_formatado);
+  if (
+    documentNo !== doc.numero_formatado ||
+    documentNo.length < 8 ||
+    documentNo.length > 60
+  ) {
+    throw new AgtMappingError(
+      "AGT_MAPPING_DOCUMENT_NO_INVALID",
+      "documentNo deve ter entre 8 e 60 caracteres e não pode conter espaços periféricos"
+    );
+  }
   const documentStatusRaw = textValue(doc.agt_document_status).toUpperCase();
   if (!["N", "C"].includes(documentStatusRaw)) {
     throw new AgtMappingError(
@@ -199,7 +210,7 @@ export function buildAgtPreparedDocument(input: {
         "Documento de correcção AGT exige documento rejeitado canónico"
       );
     }
-    if (rejectedDocumentNo === doc.numero_formatado) {
+    if (rejectedDocumentNo === documentNo) {
       throw new AgtMappingError(
         "AGT_MAPPING_REJECTED_DOCUMENT_NUMBER_REUSED",
         "Correcção de documento rejeitado deve usar novo número fiscal"
@@ -308,7 +319,7 @@ export function buildAgtPreparedDocument(input: {
     };
 
     const document: AgtInvoiceDocument = {
-      documentNo: doc.numero_formatado,
+      documentNo,
       documentStatus,
       documentDate: doc.invoice_date,
       documentType: doc.tipo_documento,
@@ -621,7 +632,7 @@ export function buildAgtPreparedDocument(input: {
   }
 
   const document: AgtInvoiceDocument = {
-    documentNo: doc.numero_formatado,
+    documentNo,
     documentStatus,
     documentDate: doc.invoice_date,
     documentType: doc.tipo_documento,
