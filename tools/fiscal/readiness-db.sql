@@ -283,6 +283,31 @@ BEGIN
 END
 $test$;
 
+-- 4c. Official AGT arithmetic examples from registarFactura documentation.
+DO $test$
+DECLARE
+  v_tax_engine text;
+BEGIN
+  IF public.fiscal_tax_ceil_cent(23.144::numeric) <> 23.15::numeric
+     OR public.fiscal_tax_ceil_cent(0.001844::numeric) <> 0.01::numeric
+     OR public.fiscal_tax_ceil_cent(5.9999999::numeric) <> 6.00::numeric THEN
+    RAISE EXCEPTION 'TEST_FAIL: AGT taxContribution ceil-cent examples diverged';
+  END IF;
+
+  SELECT pg_get_functiondef(
+    'public.fiscal_tax_compute_document(jsonb,date,text,text,numeric)'::regprocedure
+  ) INTO v_tax_engine;
+
+  IF position('v_line_tax := public.fiscal_tax_ceil_cent' in v_tax_engine)=0 THEN
+    RAISE EXCEPTION 'TEST_FAIL: canonical tax engine no longer uses ceil-cent taxContribution';
+  END IF;
+
+  IF position('v_gross_aoa := round(v_gross*v_exchange,2)' in v_tax_engine)=0 THEN
+    RAISE EXCEPTION 'TEST_FAIL: canonical FX gross total no longer rounds to 2 decimals';
+  END IF;
+END
+$test$;
+
 -- 5. AGT retry identity/DLQ controls.
 DO $test$
 BEGIN
