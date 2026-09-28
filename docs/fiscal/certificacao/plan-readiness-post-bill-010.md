@@ -261,6 +261,42 @@ O BILL-013 só pode fechar depois de capturar evidência real HML para:
 - requests/responses sanitizados e persistidos.
 
 
+### Track G status — HML tooling 2026-09-27
+
+Implementado no branch:
+
+- `agtContract.ts`: perfis explícitos `docs-example` e `table-strict`;
+- `docs-example` reproduz os exemplos AGT sem `signatureVersion`;
+- `table-strict` inclui `signatureVersion` conforme a tabela normativa;
+- `jwsSoftwareSignature` é sempre calculado sobre exactamente o
+  `softwareInfoDetail` transmitido;
+- `FISCAL_AGT_SOFTWARE_INFO_MODE` selecciona o perfil sem alterar o default actual;
+- `pnpm fiscal:agt:hml:preflight` valida host HML, configuração, binding de
+  certificado e KMS sem enviar qualquer request à AGT;
+- `pnpm fiscal:agt:hml:submit` faz uma submissão FT/FR + uma consulta
+  `obterEstado`, mas somente com ACK, `submissionUUID` e timestamp explícitos;
+- o probe nunca gera novo `submissionUUID` automaticamente, evitando retry
+  acidental com nova identidade após outcome incerto.
+
+Gates obrigatórios do submit HML:
+
+```
+FISCAL_AGT_ENV=hml
+FISCAL_AGT_HML_PROBE_ACK=SUBMIT_REAL_HML_DOCUMENT
+FISCAL_AGT_HML_DOCUMENT_ID=<uuid de FT/FR emitida para HML>
+FISCAL_AGT_HML_SUBMISSION_UUID=<uuid v4 persistido>
+FISCAL_AGT_HML_SUBMISSION_TIMESTAMP=<ISO-8601 persistido>
+FISCAL_AGT_SOFTWARE_INFO_MODE=docs-example|table-strict
+```
+
+O script também exige as credenciais/configs AGT e Supabase já usadas pelo backend;
+nenhum valor secreto é impresso.
+
+**Bloqueio live confirmado:** existem 3 `fiscal_empresas`, mas 0 possuem
+`certificado_agt_numero`. Existem 2 chaves fiscais activas e ambas são refs KMS.
+Portanto a chamada HML real continua BLOCKED por binding de certificado, não por
+signer/chave privada.
+
 ### Track H — Readiness suite (~40 cenários)
 
 Automatizar matriz:
