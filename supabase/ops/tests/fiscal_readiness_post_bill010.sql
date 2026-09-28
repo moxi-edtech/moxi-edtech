@@ -231,6 +231,120 @@ begin
 end
 $readiness$;
 
+do $readiness$
+declare
+  v_insert_guard text;
+  v_update_guard text;
+  v_payment_id uuid;
+  v_school_id uuid;
+  v_err text;
+begin
+  insert into fiscal_readiness_results
+  select
+    'bill018_payment_unique_index',
+    exists(
+      select 1
+      from pg_indexes
+      where schemaname='public'
+        and tablename='pagamentos'
+        and indexname='ux_pagamentos_escola_idempotency'
+    ),
+    'ux_pagamentos_escola_idempotency';
+
+  select pg_get_functiondef(
+    'public.financeiro_guard_pagamento_insert()'::regprocedure
+  ) into v_insert_guard;
+
+  insert into fiscal_readiness_results values(
+    'bill018_new_payment_guard',
+    position('IDEMPOTENCY:' in v_insert_guard)>0
+      and position('idempotency_key' in v_insert_guard)>0,
+    'prospective insert guard'
+  );
+
+  select pg_get_functiondef(
+    'public.financeiro_guard_pagamento_update()'::regprocedure
+  ) into v_update_guard;
+
+  insert into fiscal_readiness_results values(
+    'bill018_identity_immutable',
+    position('idempotency_key do pagamento não pode ser alterada' in v_update_guard)>0,
+    'immutable operation identity'
+  );
+
+  insert into fiscal_readiness_results
+  select
+    'bill018_historical_nulls_preserved',
+    not a.attnotnull,
+    'pagamentos.idempotency_key stays physically nullable; INSERT guard is prospective'
+  from pg_attribute a
+  where a.attrelid='public.pagamentos'::regclass
+    and a.attname='idempotency_key'
+    and not a.attisdropped;
+
+  insert into fiscal_readiness_results values(
+    'bill018_legacy_rpc_revoked',
+    not has_function_privilege(
+      'authenticated',
+      'public.registrar_pagamento(uuid,text,text,numeric,date)',
+      'EXECUTE'
+    )
+    and not has_function_privilege(
+      'authenticated',
+      'public.realizar_pagamento_balcao(uuid,uuid,jsonb,text,numeric)',
+      'EXECUTE'
+    ),
+    'legacy non-idempotent RPCs are not executable by authenticated'
+  );
+
+  select escola_id,id
+    into v_school_id,v_payment_id
+  from public.pagamentos
+  order by created_at
+  limit 1;
+
+  if v_school_id is null or v_payment_id is null then
+    insert into fiscal_readiness_results values(
+      'bill018_negative_guards',false,'no pagamentos fixture'
+    );
+  else
+    begin
+      insert into public.pagamentos(
+        escola_id,valor_pago,status,metodo,meta
+      ) values (
+        v_school_id,1.00,'pending','cash','{}'::jsonb
+      );
+      insert into fiscal_readiness_results values(
+        'bill018_insert_without_key',false,'INSERT accepted'
+      );
+    exception when others then
+      get stacked diagnostics v_err=message_text;
+      insert into fiscal_readiness_results values(
+        'bill018_insert_without_key',
+        position('IDEMPOTENCY:' in v_err)>0,
+        v_err
+      );
+    end;
+
+    begin
+      update public.pagamentos
+      set idempotency_key='readiness:forbidden-reidentity'
+      where id=v_payment_id;
+      insert into fiscal_readiness_results values(
+        'bill018_reidentity_existing_payment',false,'UPDATE accepted'
+      );
+    exception when others then
+      get stacked diagnostics v_err=message_text;
+      insert into fiscal_readiness_results values(
+        'bill018_reidentity_existing_payment',
+        position('IMMUTABILITY:' in v_err)>0,
+        v_err
+      );
+    end;
+  end if;
+end
+$readiness$;
+
 select *
 from fiscal_readiness_results
 order by case_name;
