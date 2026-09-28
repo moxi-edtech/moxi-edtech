@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { PaymentGatewayService } from '@/lib/financeiro/services/payment-gateway';
+import { buildPaymentIdempotencyKey } from '@/lib/financeiro/paymentIdempotency';
 
 export async function POST(req: Request) {
   const supabase = (await supabaseServer()) as any;
 
   try {
-    const idempotencyKey =
+    const rawIdempotencyKey =
       req.headers.get('Idempotency-Key') ?? req.headers.get('idempotency-key');
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      'mcx-init',
+      rawIdempotencyKey,
+    );
     if (!idempotencyKey) {
       return NextResponse.json({ error: 'Idempotency-Key header é obrigatório' }, { status: 400 });
     }
@@ -22,7 +27,7 @@ export async function POST(req: Request) {
     // 1) Buscar dados da mensalidade
     const { data: mensalidade, error: errMen } = await supabase
       .from('mensalidades')
-      .select('valor_previsto, escola_id, aluno:alunos(nome)')
+      .select('valor_previsto, escola_id, aluno_id, aluno:alunos(nome)')
       .eq('id', mensalidadeId)
       .single();
 
@@ -35,16 +40,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Escola não identificada' }, { status: 400 });
     }
 
-    const { data: existingIdempotency } = await supabase
+    const { error: claimError } = await supabase
       .from('idempotency_keys')
-      .select('result')
-      .eq('escola_id', escolaId)
-      .eq('scope', 'financeiro_pagamentos_mcx')
-      .eq('key', idempotencyKey)
-      .maybeSingle();
+      .insert({
+        escola_id: escolaId,
+        scope: 'financeiro_pagamentos_mcx',
+        key: idempotencyKey,
+        result: null,
+      });
 
-    if (existingIdempotency?.result) {
-      return NextResponse.json(existingIdempotency.result, { status: 200 });
+    if (claimError) {
+      if (claimError.code !== '23505') {
+        return NextResponse.json(
+          { error: 'Falha ao reservar identidade da operação' },
+          { status: 500 },
+        );
+      }
+
+      const { data: existingIdempotency } = await supabase
+        .from('idempotency_keys')
+        .select('result')
+        .eq('escola_id', escolaId)
+        .eq('scope', 'financeiro_pagamentos_mcx')
+        .eq('key', idempotencyKey)
+        .maybeSingle();
+
+      if (existingIdempotency?.result) {
+        return NextResponse.json(existingIdempotency.result, { status: 200 });
+      }
+
+      return NextResponse.json(
+        {
+          error: 'Operação com esta Idempotency-Key já está em processamento',
+          code: 'IDEMPOTENCY_IN_PROGRESS',
+        },
+        { status: 409 },
+      );
     }
 
     // 2) Chamar o Gateway (MCX)
@@ -57,11 +88,23 @@ export async function POST(req: Request) {
     });
 
     if (!pgResponse.success) {
-      return NextResponse.json({ error: pgResponse.message ?? 'Falha no gateway' }, { status: 502 });
+      await supabase
+        .from('idempotency_keys')
+        .delete()
+        .eq('escola_id', escolaId)
+        .eq('scope', 'financeiro_pagamentos_mcx')
+        .eq('key', idempotencyKey);
+
+      return NextResponse.json(
+        { error: pgResponse.message ?? 'Falha no gateway' },
+        { status: 502 },
+      );
     }
 
     // 3) Registar tentativa de pagamento (pendente até webhook)
     const { error: errPag } = await supabase.from('pagamentos').insert({
+      escola_id: escolaId,
+      aluno_id: (mensalidade as { aluno_id?: string | null }).aluno_id ?? null,
       mensalidade_id: mensalidadeId,
       valor_pago: Number((mensalidade as any).valor_previsto),
       metodo_pagamento: 'mcx_express',
@@ -69,6 +112,12 @@ export async function POST(req: Request) {
       transacao_id_externo: pgResponse.transactionId,
       status: 'pendente',
       conciliado: false,
+      idempotency_key: idempotencyKey,
+      meta: {
+        origem: 'mcx_init',
+        idempotency_key: idempotencyKey,
+        provider_transaction_id: pgResponse.transactionId,
+      },
     });
 
     if (errPag) {
@@ -83,15 +132,10 @@ export async function POST(req: Request) {
 
     await supabase
       .from('idempotency_keys')
-      .upsert(
-        {
-          escola_id: escolaId,
-          scope: 'financeiro_pagamentos_mcx',
-          key: idempotencyKey,
-          result: responsePayload,
-        },
-        { onConflict: 'escola_id,scope,key' }
-      );
+      .update({ result: responsePayload })
+      .eq('escola_id', escolaId)
+      .eq('scope', 'financeiro_pagamentos_mcx')
+      .eq('key', idempotencyKey);
 
     return NextResponse.json(responsePayload);
   } catch (error) {
