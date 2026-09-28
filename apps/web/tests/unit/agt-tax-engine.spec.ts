@@ -174,6 +174,20 @@ test("AGT mapper preserves foreign-currency totals and AOA countervalue", () => 
   });
 });
 
+test("AGT mapper rejects documentNo shorter than the official 8-character minimum", () => {
+  assert.throws(
+    () =>
+      buildAgtPreparedDocument({
+        document: baseDocument({ numero_formatado: "FT X/1" }),
+        items: [canonicalItem()],
+        taxRegistrationNumber: "5000000000",
+      }),
+    (error: unknown) =>
+      error instanceof AgtMappingError &&
+      error.code === "AGT_MAPPING_DOCUMENT_NO_INVALID"
+  );
+});
+
 test("AGT mapper rejects a line without canonical tax profile", () => {
   assert.throws(
     () =>
