@@ -181,6 +181,65 @@ BEGIN
 END
 $test$;
 
+-- 4b. BILL-018 payment idempotency invariants.
+DO $test$
+DECLARE
+  v_insert_guard text;
+  v_update_guard text;
+BEGIN
+  IF NOT EXISTS(
+    SELECT 1
+    FROM pg_indexes
+    WHERE schemaname='public'
+      AND tablename='pagamentos'
+      AND indexname='ux_pagamentos_escola_idempotency'
+  ) THEN
+    RAISE EXCEPTION 'TEST_FAIL: payment idempotency unique index missing';
+  END IF;
+
+  SELECT pg_get_functiondef(
+    'public.financeiro_guard_pagamento_insert()'::regprocedure
+  ) INTO v_insert_guard;
+
+  IF position('IDEMPOTENCY:' in v_insert_guard)=0
+     OR position('idempotency_key' in v_insert_guard)=0 THEN
+    RAISE EXCEPTION 'TEST_FAIL: new-payment idempotency guard missing';
+  END IF;
+
+  SELECT pg_get_functiondef(
+    'public.financeiro_guard_pagamento_update()'::regprocedure
+  ) INTO v_update_guard;
+
+  IF position('idempotency_key do pagamento não pode ser alterada' in v_update_guard)=0 THEN
+    RAISE EXCEPTION 'TEST_FAIL: payment idempotency immutability guard missing';
+  END IF;
+
+  -- Historical NULLs are intentionally preserved by keeping the physical
+  -- column nullable. The INSERT trigger enforces the rule prospectively.
+  IF (
+    SELECT a.attnotnull
+    FROM pg_attribute a
+    WHERE a.attrelid='public.pagamentos'::regclass
+      AND a.attname='idempotency_key'
+      AND NOT a.attisdropped
+  ) THEN
+    RAISE EXCEPTION 'TEST_FAIL: BILL-018 unexpectedly forced historical NOT NULL';
+  END IF;
+
+  IF has_function_privilege(
+    'authenticated',
+    'public.registrar_pagamento(uuid,text,text,numeric,date)',
+    'EXECUTE'
+  ) OR has_function_privilege(
+    'authenticated',
+    'public.realizar_pagamento_balcao(uuid,uuid,jsonb,text,numeric)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'TEST_FAIL: non-idempotent legacy payment RPC remains exposed';
+  END IF;
+END
+$test$;
+
 -- 5. AGT retry identity/DLQ controls.
 DO $test$
 BEGIN
