@@ -35,6 +35,9 @@ jobs:
       - name: Security Regression Tests
         run: pnpm test:security
 
+      - name: KF2 Auditor Regression Tests
+        run: pnpm exec tsx --test agents/scan/kf2-search-audit.test.ts
+
       - name: KF2 Search Audit
         run: pnpm agent:kf2
 
