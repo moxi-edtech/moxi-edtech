@@ -83,12 +83,17 @@ export function PaymentDrawer({
   const [mensagem, setMensagem] = useState("");
   const uploadIdempotencyKeyRef = useRef<string | null>(null);
 
+  const mensalidadeId = mensalidade?.id ?? null;
+
   useEffect(() => {
-    if (!open || !mensalidade) return;
+    if (!open || !mensalidadeId) return;
     setValorInformado("");
     setMensagem("");
+  }, [open, mensalidadeId]);
+
+  useEffect(() => {
     uploadIdempotencyKeyRef.current = null;
-  }, [open, mensalidade?.id]);
+  }, [mensalidadeId]);
 
   if (!open || !mensalidade) return null;
 
