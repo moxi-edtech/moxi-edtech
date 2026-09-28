@@ -2,6 +2,7 @@ import "server-only";
 
 import { signAgtJwsRs256 } from "@/lib/fiscal/agtJws";
 import { buildAgtSoftwareInfo } from "@/lib/fiscal/agtSoftwareInfo";
+import { parseSafeInteger } from "@/lib/fiscal/decimal";
 import { buildAgtBasicAuthorization, resolveAgtConfig, resolveAgtTimeoutMs } from "@/lib/fiscal/agtConfig";
 
 export type AgtSeriesProvisionInput = {
@@ -113,10 +114,11 @@ export async function provisionAgtSeries(
       );
     }
 
-    const authorizedQuantity = Number(json.seriesFEResult.authorizedQuantity);
-    if (!Number.isSafeInteger(authorizedQuantity) || authorizedQuantity <= 0) {
-      throw new Error("AGT_SERIES_INVALID_AUTHORIZED_QUANTITY");
-    }
+    const authorizedQuantity = parseSafeInteger(
+      json.seriesFEResult.authorizedQuantity,
+      "AGT_SERIES_AUTHORIZED_QUANTITY",
+      { min: 1 }
+    );
 
     return {
       seriesCode: json.seriesFEResult.seriesCode,
