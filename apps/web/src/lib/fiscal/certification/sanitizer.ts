@@ -45,7 +45,14 @@ export function sanitizeAgtEvidence<T = unknown>(value: T): T {
 
   const visit = (input: unknown, key = ""): unknown => {
     const normalized = normalizedKey(key);
-    if (REDACT_KEYS.has(normalized)) return "[REDACTED]";
+    if (
+      REDACT_KEYS.has(normalized) ||
+      (normalized.includes("private") && normalized.includes("key")) ||
+      normalized.includes("kmskeyref") ||
+      normalized.includes("kms_ref")
+    ) {
+      return "[REDACTED]";
+    }
     if (HASH_KEYS.has(normalized)) return hashValue(input);
 
     if (Array.isArray(input)) return input.map((item) => visit(item));
