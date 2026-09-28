@@ -36,11 +36,19 @@ function sourceId(userId: string | null) {
   return compact ? `U${compact.slice(0, 29)}` : "KLASSE-SYSTEM";
 }
 
-function sourceBilling(origin: string): "P" | "I" | "M" {
+function sourceBilling(
+  origin: string,
+  payload: Record<string, unknown>
+): "P" | "I" | "M" {
+  const metadata = objectValue(payload.metadata);
+  const explicit = String(metadata.saft_source_billing ?? "")
+    .trim()
+    .toUpperCase();
+  if (explicit === "P" || explicit === "I" || explicit === "M") {
+    return explicit;
+  }
   if (origin === "manual_recuperado" || origin === "contingencia") return "M";
-  const metadata = objectValue(objectValue({}).metadata);
-  void metadata;
-  return origin === "integrado" ? "I" : "P";
+  return "P";
 }
 
 function paymentReceipt(payload: Record<string, unknown>) {
@@ -99,7 +107,7 @@ function toSaftDocument(doc: CertificationDocumentSnapshot): SaftDocumento {
     status_reason: doc.cancellation?.motivo ?? null,
     source_id: sourceId(doc.created_by),
     status_source_id: sourceId(doc.cancellation?.created_by ?? doc.created_by),
-    source_billing: sourceBilling(doc.series.origem_documento),
+    source_billing: sourceBilling(doc.series.origem_documento, doc.payload),
     series_sort_key:
       doc.series.agt_series_code ?? doc.series.prefixo ?? doc.serie_id,
     order_references: doc.originDocument
