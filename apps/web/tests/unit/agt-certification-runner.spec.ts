@@ -173,6 +173,8 @@ test("sanitizer removes credentials and replaces complete JWS/signatures by hash
     Authorization: "Basic dXNlcjpwYXNz",
     password: "secret",
     private_key_ref: "kms://private/ref",
+    kmsKeyRef: "arn:aws:kms:us-east-2:000:key/secret",
+    privateKeyRef: "kms://other/private/ref",
     jwsSoftwareSignature: "header.payload.signature",
     nested: {
       token: "abc",
@@ -184,6 +186,8 @@ test("sanitizer removes credentials and replaces complete JWS/signatures by hash
   assert.equal(sanitized.Authorization, "[REDACTED]");
   assert.equal(sanitized.password, "[REDACTED]");
   assert.equal(sanitized.private_key_ref, "[REDACTED]");
+  assert.equal(sanitized.kmsKeyRef, "[REDACTED]");
+  assert.equal(sanitized.privateKeyRef, "[REDACTED]");
   assert.equal(sanitized.nested.token, "[REDACTED]");
   assert.equal(sanitized.nested.requestID, "REQ-123");
   assert.match(sanitized.jwsSoftwareSignature.sha256, /^[a-f0-9]{64}$/);
