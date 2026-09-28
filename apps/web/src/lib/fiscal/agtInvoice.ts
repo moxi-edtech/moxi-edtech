@@ -3,6 +3,7 @@ import "server-only";
 import { signAgtJwsRs256 } from "@/lib/fiscal/agtJws";
 import { buildAgtSoftwareInfo } from "@/lib/fiscal/agtSoftwareInfo";
 import { parseSafeInteger } from "@/lib/fiscal/decimal";
+import type { AgtSoftwareInfoMode } from "@/lib/fiscal/agtContract";
 import {
   buildAgtBasicAuthorization,
   resolveAgtConfig,
@@ -106,12 +107,14 @@ export async function registerAgtInvoices(input: {
   documents: AgtPreparedDocument[];
   submissionTimeStamp?: string;
   expectedSoftwareValidationNumber?: string | null;
+  softwareInfoMode?: AgtSoftwareInfoMode;
 }): Promise<AgtRegisterResult> {
   if (input.documents.length < 1 || input.documents.length > 30) {
     throw new Error("AGT_REGISTER_DOCUMENT_COUNT_INVALID");
   }
   const { softwareInfo } = await buildAgtSoftwareInfo({
     expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
+    mode: input.softwareInfoMode,
   });
   const documents = [];
   for (const item of input.documents) {
@@ -172,9 +175,11 @@ export async function getAgtInvoiceStatus(input: {
   taxRegistrationNumber: string;
   taxpayerPrivateKeyRef: string;
   expectedSoftwareValidationNumber?: string | null;
+  softwareInfoMode?: AgtSoftwareInfoMode;
 }): Promise<AgtStatusResult> {
   const { softwareInfo } = await buildAgtSoftwareInfo({
     expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
+    mode: input.softwareInfoMode,
   });
   const signaturePayload = {
     taxRegistrationNumber: input.taxRegistrationNumber,
