@@ -402,3 +402,54 @@ Para fechar BILL-018:
 7. CI do PR deve estar verde ou qualquer falha deve ser classificada como preexistente/infra com evidência.
 
 Sem esses gates, BILL-018 permanece READY FOR STAGING, não CLOSED.
+
+## BILL-013 — HML contract probe status (2026-09-27)
+
+**Estado:** TOOLING READY — EXTERNAL BINDING BLOCKED
+
+Implementado:
+
+- `agtContract.ts` com `docs-example` e `table-strict`;
+- `FISCAL_AGT_SOFTWARE_INFO_MODE` para alternar o shape de
+  `softwareInfoDetail` sem alterar o default actual;
+- `jwsSoftwareSignature` assina sempre exactamente o objecto transmitido;
+- `fiscal:agt:hml:preflight`: valida HML oficial, configuração, certificado e
+  KMS sem network side effect;
+- `fiscal:agt:hml:submit`: baseline FT/FR com ACK explícito,
+  `submissionUUID` e timestamp persistidos pelo operador;
+- um único `registarFactura` + um único `obterEstado`;
+- 422/429 são reportados como transitórios, sem loop/retry automático;
+- o probe recusa produção e hosts diferentes de
+  `sifphml.minfin.gov.ao`.
+
+Evidência live:
+
+- 3 empresas fiscais;
+- 0 empresas com `certificado_agt_numero`;
+- 2 chaves fiscais activas;
+- 2/2 chaves activas são referências KMS.
+
+Portanto não existe condição legítima para executar HML real ainda.
+Nenhum número de certificado foi inventado ou backfillado.
+
+CI do head que introduziu o tooling:
+
+- KLASSE UI Standards: PASS;
+- Security Regression: 4/4 PASS;
+- Fiscal Regression: 58/58 PASS;
+- KF2 global: FAIL apenas por findings preexistentes de LIMIT/ORDER BY/select('*')
+  fora dos arquivos fiscais alterados.
+
+Próximo gate real:
+
+1. obter/vincular `certificado_agt_numero` verdadeiro à empresa de homologação;
+2. garantir envs AGT HML + software KMS configuradas;
+3. rodar `pnpm fiscal:agt:hml:preflight`;
+4. criar/separar FT ou FR de homologação;
+5. executar primeiro em `docs-example`;
+6. se a resposta indicar E08/E39 ou ausência de `signatureVersion`, repetir a
+   mesma matriz documental com nova submissão explícita em `table-strict`;
+7. persistir a evidência sanitizada antes de decidir o contrato definitivo;
+8. não implementar `jwsSignature` top-level de `registarFactura` sem evidência
+   HML, pois a documentação oficial não especifica o payload exacto a assinar.
+
