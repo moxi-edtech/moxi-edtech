@@ -1,78 +1,111 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { checkFile, extractQuerySegments } from "./kf2-search-audit-core";
+import { checkGlobalSearchContract } from "./kf2-search-audit-core";
 
-const route = (body: string) => `export async function GET() {\n${body}\n}`;
+const hookFile = "apps/web/src/hooks/useGlobalSearch.ts";
+const sqlFile = "supabase/migrations/20990101000000_search_global.sql";
+const globalSearchFile = "apps/web/src/components/GlobalSearch.tsx";
+const commandPaletteFile = "apps/web/src/components/CommandPalette.tsx";
 
-test("ignores Buffer.from and Array.from false positives", () => {
-  const content = route(`
-    const encoded = Buffer.from("abc", "utf8").toString("base64");
-    const ids = Array.from(new Set(["a", "b"]));
-    return Response.json({ encoded, ids });
-  `);
+const goodHook = `
+const debouncedQuery = useDebounce(effectiveQuery, 300);
+const limit = Math.min(8, 50);
+if (!escolaId || !q || q.length < 2) return;
+await supabase.rpc("search_global_entities", {
+  p_limit: limit,
+  p_cursor_score: pageCursor?.score,
+  p_cursor_updated_at: pageCursor?.updated_at,
+  p_cursor_created_at: pageCursor?.created_at,
+  p_cursor_id: pageCursor?.id,
+});
+await supabase.rpc("search_global_entities", {
+  p_limit: Math.min(8, 50),
+  p_cursor_score: cursor.score,
+  p_cursor_updated_at: cursor.updated_at,
+  p_cursor_created_at: cursor.created_at,
+  p_cursor_id: cursor.id,
+});
+`;
 
-  assert.equal(extractQuerySegments(content).length, 0);
-  assert.deepEqual(checkFile("apps/web/src/app/api/auth/handoff/route.ts", content), []);
+const goodSql = `
+create or replace function public.search_global_entities(...) returns table(...) as $$
+declare
+  v_query text := coalesce(trim(p_query), '');
+  v_limit int := least(greatest(coalesce(p_limit, 10), 1), 50);
+begin
+  if not public.has_access_to_escola_fast(p_escola_id) then raise exception 'forbidden'; end if;
+  if v_query = '' or length(v_query) < 2 then return; end if;
+  with ranked as (
+    select * from source b where b.escola_id = p_escola_id
+  ), filtered as (
+    select * from ranked
+    where (score, updated_at, created_at, id)
+      < (p_cursor_score, p_cursor_updated_at, p_cursor_created_at, p_cursor_id)
+  ), candidates as (
+    select * from filtered
+    order by score desc, updated_at desc, created_at desc, id desc
+    limit v_limit
+  )
+  select * from candidates c
+  order by c.score desc, c.updated_at desc, c.created_at desc, c.id desc;
+end;
+$$;
+`;
+
+function run(overrides: Partial<Parameters<typeof checkGlobalSearchContract>[0]> = {}) {
+  return checkGlobalSearchContract({
+    hookFile,
+    hookContent: goodHook,
+    sqlFile,
+    sqlContent: goodSql,
+    globalSearchFile,
+    globalSearchContent: "useGlobalSearch(escolaId)",
+    commandPaletteFile,
+    commandPaletteContent: "useGlobalSearch(escolaId)",
+    ...overrides,
+  });
+}
+
+test("accepts the documented KF2 global-search contract", () => {
+  assert.deepEqual(run(), []);
 });
 
-test("ignores non-read from chains", () => {
-  const content = route(`
-    await supabase.from("audit_logs").update({ seen: true }).eq("id", "1");
-    return Response.json({ ok: true });
-  `);
-
-  assert.deepEqual(checkFile("apps/web/src/app/api/example/route.ts", content), []);
+test("fails when debounce leaves the 250-400ms contract", () => {
+  const findings = run({ hookContent: goodHook.replace("300", "100") });
+  assert.ok(findings.some((item) => item.error.includes("Debounce")));
 });
 
-test("keeps bounded and ordered Supabase reads green", () => {
-  const content = route(`
-    const { data } = await supabase
-      .from("alunos")
-      .select("id,nome")
-      .order("id", { ascending: true })
-      .limit(50);
-    return Response.json({ data });
-  `);
-
-  assert.deepEqual(checkFile("apps/web/src/app/api/alunos/route.ts", content), []);
+test("fails when a RPC p_limit is not provably bounded to 50", () => {
+  const findings = run({
+    hookContent: goodHook.replace("p_limit: Math.min(8, 50)", "p_limit: requestedLimit"),
+  });
+  assert.ok(findings.some((item) => item.error.includes("p_limit sem limite superior")));
 });
 
-test("still flags a real unbounded unordered Supabase read", () => {
-  const content = route(`
-    const { data } = await supabase
-      .from("alunos")
-      .select("id,nome");
-    return Response.json({ data });
-  `);
-
-  assert.deepEqual(checkFile("apps/web/src/app/api/alunos/route.ts", content), [
-    { file: "apps/web/src/app/api/alunos/route.ts", error: "Pesquisa sem LIMIT explícito" },
-    { file: "apps/web/src/app/api/alunos/route.ts", error: "Pesquisa sem ORDER BY determinístico" },
-  ]);
+test("fails when the SQL RPC removes the server-side limit clamp", () => {
+  const findings = run({
+    sqlContent: goodSql.replace(
+      "v_limit int := least(greatest(coalesce(p_limit, 10), 1), 50);",
+      "v_limit int := coalesce(p_limit, 10);",
+    ),
+  });
+  assert.ok(findings.some((item) => item.error.includes("clamp server-side")));
 });
 
-test("still audits RPC list calls", () => {
-  const content = route(`
-    const { data } = await supabase.rpc("list_alunos", { p_escola_id: "school" });
-    return Response.json({ data });
-  `);
-
-  assert.deepEqual(checkFile("apps/web/src/app/api/alunos/search/route.ts", content), [
-    { file: "apps/web/src/app/api/alunos/search/route.ts", error: "Pesquisa sem LIMIT explícito" },
-    { file: "apps/web/src/app/api/alunos/search/route.ts", error: "Pesquisa sem ORDER BY determinístico" },
-  ]);
+test("fails when deterministic ordering is removed", () => {
+  const findings = run({
+    sqlContent: goodSql.replace(
+      "order by score desc, updated_at desc, created_at desc, id desc",
+      "order by score desc",
+    ),
+  });
+  assert.ok(findings.some((item) => item.error.includes("ORDER BY determinístico antes")));
 });
 
-test("single-row reads remain exempt from list invariants", () => {
-  const content = route(`
-    const { data } = await supabase
-      .from("alunos")
-      .select("id,nome")
-      .eq("id", "student")
-      .maybeSingle();
-    return Response.json({ data });
-  `);
-
-  assert.deepEqual(checkFile("apps/web/src/app/api/alunos/[id]/route.ts", content), []);
+test("fails when tenant isolation is removed", () => {
+  const findings = run({
+    sqlContent: goodSql.replace("where b.escola_id = p_escola_id", "where true"),
+  });
+  assert.ok(findings.some((item) => item.error.includes("tenant")));
 });

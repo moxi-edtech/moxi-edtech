@@ -1,159 +1,184 @@
-const MAX_LIMIT = 50;
-
-const KF2_SCAN_PATH_EXCLUDES = [
-  "/pdf/",
-  "/declaracao/",
-  "/comprovante-matricula/",
-  "/historico/snapshot/",
-  "/fechamento-academico/",
-  "/documentos-oficiais/lote/",
-];
-
 export type Finding = {
   file: string;
   error: string;
 };
 
-const QUERY_END_MARKER = /(?:;|\n\s*return\s+|\n\s*const\s+|\n\s*let\s+|\n\s*if\s*\(|\n\s*}\s*catch)/;
+const MAX_LIMIT = 50;
+const MIN_QUERY_LENGTH = 2;
+const DEBOUNCE_MIN_MS = 250;
+const DEBOUNCE_MAX_MS = 400;
 
-function hasAllowScan(content: string) {
-  return content.includes("@kf2 allow-scan");
+function finding(file: string, error: string): Finding {
+  return { file, error };
 }
 
-function hasKf2Invariants(content: string) {
-  return content.includes("applyKf2ListInvariants");
-}
+function resolveLimitExpression(
+  expression: string,
+  hookContent: string,
+  seen = new Set<string>(),
+): boolean {
+  const expr = expression.trim();
 
-export function extractQuerySegments(content: string) {
-  const segments: string[] = [];
-  const queryRegex = /\.(from|rpc)\(/g;
-
-  for (const match of content.matchAll(queryRegex)) {
-    const start = match.index ?? -1;
-    if (start < 0) continue;
-
-    const rest = content.slice(start);
-    const endMatch = rest.match(QUERY_END_MARKER);
-    const end = endMatch?.index ?? rest.length;
-    const segment = rest.slice(0, end);
-
-    // `.from(...)` is overloaded in JS/TS (Buffer.from, Array.from, etc.).
-    // KF2 audits Supabase reads, so a `from` segment only qualifies when it
-    // contains the PostgREST `.select(...)` read operation. RPC calls remain
-    // auditable because they can return list/search results without `.select()`.
-    if (match[1] === "from" && !segment.includes(".select(")) {
-      continue;
-    }
-
-    segments.push(segment);
+  if (/^\d+$/.test(expr)) {
+    return Number(expr) <= MAX_LIMIT;
   }
 
-  return segments;
+  if (/^Math\.min\(/.test(expr)) {
+    const numbers = [...expr.matchAll(/\b(\d+)\b/g)].map((match) => Number(match[1]));
+    return numbers.some((value) => value <= MAX_LIMIT);
+  }
+
+  if (/^[A-Za-z_$][\w$]*$/.test(expr)) {
+    if (seen.has(expr)) return false;
+    seen.add(expr);
+    const declaration = hookContent.match(
+      new RegExp(`(?:const|let)\\s+${expr}\\s*=\\s*([^;]+);`),
+    );
+    return declaration ? resolveLimitExpression(declaration[1], hookContent, seen) : false;
+  }
+
+  return false;
 }
 
-function isSingleRowQuery(segment: string) {
-  return (
-    segment.includes(".single(") ||
-    segment.includes(".maybeSingle(") ||
-    segment.includes("head: true") ||
-    /\.limit\(\s*1\s*\)/.test(segment)
+function extractRpcLimitExpressions(hookContent: string): string[] {
+  return [...hookContent.matchAll(/^\s*p_limit:\s*(.+?),\s*$/gm)].map((match) =>
+    match[1].trim(),
   );
 }
 
-function hasRange(segment: string) {
-  return /\.range\(\s*\d+\s*,\s*\d+\s*\)/.test(segment);
-}
-
-function hasDeterministicOrder(segment: string) {
-  return segment.includes(".order(");
-}
-
-export function checkFile(file: string, content: string): Finding[] {
+export function checkGlobalSearchContract(input: {
+  hookFile: string;
+  hookContent: string;
+  sqlFile: string;
+  sqlContent: string;
+  globalSearchFile: string;
+  globalSearchContent: string;
+  commandPaletteFile: string;
+  commandPaletteContent: string;
+}): Finding[] {
   const findings: Finding[] = [];
+  const {
+    hookFile,
+    hookContent,
+    sqlFile,
+    sqlContent,
+    globalSearchFile,
+    globalSearchContent,
+    commandPaletteFile,
+    commandPaletteContent,
+  } = input;
 
-  if (hasAllowScan(content)) {
-    return findings;
-  }
-
-  if (KF2_SCAN_PATH_EXCLUDES.some((pathPart) => file.includes(pathPart))) {
-    return findings;
-  }
-
-  if (file.includes("/app/api/") || file.includes("\\app\\api\\")) {
-    const hasGetHandler =
-      content.includes("export async function GET") ||
-      content.includes("export function GET") ||
-      content.includes("export const GET");
-    if (!hasGetHandler) {
-      return findings;
+  const debounce = hookContent.match(/useDebounce\([^,]+,\s*(\d+)\s*\)/);
+  if (!debounce) {
+    findings.push(finding(hookFile, "Pesquisa global sem debounce estático verificável"));
+  } else {
+    const debounceMs = Number(debounce[1]);
+    if (debounceMs < DEBOUNCE_MIN_MS || debounceMs > DEBOUNCE_MAX_MS) {
+      findings.push(
+        finding(
+          hookFile,
+          `Debounce da pesquisa global fora de ${DEBOUNCE_MIN_MS}-${DEBOUNCE_MAX_MS}ms`,
+        ),
+      );
     }
   }
 
-  const querySegments = extractQuerySegments(content);
-  if (querySegments.length === 0) {
-    return findings;
+  if (!/\.length\s*<\s*2\b/.test(hookContent)) {
+    findings.push(
+      finding(hookFile, `Pesquisa global sem guarda de mínimo de ${MIN_QUERY_LENGTH} caracteres`),
+    );
   }
 
-  for (const segment of querySegments) {
-    if (segment.includes(".select('*')") || segment.includes('.select("*")')) {
-      findings.push({
-        file,
-        error: "Uso de select('*') em pesquisa",
-      });
+  const rpcCalls = [...hookContent.matchAll(/\.rpc\(\s*["']search_global_entities["']/g)];
+  if (rpcCalls.length === 0) {
+    findings.push(finding(hookFile, "Hook não usa RPC canónica search_global_entities"));
+  }
+
+  const limitExpressions = extractRpcLimitExpressions(hookContent);
+  if (limitExpressions.length !== rpcCalls.length) {
+    findings.push(
+      finding(
+        hookFile,
+        "Nem toda chamada a search_global_entities declara p_limit explicitamente",
+      ),
+    );
+  }
+  for (const expression of limitExpressions) {
+    if (!resolveLimitExpression(expression, hookContent)) {
+      findings.push(
+        finding(hookFile, `p_limit sem limite superior verificável de ${MAX_LIMIT}: ${expression}`),
+      );
     }
+  }
 
-    const limitRegex = /\.limit\((\d+)\)/g;
-    const limits = [...segment.matchAll(limitRegex)];
-    const usesKf2Invariants = hasKf2Invariants(content);
-    const singleRowQuery = isSingleRowQuery(segment);
-    const aggregateQuery =
-      segment.includes("count(") ||
-      segment.includes("COUNT(") ||
-      segment.includes("sum(") ||
-      segment.includes("SUM(") ||
-      segment.includes("group(");
-
-    if (!usesKf2Invariants && !singleRowQuery) {
-      if (limits.length === 0 && !hasRange(segment)) {
-        findings.push({
-          file,
-          error: "Pesquisa sem LIMIT explícito",
-        });
-      } else {
-        for (const [, value] of limits) {
-          if (Number(value) > MAX_LIMIT) {
-            findings.push({
-              file,
-              error: `LIMIT maior que ${MAX_LIMIT}`,
-            });
-          }
-        }
-
-        const rangeMatch = segment.match(/\.range\(\s*(\d+)\s*,\s*(\d+)\s*\)/);
-        if (rangeMatch) {
-          const from = Number(rangeMatch[1]);
-          const to = Number(rangeMatch[2]);
-          if (to - from + 1 > MAX_LIMIT) {
-            findings.push({
-              file,
-              error: `LIMIT maior que ${MAX_LIMIT}`,
-            });
-          }
-        }
-      }
+  for (const cursorArg of [
+    "p_cursor_score",
+    "p_cursor_updated_at",
+    "p_cursor_created_at",
+    "p_cursor_id",
+  ]) {
+    if (!hookContent.includes(cursorArg)) {
+      findings.push(finding(hookFile, `Cursor global incompleto: ${cursorArg} ausente`));
     }
+  }
 
-    if (
-      !usesKf2Invariants &&
-      !singleRowQuery &&
-      !aggregateQuery &&
-      !hasDeterministicOrder(segment)
-    ) {
-      findings.push({
-        file,
-        error: "Pesquisa sem ORDER BY determinístico",
-      });
-    }
+  const normalizedSql = sqlContent.replace(/\s+/g, " ").toLowerCase();
+  if (!normalizedSql.includes("search_global_entities")) {
+    findings.push(finding(sqlFile, "Migração não define search_global_entities"));
+  }
+
+  const clamp = normalizedSql.match(/v_limit\s+int\s*:=\s*least\(.{0,220}?,\s*(\d+)\s*\);/i);
+  if (!clamp || Number(clamp[1]) > MAX_LIMIT) {
+    findings.push(
+      finding(sqlFile, `RPC sem clamp server-side verificável de p_limit <= ${MAX_LIMIT}`),
+    );
+  }
+
+  if (!normalizedSql.includes("length(v_query) < 2")) {
+    findings.push(
+      finding(sqlFile, `RPC sem guarda server-side de mínimo de ${MIN_QUERY_LENGTH} caracteres`),
+    );
+  }
+
+  if (!normalizedSql.includes("has_access_to_escola_fast(p_escola_id)")) {
+    findings.push(finding(sqlFile, "RPC sem guarda canónica de acesso à escola"));
+  }
+
+  if (!normalizedSql.includes("b.escola_id = p_escola_id")) {
+    findings.push(finding(sqlFile, "RPC sem filtro explícito de tenant por escola_id"));
+  }
+
+  if (
+    !normalizedSql.includes("(score, updated_at, created_at, id)") ||
+    !normalizedSql.includes(
+      "(p_cursor_score, p_cursor_updated_at, p_cursor_created_at, p_cursor_id)",
+    )
+  ) {
+    findings.push(finding(sqlFile, "RPC sem cursor composto determinístico"));
+  }
+
+  if (!normalizedSql.includes("limit v_limit")) {
+    findings.push(finding(sqlFile, "RPC não aplica o limite normalizado v_limit"));
+  }
+
+  if (!normalizedSql.includes("order by score desc, updated_at desc, created_at desc, id desc")) {
+    findings.push(finding(sqlFile, "RPC sem ORDER BY determinístico antes do LIMIT"));
+  }
+
+  if (
+    !normalizedSql.includes(
+      "order by c.score desc, c.updated_at desc, c.created_at desc, c.id desc",
+    )
+  ) {
+    findings.push(finding(sqlFile, "RPC sem ORDER BY determinístico no resultado final"));
+  }
+
+  if (!globalSearchContent.includes("useGlobalSearch")) {
+    findings.push(finding(globalSearchFile, "GlobalSearch não consome useGlobalSearch"));
+  }
+
+  if (!commandPaletteContent.includes("useGlobalSearch")) {
+    findings.push(finding(commandPaletteFile, "CommandPalette não consome useGlobalSearch"));
   }
 
   return findings;
