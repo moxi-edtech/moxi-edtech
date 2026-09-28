@@ -35,6 +35,10 @@ export interface FiscalPdfDocumentData {
     totalGeral: number;
   };
   moeda: string;
+  referencia?: {
+    numero: string;
+    motivo?: string | null;
+  } | null;
 }
 
 export interface FiscalDocumentV1Props {
@@ -210,6 +214,16 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
           </Text>
           <Text>Data de Emissão: {documento.dataEmissao}</Text>
           {!isDraft && !isAnulado ? <Text style={styles.bold}>Original</Text> : null}
+          {documento.referencia ? (
+            <View>
+              <Text>
+                Documento de origem: {documento.referencia.numero}
+              </Text>
+              {documento.referencia.motivo ? (
+                <Text>Motivo: {documento.referencia.motivo}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.table}>
