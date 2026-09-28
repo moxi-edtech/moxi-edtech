@@ -12,6 +12,7 @@ import {
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Json } from "~types/supabase";
 import { issueFiscalReceiptForPayment } from "@/lib/fiscal/paymentFiscalDocument";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 import {
   AcademicYearContextError,
   assertAcademicYearEntity,
@@ -48,8 +49,12 @@ const normalizeMetodo = (raw: string) => {
 
 export async function POST(req: Request) {
   try {
-    const idempotencyKey =
+    const rawIdempotencyKey =
       req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      "financeiro-registro",
+      rawIdempotencyKey,
+    );
     if (!idempotencyKey) {
       return NextResponse.json(
         { ok: false, error: "Idempotency-Key header é obrigatório" },
@@ -242,7 +247,7 @@ export async function POST(req: Request) {
       .from("pagamentos")
       .select("id, status, meta")
       .eq("escola_id", escolaId)
-      .contains("meta", { idempotency_key: idempotencyKey })
+      .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
     if (existingPagamento) {
       return NextResponse.json({ ok: true, data: existingPagamento, idempotent: true });
