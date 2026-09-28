@@ -46,7 +46,7 @@ export async function buildAgtSoftwareInfo(options?: {
 
   assertAgtSoftwareValidationNumber(
     options?.expectedSoftwareValidationNumber,
-    softwareInfoDetail.softwareValidationNumber
+    identity.softwareValidationNumber
   );
 
   const jwsSoftwareSignature = await signAgtJwsRs256(softwareInfoDetail, {
