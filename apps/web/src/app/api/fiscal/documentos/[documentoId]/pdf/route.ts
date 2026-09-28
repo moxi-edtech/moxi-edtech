@@ -127,7 +127,7 @@ export async function GET(
     const { data: doc, error: docError } = await supabase
       .from("fiscal_documentos")
       .select(
-        "id, empresa_id, numero_formatado, tipo_documento, invoice_date, cliente_nome, cliente_nif, total_bruto_aoa, total_impostos_aoa, total_liquido_aoa, hash_control, status, payload, moeda"
+        "id, empresa_id, numero_formatado, tipo_documento, invoice_date, cliente_nome, cliente_nif, total_bruto_aoa, total_impostos_aoa, total_liquido_aoa, hash_control, status, payload, moeda, documento_origem_id, rectifica_documento_id, reference_reason"
       )
       .eq("id", parsedParams.data.documentoId)
       .maybeSingle();
@@ -176,7 +176,9 @@ export async function GET(
       });
     }
 
-    const [{ data: empresa }, { data: itens, error: itensError }] = await Promise.all([
+    const sourceDocumentoId = doc.documento_origem_id ?? doc.rectifica_documento_id;
+    const [{ data: empresa }, { data: itens, error: itensError }, { data: sourceDocumento }] =
+      await Promise.all([
       supabase
       .from("fiscal_empresas")
       .select("nome, nif, certificado_agt_numero, endereco")
@@ -187,6 +189,14 @@ export async function GET(
         .select("id, descricao, quantidade, preco_unit, unit_price_base, settlement_amount, taxa_iva, total_liquido_moeda, total_impostos_moeda, total_bruto_moeda, total_bruto_aoa, product_code, tax_exemption_code")
         .eq("documento_id", doc.id)
         .order("linha_no", { ascending: true }),
+      sourceDocumentoId
+        ? supabase
+            .from("fiscal_documentos")
+            .select("id, numero_formatado")
+            .eq("id", sourceDocumentoId)
+            .eq("empresa_id", doc.empresa_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
 
     if (itensError) {
@@ -258,6 +268,12 @@ export async function GET(
         itens: itensSafe,
         totais: totalsInDocumentCurrency,
         moeda,
+        referencia: sourceDocumento?.numero_formatado
+          ? {
+              numero: String(sourceDocumento.numero_formatado),
+              motivo: normalizeString(doc.reference_reason),
+            }
+          : null,
       },
       assinaturaCurta: assinatura4,
       agtNumber: agtNumero,
