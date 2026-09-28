@@ -6,6 +6,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import { emitirEvento } from "@/lib/eventos/emitirEvento";
 import type { Database } from "~types/supabase";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 
 const BodySchema = z.object({
   aluno_id: z.string().uuid("aluno_id inválido"),
@@ -47,8 +48,12 @@ export async function POST(
 ) {
   const { id: escolaId } = await context.params;
   try {
-    const idempotencyKey =
+    const rawIdempotencyKey =
       req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      "venda-avulsa",
+      rawIdempotencyKey,
+    );
     if (!idempotencyKey) {
       return NextResponse.json(
         { ok: false, error: "Idempotency-Key header é obrigatório" },
@@ -98,7 +103,7 @@ export async function POST(
       .from("pagamentos")
       .select("id, referencia, meta")
       .eq("escola_id", resolvedEscolaId)
-      .contains("meta", { idempotency_key: idempotencyKey })
+      .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
     if (existingPagamento) {
       const referencia = (existingPagamento as { referencia?: string | null }).referencia ?? null;
@@ -170,6 +175,7 @@ export async function POST(
             reference: referencia,
             referencia,
             evidence_url: body.comprovativo_url ?? undefined,
+            idempotency_key: idempotencyKey,
             meta: {
               idempotency_key: idempotencyKey,
               origem: "venda_avulsa",
