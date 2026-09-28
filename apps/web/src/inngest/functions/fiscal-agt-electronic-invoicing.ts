@@ -129,6 +129,9 @@ async function loadSubmissionContext(submissionId: string) {
 
   if (itemsError || !Array.isArray(items)) throw new Error(itemsError?.message ?? "AGT_ITEMS_LOAD_FAILED");
   if (empresaError || !empresa?.nif) throw new Error(empresaError?.message ?? "AGT_EMPRESA_LOAD_FAILED");
+  if (!empresa.certificado_agt_numero?.trim()) {
+    throw new Error("AGT_SOFTWARE_CERTIFICATE_BINDING_REQUIRED");
+  }
   if (keyError || !key?.private_key_ref) throw new Error(keyError?.message ?? "AGT_TAXPAYER_KEY_MISSING");
 
   const originId = document.tipo_documento === "NC"
