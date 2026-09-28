@@ -145,6 +145,7 @@ const ISENCAO_LABELS: Record<string, string> = {
   M18: "Isento Artigo 12.º i) do CIVA",
   M19: "Isento Artigo 12.º j) do CIVA",
   M20: "Isento Artigo 12.º k) do CIVA",
+  M21: "Isento Artigo 12.º l) do CIVA",
   M30: "Isento Artigo 15.º 1 a) do CIVA",
   M31: "Isento Artigo 15.º 1 b) do CIVA",
   M32: "Isento Artigo 15.º 1 c) do CIVA",
