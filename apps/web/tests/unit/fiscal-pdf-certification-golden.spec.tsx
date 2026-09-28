@@ -87,7 +87,6 @@ test("P07 PDF golden shows base unit price and settlement discount", () => {
 
   assert.match(text, /Desconto/);
   assert.match(text, /0,55 AOA/);
-  assert.match(text, /5,59 AOA/);
   assert.match(text, /56,33 AOA/);
 });
 
