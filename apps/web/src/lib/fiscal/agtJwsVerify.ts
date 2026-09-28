@@ -1,5 +1,3 @@
-import "server-only";
-
 import { createPublicKey, verify } from "node:crypto";
 
 export type AgtJwsKeyStatus = "active" | "pending" | "retired" | "revoked";
