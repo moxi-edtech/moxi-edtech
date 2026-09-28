@@ -69,7 +69,8 @@ export async function POST(req: Request) {
         const cached = existingIdempotency.result as Record<string, unknown>;
         const cachedStatus =
           typeof cached.http_status === 'number' ? cached.http_status : 200;
-        const { http_status: _httpStatus, ...cachedBody } = cached;
+        const cachedBody = { ...cached };
+        delete cachedBody.http_status;
         return NextResponse.json(cachedBody, { status: cachedStatus });
       }
 
@@ -105,8 +106,10 @@ export async function POST(req: Request) {
         .eq('scope', 'financeiro_pagamentos_mcx')
         .eq('key', idempotencyKey);
 
-      const { http_status: _httpStatus, ...failureBody } = failurePayload;
-      return NextResponse.json(failureBody, { status: 502 });
+      return NextResponse.json(
+        { error: failurePayload.error, code: failurePayload.code },
+        { status: 502 },
+      );
     }
 
     // 3) Registar tentativa de pagamento (pendente até webhook)
