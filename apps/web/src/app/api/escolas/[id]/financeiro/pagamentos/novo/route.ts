@@ -4,6 +4,7 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { hasPermission } from '@/lib/permissions'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { buildPaymentIdempotencyKey } from '@/lib/financeiro/paymentIdempotency'
 
 const BodySchema = z.object({
   valor: z.number().positive(),
@@ -15,8 +16,12 @@ const BodySchema = z.object({
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
   try {
-    const idempotencyKey =
+    const rawIdempotencyKey =
       req.headers.get('Idempotency-Key') ?? req.headers.get('idempotency-key')
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      'financeiro-manual',
+      rawIdempotencyKey,
+    )
     if (!idempotencyKey) {
       return NextResponse.json({ ok: false, error: 'Idempotency-Key header é obrigatório' }, { status: 400 })
     }
@@ -68,7 +73,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .from('pagamentos')
       .select('id, escola_id, valor_pago, metodo, referencia, status, created_at, meta')
       .eq('escola_id', resolvedEscolaId)
-      .contains('meta', { idempotency_key: idempotencyKey })
+      .eq('idempotency_key', idempotencyKey)
       .maybeSingle()
     if (existingPagamento) {
       return NextResponse.json({ ok: true, pagamento: existingPagamento, idempotent: true })
@@ -83,6 +88,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         metodo: body.metodo,
         referencia: body.referencia ?? null,
         status: body.status,
+        idempotency_key: idempotencyKey,
         meta: { idempotency_key: idempotencyKey },
       })
       .select('id, escola_id, valor_pago, metodo, referencia, status, created_at')
