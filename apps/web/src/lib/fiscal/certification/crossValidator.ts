@@ -17,6 +17,7 @@ function validateOne(input: {
   taxRegistrationNumber: string;
   saftXml: string;
   manifest: CertificationManifest;
+  snapshotCompanyId: string;
 }) {
   const { doc } = input;
   const failures: string[] = [];
@@ -48,7 +49,7 @@ function validateOne(input: {
       agt = buildAgtPreparedDocument({
         document: {
           id: doc.id,
-          empresa_id: input.snapshotCompanyId ?? "",
+          empresa_id: input.snapshotCompanyId,
           tipo_documento: doc.tipo_documento,
           numero_formatado: doc.numero_formatado,
           invoice_date: doc.invoice_date,
@@ -133,7 +134,7 @@ export function validateCertificationCrossSurface(input: {
       saftXml: input.saftXml,
       manifest: input.manifest,
       snapshotCompanyId: input.snapshot.company.id,
-    } as any)
+    })
   );
   return {
     ok: results.every((result) => result.ok),
