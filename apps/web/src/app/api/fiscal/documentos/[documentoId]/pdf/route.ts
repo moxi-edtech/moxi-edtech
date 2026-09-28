@@ -271,7 +271,11 @@ export async function GET(
         referencia: sourceDocumento?.numero_formatado
           ? {
               numero: String(sourceDocumento.numero_formatado),
-              motivo: normalizeString(doc.reference_reason),
+              motivo:
+                normalizeString(doc.reference_reason) ??
+                normalizeString(
+                  ((payload?.metadata ?? null) as JsonRecord | null)?.reference_reason
+                ),
             }
           : null,
       },
