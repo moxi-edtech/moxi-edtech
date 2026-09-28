@@ -1,0 +1,24 @@
+{
+  "name": "klasse-readonly",
+  "version": "0.1.0",
+  "description": "Consultas read-only do KLASSE com JWT do usuário e isolamento por escola.",
+  "author": {
+    "name": "KLASSE"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Klasse Readonly",
+    "shortDescription": "Consulte dados autorizados da sua escola.",
+    "longDescription": "Integração somente leitura para alunos, finanças, notas e frequência. Usa o JWT do usuário e as políticas RLS do KLASSE.",
+    "developerName": "KLASSE",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "websiteURL": "https://app.klasse.ao",
+    "privacyPolicyURL": "https://klasse.ao/privacidade",
+    "defaultPrompt": [
+      "Busque um aluno da minha escola.",
+      "Resuma a inadimplência atual.",
+      "Mostre a frequência de uma turma."
+    ]
+  }
+}

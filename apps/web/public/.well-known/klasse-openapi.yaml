@@ -1,0 +1,129 @@
+openapi: 3.1.0
+info:
+  title: KLASSE Read-only API
+  version: 0.1.0
+  description: Consultas read-only com tenant derivado do JWT e da associação do usuário.
+servers:
+  - url: https://app.klasse.ao
+security:
+  - bearerAuth: []
+paths:
+  /api/integrations/chatgpt/buscar_aluno:
+    post:
+      operationId: buscarAluno
+      summary: Busca alunos da escola ativa por nome ou número de processo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, minLength: 2, maxLength: 120 }
+                limit: { type: integer, minimum: 1, maximum: 25, default: 10 }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/listar_inadimplencia:
+    post:
+      operationId: listarInadimplencia
+      summary: Lista alunos com mensalidades vencidas e saldo em aberto.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/resumo_financeiro:
+    post:
+      operationId: obterResumoFinanceiro
+      summary: Resume valores previstos, recebidos, pendentes e inadimplentes.
+      requestBody: { $ref: '#/components/requestBodies/DateRange' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/professores_com_notas:
+    post:
+      operationId: listarProfessoresComNotas
+      summary: Lista professores vinculados a avaliações com notas lançadas no período.
+      requestBody: { $ref: '#/components/requestBodies/DateRange' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/frequencia_turma:
+    post:
+      operationId: obterFrequenciaTurma
+      summary: Resume presença, faltas e atrasos dos alunos de uma turma.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [class_id]
+              properties:
+                class_id: { type: string, format: uuid }
+                start_date: { type: string, format: date }
+                end_date: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/situacao_academica_aluno:
+    post:
+      operationId: obterSituacaoAcademicaAluno
+      summary: Retorna matrícula, turma, média e frequência de um aluno autorizado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [student_id]
+              properties:
+                student_id: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Supabase JWT
+  requestBodies:
+    DateRange:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              start_date: { type: string, format: date }
+              end_date: { type: string, format: date }
+  responses:
+    Success:
+      description: Consulta autorizada.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok, data]
+            properties:
+              ok: { type: boolean, const: true }
+              tool: { type: string }
+              data: {}
+    Unauthorized:
+      description: JWT ausente, inválido ou expirado.
+    Forbidden:
+      description: Usuário sem vínculo ou papel permitido na escola ativa.
+

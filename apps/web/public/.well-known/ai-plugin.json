@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "KLASSE Read-only",
+  "name_for_model": "klasse_readonly",
+  "description_for_human": "Consulta dados autorizados do KLASSE sem alterar registros.",
+  "description_for_model": "Use para buscar alunos, consultar inadimplência, resumo financeiro, lançamento de notas, frequência e situação académica. Nunca forneça school_id.",
+  "auth": {
+    "type": "user_http",
+    "authorization_type": "bearer"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://app.klasse.ao/.well-known/klasse-openapi.yaml"
+  },
+  "logo_url": "https://klasse.ao/icon.png",
+  "legal_info_url": "https://klasse.ao/privacidade"
+}
