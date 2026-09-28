@@ -57,9 +57,8 @@ export function RegistoPagamentoModal({
       return;
     }
     setLoading(true);
-    if (!idempotencyKeyRef.current) {
-      idempotencyKeyRef.current = crypto.randomUUID();
-    }
+    const idempotencyKey = idempotencyKeyRef.current ?? crypto.randomUUID();
+    idempotencyKeyRef.current = idempotencyKey;
 
     const res = await registrarPagamentoAction({
       escola_id: escolaUuid,
@@ -68,7 +67,7 @@ export function RegistoPagamentoModal({
       valor,
       metodo,
       reference,
-      idempotency_key: idempotencyKeyRef.current,
+      idempotency_key: idempotencyKey,
       meta: { observacao, origem: "portal_financeiro" },
     });
 
