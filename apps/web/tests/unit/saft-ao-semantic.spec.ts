@@ -553,3 +553,29 @@ test("SAF-T preserves explicit unit and tax profile from fiscal line", () => {
   assert.match(xml, /<TaxCountryRegion>AO<\/TaxCountryRegion>/);
   assert.match(xml, /Outros 7\.00% AO/);
 });
+
+
+test("SAF-T preserves identified customer without NIF instead of collapsing to consumer final", () => {
+  const namedWithoutNif = invoice({
+    id: "10000000-0000-0000-0000-000000000123",
+    numero: 23,
+    numero_formatado: "FT TEST/23",
+    cliente_nome: "Pai sem NIF",
+    cliente_nif: "999999999",
+    address_detail: "Rua do Cliente",
+    city: "Luanda",
+    postal_code: "1000",
+    country: "AO",
+  });
+
+  const { xml } = build([namedWithoutNif]);
+
+  assert.match(xml, /<CustomerID>SNIF-[A-Za-z0-9]+<\/CustomerID>/);
+  assert.match(xml, /<CustomerTaxID>999999999<\/CustomerTaxID>/);
+  assert.match(xml, /<CompanyName>Pai sem NIF<\/CompanyName>/);
+  assert.match(xml, /<AddressDetail>Rua do Cliente<\/AddressDetail>/);
+  assert.doesNotMatch(
+    xml,
+    /<CustomerID>NIF-999999999<\/CustomerID>[\s\S]*?<CompanyName>Consumidor final<\/CompanyName>/
+  );
+});
