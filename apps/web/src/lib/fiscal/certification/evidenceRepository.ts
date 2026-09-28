@@ -228,9 +228,15 @@ export async function loadCertificationDatasetSnapshot(input: {
     });
   }
 
-  const seriesById = new Map((seriesRes.data ?? []).map((row: any) => [String(row.id), row]));
-  const refsById = new Map((refsRes.data ?? []).map((row: any) => [String(row.id), row]));
-  const submissionById = new Map((submissionsRes.data ?? []).map((row: any) => [String(row.id), row]));
+  const seriesById = new Map<string, any>(
+    (seriesRes.data ?? []).map((row: any) => [String(row.id), row])
+  );
+  const refsById = new Map<string, any>(
+    (refsRes.data ?? []).map((row: any) => [String(row.id), row])
+  );
+  const submissionById = new Map<string, any>(
+    (submissionsRes.data ?? []).map((row: any) => [String(row.id), row])
+  );
   const linkByDoc = new Map<string, any>();
   for (const link of linksRes.data ?? []) {
     const docId = String(link.documento_id);
