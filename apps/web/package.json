@@ -33,7 +33,8 @@
     "fiscal:agt:series:preflight": "node --conditions=react-server --import tsx tools/fiscal/agt-series-preflight.ts",
     "fiscal:agt:series:provision": "node --conditions=react-server --import tsx tools/fiscal/agt-series-provision.ts",
     "fiscal:agt:series:status": "node --conditions=react-server --import tsx tools/fiscal/agt-series-status.ts",
-    "fiscal:agt:series:reconcile": "node --conditions=react-server --import tsx tools/fiscal/agt-series-reconcile.ts"
+    "fiscal:agt:series:reconcile": "node --conditions=react-server --import tsx tools/fiscal/agt-series-reconcile.ts",
+    "typecheck:fiscal-certification": "tsc -p tsconfig.fiscal-certification.json --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3.1013.0",
