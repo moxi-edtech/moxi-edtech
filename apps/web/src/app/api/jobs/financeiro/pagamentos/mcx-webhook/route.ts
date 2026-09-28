@@ -45,15 +45,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const idempotencyKey =
-    req.headers.get('Idempotency-Key') || req.headers.get('idempotency-key');
-  if (!idempotencyKey) {
-    return NextResponse.json(
-      { error: 'Idempotency-Key header é obrigatório' },
-      { status: 400 }
-    );
-  }
-
   try {
     const raw = await req.text();
     const secret = (process.env.MCX_WEBHOOK_SECRET || '').trim();
@@ -85,6 +76,10 @@ export async function POST(req: Request) {
     console.log(`🔔 MCX Webhook: tx=${transactionId} status=${status} ref=${customReference ?? '-'} `);
 
     const norm = String(status).toLowerCase();
+    const idempotencyKey = `mcx-webhook:${crypto
+      .createHash('sha256')
+      .update(`${transactionId}:${norm}`, 'utf8')
+      .digest('hex')}`;
 
     if (norm === 'success' || norm === 'paid' || norm === 'concluido') {
       const { data: pagamento, error: pagamentoErr } = await supabaseAdmin
