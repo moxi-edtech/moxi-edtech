@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,8 +11,12 @@ export const fetchCache = "force-no-store";
 
 export async function POST(req: Request) {
   try {
-    const idempotencyKey =
+    const rawIdempotencyKey =
       req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      "financeiro-confirmar",
+      rawIdempotencyKey,
+    );
     if (!idempotencyKey) {
       return NextResponse.json(
         { ok: false, error: "Idempotency-Key header é obrigatório" },

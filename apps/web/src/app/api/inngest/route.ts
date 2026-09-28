@@ -6,7 +6,7 @@ import { fiscalSaftExport } from "@/inngest/functions/fiscal-saft-export"
 import { fiscalFinanceiroReprocess } from "@/inngest/functions/fiscal-financeiro-reprocess"
 import { pushNotificationWorker } from "@/inngest/functions/push-notifications"
 import { adminRecalcAllAggregates } from "@/inngest/functions/admin-recalc-all-aggregates"
-import { fiscalAgtElectronicInvoicing, fiscalAgtReconcileSweep } from "@/inngest/functions/fiscal-agt-electronic-invoicing"
+import { fiscalAgtElectronicInvoicing, fiscalAgtObservabilitySweep, fiscalAgtReconcileSweep } from "@/inngest/functions/fiscal-agt-electronic-invoicing"
 
 if (process.env.NODE_ENV !== "production" && !process.env.INNGEST_SIGNING_KEY) {
   process.env.INNGEST_DEV = "1"
@@ -23,7 +23,8 @@ const functions = [
   pushNotificationWorker,
   adminRecalcAllAggregates,
   fiscalAgtElectronicInvoicing,
-  fiscalAgtReconcileSweep
+  fiscalAgtReconcileSweep,
+  fiscalAgtObservabilitySweep
 ]
 
 export const { GET, POST, PUT } = serve({

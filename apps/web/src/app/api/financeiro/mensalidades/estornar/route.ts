@@ -51,30 +51,183 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Mensalidade não encontrada" }, { status: 404 });
     }
 
-    const { data: existingEstorno } = await supabase
-      .from("financeiro_estornos")
-      .select("id, mensalidade_id, created_at")
+    const { data: existingReversal, error: existingReversalError } = await supabase
+      .from("financeiro_pagamento_reversoes")
+      .select("id, pagamento_id, created_at")
       .eq("escola_id", escolaId)
-      .eq("mensalidade_id", mensalidadeId)
-      .order("created_at", { ascending: false })
-      .limit(1)
+      .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
-    if (existingEstorno && mensalidade.status !== "pago") {
-      return NextResponse.json({ ok: true, data: existingEstorno, idempotent: true });
+
+    if (existingReversalError) {
+      return NextResponse.json(
+        { ok: false, error: existingReversalError.message },
+        { status: 500 }
+      );
     }
 
-    const { data, error } = await supabase.rpc("estornar_mensalidade", {
-      p_mensalidade_id: mensalidadeId,
-      p_motivo: motivo ?? null,
+    if (existingReversal) {
+      return NextResponse.json({
+        ok: true,
+        data: {
+          ok: true,
+          idempotent: true,
+          reversao_id: existingReversal.id,
+          pagamento_id: existingReversal.pagamento_id,
+          status: "voided",
+        },
+      });
+    }
+
+    if (mensalidade.status !== "pago" && mensalidade.status !== "pago_parcial") {
+      return NextResponse.json(
+        { ok: false, error: "A mensalidade não possui pagamento activo para reversão." },
+        { status: 409 }
+      );
+    }
+
+    const { data: applications, error: applicationsError } = await supabase
+      .from("financeiro_pagamento_alocacoes")
+      .select("id, pagamento_id, mensalidade_id, created_at")
+      .eq("escola_id", escolaId)
+      .eq("mensalidade_id", mensalidadeId)
+      .eq("natureza", "aplicacao")
+      .order("created_at", { ascending: false });
+
+    if (applicationsError) {
+      return NextResponse.json(
+        { ok: false, error: applicationsError.message },
+        { status: 500 }
+      );
+    }
+
+    const applicationIds = (applications ?? []).map((row: any) => row.id);
+    let reversedOriginIds = new Set<string>();
+
+    if (applicationIds.length > 0) {
+      const { data: reversals, error: reversalsError } = await supabase
+        .from("financeiro_pagamento_alocacoes")
+        .select("alocacao_origem_id")
+        .eq("escola_id", escolaId)
+        .eq("natureza", "reversao")
+        .in("alocacao_origem_id", applicationIds);
+
+      if (reversalsError) {
+        return NextResponse.json(
+          { ok: false, error: reversalsError.message },
+          { status: 500 }
+        );
+      }
+
+      reversedOriginIds = new Set(
+        (reversals ?? [])
+          .map((row: any) => row.alocacao_origem_id)
+          .filter((value: unknown): value is string => typeof value === "string")
+      );
+    }
+
+    const activeApplications = (applications ?? []).filter(
+      (row: any) => !reversedOriginIds.has(row.id)
+    );
+    const paymentIds = Array.from(
+      new Set(
+        activeApplications
+          .map((row: any) => row.pagamento_id)
+          .filter((value: unknown): value is string => typeof value === "string")
+      )
+    );
+
+    if (paymentIds.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: "Nenhum pagamento activo encontrado para esta mensalidade." },
+        { status: 409 }
+      );
+    }
+
+    if (paymentIds.length > 1) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "A mensalidade possui múltiplos pagamentos activos. Reverta cada pagamento explicitamente para preservar o ledger.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const paymentId = paymentIds[0];
+
+    const { data: paymentApplications, error: paymentApplicationsError } = await supabase
+      .from("financeiro_pagamento_alocacoes")
+      .select("id, mensalidade_id")
+      .eq("escola_id", escolaId)
+      .eq("pagamento_id", paymentId)
+      .eq("natureza", "aplicacao");
+
+    if (paymentApplicationsError) {
+      return NextResponse.json(
+        { ok: false, error: paymentApplicationsError.message },
+        { status: 500 }
+      );
+    }
+
+    const paymentApplicationIds = (paymentApplications ?? []).map((row: any) => row.id);
+    let paymentReversedIds = new Set<string>();
+
+    if (paymentApplicationIds.length > 0) {
+      const { data: paymentReversals, error: paymentReversalsError } = await supabase
+        .from("financeiro_pagamento_alocacoes")
+        .select("alocacao_origem_id")
+        .eq("escola_id", escolaId)
+        .eq("natureza", "reversao")
+        .in("alocacao_origem_id", paymentApplicationIds);
+
+      if (paymentReversalsError) {
+        return NextResponse.json(
+          { ok: false, error: paymentReversalsError.message },
+          { status: 500 }
+        );
+      }
+
+      paymentReversedIds = new Set(
+        (paymentReversals ?? [])
+          .map((row: any) => row.alocacao_origem_id)
+          .filter((value: unknown): value is string => typeof value === "string")
+      );
+    }
+
+    const activePaymentApplications = (paymentApplications ?? []).filter(
+      (row: any) => !paymentReversedIds.has(row.id)
+    );
+
+    if (
+      activePaymentApplications.some(
+        (row: any) => row.mensalidade_id && row.mensalidade_id !== mensalidadeId
+      )
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "O pagamento também liquida outras mensalidades. Reverta o pagamento completo pelo fluxo explícito de pagamentos.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const { data, error } = await supabase.rpc("reverter_pagamento_realizado", {
+      p_pagamento_id: paymentId,
+      p_motivo: motivo?.trim() || "Estorno de mensalidade",
+      p_idempotency_key: idempotencyKey,
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      const status = error.message?.startsWith("STATE:") ? 409 : 400;
+      return NextResponse.json({ ok: false, error: error.message }, { status });
     }
 
     if (!data || (data as any)?.ok === false) {
       return NextResponse.json(
-        { ok: false, error: (data as any)?.erro || "Falha ao estornar mensalidade" },
+        { ok: false, error: (data as any)?.erro || "Falha ao reverter pagamento" },
         { status: 400 }
       );
     }

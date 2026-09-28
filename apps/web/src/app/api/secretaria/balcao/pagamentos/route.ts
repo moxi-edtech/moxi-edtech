@@ -4,6 +4,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import {
   emitirDocumentoFiscalViaAdapter,
@@ -105,8 +106,12 @@ function normalizeReceiptType(meta: Record<string, unknown>): "pagamento" | "mat
 
 export async function POST(request: Request) {
   try {
-    const idempotencyKey =
+    const rawIdempotencyKey =
       request.headers.get("Idempotency-Key") ?? request.headers.get("idempotency-key");
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      "secretaria-balcao",
+      rawIdempotencyKey,
+    );
     if (!idempotencyKey) {
       return NextResponse.json(
         { ok: false, error: "Idempotency-Key header é obrigatório" },
@@ -162,7 +167,7 @@ export async function POST(request: Request) {
       .from("pagamentos")
       .select("id, status, meta")
       .eq("escola_id", escolaId)
-      .contains("meta", { idempotency_key: idempotencyKey })
+      .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
     if (existingPagamento) {
       return NextResponse.json({ ok: true, data: existingPagamento, idempotent: true });

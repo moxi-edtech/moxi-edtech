@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,6 +11,19 @@ const COMPROVATIVOS_BUCKET = "billing-proofs";
 
 export async function POST(request: Request) {
   try {
+    const rawIdempotencyKey =
+      request.headers.get("Idempotency-Key") ?? request.headers.get("idempotency-key");
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      "aluno-comprovativo",
+      rawIdempotencyKey,
+    );
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 },
+      );
+    }
+
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx?.escolaId || !ctx.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
@@ -83,24 +97,37 @@ export async function POST(request: Request) {
         p_meta: Record<string, unknown>;
         p_mensagem: string | null;
       },
-    ) => Promise<{ data: RpcResponse | null; error: { message: string } | null }>;
+    ) => Promise<{ data: RpcResponse | null; error: { message: string; code?: string } | null }>;
 
     const callSubmitComprovativo = routeClient.rpc.bind(routeClient) as unknown as SubmitComprovativoRpc;
-    const { data: rpcData, error: rpcError } = await callSubmitComprovativo(
-      "aluno_submeter_comprovativo_pagamento",
-      {
-        p_mensalidade_id: mensalidadeId,
-        p_evidence_url: evidenceUrl,
-        p_valor_informado: valorInformado,
-        p_mensagem: mensagem,
-        p_meta: {
-          storage_bucket: COMPROVATIVOS_BUCKET,
-          storage_path: objectPath,
-          uploaded_via: "api/aluno/financeiro/comprovativo",
-          aluno_id: alunoId,
-        },
+    const submitArgs = {
+      p_mensalidade_id: mensalidadeId,
+      p_evidence_url: evidenceUrl,
+      p_valor_informado: valorInformado,
+      p_mensagem: mensagem,
+      p_meta: {
+        storage_bucket: COMPROVATIVOS_BUCKET,
+        storage_path: objectPath,
+        uploaded_via: "api/aluno/financeiro/comprovativo",
+        aluno_id: alunoId,
+        idempotency_key: idempotencyKey,
       },
+    };
+
+    let { data: rpcData, error: rpcError } = await callSubmitComprovativo(
+      "aluno_submeter_comprovativo_pagamento",
+      submitArgs,
     );
+
+    // If two identical submissions raced, the unique payment identity makes
+    // one transaction wait and fail with 23505. Replaying the RPC once after
+    // that failure resolves the already-created pending payment.
+    if (rpcError?.code === "23505") {
+      ({ data: rpcData, error: rpcError } = await callSubmitComprovativo(
+        "aluno_submeter_comprovativo_pagamento",
+        submitArgs,
+      ));
+    }
 
     if (rpcError || rpcData?.ok !== true) {
       return NextResponse.json(

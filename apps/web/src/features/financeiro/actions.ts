@@ -6,6 +6,7 @@ import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { revalidatePath } from "next/cache";
 import type { Database, Json } from "~types/supabase";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 
 export type PagamentoMetodo = Database["public"]["Enums"]["pagamento_metodo"];
 
@@ -29,6 +30,7 @@ export interface RegistrarPagamentoPayload {
   reference?: string;
   evidence_url?: string;
   gateway_ref?: string;
+  idempotency_key: string;
   meta?: Record<string, Json>;
 }
 
@@ -96,6 +98,10 @@ export async function registrarPagamentoAction(payload: RegistrarPagamentoPayloa
 
   try {
     const resolvedEscolaId = await requireFinanceiroAccess(supabase, payload.escola_id);
+    const idempotencyKey = buildPaymentIdempotencyKey("financeiro-modal", payload.idempotency_key);
+    if (!idempotencyKey) {
+      throw new Error("Idempotency-Key inválida.");
+    }
 
     const { data, error } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
       p_escola_id: resolvedEscolaId,
@@ -106,7 +112,7 @@ export async function registrarPagamentoAction(payload: RegistrarPagamentoPayloa
       p_reference: payload.reference || undefined,
       p_evidence_url: payload.evidence_url || undefined,
       p_gateway_ref: payload.gateway_ref || undefined,
-      p_meta: payload.meta || {},
+      p_meta: { ...(payload.meta || {}), idempotency_key: idempotencyKey },
     });
 
     if (error) {

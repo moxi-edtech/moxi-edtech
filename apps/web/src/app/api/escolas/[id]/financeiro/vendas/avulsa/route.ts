@@ -6,6 +6,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import { emitirEvento } from "@/lib/eventos/emitirEvento";
 import type { Database } from "~types/supabase";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 
 const BodySchema = z.object({
   aluno_id: z.string().uuid("aluno_id inválido"),
@@ -47,8 +48,12 @@ export async function POST(
 ) {
   const { id: escolaId } = await context.params;
   try {
-    const idempotencyKey =
+    const rawIdempotencyKey =
       req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      "venda-avulsa",
+      rawIdempotencyKey,
+    );
     if (!idempotencyKey) {
       return NextResponse.json(
         { ok: false, error: "Idempotency-Key header é obrigatório" },
@@ -98,7 +103,7 @@ export async function POST(
       .from("pagamentos")
       .select("id, referencia, meta")
       .eq("escola_id", resolvedEscolaId)
-      .contains("meta", { idempotency_key: idempotencyKey })
+      .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
     if (existingPagamento) {
       const referencia = (existingPagamento as { referencia?: string | null }).referencia ?? null;
@@ -111,6 +116,68 @@ export async function POST(
         lancamento_id: lancamentoId,
         idempotent: true,
       });
+    }
+
+    const { error: claimError } = await s
+      .from("idempotency_keys")
+      .insert({
+        escola_id: resolvedEscolaId,
+        scope: "financeiro_venda_avulsa",
+        key: idempotencyKey,
+        result: null,
+      });
+
+    if (claimError) {
+      if (claimError.code !== "23505") {
+        return NextResponse.json(
+          { ok: false, error: "Falha ao reservar identidade da venda" },
+          { status: 500 },
+        );
+      }
+
+      const { data: existingClaim } = await s
+        .from("idempotency_keys")
+        .select("result")
+        .eq("escola_id", resolvedEscolaId)
+        .eq("scope", "financeiro_venda_avulsa")
+        .eq("key", idempotencyKey)
+        .maybeSingle();
+
+      if (existingClaim?.result) {
+        return NextResponse.json({
+          ...(existingClaim.result as Record<string, unknown>),
+          idempotent: true,
+        });
+      }
+
+      const { data: concurrentPagamento } = await s
+        .from("pagamentos")
+        .select("id, referencia")
+        .eq("escola_id", resolvedEscolaId)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+
+      if (concurrentPagamento) {
+        const concurrentReferencia =
+          (concurrentPagamento as { referencia?: string | null }).referencia ?? null;
+        return NextResponse.json({
+          ok: true,
+          pagamento_id: (concurrentPagamento as { id: string }).id,
+          lancamento_id: concurrentReferencia?.startsWith("venda_avulsa:")
+            ? concurrentReferencia.split(":")[1]
+            : null,
+          idempotent: true,
+        });
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Venda com esta Idempotency-Key já está em processamento",
+          code: "IDEMPOTENCY_IN_PROGRESS",
+        },
+        { status: 409 },
+      );
     }
 
     const metodoPagamento = normalizeMetodoPagamento(body.metodo);
@@ -170,6 +237,7 @@ export async function POST(
             reference: referencia,
             referencia,
             evidence_url: body.comprovativo_url ?? undefined,
+            idempotency_key: idempotencyKey,
             meta: {
               idempotency_key: idempotencyKey,
               origem: "venda_avulsa",
@@ -244,11 +312,20 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({
+    const responsePayload = {
       ok: true,
       lancamento_id: lancamentoId,
       pagamento_id: (pagamentoRes.data as { id: string }).id,
-    });
+    };
+
+    await s
+      .from("idempotency_keys")
+      .update({ result: responsePayload })
+      .eq("escola_id", resolvedEscolaId)
+      .eq("scope", "financeiro_venda_avulsa")
+      .eq("key", idempotencyKey);
+
+    return NextResponse.json(responsePayload);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

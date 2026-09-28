@@ -9,6 +9,7 @@ export interface FiscalPdfItem {
   quantidade: number;
   taxaIva: number;
   motivoIsencaoCode?: string;
+  settlementAmount?: number;
   total: number;
 }
 
@@ -82,11 +83,12 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f1f5f9",
   },
   colCodigo: { width: "15%" },
-  colDescricao: { width: "38%" },
-  colPreco: { width: "15%", textAlign: "right" },
-  colQtd: { width: "10%", textAlign: "right" },
-  colIva: { width: "10%", textAlign: "right" },
-  colTotal: { width: "12%", textAlign: "right" },
+  colDescricao: { width: "32%" },
+  colPreco: { width: "14%", textAlign: "right" },
+  colQtd: { width: "8%", textAlign: "right" },
+  colIva: { width: "9%", textAlign: "right" },
+  colDesconto: { width: "12%", textAlign: "right" },
+  colTotal: { width: "10%", textAlign: "right" },
   totalsBlock: { marginTop: 16, width: "44%", alignSelf: "flex-end" },
   totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
   totalTotal: {
@@ -117,6 +119,7 @@ const TITULOS_POR_TIPO: Record<string, string> = {
   NC: "Nota de Crédito",
   ND: "Nota de Débito",
   RC: "Recibo",
+  RE: "Recibo de Estorno",
   PP: "Fatura Pró-Forma",
   FG: "Fatura Global",
   GF: "Fatura Genérica",
@@ -172,6 +175,7 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
   const isDraft = documento.status === "DRAFT";
   const isAnulado = documento.status === "ANULADO";
   const isencoes = uniqueIsencoes(documento.itens);
+  const hasDiscount = documento.itens.some((item) => (item.settlementAmount ?? 0) > 0);
   const tituloDocumento = TITULOS_POR_TIPO[documento.tipoDocumento] ?? "Documento Fiscal";
 
   return (
@@ -215,6 +219,7 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
             <Text style={styles.colPreco}>Pr. Unitário</Text>
             <Text style={styles.colQtd}>Qtd.</Text>
             <Text style={styles.colIva}>IVA</Text>
+            {hasDiscount ? <Text style={styles.colDesconto}>Desconto</Text> : null}
             <Text style={styles.colTotal}>Total</Text>
           </View>
 

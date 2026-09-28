@@ -553,3 +553,58 @@ test("SAF-T preserves explicit unit and tax profile from fiscal line", () => {
   assert.match(xml, /<TaxCountryRegion>AO<\/TaxCountryRegion>/);
   assert.match(xml, /Outros 7\.00% AO/);
 });
+
+
+test("SAF-T preserves identified customer without NIF instead of collapsing to consumer final", () => {
+  const namedWithoutNif = invoice({
+    id: "10000000-0000-0000-0000-000000000123",
+    numero: 23,
+    numero_formatado: "FT TEST/23",
+    cliente_nome: "Pai sem NIF",
+    cliente_nif: "999999999",
+    address_detail: "Rua do Cliente",
+    city: "Luanda",
+    postal_code: "1000",
+    country: "AO",
+  });
+
+  const { xml } = build([namedWithoutNif]);
+
+  assert.match(xml, /<CustomerID>SNIF-[A-Za-z0-9]+<\/CustomerID>/);
+  assert.match(xml, /<CustomerTaxID>999999999<\/CustomerTaxID>/);
+  assert.match(xml, /<CompanyName>Pai sem NIF<\/CompanyName>/);
+  assert.match(xml, /<AddressDetail>Rua do Cliente<\/AddressDetail>/);
+  assert.doesNotMatch(
+    xml,
+    /<CustomerID>NIF-999999999<\/CustomerID>[\s\S]*?<CompanyName>Consumidor final<\/CompanyName>/
+  );
+});
+
+
+test("P07 SAF-T carries net UnitPrice and all effective discounts in SettlementAmount", () => {
+  const discounted = invoice({
+    numero: 24,
+    numero_formatado: "FT DISC/24",
+    total_liquido_aoa: 49.41,
+    total_impostos_aoa: 6.92,
+    total_bruto_aoa: 56.33,
+    itens: [
+      {
+        ...invoice().itens[0],
+        quantidade: 100,
+        preco_unit: 0.4941,
+        total_liquido_aoa: 49.41,
+        total_impostos_aoa: 6.92,
+        total_bruto_aoa: 56.33,
+        settlement_amount: 5.59,
+      },
+    ],
+  });
+
+  const { xml } = build([discounted]);
+
+  assert.match(xml, /<Quantity>100<\/Quantity>/);
+  assert.match(xml, /<UnitPrice>0\.4941<\/UnitPrice>/);
+  assert.match(xml, /<SettlementAmount>5\.5900<\/SettlementAmount>/);
+  assert.match(xml, /<CreditAmount>49\.4100<\/CreditAmount>/);
+});
