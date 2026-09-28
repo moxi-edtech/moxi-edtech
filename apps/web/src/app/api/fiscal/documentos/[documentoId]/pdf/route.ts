@@ -7,6 +7,7 @@ import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { FiscalDocumentV1 } from "@/templates/pdf/fiscal/FiscalDocumentV1";
+import { resolveFiscalPdfMoney } from "@/lib/fiscal/pdfMoney";
 import {
   CONSUMIDOR_FINAL_NIF,
   CONSUMIDOR_FINAL_NOME,
@@ -209,41 +210,33 @@ export async function GET(
     });
 
     const moeda = (normalizeString(doc.moeda) ?? "AOA").toUpperCase();
-    const foreignCurrency = moeda !== "AOA";
+    const pdfMoney = resolveFiscalPdfMoney({
+      moeda,
+      totalsAoa: {
+        incidencia: doc.total_liquido_aoa,
+        imposto: doc.total_impostos_aoa,
+        totalGeral: doc.total_bruto_aoa,
+      },
+      items: itens ?? [],
+    });
 
     const itensSafe = (itens ?? []).map((item, index) => {
       const taxExemptionCode = normalizeString(item.tax_exemption_code);
+      const money = pdfMoney.itemAmounts[index];
       return {
         id: item.id,
         codigo: normalizeString(item.product_code) ?? `ITEM-${index + 1}`,
         descricao: item.descricao ?? "Item fiscal",
-        precoUnitario: Number(item.unit_price_base ?? item.preco_unit ?? 0),
+        precoUnitario: money?.unitPrice ?? 0,
         quantidade: Number(item.quantidade ?? 0),
         taxaIva: Number(item.taxa_iva ?? 0),
         motivoIsencaoCode: taxExemptionCode ?? undefined,
-        settlementAmount: Number(item.settlement_amount ?? 0),
-        total: Number(
-          foreignCurrency
-            ? (item.total_bruto_moeda ?? 0)
-            : (item.total_bruto_aoa ?? 0)
-        ),
+        settlementAmount: money?.settlementAmount ?? 0,
+        total: money?.total ?? 0,
       };
     });
 
-    const totalsInDocumentCurrency = foreignCurrency
-      ? (itens ?? []).reduce(
-          (acc, item) => ({
-            incidencia: acc.incidencia + Number(item.total_liquido_moeda ?? 0),
-            imposto: acc.imposto + Number(item.total_impostos_moeda ?? 0),
-            totalGeral: acc.totalGeral + Number(item.total_bruto_moeda ?? 0),
-          }),
-          { incidencia: 0, imposto: 0, totalGeral: 0 }
-        )
-      : {
-          incidencia: Number(doc.total_liquido_aoa ?? 0),
-          imposto: Number(doc.total_impostos_aoa ?? 0),
-          totalGeral: Number(doc.total_bruto_aoa ?? 0),
-        };
+    const totalsInDocumentCurrency = pdfMoney.totals;
 
     const agtNumero = resolveAgtNumber(empresa?.certificado_agt_numero);
     const assinatura4 = resolveHash4(doc.hash_control);
