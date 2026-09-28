@@ -2,6 +2,7 @@ import "server-only";
 
 import { parseSafeInteger } from "@/lib/fiscal/decimal";
 import { parseAgtSoftwareInfoMode } from "@/lib/fiscal/agtContract";
+import { DEFAULT_AGT_SOFTWARE_KMS_KEY_REF } from "@/lib/fiscal/awsKmsRuntime";
 
 export type AgtEnvironment = "hml" | "prod";
 
@@ -48,7 +49,7 @@ export function resolveAgtConfig() {
   const softwarePrivateKeyRef =
     process.env.FISCAL_AGT_SOFTWARE_KMS_KEY_REF?.trim() ||
     process.env.AGT_SOFTWARE_KMS_KEY_REF?.trim() ||
-    "";
+    DEFAULT_AGT_SOFTWARE_KMS_KEY_REF;
   const signatureVersionRaw =
     process.env.FISCAL_AGT_SOFTWARE_SIGNATURE_VERSION?.trim() ||
     process.env.AGT_SOFTWARE_SIGNATURE_VERSION?.trim() ||

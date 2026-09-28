@@ -453,3 +453,38 @@ Próximo gate real:
 8. não implementar `jwsSignature` top-level de `registarFactura` sem evidência
    HML, pois a documentação oficial não especifica o payload exacto a assinar.
 
+## AWS KMS runtime identity — Vercel OIDC (2026-09-27)
+
+Provisioned in AWS account `050046455297`:
+
+- OIDC provider: `arn:aws:iam::050046455297:oidc-provider/oidc.vercel.com/moxinexas-projects`;
+- runtime role: `arn:aws:iam::050046455297:role/KLASSE-Vercel-FiscalSigner-Prod`;
+- trusted audience: `https://vercel.com/moxinexas-projects`;
+- trusted subject: `owner:moxinexas-projects:project:moxi-edtech:environment:production`;
+- session duration: 3600 seconds;
+- inline policy: `KLASSEFiscalKmsSigning`.
+
+The role is scoped to these customer-managed KMS keys in `us-east-2`:
+
+- fiscal document signer: `alias/klasse-fiscal-signing`;
+- AGT softwareInfo signer: `alias/klasse-agt-software-signing`.
+
+Allowed actions are only `kms:Sign`, `kms:GetPublicKey`, and
+`kms:DescribeKey` on those two key ARNs. IAM simulation confirms
+`kms:Decrypt` and `kms:ScheduleKeyDeletion` are implicitly denied.
+
+Runtime behavior:
+
+- Vercel uses `VERCEL_OIDC_TOKEN` and the AWS web-identity provider chain;
+- no long-lived AWS access key is required;
+- if Vercel OIDC is present together with static AWS access-key environment
+  variables, signing fails closed with
+  `AGT_JWS_STATIC_AWS_CREDENTIALS_FORBIDDEN_ON_VERCEL`;
+- `FISCAL_AGT_SOFTWARE_KMS_KEY_REF` remains overrideable by environment, with
+  the non-secret managed default
+  `kms://us-east-2/alias/klasse-agt-software-signing`;
+- the existing taxpayer/document key references
+  `kms://us-east-2/alias/klasse-fiscal-signing` now resolve to a real KMS key.
+
+No private-key material is exportable or stored in Supabase/Git/Vercel.
+
