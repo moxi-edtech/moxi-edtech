@@ -1,6 +1,6 @@
 import "server-only";
 
-import { supabaseServerRole } from "@/lib/fiscal/../supabaseServerRole";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import type {
   ProvisionedSeriesSnapshot,
   SeriesRequestSnapshot,
