@@ -118,11 +118,6 @@ type NormalizeResult =
 
 const AGT_FE_SUBMISSION_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RC", "RE"]);
 
-function normalizeClienteAddressField(value: string | undefined): string {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : FISCAL_ADDRESS_UNKNOWN;
-}
-
 function toProductCode(descricao: string, index: number): string {
   const normalized = descricao
     .normalize("NFKD")
