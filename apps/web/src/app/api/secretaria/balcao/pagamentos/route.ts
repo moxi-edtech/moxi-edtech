@@ -32,7 +32,7 @@ const payloadSchema = z.object({
 
 type PagamentoRow = Database["public"]["Functions"]["financeiro_registrar_pagamento_secretaria"]["Returns"];
 type BalcaoReciboResult =
-  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null; print_url?: string | null }
+  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null; print_url?: string | null; non_fiscal?: boolean }
   | { ok: false; error: string };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -77,32 +77,6 @@ function normalizeReceiptType(meta: Record<string, unknown>): "pagamento" | "mat
     return `${row.codigo ?? ""} ${row.nome ?? ""}`.toLowerCase().includes("rematric");
   });
   return hasConfirmation ? "confirmacao" : "pagamento";
-}
-
-async function enrichReceiptSnapshot({
-  supabase,
-  escolaId,
-  docId,
-  extraSnapshot,
-}: {
-  supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>;
-  escolaId: string;
-  docId: string;
-  extraSnapshot: Record<string, unknown>;
-}) {
-  const { data: doc } = await supabase
-    .from("documentos_emitidos")
-    .select("dados_snapshot")
-    .eq("id", docId)
-    .eq("escola_id", escolaId)
-    .maybeSingle();
-  const existingSnapshot = asRecord(doc?.dados_snapshot);
-
-  await supabase
-    .from("documentos_emitidos")
-    .update({ dados_snapshot: { ...existingSnapshot, ...extraSnapshot } as Json })
-    .eq("id", docId)
-    .eq("escola_id", escolaId);
 }
 
 export async function POST(request: Request) {
@@ -349,92 +323,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Emissão Fiscal Síncrona (O Papel na Mão)
+    // 2. Comprovativo operacional. O motor fiscal ainda não está ligado às escolas.
+    // O pagamento é a fonte canónica; não criar documentos_emitidos/fiscal_documentos aqui.
     const pagamentoRow = pagamento as PagamentoRow | null;
-    let recibo: BalcaoReciboResult = { ok: false, error: "Recibo não aplicável" };
-    if (payload.mensalidade_id && meta.emitir_recibo !== false) {
-      try {
-        const { data: reciboData, error: reciboError } = await supabase.rpc("emitir_recibo", {
-          p_mensalidade_id: payload.mensalidade_id,
-        });
-        if (reciboError) {
-          recibo = { ok: false, error: reciboError.message || "Falha ao emitir recibo" };
-        } else {
-          const rec = asRecord(reciboData);
-          const recOk = rec.ok === true;
-          recibo = recOk
-            ? {
-                ok: true,
-                doc_id: getStringField(rec, "doc_id"),
-                public_id: getStringField(rec, "public_id"),
-                emitido_em: getStringField(rec, "emitido_em"),
-                print_url: getStringField(rec, "doc_id")
-                  ? `/secretaria/documentos/${getStringField(rec, "doc_id")}/recibo/print`
-                  : null,
-              }
-            : { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
-        }
-        if (recibo.ok && recibo.doc_id) {
-          await enrichReceiptSnapshot({
-            supabase,
-            escolaId,
-            docId: recibo.doc_id,
-            extraSnapshot: {
-              tipo_comprovativo: receiptType,
-              itens_pagamento: receiptItems,
-              referencia: receiptItems.map((item) => item.descricao).join(", "),
-              valor_pago: receiptItems.reduce((total, item) => total + item.valor, 0),
-              metodo: metodo,
-              data_pagamento: new Date().toISOString(),
-            },
-          });
-        }
-      } catch (reciboErr: unknown) {
-        const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
-        recibo = { ok: false, error: message };
-      }
-    } else if (pagamentoRow?.id && pagamentoRow.status === "settled" && meta.emitir_recibo !== false) {
-      try {
-        const { data: reciboData, error: reciboError } = await (supabase as any).rpc("emitir_recibo_servicos", {
-          p_pagamento_id: pagamentoRow.id,
-        });
-        const rec = asRecord(reciboData);
-        if (reciboError) {
-          recibo = { ok: false, error: reciboError.message || "Falha ao emitir recibo" };
-        } else if (rec.ok === true) {
-          const docId = getStringField(rec, "doc_id");
-          recibo = {
-            ok: true,
-            doc_id: docId,
-            public_id: getStringField(rec, "public_id"),
-            emitido_em: getStringField(rec, "emitido_em"),
-            print_url: docId ? `/secretaria/documentos/${docId}/recibo/print` : null,
-          };
-          if (docId) {
-            await enrichReceiptSnapshot({
-              supabase,
-              escolaId,
-              docId,
-              extraSnapshot: {
-                tipo_comprovativo: receiptType,
-                itens_pagamento: receiptItems,
-                referencia: receiptItems.map((item) => item.descricao).join(", "),
-                valor_pago: receiptItems.reduce((total, item) => total + item.valor, 0),
-                metodo,
-                data_pagamento: new Date().toISOString(),
-              },
-            });
-          }
-        } else {
-          recibo = { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
-        }
-      } catch (reciboErr: unknown) {
-        const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
-        recibo = { ok: false, error: message };
-      }
-    }
-    // A emissão fiscal permanece desligada até o motor fiscal estar ativo.
-    const fiscalResult = { ok: false, error: "Emissão fiscal desativada" } as const;
+    const pagamentoSettled =
+      Boolean(pagamentoRow?.id) &&
+      ["settled", "concluido", "pago"].includes(String(pagamentoRow?.status));
+
+    const recibo: BalcaoReciboResult =
+      meta.emitir_recibo === false
+        ? { ok: false, error: "Recibo não solicitado." }
+        : pagamentoSettled && pagamentoRow?.id
+          ? {
+              ok: true,
+              non_fiscal: true,
+              doc_id: pagamentoRow.id,
+              public_id: pagamentoRow.id,
+              emitido_em: new Date().toISOString(),
+              print_url: `/secretaria/pagamentos/${pagamentoRow.id}/recibo/print`,
+            }
+          : { ok: false, error: "Pagamento aguardando liquidação." };
+
+    // Fiscal permanece completamente fora do caminho crítico enquanto não houver opt-in da escola.
+    const fiscalResult = {
+      ok: true,
+      enabled: false,
+      skipped: true,
+    } as const;
 
     recordAuditServer({
       escolaId,
