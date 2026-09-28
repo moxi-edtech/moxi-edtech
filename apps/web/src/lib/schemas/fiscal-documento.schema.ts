@@ -8,7 +8,7 @@ export const FISCAL_ORIGENS_DOCUMENTO = [
   "contingencia",
 ] as const;
 
-export const FISCAL_TIPOS_DOCUMENTO = ["FR", "FT", "NC", "ND", "RC", "PP", "GR", "GT", "FG"] as const;
+export const FISCAL_TIPOS_DOCUMENTO = ["FR", "FT", "NC", "ND", "RC", "RE", "PP", "GR", "GT", "FG"] as const;
 export const FISCAL_PAYMENT_MECHANISM_CODES = ["NU", "TB", "CC", "MB"] as const;
 export const FISCAL_OPERATION_TYPES = ["SE", "SS", "STP", "SR", "SIF", "SHS", "ST", "SG", "TB", "AS", "QT", "RD"] as const;
 export const FISCAL_IVA_TAX_CODES = ["NOR", "INT", "RED", "ISE", "OUT"] as const;

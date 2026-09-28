@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 
 type Mensalidade = { id: string; competencia: string; valor: number };
@@ -33,10 +33,16 @@ async function compressImage(file: File): Promise<File> {
   return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
 }
 
-function uploadWithProgress(url: string, formData: FormData, onProgress: (pct: number) => void) {
+function uploadWithProgress(
+  url: string,
+  formData: FormData,
+  onProgress: (pct: number) => void,
+  idempotencyKey: string,
+) {
   return new Promise<{ ok?: boolean; error?: string }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
+    xhr.setRequestHeader("Idempotency-Key", idempotencyKey);
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
       onProgress(Math.round((event.loaded / event.total) * 100));
@@ -75,12 +81,19 @@ export function PaymentDrawer({
   const [friendlyError, setFriendlyError] = useState<string | null>(null);
   const [valorInformado, setValorInformado] = useState("");
   const [mensagem, setMensagem] = useState("");
+  const uploadIdempotencyKeyRef = useRef<string | null>(null);
+
+  const mensalidadeId = mensalidade?.id ?? null;
 
   useEffect(() => {
-    if (!open || !mensalidade) return;
+    if (!open || !mensalidadeId) return;
     setValorInformado("");
     setMensagem("");
-  }, [open, mensalidade]);
+  }, [open, mensalidadeId]);
+
+  useEffect(() => {
+    uploadIdempotencyKeyRef.current = null;
+  }, [mensalidadeId]);
 
   if (!open || !mensalidade) return null;
 
@@ -116,10 +129,20 @@ export function PaymentDrawer({
 
     setSending(true);
     setProgress(0);
+    const idempotencyKey =
+      uploadIdempotencyKeyRef.current ?? crypto.randomUUID();
+    uploadIdempotencyKeyRef.current = idempotencyKey;
+
     try {
-      const json = await uploadWithProgress("/api/aluno/financeiro/comprovativo", fd, setProgress);
+      const json = await uploadWithProgress(
+        "/api/aluno/financeiro/comprovativo",
+        fd,
+        setProgress,
+        idempotencyKey,
+      );
       if (!json?.ok) throw new Error(json?.error ?? "Falha ao anexar comprovativo");
       setValorInformado("");
+      uploadIdempotencyKeyRef.current = null;
       onUploaded(mensalidade.id);
       onClose();
     } catch (e) {

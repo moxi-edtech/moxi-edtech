@@ -1,6 +1,8 @@
 import "server-only";
 
 import { signAgtJwsRs256 } from "@/lib/fiscal/agtJws";
+import { buildAgtSoftwareInfo } from "@/lib/fiscal/agtSoftwareInfo";
+import { parseSafeInteger } from "@/lib/fiscal/decimal";
 import { buildAgtBasicAuthorization, resolveAgtConfig, resolveAgtTimeoutMs } from "@/lib/fiscal/agtConfig";
 
 export type AgtSeriesProvisionInput = {
@@ -11,6 +13,7 @@ export type AgtSeriesProvisionInput = {
   establishmentNumber: string;
   contingencyIndicator: "N" | "C";
   taxpayerPrivateKeyRef: string;
+  expectedSoftwareValidationNumber?: string | null;
 };
 
 export type AgtSeriesProvisionResult = {
@@ -19,6 +22,12 @@ export type AgtSeriesProvisionResult = {
   firstDocumentNo: string;
   lastDocumentNo: string;
   raw: unknown;
+  softwareIdentity: {
+    productId: string;
+    productVersion: string;
+    softwareValidationNumber: string;
+    signatureVersion: number;
+  };
 };
 
 type AgtErrorItem = {
@@ -30,15 +39,8 @@ export async function provisionAgtSeries(
   input: AgtSeriesProvisionInput
 ): Promise<AgtSeriesProvisionResult> {
   const cfg = resolveAgtConfig();
-
-  const softwareInfoDetail = {
-    productId: cfg.productId,
-    productVersion: cfg.productVersion,
-    softwareValidationNumber: cfg.softwareValidationNumber,
-  };
-
-  const jwsSoftwareSignature = await signAgtJwsRs256(softwareInfoDetail, {
-    privateKeyRef: cfg.softwarePrivateKeyRef,
+  const { identity: softwareIdentity, softwareInfo } = await buildAgtSoftwareInfo({
+    expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
   });
 
   const requestSignaturePayload = {
@@ -58,10 +60,7 @@ export async function provisionAgtSeries(
     submissionUUID: input.submissionUuid,
     taxRegistrationNumber: input.taxRegistrationNumber,
     submissionTimeStamp: new Date().toISOString(),
-    softwareInfo: {
-      softwareInfoDetail,
-      jwsSoftwareSignature,
-    },
+    softwareInfo,
     seriesYear: input.seriesYear,
     documentType: input.documentType,
     establishmentNumber: input.establishmentNumber,
@@ -115,10 +114,11 @@ export async function provisionAgtSeries(
       );
     }
 
-    const authorizedQuantity = Number(json.seriesFEResult.authorizedQuantity);
-    if (!Number.isSafeInteger(authorizedQuantity) || authorizedQuantity <= 0) {
-      throw new Error("AGT_SERIES_INVALID_AUTHORIZED_QUANTITY");
-    }
+    const authorizedQuantity = parseSafeInteger(
+      json.seriesFEResult.authorizedQuantity,
+      "AGT_SERIES_AUTHORIZED_QUANTITY",
+      { min: 1 }
+    );
 
     return {
       seriesCode: json.seriesFEResult.seriesCode,
@@ -126,6 +126,7 @@ export async function provisionAgtSeries(
       firstDocumentNo: String(json.seriesFEResult.firstDocumentNo ?? ""),
       lastDocumentNo: String(json.seriesFEResult.lastDocumentNo ?? ""),
       raw: json,
+      softwareIdentity,
     };
   } finally {
     clearTimeout(timeout);

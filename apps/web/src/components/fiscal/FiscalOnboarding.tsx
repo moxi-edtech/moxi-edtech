@@ -39,7 +39,6 @@ type SetupDefaultsData = {
   razao_social_default?: string;
   nif_default?: string;
   key_version_default?: number;
-  private_key_ref_default?: string;
   public_key_pem_default?: string;
   key_fingerprint_default?: string;
 };
@@ -200,10 +199,7 @@ export function FiscalOnboarding({
           nif: prev.nif || json.data?.nif_default || "",
           keyVersion:
             prev.keyVersion || String(json.data?.key_version_default ?? 1),
-          privateKeyRef:
-            prev.privateKeyRef ||
-            json.data?.private_key_ref_default ||
-            DEFAULT_KMS_PRIVATE_KEY_REF,
+          privateKeyRef: prev.privateKeyRef || DEFAULT_KMS_PRIVATE_KEY_REF,
           publicKeyPem: prev.publicKeyPem || json.data?.public_key_pem_default || "",
           keyFingerprint: prev.keyFingerprint || json.data?.key_fingerprint_default || "",
         }));

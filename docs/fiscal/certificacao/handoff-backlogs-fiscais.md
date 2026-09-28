@@ -319,3 +319,137 @@ Próximo:
 Ordem:
 
 `BILL-011 -> BILL-012 -> BILL-013 -> BILL-014`
+
+## BILL-018 — Idempotência de pagamentos (hardening 2026-09-27)
+
+**Estado:** READY FOR STAGING — NOT LIVE  
+**Severidade:** P0
+
+### Evidência live antes do hardening
+
+Snapshot do Supabase de produção:
+
+- `public.pagamentos`: **4.162** linhas históricas com `idempotency_key IS NULL`;
+- último histórico NULL observado: **2026-09-26**;
+- no snapshot de 2026-09-27 não existia pagamento live com `idempotency_key` preenchida;
+- `ux_pagamentos_escola_idempotency` já existe como unique index parcial para chaves não nulas.
+
+**Decisão:** não fazer backfill artificial. Os NULL históricos permanecem imutáveis. A regra nova é prospectiva: todo novo pagamento precisa de identidade estável.
+
+### Writers corrigidos no branch
+
+- `/api/financeiro/pagamentos/registrar`;
+- `/api/secretaria/balcao/pagamentos`;
+- `/api/financeiro/conciliacao/settle`;
+- `/api/escolas/[id]/financeiro/vendas/avulsa`;
+- `/api/escolas/[id]/financeiro/pagamentos/novo`;
+- `/api/financeiro/pagamentos/mcx`;
+- `/api/aluno/financeiro/comprovativo`;
+- `RegistoPagamentoModal` / Server Action financeira;
+- `PaymentDrawer` do aluno;
+- webhook MCX: dedupe derivado de `transactionId + status`, sem depender de `Idempotency-Key` fornecida pelo provider.
+
+As chaves de comandos HTTP/UI são scoped antes de chegar a `pagamentos.idempotency_key`, evitando colisão entre entrypoints. O MCX faz claim em `idempotency_keys` **antes** de chamar o provider para impedir corrida de duas requests iguais. Timeout/exceção após o claim ou falha de persistência após aceite ficam `MCX_OUTCOME_UNCERTAIN`; retries não chamam o provider novamente. O valor do comando MCX usa `exactMoney`/`moneyToJson`, não `Number()`.
+
+### Guard DB preparado
+
+Migration:
+
+`20260928002000_bill_018_payment_idempotency_hardening.sql`
+
+Contrato:
+
+1. preserva todos os NULL históricos;
+2. exige identidade forte em qualquer novo INSERT;
+3. aceita somente identidade explícita/derivável de fonte forte:
+   - `idempotency_key`;
+   - `meta.idempotency_key` durante compatibilidade;
+   - `pagamento_intent_id`;
+   - `transacao_id_externo` do provider;
+4. nunca deriva identidade de valor/data/aluno;
+5. limita a 200 caracteres;
+6. torna `idempotency_key` imutável após criação;
+7. revoga EXECUTE dos RPCs não-idempotentes `registrar_pagamento` e `realizar_pagamento_balcao`.
+
+Produção mostrou **0** pagamentos com `meta.origem='registrar_pagamento_compat'`, portanto esses RPCs são superfície legada sem evidência de uso no dataset actual.
+
+### Evidência de readiness adicionada
+
+- INSERT de novo pagamento sem chave deve falhar com `IDEMPOTENCY:`;
+- tentativa de alterar a chave de pagamento existente deve falhar com `IMMUTABILITY:`;
+- unique index parcial deve existir;
+- coluna física permanece nullable para não adulterar históricos;
+- RPCs legados devem estar sem EXECUTE para `authenticated`.
+
+Arquivos:
+
+- `tools/fiscal/readiness-db.sql`;
+- `supabase/ops/tests/fiscal_readiness_post_bill010.sql`;
+- `apps/web/tests/unit/payment-idempotency.spec.ts`.
+
+### Gate pendente
+
+O projecto Supabase live não possui development branch/staging disponível no momento da auditoria. Por regra de segurança deste backlog, a migration de enforcement **não foi aplicada directamente em produção**.
+
+Para fechar BILL-018:
+
+1. aplicar migration em staging/branch;
+2. executar os negative tests acima + regressões BILL-001–003;
+3. provar que nenhum writer legítimo gera NULL;
+4. promover a mesma migration para live;
+5. confirmar que os 4.162 históricos continuam intocados;
+6. confirmar que novos pagamentos entram sempre com chave;
+7. CI do PR deve estar verde ou qualquer falha deve ser classificada como preexistente/infra com evidência.
+
+Sem esses gates, BILL-018 permanece READY FOR STAGING, não CLOSED.
+
+## BILL-013 — HML contract probe status (2026-09-27)
+
+**Estado:** TOOLING READY — EXTERNAL BINDING BLOCKED
+
+Implementado:
+
+- `agtContract.ts` com `docs-example` e `table-strict`;
+- `FISCAL_AGT_SOFTWARE_INFO_MODE` para alternar o shape de
+  `softwareInfoDetail` sem alterar o default actual;
+- `jwsSoftwareSignature` assina sempre exactamente o objecto transmitido;
+- `fiscal:agt:hml:preflight`: valida HML oficial, configuração, certificado e
+  KMS sem network side effect;
+- `fiscal:agt:hml:submit`: baseline FT/FR com ACK explícito,
+  `submissionUUID` e timestamp persistidos pelo operador;
+- um único `registarFactura` + um único `obterEstado`;
+- 422/429 são reportados como transitórios, sem loop/retry automático;
+- o probe recusa produção e hosts diferentes de
+  `sifphml.minfin.gov.ao`.
+
+Evidência live:
+
+- 3 empresas fiscais;
+- 0 empresas com `certificado_agt_numero`;
+- 2 chaves fiscais activas;
+- 2/2 chaves activas são referências KMS.
+
+Portanto não existe condição legítima para executar HML real ainda.
+Nenhum número de certificado foi inventado ou backfillado.
+
+CI do head que introduziu o tooling:
+
+- KLASSE UI Standards: PASS;
+- Security Regression: 4/4 PASS;
+- Fiscal Regression: 58/58 PASS;
+- KF2 global: FAIL apenas por findings preexistentes de LIMIT/ORDER BY/select('*')
+  fora dos arquivos fiscais alterados.
+
+Próximo gate real:
+
+1. obter/vincular `certificado_agt_numero` verdadeiro à empresa de homologação;
+2. garantir envs AGT HML + software KMS configuradas;
+3. rodar `pnpm fiscal:agt:hml:preflight`;
+4. criar/separar FT ou FR de homologação;
+5. executar primeiro em `docs-example`;
+6. se a resposta indicar E08/E39 ou ausência de `signatureVersion`, repetir a
+   mesma matriz documental com nova submissão explícita em `table-strict`;
+7. persistir a evidência sanitizada antes de decidir o contrato definitivo;
+8. não implementar `jwsSignature` top-level de `registarFactura` sem evidência
+   HML, pois a documentação oficial não especifica o payload exacto a assinar.
+

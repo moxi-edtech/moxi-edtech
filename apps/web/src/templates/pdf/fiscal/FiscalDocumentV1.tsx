@@ -117,6 +117,7 @@ const TITULOS_POR_TIPO: Record<string, string> = {
   NC: "Nota de Crédito",
   ND: "Nota de Débito",
   RC: "Recibo",
+  RE: "Recibo de Estorno",
   PP: "Fatura Pró-Forma",
   FG: "Fatura Global",
   GF: "Fatura Genérica",

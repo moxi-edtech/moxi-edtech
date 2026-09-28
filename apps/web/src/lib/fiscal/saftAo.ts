@@ -1,3 +1,17 @@
+import {
+  absExact,
+  addExact,
+  cmpExact,
+  divExact,
+  exactToFixed,
+  exactToJsonNumber,
+  mulExact,
+  parseExactDecimal,
+  subExact,
+  type DecimalInput,
+  type ExactDecimal,
+} from "@/lib/fiscal/decimal";
+
 type SaftEmpresa = {
   id: string;
   nome: string;
@@ -19,13 +33,13 @@ type SaftDocumentoItem = {
   unit_of_measure?: string | null;
   tax_code?: "NOR" | "INT" | "RED" | "ISE" | "OUT" | "NS" | "NA" | null;
   tax_country_region?: string | null;
-  quantidade: number;
-  preco_unit: number;
-  taxa_iva: number;
-  total_liquido_aoa: number;
-  total_impostos_aoa: number;
-  total_bruto_aoa: number;
-  settlement_amount?: number | null;
+  quantidade: number | string;
+  preco_unit: number | string;
+  taxa_iva: number | string;
+  total_liquido_aoa: number | string;
+  total_impostos_aoa: number | string;
+  total_bruto_aoa: number | string;
+  settlement_amount?: number | string | null;
   tax_exemption_code?: string | null;
   tax_exemption_reason?: string | null;
 };
@@ -44,7 +58,7 @@ type SaftPaymentSourceDocument = {
     documentDate?: string | null;
     invoiceDate?: string | null;
   };
-  creditAmount: number;
+  creditAmount: number | string;
 };
 
 type SaftDocumento = {
@@ -61,11 +75,11 @@ type SaftDocumento = {
   postal_code: string | null;
   country: string | null;
   moeda: string;
-  taxa_cambio_aoa: number | null;
+  taxa_cambio_aoa: number | string | null;
   payment_mechanism: "NU" | "TB" | "CC" | "MB" | null;
-  total_liquido_aoa: number;
-  total_impostos_aoa: number;
-  total_bruto_aoa: number;
+  total_liquido_aoa: number | string;
+  total_impostos_aoa: number | string;
+  total_bruto_aoa: number | string;
   hash_control: string;
   saft_hash: string | null;
   saft_hash_control: number | null;
@@ -149,50 +163,111 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function formatMoney(value: number): string {
-  return value.toFixed(4);
+function asExact(value: DecimalInput | ExactDecimal, field: string): ExactDecimal {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "coefficient" in value &&
+    "scale" in value
+  ) {
+    return value as ExactDecimal;
+  }
+  try {
+    return parseExactDecimal(value as DecimalInput, field);
+  } catch {
+    throw new Error(`SAFT_SEMANTIC_ERROR: ${field} inválido.`);
+  }
 }
 
-function formatMoney2(value: number): string {
-  return value.toFixed(2);
+function formatMoney(value: DecimalInput | ExactDecimal): string {
+  return exactToFixed(asExact(value, "money"), 4);
 }
 
-function formatExchangeRate(value: number): string {
-  return value.toFixed(8);
+function formatMoney2(value: DecimalInput | ExactDecimal): string {
+  return exactToFixed(asExact(value, "money"), 2);
 }
 
-function resolveUnitPriceAoa(item: SaftDocumentoItem): number {
-  const quantity = Number(item.quantidade);
-  const net = Number(item.total_liquido_aoa);
-  if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(net) || net < 0) {
+function formatExchangeRate(value: DecimalInput | ExactDecimal): string {
+  return exactToFixed(asExact(value, "exchangeRate"), 8);
+}
+
+function resolveUnitPriceAoa(item: SaftDocumentoItem): ExactDecimal {
+  const quantity = asExact(item.quantidade, "quantidade");
+  const net = asExact(item.total_liquido_aoa, "total_liquido_aoa");
+  if (cmpExact(quantity, parseExactDecimal("0")) <= 0 || cmpExact(net, parseExactDecimal("0")) < 0) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: linha ${item.linha_no} possui quantidade/líquido inválido.`
     );
   }
-  return net / quantity;
+  return divExact(net, quantity, 8);
 }
 
 function resolveSettlementAmountAoa(
   item: SaftDocumentoItem,
   doc: Pick<SaftDocumento, "moeda" | "taxa_cambio_aoa">
-): number | null {
-  if (typeof item.settlement_amount !== "number" || !Number.isFinite(item.settlement_amount)) {
+): ExactDecimal | null {
+  if (item.settlement_amount === null || item.settlement_amount === undefined) {
     return null;
   }
-  if (item.settlement_amount < 0) {
+  const settlement = asExact(item.settlement_amount, "SettlementAmount");
+  if (cmpExact(settlement, parseExactDecimal("0")) < 0) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: SettlementAmount negativo na linha ${item.linha_no}.`
     );
   }
-  if (doc.moeda.toUpperCase() === "AOA") return item.settlement_amount;
+  if (doc.moeda.toUpperCase() === "AOA") return settlement;
 
-  const exchangeRate = Number(doc.taxa_cambio_aoa);
-  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
+  if (doc.taxa_cambio_aoa === null || doc.taxa_cambio_aoa === undefined) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: taxa de câmbio inválida para SettlementAmount na linha ${item.linha_no}.`
     );
   }
-  return item.settlement_amount * exchangeRate;
+  const exchangeRate = asExact(doc.taxa_cambio_aoa, "taxa_cambio_aoa");
+  if (cmpExact(exchangeRate, parseExactDecimal("0")) <= 0) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: taxa de câmbio inválida para SettlementAmount na linha ${item.linha_no}.`
+    );
+  }
+  return mulExact(settlement, exchangeRate);
+}
+
+function integerValue(value: unknown, field: string): number {
+  const raw =
+    typeof value === "number"
+      ? value.toString()
+      : typeof value === "string"
+        ? value.trim()
+        : "";
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`SAFT_SEMANTIC_ERROR: ${field} inteiro inválido.`);
+  }
+  const parsed = JSON.parse(raw) as unknown;
+  if (typeof parsed !== "number" || !Number.isSafeInteger(parsed)) {
+    throw new Error(`SAFT_SEMANTIC_ERROR: ${field} inteiro inválido.`);
+  }
+  return parsed;
+}
+
+function assertPositiveExchangeRate(doc: SaftDocumento): ExactDecimal | null {
+  if (doc.moeda.toUpperCase() === "AOA") return null;
+  if (doc.taxa_cambio_aoa === null || doc.taxa_cambio_aoa === undefined) {
+    throw new Error(
+      `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
+    );
+  }
+  const rate = asExact(doc.taxa_cambio_aoa, "taxa_cambio_aoa");
+  if (cmpExact(rate, parseExactDecimal("0")) <= 0) {
+    throw new Error(
+      `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
+    );
+  }
+  return rate;
+}
+
+function currencyAmountAoaToDocumentCurrency(doc: SaftDocumento): ExactDecimal {
+  const rate = assertPositiveExchangeRate(doc);
+  if (!rate) return asExact(doc.total_bruto_aoa, "total_bruto_aoa");
+  return divExact(asExact(doc.total_bruto_aoa, "total_bruto_aoa"), rate, 8);
 }
 
 function resolveSourceBilling(sourceBilling: SaftDocumento["source_billing"]): "P" | "I" | "M" {
@@ -374,10 +449,10 @@ function resolveTaxCode(item: Pick<SaftDocumentoItem, "taxa_iva" | "tax_code">):
     return explicit;
   }
 
-  const taxaIva = Number(item.taxa_iva);
-  if (taxaIva <= 0) return "ISE";
-  if (taxaIva <= 5) return "RED";
-  if (taxaIva < 14) return "INT";
+  const taxaIva = asExact(item.taxa_iva, "taxa_iva");
+  if (cmpExact(taxaIva, parseExactDecimal("0")) <= 0) return "ISE";
+  if (cmpExact(taxaIva, parseExactDecimal("5")) <= 0) return "RED";
+  if (cmpExact(taxaIva, parseExactDecimal("14")) < 0) return "INT";
   return "NOR";
 }
 
@@ -397,7 +472,7 @@ function resolveUnitOfMeasure(item: Pick<SaftDocumentoItem, "unit_of_measure">):
   return unit;
 }
 
-function resolveTaxDescription(code: string, taxaIva: number, region: string): string {
+function resolveTaxDescription(code: string, taxaIva: DecimalInput | ExactDecimal, region: string): string {
   const label =
     code === "ISE" ? "IVA isento" :
     code === "RED" ? "IVA taxa reduzida" :
@@ -406,19 +481,27 @@ function resolveTaxDescription(code: string, taxaIva: number, region: string): s
     code === "NS" ? "Não sujeito" :
     code === "OUT" ? "Outros" :
     "Não aplicável";
-  return `${label} ${taxaIva.toFixed(2)}% ${region}`;
+  return `${label} ${exactToFixed(asExact(taxaIva, "taxa_iva"), 2)}% ${region}`;
 }
 
-function assertMoneyClose(label: string, actual: number, expected: number, tolerance = 0.02) {
-  if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > tolerance) {
+function assertMoneyClose(
+  label: string,
+  actual: DecimalInput | ExactDecimal,
+  expected: DecimalInput | ExactDecimal,
+  tolerance: DecimalInput = "0.02"
+) {
+  const actualExact = asExact(actual, `${label}:actual`);
+  const expectedExact = asExact(expected, `${label}:expected`);
+  const toleranceExact = asExact(tolerance, `${label}:tolerance`);
+  if (cmpExact(absExact(subExact(actualExact, expectedExact)), toleranceExact) > 0) {
     throw new Error(
-      `SAFT_SEMANTIC_ERROR: ${label} divergente (actual=${actual.toFixed(4)}, expected=${expected.toFixed(4)}).`
+      `SAFT_SEMANTIC_ERROR: ${label} divergente (actual=${formatMoney(actualExact)}, expected=${formatMoney(expectedExact)}).`
     );
   }
 }
 
 function buildTaxExemptionXml(item: SaftDocumentoItem, indent: string): string {
-  if (item.taxa_iva > 0) return "";
+  if (cmpExact(asExact(item.taxa_iva, "taxa_iva"), parseExactDecimal("0")) > 0) return "";
 
   const code = item.tax_exemption_code?.trim();
   const reason = item.tax_exemption_reason?.trim();
@@ -454,15 +537,14 @@ function resolveSignedHash(
   }
 
   const hash = doc.saft_hash?.trim();
-  const hashControl = Number(doc.saft_hash_control);
+  if (!doc.saft_required || !hash || hash.length !== 172) {
+    throw new Error(
+      `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} não pertence a uma cadeia SAF-T validada completa.`
+    );
+  }
 
-  if (
-    !doc.saft_required ||
-    !hash ||
-    hash.length !== 172 ||
-    !Number.isInteger(hashControl) ||
-    hashControl <= 0
-  ) {
+  const hashControl = integerValue(doc.saft_hash_control, "saft_hash_control");
+  if (hashControl <= 0) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: documento ${doc.numero_formatado} não pertence a uma cadeia SAF-T validada completa.`
     );
@@ -485,8 +567,9 @@ function resolveSaftInvoiceNo(doc: SaftDocumento, documentType: string): string 
     );
   }
 
-  const sequential = Number(match[3]);
-  if (!Number.isSafeInteger(sequential) || sequential <= 0 || sequential !== Number(doc.numero)) {
+  const sequential = integerValue(match[3], "numero sequencial SAF-T");
+  const persistedSequential = integerValue(doc.numero, "numero fiscal persistido");
+  if (sequential <= 0 || sequential !== persistedSequential) {
     throw new Error(
       `SAFT_SEMANTIC_ERROR: documento ${raw} diverge do contador fiscal persistido (${doc.numero}).`
     );
@@ -554,9 +637,9 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   }
 
   let totalItens = 0;
-  let totalLiquidoAoa = 0;
-  let totalImpostosAoa = 0;
-  let totalBrutoAoa = 0;
+  let totalLiquidoAoaExact = parseExactDecimal("0");
+  let totalImpostosAoaExact = parseExactDecimal("0");
+  let totalBrutoAoaExact = parseExactDecimal("0");
 
   const customerRows = new Map<string, SaftCustomer>();
   const productRows = new Map<string, SaftProduct>();
@@ -609,9 +692,18 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     }
 
     totalItens += doc.itens.length;
-    totalLiquidoAoa += doc.total_liquido_aoa;
-    totalImpostosAoa += doc.total_impostos_aoa;
-    totalBrutoAoa += doc.total_bruto_aoa;
+    totalLiquidoAoaExact = addExact(
+      totalLiquidoAoaExact,
+      asExact(doc.total_liquido_aoa, "total_liquido_aoa")
+    );
+    totalImpostosAoaExact = addExact(
+      totalImpostosAoaExact,
+      asExact(doc.total_impostos_aoa, "total_impostos_aoa")
+    );
+    totalBrutoAoaExact = addExact(
+      totalBrutoAoaExact,
+      asExact(doc.total_bruto_aoa, "total_bruto_aoa")
+    );
 
     for (const item of doc.itens) {
       const code = item.product_code.trim();
@@ -680,19 +772,19 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
 
   const taxProfiles = new Map<
     string,
-    { rate: number; code: string; region: string }
+    { rate: ExactDecimal; code: string; region: string }
   >();
   for (const doc of input.documentos) {
     for (const item of doc.itens) {
-      const rate = Number(item.taxa_iva);
-      if (!Number.isFinite(rate) || rate < 0) {
+      const rate = asExact(item.taxa_iva, "taxa_iva");
+      if (cmpExact(rate, parseExactDecimal("0")) < 0) {
         throw new Error(
           `SAFT_SEMANTIC_ERROR: taxa de IVA inválida no documento ${doc.numero_formatado}, linha ${item.linha_no}.`
         );
       }
       const code = resolveTaxCode(item);
       const region = resolveTaxCountryRegion(item);
-      const key = `IVA:${region}:${code}:${rate.toFixed(4)}`;
+      const key = `IVA:${region}:${code}:${exactToFixed(rate, 4)}`;
       taxProfiles.set(key, { rate, code, region });
     }
   }
@@ -701,11 +793,12 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     ? [
         "    <TaxTable>",
         ...Array.from(taxProfiles.values())
-          .sort((a, b) =>
-            a.region.localeCompare(b.region) ||
-            a.code.localeCompare(b.code) ||
-            a.rate - b.rate
-          )
+          .sort((a, b) => {
+            const regionCmp = a.region.localeCompare(b.region);
+            if (regionCmp !== 0) return regionCmp;
+            const codeCmp = a.code.localeCompare(b.code);
+            return codeCmp !== 0 ? codeCmp : cmpExact(a.rate, b.rate);
+          })
           .map(({ rate, code, region }) =>
             [
               "      <TaxTableEntry>",
@@ -713,7 +806,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
               `        <TaxCountryRegion>${escapeXml(region)}</TaxCountryRegion>`,
               `        <TaxCode>${escapeXml(code)}</TaxCode>`,
               `        <Description>${escapeXml(resolveTaxDescription(code, rate, region))}</Description>`,
-              `        <TaxPercentage>${rate.toFixed(2)}</TaxPercentage>`,
+              `        <TaxPercentage>${exactToFixed(rate, 2)}</TaxPercentage>`,
               "      </TaxTableEntry>",
             ].join("\n")
           ),
@@ -731,14 +824,23 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const invoiceStatus = resolveInvoiceStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
-      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
-      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
-      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
-      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
+      const lineNetTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_liquido_aoa, "total_liquido_aoa")),
+        parseExactDecimal("0")
+      );
+      const lineTaxTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_impostos_aoa, "total_impostos_aoa")),
+        parseExactDecimal("0")
+      );
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, doc.total_liquido_aoa);
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, doc.total_impostos_aoa);
       assertMoneyClose(
         `${doc.numero_formatado} GrossTotal`,
-        Number(doc.total_liquido_aoa) + Number(doc.total_impostos_aoa),
-        Number(doc.total_bruto_aoa)
+        addExact(
+          asExact(doc.total_liquido_aoa, "total_liquido_aoa"),
+          asExact(doc.total_impostos_aoa, "total_impostos_aoa")
+        ),
+        doc.total_bruto_aoa
       );
 
       const linesXml = doc.itens
@@ -827,16 +929,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           : [
               "            <Currency>",
               `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
-              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              `              <CurrencyAmount>${formatMoney(currencyAmountAoaToDocumentCurrency(doc))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
-
-      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
-        throw new Error(
-          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
-        );
-      }
 
       const paymentXml =
         doc.payment_mechanism
@@ -894,10 +990,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const workStatus = resolveWorkStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
-      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
-      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
-      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
-      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
+      const lineNetTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_liquido_aoa, "total_liquido_aoa")),
+        parseExactDecimal("0")
+      );
+      const lineTaxTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_impostos_aoa, "total_impostos_aoa")),
+        parseExactDecimal("0")
+      );
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, doc.total_liquido_aoa);
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, doc.total_impostos_aoa);
       const customerId = resolveCustomerIdentity(doc).id;
 
       const linesXml = doc.itens
@@ -961,16 +1063,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           : [
               "            <Currency>",
               `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
-              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              `              <CurrencyAmount>${formatMoney(currencyAmountAoaToDocumentCurrency(doc))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
-
-      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
-        throw new Error(
-          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
-        );
-      }
 
       return [
         "        <WorkDocument>",
@@ -1011,10 +1107,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const sourceBilling = resolveSourceBilling(doc.source_billing);
       const movementStatus = resolveMovementStatus(doc.status);
       const signedHash = resolveSignedHash(doc, softwareValidationNumber);
-      const lineNetTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_liquido_aoa), 0);
-      const lineTaxTotal = doc.itens.reduce((sum, item) => sum + Number(item.total_impostos_aoa), 0);
-      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, Number(doc.total_liquido_aoa));
-      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, Number(doc.total_impostos_aoa));
+      const lineNetTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_liquido_aoa, "total_liquido_aoa")),
+        parseExactDecimal("0")
+      );
+      const lineTaxTotal = doc.itens.reduce(
+        (sum, item) => addExact(sum, asExact(item.total_impostos_aoa, "total_impostos_aoa")),
+        parseExactDecimal("0")
+      );
+      assertMoneyClose(`${doc.numero_formatado} NetTotal`, lineNetTotal, doc.total_liquido_aoa);
+      assertMoneyClose(`${doc.numero_formatado} TaxPayable`, lineTaxTotal, doc.total_impostos_aoa);
       const customerId = resolveCustomerIdentity(doc).id;
 
       const linesXml = doc.itens
@@ -1058,16 +1160,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           : [
               "            <Currency>",
               `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
-              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              `              <CurrencyAmount>${formatMoney(currencyAmountAoaToDocumentCurrency(doc))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
-
-      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
-        throw new Error(
-          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
-        );
-      }
 
       return [
         "        <StockMovement>",
@@ -1130,9 +1226,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           const invoiceDate =
             source.sourceDocumentID?.invoiceDate?.trim() ||
             source.sourceDocumentID?.documentDate?.trim();
-          const creditAmount = Number(source.creditAmount);
+          const creditAmount = asExact(
+            source.creditAmount,
+            "paymentReceipt.creditAmount"
+          );
 
-          if (!originatingON || !invoiceDate || !Number.isFinite(creditAmount) || creditAmount <= 0) {
+          if (
+            !originatingON ||
+            !invoiceDate ||
+            cmpExact(creditAmount, parseExactDecimal("0")) <= 0
+          ) {
             throw new Error(
               `SAFT_SEMANTIC_ERROR: sourceDocument inválido no recibo ${doc.numero_formatado}, linha ${source.lineNo}.`
             );
@@ -1158,18 +1261,25 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         .join("\n");
 
       const appliedNet = sourceDocuments.reduce(
-        (sum, source) => sum + Number(source.creditAmount),
-        0
+        (sum, source) =>
+          addExact(
+            sum,
+            asExact(source.creditAmount, "paymentReceipt.creditAmount")
+          ),
+        parseExactDecimal("0")
       );
       assertMoneyClose(
         `${doc.numero_formatado} Payments CreditAmount`,
         appliedNet,
-        Number(doc.total_liquido_aoa)
+        doc.total_liquido_aoa
       );
       assertMoneyClose(
         `${doc.numero_formatado} GrossTotal`,
-        Number(doc.total_liquido_aoa) + Number(doc.total_impostos_aoa),
-        Number(doc.total_bruto_aoa)
+        addExact(
+          asExact(doc.total_liquido_aoa, "total_liquido_aoa"),
+          asExact(doc.total_impostos_aoa, "total_impostos_aoa")
+        ),
+        doc.total_bruto_aoa
       );
 
       const paymentMethodXml = doc.payment_mechanism
@@ -1188,19 +1298,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           : [
               "            <Currency>",
               `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
-              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              `              <CurrencyAmount>${formatMoney(currencyAmountAoaToDocumentCurrency(doc))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(assertPositiveExchangeRate(doc)!)}</ExchangeRate>`,
               "            </Currency>",
             ].join("\n");
-
-      if (
-        doc.moeda.toUpperCase() !== "AOA" &&
-        (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)
-      ) {
-        throw new Error(
-          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
-        );
-      }
 
       return [
         "        <Payment>",
@@ -1264,7 +1365,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   }
 
   const sumNet = (docs: SaftDocumento[]) =>
-    docs.reduce((acc, doc) => acc + Number(doc.total_liquido_aoa), 0);
+    docs.reduce(
+      (acc, doc) =>
+        addExact(acc, asExact(doc.total_liquido_aoa, "total_liquido_aoa")),
+      parseExactDecimal("0")
+    );
   const normalSalesDocs = salesDocs.filter((doc) => resolveInvoiceStatus(doc.status) === "N");
   const salesDebit = sumNet(
     normalSalesDocs.filter((doc) => isDebitSalesDocument(doc.tipo_documento))
@@ -1276,8 +1381,12 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const movementQuantity = movementDocs
     .filter((doc) => resolveMovementStatus(doc.status) !== "A")
     .reduce(
-      (acc, doc) => acc + doc.itens.reduce((sub, item) => sub + item.quantidade, 0),
-      0
+      (acc, doc) =>
+        doc.itens.reduce(
+          (sub, item) => addExact(sub, asExact(item.quantidade, "quantidade")),
+          acc
+        ),
+      parseExactDecimal("0")
     );
 
   const salesBlock = [
@@ -1367,29 +1476,29 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     summary: {
       totalDocumentos: input.documentos.length,
       totalItens,
-      totalLiquidoAoa,
-      totalImpostosAoa,
-      totalBrutoAoa,
+      totalLiquidoAoa: exactToJsonNumber(totalLiquidoAoaExact, 2),
+      totalImpostosAoa: exactToJsonNumber(totalImpostosAoaExact, 2),
+      totalBrutoAoa: exactToJsonNumber(totalBrutoAoaExact, 2),
       taxAccountingBasis: "F",
       sections: {
         salesInvoices: {
           entries: salesDocs.length,
-          totalDebit: salesDebit,
-          totalCredit: salesCredit,
+          totalDebit: exactToJsonNumber(salesDebit, 4),
+          totalCredit: exactToJsonNumber(salesCredit, 4),
         },
         workingDocuments: {
           entries: workDocs.length,
           totalDebit: 0,
-          totalCredit: sumNet(normalWorkDocs),
+          totalCredit: exactToJsonNumber(sumNet(normalWorkDocs), 4),
         },
         movementOfGoods: {
           lines: movementLines,
-          totalQuantityIssued: movementQuantity,
+          totalQuantityIssued: exactToJsonNumber(movementQuantity, 4),
         },
         payments: {
           entries: paymentDocs.length,
           totalDebit: 0,
-          totalCredit: sumNet(normalPaymentDocs),
+          totalCredit: exactToJsonNumber(sumNet(normalPaymentDocs), 4),
         },
         taxTableEntries: taxProfiles.size,
       },

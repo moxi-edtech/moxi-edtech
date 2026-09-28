@@ -30,6 +30,50 @@ function errorPayload(error: unknown) {
   };
 }
 
+function agtLog(event: string, data: Record<string, unknown>) {
+  console.info(
+    JSON.stringify({
+      scope: "fiscal_agt",
+      event,
+      at: new Date().toISOString(),
+      ...data,
+    })
+  );
+}
+
+function safeCounter(value: unknown, fallback: number) {
+  const raw =
+    typeof value === "number"
+      ? value.toString()
+      : typeof value === "string"
+        ? value.trim()
+        : "";
+  if (!/^\d+$/.test(raw)) return fallback;
+  const parsed = JSON.parse(raw) as unknown;
+  return typeof parsed === "number" && Number.isSafeInteger(parsed) ? parsed : fallback;
+}
+
+async function deadLetterSubmission(params: {
+  submissionId: string;
+  reasonCode: string;
+  reasonMessage: string;
+  snapshot?: Record<string, unknown>;
+}) {
+  const admin = supabaseServerRole() as any;
+  const { data, error } = await admin.rpc("fiscal_agt_dead_letter_submission", {
+    p_submission_id: params.submissionId,
+    p_reason_code: params.reasonCode,
+    p_reason_message: params.reasonMessage,
+    p_snapshot: asJson(params.snapshot ?? {}),
+  });
+  if (error) throw new Error(error.message);
+  agtLog("dead_lettered", {
+    submission_id: params.submissionId,
+    reason_code: params.reasonCode,
+  });
+  return data;
+}
+
 async function loadSubmissionContext(submissionId: string) {
   const admin = supabaseServerRole() as any;
   const { data: submission, error: submissionError } = await admin
@@ -71,7 +115,7 @@ async function loadSubmissionContext(submissionId: string) {
         .order("linha_no", { ascending: true }),
       admin
         .from("fiscal_empresas")
-        .select("id,nif")
+        .select("id,nif,certificado_agt_numero")
         .eq("id", document.empresa_id)
         .single(),
       admin
@@ -85,6 +129,9 @@ async function loadSubmissionContext(submissionId: string) {
 
   if (itemsError || !Array.isArray(items)) throw new Error(itemsError?.message ?? "AGT_ITEMS_LOAD_FAILED");
   if (empresaError || !empresa?.nif) throw new Error(empresaError?.message ?? "AGT_EMPRESA_LOAD_FAILED");
+  if (!empresa.certificado_agt_numero?.trim()) {
+    throw new Error("AGT_SOFTWARE_CERTIFICATE_BINDING_REQUIRED");
+  }
   if (keyError || !key?.private_key_ref) throw new Error(keyError?.message ?? "AGT_TAXPAYER_KEY_MISSING");
 
   const originId = document.tipo_documento === "NC"
@@ -267,6 +314,52 @@ export const fiscalAgtElectronicInvoicing = inngest.createFunction(
       return { ok: true, terminal: true, status: context.submission.status };
     }
 
+    if (context.submission.dead_lettered_at) {
+      agtLog("skip_dead_lettered", {
+        submission_id: data.submission_id,
+        status: context.submission.status,
+      });
+      return { ok: false, terminal: true, status: "dead_lettered" as const };
+    }
+
+    const attemptCount = safeCounter(context.submission.attempt_count, 0);
+    const maxAttempts = safeCounter(context.submission.max_attempts, 5);
+    const pollCount = safeCounter(context.submission.poll_count, 0);
+    const maxPollCount = safeCounter(context.submission.max_poll_count, 40);
+    const existingRequestID = context.submission.request_id as string | null;
+
+    if (!existingRequestID && attemptCount >= maxAttempts) {
+      await step.run("dead-letter-register-budget", async () =>
+        deadLetterSubmission({
+          submissionId: data.submission_id,
+          reasonCode: "AGT_REGISTER_RETRY_EXHAUSTED",
+          reasonMessage: `registarFactura excedeu o orçamento de ${maxAttempts} tentativa(s) sem requestID definitivo.`,
+          snapshot: {
+            attempt_count: attemptCount,
+            max_attempts: maxAttempts,
+            document_no: context.link.document_no,
+          },
+        })
+      );
+      return { ok: false, terminal: true, status: "dead_lettered" as const };
+    }
+
+    if (existingRequestID && pollCount >= maxPollCount) {
+      await step.run("dead-letter-poll-budget", async () =>
+        deadLetterSubmission({
+          submissionId: data.submission_id,
+          reasonCode: "AGT_STATUS_POLL_EXHAUSTED",
+          reasonMessage: `obterEstado excedeu o orçamento de ${maxPollCount} consulta(s) preservando o requestID.`,
+          snapshot: {
+            poll_count: pollCount,
+            max_poll_count: maxPollCount,
+            document_no: context.link.document_no,
+          },
+        })
+      );
+      return { ok: false, terminal: true, status: "dead_lettered" as const };
+    }
+
     if (
       ["NC", "ND"].includes(context.document.tipo_documento) &&
       context.originDocument &&
@@ -344,22 +437,38 @@ export const fiscalAgtElectronicInvoicing = inngest.createFunction(
       throw error;
     }
 
-    let requestID = context.submission.request_id as string | null;
+    let requestID = existingRequestID;
     if (!requestID) {
       const register = await step.run("register-invoice", async () => {
         await markSubmission(data.submission_id, {
           status: "submitting",
-          attempt_count: Number(context.submission.attempt_count ?? 0) + 1,
+          attempt_count: attemptCount + 1,
+          last_attempt_at: new Date().toISOString(),
           error_code: null,
           error_message: null,
         });
         try {
+          const startedAt = Date.now();
+          agtLog("register_request", {
+            submission_id: data.submission_id,
+            submission_uuid: context.submission.submission_uuid,
+            document_no: context.link.document_no,
+            attempt: attemptCount + 1,
+          });
+
           const result = await registerAgtInvoices({
             submissionUuid: context.submission.submission_uuid,
             submissionTimeStamp: context.submission.created_at,
             taxRegistrationNumber: context.empresa.nif,
             taxpayerPrivateKeyRef: context.key.private_key_ref,
+            expectedSoftwareValidationNumber: context.empresa.certificado_agt_numero,
             documents: [prepared],
+          });
+
+          agtLog("register_response", {
+            submission_id: data.submission_id,
+            request_id: result.requestID,
+            latency_ms: Date.now() - startedAt,
           });
           await markSubmission(data.submission_id, {
             status: "submitted",
@@ -415,21 +524,64 @@ export const fiscalAgtElectronicInvoicing = inngest.createFunction(
     }
 
     for (let index = 0; index < POLL_DELAYS.length; index += 1) {
+      const pollOrdinal = pollCount + index + 1;
+      if (pollOrdinal > maxPollCount) {
+        await step.run(`dead-letter-poll-${index}`, async () =>
+          deadLetterSubmission({
+            submissionId: data.submission_id,
+            reasonCode: "AGT_STATUS_POLL_EXHAUSTED",
+            reasonMessage: `obterEstado atingiu o limite de ${maxPollCount} consultas.`,
+            snapshot: {
+              poll_count: pollOrdinal - 1,
+              max_poll_count: maxPollCount,
+              document_no: context.link.document_no,
+            },
+          })
+        );
+        return { ok: false, terminal: true, status: "dead_lettered" as const, requestID };
+      }
+
       await step.sleep(`wait-status-${index}`, POLL_DELAYS[index]);
       const poll = await step.run(`poll-status-${index}`, async () => {
+        const admin = supabaseServerRole() as any;
+        await admin
+          .from("fiscal_agt_submissions")
+          .update({
+            poll_count: pollOrdinal,
+            last_attempt_at: new Date().toISOString(),
+          })
+          .eq("id", data.submission_id);
+
+        const startedAt = Date.now();
+        agtLog("status_request", {
+          submission_id: data.submission_id,
+          request_id: requestID,
+          poll: pollOrdinal,
+        });
+
         try {
           const result = await getAgtInvoiceStatus({
             requestID: requestID!,
             taxRegistrationNumber: context.empresa.nif,
             taxpayerPrivateKeyRef: context.key.private_key_ref,
+            expectedSoftwareValidationNumber: context.empresa.certificado_agt_numero,
           });
-          const admin = supabaseServerRole() as any;
-          await admin
-            .from("fiscal_agt_submissions")
-            .update({ poll_count: Number(context.submission.poll_count ?? 0) + index + 1 })
-            .eq("id", data.submission_id);
+          agtLog("status_response", {
+            submission_id: data.submission_id,
+            request_id: requestID,
+            poll: pollOrdinal,
+            result_code: result.resultCode,
+            latency_ms: Date.now() - startedAt,
+          });
           return { kind: "result" as const, result };
         } catch (error) {
+          agtLog("status_error", {
+            submission_id: data.submission_id,
+            request_id: requestID,
+            poll: pollOrdinal,
+            latency_ms: Date.now() - startedAt,
+            error: errorPayload(error),
+          });
           if (error instanceof AgtHttpError && [422, 429].includes(error.httpStatus)) {
             await markSubmission(data.submission_id, {
               status: "processing",
@@ -482,6 +634,7 @@ export const fiscalAgtReconcileSweep = inngest.createFunction(
         .from("fiscal_agt_submissions")
         .select("id,status,next_check_at,created_at")
         .in("status", ["prepared", "submitted", "processing", "uncertain"])
+        .is("dead_lettered_at", null)
         .or(`next_check_at.is.null,next_check_at.lte.${now}`)
         .order("created_at", { ascending: true })
         .limit(50);
@@ -504,5 +657,74 @@ export const fiscalAgtReconcileSweep = inngest.createFunction(
     );
 
     return { ok: true, dispatched: submissions.length };
+  }
+);
+
+
+export const fiscalAgtObservabilitySweep = inngest.createFunction(
+  {
+    id: "fiscal-agt-observability-sweep",
+    triggers: [cron("*/15 * * * *")],
+    retries: 1,
+  },
+  async ({ step }) => {
+    const snapshot = await step.run("load-agt-metrics-snapshot", async () => {
+      const admin = supabaseServerRole() as any;
+      const { data, error } = await admin.rpc("fiscal_agt_metrics_snapshot");
+      if (error) throw new Error(error.message);
+      return (data ?? {}) as Record<string, unknown>;
+    });
+
+    const maxNonterminalSeconds = safeCounter(
+      process.env.FISCAL_AGT_SLO_MAX_NONTERMINAL_SECONDS,
+      3600
+    );
+    const maxDeadLetters = safeCounter(
+      process.env.FISCAL_AGT_SLO_MAX_DEAD_LETTERS,
+      0
+    );
+    const oldestNonterminalSeconds = safeCounter(
+      snapshot.oldest_nonterminal_seconds,
+      0
+    );
+    const deadLettered = safeCounter(snapshot.dead_lettered, 0);
+
+    const nonterminalBreach =
+      oldestNonterminalSeconds > maxNonterminalSeconds;
+    const deadLetterBreach = deadLettered > maxDeadLetters;
+    const breached = nonterminalBreach || deadLetterBreach;
+
+    agtLog("slo_snapshot", {
+      ...snapshot,
+      slo_max_nonterminal_seconds: maxNonterminalSeconds,
+      slo_max_dead_letters: maxDeadLetters,
+      nonterminal_breach: nonterminalBreach,
+      dead_letter_breach: deadLetterBreach,
+      breached,
+    });
+
+    if (breached) {
+      console.warn(
+        JSON.stringify({
+          scope: "fiscal_agt",
+          event: "slo_breach",
+          at: new Date().toISOString(),
+          nonterminal_breach: nonterminalBreach,
+          dead_letter_breach: deadLetterBreach,
+          oldest_nonterminal_seconds: oldestNonterminalSeconds,
+          dead_lettered: deadLettered,
+        })
+      );
+    }
+
+    return {
+      ok: true,
+      breached,
+      snapshot,
+      slo: {
+        max_nonterminal_seconds: maxNonterminalSeconds,
+        max_dead_letters: maxDeadLetters,
+      },
+    };
   }
 );

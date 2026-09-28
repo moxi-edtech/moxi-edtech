@@ -1,6 +1,9 @@
 import "server-only";
 
 import { signAgtJwsRs256 } from "@/lib/fiscal/agtJws";
+import { buildAgtSoftwareInfo } from "@/lib/fiscal/agtSoftwareInfo";
+import { parseSafeInteger } from "@/lib/fiscal/decimal";
+import type { AgtSoftwareInfoMode } from "@/lib/fiscal/agtContract";
 import {
   buildAgtBasicAuthorization,
   resolveAgtConfig,
@@ -67,20 +70,6 @@ export class AgtHttpError extends Error {
   }
 }
 
-async function buildSoftwareInfo() {
-  const cfg = resolveAgtConfig();
-  const softwareInfoDetail = {
-    productId: cfg.productId,
-    productVersion: cfg.productVersion,
-    softwareValidationNumber: cfg.softwareValidationNumber,
-    signatureVersion: cfg.signatureVersion,
-  };
-  const jwsSoftwareSignature = await signAgtJwsRs256(softwareInfoDetail, {
-    privateKeyRef: cfg.softwarePrivateKeyRef,
-  });
-  return { cfg, softwareInfo: { softwareInfoDetail, jwsSoftwareSignature } };
-}
-
 async function postAgt(path: string, payload: Record<string, unknown>) {
   const cfg = resolveAgtConfig();
   const controller = new AbortController();
@@ -117,11 +106,16 @@ export async function registerAgtInvoices(input: {
   taxpayerPrivateKeyRef: string;
   documents: AgtPreparedDocument[];
   submissionTimeStamp?: string;
+  expectedSoftwareValidationNumber?: string | null;
+  softwareInfoMode?: AgtSoftwareInfoMode;
 }): Promise<AgtRegisterResult> {
   if (input.documents.length < 1 || input.documents.length > 30) {
     throw new Error("AGT_REGISTER_DOCUMENT_COUNT_INVALID");
   }
-  const { softwareInfo } = await buildSoftwareInfo();
+  const { softwareInfo } = await buildAgtSoftwareInfo({
+    expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
+    mode: input.softwareInfoMode,
+  });
   const documents = [];
   for (const item of input.documents) {
     const jwsDocumentSignature = await signAgtJwsRs256(item.signaturePayload, {
@@ -180,8 +174,13 @@ export async function getAgtInvoiceStatus(input: {
   requestID: string;
   taxRegistrationNumber: string;
   taxpayerPrivateKeyRef: string;
+  expectedSoftwareValidationNumber?: string | null;
+  softwareInfoMode?: AgtSoftwareInfoMode;
 }): Promise<AgtStatusResult> {
-  const { softwareInfo } = await buildSoftwareInfo();
+  const { softwareInfo } = await buildAgtSoftwareInfo({
+    expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
+    mode: input.softwareInfoMode,
+  });
   const signaturePayload = {
     taxRegistrationNumber: input.taxRegistrationNumber,
     requestID: input.requestID,
@@ -208,8 +207,12 @@ export async function getAgtInvoiceStatus(input: {
         successRequestID?: string;
       }
     | null;
-  const resultCode = Number(responsePayload?.resultCode);
-  if (!Number.isInteger(resultCode) || ![0, 1, 2, 7, 8, 9].includes(resultCode)) {
+  const resultCode = parseSafeInteger(
+    responsePayload?.resultCode,
+    "AGT_STATUS_RESULT_CODE",
+    { min: 0, max: 9, fallback: -1 }
+  );
+  if (![0, 1, 2, 7, 8, 9].includes(resultCode)) {
     throw new AgtHttpError("AGT_STATUS_RESULT_CODE_INVALID", 200, responsePayload);
   }
   return {

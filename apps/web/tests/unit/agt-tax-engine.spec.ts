@@ -174,6 +174,20 @@ test("AGT mapper preserves foreign-currency totals and AOA countervalue", () => 
   });
 });
 
+test("AGT mapper rejects documentNo shorter than the official 8-character minimum", () => {
+  assert.throws(
+    () =>
+      buildAgtPreparedDocument({
+        document: baseDocument({ numero_formatado: "FT X/1" }),
+        items: [canonicalItem()],
+        taxRegistrationNumber: "5000000000",
+      }),
+    (error: unknown) =>
+      error instanceof AgtMappingError &&
+      error.code === "AGT_MAPPING_DOCUMENT_NO_INVALID"
+  );
+});
+
 test("AGT mapper rejects a line without canonical tax profile", () => {
   assert.throws(
     () =>
@@ -360,5 +374,40 @@ test("AGT mapper rejects reused number when correcting a rejected document", () 
     (error: unknown) =>
       error instanceof AgtMappingError &&
       error.code === "AGT_MAPPING_REJECTED_DOCUMENT_NUMBER_REUSED"
+  );
+});
+
+
+test("AGT mapper emits RE as a credit line document without paymentReceipt", () => {
+  const prepared = buildAgtPreparedDocument({
+    document: baseDocument({
+      tipo_documento: "RE",
+      numero_formatado: "RE TEST/1",
+      documento_origem_id: "00000000-0000-0000-0000-000000000601",
+    }),
+    items: [canonicalItem()],
+    taxRegistrationNumber: "5000000000",
+    originDocument: {
+      numero_formatado: "RC TEST/1",
+      invoice_date: "2026-09-27",
+    },
+  });
+
+  assert.equal(prepared.document.documentType, "RE");
+  assert.equal("paymentReceipt" in prepared.document, false);
+  assert.equal((prepared.document.lines?.[0] as any).creditAmount, 100);
+});
+
+test("AGT mapper rejects an invalid contingency indicator", () => {
+  assert.throws(
+    () =>
+      buildAgtPreparedDocument({
+        document: baseDocument({ contingency_indicator: "X" }),
+        items: [canonicalItem()],
+        taxRegistrationNumber: "5000000000",
+      }),
+    (error: unknown) =>
+      error instanceof AgtMappingError &&
+      error.code === "AGT_MAPPING_CONTINGENCY_INVALID"
   );
 });

@@ -41,11 +41,11 @@ type FiscalDocumentoRow = {
   cliente_nif: string | null;
   payload: Json | null;
   moeda: string;
-  taxa_cambio_aoa: number | null;
+  taxa_cambio_aoa: number | string | null;
   payment_mechanism: string | null;
-  total_liquido_aoa: number;
-  total_impostos_aoa: number;
-  total_bruto_aoa: number;
+  total_liquido_aoa: number | string;
+  total_impostos_aoa: number | string;
+  total_bruto_aoa: number | string;
   hash_control: string;
   saft_hash: string | null;
   saft_hash_control: number | null;
@@ -71,12 +71,12 @@ type FiscalDocumentoItemRow = {
   descricao: string;
   product_code: string;
   product_number_code: string | null;
-  quantidade: number;
-  preco_unit: number;
-  taxa_iva: number;
-  total_liquido_aoa: number;
-  total_impostos_aoa: number;
-  total_bruto_aoa: number;
+  quantidade: number | string;
+  preco_unit: number | string;
+  taxa_iva: number | string;
+  total_liquido_aoa: number | string;
+  total_impostos_aoa: number | string;
+  total_bruto_aoa: number | string;
   tax_exemption_code: string | null;
   tax_exemption_reason: string | null;
   tax_profile_code: string | null;
@@ -86,11 +86,11 @@ type FiscalDocumentoItemRow = {
   operation_type: string | null;
   unit_of_measure: string | null;
   product_type: string | null;
-  unit_price_base: number | null;
-  settlement_amount: number | null;
-  total_liquido_moeda: number | null;
-  total_impostos_moeda: number | null;
-  total_bruto_moeda: number | null;
+  unit_price_base: number | string | null;
+  settlement_amount: number | string | null;
+  total_liquido_moeda: number | string | null;
+  total_impostos_moeda: number | string | null;
+  total_bruto_moeda: number | string | null;
 };
 
 type OrderReference = {
@@ -105,7 +105,7 @@ type SaftPaymentSourceDocument = {
     documentDate?: string | null;
     invoiceDate?: string | null;
   };
-  creditAmount: number;
+  creditAmount: number | string;
 };
 
 function parsePaymentReceiptFromPayload(payload: Json | null): {
@@ -139,7 +139,10 @@ function parsePaymentReceiptFromPayload(payload: Json | null): {
         invoiceDate:
           typeof sourceId["invoiceDate"] === "string" ? sourceId["invoiceDate"] : null,
       },
-      creditAmount: Number(record["creditAmount"]),
+      creditAmount:
+        typeof record["creditAmount"] === "string" || typeof record["creditAmount"] === "number"
+          ? record["creditAmount"]
+          : "",
     };
   });
 
@@ -236,8 +239,10 @@ function parseLineMetadataFromPayload(payload: Json | null): Map<number, SaftLin
   return result;
 }
 
-function parseSettlementAmountsFromPayload(payload: Json | null): Map<number, number> {
-  const result = new Map<number, number>();
+function parseSettlementAmountsFromPayload(
+  payload: Json | null
+): Map<number, number | string> {
+  const result = new Map<number, number | string>();
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return result;
   const payloadRecord = payload as Record<string, unknown>;
   const itens = payloadRecord["itens"];
@@ -246,7 +251,7 @@ function parseSettlementAmountsFromPayload(payload: Json | null): Map<number, nu
   itens.forEach((item, index) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return;
     const raw = (item as Record<string, unknown>)["settlement_amount"];
-    if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return;
+    if (typeof raw !== "number" && typeof raw !== "string") return;
     result.set(index + 1, raw);
   });
 
@@ -685,12 +690,12 @@ export const fiscalSaftExport = inngest.createFunction(
                   item.tax_country_region ??
                   lineMetadata.get(Number(item.linha_no))?.taxCountryRegion ??
                   "AO",
-                quantidade: Number(item.quantidade),
-                preco_unit: Number(item.preco_unit),
-                taxa_iva: Number(item.taxa_iva),
-                total_liquido_aoa: Number(item.total_liquido_aoa),
-                total_impostos_aoa: Number(item.total_impostos_aoa),
-                total_bruto_aoa: Number(item.total_bruto_aoa),
+                quantidade: item.quantidade,
+                preco_unit: item.preco_unit,
+                taxa_iva: item.taxa_iva,
+                total_liquido_aoa: item.total_liquido_aoa,
+                total_impostos_aoa: item.total_impostos_aoa,
+                total_bruto_aoa: item.total_bruto_aoa,
                 settlement_amount: settlementAmount,
                 tax_exemption_code: item.tax_exemption_code,
                 tax_exemption_reason: item.tax_exemption_reason,
@@ -732,11 +737,11 @@ export const fiscalSaftExport = inngest.createFunction(
             return refs;
           })(),
           moeda: String(doc.moeda ?? "AOA").toUpperCase(),
-          taxa_cambio_aoa: doc.taxa_cambio_aoa == null ? null : Number(doc.taxa_cambio_aoa),
+          taxa_cambio_aoa: doc.taxa_cambio_aoa,
           payment_mechanism: parsePaymentMechanism(doc.payment_mechanism),
-          total_liquido_aoa: Number(doc.total_liquido_aoa),
-          total_impostos_aoa: Number(doc.total_impostos_aoa),
-          total_bruto_aoa: Number(doc.total_bruto_aoa),
+          total_liquido_aoa: doc.total_liquido_aoa,
+          total_impostos_aoa: doc.total_impostos_aoa,
+          total_bruto_aoa: doc.total_bruto_aoa,
         })),
       };
 
