@@ -154,6 +154,8 @@ O BILL-027 deve tornar o vínculo auditável sem inventar número de certificaç
 - live snapshot: 4.162 pagamentos históricos com `idempotency_key IS NULL`; nenhum backfill;
 - writers HTTP/UI/direct insert corrigidos para identidade scoped;
 - MCX com claim antes do provider e webhook dedupado pela identidade do provider;
+- timeout/exceção pós-claim e falha de persistência pós-aceite ficam `MCX_OUTCOME_UNCERTAIN`; retries não voltam a chamar o provider;
+- valor MCX passa por `exactMoney`/`moneyToJson`, sem `Number()` autoritativo nesse caminho;
 - migration `20260928002000_bill_018_payment_idempotency_hardening.sql` preparada;
 - guard prospectivo + chave imutável + revogação de RPCs legados;
 - negative/readiness tests adicionados;
