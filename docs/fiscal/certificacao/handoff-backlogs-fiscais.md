@@ -349,7 +349,7 @@ Snapshot do Supabase de produção:
 - `PaymentDrawer` do aluno;
 - webhook MCX: dedupe derivado de `transactionId + status`, sem depender de `Idempotency-Key` fornecida pelo provider.
 
-As chaves de comandos HTTP/UI são scoped antes de chegar a `pagamentos.idempotency_key`, evitando colisão entre entrypoints. O MCX faz claim em `idempotency_keys` **antes** de chamar o provider para impedir corrida de duas requests iguais.
+As chaves de comandos HTTP/UI são scoped antes de chegar a `pagamentos.idempotency_key`, evitando colisão entre entrypoints. O MCX faz claim em `idempotency_keys` **antes** de chamar o provider para impedir corrida de duas requests iguais. Timeout/exceção após o claim ou falha de persistência após aceite ficam `MCX_OUTCOME_UNCERTAIN`; retries não chamam o provider novamente. O valor do comando MCX usa `exactMoney`/`moneyToJson`, não `Number()`.
 
 ### Guard DB preparado
 
