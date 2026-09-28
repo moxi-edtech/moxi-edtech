@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { PaymentGatewayService } from '@/lib/financeiro/services/payment-gateway';
 import { buildPaymentIdempotencyKey } from '@/lib/financeiro/paymentIdempotency';
+import { exactMoney, moneyToJson } from '@/lib/financeiro/exact';
 
 export async function POST(req: Request) {
   const supabase = (await supabaseServer()) as any;
@@ -83,10 +84,37 @@ export async function POST(req: Request) {
       );
     }
 
+    const amount = moneyToJson(
+      exactMoney(
+        (mensalidade as { valor_previsto?: number | string | null }).valor_previsto ?? '0',
+        'mcx_init_amount',
+      ),
+      2,
+    );
+    if (amount <= 0) {
+      await supabase
+        .from('idempotency_keys')
+        .update({
+          result: {
+            error: 'Valor da mensalidade inválido',
+            code: 'MCX_INVALID_AMOUNT',
+            http_status: 400,
+          },
+        })
+        .eq('escola_id', escolaId)
+        .eq('scope', 'financeiro_pagamentos_mcx')
+        .eq('key', idempotencyKey);
+
+      return NextResponse.json(
+        { error: 'Valor da mensalidade inválido', code: 'MCX_INVALID_AMOUNT' },
+        { status: 400 },
+      );
+    }
+
     // 2) Chamar o Gateway (MCX)
     const gateway = new PaymentGatewayService();
     const pgResponse = await gateway.initiateMCX({
-      amount: Number((mensalidade as any).valor_previsto),
+      amount,
       mobileNumber: String(telemovel),
       referenceId: String(mensalidadeId),
       description: `Mensalidade ${mensalidade.aluno?.nome ?? ''}`.trim(),
@@ -117,7 +145,7 @@ export async function POST(req: Request) {
       escola_id: escolaId,
       aluno_id: (mensalidade as { aluno_id?: string | null }).aluno_id ?? null,
       mensalidade_id: mensalidadeId,
-      valor_pago: Number((mensalidade as any).valor_previsto),
+      valor_pago: amount,
       metodo_pagamento: 'mcx_express',
       telemovel_origem: String(telemovel),
       transacao_id_externo: pgResponse.transactionId,
@@ -133,7 +161,28 @@ export async function POST(req: Request) {
 
     if (errPag) {
       console.error('Erro ao salvar pagamento:', errPag);
-      return NextResponse.json({ error: 'Erro ao registar transação' }, { status: 500 });
+      const persistenceFailure = {
+        error: 'Gateway aceitou a operação, mas a persistência local falhou',
+        code: 'MCX_OUTCOME_UNCERTAIN',
+        transactionId: pgResponse.transactionId,
+        http_status: 202,
+      };
+
+      await supabase
+        .from('idempotency_keys')
+        .update({ result: persistenceFailure })
+        .eq('escola_id', escolaId)
+        .eq('scope', 'financeiro_pagamentos_mcx')
+        .eq('key', idempotencyKey);
+
+      return NextResponse.json(
+        {
+          error: persistenceFailure.error,
+          code: persistenceFailure.code,
+          transactionId: persistenceFailure.transactionId,
+        },
+        { status: 202 },
+      );
     }
 
     const responsePayload = {
