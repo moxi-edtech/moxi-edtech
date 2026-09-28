@@ -42,7 +42,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install SAF-T XSD validator
-        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils poppler-utils
 
       - name: Fiscal certification regression suite
         run: pnpm --dir apps/web test:unit:fiscal-certification
