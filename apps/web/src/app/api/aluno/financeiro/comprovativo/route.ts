@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,6 +11,19 @@ const COMPROVATIVOS_BUCKET = "billing-proofs";
 
 export async function POST(request: Request) {
   try {
+    const rawIdempotencyKey =
+      request.headers.get("Idempotency-Key") ?? request.headers.get("idempotency-key");
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      "aluno-comprovativo",
+      rawIdempotencyKey,
+    );
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 },
+      );
+    }
+
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx?.escolaId || !ctx.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
@@ -98,6 +112,7 @@ export async function POST(request: Request) {
           storage_path: objectPath,
           uploaded_via: "api/aluno/financeiro/comprovativo",
           aluno_id: alunoId,
+          idempotency_key: idempotencyKey,
         },
       },
     );
