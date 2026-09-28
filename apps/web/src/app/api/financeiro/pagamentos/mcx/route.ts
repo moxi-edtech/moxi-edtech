@@ -6,6 +6,8 @@ import { exactMoney, moneyToJson } from '@/lib/financeiro/exact';
 
 export async function POST(req: Request) {
   const supabase = (await supabaseServer()) as any;
+  let claimedEscolaId: string | null = null;
+  let claimedIdempotencyKey: string | null = null;
 
   try {
     const rawIdempotencyKey =
@@ -83,6 +85,9 @@ export async function POST(req: Request) {
         { status: 409 },
       );
     }
+
+    claimedEscolaId = escolaId;
+    claimedIdempotencyKey = idempotencyKey;
 
     const amount = moneyToJson(
       exactMoney(
@@ -200,6 +205,28 @@ export async function POST(req: Request) {
     return NextResponse.json(responsePayload);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro interno';
+
+    if (claimedEscolaId && claimedIdempotencyKey) {
+      const uncertainPayload = {
+        error: 'Resultado do gateway incerto; aguarde reconciliação antes de repetir',
+        code: 'MCX_OUTCOME_UNCERTAIN',
+        http_status: 202,
+      };
+
+      await supabase
+        .from('idempotency_keys')
+        .update({ result: uncertainPayload })
+        .eq('escola_id', claimedEscolaId)
+        .eq('scope', 'financeiro_pagamentos_mcx')
+        .eq('key', claimedIdempotencyKey);
+
+      console.error('[MCX] outcome uncertain:', message);
+      return NextResponse.json(
+        { error: uncertainPayload.error, code: uncertainPayload.code },
+        { status: 202 },
+      );
+    }
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
