@@ -118,6 +118,68 @@ export async function POST(
       });
     }
 
+    const { error: claimError } = await s
+      .from("idempotency_keys")
+      .insert({
+        escola_id: resolvedEscolaId,
+        scope: "financeiro_venda_avulsa",
+        key: idempotencyKey,
+        result: null,
+      });
+
+    if (claimError) {
+      if (claimError.code !== "23505") {
+        return NextResponse.json(
+          { ok: false, error: "Falha ao reservar identidade da venda" },
+          { status: 500 },
+        );
+      }
+
+      const { data: existingClaim } = await s
+        .from("idempotency_keys")
+        .select("result")
+        .eq("escola_id", resolvedEscolaId)
+        .eq("scope", "financeiro_venda_avulsa")
+        .eq("key", idempotencyKey)
+        .maybeSingle();
+
+      if (existingClaim?.result) {
+        return NextResponse.json({
+          ...(existingClaim.result as Record<string, unknown>),
+          idempotent: true,
+        });
+      }
+
+      const { data: concurrentPagamento } = await s
+        .from("pagamentos")
+        .select("id, referencia")
+        .eq("escola_id", resolvedEscolaId)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+
+      if (concurrentPagamento) {
+        const concurrentReferencia =
+          (concurrentPagamento as { referencia?: string | null }).referencia ?? null;
+        return NextResponse.json({
+          ok: true,
+          pagamento_id: (concurrentPagamento as { id: string }).id,
+          lancamento_id: concurrentReferencia?.startsWith("venda_avulsa:")
+            ? concurrentReferencia.split(":")[1]
+            : null,
+          idempotent: true,
+        });
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Venda com esta Idempotency-Key já está em processamento",
+          code: "IDEMPOTENCY_IN_PROGRESS",
+        },
+        { status: 409 },
+      );
+    }
+
     const metodoPagamento = normalizeMetodoPagamento(body.metodo);
     const lancRes = await s
       .from("financeiro_lancamentos")
@@ -250,11 +312,20 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({
+    const responsePayload = {
       ok: true,
       lancamento_id: lancamentoId,
       pagamento_id: (pagamentoRes.data as { id: string }).id,
-    });
+    };
+
+    await s
+      .from("idempotency_keys")
+      .update({ result: responsePayload })
+      .eq("escola_id", resolvedEscolaId)
+      .eq("scope", "financeiro_venda_avulsa")
+      .eq("key", idempotencyKey);
+
+    return NextResponse.json(responsePayload);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
