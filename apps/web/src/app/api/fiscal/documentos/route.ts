@@ -406,6 +406,102 @@ export async function GET() {
       );
     }
 
+    const documentIds = (data ?? []).map((row) => row.id);
+    const agtByDocument = new Map<
+      string,
+      {
+        submission_status: string | null;
+        validation_status: string | null;
+        request_id: string | null;
+        error_code: string | null;
+        dead_lettered_at: string | null;
+      }
+    >();
+
+    if (documentIds.length > 0) {
+      const admin = supabaseServerRole<FiscalDatabase>() as any;
+      const { data: links, error: linksError } = await admin
+        .from("fiscal_agt_submission_documentos")
+        .select("documento_id,submission_id,validation_status")
+        .eq("empresa_id", ctx.empresaId)
+        .in("documento_id", documentIds);
+
+      if (linksError) {
+        return jsonError(
+          500,
+          "FISCAL_AGT_STATUS_LIST_FAILED",
+          linksError.message || "Falha ao carregar o estado AGT dos documentos.",
+          { request_id: requestId, empresa_id: ctx.empresaId }
+        );
+      }
+
+      const submissionIds = Array.from(
+        new Set(
+          (links ?? [])
+            .map((link: { submission_id?: string | null }) => link.submission_id ?? null)
+            .filter((value: string | null): value is string => Boolean(value))
+        )
+      );
+
+      let submissionById = new Map<
+        string,
+        {
+          status: string | null;
+          request_id: string | null;
+          error_code: string | null;
+          dead_lettered_at: string | null;
+        }
+      >();
+
+      if (submissionIds.length > 0) {
+        const { data: submissions, error: submissionsError } = await admin
+          .from("fiscal_agt_submissions")
+          .select("id,status,request_id,error_code,dead_lettered_at")
+          .eq("empresa_id", ctx.empresaId)
+          .in("id", submissionIds);
+
+        if (submissionsError) {
+          return jsonError(
+            500,
+            "FISCAL_AGT_STATUS_LIST_FAILED",
+            submissionsError.message || "Falha ao carregar submissões AGT.",
+            { request_id: requestId, empresa_id: ctx.empresaId }
+          );
+        }
+
+        submissionById = new Map(
+          (submissions ?? []).map(
+            (submission: {
+              id: string;
+              status: string | null;
+              request_id: string | null;
+              error_code: string | null;
+              dead_lettered_at: string | null;
+            }) => [
+              submission.id,
+              {
+                status: submission.status,
+                request_id: submission.request_id,
+                error_code: submission.error_code,
+                dead_lettered_at: submission.dead_lettered_at,
+              },
+            ]
+          )
+        );
+      }
+
+      for (const link of links ?? []) {
+        const submission = submissionById.get(link.submission_id);
+        agtByDocument.set(link.documento_id, {
+          submission_status: submission?.status ?? null,
+          validation_status: link.validation_status ?? null,
+          request_id: submission?.request_id ?? null,
+          error_code: submission?.error_code ?? null,
+          dead_lettered_at: submission?.dead_lettered_at ?? null,
+        });
+      }
+    }
+
     const docs = (data ?? []).map((row) => ({
       id: row.id,
       numero: row.numero_formatado ?? "Sem número",
@@ -421,6 +517,15 @@ export async function GET() {
       rectifica_documento_id: row.rectifica_documento_id ?? null,
       agt_document_status: row.agt_document_status === "C" ? "C" : "N",
       agt_rejected_document_id: row.agt_rejected_document_id ?? null,
+      agt_submission_status:
+        agtByDocument.get(row.id)?.submission_status ?? null,
+      agt_validation_status:
+        agtByDocument.get(row.id)?.validation_status ?? null,
+      agt_request_id: agtByDocument.get(row.id)?.request_id ?? null,
+      agt_error_code: agtByDocument.get(row.id)?.error_code ?? null,
+      agt_dead_lettered: Boolean(
+        agtByDocument.get(row.id)?.dead_lettered_at
+      ),
     }));
 
     return NextResponse.json({
