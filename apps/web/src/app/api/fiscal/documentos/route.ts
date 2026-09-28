@@ -12,6 +12,13 @@ import {
   postFiscalDocumentoRequestSchema,
 } from "@/lib/schemas/fiscal-documento.schema";
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
+import { applyFiscalDiscounts } from "@/lib/fiscal/discounts";
+import {
+  CONSUMIDOR_FINAL_NIF,
+  CONSUMIDOR_FINAL_NOME,
+  FISCAL_ADDRESS_UNKNOWN,
+  normalizeFiscalCustomerInput,
+} from "@/lib/fiscal/customerIdentity";
 import { ensureSaftDocumentSignature } from "@/lib/fiscal/saftDocumentSignature";
 import { queueAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
 import {
@@ -109,14 +116,11 @@ type NormalizeResult =
   | { ok: true; data: PostFiscalDocumentoInput }
   | { ok: false; status: number; code: string; message: string; details?: JsonRecord };
 
-const CONSUMIDOR_FINAL_NIF = "999999999";
-const CONSUMIDOR_FINAL_NOME = "Consumidor final";
-const DESCONHECIDO = "Desconhecido";
 const AGT_FE_SUBMISSION_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RC", "RE"]);
 
 function normalizeClienteAddressField(value: string | undefined): string {
   const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : DESCONHECIDO;
+  return trimmed && trimmed.length > 0 ? trimmed : FISCAL_ADDRESS_UNKNOWN;
 }
 
 function toProductCode(descricao: string, index: number): string {
@@ -218,44 +222,61 @@ function normalizePostInput({
   uiTaxProfileCode?: FiscalTaxProfileCode | null;
 }): NormalizeResult {
   if ("empresa_id" in input) {
-    const clienteNome = input.cliente.nome.trim();
-    const clienteNif = input.cliente.nif?.trim();
-    const isConsumidorFinal = !clienteNif;
-    const normalizedAddressDetail = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.address_detail);
-    const normalizedCity = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.city);
-    const normalizedPostalCode = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.postal_code);
-    const normalizedCountry = (input.cliente.country || "AO").trim().toUpperCase();
+    const normalizedCustomer = normalizeFiscalCustomerInput(input.cliente);
+    const normalizedItems = input.itens.map((item, index) => {
+      const productCode = item.product_code.trim();
+      const productNumberCode = item.product_number_code?.trim();
+      return {
+        ...item,
+        product_code: productCode,
+        product_number_code:
+          productNumberCode && productNumberCode.length > 0
+            ? productNumberCode
+            : productCode || toProductCode(item.descricao, index),
+      };
+    });
+
+    let discountedItems = normalizedItems;
+    try {
+      discountedItems = applyFiscalDiscounts(
+        normalizedItems,
+        input.global_discount_pct
+      );
+    } catch (error) {
+      return {
+        ok: false,
+        status: 400,
+        code: "FISCAL_DISCOUNT_INVALID",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Configuração de desconto fiscal inválida.",
+      };
+    }
+
     return {
       ok: true,
       data: {
         ...input,
         cliente: {
           ...input.cliente,
-          nome: isConsumidorFinal ? CONSUMIDOR_FINAL_NOME : clienteNome,
-          nif: isConsumidorFinal ? CONSUMIDOR_FINAL_NIF : clienteNif,
-          address_detail: normalizedAddressDetail,
-          city: normalizedCity,
-          postal_code: normalizedPostalCode,
-          country: normalizedCountry,
+          nome: normalizedCustomer.nome,
+          nif: normalizedCustomer.nif,
+          address_detail: normalizedCustomer.address_detail,
+          city: normalizedCustomer.city,
+          postal_code: normalizedCustomer.postal_code,
+          country: normalizedCustomer.country,
         },
-        itens: input.itens.map((item, index) => {
-          const productCode = item.product_code.trim();
-          const productNumberCode = item.product_number_code?.trim();
-          return {
-            ...item,
-            product_code: productCode,
-            product_number_code:
-              productNumberCode && productNumberCode.length > 0
-                ? productNumberCode
-                : productCode || toProductCode(item.descricao, index),
-          };
-        }),
+        itens: discountedItems,
+        metadata: {
+          ...(input.metadata ?? {}),
+          ...(normalizedCustomer.identifiedWithoutNif
+            ? { cliente_sem_nif_identificado: true }
+            : {}),
+          ...(input.global_discount_pct != null
+            ? { global_discount_pct: input.global_discount_pct }
+            : {}),
+        },
       },
     };
   }
@@ -293,9 +314,9 @@ function normalizePostInput({
       cliente: {
         nome: CONSUMIDOR_FINAL_NOME,
         nif: CONSUMIDOR_FINAL_NIF,
-        address_detail: DESCONHECIDO,
-        city: DESCONHECIDO,
-        postal_code: DESCONHECIDO,
+        address_detail: FISCAL_ADDRESS_UNKNOWN,
+        city: FISCAL_ADDRESS_UNKNOWN,
+        postal_code: FISCAL_ADDRESS_UNKNOWN,
         country: "AO",
       },
       invoice_date: today,
