@@ -115,7 +115,9 @@ function toSaftDocument(doc: CertificationDocumentSnapshot): SaftDocumento {
           reference: doc.originDocument.numero_formatado,
           origin_document_id: doc.originDocument.id,
           origin_invoice_date: doc.originDocument.invoice_date,
-          reason: doc.reference_reason,
+          reason:
+            doc.reference_reason ??
+            stringValue(objectValue(doc.payload.metadata).reference_reason),
         }]
       : [],
     payment_receipt: paymentReceipt(doc.payload),
