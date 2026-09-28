@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Input } from "@/components/ui/Input";
 import { registrarPagamentoAction, PagamentoMetodo } from "@/features/financeiro/actions";
@@ -49,6 +49,10 @@ export function RegistoPagamentoModal({
   const idempotencyKeyRef = useRef<string | null>(null);
 
   const escolaUuid = UUID_REGEX.test(escolaId) ? escolaId : resolvedEscolaId;
+
+  useEffect(() => {
+    idempotencyKeyRef.current = null;
+  }, [alunoId, mensalidadeId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
