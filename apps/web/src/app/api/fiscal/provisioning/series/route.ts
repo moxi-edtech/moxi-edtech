@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { recordAuditServer } from "@/lib/audit";
 import { provisionAgtSeries } from "@/lib/fiscal/agtSeries";
 import { resolveAgtSoftwareIdentity } from "@/lib/fiscal/agtSoftwareInfo";
+import { resolveAgtConfig } from "@/lib/fiscal/agtConfig";
 import { postFiscalSerieProvisionSchema } from "@/lib/schemas/fiscal-setup.schema";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -49,6 +50,35 @@ export async function POST(req: Request) {
   }
 
   try {
+    const expectedEnvironment =
+      req.headers.get("X-Klasse-AGT-Environment-Expected")?.trim().toLowerCase() ??
+      null;
+    if (
+      expectedEnvironment &&
+      expectedEnvironment !== "hml" &&
+      expectedEnvironment !== "prod"
+    ) {
+      return jsonError(
+        400,
+        "AGT_ENVIRONMENT_EXPECTATION_INVALID",
+        "Ambiente AGT esperado inválido."
+      );
+    }
+    if (expectedEnvironment) {
+      const actualEnvironment = resolveAgtConfig().environment;
+      if (actualEnvironment !== expectedEnvironment) {
+        return jsonError(
+          409,
+          "AGT_ENVIRONMENT_MISMATCH",
+          "O runtime AGT não corresponde ao ambiente explicitamente esperado.",
+          {
+            expected_environment: expectedEnvironment,
+            actual_environment: actualEnvironment,
+          }
+        );
+      }
+    }
+
     const supabase = await supabaseRouteClient();
     const {
       data: { user },

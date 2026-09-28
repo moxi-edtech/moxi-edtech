@@ -18,7 +18,7 @@ import {
   isGenericConsumidorFinal,
 } from "@/lib/fiscal/customerIdentity";
 
-type SaftEmpresa = {
+export type SaftEmpresa = {
   id: string;
   nome: string;
   nif: string;
@@ -30,7 +30,7 @@ type SaftEmpresa = {
   certificadoAgtNumero: string | null;
 };
 
-type SaftDocumentoItem = {
+export type SaftDocumentoItem = {
   linha_no: number;
   descricao: string;
   product_code: string;
@@ -50,14 +50,14 @@ type SaftDocumentoItem = {
   tax_exemption_reason?: string | null;
 };
 
-type SaftOrderReference = {
+export type SaftOrderReference = {
   reference: string;
   reason?: string | null;
   origin_document_id?: string | null;
   origin_invoice_date?: string | null;
 };
 
-type SaftPaymentSourceDocument = {
+export type SaftPaymentSourceDocument = {
   lineNo: number;
   sourceDocumentID: {
     OriginatingON: string;
@@ -67,7 +67,7 @@ type SaftPaymentSourceDocument = {
   creditAmount: number | string;
 };
 
-type SaftDocumento = {
+export type SaftDocumento = {
   id: string;
   numero: number;
   numero_formatado: string;
@@ -122,7 +122,7 @@ type SaftProduct = {
 
 const DESCONHECIDO = FISCAL_ADDRESS_UNKNOWN;
 
-type BuildSaftAoXmlInput = {
+export type BuildSaftAoXmlInput = {
   empresa: SaftEmpresa;
   periodoInicio: string;
   periodoFim: string;
@@ -137,7 +137,7 @@ type BuildSaftAoXmlInput = {
   documentos: SaftDocumento[];
 };
 
-type BuildSaftAoXmlOutput = {
+export type BuildSaftAoXmlOutput = {
   xml: string;
   summary: {
     totalDocumentos: number;
@@ -904,7 +904,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             "              <TaxType>IVA</TaxType>",
             `              <TaxCountryRegion>${escapeXml(resolveTaxCountryRegion(item))}</TaxCountryRegion>`,
             `              <TaxCode>${resolveTaxCode(item)}</TaxCode>`,
-            `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
+            `              <TaxPercentage>${exactToFixed(asExact(item.taxa_iva, "taxPercentage"), 2)}</TaxPercentage>`,
             "            </Tax>",
             buildTaxExemptionXml(item, "            "),
             settlementAmountXml,
@@ -999,6 +999,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
           if (!productCode) {
             throw new Error("SAFT_BUILD_ERROR: ProductCode obrigatório em todas as linhas.");
           }
+          const settlementAmountAoa = resolveSettlementAmountAoa(item, doc);
+          const settlementAmountXml =
+            settlementAmountAoa == null
+              ? ""
+              : `            <SettlementAmount>${formatMoney(settlementAmountAoa)}</SettlementAmount>`;
           const orderReferencesXml =
             Array.isArray(doc.order_references) && doc.order_references.length > 0
               ? doc.order_references
@@ -1006,12 +1011,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
                     const reference = ref.reference?.trim();
                     if (!reference) return "";
                     const orderDate = ref.origin_invoice_date?.trim();
-                    const settlementAmountAoa = resolveSettlementAmountAoa(item, doc);
-          const settlementAmountXml =
-            settlementAmountAoa == null
-              ? ""
-              : `            <SettlementAmount>${formatMoney(settlementAmountAoa)}</SettlementAmount>`;
-          return [
+                    return [
                       "            <OrderReferences>",
                       `              <OriginatingON>${escapeXml(reference)}</OriginatingON>`,
                       orderDate ? `              <OrderDate>${escapeXml(orderDate)}</OrderDate>` : "",
@@ -1039,7 +1039,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             "              <TaxType>IVA</TaxType>",
             `              <TaxCountryRegion>${escapeXml(resolveTaxCountryRegion(item))}</TaxCountryRegion>`,
             `              <TaxCode>${resolveTaxCode(item)}</TaxCode>`,
-            `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
+            `              <TaxPercentage>${exactToFixed(asExact(item.taxa_iva, "taxPercentage"), 2)}</TaxPercentage>`,
             "            </Tax>",
             buildTaxExemptionXml(item, "            "),
             settlementAmountXml,
@@ -1135,7 +1135,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             "              <TaxType>IVA</TaxType>",
             `              <TaxCountryRegion>${escapeXml(resolveTaxCountryRegion(item))}</TaxCountryRegion>`,
             `              <TaxCode>${resolveTaxCode(item)}</TaxCode>`,
-            `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
+            `              <TaxPercentage>${exactToFixed(asExact(item.taxa_iva, "taxPercentage"), 2)}</TaxPercentage>`,
             "            </Tax>",
             buildTaxExemptionXml(item, "            "),
             settlementAmountXml,

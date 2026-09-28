@@ -41,6 +41,9 @@ jobs:
       - name: Fiscal Regression Tests
         run: pnpm --dir apps/web test:unit:fiscal
 
+      - name: KF2 Auditor Regression Tests
+        run: pnpm exec tsx --test agents/scan/kf2-search-audit.test.ts
+
       - name: KF2 Search Audit
         run: pnpm agent:kf2
 

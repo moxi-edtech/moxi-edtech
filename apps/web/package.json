@@ -25,7 +25,16 @@
     "test:unit:fiscal": "node --test --import tsx tests/unit/agt-jws-readiness.spec.ts tests/unit/agt-contract.spec.ts tests/unit/fiscal-decimal.spec.ts tests/unit/fiscal-engine-deterministico.spec.ts tests/unit/agt-payment-receipt.spec.ts tests/unit/agt-tax-engine.spec.ts tests/unit/saft-ao-semantic.spec.ts tests/unit/payment-idempotency.spec.ts tests/unit/agt-certification-gaps.spec.ts tests/unit/agt-certification-plan.spec.ts && node --conditions=react-server --test --import tsx tests/unit/aws-kms-runtime.spec.ts",
     "fiscal:agt:hml:preflight": "node --conditions=react-server --import tsx tools/fiscal/agt-hml-preflight.ts",
     "fiscal:agt:hml:submit": "node --conditions=react-server --import tsx tools/fiscal/agt-hml-submit.ts",
-    "fiscal:agt:certification:preflight": "node --conditions=react-server --import tsx tools/fiscal/agt-certification-preflight.ts"
+    "fiscal:agt:certification:preflight": "node --conditions=react-server --import tsx tools/fiscal/agt-certification-preflight.ts",
+    "test:unit:fiscal-certification": "node --test --import tsx tests/unit/agt-jws-readiness.spec.ts tests/unit/agt-contract.spec.ts tests/unit/fiscal-decimal.spec.ts tests/unit/fiscal-engine-deterministico.spec.ts tests/unit/agt-payment-receipt.spec.ts tests/unit/agt-tax-engine.spec.ts tests/unit/saft-ao-semantic.spec.ts tests/unit/agt-certification-gaps.spec.ts tests/unit/agt-certification-plan.spec.ts tests/unit/agt-certification-runner.spec.ts tests/unit/agt-certification-evidence.spec.ts tests/unit/agt-series-safety.spec.ts tests/unit/fiscal-pdf-certification-golden.spec.tsx tests/unit/payment-idempotency.spec.ts tests/unit/payment-idempotency-migration.spec.ts tests/unit/fiscal-immutability-guards.spec.ts tests/unit/fiscal-pdf-evidence-validator.spec.ts",
+    "fiscal:agt:certification:run": "node --conditions=react-server --import tsx tools/fiscal/agt-certification-run.ts",
+    "fiscal:agt:certification:pack": "node --conditions=react-server --import tsx tools/fiscal/agt-certification-pack.ts",
+    "fiscal:agt:certification:readiness": "node --conditions=react-server --import tsx tools/fiscal/agt-certification-readiness.ts",
+    "fiscal:agt:series:preflight": "node --conditions=react-server --import tsx tools/fiscal/agt-series-preflight.ts",
+    "fiscal:agt:series:provision": "node --conditions=react-server --import tsx tools/fiscal/agt-series-provision.ts",
+    "fiscal:agt:series:status": "node --conditions=react-server --import tsx tools/fiscal/agt-series-status.ts",
+    "fiscal:agt:series:reconcile": "node --conditions=react-server --import tsx tools/fiscal/agt-series-reconcile.ts",
+    "typecheck:fiscal-certification": "tsc -p tsconfig.fiscal-certification.json --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3.1013.0",

@@ -35,6 +35,10 @@ export interface FiscalPdfDocumentData {
     totalGeral: number;
   };
   moeda: string;
+  referencia?: {
+    numero: string;
+    motivo?: string | null;
+  } | null;
 }
 
 export interface FiscalDocumentV1Props {
@@ -141,6 +145,7 @@ const ISENCAO_LABELS: Record<string, string> = {
   M18: "Isento Artigo 12.º i) do CIVA",
   M19: "Isento Artigo 12.º j) do CIVA",
   M20: "Isento Artigo 12.º k) do CIVA",
+  M21: "Isento Artigo 12.º l) do CIVA",
   M30: "Isento Artigo 15.º 1 a) do CIVA",
   M31: "Isento Artigo 15.º 1 b) do CIVA",
   M32: "Isento Artigo 15.º 1 c) do CIVA",
@@ -210,6 +215,16 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
           </Text>
           <Text>Data de Emissão: {documento.dataEmissao}</Text>
           {!isDraft && !isAnulado ? <Text style={styles.bold}>Original</Text> : null}
+          {documento.referencia ? (
+            <View>
+              <Text>
+                Documento de origem: {documento.referencia.numero}
+              </Text>
+              {documento.referencia.motivo ? (
+                <Text>Motivo: {documento.referencia.motivo}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.table}>
@@ -235,6 +250,14 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
                 {item.taxaIva.toFixed(2)}%
                 {item.taxaIva === 0 && item.motivoIsencaoCode ? ` (${item.motivoIsencaoCode})` : ""}
               </Text>
+              {hasDiscount ? (
+                <Text style={{ ...styles.colDesconto, ...styles.mono }}>
+                  {formatCurrencyDeterministic(
+                    item.settlementAmount ?? 0,
+                    documento.moeda
+                  )}
+                </Text>
+              ) : null}
               <Text style={{ ...styles.colTotal, ...styles.mono }}>
                 {formatCurrencyDeterministic(item.total, documento.moeda)}
               </Text>
