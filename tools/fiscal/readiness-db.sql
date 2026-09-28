@@ -141,6 +141,49 @@ END
 $test$;
 ROLLBACK;
 
+-- 3b. BILL-018 prospective payment idempotency + immutable identity.
+BEGIN;
+DO $test$
+DECLARE
+  v_school uuid;
+  v_payment uuid;
+  v_err text;
+BEGIN
+  SELECT escola_id,id
+    INTO v_school,v_payment
+  FROM public.pagamentos
+  ORDER BY created_at
+  LIMIT 1;
+
+  IF v_school IS NULL OR v_payment IS NULL THEN
+    RAISE EXCEPTION 'TEST_SETUP: no pagamentos fixture';
+  END IF;
+
+  BEGIN
+    INSERT INTO public.pagamentos(
+      escola_id,valor_pago,status,metodo,meta
+    ) VALUES (
+      v_school,1.00,'pending','cash','{}'::jsonb
+    );
+    RAISE EXCEPTION 'TEST_FAIL: payment without idempotency key accepted';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_err=MESSAGE_TEXT;
+    IF position('IDEMPOTENCY:' in v_err)=0 THEN RAISE; END IF;
+  END;
+
+  BEGIN
+    UPDATE public.pagamentos
+    SET idempotency_key='readiness:forbidden-reidentity'
+    WHERE id=v_payment;
+    RAISE EXCEPTION 'TEST_FAIL: payment idempotency key mutation accepted';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_err=MESSAGE_TEXT;
+    IF position('IMMUTABILITY:' in v_err)=0 THEN RAISE; END IF;
+  END;
+END
+$test$;
+ROLLBACK;
+
 -- 4. Schema invariants that protect concurrency/idempotency.
 DO $test$
 BEGIN
