@@ -287,8 +287,7 @@ begin
 
   return v_intent;
 end;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.aluno_submeter_comprovativo_pagamento(p_mensalidade_id uuid, p_evidence_url text, p_valor_informado numeric DEFAULT NULL::numeric, p_meta jsonb DEFAULT '{}'::jsonb, p_mensagem text DEFAULT NULL::text)
  RETURNS jsonb
@@ -523,8 +522,7 @@ BEGIN
     'status', v_pagamento.status
   );
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.financeiro_guard_pagamento_insert()
 RETURNS trigger
