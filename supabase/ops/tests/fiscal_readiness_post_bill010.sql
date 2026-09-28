@@ -345,6 +345,36 @@ begin
 end
 $readiness$;
 
+do $readiness$
+declare
+  v_tax_engine text;
+begin
+  insert into fiscal_readiness_results values(
+    'agt_tax_contribution_ceil_examples',
+    public.fiscal_tax_ceil_cent(23.144::numeric)=23.15::numeric
+      and public.fiscal_tax_ceil_cent(0.001844::numeric)=0.01::numeric
+      and public.fiscal_tax_ceil_cent(5.9999999::numeric)=6.00::numeric,
+    'official registarFactura examples: 23.144->23.15; 0.001844->0.01; 5.9999999->6.00'
+  );
+
+  select pg_get_functiondef(
+    'public.fiscal_tax_compute_document(jsonb,date,text,text,numeric)'::regprocedure
+  ) into v_tax_engine;
+
+  insert into fiscal_readiness_results values(
+    'agt_tax_engine_uses_ceil_cent',
+    position('v_line_tax := public.fiscal_tax_ceil_cent' in v_tax_engine)>0,
+    'taxContribution must round upward to the next cent'
+  );
+
+  insert into fiscal_readiness_results values(
+    'agt_fx_rounds_to_two_decimals',
+    position('v_gross_aoa := round(v_gross*v_exchange,2)' in v_tax_engine)>0,
+    'foreign-currency countervalue uses mathematical rounding to 2 decimals'
+  );
+end
+$readiness$;
+
 select *
 from fiscal_readiness_results
 order by case_name;
