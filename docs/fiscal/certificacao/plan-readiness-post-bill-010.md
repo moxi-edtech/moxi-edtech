@@ -173,6 +173,94 @@ O BILL-027 deve tornar o vínculo auditável sem inventar número de certificaç
 7. Se credencial/certificado real estiver ausente, deixar BLOCKED com prova exacta,
    sem fabricar sucesso.
 
+### Cross-check oficial AGT — 2026-09-27
+
+Fonte normativa principal:
+
+`https://portaldoparceiro.minfin.gov.ao/doc-agt/faturacao-electronica/1/servicos/registar.html`
+
+Páginas auxiliares usadas somente para resolver contratos relacionados:
+
+- `/servicos/consultar.html` — `obterEstado`;
+- `/estrutura.html` — estrutura JWS;
+- `/gestao.html` — custódia/chaves.
+
+#### Conforme / provado no código ou live
+
+- `registarFactura` HML/produção: endpoints alinhados;
+- Basic Auth + JSON: alinhado;
+- `schemaVersion=2.0`;
+- `submissionUUID` persistido e preservado nos retries;
+- máximo 30 documentos por chamada;
+- `numberOfEntries = documents.length`;
+- assinatura de documento RS256 sobre:
+  `documentNo,taxRegistrationNumber,documentType,documentDate,customerTaxID,customerCountry,companyName,documentTotals`;
+- `documentStatus=N/C` e `rejectedDocumentNo` com novo número para correcção;
+- RC sem `lines` e com `paymentReceipt.sourceDocuments`;
+- NC com `referenceInfo`;
+- tipos FE usados pelo KLASSE: FT/FR/NC/ND/RC/RE;
+- `operationType=SE` suportado para educação;
+- IVA/isencão e `taxExemptionCode`;
+- `taxContribution` usa `fiscal_tax_ceil_cent` no motor SQL canónico;
+- exemplos oficiais codificados na readiness:
+  `23.144 -> 23.15`, `0.001844 -> 0.01`, `5.9999999 -> 6.00`;
+- FX usa contravalor AOA persistido e arredondamento matemático a 2 casas no motor canónico;
+- `requestID` obrigatório e limitado a 15;
+- `obterEstado` assina `taxRegistrationNumber + requestID`;
+- result codes 0/1/2/7/8/9;
+- HTTP 422/429 do polling são tratados como transitórios, não como rejeição fiscal;
+- vínculo `fiscal_empresas.certificado_agt_numero` x `softwareValidationNumber` é fail-closed.
+
+#### Gap local corrigido no branch
+
+A AGT exige `documentNo` entre 8 e 60 caracteres.
+
+Snapshot live encontrou 11 documentos históricos com 7 caracteres
+(ex.: `FR FR/1`, `RC RC/8`). Todos pertencem a séries `agt_status=legacy`;
+não foram renumerados nem alterados.
+
+O mapper passou a rejeitar qualquer submissão FE cujo `documentNo` esteja fora
+de 8–60 caracteres ou tenha espaços periféricos. Teste unitário adicionado.
+
+#### Ambiguidades do próprio documento AGT — bloquear decisão até homologação
+
+1. `signatureVersion`:
+   - a tabela de `registarFactura` o marca obrigatório dentro de `softwareInfoDetail`;
+   - o exemplo de `registarFactura`, o exemplo de `obterEstado` e a página
+     `estrutura.html` mostram/assinam somente
+     `productId,productVersion,softwareValidationNumber`.
+   - o KLASSE configura `signatureVersion`, mas actualmente não o transmite dentro
+     de `softwareInfoDetail`.
+   - não alterar o JWS por inferência; provar em HML qual contrato a AGT realmente aceita.
+
+2. `jwsSignature` em `registarFactura`:
+   - a tabela/payload de entrada de `registarFactura` não lista o campo;
+   - a lista de erros inclui E40 para assinatura da chamada;
+   - `estrutura.html` diz que requisições importantes podem usar `jwsSignature`.
+   - o KLASSE não envia `jwsSignature` top-level em `registarFactura`.
+   - tratar como hipótese de homologação, não inventar payload antes da resposta real da AGT.
+
+#### Funcionalidades AGT não suportadas pelo escopo actual do KLASSE
+
+- `taxBase` para correcções exclusivamente de imposto: não modelado; o motor bloqueia
+  quantidade zero, portanto esse caso não é emitido silenciosamente;
+- `withholdingTaxList`: contrato AGT existe, mas o mapper KLASSE falha fechado quando
+  retenções/cativações são detectadas;
+- exportação/factura AOA com contravalor em divisa: fora do fluxo escolar actual;
+- tipos AR/RG/FA/FG/GF/AC/TV/AF/RP/RA/CS/LD não são emitidos pelo produto actual.
+
+#### Gate de homologação
+
+O BILL-013 só pode fechar depois de capturar evidência real HML para:
+
+- forma exacta de `softwareInfoDetail`/JWS quanto a `signatureVersion`;
+- necessidade ou não de `jwsSignature` em `registarFactura`;
+- FT/FR/NC/ND/RC/RE;
+- isenção, FX, rejeição intencional, duplicate submission;
+- `obterEstado` V/I + 7/8 + 422/429;
+- requests/responses sanitizados e persistidos.
+
+
 ### Track H — Readiness suite (~40 cenários)
 
 Automatizar matriz:
