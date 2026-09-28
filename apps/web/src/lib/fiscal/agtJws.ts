@@ -1,6 +1,6 @@
 import "server-only";
 
-import { KMSClient, SignCommand } from "@aws-sdk/client-kms";
+import { KMSClient, SignCommand } from "@aws-sdk/client-kms";\nimport { prepareVercelAwsWebIdentity } from "./awsKmsRuntime";
 
 type JwsSignOptions = {
   privateKeyRef: string;
@@ -63,7 +63,7 @@ export async function signAgtJwsRs256(
   const header = { alg: "RS256", typ: configuredTyp };
   const signingInput = `${base64Url(canonicalJson(header))}.${base64Url(canonicalJson(payload))}`;
 
-  const kms = new KMSClient({ region });
+  await prepareVercelAwsWebIdentity();\n  const kms = new KMSClient({ region });
   const result = await kms.send(
     new SignCommand({
       KeyId: keyId,
