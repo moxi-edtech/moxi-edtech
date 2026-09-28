@@ -66,7 +66,11 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (existingIdempotency?.result) {
-        return NextResponse.json(existingIdempotency.result, { status: 200 });
+        const cached = existingIdempotency.result as Record<string, unknown>;
+        const cachedStatus =
+          typeof cached.http_status === 'number' ? cached.http_status : 200;
+        const { http_status: _httpStatus, ...cachedBody } = cached;
+        return NextResponse.json(cachedBody, { status: cachedStatus });
       }
 
       return NextResponse.json(
@@ -88,17 +92,21 @@ export async function POST(req: Request) {
     });
 
     if (!pgResponse.success) {
+      const failurePayload = {
+        error: pgResponse.message ?? 'Falha no gateway',
+        code: 'MCX_PROVIDER_REJECTED',
+        http_status: 502,
+      };
+
       await supabase
         .from('idempotency_keys')
-        .delete()
+        .update({ result: failurePayload })
         .eq('escola_id', escolaId)
         .eq('scope', 'financeiro_pagamentos_mcx')
         .eq('key', idempotencyKey);
 
-      return NextResponse.json(
-        { error: pgResponse.message ?? 'Falha no gateway' },
-        { status: 502 },
-      );
+      const { http_status: _httpStatus, ...failureBody } = failurePayload;
+      return NextResponse.json(failureBody, { status: 502 });
     }
 
     // 3) Registar tentativa de pagamento (pendente até webhook)
