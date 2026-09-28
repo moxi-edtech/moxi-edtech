@@ -44,6 +44,9 @@ jobs:
       - name: Install SAF-T XSD validator
         run: sudo apt-get update && sudo apt-get install -y libxml2-utils poppler-utils
 
+      - name: Fiscal certification typecheck
+        run: pnpm --dir apps/web typecheck:fiscal-certification
+
       - name: Fiscal certification regression suite
         run: pnpm --dir apps/web test:unit:fiscal-certification
 
