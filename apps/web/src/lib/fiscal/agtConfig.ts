@@ -1,7 +1,8 @@
 import "server-only";
 
 import { parseSafeInteger } from "@/lib/fiscal/decimal";
-import { parseAgtSoftwareInfoMode } from "@/lib/fiscal/agtContract";\nimport { DEFAULT_AGT_SOFTWARE_KMS_KEY_REF } from "@/lib/fiscal/awsKmsRuntime";
+import { parseAgtSoftwareInfoMode } from "@/lib/fiscal/agtContract";
+import { DEFAULT_AGT_SOFTWARE_KMS_KEY_REF } from "@/lib/fiscal/awsKmsRuntime";
 
 export type AgtEnvironment = "hml" | "prod";
 
