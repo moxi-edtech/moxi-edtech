@@ -116,7 +116,7 @@ export async function registerAgtInvoices(input: {
     expectedSoftwareValidationNumber: input.expectedSoftwareValidationNumber,
     mode: input.softwareInfoMode,
   });
-  const documents = [];
+  const documents: Array<AgtInvoiceDocument & { jwsDocumentSignature: string }> = [];
   for (const item of input.documents) {
     const jwsDocumentSignature = await signAgtJwsRs256(item.signaturePayload, {
       privateKeyRef: input.taxpayerPrivateKeyRef,
