@@ -207,3 +207,39 @@ Somente declarar **READY TO SUBMIT** quando:
 - XSD + semantic + hash + signature + replay = PASS;
 - PDFs finais estão materializados em `agents/outputs/fiscal/agt/PDFS_AGT/`.
 
+## Atualização de implementação — 2026-09-28 / PR #129
+
+PR #129 foi mergeado em `fix/bill-010-document-lifecycle`
+(`21033a7ecaf9bccaf76d7285a36d9a7d4f02b67a`).
+
+Os gaps P07–P10 foram corrigidos em código e cobertos por regressão:
+
+- **P07 — CODE READY / EVIDENCE PENDING**: emissão canónica aceita
+  `line_discount_pct` e `global_discount_pct`, normaliza-os para
+  `unit_price_base`, preço líquido e `settlement_amount`. Cenário
+  `100 x 0,55 + 8,8% + 1,5%` resulta em base `0,55`,
+  `SettlementAmount=5,59` e `UnitPrice=0,4941`.
+- **P08 — CODE READY / EVIDENCE PENDING**: PDF em moeda estrangeira passa a
+  usar `total_*_moeda`, evitando etiquetar totais AOA como USD.
+- **P09/P10 — CODE READY / EVIDENCE PENDING**: cliente identificado sem NIF
+  mantém nome/morada em emissão, PDF e SAF-T; o placeholder fiscal
+  `999999999` deixa de o colapsar para “Consumidor final”. SAF-T usa
+  `CustomerID=SNIF-...` para estes casos.
+- suíte fiscal no head do PR: **65/65 PASS**; AWS/OIDC: **3/3 PASS**;
+  Security/UI PASS. O KF2 global permaneceu vermelho por findings não
+  relacionados.
+
+### Novo gate antes de emitir o dataset
+
+O live foi reconsultado após o merge:
+
+- séries locais `PP`, `GR` e `GT` existem como `legacy`;
+- as séries FE (`FT/NC/ND/RC/FG`, e `RE` se declarado) exigem
+  `agt_status=provisioned` pelo contrato atual;
+- **nenhuma série FE está provisionada** hoje;
+- `fiscal_empresas.certificado_agt_numero` continua sem binding válido.
+
+Portanto, não se deve contornar `AGT_SERIES_REQUIRED` para produzir o
+dossiê. O próximo executor deve rodar preflight e permanecer fail-closed até
+o binding/canal AGT estarem disponíveis.
+
