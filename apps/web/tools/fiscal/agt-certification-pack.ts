@@ -14,6 +14,7 @@ import {
   manifestDocumentIds,
 } from "../../src/lib/fiscal/certification/saftPack";
 import { validateCertificationCrossSurface } from "../../src/lib/fiscal/certification/crossValidator";
+import { validateCertificationPdfEvidence } from "../../src/lib/fiscal/certification/pdfEvidenceValidator";
 import { buildCertificationReadiness } from "../../src/lib/fiscal/certification/readiness";
 import { sanitizeAgtEvidence } from "../../src/lib/fiscal/certification/sanitizer";
 import { validateSaftXmlWithXsd } from "../../src/lib/fiscal/saftXsdValidator";
@@ -78,6 +79,10 @@ async function main() {
     snapshot,
     saftXml: p17.xml,
   });
+  const pdfEvidence = await validateCertificationPdfEvidence({
+    manifest,
+    snapshot,
+  });
 
   const p17Dir = path.join(runDir, "P17");
   await mkdir(p17Dir, { recursive: true });
@@ -90,6 +95,7 @@ async function main() {
     xsd,
     semantic: { ok: true },
     cross_surface: cross,
+    pdf_evidence: pdfEvidence,
     software_certificate_number: header.softwareCertificateNumber,
   });
   await writeFile(
@@ -126,7 +132,7 @@ async function main() {
     p17: {
       generatorReady: true,
       xsdOk: xsd.ok,
-      semanticOk: cross.ok,
+      semanticOk: cross.ok && pdfEvidence.ok,
       coverageExact: p17.coverage.exact,
       checksumSha256: p17.checksumSha256,
       softwareCertificateNumber: header.softwareCertificateNumber,
@@ -146,6 +152,7 @@ async function main() {
     `- SAF-T SHA-256: ${p17.checksumSha256}`,
     `- XSD: ${xsd.ok ? "PASS" : "FAIL"}`,
     `- Cross-surface: ${cross.ok ? "PASS" : "FAIL"}`,
+    `- PDF evidence: ${pdfEvidence.ok ? "PASS" : "FAIL"}`,
     `- Readiness: ${readiness.ok ? "READY" : "BLOCKED"}`,
     "",
     "## Blockers",
