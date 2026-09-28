@@ -2,7 +2,11 @@
 
 import { useRouter } from "next/navigation";
 
-import type { FiscalDoc, FiscalDocStatus } from "@/components/fiscal/types";
+import type {
+  AgtSubmissionStatus,
+  FiscalDoc,
+  FiscalDocStatus,
+} from "@/components/fiscal/types";
 import { FiscalRowActions } from "@/components/fiscal/FiscalRowActions";
 
 type FiscalLedgerTableProps = {
@@ -25,12 +29,87 @@ const dateFormat = new Intl.DateTimeFormat("pt-AO", {
 
 function statusBadgeClass(status: FiscalDocStatus) {
   if (status === "EMITIDO") {
-    return "border-green-200 bg-green-50 text-[#1F6B3B]";
+    return "border-green-200 bg-green-50 text-klasse-green-700";
   }
   if (status === "RETIFICADO") {
-    return "border-yellow-200 bg-yellow-50 text-[#92400e]";
+    return "border-yellow-200 bg-yellow-50 text-amber-800";
   }
   return "border-red-200 bg-red-50 text-red-700";
+}
+
+const FE_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RC", "RE"]);
+
+function agtStatusLabel(doc: FiscalDoc) {
+  if (!doc.tipo_documento || !FE_TYPES.has(doc.tipo_documento)) {
+    return { label: "Local", className: "border-slate-200 bg-slate-50 text-slate-600" };
+  }
+  if (doc.agt_dead_lettered) {
+    return {
+      label: "Intervenção",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+  if (doc.agt_validation_status === "valid" || doc.agt_submission_status === "accepted") {
+    return {
+      label: "Validado",
+      className: "border-green-200 bg-green-50 text-klasse-green-700",
+    };
+  }
+  if (doc.agt_validation_status === "invalid" || doc.agt_submission_status === "rejected") {
+    return {
+      label: "Rejeitado",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+
+  const status = doc.agt_submission_status as AgtSubmissionStatus | null | undefined;
+  if (status === "uncertain") {
+    return {
+      label: "Incerto",
+      className: "border-amber-200 bg-amber-50 text-amber-800",
+    };
+  }
+  if (status === "mapping_error") {
+    return {
+      label: "Erro de mapeamento",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+  if (status === "cancelled") {
+    return {
+      label: "Cancelado",
+      className: "border-slate-200 bg-slate-50 text-slate-600",
+    };
+  }
+  if (status === "prepared" || status === "submitting" || status === "submitted" || status === "processing" || status === "partial") {
+    return {
+      label: "Em processamento",
+      className: "border-blue-200 bg-blue-50 text-blue-700",
+    };
+  }
+  return {
+    label: "Não submetido",
+    className: "border-slate-200 bg-slate-50 text-slate-600",
+  };
+}
+
+function AgtStatusBadge({ doc }: { doc: FiscalDoc }) {
+  const status = agtStatusLabel(doc);
+  const details = [
+    doc.agt_request_id ? `requestID: ${doc.agt_request_id}` : null,
+    doc.agt_error_code ? `erro: ${doc.agt_error_code}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <span
+      className={`inline-flex rounded-xl border px-2 py-1 text-xs font-semibold ${status.className}`}
+      title={details || status.label}
+    >
+      {status.label}
+    </span>
+  );
 }
 
 function FiscalStatusBadge({ status }: { status: FiscalDocStatus }) {
@@ -62,13 +141,14 @@ export function FiscalLedgerTable({ docs, onRefresh }: FiscalLedgerTableProps) {
               <th className="px-4 py-3 text-left font-semibold">Total</th>
               <th className="px-4 py-3 text-left font-semibold">Hash</th>
               <th className="px-4 py-3 text-left font-semibold">Status</th>
+              <th className="px-4 py-3 text-left font-semibold">AGT</th>
               <th className="px-4 py-3 text-right font-semibold">Acções</th>
             </tr>
           </thead>
           <tbody>
             {docs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
                   Sem documentos fiscais para este contexto.
                 </td>
               </tr>
@@ -95,6 +175,9 @@ export function FiscalLedgerTable({ docs, onRefresh }: FiscalLedgerTableProps) {
                     </td>
                     <td className="px-4 py-3">
                       <FiscalStatusBadge status={doc.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <AgtStatusBadge doc={doc} />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <FiscalRowActions
