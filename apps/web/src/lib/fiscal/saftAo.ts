@@ -11,6 +11,12 @@ import {
   type DecimalInput,
   type ExactDecimal,
 } from "@/lib/fiscal/decimal";
+import {
+  CONSUMIDOR_FINAL_NIF,
+  FISCAL_ADDRESS_UNKNOWN,
+  buildSaftCustomerIdentity,
+  isGenericConsumidorFinal,
+} from "@/lib/fiscal/customerIdentity";
 
 type SaftEmpresa = {
   id: string;
@@ -114,9 +120,7 @@ type SaftProduct = {
   type: "P" | "S" | "O" | "E" | "I";
 };
 
-const CONSUMIDOR_FINAL_NIF = "999999999";
-const CONSUMIDOR_FINAL_NOME = "Consumidor final";
-const DESCONHECIDO = "Desconhecido";
+const DESCONHECIDO = FISCAL_ADDRESS_UNKNOWN;
 
 type BuildSaftAoXmlInput = {
   empresa: SaftEmpresa;
@@ -275,27 +279,11 @@ function resolveSourceBilling(sourceBilling: SaftDocumento["source_billing"]): "
 }
 
 function resolveCustomerIdentity(doc: SaftDocumento) {
-  const nif = doc.cliente_nif?.trim();
-  if (!nif || nif === CONSUMIDOR_FINAL_NIF) {
-    return {
-      id: `NIF-${CONSUMIDOR_FINAL_NIF}`,
-      nif: CONSUMIDOR_FINAL_NIF,
-      nome: CONSUMIDOR_FINAL_NOME,
-    };
-  }
-
-  const id = `NIF-${nif}`;
-  if (id.length > 30) {
-    throw new Error(
-      `SAFT_SEMANTIC_ERROR: CustomerID excede 30 caracteres para NIF ${nif}.`
-    );
-  }
-
-  return {
-    id,
-    nif,
-    nome: doc.cliente_nome.trim() || CONSUMIDOR_FINAL_NOME,
-  };
+  return buildSaftCustomerIdentity({
+    documentoId: doc.id,
+    nome: doc.cliente_nome,
+    nif: doc.cliente_nif,
+  });
 }
 
 function sortDocumentsForSaft(docs: SaftDocumento[]) {
@@ -648,8 +636,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     return trimmed && trimmed.length > 0 ? trimmed : DESCONHECIDO;
   };
   const resolveAddress = (customer: SaftCustomer) => {
-    const isConsumidorFinal = (customer.nif ?? "").trim() === CONSUMIDOR_FINAL_NIF;
-    if (isConsumidorFinal) {
+    const genericConsumidorFinal = isGenericConsumidorFinal({
+      nome: customer.nome,
+      nif: customer.nif,
+    });
+    if (genericConsumidorFinal) {
       return {
         addressDetail: DESCONHECIDO,
         city: DESCONHECIDO,

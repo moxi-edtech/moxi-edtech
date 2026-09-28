@@ -28,6 +28,7 @@ export const fiscalDocumentoItemSchema = z.object({
   unit_price_base: z.coerce.number().min(0).optional(),
   preco_unit: z.coerce.number().min(0),
   settlement_amount: z.coerce.number().min(0).default(0),
+  line_discount_pct: z.coerce.number().min(0).max(100).optional(),
   taxa_iva: z.coerce.number().min(0).max(100).optional(),
   tax_exemption_code: z.string().trim().regex(/^M\d{2}$/).optional(),
   tax_exemption_reason: z.string().trim().min(6).max(60).optional(),
@@ -65,6 +66,7 @@ export const postFiscalDocumentoSchema = z
     moeda: z.string().trim().length(3).transform((value) => value.toUpperCase()),
     taxa_cambio_aoa: z.coerce.number().positive().nullable().optional(),
     payment_mechanism: z.enum(FISCAL_PAYMENT_MECHANISM_CODES).optional(),
+    global_discount_pct: z.coerce.number().min(0).max(100).optional(),
     itens: z.array(fiscalDocumentoItemSchema).min(1).max(500),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
@@ -103,12 +105,30 @@ export const postFiscalDocumentoSchema = z
       });
     }
 
+    const hasExplicitDiscounts =
+      (data.global_discount_pct ?? 0) > 0 ||
+      data.itens.some((item) => (item.line_discount_pct ?? 0) > 0);
+
     data.itens.forEach((item, index) => {
       if (item.unit_price_base != null && item.unit_price_base + 0.0001 < item.preco_unit) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["itens", index, "unit_price_base"],
           message: "unit_price_base não pode ser inferior a preco_unit.",
+        });
+      }
+
+      if (
+        hasExplicitDiscounts &&
+        ((item.settlement_amount ?? 0) > 0 ||
+          (item.unit_price_base != null &&
+            Math.abs(item.unit_price_base - item.preco_unit) > 0.0001))
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["itens", index, "settlement_amount"],
+          message:
+            "Não combine line/global discount percentuais com settlement_amount/unit_price_base manuais.",
         });
       }
 
