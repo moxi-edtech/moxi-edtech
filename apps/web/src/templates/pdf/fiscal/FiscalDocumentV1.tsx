@@ -250,6 +250,14 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
                 {item.taxaIva.toFixed(2)}%
                 {item.taxaIva === 0 && item.motivoIsencaoCode ? ` (${item.motivoIsencaoCode})` : ""}
               </Text>
+              {hasDiscount ? (
+                <Text style={{ ...styles.colDesconto, ...styles.mono }}>
+                  {formatCurrencyDeterministic(
+                    item.settlementAmount ?? 0,
+                    documento.moeda
+                  )}
+                </Text>
+              ) : null}
               <Text style={{ ...styles.colTotal, ...styles.mono }}>
                 {formatCurrencyDeterministic(item.total, documento.moeda)}
               </Text>
