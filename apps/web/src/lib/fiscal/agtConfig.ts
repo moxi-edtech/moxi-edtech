@@ -48,7 +48,7 @@ export function resolveAgtConfig() {
   const softwarePrivateKeyRef =
     process.env.FISCAL_AGT_SOFTWARE_KMS_KEY_REF?.trim() ||
     process.env.AGT_SOFTWARE_KMS_KEY_REF?.trim() ||
-    "";
+    DEFAULT_AGT_SOFTWARE_KMS_KEY_REF;
   const signatureVersionRaw =
     process.env.FISCAL_AGT_SOFTWARE_SIGNATURE_VERSION?.trim() ||
     process.env.AGT_SOFTWARE_SIGNATURE_VERSION?.trim() ||
