@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
 import { createKlasseIntegrationClient, readBearerToken } from "@/lib/integrations/klasse-chatgpt/client";
-import { allowedRolesByTool, isKlasseToolName, toolSchemas } from "@/lib/integrations/klasse-chatgpt/schemas";
+import { allowedRolesByTool, isKlasseToolName, isWriteToolName, toolSchemas } from "@/lib/integrations/klasse-chatgpt/schemas";
 import { runKlasseTool } from "@/lib/integrations/klasse-chatgpt/tools";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
+
+/**
+ * O PostgrestError do supabase-js não herda de Error: é um objecto simples com
+ * `message`, `code`, `details` e `hint`. Sem isto, `error instanceof Error` é
+ * falso, a mensagem perde-se e todo o erro de domínio cai no 500 genérico.
+ */
+const readErrorMessage = (error: unknown): string => {
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message ?? "");
+  }
+  return error instanceof Error ? error.message : "";
+};
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,10 +47,26 @@ export async function POST(request: Request, context: { params: Promise<{ tool: 
 
   try {
     const data = await runKlasseTool(supabase, tool, parsed.data);
+
+    // As ferramentas de escrita devolvem um envelope { ok }. Uma recusa de
+    // domínio (AUTH:/DATA:) chega como ok:false e não como excepção — é assim
+    // que o registo de auditoria sobrevive, porque um RAISE obrigaria ao
+    // rollback da transacção inteira e levá-lo-ia consigo.
+    if (isWriteToolName(tool) && data && typeof data === "object" && (data as { ok?: unknown }).ok === false) {
+      const motivo = String((data as { erro?: unknown }).erro ?? "Operação recusada");
+      const status = /^AUTH:/i.test(motivo) ? 403 : 409;
+      return NextResponse.json({ ok: false, tool, error: motivo.replace(/^(AUTH|DATA):\s*/i, "") }, { status });
+    }
+
     return NextResponse.json({ ok: true, tool, data }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Consulta não disponível";
-    const forbidden = /permission|policy|forbidden|autoriz/i.test(message);
-    return NextResponse.json({ ok: false, error: forbidden ? "Sem permissão para esta consulta" : "Consulta não disponível" }, { status: forbidden ? 403 : 500 });
+    const message = readErrorMessage(error);
+    if (/^AUTH:|permission|policy|forbidden|autoriz/i.test(message)) {
+      return NextResponse.json({ ok: false, error: "Sem permissão para esta operação" }, { status: 403 });
+    }
+    if (/^DATA:/i.test(message)) {
+      return NextResponse.json({ ok: false, error: message.replace(/^DATA:\s*/i, "") }, { status: 409 });
+    }
+    return NextResponse.json({ ok: false, error: "Operação não disponível" }, { status: 500 });
   }
 }
