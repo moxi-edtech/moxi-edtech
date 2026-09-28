@@ -88,7 +88,7 @@ export function PaymentDrawer({
     setValorInformado("");
     setMensagem("");
     uploadIdempotencyKeyRef.current = null;
-  }, [open, mensalidade]);
+  }, [open, mensalidade?.id]);
 
   if (!open || !mensalidade) return null;
 
