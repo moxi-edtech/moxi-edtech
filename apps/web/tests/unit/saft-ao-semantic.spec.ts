@@ -579,3 +579,32 @@ test("SAF-T preserves identified customer without NIF instead of collapsing to c
     /<CustomerID>NIF-999999999<\/CustomerID>[\s\S]*?<CompanyName>Consumidor final<\/CompanyName>/
   );
 });
+
+
+test("P07 SAF-T carries net UnitPrice and all effective discounts in SettlementAmount", () => {
+  const discounted = invoice({
+    numero: 24,
+    numero_formatado: "FT DISC/24",
+    total_liquido_aoa: 49.41,
+    total_impostos_aoa: 6.92,
+    total_bruto_aoa: 56.33,
+    itens: [
+      {
+        ...invoice().itens[0],
+        quantidade: 100,
+        preco_unit: 0.4941,
+        total_liquido_aoa: 49.41,
+        total_impostos_aoa: 6.92,
+        total_bruto_aoa: 56.33,
+        settlement_amount: 5.59,
+      },
+    ],
+  });
+
+  const { xml } = build([discounted]);
+
+  assert.match(xml, /<Quantity>100<\/Quantity>/);
+  assert.match(xml, /<UnitPrice>0\.4941<\/UnitPrice>/);
+  assert.match(xml, /<SettlementAmount>5\.5900<\/SettlementAmount>/);
+  assert.match(xml, /<CreditAmount>49\.4100<\/CreditAmount>/);
+});
