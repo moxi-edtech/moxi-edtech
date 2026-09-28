@@ -1,23 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
+import assert from "node:assert/strict";
+import test from "node:test";
 
-describe("payment idempotency keys", () => {
-  it("is deterministic inside the same scope", () => {
-    expect(buildPaymentIdempotencyKey("financeiro-registro", "  request-123  "))
-      .toBe("financeiro-registro:request-123");
-  });
+import { buildPaymentIdempotencyKey } from "../../src/lib/financeiro/paymentIdempotency";
 
-  it("isolates equal client keys across payment entrypoints", () => {
-    expect(buildPaymentIdempotencyKey("financeiro-registro", "request-123"))
-      .not.toBe(buildPaymentIdempotencyKey("secretaria-balcao", "request-123"));
-  });
+test("payment idempotency is deterministic inside the same scope", () => {
+  assert.equal(
+    buildPaymentIdempotencyKey("financeiro-registro", "  request-123  "),
+    "financeiro-registro:request-123",
+  );
+});
 
-  it("rejects missing or invalid identities", () => {
-    expect(buildPaymentIdempotencyKey("financeiro-registro", "")).toBeNull();
-    expect(buildPaymentIdempotencyKey("INVALID SCOPE", "request-123")).toBeNull();
-  });
+test("payment idempotency isolates equal client keys across entrypoints", () => {
+  assert.notEqual(
+    buildPaymentIdempotencyKey("financeiro-registro", "request-123"),
+    buildPaymentIdempotencyKey("secretaria-balcao", "request-123"),
+  );
+});
 
-  it("enforces the database key length boundary", () => {
-    expect(buildPaymentIdempotencyKey("mcx-init", "x".repeat(192))).toBeNull();
-  });
+test("payment idempotency rejects missing or invalid identities", () => {
+  assert.equal(buildPaymentIdempotencyKey("financeiro-registro", ""), null);
+  assert.equal(buildPaymentIdempotencyKey("INVALID SCOPE", "request-123"), null);
+});
+
+test("payment idempotency enforces the database key length boundary", () => {
+  assert.equal(buildPaymentIdempotencyKey("mcx-init", "x".repeat(192)), null);
 });
