@@ -22,7 +22,7 @@
     "cap:sync": "cap sync",
     "cap:open:android": "cap open android",
     "cap:open:ios": "cap open ios",
-    "test:unit:fiscal": "node --test --import tsx tests/unit/agt-jws-readiness.spec.ts tests/unit/fiscal-decimal.spec.ts tests/unit/fiscal-engine-deterministico.spec.ts tests/unit/agt-payment-receipt.spec.ts tests/unit/agt-tax-engine.spec.ts tests/unit/saft-ao-semantic.spec.ts"
+    "test:unit:fiscal": "node --test --import tsx tests/unit/agt-jws-readiness.spec.ts tests/unit/fiscal-decimal.spec.ts tests/unit/fiscal-engine-deterministico.spec.ts tests/unit/agt-payment-receipt.spec.ts tests/unit/agt-tax-engine.spec.ts tests/unit/saft-ao-semantic.spec.ts tests/unit/payment-idempotency.spec.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3.1013.0",
