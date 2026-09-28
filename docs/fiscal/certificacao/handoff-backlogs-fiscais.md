@@ -488,3 +488,32 @@ Runtime behavior:
 
 No private-key material is exportable or stored in Supabase/Git/Vercel.
 
+## Ofício AGT Ref. 0000498/01180000/AGT/2026 — reauditoria 2026-09-28
+
+Fonte detalhada:
+
+`docs/fiscal/certificacao/agt-oficio-0000498-gap-audit-2026-09-28.md`
+
+Estado: **NO-GO para dossiê final**.
+
+A reauditoria invalidou alguns READY históricos da matriz de março:
+
+- P01: `FR FR/1` é consumidor final (`cliente_nif=999999999`), não cliente com NIF;
+- P06: zero documentos live com duas ou mais linhas;
+- P07: zero `settlement_amount != 0` live e desconto global não está no fluxo canónico de emissão;
+- P08: USD existe, mas PDF usa totais AOA com label da moeda do documento;
+- P09/P10: cliente identificado sem NIF é colapsado para “Consumidor final” em PDF/SAF-T;
+- P11/P14: evidência GR/GT/FG histórica usa numeração legada incompatível com parser semântico atual;
+- P13: candidato a NA formal (GF/auto-faturação não suportados pelo contrato de emissão; SelfBillingIndicator=0);
+- P17: SAF-T março é XSD-validado, mas não é o pacote final porque não contém os exemplos posteriores.
+
+Ordem de fechamento antes do dossiê:
+
+1. corrigir P08 + P09/P10 + P07;
+2. decidir escopo tipológico (FG/RE; GF/self-billing NA);
+3. gerar dataset canónico P01–P15;
+4. materializar PDFs;
+5. gerar SAF-T consolidado de dois meses;
+6. XSD + semântica + hash/signature/replay;
+7. preencher P01–P17 e responder formalmente à AGT.
+
