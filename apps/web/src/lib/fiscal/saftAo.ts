@@ -13,7 +13,6 @@ import {
 } from "@/lib/fiscal/decimal";
 import {
   CONSUMIDOR_FINAL_NIF,
-  CONSUMIDOR_FINAL_NOME,
   FISCAL_ADDRESS_UNKNOWN,
   buildSaftCustomerIdentity,
   isGenericConsumidorFinal,
