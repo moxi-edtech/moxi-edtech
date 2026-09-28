@@ -1,6 +1,7 @@
 import "server-only";
 
 import { parseSafeInteger } from "@/lib/fiscal/decimal";
+import { parseAgtSoftwareInfoMode } from "@/lib/fiscal/agtContract";
 
 export type AgtEnvironment = "hml" | "prod";
 
@@ -57,6 +58,10 @@ export function resolveAgtConfig() {
     "AGT_SOFTWARE_SIGNATURE_VERSION",
     { min: 1 }
   );
+  const softwareInfoMode = parseAgtSoftwareInfoMode(
+    process.env.FISCAL_AGT_SOFTWARE_INFO_MODE ??
+      process.env.AGT_SOFTWARE_INFO_MODE
+  );
 
   if (!username || !password) throw new Error("AGT_FE_BASIC_AUTH_MISSING");
   if (!productId || !productVersion || !softwareValidationNumber) {
@@ -76,6 +81,7 @@ export function resolveAgtConfig() {
     softwareValidationNumber,
     softwarePrivateKeyRef,
     signatureVersion,
+    softwareInfoMode,
   };
 }
 
