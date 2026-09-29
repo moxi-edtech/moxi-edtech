@@ -21,7 +21,7 @@ const EMPTY: OperacoesPendencias = {
   reaberturasNotas: 0,
 };
 
-const POLL_MS = 30_000;
+const POLL_MS = 120_000;
 
 export function todayInLuanda() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -78,7 +78,10 @@ export function useOperacoesPendencias() {
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(true), POLL_MS);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void load(true);
+    }, POLL_MS);
     return () => window.clearInterval(timer);
   }, [load]);
 
