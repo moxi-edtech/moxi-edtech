@@ -50,8 +50,9 @@ export default function MaintenanceBanner() {
 
     void load();
     const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void load();
-    }, 60_000);
+    }, 300_000);
 
     return () => {
       cancelled = true;

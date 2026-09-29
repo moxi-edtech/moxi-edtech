@@ -25,7 +25,14 @@ export default function NotasReaberturaPanel() {
     } catch (cause) { setLoadError(cause instanceof Error ? cause.message : "Não foi possível carregar as solicitações."); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 30_000); return () => window.clearInterval(timer); }, [load]);
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void load();
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [load]);
 
   const decide = async (id: string, status: "APROVADO" | "REJEITADO") => {
     if (actingId) return;

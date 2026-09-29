@@ -12,8 +12,7 @@ type FeedResponse = {
 
 type RealtimeState = "live" | "polling";
 
-const POLLING_MS = 15_000;
-const WS_TIMEOUT_MS = 12_000;
+const POLLING_MS = 60_000;
 const REALTIME_THROTTLE_MS = 2_000;
 const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED !== "false";
 
@@ -43,14 +42,9 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
   const [error, setError] = useState<string | null>(null);
   const [realtimeState, setRealtimeState] = useState<RealtimeState>("live");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const wsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastRealtimeFetchRef = useRef(0);
   const pollingMs = useMemo(
     () => parseEnvMs(process.env.NEXT_PUBLIC_ACTIVITY_FEED_POLL_MS, POLLING_MS),
-    []
-  );
-  const wsTimeoutMs = useMemo(
-    () => parseEnvMs(process.env.NEXT_PUBLIC_ACTIVITY_FEED_WS_TIMEOUT_MS, WS_TIMEOUT_MS),
     []
   );
   const realtimeThrottleMs = useMemo(
@@ -110,16 +104,12 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
         },
         () => {
           setRealtimeState("live");
-          if (wsTimeoutRef.current) clearTimeout(wsTimeoutRef.current);
-          wsTimeoutRef.current = setTimeout(() => setRealtimeState("polling"), wsTimeoutMs);
           void handleRealtimeUpdate();
         }
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           setRealtimeState("live");
-          if (wsTimeoutRef.current) clearTimeout(wsTimeoutRef.current);
-          wsTimeoutRef.current = setTimeout(() => setRealtimeState("polling"), wsTimeoutMs);
           return;
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
@@ -128,14 +118,13 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
       });
 
     return () => {
-      if (wsTimeoutRef.current) clearTimeout(wsTimeoutRef.current);
       void supabase.removeChannel(channel).catch((error) => {
         if (!isAbortLikeError(error)) {
           console.warn("[useAdminActivityFeed] removeChannel error:", error);
         }
       });
     };
-  }, [escolaId, handleRealtimeUpdate, supabase, wsTimeoutMs]);
+  }, [escolaId, handleRealtimeUpdate, supabase]);
 
   useEffect(() => {
     if (realtimeState !== "polling") {

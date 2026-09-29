@@ -1,0 +1,9 @@
+-- Migration-history marker for production migration: replace_security_definer_operacoes_view_with_scoped_rpc.
+-- The live database received this change out of chronological order on 2026-09-29,
+-- after later-dated repository migrations had already been applied.
+--
+-- Keep this version so local/remote migration histories remain aligned.
+-- The canonical, clean-install-safe DDL is consolidated in:
+--   20270825140000_free_tier_security_performance_hardening.sql
+--
+-- Intentionally no-op.
