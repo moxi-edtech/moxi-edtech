@@ -121,6 +121,9 @@ validator-package.json
 /tsconfig.tsbuildinfo
 /output/
 /.playwright-mcp/
+/.playwright-cli/
+/artifacts/
+/candidatura-apply/
 
 # ========================================
 # Material local — não versionado aqui (decisão 2026-09-22)
