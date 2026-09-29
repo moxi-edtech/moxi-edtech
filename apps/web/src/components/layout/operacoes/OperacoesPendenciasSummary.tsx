@@ -75,7 +75,10 @@ export default function OperacoesPendenciasSummary() {
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(true), 30_000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void load(true);
+    }, 120_000);
     return () => window.clearInterval(timer);
   }, [load]);
 
