@@ -35,8 +35,8 @@ type UseNotificacoesReturn = {
   refresh: () => Promise<void>;
 };
 
-const NOTIFICACOES_POLL_MS = 30_000;
-const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED === "true";
+const NOTIFICACOES_POLL_MS = 120_000;
+const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED !== "false";
 
 const isAbortLikeError = (error: unknown) => {
   const record = error as { message?: unknown; details?: unknown; name?: unknown } | null;
@@ -128,6 +128,7 @@ export function useNotificacoes(): UseNotificacoesReturn {
 
     if (!REALTIME_ENABLED) {
       const interval = window.setInterval(() => {
+        if (document.visibilityState !== "visible") return;
         void fetchNotificacoes();
       }, NOTIFICACOES_POLL_MS);
 
