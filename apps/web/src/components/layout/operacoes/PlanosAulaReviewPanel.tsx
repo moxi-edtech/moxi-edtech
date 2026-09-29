@@ -24,7 +24,14 @@ export default function PlanosAulaReviewPanel() {
     } catch (cause) { setLoadError(cause instanceof Error ? cause.message : "Não foi possível carregar os planos."); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 30_000); return () => window.clearInterval(timer); }, [load]);
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void load();
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [load]);
   const review = async (id: string, status: "aprovado" | "devolvido") => {
     if (actingId) return;
     const reviewReason = status === "devolvido" ? reason.trim() : null;
