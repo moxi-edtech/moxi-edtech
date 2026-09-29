@@ -3,27 +3,34 @@
 -- fresh environments converge to the same secure/performance state as production.
 
 -- 1) Backup/test tables must not be reachable through the public Data API.
-ALTER TABLE public._bk_20260924_curso_matriz ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public._bk_20260924_turma_disciplinas ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public._bk_20260924_avaliacoes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public._bk_20260924_notas ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public._bk_20260924_mensalidades_caroline ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public._bk_20260924_alunos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public._bk_20260924_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public._bk_20260924b_mensalidades_teta ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.academic_regime_contract_cases ENABLE ROW LEVEL SECURITY;
-
-REVOKE ALL ON TABLE
-  public._bk_20260924_curso_matriz,
-  public._bk_20260924_turma_disciplinas,
-  public._bk_20260924_avaliacoes,
-  public._bk_20260924_notas,
-  public._bk_20260924_mensalidades_caroline,
-  public._bk_20260924_alunos,
-  public._bk_20260924_profiles,
-  public._bk_20260924b_mensalidades_teta,
-  public.academic_regime_contract_cases
-FROM PUBLIC, anon, authenticated;
+-- Some of these tables only exist in the production lineage, so keep this
+-- reconciliation safe for clean installs.
+DO $backup_hardening$
+DECLARE
+  v_table text;
+BEGIN
+  FOREACH v_table IN ARRAY ARRAY[
+    '_bk_20260924_curso_matriz',
+    '_bk_20260924_turma_disciplinas',
+    '_bk_20260924_avaliacoes',
+    '_bk_20260924_notas',
+    '_bk_20260924_mensalidades_caroline',
+    '_bk_20260924_alunos',
+    '_bk_20260924_profiles',
+    '_bk_20260924b_mensalidades_teta',
+    'academic_regime_contract_cases'
+  ]::text[]
+  LOOP
+    IF to_regclass(format('public.%I', v_table)) IS NOT NULL THEN
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', v_table);
+      EXECUTE format(
+        'REVOKE ALL ON TABLE public.%I FROM PUBLIC, anon, authenticated',
+        v_table
+      );
+    END IF;
+  END LOOP;
+END;
+$backup_hardening$;
 
 -- 2) Trigger functions are invoked by PostgreSQL triggers, not by client RPC calls.
 REVOKE EXECUTE ON FUNCTION public.audit_excecao_pauta_changes() FROM PUBLIC, anon, authenticated;
@@ -260,7 +267,7 @@ FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.admissao_auto_expire_reservations() TO service_role;
 
 -- Repair two stale cron commands that referenced functions that do not exist.
-DO $
+DO $cron_repair$
 DECLARE
   v_job record;
 BEGIN
@@ -286,7 +293,7 @@ BEGIN
     );
   END LOOP;
 END;
-$;
+$cron_repair$;
 
 -- Drop structurally identical non-constraint indexes; keep the canonical/used copy.
 DROP INDEX IF EXISTS public.ix_search_alunos_bi_numero_trgm;
@@ -296,13 +303,13 @@ DROP INDEX IF EXISTS public.ix_search_cursos_nome_trgm;
 DROP INDEX IF EXISTS public.idx_pautas_lote_jobs_escola_status;
 
 -- These per-partition constraints duplicate the parent-attached unique constraint.
-ALTER TABLE public.frequencias_2025_09 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2025_09;
-ALTER TABLE public.frequencias_2025_10 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2025_10;
-ALTER TABLE public.frequencias_2025_11 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2025_11;
-ALTER TABLE public.frequencias_2025_12 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2025_12;
-ALTER TABLE public.frequencias_2026_01 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2026_01;
-ALTER TABLE public.frequencias_2026_02 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2026_02;
-ALTER TABLE public.frequencias_default DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__default;
+ALTER TABLE IF EXISTS public.frequencias_2025_09 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2025_09;
+ALTER TABLE IF EXISTS public.frequencias_2025_10 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2025_10;
+ALTER TABLE IF EXISTS public.frequencias_2025_11 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2025_11;
+ALTER TABLE IF EXISTS public.frequencias_2025_12 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2025_12;
+ALTER TABLE IF EXISTS public.frequencias_2026_01 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2026_01;
+ALTER TABLE IF EXISTS public.frequencias_2026_02 DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__2026_02;
+ALTER TABLE IF EXISTS public.frequencias_default DROP CONSTRAINT IF EXISTS uq_frequencias_ssot__default;
 
 -- -----------------------------------------------------------------------------
 
