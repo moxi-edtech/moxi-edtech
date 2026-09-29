@@ -26,7 +26,7 @@ type AulaItem = {
 type AulaResponse = { ok: boolean; items?: AulaItem[]; summary?: Record<string, number> };
 type RealtimeState = "live" | "polling";
 
-const POLLING_MS = 30_000;
+const POLLING_MS = 60_000;
 const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED !== "false";
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof Clock3 }> = {
