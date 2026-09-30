@@ -109,3 +109,17 @@ Logo, os 9 findings não são regressões do alinhamento.
 Para este PR, o gate de UI passa a usar como baseline fixa o SHA `42df91e23caf491255527bb009023ec74b042f2f`, exactamente o estado da `codex/reabertura-notas` preservado antes do merge com `main`. O override só é activado quando `github.head_ref == integration/main-alignment-20260929`; pushes futuros à `main` e outros PRs continuam com a baseline normal.
 
 Foi adicionado teste de regressão específico para o override de baseline. Nenhuma alteração visual foi feita para satisfazer o gate.
+
+### Correção do KF2 Search Audit
+
+Depois do gate de UI ficar verde, o KF2 detectou uma regressão real em `apps/web/src/hooks/useGlobalSearch.ts`: durante o alinhamento, a implementação canónica da `main` com `search_global_entities` e cursor completo tinha sido substituída pelo fallback-only da branch de produto.
+
+A correcção combina os dois lados:
+
+- restaura a RPC `search_global_entities` com `p_cursor_score`, `p_cursor_updated_at`, `p_cursor_created_at` e `p_cursor_id`;
+- restaura `loadMore` cursor-based;
+- preserva o helper da branch de produto `isMissingGlobalSearchRpcError`, incluindo 404, PGRST202 e 42883;
+- preserva o fallback HTTP com `AbortController` e `cache: "no-store"`;
+- preserva o tratamento de cancelamento de fetch para evitar falso erro no browser.
+
+O Supabase remoto foi consultado somente em leitura e confirmou a assinatura pública `search_global_entities(uuid,text,text[],integer,double precision,timestamp with time zone,timestamp with time zone,uuid)`. Nenhuma migration foi aplicada.
