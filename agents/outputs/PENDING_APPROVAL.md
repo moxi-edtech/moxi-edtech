@@ -37,12 +37,12 @@ O diff exacto proposto, incluindo o SQL completo da migration e os hunks exactos
 
 Migration reservada pelo comando oficial `supabase migration new fix_secretaria_batch_payment_atomicity`:
 
-`supabase/migrations/20260930092612_fix_secretaria_batch_payment_atomicity.sql`
+`supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql`
 
 Resumo dos ficheiros funcionais que serão alterados somente após aprovação:
 
 ```diff
-+ supabase/migrations/20260930092612_fix_secretaria_batch_payment_atomicity.sql
++ supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql
 ~ apps/web/src/app/api/secretaria/pagamentos/processar/route.ts
 ~ apps/web/src/components/secretaria/BalcaoAtendimento.tsx
 ```
