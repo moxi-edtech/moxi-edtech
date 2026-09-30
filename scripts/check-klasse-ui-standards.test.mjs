@@ -33,11 +33,11 @@ function commitChange(cwd, absolute, content) {
   git(cwd, ["commit", "-m", "change"]);
 }
 
-function runChecker(cwd) {
+function runChecker(cwd, extraEnv = {}) {
   return spawnSync(process.execPath, [checker], {
     cwd,
     encoding: "utf8",
-    env: { ...process.env, CI: "true", GITHUB_BASE_REF: "main" },
+    env: { ...process.env, CI: "true", GITHUB_BASE_REF: "main", ...extraEnv },
   });
 }
 
@@ -85,6 +85,28 @@ test("a newly added rounded-2xl operational card still fails", () => {
     const result = runChecker(cwd);
     assert.equal(result.status, 1);
     assert.match(result.stderr, /KLASSE-CARD-003/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("an explicit CI baseline scopes an alignment to the preserved product branch", () => {
+  const { cwd, absolute } = setupRepo("export const safe = true;\n");
+  try {
+    commitChange(
+      cwd,
+      absolute,
+      'export const safe = true;\nexport const Legacy = () => <span className="text-[#E3B23C]">Legacy</span>;\n',
+    );
+    const productBaseline = git(cwd, ["rev-parse", "HEAD"]);
+    commitChange(
+      cwd,
+      absolute,
+      'export const safe = true;\nexport const Legacy = () => <span className="text-[#E3B23C]">Legacy</span>;\nexport const alignmentSafe = true;\n',
+    );
+
+    const result = runChecker(cwd, { KLASSE_UI_BASE_REF: productBaseline });
+    assert.equal(result.status, 0, result.stderr);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

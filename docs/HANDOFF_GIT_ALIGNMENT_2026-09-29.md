@@ -93,3 +93,19 @@ Revisão executada em 2026-09-29 usando GitHub e Vercel como fontes de verdade.
 - Foram adicionados testes de regressão provando que violações legadas em linhas intocadas não bloqueiam, enquanto novo hex directo e novo `rounded-2xl` operacional continuam bloqueando.
 - O patch remoto do PR foi verificado em 952 ficheiros / 30.036 linhas adicionadas contra os padrões do scanner de secrets; foram encontrados 0 matches suspeitos.
 - Nenhuma migration remota, merge, promoção ou deploy de produção foi executado.
+
+### Baseline do gate de UI para o alinhamento
+
+O segundo run do PR confirmou que o filtro por linhas adicionadas ainda comparava contra `main`, o que continuava classificando parte do histórico da branch de produto como mudança nova.
+
+Foram isolados 9 findings restantes. Cada linha foi verificada no GitHub e já estava presente simultaneamente em:
+
+- deployment de produção `8493b827d59baa16301027240fae025de7b1c1d8`;
+- estado pré-alinhamento `42df91e23caf491255527bb009023ec74b042f2f`;
+- branch de integração.
+
+Logo, os 9 findings não são regressões do alinhamento.
+
+Para este PR, o gate de UI passa a usar como baseline fixa o SHA `42df91e23caf491255527bb009023ec74b042f2f`, exactamente o estado da `codex/reabertura-notas` preservado antes do merge com `main`. O override só é activado quando `github.head_ref == integration/main-alignment-20260929`; pushes futuros à `main` e outros PRs continuam com a baseline normal.
+
+Foi adicionado teste de regressão específico para o override de baseline. Nenhuma alteração visual foi feita para satisfazer o gate.

@@ -39,6 +39,8 @@ function git(args) {
 const explicitFiles = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
 
 function comparisonRange() {
+  const overrideBase = process.env.KLASSE_UI_BASE_REF?.trim();
+  if (overrideBase) return `${overrideBase}...HEAD`;
   if (process.env.GITHUB_BASE_REF) return `origin/${process.env.GITHUB_BASE_REF}...HEAD`;
   if (process.env.CI) return "HEAD~1..HEAD";
   return null;

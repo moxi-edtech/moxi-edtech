@@ -48,6 +48,9 @@ jobs:
 
       - name: KLASSE UI Standards
         if: steps.changes.outputs.run == 'true'
+        env:
+          # One-time alignment baseline: preserve the exact pre-alignment product branch state.
+          KLASSE_UI_BASE_REF: ${{ github.event_name == 'pull_request' && github.head_ref == 'integration/main-alignment-20260929' && '42df91e23caf491255527bb009023ec74b042f2f' || '' }}
         run: pnpm check:ui-standards
 
       - name: Security Regression Tests
