@@ -66,11 +66,11 @@ Mitigações obrigatórias antes de qualquer merge/deploy:
 Rollback de código: `git revert` dos commits deste run.
 A migration ainda não foi aplicada ao Supabase remoto, portanto não existe rollback de banco a executar neste momento.
 
-## Como aprovar
+## Aprovação
 
-Commit com mensagem:
+Aprovado explicitamente pelo responsável em 2026-09-30.
 
-`APPROVE: 51fc910e-e33c-41b1-8eb5-e61689eb9eac`
+Commit de aprovação: `APPROVE: 51fc910e-e33c-41b1-8eb5-e61689eb9eac`
 
 ## Como rejeitar
 
