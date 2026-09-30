@@ -119,6 +119,20 @@ export function hashPhone(raw: string | null | undefined) {
   return crypto.createHmac("sha256", pepper).update(normalized).digest("hex");
 }
 
+export function hashWhatsappIdentity(raw: string | null | undefined) {
+  const identity = String(raw ?? "").trim();
+  if (!identity) return null;
+  const pepper = process.env.WHATSAPP_PHONE_HASH_PEPPER || process.env.NEXTAUTH_SECRET || "klasse-phone-hash";
+  return crypto.createHmac("sha256", pepper).update(`waha-identity:${identity}`).digest("hex");
+}
+
+export function maskWhatsappIdentity(raw: string | null | undefined) {
+  const identity = String(raw ?? "").trim();
+  if (!identity) return null;
+  const [user, server] = identity.split("@");
+  return `${user.slice(0, 3)}***${user.slice(-2)}@${server || "unknown"}`;
+}
+
 export function interpolateTemplate(body: string, variables: Record<string, string>) {
   return body.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => variables[key] ?? `{${key}}`);
 }

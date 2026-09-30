@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import { applyResponsePolicy } from "./response-policy.mjs";
+import { buildAiRuntimeConfig, buildFollowUpDelaysMs, followUpHoursFromEnv } from "./runtime-policy.mjs";
 
 const required = ["WAHA_BASE_URL", "WAHA_API_KEY", "WAHA_SESSION", "AI_API_KEY"];
 for (const name of required) {
@@ -10,12 +11,18 @@ for (const name of required) {
 const baseUrl = process.env.WAHA_BASE_URL.trim().replace(/\/$/, "");
 const apiKey = process.env.WAHA_API_KEY.trim();
 const session = process.env.WAHA_SESSION.trim();
-const aiKey = process.env.AI_API_KEY.trim();
-const aiProvider = (process.env.AI_PROVIDER || "gemini").trim().toLowerCase();
-const aiModel = (process.env.AI_MODEL || "gemini-2.5-flash").trim();
+const {
+  provider: aiProvider,
+  key: aiKey,
+  model: aiModel,
+  fallbackProvider,
+  fallbackKey,
+  fallbackModel,
+} = buildAiRuntimeConfig(process.env);
 const dryRun = String(process.env.AGENT_DRY_RUN || "true").toLowerCase() !== "false";
 const pollMs = Math.max(5000, Number(process.env.POLL_MS || 15000));
-const followUpDelaysMs = [5 * 60 * 1000, 60 * 60 * 1000, 24 * 60 * 60 * 1000, 7 * 24 * 60 * 60 * 1000, 30 * 24 * 60 * 60 * 1000, 60 * 24 * 60 * 60 * 1000, 90 * 24 * 60 * 60 * 1000];
+const followUpHours = followUpHoursFromEnv(process.env.FOLLOWUP_AFTER_HOURS);
+const followUpDelaysMs = buildFollowUpDelaysMs(followUpHours);
 const maxFollowUps = Math.min(followUpDelaysMs.length, Math.max(0, Number(process.env.MAX_FOLLOWUPS || followUpDelaysMs.length)));
 const requestTimeoutMs = Math.max(5000, Number(process.env.REQUEST_TIMEOUT_MS || 15000));
 const gateBaseUrl = (process.env.KLASSE_GATE_BASE_URL || "https://app.klasse.ao").trim().replace(/\/$/, "");
@@ -269,13 +276,6 @@ async function humanGate(chatId) {
   }
   const phone = gateChatId.split("@")[0].replace(/\D/g, "");
   const isLid = gateChatId.endsWith("@lid");
-  // LID is an opaque WhatsApp identity; there is no normalizable phone to
-  // send to the web gate. The worker is already authenticated to this WAHA
-  // session, and processChat still enforces local handoff/opt-out state.
-  if (isLid) {
-    console.log("[HUMAN_GATE_LID] " + mask(chatId));
-    return true;
-  }
   const identity = isLid ? gateChatId : phone;
   if (!identity || !gateSecret) {
     console.error("[HUMAN_GATE_BLOCKED] gate secret or phone is missing");
@@ -379,10 +379,13 @@ function nextFollowUpAt(followUpNumber) {
 }
 
 function followUpInstruction(followUpNumber) {
+  const firstDelayHours = Math.round(followUpDelaysMs[0] / (60 * 60 * 1000));
+  const secondDelayHours = Math.round(followUpDelaysMs[1] / (60 * 60 * 1000));
+  const thirdDelayHours = Math.round(followUpDelaysMs[2] / (60 * 60 * 1000));
   const instructions = [
-    "Primeiro follow-up (5 minutos): retome apenas o passo pendente, de forma curta, sem assumir que o lead confirmou algo.",
-    "Segundo follow-up (1 hora): faça uma única pergunta objetiva sobre o passo pendente; não repita a apresentação.",
-    "Terceiro follow-up (24 horas): relembre o contexto em uma frase e ofereça continuidade sem pressionar.",
+    `Primeiro follow-up (após ${firstDelayHours} horas): retome apenas o passo pendente, de forma curta, sem assumir que o lead confirmou algo.`,
+    `Segundo follow-up (após ${secondDelayHours} horas): faça uma única pergunta objetiva sobre o passo pendente; não repita a apresentação.`,
+    `Terceiro follow-up (após ${thirdDelayHours} horas): relembre o contexto em uma frase e ofereça continuidade sem pressionar.`,
     "Follow-up de reativação (7 dias): reconheça que pode ter havido correria e pergunte se ainda faz sentido continuar.",
     "Follow-up de reativação (30 dias): reabra o assunto apenas se houver histórico de interesse; não invente novidade.",
     "Follow-up de reativação (60 dias): faça uma última tentativa contextual e respeitosa.",
@@ -505,6 +508,31 @@ function latestOutbound(messages) {
     .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
 }
 
+async function callAi(provider, key, model, prompt) {
+  if (!key) throw new Error("Chave do provedor de IA ausente");
+  if (provider === "deepseek") {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      signal: AbortSignal.timeout(requestTimeoutMs),
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: 240, response_format: { type: "json_object" } }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error((payload.error && (payload.error.message || payload.error)) || "DeepSeek " + response.status);
+    return String(payload.choices?.[0]?.message?.content || "").trim();
+  }
+  if (provider !== "gemini") throw new Error("Provedor de IA não suportado: " + provider);
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), {
+    method: "POST",
+    signal: AbortSignal.timeout(requestTimeoutMs),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 240, responseMimeType: "application/json" } }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error((payload.error && (payload.error.message || payload.error)) || "Gemini " + response.status);
+  return String(payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "").trim();
+}
+
 async function generateDecision(chat, messages, followUp, context = {}) {
   const waitMs = lastAiRequestAt + aiMinIntervalMs - now();
   if (waitMs > 0) await sleep(waitMs);
@@ -549,28 +577,15 @@ async function generateDecision(chat, messages, followUp, context = {}) {
     "Conversa:", conversationText(messages),
   ].join("\n\n");
 
-  let response;
-  if (aiProvider === "deepseek") {
-    response = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      signal: AbortSignal.timeout(requestTimeoutMs),
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + aiKey },
-      body: JSON.stringify({ model: aiModel || "deepseek-chat", messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: 240, response_format: { type: "json_object" } }),
-    });
-  } else {
-    response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(aiModel) + ":generateContent?key=" + encodeURIComponent(aiKey), {
-      method: "POST",
-      signal: AbortSignal.timeout(requestTimeoutMs),
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 240, responseMimeType: "application/json" } }),
-    });
+  let raw;
+  try {
+    raw = await callAi(aiProvider, aiKey, aiModel, prompt);
+  } catch (primaryError) {
+    if (!fallbackKey || fallbackProvider === aiProvider) throw primaryError;
+    raw = await callAi(fallbackProvider, fallbackKey, fallbackModel, prompt);
+    console.warn("[AI_FALLBACK] provider=" + fallbackProvider);
   }
-  const payload = await response.json();
-  if (!response.ok) throw new Error((payload.error && (payload.error.message || payload.error)) || aiProvider + " " + response.status);
-  const raw = aiProvider === "deepseek"
-    ? payload.choices?.[0]?.message?.content?.trim()
-    : payload.candidates && payload.candidates[0] && payload.candidates[0].content.parts.map((part) => part.text || "").join("").trim();
-  if (!raw) throw new Error("Gemini não retornou uma decisão");
+  if (!raw) throw new Error("O provedor de IA não retornou uma decisão");
   const decision = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, ""));
   if (!decision.reply || decision.optOut) return { ...decision, reply: null };
   return applyResponsePolicy(decision, { businessHours, callWindows });

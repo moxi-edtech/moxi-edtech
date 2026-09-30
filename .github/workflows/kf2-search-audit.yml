@@ -46,6 +46,10 @@ jobs:
         if: steps.changes.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
 
+      - name: WhatsApp Sales Agent Regression Tests
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm -C services/whatsapp-sales-agent test
+
       - name: KLASSE UI Standards
         if: steps.changes.outputs.run == 'true'
         env:

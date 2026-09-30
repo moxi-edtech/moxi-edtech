@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "start": "node agent.mjs",
-    "test": "node --test response-policy.test.mjs"
+    "test": "node --test *.test.mjs"
   }
 }

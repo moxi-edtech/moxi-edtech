@@ -4,7 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 import {
   normalizeWhatsappPhone,
   hashPhone,
+  hashWhatsappIdentity,
   maskPhone,
+  maskWhatsappIdentity,
   resolveCommunicationContactByPhone
 } from "@/lib/server/whatsappUtility";
 
@@ -23,16 +25,6 @@ function timingSafeEqual(a: string, b: string) {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
   return left.length === right.length && crypto.timingSafeEqual(left, right);
-}
-
-function hashWhatsappIdentity(value: string) {
-  const pepper = process.env.WHATSAPP_PHONE_HASH_PEPPER || process.env.NEXTAUTH_SECRET || "klasse-phone-hash";
-  return crypto.createHmac("sha256", pepper).update("waha-identity:" + value).digest("hex");
-}
-
-function maskWhatsappIdentity(value: string) {
-  const [user, server] = value.split("@");
-  return `${user.slice(0, 3)}***${user.slice(-2)}@${server || "unknown"}`;
 }
 
 function validateSignature(request: Request, rawBody: string) {
@@ -333,16 +325,26 @@ export async function POST(request: Request) {
 
     const recipientPhone = to.split("@")[0].replace(/\D/g, "");
     const senderPhone = from.split("@")[0].replace(/\D/g, "");
+    const recipientIsLid = to.endsWith("@lid");
+    const senderIsLid = from.endsWith("@lid");
 
-    if (recipientPhone) {
-      const normalizedRecipient = normalizeWhatsappPhone(recipientPhone);
-      if (normalizedRecipient) {
-        const recipientPhoneHash = hashPhone(normalizedRecipient) || "";
-        const recipientPhoneMasked = maskPhone(normalizedRecipient) || "";
+    if (recipientPhone || recipientIsLid) {
+      const normalizedRecipient = recipientIsLid ? null : normalizeWhatsappPhone(recipientPhone);
+      if (normalizedRecipient || recipientIsLid) {
+        const recipientPhoneHash = normalizedRecipient
+          ? hashPhone(normalizedRecipient) || ""
+          : hashWhatsappIdentity(to) || "";
+        const recipientPhoneMasked = normalizedRecipient
+          ? maskPhone(normalizedRecipient) || ""
+          : maskWhatsappIdentity(to) || "";
 
-        const normalizedSender = normalizeWhatsappPhone(senderPhone) || "";
-        const senderPhoneHash = hashPhone(normalizedSender) || "";
-        const senderPhoneMasked = maskPhone(normalizedSender) || "";
+        const normalizedSender = senderIsLid ? null : normalizeWhatsappPhone(senderPhone);
+        const senderPhoneHash = normalizedSender
+          ? hashPhone(normalizedSender) || ""
+          : senderIsLid ? hashWhatsappIdentity(from) || "" : "";
+        const senderPhoneMasked = normalizedSender
+          ? maskPhone(normalizedSender) || ""
+          : senderIsLid ? maskWhatsappIdentity(from) || "" : "";
 
         const { data: thread } = await admin
           .from("communication_threads")

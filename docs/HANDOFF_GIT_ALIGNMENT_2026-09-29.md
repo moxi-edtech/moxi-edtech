@@ -123,3 +123,19 @@ A correcção combina os dois lados:
 - preserva o tratamento de cancelamento de fetch para evitar falso erro no browser.
 
 O Supabase remoto foi consultado somente em leitura e confirmou a assinatura pública `search_global_entities(uuid,text,text[],integer,double precision,timestamp with time zone,timestamp with time zone,uuid)`. Nenhuma migration foi aplicada.
+
+### Revisão Codex — WhatsApp Sales Agent
+
+Três findings da revisão foram confirmados como regressões reais e corrigidos sem alterar schema:
+
+- Identidades `@lid` deixaram de ignorar o human gate. O hash opaco usado pelo webhook foi centralizado e agora também é usado pelo endpoint de eligibility; estados atribuídos/bloqueados/resolvidos/pendentes e replies manuais continuam a bloquear automação.
+- O webhook outbound reconhece destinatário/remetente `@lid` com o mesmo hash, evitando lookup por telefone falso.
+- `FOLLOWUP_AFTER_HOURS` voltou a controlar o primeiro follow-up; a cadência posterior nunca é menor que o atraso inicial configurado. Com o default documentado, começa em 24h.
+- `AI_FALLBACK_PROVIDER`, `AI_FALLBACK_API_KEY` e `AI_FALLBACK_MODEL` voltaram a ser usados quando o provedor primário falha.
+- Foram adicionados testes de regressão de runtime e o KF2 passa a executá-los.
+
+O finding P1 de atomicidade do checkout multi-item é válido, mas não foi mascarado com pré-validação parcial: não existe writer de lote transacional no estado actual. Uma solução correta exige RPC transacional/migration financeira, mudança sensível segundo `AGENTS.md`, e permanece pendente de decisão humana. Nenhuma migration remota foi aplicada.
+
+### Vercel
+
+O check Vercel do projecto principal falhou por configuração, não por compilação: `INVALID_CRON_SECRET`. O valor configurado de `CRON_SECRET` contém whitespace nas extremidades, o que não é permitido em headers HTTP. Nenhum valor de segredo foi lido ou exposto, e nenhuma variável de produção foi alterada.

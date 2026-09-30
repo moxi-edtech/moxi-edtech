@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { hashPhone, normalizeWhatsappPhone } from "@/lib/server/whatsappUtility";
+import { hashPhone, hashWhatsappIdentity, normalizeWhatsappPhone } from "@/lib/server/whatsappUtility";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -45,18 +45,16 @@ export async function GET(request: Request) {
   if (providerError) return NextResponse.json({ ok: false, eligible: false, reason: "provider_lookup_failed" }, { status: 500 });
   if (!provider?.school_id) return NextResponse.json({ ok: false, eligible: false, reason: "unknown_session" }, { status: 404 });
 
-  // WhatsApp LID is an opaque identity and cannot be normalized to a phone.
-  // The signed agent request is the authorization boundary for this identity.
-  if (!phone) return NextResponse.json({ ok: true, eligible: true, reason: "lid_identity" });
-
-  const phoneHash = hashPhone(phone);
-  if (!phoneHash) return NextResponse.json({ ok: false, eligible: false, reason: "invalid_phone" }, { status: 400 });
+  const contactHash = phone ? hashPhone(phone) : hashWhatsappIdentity(chatId);
+  if (!contactHash) {
+    return NextResponse.json({ ok: false, eligible: false, reason: "invalid_identity" }, { status: 400 });
+  }
 
   const { data: thread, error: threadError } = await admin
     .from("communication_threads")
     .select("status, assigned_to")
     .eq("school_id", provider.school_id)
-    .eq("contact_phone_hash", phoneHash)
+    .eq("contact_phone_hash", contactHash)
     .maybeSingle();
   if (threadError) return NextResponse.json({ ok: false, eligible: false, reason: "thread_lookup_failed" }, { status: 500 });
   if (!thread) return NextResponse.json({ ok: true, eligible: true, reason: "new_thread" });
@@ -71,7 +69,7 @@ export async function GET(request: Request) {
     .from("communication_outbox")
     .select("id", { count: "exact", head: true })
     .eq("school_id", provider.school_id)
-    .eq("recipient_phone_hash", phoneHash)
+    .eq("recipient_phone_hash", contactHash)
     .eq("source_module", "whatsapp_inbox")
     .in("status", ["queued", "sending", "sent", "delivered", "read"]);
   if (manualReplyError) return NextResponse.json({ ok: false, eligible: false, reason: "manual_reply_lookup_failed" }, { status: 500 });
