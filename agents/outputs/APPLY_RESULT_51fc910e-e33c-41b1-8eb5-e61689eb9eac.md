@@ -1,6 +1,6 @@
 # Apply result — 51fc910e-e33c-41b1-8eb5-e61689eb9eac
 
-status: VALIDATED_NOT_DEPLOYED
+status: MIGRATION_APPLIED_NOT_DEPLOYED
 branch: `integration/main-alignment-20260929`
 validated_head: `bc43d92b22eaa870513c4656460d83b91ec07924`
 
@@ -61,8 +61,11 @@ Limitação: o harness prova semântica transacional/idempotência/concorrência
 
 ## Estado remoto
 
-- Nenhuma migration foi aplicada ao Supabase de produção.
-- A versão `20260930092612` ainda não existe em `supabase_migrations.schema_migrations` remoto.
+- A migration `fix_secretaria_batch_payment_atomicity` foi aplicada ao Supabase de produção.
+- O Supabase registrou a execução como versão remota `20260930104911` (o nome permanece `fix_secretaria_batch_payment_atomicity`).
+- A RPC live foi verificada como `SECURITY INVOKER`, com `anon_execute=false`, `authenticated_execute=true` e `service_role_execute=true`.
+- Advisory lock, batch fingerprint e chamada ao writer canónico foram confirmados na definição live.
+- Security advisors permaneceram nos mesmos counts anteriores: RLS sem policy 13; anon SECURITY DEFINER executável 46; authenticated SECURITY DEFINER executável 316; leaked-password protection 1.
 - Nenhum merge em `main`.
 - Nenhum deploy/promotion de Production.
 
@@ -72,12 +75,11 @@ A nova API chama `financeiro_registrar_pagamentos_secretaria_batch`. Como a RPC 
 
 Sequência segura:
 
-1. aprovação separada para aplicar `20260930092612_fix_secretaria_batch_payment_atomicity.sql` no Supabase de produção;
-2. verificar função, grants e advisors após migration;
-3. smoke test SQL sem dados reais;
-4. merge em `main`;
-5. deploy/promote do artefacto;
-6. smoke test do app;
-7. somente depois considerar o release concluído.
+1. migration no Supabase de produção ✅;
+2. função, grants e advisors verificados ✅;
+3. merge em `main`;
+4. deploy/promote do artefacto;
+5. smoke test do app;
+6. somente depois considerar o release concluído.
 
 A migration é aditiva: cria/substitui apenas a nova RPC batch e grants associados; não contém DROP TABLE/COLUMN nem alteração de dados existentes.
