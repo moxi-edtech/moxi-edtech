@@ -153,3 +153,61 @@ A configuração do projecto `moxi-edtech` é `Production Branch = main`, com ro
 - A thread P1 de atomicidade do checkout multi-item permanece aberta de propósito, pois exige writer transacional/RPC financeira e decisão humana explícita.
 - `origin/main` permaneceu em `b1774d67af416662ad21a5282873c17a5a438234`; antes deste commit documental, a branch de integração estava 164 commits à frente e 0 atrás.
 - Nenhuma migration remota, merge de PR ou promoção para produção foi executada.
+
+## Pré-merge audit — GitHub + Vercel + Supabase
+
+Revisão concluída em 2026-09-29/30 usando GitHub, Vercel e Supabase como fontes de verdade.
+
+### Relação entre branches
+
+- `integration/main-alignment-20260929` está à frente de `codex/reabertura-notas` e não está atrás dela.
+- A integração também está à frente de `main` e não está atrás da base.
+- Em relação a `codex/reabertura-notas`, o delta actual contém 38 ficheiros e concentra-se em CI/KF2, filtros Vercel, polling/operacional, WhatsApp, documentação e reconciliação Supabase.
+- Em relação a `main`, o PR continua amplo porque incorpora o histórico acumulado da branch que vinha servindo produção.
+
+### Produção Vercel
+
+- `app.klasse.ao` está `READY` em produção no deployment `dpl_9jtsxvn9RteWcH3WEwWjgYjsNitQ`.
+- O artefacto servido vem de `codex/reabertura-notas`, commit `8493b827d59baa16301027240fae025de7b1c1d8`, source `cli`.
+- O head de integração está 21 commits à frente desse artefacto e altera 93 ficheiros no total.
+- Há mudanças deploy-relevant em `apps/web`; o `ignoreCommand` do Vercel não as ignora.
+- Um deployment anterior de `main` foi criado pelo Vercel com `source: git` e `target: production`, provando que um merge em `main` pode iniciar uma tentativa de produção.
+- Esse deployment anterior falhou com `INVALID_CRON_SECRET` por whitespace no valor do header. Não há nesta revisão evidência Vercel suficiente para declarar esse problema operacional definitivamente resolvido.
+- O head actual do PR não tem build Vercel/Next de preview completo como evidência; os checks do PR validam KF2 e guardrails, não um artefacto Vercel final.
+
+### Supabase — estado aplicado
+
+- Project ref: `wjtifcpxxxotsbmvbgoq`.
+- O histórico remoto contém 609 migrations.
+- As migrations de hardening aplicadas fora de ordem em 2026-09-29 estão registradas remotamente:
+  - `20260929135027_harden_public_backup_tables_and_internal_helpers`
+  - `20260929140028_repair_broken_cron_jobs_and_remove_duplicate_indexes`
+  - `20260929140727_harden_privileged_rpc_boundaries_and_search_paths`
+  - `20260929140929_replace_security_definer_operacoes_view_with_scoped_rpc`
+  - `20260929142450_fix_k12_multi_school_authorization`
+- Os ficheiros correspondentes no Git são marcadores no-op e preservam o alinhamento de histórico.
+
+### Supabase — drift de migration history
+
+O banco live já contém o estado funcional esperado por migrations que não aparecem com a mesma versão no histórico remoto:
+
+- `20260927232530_klasse_chatgpt_readonly_rpcs.sql`: versão não registrada; as RPCs read-only existem, são SECURITY INVOKER e `anon` não tem EXECUTE.
+- `20260928120000_klasse_chatgpt_write_rpcs.sql`: a versão exacta não está registrada, mas existe a migration remota `20260928105542_klasse_chatgpt_write_rpcs`; tabelas, RLS, policies e RPCs de escrita estão presentes.
+- `20270825140000_free_tier_security_performance_hardening.sql`: não registrada; o preflight confirmou o estado-alvo no live DB (RLS/grants, cron, índices, constraints, MVs, views e RPC guards). Executá-la novamente faria DDL desnecessário, incluindo DROP/CREATE de views/materialized views.
+- `20270826120000_fix_matriculas_session_id_on_creation.sql`: não registrada; as seis funções auditadas no live DB já contêm a resolução de `session_id` via `anos_letivos`.
+
+Nenhum `migration repair`, `db push`, DDL remoto ou alteração de history foi executado nesta revisão.
+
+### Advisors actuais
+
+- Security: 13 INFO `rls_enabled_no_policy`, 46 WARN de SECURITY DEFINER executável por anon, 316 WARN por authenticated e leaked-password protection desativado.
+- Performance: 259 FKs sem índice (INFO), 49 `auth_rls_initplan` (WARN), 25 tabelas sem PK (INFO), 260 índices não usados (INFO) e 112 casos de multiple permissive policies (WARN).
+- Esses itens são backlog existente e não foram introduzidos pelo PR #136.
+
+### Decisão desta revisão
+
+**Não recomendar merge ainda.**
+
+Motivo principal: o merge em `main` pode disparar um deployment de produção pelo Git integration, enquanto o head actual ainda não foi validado por um build Vercel/Next de preview completo. O banco live está compatível com as funcionalidades novas auditadas, portanto o risco imediato não é schema incompatível; o risco é promover um artefacto 21 commits à frente da produção sem prova de build/deploy.
+
+Em paralelo, o drift de migration history precisa de decisão humana antes do próximo `db push`. A correção deve ser feita como reconciliação explícita de history apenas depois de confirmar integralmente que cada versão local representa estado já aplicado. Não executar automaticamente a migration `20270825140000` em produção apenas para alinhar a tabela de migrations.
