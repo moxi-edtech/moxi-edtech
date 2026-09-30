@@ -138,4 +138,18 @@ O finding P1 de atomicidade do checkout multi-item é válido, mas não foi masc
 
 ### Vercel
 
-O check Vercel do projecto principal falhou por configuração, não por compilação: `INVALID_CRON_SECRET`. O valor configurado de `CRON_SECRET` contém whitespace nas extremidades, o que não é permitido em headers HTTP. Nenhum valor de segredo foi lido ou exposto, e nenhuma variável de produção foi alterada.
+O check Vercel do projecto principal falhou inicialmente por configuração, não por compilação: `INVALID_CRON_SECRET`. O secret é protegido pelo Vercel e não pode ser lido por `vercel env pull`, portanto o valor existente não foi exposto nem contornado.
+
+Foi rotacionado apenas o `CRON_SECRET` do ambiente **Preview**, com um valor aleatório novo mantido oculto. O ambiente Production não foi alterado. O redeploy de Preview `dpl_ABVQH1QUEA7AgWmHovRNthQCZ3Zh`, para o commit `7b63d6e1c0d1d128d809eedecfe4c771bb593a38`, terminou `READY`.
+
+A configuração do projecto `moxi-edtech` é `Production Branch = main`, com root `apps/web`. Isso é diferente do artefacto actualmente promovido: `app.klasse.ao` continua a servir `codex/reabertura-notas` no commit `8493b827d59baa16301027240fae025de7b1c1d8`. `klasse.ao` também continua nesse commit na aplicação de landing. Nenhum deployment deste alinhamento foi promovido para produção.
+
+### Validação final remota
+
+- GitHub Actions `KF2 Search Audit` run `36650439038`: SUCCESS no commit `7b63d6e1c0d1d128d809eedecfe4c771bb593a38`.
+- Passaram: testes do path filter, regressões do UI gate, testes do WhatsApp Sales Agent, UI Standards, Security Regression, KF2 Auditor, KF2 Search Audit, Codex Scan e Performance Gate.
+- O diff do commit `7b63d6e1` teve 177 linhas adicionadas verificadas contra os padrões do scanner de secrets: 0 matches suspeitos.
+- Três threads da revisão Codex foram corrigidas, respondidas e resolvidas: human gate para LID, cadência de follow-up e fallback de IA.
+- A thread P1 de atomicidade do checkout multi-item permanece aberta de propósito, pois exige writer transacional/RPC financeira e decisão humana explícita.
+- `origin/main` permaneceu em `b1774d67af416662ad21a5282873c17a5a438234`; antes deste commit documental, a branch de integração estava 164 commits à frente e 0 atrás.
+- Nenhuma migration remota, merge de PR ou promoção para produção foi executada.
