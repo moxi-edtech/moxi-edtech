@@ -236,7 +236,7 @@ A review P1 em `apps/web/src/app/api/secretaria/pagamentos/processar/route.ts` f
 
 Implementação final:
 
-- nova migration `20260930092612_fix_secretaria_batch_payment_atomicity.sql`;
+- nova migration `20260930104911_fix_secretaria_batch_payment_atomicity.sql`;
 - RPC `financeiro_registrar_pagamentos_secretaria_batch` com `SECURITY INVOKER`;
 - multi-item checkout passa a executar todos os writers canónicos dentro de uma única transação Postgres;
 - advisory lock serializa a mesma batch key;
