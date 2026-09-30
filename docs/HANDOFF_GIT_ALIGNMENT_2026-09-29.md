@@ -228,3 +228,45 @@ O **gate técnico de build/runtime do artefacto passou**. Não há blocker de c�
 Ainda não é um release limpo via Git integration porque a conta Vercel está no `build-rate-limit`. Um merge em `main` pode disparar uma tentativa de deployment de Production que será bloqueada pela cota. Portanto, antes do merge/release, a decisão humana necessária é escolher entre aguardar/liberar a cota ou, após aprovação explícita, usar o mesmo fluxo de build local + deployment prebuilt para Production. Nenhuma dessas ações foi executada aqui.
 
 O drift de migration history permanece um risco operacional independente do PR: resolver explicitamente antes do próximo `db push`; não reaplicar `20270825140000` cegamente em produção.
+
+
+## Fecho do P1 de atomicidade — 2026-09-30
+
+A review P1 em `apps/web/src/app/api/secretaria/pagamentos/processar/route.ts` foi corrigida após aprovação explícita `APPROVE: 51fc910e-e33c-41b1-8eb5-e61689eb9eac`.
+
+Implementação final:
+
+- nova migration `20260930092612_fix_secretaria_batch_payment_atomicity.sql`;
+- RPC `financeiro_registrar_pagamentos_secretaria_batch` com `SECURITY INVOKER`;
+- multi-item checkout passa a executar todos os writers canónicos dentro de uma única transação Postgres;
+- advisory lock serializa a mesma batch key;
+- fingerprint impede reutilização da mesma chave com payload diferente;
+- retry completo devolve resultado idempotente sem novos pagamentos;
+- UI reutiliza a mesma `Idempotency-Key` enquanto o payload do checkout não mudar;
+- single-item checkout mantém o caminho canónico anterior.
+
+Validações:
+
+- TypeScript PASS;
+- ESLint focado: 0 errors;
+- KF2 #922 SUCCESS no commit funcional `bc43d92b22eaa870513c4656460d83b91ec07924`;
+- clean `vercel build` PASS no commit `8d08ffbbb07e9c9710c271d41de645c3e909b33d`; o único delta funcional posterior é a migration SQL;
+- PostgreSQL local isolado: rollback após falha do segundo writer = 0 rows; batch válido = 2 rows; retry = idempotent + 2 rows; concorrência = uma execução fresh + uma idempotent + 2 rows;
+- P1 review thread resolvida;
+- 0 review threads abertas no PR.
+
+Nenhum SQL foi aplicado ao Supabase de produção.
+
+### Ordem de release
+
+**Não deployar o app antes da migration.** O código da API já depende de `financeiro_registrar_pagamentos_secretaria_batch`, mas a RPC ainda não existe no banco live.
+
+Ordem obrigatória:
+
+1. aprovação separada para aplicar `20260930092612` no Supabase de produção;
+2. validar função/grants/advisors;
+3. merge em `main`;
+4. deploy/promote;
+5. smoke test pós-release.
+
+O relatório detalhado está em `agents/outputs/APPLY_RESULT_51fc910e-e33c-41b1-8eb5-e61689eb9eac.md`.
