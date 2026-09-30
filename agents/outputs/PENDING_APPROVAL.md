@@ -1,44 +1,45 @@
-# PENDING APPROVAL — fiscal-recovery-20260930-01
+# PENDING APPROVAL — fiscal-recovery-migration-20260930-02
 
 status: PENDING_APPROVAL
 branch: `recovery/fiscal-agt-preservation-20260930`
-base_main: `1a283020191934148964d6e416ad6e80f2ec1217`
-proposed_patch_sha256: `1f4f5dcc40e4c82029f3aec6045c4087d812582fc93d3a439470e18150385325`
+base_functional_head: `b50e0ff7e0f497d3a6bc5949409fa4d50f467f21`
+proposed_delta_sha256: `30fa684e6bc9caa9c0bd6d553e7860658e8d573d1c61ed4d3bcb15c17e3f3028`
 
 ## Approval requested
 
-This recovery restores the fiscal/AGT work that was lost during the main-alignment merge while preserving the newer finance, Secretaria, KF2 and Vercel behavior already present in current `main`.
+Post-push migration review found two pre-production issues in the still-unapplied recovery migration:
 
-The proposed functional diff is documented in:
+1. a genuine proof resubmission could update `evidence_url` and then be misclassified as an idempotent replay, causing the API to delete the replacement proof;
+2. the migration preflight could call `pg_get_functiondef` on an aggregate and abort before applying.
 
-`agents/outputs/APPLY_DIFF_fiscal-recovery-20260930-01.md`
+The exact proposed correction is documented in:
 
-## Scope after approval
+`agents/outputs/APPLY_DIFF_fiscal-recovery-migration-20260930-02.md`
 
-The approval authorizes ONLY:
+## Scope
 
-- commit/push of the already validated recovery diff to this recovery branch;
-- creation/update of a recovery PR to `main`;
-- CI, typecheck, tests, build and Preview validation.
+Approval authorizes ONLY:
+
+- commit/push of the two-file micro-diff with SHA-256 above;
+- CI/Fiscal Certification rerun;
+- PR #137 and Preview validation.
 
 It does NOT authorize:
 
 - applying `20260930174453_recover_fiscal_hardening_current_contract.sql` to Supabase production;
-- merging the recovery PR to `main`;
+- merging PR #137;
 - Production deployment.
 
-Those remain separate gates.
+## Validation already completed
 
-## Risk controls
-
-- 60 restored historical migrations are already recorded in Supabase production and therefore restore Git history rather than schedule new DDL.
-- The one new migration is isolated under version `20260930174453`.
-- No production mutation has been performed.
-- Four cross-era conflicts were manually reconciled instead of blindly choosing PR #131 or current `main`.
-- Full TypeScript, fiscal tests, KF2/security/UI/performance and Production-mode build are green.
+- targeted migration tests: 10/10 PASS;
+- full fiscal suite: 104/104 PASS;
+- fiscal typecheck: PASS;
+- full migration executed successfully in isolated PostgreSQL 17 with `ON_ERROR_STOP`;
+- resubmission/retry semantics proven in the database harness;
+- key custody, legacy RPC revocation, payment guards and five TRUNCATE guards proven in the harness;
+- live read-only audit confirms the required preflight invariants exist in Supabase production.
 
 ## Required approval
 
-Create/record a commit with exactly:
-
-`APPROVE: fiscal-recovery-20260930-01`
+`APPROVE: fiscal-recovery-migration-20260930-02`
