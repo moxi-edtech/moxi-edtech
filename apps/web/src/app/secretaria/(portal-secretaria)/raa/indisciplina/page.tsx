@@ -36,7 +36,7 @@ export default function IndisciplinaRaaPage() {
   };
 
   return (
-    <main className="space-y-5">
+    <div className="space-y-5">
       <DashboardHeader title="Indisciplina grave — RAA" description="Registe a ocorrência dentro da escola, ano letivo e matrícula corretos." breadcrumbs={[{ label: "Início", href: "/" }, { label: "Secretaria", href: "/secretaria" }, { label: "Indisciplina RAA" }]} />
       <section className="max-w-3xl rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><p>O evento fica auditável e pode influenciar a análise RAA. Registe apenas factos verificáveis.</p></div>
@@ -47,9 +47,9 @@ export default function IndisciplinaRaaPage() {
           <div><label className="text-sm font-medium text-slate-700">Descrição factual</label><textarea required minLength={10} value={descricao} onChange={(event) => setDescricao(event.target.value)} rows={5} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></div>
           <div><label className="text-sm font-medium text-slate-700">Medida aplicada <span className="font-normal text-slate-400">(opcional)</span></label><textarea value={medida} onChange={(event) => setMedida(event.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></div>
           <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={impactaResultado} onChange={(event) => setImpactaResultado(event.target.checked)} /> Considerar na análise de resultado RAA</label>
-          <button disabled={saving} className="rounded-lg bg-klasse-green px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "A guardar..." : "Registar ocorrência"}</button>
+          <button disabled={saving} className="rounded-lg bg-emerald px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "A guardar..." : "Registar ocorrência"}</button>
         </form>
       </section>
-    </main>
+    </div>
   );
 }

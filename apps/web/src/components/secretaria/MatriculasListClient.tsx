@@ -84,8 +84,8 @@ function KpiCard({
 }) {
   const tones: Record<string, { iconWrap: string; iconColor: string }> = {
     slate: { iconWrap: "bg-slate-100", iconColor: "text-slate-700" },
-    emerald: { iconWrap: "bg-klasse-green-100/50", iconColor: "text-klasse-green-700" },
-    amber: { iconWrap: "bg-klasse-gold-100/50", iconColor: "text-klasse-gold-700" },
+    emerald: { iconWrap: "bg-emerald-100/50", iconColor: "text-emerald-700" },
+    amber: { iconWrap: "bg-amber-100/50", iconColor: "text-amber-700" },
     violet: { iconWrap: "bg-violet-100/50", iconColor: "text-violet-700" },
   };
 
@@ -110,8 +110,8 @@ function KpiCard({
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    ativa: "bg-klasse-green-50 text-klasse-green-700 ring-1 ring-klasse-green-200/70",
-    pendente: "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold-200/70",
+    ativa: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
+    pendente: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70",
     cancelada: "bg-red-50 text-red-700 ring-1 ring-red-200/70",
     transferida: "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70",
   };
@@ -462,8 +462,8 @@ export default function MatriculasListClient() {
           aria-disabled={!resolvedSlug}
           className={cn(
             "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold",
-            resolvedSlug ? "bg-klasse-gold text-white hover:brightness-95" : "bg-slate-300 text-white pointer-events-none cursor-not-allowed",
-            "focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+            resolvedSlug ? "bg-amber text-white hover:brightness-95" : "bg-slate-300 text-white pointer-events-none cursor-not-allowed",
+            "focus:outline-none focus:ring-4 focus:ring-amber/20"
           )}
         >
           <UserPlus className="h-4 w-4" />
@@ -494,7 +494,7 @@ export default function MatriculasListClient() {
                 onChange={(e) => setQ(e.target.value)}
                 className={cn(
                   "w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm outline-none",
-                  "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                  "focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 )}
               />
             </div>
@@ -509,7 +509,7 @@ export default function MatriculasListClient() {
               }}
               className={cn(
                 "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
-                "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                "focus:ring-4 focus:ring-amber/20 focus:border-amber"
               )}
             >
               <option value="">Ano letivo</option>
@@ -544,7 +544,7 @@ export default function MatriculasListClient() {
             onChange={(e) => setSelectedEnsino(e.target.value)}
             className={cn(
               "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
-              "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              "focus:ring-4 focus:ring-amber/20 focus:border-amber"
             )}
           >
             <option value="">Ensino/Nível</option>
@@ -558,7 +558,7 @@ export default function MatriculasListClient() {
             onChange={(e) => setSelectedCurso(e.target.value)}
             className={cn(
               "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
-              "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              "focus:ring-4 focus:ring-amber/20 focus:border-amber"
             )}
           >
             <option value="">Curso</option>
@@ -574,7 +574,7 @@ export default function MatriculasListClient() {
             onChange={(e) => setSelectedClasse(e.target.value)}
             className={cn(
               "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
-              "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              "focus:ring-4 focus:ring-amber/20 focus:border-amber"
             )}
           >
             <option value="">Classe</option>
@@ -590,7 +590,7 @@ export default function MatriculasListClient() {
             onChange={(e) => setSelectedTurma(e.target.value)}
             className={cn(
               "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
-              "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              "focus:ring-4 focus:ring-amber/20 focus:border-amber"
             )}
           >
             <option value="">Turma</option>
@@ -606,7 +606,7 @@ export default function MatriculasListClient() {
               type="checkbox"
               checked={showPendentes}
               onChange={(e) => setShowPendentes(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+              className="h-4 w-4 rounded border-slate-300 text-amber focus:ring-4 focus:ring-amber/20"
             />
             <span className="text-sm font-medium text-slate-700">Pendentes de Enturmação</span>
           </label>
@@ -774,7 +774,7 @@ export default function MatriculasListClient() {
                           <span>ID: {m.id.slice(0, 6)}</span>
 
                           {m.numero_chamada ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green-50 px-2 py-0.5 font-semibold text-klasse-green-700 ring-1 ring-klasse-green-200/70">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 ring-1 ring-emerald-200/70">
                               Chamada #{m.numero_chamada}
                             </span>
                           ) : null}
@@ -786,7 +786,7 @@ export default function MatriculasListClient() {
                           ) : null}
 
                           {statusKey !== "ativa" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-klasse-gold-50 px-2 py-0.5 font-semibold text-klasse-gold-700 ring-1 ring-klasse-gold-200/70">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 ring-1 ring-amber-200/70">
                               Número só é gerado em status ativa
                             </span>
                           )}
@@ -801,7 +801,7 @@ export default function MatriculasListClient() {
                               {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : "?"}
                             </div>
                             <div className="min-w-0">
-                              <div className="truncate text-sm font-bold text-slate-900 group-hover:text-klasse-gold">
+                              <div className="truncate text-sm font-bold text-slate-900 group-hover:text-amber">
                                 {m.aluno_nome || "Aluno Desconhecido"}
                               </div>
                             </div>
@@ -823,7 +823,7 @@ export default function MatriculasListClient() {
                         {m.turma_nome ? (
                           <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-slate-900">
-                              <span className="text-klasse-gold">{m.classe_nome}</span> / {m.turma_nome}
+                              <span className="text-amber">{m.classe_nome}</span> / {m.turma_nome}
                             </p>
                             <p className="truncate text-xs text-slate-500">
                               {m.turno ? <span>{m.turno}</span> : null}
@@ -846,7 +846,7 @@ export default function MatriculasListClient() {
                           <button
                             onClick={() => handleOpenStatusForm(m)}
                             title="Alterar Status"
-                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <RefreshCw className="h-4 w-4" />
                           </button>
@@ -854,7 +854,7 @@ export default function MatriculasListClient() {
                           <button
                             onClick={() => handleOpenTransferForm(m)}
                             title="Transferir"
-                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <ArrowUpDown className="h-4 w-4" />
                           </button>
@@ -863,14 +863,14 @@ export default function MatriculasListClient() {
                             href={`/api/secretaria/admissoes/matriculas/${m.id}/declaracao`}
                             target="_blank"
                             title="Declaração"
-                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <FileText className="h-4 w-4" />
                           </Link>
 
                           <button
                             title="Mais"
-                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </button>
@@ -918,7 +918,7 @@ export default function MatriculasListClient() {
               <h2 className="text-xl font-bold text-slate-900">Alterar Status</h2>
               <button
                 onClick={() => setShowStatusForm(false)}
-                className="rounded-full p-2 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                className="rounded-full p-2 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
               >
                 <XCircle className="h-5 w-5 text-slate-400" />
               </button>
@@ -943,7 +943,7 @@ export default function MatriculasListClient() {
               <h2 className="text-xl font-bold text-slate-900">Transferir Aluno</h2>
               <button
                 onClick={() => setShowTransferForm(false)}
-                className="rounded-full p-2 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                className="rounded-full p-2 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
               >
                 <XCircle className="h-5 w-5 text-slate-400" />
               </button>

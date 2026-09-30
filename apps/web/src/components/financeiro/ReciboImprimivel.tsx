@@ -262,7 +262,7 @@ export function ReciboPrintButton({
           relative inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition-colors
           ${status === "success"
             ? "bg-green-500 text-white"
-            : "bg-klasse-gold text-white hover:brightness-95"}
+            : "bg-amber text-white hover:brightness-95"}
           disabled:opacity-80
         `}
       >
@@ -319,8 +319,8 @@ export function ReciboPrintButton({
               className="flex flex-col items-center gap-4 rounded-3xl bg-white p-8 text-center shadow-2xl border border-slate-100"
             >
               <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-klasse-gold/10 animate-ping" />
-                <div className="relative rounded-full bg-klasse-gold p-4 text-white">
+                <div className="absolute inset-0 rounded-full bg-amber/10 animate-ping" />
+                <div className="relative rounded-full bg-amber p-4 text-white">
                   <Printer className="h-8 w-8" />
                 </div>
               </div>

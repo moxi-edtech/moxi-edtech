@@ -141,7 +141,7 @@ export function TabPerfil() {
       {/* Atualização Cadastral */}
       <AlunoCard>
         <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <User className="h-4 w-4 text-klasse-gold" />
+          <User className="h-4 w-4 text-amber" />
           <h2 className="text-sm font-semibold text-slate-900">Atualização Cadastral</h2>
         </div>
         
@@ -210,7 +210,7 @@ export function TabPerfil() {
       {/* Redefinição de Senha */}
       <AlunoCard>
         <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <Lock className="h-4 w-4 text-klasse-gold" />
+          <Lock className="h-4 w-4 text-amber" />
           <h2 className="text-sm font-semibold text-slate-900">Segurança da Conta</h2>
         </div>
         
@@ -251,7 +251,7 @@ export function TabPerfil() {
 
           <ul className="grid gap-1 text-[10px] text-slate-500 md:grid-cols-2">
             {passwordRules(senha).map((rule) => (
-              <li key={rule.message} className={rule.ok ? "text-klasse-green-600" : undefined}>
+              <li key={rule.message} className={rule.ok ? "text-emerald-600" : undefined}>
                 {rule.ok ? "✓" : "•"} {rule.message}
               </li>
             ))}

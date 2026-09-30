@@ -312,6 +312,22 @@ function isAbortError(err: unknown) {
   return err instanceof Error && err.name === "AbortError";
 }
 
+function isMissingGlobalSearchRpcError(error: {
+  code?: string | null;
+  message?: string | null;
+  status?: number | null;
+} | null | undefined) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return (
+    error?.status === 404 ||
+    error?.code === "PGRST202" ||
+    error?.code === "42883" ||
+    message.includes("search_global_entities") ||
+    message.includes("search_alunos_global_min") ||
+    message.includes("similarity")
+  );
+}
+
 function mapToMinimalResult(
   portal: PortalKey | undefined,
   escolaId: string | null | undefined,
@@ -449,7 +465,10 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         status: "todos",
         pageSize: String(limit),
       });
-      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`);
+      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, {
+        signal: ac.signal,
+        cache: "no-store",
+      });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
         throw new Error(json?.error || "Falha ao buscar alunos");
@@ -495,12 +514,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         });
 
       if (error) {
-        const shouldFallback =
-          error.code === "42883" ||
-          error.message?.includes("search_global_entities") ||
-          error.message?.includes("search_alunos_global_min") ||
-          error.message?.includes("similarity");
-        if (!append && shouldFallback) {
+        if (!append && isMissingGlobalSearchRpcError(error)) {
           await fetchFallback();
           return;
         }
@@ -531,7 +545,10 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         await fetchPage(null, false);
       } catch (err: unknown) {
         // ignore abort
-        if (!isAbortError(err)) {
+        // A pesquisa pode ser cancelada quando o utilizador continua a
+        // escrever ou quando o componente desmonta. Browsers report this as
+        // "Failed to fetch" in some runtimes; it is not an application error.
+        if (!isAbortError(err) && !(err instanceof TypeError && ac.signal.aborted)) {
           console.error("[GlobalSearch] Erro na busca:", err);
           setResults([]);
           setCursor(null);

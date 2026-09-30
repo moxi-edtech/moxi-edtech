@@ -1,60 +1,79 @@
 # Aprovação necessária — Agent 3
-run_id:    1E55913B-0D0B-4AAF-82E8-2203535A27CE
-timestamp: 2026-08-03T00:00:00-03:00
+run_id:    51fc910e-e33c-41b1-8eb5-e61689eb9eac
+timestamp: 2026-09-30T09:26:12Z
 
 ## Acção proposta
 
-Criar migrations idempotentes para concluir o wizard K12:
+Corrigir o P1 aberto no PR #136 tornando o checkout multi-item da Secretaria atomicamente transacional.
 
-1. alinhar `cutover_ano_letivo_v3` aos perfis já autorizados pela aplicação (`admin`, `admin_escola`, `staff_admin`, `admin_financeiro`, `diretor`, `super_admin`);
-2. criar `aplicar_virada_importacao(uuid)` para aplicar, numa única transacção, somente linhas aprovadas, tenant-scoped e ainda não aplicadas;
-3. inserir os templates oficiais MED 2026/2027 de Pré-escolar, Técnico-profissional e Secundário Pedagógico sem alterar o template Regular/Adultos existente.
+A mudança proposta:
+
+1. adiciona a RPC `financeiro_registrar_pagamentos_secretaria_batch`, que:
+   - valida tenant/role;
+   - aceita 1–50 itens;
+   - serializa concorrência pela chave do checkout com `pg_advisory_xact_lock`;
+   - usa uma chave filha `<batch-key>:<index>` por pagamento;
+   - chama o writer canónico `financeiro_registrar_pagamento_secretaria` dentro de **uma única transação Postgres**;
+   - replica as guardas de mensalidade, matrícula, ano letivo e janela de cobrança necessárias ao fluxo;
+   - rejeita estado parcial preexistente em vez de “completar” silenciosamente;
+   - devolve todos os pagamentos e marca retries completos como idempotentes.
+
+2. altera `/api/secretaria/pagamentos/processar`:
+   - mantém o caminho canónico existente para checkout de 1 item;
+   - usa uma única chamada RPC batch para 2+ itens;
+   - emite/enriquece recibo somente após commit bem-sucedido;
+   - não reemite recibo automaticamente em retry idempotente;
+   - preserva audit trail e o contrato de resposta.
+
+3. altera `BalcaoAtendimento` para reutilizar a mesma `Idempotency-Key` quando o utilizador repete exactamente o mesmo checkout após timeout/erro de rede.
+
+O P0 checklist foi verificado antes desta proposta e está integralmente marcado como concluído.
 
 ## Diff
 
+O diff exacto proposto, incluindo o SQL completo da migration e os hunks exactos de API/UI, está versionado em:
+
+`agents/outputs/APPLY_DIFF_51fc910e-e33c-41b1-8eb5-e61689eb9eac.md`
+
+Migration reservada pelo comando oficial `supabase migration new fix_secretaria_batch_payment_atomicity`:
+
+`supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql`
+
+Resumo dos ficheiros funcionais que serão alterados somente após aprovação:
+
 ```diff
-+++ supabase/migrations/20270803130000_complete_k12_rollover.sql
-+ CREATE OR REPLACE FUNCTION public.cutover_ano_letivo_v3(...)
-+ -- mantém o corpo actual e substitui apenas a lista autorizada por:
-+ ARRAY['admin','admin_escola','staff_admin','admin_financeiro','diretor','super_admin']::text[]
-+
-+ CREATE OR REPLACE FUNCTION public.aplicar_virada_importacao(p_importacao_id uuid)
-+ RETURNS jsonb
-+ LANGUAGE plpgsql
-+ SECURITY DEFINER
-+ SET search_path = public, pg_temp;
-+ -- bloqueia o lote FOR UPDATE, valida tenant/perfil/status,
-+ -- rejeita linhas sem matrícula e usa ON CONFLICT para idempotência;
-+ -- marca linhas como APLICADA e o lote como APLICADO na mesma transacção.
-+
-+ REVOKE ALL ON FUNCTION public.aplicar_virada_importacao(uuid) FROM PUBLIC, anon;
-+ GRANT EXECUTE ON FUNCTION public.aplicar_virada_importacao(uuid) TO authenticated;
-+++ supabase/migrations/20270803131000_seed_calendarios_k12_2026_2027.sql
-+ INSERT INTO public.calendario_templates (...) VALUES
-+   (..., 'MED 2026/2027 — Pré-escolar', 2026, 'PRE_ESCOLAR', ...),
-+   (..., 'MED 2026/2027 — Técnico-profissional', 2026, 'TECNICO_PROFISSIONAL', ...),
-+   (..., 'MED 2026/2027 — Secundário pedagógico', 2026, 'SECUNDARIO_PEDAGOGICO', ...)
-+ ON CONFLICT (...) DO UPDATE ...;
-+ INSERT INTO public.calendario_template_items (...)
-+ -- períodos e eventos próprios de cada grelha oficial, com upsert idempotente.
++ supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql
+~ apps/web/src/app/api/secretaria/pagamentos/processar/route.ts
+~ apps/web/src/components/secretaria/BalcaoAtendimento.tsx
 ```
+
+Nenhum SQL remoto, migration repair, merge ou deployment de Production faz parte deste apply.
 
 ## Risco
 
-Uma autorização SQL incorrecta pode permitir uma virada indevida; uma resolução ambígua de avaliação pode lançar notas na avaliação errada; datas de subsistemas não devem ser inferidas do calendário Regular.
+A migration cria um novo contrato SQL financeiro e executa writes em `pagamentos` através do writer canónico. Se a validação batch estiver errada, o impacto possível é bloqueio indevido de checkout ou alteração da semântica de recebimento multi-item.
 
-## Proteções obrigatórias no diff final
+Mitigações obrigatórias antes de qualquer merge/deploy:
 
-- Nenhuma nota numérica será aplicada por nome ambíguo: exigirá `avaliacao_id` validado contra escola, matrícula, turma e ano.
-- `resultado_final = PENDENTE` será bloqueante.
-- O lote inteiro fará rollback se uma linha falhar.
-- Templates serão seleccionados explicitamente pela escola e criados inactivos.
-- O SQL será validado numa transacção antes de qualquer aplicação remota.
+- testar primeiro em ambiente local/descartável;
+- provar rollback integral quando um item posterior falha;
+- provar idempotência e concorrência;
+- manter checkout de item único no caminho canónico actual;
+- KF2 verde;
+- build/preview Next/Vercel verde;
+- nenhuma aplicação remota em produção durante a validação.
 
-## Como aprovar
+Rollback de código: `git revert` dos commits deste run.
+A migration ainda não foi aplicada ao Supabase remoto, portanto não existe rollback de banco a executar neste momento.
 
-Commit com mensagem: `APPROVE: 1E55913B-0D0B-4AAF-82E8-2203535A27CE`
+## Aprovação
+
+Aprovado explicitamente pelo responsável em 2026-09-30.
+
+Commit de aprovação: `APPROVE: 51fc910e-e33c-41b1-8eb5-e61689eb9eac`
 
 ## Como rejeitar
 
-Commit com mensagem: `REJECT: 1E55913B-0D0B-4AAF-82E8-2203535A27CE [motivo]`
+Commit com mensagem:
+
+`REJECT: 51fc910e-e33c-41b1-8eb5-e61689eb9eac [motivo]`

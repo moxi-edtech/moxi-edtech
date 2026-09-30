@@ -16,7 +16,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
 import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
 
-export default async function AlunoPerfilPage({ escolaId, alunoId, role, selectedYear }: { escolaId?: string | null; alunoId: string; role: DossierRole; selectedYear?: number | null }) {
+export default async function AlunoPerfilPage({ escolaId, alunoId, role, selectedYear, embedded = false }: { escolaId?: string | null; alunoId: string; role: DossierRole; selectedYear?: number | null; embedded?: boolean }) {
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return notFound();
@@ -117,8 +117,8 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-5">
+    <div className={embedded ? "bg-slate-50" : "min-h-screen bg-slate-50"}>
+      <div className={`max-w-6xl mx-auto space-y-5 ${embedded ? "p-4 sm:p-6" : "px-6 py-8"}`}>
         <DossierHeader aluno={aluno} role={role} escolaId={resolvedEscolaId} />
         <DossierTabs
           aluno={aluno}

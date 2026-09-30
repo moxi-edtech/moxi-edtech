@@ -44,7 +44,7 @@ export default function HorariosSlotsPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
-        <Spinner className="text-klasse-gold" size={24} />
+        <Spinner className="text-amber" size={24} />
         <span className="ml-3 text-sm">A carregar horários...</span>
       </div>
     }>
@@ -226,7 +226,7 @@ function HorariosSlotsContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
-      <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+      <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Estrutura de Horários</h1>
@@ -274,7 +274,7 @@ function HorariosSlotsContent() {
             className={`rounded-2xl border p-4 text-sm ${
               excessoCarga > 0
                 ? "border-rose-200 bg-rose-50 text-rose-800"
-                : "border-klasse-green-200 bg-klasse-green-50 text-klasse-green-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800"
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -300,10 +300,10 @@ function HorariosSlotsContent() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-slate-500">
-              <Spinner className="text-klasse-gold" size={24} />
+              <Spinner className="text-amber" size={24} />
               <span className="ml-3 text-sm">Carregando horários...</span>
             </div>
           ) : (

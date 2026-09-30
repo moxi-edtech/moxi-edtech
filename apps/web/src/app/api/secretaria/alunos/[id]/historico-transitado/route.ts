@@ -99,6 +99,46 @@ function sortNotas(rows: any[]) {
   });
 }
 
+function uniqueDisciplinasById(rows: any[]) {
+  const seen = new Set<string>();
+
+  return rows.filter((row) => {
+    const disciplinaId = typeof row?.disciplina_id === "string" ? row.disciplina_id : null;
+    if (!disciplinaId || seen.has(disciplinaId)) return false;
+    seen.add(disciplinaId);
+    return true;
+  });
+}
+
+async function resolveAlunoClasseIds({
+  supabase,
+  escolaId,
+  alunoId,
+  historicalClasseIds = [],
+}: {
+  supabase: any;
+  escolaId: string;
+  alunoId: string;
+  historicalClasseIds?: string[];
+}) {
+  const { data: matriculas, error } = await supabase
+    .from("matriculas")
+    .select("turmas!inner(classe_id)")
+    .eq("escola_id", escolaId)
+    .eq("aluno_id", alunoId)
+    .not("turma_id", "is", null);
+
+  if (error) return { classeIds: [] as string[], error };
+
+  const classeIds = new Set<string>(historicalClasseIds.filter(Boolean));
+  for (const matricula of matriculas ?? []) {
+    const classeId = matricula?.turmas?.classe_id;
+    if (typeof classeId === "string") classeIds.add(classeId);
+  }
+
+  return { classeIds: [...classeIds], error: null };
+}
+
 export async function GET(request: Request, context: RouteContext) {
   try {
     const params = ParamsSchema.safeParse(await context.params);
@@ -117,13 +157,7 @@ export async function GET(request: Request, context: RouteContext) {
     const { supabase, escolaId } = routeContext;
     const { classe_id: classeId, ano_letivo_id: anoLetivoId } = parsedQuery.data;
 
-    const [classesRes, sessionsRes, recordsRes] = await Promise.all([
-      supabase
-        .from("classes")
-        .select("id, nome, numero, curso_id")
-        .eq("escola_id", escolaId)
-        .order("numero", { ascending: true, nullsFirst: false })
-        .order("nome", { ascending: true }),
+    const [sessionsRes, recordsRes] = await Promise.all([
       supabase
         .from("anos_letivos")
         .select("id, ano, ativo, data_inicio, data_fim")
@@ -158,10 +192,6 @@ export async function GET(request: Request, context: RouteContext) {
         .order("updated_at", { ascending: false }),
     ]);
 
-    if (classesRes.error) {
-      return NextResponse.json({ ok: false, error: classesRes.error.message }, { status: 400 });
-    }
-
     if (recordsRes.error) {
       return NextResponse.json({ ok: false, error: recordsRes.error.message }, { status: 400 });
     }
@@ -183,13 +213,6 @@ export async function GET(request: Request, context: RouteContext) {
       };
     });
 
-    const classes = (classesRes.data ?? []).map((row: any) => ({
-      id: row.id as string,
-      nome: row.nome as string,
-      numero: typeof row.numero === "number" ? row.numero : null,
-      curso_id: (row.curso_id as string | null) ?? null,
-    }));
-
     const records = (recordsRes.data ?? []).map((row: any) => ({
       id: row.id as string,
       classe_id: row.classe_id as string,
@@ -202,13 +225,44 @@ export async function GET(request: Request, context: RouteContext) {
         academicYears.find((item) => item.id === row.ano_letivo_id)?.label ?? `Ano letivo ${row.ano_letivo}`,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
-      notas: sortNotas(Array.isArray(row.notas) ? row.notas : []).map((nota: any) => ({
+      notas: sortNotas(uniqueDisciplinasById(Array.isArray(row.notas) ? row.notas : [])).map((nota: any) => ({
         id: nota.id as string,
         disciplina_id: nota.disciplina_id as string,
         disciplina_nome: nota.disciplina_nome as string,
         ordem: typeof nota.ordem === "number" ? nota.ordem : null,
         nota_final: typeof nota.nota_final === "number" ? nota.nota_final : Number(nota.nota_final),
       })),
+    }));
+
+    const classeResolution = await resolveAlunoClasseIds({
+      supabase,
+      escolaId,
+      alunoId: params.data.id,
+      historicalClasseIds: records.map((record) => record.classe_id),
+    });
+    if (classeResolution.error) {
+      return NextResponse.json({ ok: false, error: classeResolution.error.message }, { status: 400 });
+    }
+
+    const classesRes = classeResolution.classeIds.length
+      ? await supabase
+          .from("classes")
+          .select("id, nome, numero, curso_id")
+          .eq("escola_id", escolaId)
+          .in("id", classeResolution.classeIds)
+          .order("numero", { ascending: true, nullsFirst: false })
+          .order("nome", { ascending: true })
+      : { data: [], error: null };
+
+    if (classesRes.error) {
+      return NextResponse.json({ ok: false, error: classesRes.error.message }, { status: 400 });
+    }
+
+    const classes = (classesRes.data ?? []).map((row: any) => ({
+      id: row.id as string,
+      nome: row.nome as string,
+      numero: typeof row.numero === "number" ? row.numero : null,
+      curso_id: (row.curso_id as string | null) ?? null,
     }));
 
     let editor: null | {
@@ -257,7 +311,7 @@ export async function GET(request: Request, context: RouteContext) {
       }
 
       const obrigatorias = (matrizRows ?? []).filter((row: any) => row.obrigatoria !== false);
-      const sourceRows = obrigatorias.length > 0 ? obrigatorias : matrizRows ?? [];
+      const sourceRows = uniqueDisciplinasById(obrigatorias.length > 0 ? obrigatorias : matrizRows ?? []);
       const academicYear = academicYears.find((item) => item.id === anoLetivoId);
       if (!academicYear) {
         return NextResponse.json({ ok: false, error: "Ano letivo inválido para esta escola." }, { status: 404 });
@@ -310,12 +364,44 @@ export async function POST(request: Request, context: RouteContext) {
     if (!parsedBody.success) {
       return NextResponse.json({ ok: false, error: parsedBody.error.flatten() }, { status: 400 });
     }
+    const notaIds = parsedBody.data.notas.map((nota) => nota.disciplina_id);
+    if (new Set(notaIds).size !== notaIds.length) {
+      return NextResponse.json(
+        { ok: false, error: "Não é permitido guardar a mesma disciplina mais de uma vez." },
+        { status: 400 },
+      );
+    }
 
     const routeContext = await resolveRouteContext(params.data.id);
     if (!routeContext.ok) return routeContext.response;
 
     const { supabase, escolaId } = routeContext;
     const { classe_id, ano_letivo_id, notas } = parsedBody.data;
+
+    const { data: historicalRecords, error: historicalRecordsError } = await supabase
+      .from("historico_transitado_anos")
+      .select("classe_id")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", params.data.id);
+    if (historicalRecordsError) {
+      return NextResponse.json({ ok: false, error: historicalRecordsError.message }, { status: 400 });
+    }
+
+    const classeResolution = await resolveAlunoClasseIds({
+      supabase,
+      escolaId,
+      alunoId: params.data.id,
+      historicalClasseIds: (historicalRecords ?? []).map((record: any) => record.classe_id),
+    });
+    if (classeResolution.error) {
+      return NextResponse.json({ ok: false, error: classeResolution.error.message }, { status: 400 });
+    }
+    if (!classeResolution.classeIds.includes(classe_id)) {
+      return NextResponse.json(
+        { ok: false, error: "A classe selecionada não está vinculada ao histórico deste aluno." },
+        { status: 400 },
+      );
+    }
 
     const { data: academicYear, error: academicYearError } = await supabase
       .from("anos_letivos")

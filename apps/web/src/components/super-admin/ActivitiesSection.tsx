@@ -51,7 +51,7 @@ export default function ActivitiesSection({ activities, isLoading = false }: { a
           activities.map((act) => (
             <article
               key={act.id}
-              className="flex items-start justify-between gap-4 rounded-xl border border-transparent p-3 transition hover:border-slate-200 hover:ring-1 hover:ring-klasse-gold/25"
+              className="flex items-start justify-between gap-4 rounded-xl border border-transparent p-3 transition hover:border-slate-200 hover:ring-1 hover:ring-amber/25"
             >
               <div>
                 <p className="text-sm font-semibold text-slate-950">{act.titulo}</p>
@@ -64,7 +64,7 @@ export default function ActivitiesSection({ activities, isLoading = false }: { a
       </div>
 
       {activities.length > 0 && (
-        <button className="mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:ring-1 hover:ring-klasse-gold/25">
+        <button className="mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:ring-1 hover:ring-amber/25">
           Ver histórico completo
         </button>
       )}

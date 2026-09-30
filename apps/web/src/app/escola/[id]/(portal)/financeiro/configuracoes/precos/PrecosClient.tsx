@@ -160,7 +160,7 @@ export default function PrecosClient({
   }
 
   return (
-    <div className={embedded ? "space-y-8 font-sans text-slate-900" : "max-w-7xl mx-auto p-6 space-y-8 font-sans text-slate-900"}>
+    <div className={embedded ? "space-y-8 font-sans text-slate-900" : "max-w-6xl mx-auto p-6 space-y-8 font-sans text-slate-900"}>
       {!embedded && (
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-6">
           <div>

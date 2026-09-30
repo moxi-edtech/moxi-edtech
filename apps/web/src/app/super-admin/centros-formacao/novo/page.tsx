@@ -275,7 +275,7 @@ export default function NovoCentroFormacaoPage() {
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
                   active
-                    ? "bg-klasse-green text-white"
+                    ? "bg-emerald text-white"
                     : done
                     ? "bg-emerald-500 text-white"
                     : "bg-slate-100 text-slate-500"
@@ -283,7 +283,7 @@ export default function NovoCentroFormacaoPage() {
               >
                 {number}
               </div>
-              <p className={`text-xs font-semibold ${active ? "text-klasse-green" : "text-slate-500"}`}>
+              <p className={`text-xs font-semibold ${active ? "text-emerald" : "text-slate-500"}`}>
                 {title}
               </p>
             </div>
@@ -306,7 +306,7 @@ export default function NovoCentroFormacaoPage() {
                     onClick={() => setForm(prev => ({ ...prev, operacao_tipo: tipo.id as any }))}
                     className={`flex-1 flex flex-col items-start p-3 rounded-xl border-2 transition-all ${
                       form.operacao_tipo === tipo.id 
-                        ? "border-klasse-green bg-white shadow-md ring-4 ring-emerald-50" 
+                        ? "border-emerald bg-white shadow-md ring-4 ring-emerald-50"
                         : "border-slate-100 bg-slate-50 opacity-60 grayscale"
                     }`}
                   >
@@ -453,7 +453,7 @@ export default function NovoCentroFormacaoPage() {
                       onClick={() => toggleModalidade(modalidade)}
                       className={`rounded-full border px-3 py-1.5 text-sm ${
                         selected
-                          ? "border-klasse-green bg-klasse-green text-white"
+                          ? "border-emerald bg-emerald text-white"
                           : "border-slate-300 bg-white text-slate-700"
                       }`}
                     >
@@ -625,7 +625,7 @@ export default function NovoCentroFormacaoPage() {
 }
 
 const INPUT_CLASS =
-  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-green";
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

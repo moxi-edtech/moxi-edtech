@@ -31,7 +31,7 @@ export function FormacaoRoleShell({ title, items, children }: FormacaoRoleShellP
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur md:hidden">
         <div className="flex h-16 items-center justify-between px-4">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-klasse-gold/30 bg-klasse-gold/15">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber/30 bg-amber/15">
               <Image src="/logo-klasse-ui.png" alt="KLASSE" width={16} height={16} className="h-4 w-4 object-contain" />
             </span>
             <div className="min-w-0">
@@ -58,8 +58,8 @@ export function FormacaoRoleShell({ title, items, children }: FormacaoRoleShellP
                   href={item.href}
                   className={`flex items-center gap-2 rounded-xl px-3 py-2 ${
                     active
-                      ? 'bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25'
-                      : 'text-slate-400 hover:text-klasse-gold'
+                      ? 'bg-slate-900 text-amber ring-1 ring-amber/25'
+                      : 'text-slate-400 hover:text-amber'
                   }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -87,7 +87,7 @@ export function FormacaoRoleShell({ title, items, children }: FormacaoRoleShellP
               aria-current={active ? 'page' : undefined}
               className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${
                 active
-                  ? 'bg-klasse-gold/20 text-slate-900 ring-1 ring-klasse-gold/30'
+                  ? 'bg-amber/20 text-slate-900 ring-1 ring-amber/30'
                   : 'text-zinc-700 hover:bg-zinc-100'
               }`}
             >

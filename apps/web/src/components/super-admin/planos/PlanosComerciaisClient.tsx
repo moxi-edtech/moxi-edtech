@@ -287,7 +287,7 @@ function StatsSection({ totals, promoCount }: { totals: { monthly: number, annua
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Planos com promoção ativa</p>
-        <p className="mt-2 text-2xl font-bold text-klasse-green">{promoCount}</p>
+        <p className="mt-2 text-2xl font-bold text-emerald">{promoCount}</p>
       </div>
     </section>
   );
@@ -339,7 +339,7 @@ function PlanCard({
               min={0}
               value={item.price_mensal_kz}
               onChange={(e) => onUpdate({ price_mensal_kz: Math.max(0, Math.round(Number(e.target.value || 0))) })}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-klasse-green focus:ring-4 focus:ring-klasse-green/10"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald focus:ring-4 focus:ring-emerald/10"
             />
           </div>
           <div className="space-y-1.5">
@@ -349,7 +349,7 @@ function PlanCard({
               min={0}
               value={item.price_anual_kz}
               onChange={(e) => onUpdate({ price_anual_kz: Math.max(0, Math.round(Number(e.target.value || 0))) })}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-klasse-green focus:ring-4 focus:ring-klasse-green/10"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald focus:ring-4 focus:ring-emerald/10"
             />
           </div>
           <div className="space-y-1.5">
@@ -360,7 +360,7 @@ function PlanCard({
               max={365}
               value={item.trial_days}
               onChange={(e) => onUpdate({ trial_days: Math.min(365, Math.max(0, Math.round(Number(e.target.value || 0)))) })}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-klasse-green focus:ring-4 focus:ring-klasse-green/10"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald focus:ring-4 focus:ring-emerald/10"
             />
           </div>
 
@@ -375,7 +375,7 @@ function PlanCard({
                   step="0.01"
                   value={item.discount_percent}
                   onChange={(e) => onUpdate({ discount_percent: Math.min(100, Math.max(0, Number(e.target.value || 0))) })}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-klasse-green focus:ring-4 focus:ring-klasse-green/10 pr-8"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald focus:ring-4 focus:ring-emerald/10 pr-8"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">%</span>
               </div>
@@ -386,7 +386,7 @@ function PlanCard({
                 type="date"
                 value={item.promo_ends_at ? item.promo_ends_at.slice(0, 10) : ""}
                 onChange={(e) => onUpdate({ promo_ends_at: e.target.value ? new Date(`${e.target.value}T23:59:59.000Z`).toISOString() : null })}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-klasse-green focus:ring-4 focus:ring-klasse-green/10"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald focus:ring-4 focus:ring-emerald/10"
               />
             </div>
             <div className="space-y-1.5">
@@ -395,7 +395,7 @@ function PlanCard({
                 value={item.promo_label ?? ""}
                 onChange={(e) => onUpdate({ promo_label: e.target.value || null })}
                 placeholder="Ex.: Campanha de Natal"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-klasse-green focus:ring-4 focus:ring-klasse-green/10"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald focus:ring-4 focus:ring-emerald/10"
               />
             </div>
           </div>

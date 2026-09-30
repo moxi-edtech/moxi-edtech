@@ -16,24 +16,24 @@ export default function AdminFuncionariosPage() {
           type="button"
           onClick={() => setTab("listar")}
           className={`px-6 py-3 font-medium relative ${
-            tab === "listar" ? "text-klasse-gold" : "text-slate-500 hover:text-slate-900"
+            tab === "listar" ? "text-amber" : "text-slate-500 hover:text-slate-900"
           }`}
         >
           Funcionários
           {tab === "listar" && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-klasse-gold" />
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber" />
           )}
         </button>
         <button
           type="button"
           onClick={() => setTab("cadastrar")}
           className={`px-6 py-3 font-medium relative ${
-            tab === "cadastrar" ? "text-klasse-gold" : "text-slate-500 hover:text-slate-900"
+            tab === "cadastrar" ? "text-amber" : "text-slate-500 hover:text-slate-900"
           }`}
         >
           Cadastrar
           {tab === "cadastrar" && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-klasse-gold" />
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber" />
           )}
         </button>
       </div>

@@ -169,7 +169,7 @@ export default function FechoCaixaPage() {
   };
 
   return (
-    <main className="space-y-8">
+    <div className="space-y-8">
       
       {/* HEADER DE GESTÃO */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 pb-6">
@@ -256,7 +256,7 @@ export default function FechoCaixaPage() {
           <Button
             onClick={declareFecho}
             disabled={declaring}
-            className="bg-klasse-gold text-white px-4 py-2 rounded-lg text-sm font-semibold"
+            className="bg-amber text-white px-4 py-2 rounded-lg text-sm font-semibold"
           >
             {declaring ? "Declarando..." : "Declarar Fecho"}
           </Button>
@@ -464,6 +464,6 @@ export default function FechoCaixaPage() {
           </button>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

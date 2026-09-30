@@ -341,7 +341,7 @@ export function Dashboard({
   return (
     <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
       <div className="flex-1 flex">
-        <main className="flex-1 p-6 lg:p-8 pb-32">
+        <div className="flex-1 p-6 lg:p-8 pb-32">
           <div className="max-w-5xl mx-auto space-y-8">
             <DashboardHeader
               title={dashboardTitle}
@@ -383,10 +383,10 @@ export function Dashboard({
                     href={buildPortalHref(escolaParam, "/secretaria/admissoes?nova=1")}
                     className="
                       inline-flex items-center justify-center gap-2
-                      rounded-xl bg-klasse-gold px-4 py-2
+                      rounded-xl bg-amber px-4 py-2
                       text-sm font-semibold text-white
                       hover:brightness-95
-                      focus:outline-none focus:ring-4 focus:ring-klasse-gold/20
+                      focus:outline-none focus:ring-4 focus:ring-amber/20
                     "
                   >
                     Nova Matrícula
@@ -518,7 +518,7 @@ export function Dashboard({
                       href={buildPortalHref(escolaParam, "/secretaria/acesso-alunos")}
                     />
                     <AcaoRapidaCard
-                      icon={<Upload size={20} className="text-klasse-green-600" />}
+                      icon={<Upload size={20} className="text-emerald-600" />}
                       label="Migração"
                       href={buildPortalHref(escolaParam, "/secretaria/migracao/alunos")}
                     />
@@ -541,7 +541,7 @@ export function Dashboard({
               </div>
             </div>
           </div>
-        </main>
+        </div>
       </div>
 
       {selectedAlunoIdForFicha && (

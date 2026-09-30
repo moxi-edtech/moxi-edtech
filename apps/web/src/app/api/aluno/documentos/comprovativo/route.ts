@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     // Validar se a intenção pertence ao aluno
     const { data: intent } = await routeClient
       .from("pagamento_intents")
-      .select("id, status")
+      .select("id, status, evidence_url")
       .eq("id", intentId)
       .eq("escola_id", ctx.escolaId)
       .eq("aluno_id", alunoId)
@@ -52,6 +52,16 @@ export async function POST(request: Request) {
 
     if (intent.status === "settled") {
       return NextResponse.json({ ok: false, error: "Esta solicitação já está paga e concluída." }, { status: 400 });
+    }
+
+    // Retry seguro: o comprovativo já foi recebido pela secretaria.
+    if (intent.status === "pending" && intent.evidence_url) {
+      return NextResponse.json({
+        ok: true,
+        status: "pending",
+        idempotent: true,
+        message: "O comprovativo já foi recebido e aguarda validação da secretaria.",
+      });
     }
 
     const objectPath = `${ctx.escolaId}/${alunoId}/servicos/${intentId}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
@@ -69,6 +79,7 @@ export async function POST(request: Request) {
 
     const evidenceUrl = signedData?.signedUrl;
     if (!evidenceUrl) {
+      await routeClient.storage.from(COMPROVATIVOS_BUCKET).remove([objectPath]);
       return NextResponse.json({ ok: false, error: "Falha ao gerar URL do comprovativo" }, { status: 500 });
     }
 
@@ -89,7 +100,12 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, status: "pending" });
+    return NextResponse.json({
+      ok: true,
+      status: "pending",
+      idempotent: false,
+      message: "Comprovativo recebido. A secretaria irá validar o pagamento.",
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

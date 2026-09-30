@@ -1,9 +1,9 @@
 # POP-P1-03 - Professores, Atribuicoes e Pendencias (Admin)
 
-Versao: 1.2.0
-Data: 2026-06-28
+Versao: 1.3.0
+Data: 2026-08-21
 Modulo: Admin da Escola
-Perfil principal: admin_escola
+Perfis autorizados: admin, admin_escola, admin_financeiro, admin_secretaria, diretor
 Tempo medio alvo: 10-40 minutos por ciclo
 
 ## 1. Objetivo
@@ -51,6 +51,10 @@ Validado contra `apps/web/src/app/escola/[id]/(portal)/professores/page.tsx`.
 - Permissao para criar/editar usuario docente.
 - Turmas e disciplinas ja estruturadas para atribuicao.
 
+Regra de escopo pedagógico:
+- `secretaria` e `financeiro` consultam as atribuições, mas não executam atribuição, remoção ou edição pedagógica.
+- A UI oculta as ações para esses perfis e a API/RLS continua bloqueando tentativas diretas.
+
 ## 6. Procedimento A - Cadastrar professor (aba Adicionar)
 
 1. Abrir `Professores > Adicionar`.
@@ -94,6 +98,11 @@ Observacao tecnica:
 3. Confirmar atribuicao.
 4. Validar retorno `Atribuição salva com sucesso.`.
 5. Para desfazer, remover atribuicao na grade da turma.
+
+Atalho no fluxo de turmas:
+- Na lista de turmas, clicar na ação de professores abre o modal de atribuição sem sair do contexto.
+- O mesmo vínculo `turma x disciplina` é usado pela lista, pelo quadro de horários e pela área de Professores.
+- A ausência de professor aparece como pendência operacional; perfis sem permissão veem apenas o estado, sem botão acionável.
 
 Regra tecnica:
 - A atribuicao usa `disciplina_id` da matriz curricular (`curso_matriz_id`).
@@ -203,6 +212,6 @@ Uso reservado para Suporte Tecnico ou rotina assistida. Nao aparece como botao n
 
 ## 17. Revisao e versao
 
-- Ultima revisao: 2026-06-28
-- Proxima revisao: 2026-07-12
-- Mudancas desta versao: guardrail de consistencia reclassificado como apoio tecnico, pois nao existe como acao visivel na UI.
+- Ultima revisao: 2026-08-21
+- Proxima revisao: 2026-09-04
+- Mudancas desta versao: modal contextual na lista de turmas e separação explícita entre consulta operacional e gestão pedagógica.

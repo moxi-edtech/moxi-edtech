@@ -5,6 +5,8 @@ import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
+import { resolveSchoolOperatingProfile } from '@/lib/school-profile/resolve-school-profile'
+import { canUseFinancialSuspension } from '@/lib/school-profile/finance-capabilities'
 
 // Rule: 6 -> 7, 9 -> 10, 12 -> concluido
 function proximaClasseNumero(num: number): number | null {
@@ -59,6 +61,7 @@ export async function GET(req: Request) {
     const turmaIds = (turmas || []).map((t: any) => t.id).filter(Boolean)
     const bloqueioPorTurma = new Map<string, { inadimplencia: number; reprovacao: number; detalhes: any[] }>()
 
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId)
     let bloquearInadimplentes = false
     try {
       const { data: cfg } = await supabase
@@ -66,7 +69,7 @@ export async function GET(req: Request) {
         .select('bloquear_inadimplentes')
         .eq('escola_id', escolaId)
         .maybeSingle()
-      bloquearInadimplentes = Boolean((cfg as any)?.bloquear_inadimplentes)
+      bloquearInadimplentes = Boolean((cfg as any)?.bloquear_inadimplentes) && canUseFinancialSuspension(operatingProfile)
     } catch {}
 
     if (turmaIds.length > 0) {

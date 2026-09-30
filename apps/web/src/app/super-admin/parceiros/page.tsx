@@ -288,7 +288,7 @@ export default function SuperAdminAfiliadosPage() {
             <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
               <span>Super Admin</span>
               <ChevronRight size={10} />
-              <span className="text-klasse-green">Gestão de Parceiros</span>
+              <span className="text-emerald">Gestão de Parceiros</span>
             </nav>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Parcerias e Escritórios</h1>
             <p className="text-sm text-slate-500 font-medium">Controle quem tem acesso aos portais de parcerias.</p>
@@ -301,7 +301,7 @@ export default function SuperAdminAfiliadosPage() {
 
         {loading ? (
           <div className="flex items-center justify-center p-20 bg-white rounded-3xl border border-slate-200">
-            <Loader2 className="w-8 h-8 animate-spin text-klasse-green" />
+            <Loader2 className="w-8 h-8 animate-spin text-emerald" />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -315,7 +315,7 @@ export default function SuperAdminAfiliadosPage() {
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-900 leading-tight">{af.nome}</h4>
-                        <p className="text-[10px] font-black text-klasse-gold uppercase tracking-tighter">{af.codigo}</p>
+                        <p className="text-[10px] font-black text-amber uppercase tracking-tighter">{af.codigo}</p>
                         {af.email && (
                           <p className="text-xs text-slate-500 mt-1">{af.email}</p>
                         )}
@@ -342,7 +342,7 @@ export default function SuperAdminAfiliadosPage() {
                       onClick={() => loadMembers(af)}
                       className="flex-1 rounded-lg text-[11px] font-bold gap-2 border-slate-200"
                     >
-                      <ShieldCheck size={14} className="text-klasse-green" />
+                      <ShieldCheck size={14} className="text-emerald" />
                       MEMBROS
                     </Button>
                     <button 
@@ -373,7 +373,7 @@ export default function SuperAdminAfiliadosPage() {
                     <input 
                       required
                       placeholder="Ex: Eduardo Santos"
-                      className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
+                      className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald"
                       value={formData.nome}
                       onChange={e => setFormData({ ...formData, nome: e.target.value })}
                     />
@@ -388,7 +388,7 @@ export default function SuperAdminAfiliadosPage() {
                           required
                           type="email"
                           placeholder="nome@dominio.com"
-                          className="w-full p-3 pl-10 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
+                          className="w-full p-3 pl-10 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald"
                           value={formData.email}
                           onChange={e => setFormData({ ...formData, email: e.target.value })}
                         />
@@ -399,7 +399,7 @@ export default function SuperAdminAfiliadosPage() {
                       <input 
                         required
                         placeholder="EDUARDO10"
-                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green font-bold uppercase"
+                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald font-bold uppercase"
                         value={formData.codigo}
                         onChange={e => setFormData({ ...formData, codigo: e.target.value })}
                       />
@@ -411,7 +411,7 @@ export default function SuperAdminAfiliadosPage() {
                         type="password"
                         placeholder="****"
                         maxLength={4}
-                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green text-center tracking-[0.5em]"
+                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald text-center tracking-[0.5em]"
                         value={formData.pin}
                         onChange={e => setFormData({ ...formData, pin: e.target.value })}
                       />
@@ -446,7 +446,7 @@ export default function SuperAdminAfiliadosPage() {
                 <div className="flex justify-between items-center gap-4">
                   <div>
                     <h3 className="text-xl font-black text-slate-900 leading-tight">{selectedAfiliado.nome}</h3>
-                    <p className="text-xs font-bold uppercase tracking-widest text-klasse-gold">{selectedAfiliado.codigo}</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-amber">{selectedAfiliado.codigo}</p>
                   </div>
                   <button
                     onClick={() => {
@@ -474,7 +474,7 @@ export default function SuperAdminAfiliadosPage() {
 
                     {loadingMembers ? (
                       <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-10">
-                        <Loader2 className="w-6 h-6 animate-spin text-klasse-green" />
+                        <Loader2 className="w-6 h-6 animate-spin text-emerald" />
                       </div>
                     ) : selectedMembers.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
@@ -515,7 +515,7 @@ export default function SuperAdminAfiliadosPage() {
 
                   <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                     <div className="flex items-center gap-2 mb-4">
-                      <UserPlus size={16} className="text-klasse-green" />
+                      <UserPlus size={16} className="text-emerald" />
                       <h4 className="text-sm font-black text-slate-900">Adicionar membro</h4>
                     </div>
                     <form onSubmit={handleCreateMember} className="space-y-4">
@@ -524,7 +524,7 @@ export default function SuperAdminAfiliadosPage() {
                         <input
                           required
                           placeholder="Ex: Operador Comercial"
-                          className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green bg-white"
+                          className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald bg-white"
                           value={memberForm.nome}
                           onChange={e => setMemberForm({ ...memberForm, nome: e.target.value })}
                         />
@@ -539,7 +539,7 @@ export default function SuperAdminAfiliadosPage() {
                           type="password"
                           minLength={4}
                           placeholder="PIN do membro"
-                          className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green bg-white text-center tracking-[0.4em]"
+                          className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald bg-white text-center tracking-[0.4em]"
                           value={memberForm.pin}
                           onChange={e => setMemberForm({ ...memberForm, pin: e.target.value })}
                         />

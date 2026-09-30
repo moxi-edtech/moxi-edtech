@@ -28,7 +28,7 @@ export default function MorningBriefing({ data }: Props) {
     >
       {/* Detalhes de Background Decorativos */}
       <div className="absolute right-0 top-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-slate-50/50 blur-3xl" />
-      <div className="absolute left-0 bottom-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-klasse-green/5 blur-3xl" />
+      <div className="absolute left-0 bottom-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-emerald/5 blur-3xl" />
 
       <div className="relative z-10 flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
         <div className="flex items-center gap-6">
@@ -36,7 +36,7 @@ export default function MorningBriefing({ data }: Props) {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-[2rem] shadow-inner ${
-              tudoBem ? "bg-klasse-green/10 text-klasse-green" : "bg-rose-50 text-rose-600"
+              tudoBem ? "bg-emerald/10 text-emerald" : "bg-rose-50 text-rose-600"
             }`}
           >
             {tudoBem ? (
@@ -44,7 +44,7 @@ export default function MorningBriefing({ data }: Props) {
                 <motion.div 
                   animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="absolute inset-0 rounded-full bg-klasse-green/20"
+                  className="absolute inset-0 rounded-full bg-emerald/20"
                 />
                 <Check className="relative h-10 w-10" strokeWidth={2.5} />
               </div>
@@ -74,7 +74,7 @@ export default function MorningBriefing({ data }: Props) {
             <div className="text-right">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Health Score</p>
               <div className="flex items-baseline gap-1">
-                <span className={`text-5xl font-black tabular-nums tracking-tighter ${scoreMedio > 90 ? "text-klasse-green" : "text-rose-600"}`}>
+                <span className={`text-5xl font-black tabular-nums tracking-tighter ${scoreMedio > 90 ? "text-emerald" : "text-rose-600"}`}>
                   {scoreMedio}
                 </span>
                 <span className="text-lg font-bold text-slate-300">%</span>

@@ -37,6 +37,17 @@ type EventoCalendario = {
   cor_hex?: string | null;
 };
 
+type CalendarioTemplate = {
+  id: string;
+  nome: string;
+  ano_base: number;
+  descricao: string | null;
+  subsistema?: string | null;
+  fonte_nome?: string | null;
+  fonte_referencia?: string | null;
+  versao_documento?: string | null;
+};
+
 type Props = {
   params: Promise<{ id: string }>;
 };
@@ -64,6 +75,7 @@ export default function CalendarioConfigPage({ params }: Props) {
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);
   const [anoLetivo, setAnoLetivo] = useState<{ id: string; ano: number; ativo: boolean; data_inicio: string; data_fim: string } | null>(null);
   const [anosDisponiveis, setAnosDisponiveis] = useState<Array<{ id: string; ano: number; ativo: boolean }>>([]);
+  const [templatesOficiais, setTemplatesOficiais] = useState<CalendarioTemplate[]>([]);
   const [selectedAnoId, setSelectedAnoId] = useState<string | null>(null);
   
   // Modal State
@@ -80,9 +92,10 @@ export default function CalendarioConfigPage({ params }: Props) {
     if (!escolaUuid) return;
     setLoading(true);
     try {
-      const [json, anosRes] = await Promise.all([
+      const [json, anosRes, templatesRes] = await Promise.all([
         fetchPeriodosLetivos(escolaParam, targetAnoId || selectedAnoId || undefined),
-        supabase.from('anos_letivos').select('id, ano, ativo, data_inicio, data_fim').eq('escola_id', escolaUuid).order('ano', { ascending: false })
+        supabase.from('anos_letivos').select('id, ano, ativo, data_inicio, data_fim').eq('escola_id', escolaUuid).order('ano', { ascending: false }),
+        (supabase as any).from('calendario_templates').select('id, nome, ano_base, descricao, subsistema, fonte_nome, fonte_referencia, versao_documento').eq('is_oficial', true).order('ano_base', { ascending: false }).order('nome', { ascending: true }),
       ]);
 
       if (!json.error && Array.isArray(json?.periodos)) {
@@ -101,6 +114,7 @@ export default function CalendarioConfigPage({ params }: Props) {
       }
 
       if (anosRes.data) setAnosDisponiveis(anosRes.data as any);
+      if (!templatesRes.error) setTemplatesOficiais((templatesRes.data ?? []) as CalendarioTemplate[]);
 
     } catch (e) {
       console.error(e);
@@ -117,6 +131,34 @@ export default function CalendarioConfigPage({ params }: Props) {
   const handleAnoChange = (id: string) => {
     setSelectedAnoId(id);
     loadData(id);
+  };
+
+  const handleApplyOfficialTemplate = async (template: CalendarioTemplate) => {
+    const ok = await confirm({
+      title: "Aplicar calendário oficial",
+      message: `Aplicar ${template.nome}? O calendário do decreto será usado como base para o ano ${template.ano_base}. Ajustes posteriores devem ser justificados pela escola.`,
+      confirmLabel: "Aplicar calendário",
+    });
+    if (!ok) return;
+    setSaving(true);
+    const tid = toast({ variant: "syncing", title: "A aplicar calendário oficial...", duration: 0 });
+    try {
+      const response = await fetch(`/api/escola/${escolaParam}/admin/calendario/aplicar-template`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível aplicar o calendário oficial.");
+      success("Calendário oficial aplicado", `${template.nome} foi aplicado ao ano letivo.`);
+      setSelectedAnoId(payload.anoLetivoId);
+      await loadData(payload.anoLetivoId);
+    } catch (cause) {
+      error(cause instanceof Error ? cause.message : "Não foi possível aplicar o calendário oficial.");
+    } finally {
+      dismiss(tid);
+      setSaving(false);
+    }
   };
 
   // --- HANDLERS ---
@@ -200,30 +242,20 @@ export default function CalendarioConfigPage({ params }: Props) {
     setSaving(true);
     const tid = toast({ variant: "syncing", title: "A guardar alterações...", duration: 0 });
     try {
-      // 1. Salvar datas macro do Ano Letivo
-      if (anoLetivo && escolaUuid) {
-        const { error: anoErr } = await supabase
-          .from('anos_letivos')
-          .update({ 
-            data_inicio: anoLetivo.data_inicio, 
-            data_fim: anoLetivo.data_fim 
-          })
-          .eq('id', anoLetivo.id);
-        if (anoErr) throw anoErr;
-      }
-
-      // 2. Salvar Trimestres
-      const payload = periodos.map((periodo) => ({
-        ...periodo,
-        ano_letivo_id: periodo.ano_letivo_id || anoLetivo?.id || "",
-      }));
-
-      const res = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos/upsert-bulk`, {
+      if (!anoLetivo) throw new Error("Selecione um ano letivo antes de guardar.");
+      const res = await fetch(`/api/escola/${escolaParam}/admin/calendario/ajustes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ano_letivo_id: anoLetivo.id,
+          data_inicio: anoLetivo.data_inicio,
+          data_fim: anoLetivo.data_fim,
+          periodos: periodos.map((periodo) => ({ ...periodo, ano_letivo_id: periodo.ano_letivo_id || anoLetivo.id })),
+          motivo: "Ajuste manual no calendário escolar",
+        }),
       });
-      if (!res.ok) throw new Error("Erro ao salvar trimestres");
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "Erro ao salvar o calendário");
       
       success("Configurações guardadas.");
       await loadData(selectedAnoId || undefined);
@@ -360,7 +392,7 @@ export default function CalendarioConfigPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-left">
-      <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
         
         {/* HEADER */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -388,7 +420,7 @@ export default function CalendarioConfigPage({ params }: Props) {
 
              <Link
                href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
-               className="inline-flex items-center gap-2 rounded-xl border border-klasse-gold/30 bg-white px-4 py-2.5 text-sm font-bold text-klasse-gold shadow-sm transition-all hover:bg-klasse-gold/5"
+               className="inline-flex items-center gap-2 rounded-xl border border-amber/30 bg-white px-4 py-2.5 text-sm font-bold text-amber shadow-sm transition-all hover:bg-amber/5"
              >
                <Wand2 className="h-4 w-4" />
                Configurar por oferta
@@ -398,7 +430,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               type="button"
               onClick={handleSave}
               disabled={saving || loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
             >
               {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saving ? "A guardar..." : "Guardar Tudo"}
@@ -411,13 +443,13 @@ export default function CalendarioConfigPage({ params }: Props) {
           <div className="flex">
             <button 
               onClick={() => setActiveTab('trimestres')}
-              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'trimestres' ? 'border-klasse-gold text-klasse-gold' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'trimestres' ? 'border-amber text-amber' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Trimestres e Pesos
             </button>
             <button 
               onClick={() => setActiveTab('eventos')}
-              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'eventos' ? 'border-klasse-gold text-klasse-gold' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'eventos' ? 'border-amber text-amber' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Feriados e Interrupções
             </button>
@@ -425,7 +457,7 @@ export default function CalendarioConfigPage({ params }: Props) {
 
           <div className="pb-2 sm:pb-0 sm:pr-2 flex items-center gap-2">
              <select 
-                className="rounded-lg border-slate-200 text-sm font-bold text-slate-700 focus:border-klasse-gold focus:ring-klasse-gold"
+                className="rounded-lg border-slate-200 text-sm font-bold text-slate-700 focus:border-amber focus:ring-amber"
                 value={selectedAnoId || ""}
                 onChange={(e) => handleAnoChange(e.target.value)}
               >
@@ -446,6 +478,30 @@ export default function CalendarioConfigPage({ params }: Props) {
           </div>
         </div>
 
+        {templatesOficiais.length > 0 && (
+          <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-black text-blue-950"><CheckCircle2 className="h-4 w-4" /> Fonte oficial: calendário do MED/decreto</p>
+                <p className="mt-1 text-xs text-blue-800">Aplique o modelo correspondente ao subsistema. Alterações manuais devem ser tratadas como exceção da escola.</p>
+              </div>
+              <select
+                className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-blue-900"
+                defaultValue=""
+                onChange={(event) => {
+                  const template = templatesOficiais.find((item) => item.id === event.target.value);
+                  event.target.value = "";
+                  if (template) void handleApplyOfficialTemplate(template);
+                }}
+                disabled={saving}
+              >
+                <option value="">Aplicar modelo oficial...</option>
+                {templatesOficiais.map((template) => <option key={template.id} value={template.id}>{template.nome}</option>)}
+              </select>
+            </div>
+          </section>
+        )}
+
         {loading ? (
           <div className="flex justify-center py-20"><RefreshCw className="h-8 w-8 animate-spin text-slate-300" /></div>
         ) : (
@@ -456,7 +512,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                 {/* DATAS MACRO DO ANO */}
                 <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                   <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-klasse-gold" />
+                    <Calendar className="h-4 w-4 text-amber" />
                     Duração Global do Ano Lectivo {anoLetivo?.ano}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
@@ -495,7 +551,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                       ) : (
                         <button 
                           onClick={handleSetActiveAno}
-                          className="text-[10px] bg-slate-100 text-slate-500 hover:bg-klasse-gold hover:text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors"
+                          className="text-[10px] bg-slate-100 text-slate-500 hover:bg-amber hover:text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors"
                         >
                           Tornar Ativo
                         </button>
@@ -572,7 +628,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {eventos.map((ev) => (
-                    <div key={ev.id} className="group relative rounded-xl border border-slate-200 bg-white p-4 hover:border-klasse-gold/30 transition-all text-left">
+                    <div key={ev.id} className="group relative rounded-xl border border-slate-200 bg-white p-4 hover:border-amber/30 transition-all text-left">
                       <div className="flex justify-between items-start">
                         <div className="flex gap-3">
                           <div className={`mt-1 h-2 w-2 rounded-full ${ev.tipo === 'FERIADO' ? 'bg-red-400' : ev.tipo === 'PAUSA_PEDAGOGICA' ? 'bg-blue-400' : ev.tipo === 'PROVA_TRIMESTRAL' ? 'bg-amber-400' : 'bg-slate-400'}`} />
@@ -599,7 +655,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">
                     <button 
                       onClick={() => setIsModalOpen(true)}
-                      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-klasse-gold hover:text-klasse-gold transition-all"
+                      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-amber hover:text-amber transition-all"
                     >
                       <Plus className="h-6 w-6 mb-2" />
                       <span className="text-xs font-bold uppercase tracking-widest">Adicionar Evento</span>
@@ -608,7 +664,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                     {anosDisponiveis.some(a => a.ano < (anoLetivo?.ano || 0)) && (
                       <button 
                         onClick={handleCopyEvents}
-                        className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-klasse-gold hover:text-klasse-gold transition-all"
+                        className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-amber hover:text-amber transition-all"
                       >
                         <RefreshCw className="h-6 w-6 mb-2" />
                         <span className="text-xs font-bold uppercase tracking-widest text-center">Copiar do Ano Anterior</span>
@@ -637,7 +693,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               <input 
                 type="text" 
                 required
-                className="w-full rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold"
+                className="w-full rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
                 placeholder="Ex: Dia do Patrono, Festa da Escola..."
                 value={newEvent.nome}
                 onChange={e => setNewEvent(prev => ({ ...prev, nome: e.target.value }))}
@@ -648,7 +704,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Tipo</label>
                 <select 
-                  className="w-full rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold"
+                  className="w-full rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
                   value={newEvent.tipo}
                   onChange={e => setNewEvent(prev => ({ ...prev, tipo: e.target.value as EventoTipo }))}
                 >
@@ -668,7 +724,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                 <input 
                   type="date" 
                   required
-                  className="w-full rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold"
+                  className="w-full rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
                   value={newEvent.data_inicio}
                   onChange={e => setNewEvent(prev => ({ ...prev, data_inicio: e.target.value }))}
                 />
@@ -677,7 +733,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                 <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Data Fim (Opcional)</label>
                 <input 
                   type="date" 
-                  className="w-full rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold"
+                  className="w-full rounded-xl border-slate-200 focus:border-amber focus:ring-amber"
                   value={newEvent.data_fim}
                   onChange={e => setNewEvent(prev => ({ ...prev, data_fim: e.target.value }))}
                 />
@@ -696,7 +752,7 @@ export default function CalendarioConfigPage({ params }: Props) {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-klasse-gold px-8 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
+              className="rounded-xl bg-amber px-8 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
             >
               {saving ? "A criar..." : "Criar Evento"}
             </button>

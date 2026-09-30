@@ -398,6 +398,7 @@ export async function GET(req: Request) {
       return {
         id: vincData?.id,
         user_id: p.user_id,
+        professor_id: legacyProfessorByProfile.get(p.user_id) ?? null,
         nome: p.nome,
         email: p.email,
         telefone: p.telefone,

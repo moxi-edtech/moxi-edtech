@@ -3,6 +3,8 @@ import {
   AI_ACTIONS_SECRETARIA_ROLES as SECRETARIA_ROLES,
   AI_WIDGET_ROLES as ALL_ADMIN_ROLES,
 } from "@/lib/roles/ai-roles";
+import type { SchoolOperatingProfile } from "@/lib/school-profile/types";
+import { canUseFinanceChargeMessages } from "@/lib/school-profile/finance-capabilities";
 
 export type AiWidgetContext = {
   module:
@@ -148,6 +150,7 @@ export function getAssistantSuggestions(params: {
   context?: AiWidgetContext;
   role: string;
   allowedFeatures?: string[];
+  operatingProfile?: SchoolOperatingProfile;
 }) {
   const role = params.role.toLowerCase();
   const allowed = params.allowedFeatures ?? [];
@@ -158,6 +161,12 @@ export function getAssistantSuggestions(params: {
     if (suggestion.requiredFeatures?.length) {
       if (allowed.length === 0) return false;
       if (!suggestion.requiredFeatures.every((feature) => allowed.includes(feature))) return false;
+    }
+    const isFinanceSuggestion = suggestion.module === "financeiro"
+      || suggestion.key === "finance_whatsapp_draft"
+      || suggestion.key === "finance_plan";
+    if (isFinanceSuggestion && params.operatingProfile && !canUseFinanceChargeMessages(params.operatingProfile)) {
+      return false;
     }
     return true;
   });

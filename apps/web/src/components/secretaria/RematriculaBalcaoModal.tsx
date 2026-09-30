@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { EnrollmentPostActions, type EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
-import type { TurmaOption, RematriculaResult, ProgressaoBalcao } from "@/hooks/useRematriculaBalcao";
+import type { TurmaOption, RematriculaResult, ProgressaoBalcao, RematriculaPaymentItem, ResultadoDecisaoBalcao } from "@/hooks/useRematriculaBalcao";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -26,27 +26,44 @@ interface RematriculaBalcaoModalProps {
   // Student data
   alunoNome: string;
   alunoProcesso: string;
-  alunoId: string | null;
-  escolaId: string;
   turmaAtual: string | null;
   matriculaId: string;
+  responsavelContato: string;
+  setResponsavelContato: (value: string) => void;
   // Academic
   anoLetivo: { id: string; ano: number; label: string };
   // Financial
   service: { id: string; nome: string; valor_base: number };
+  itensPagamento?: RematriculaPaymentItem[];
+  itensDisponiveis?: RematriculaPaymentItem[];
+  onAdicionarItem?: (item: RematriculaPaymentItem) => void;
+  onRemoverItem?: (id: string, tipo: RematriculaPaymentItem["tipo"]) => void;
+  paymentAlreadyValidated?: boolean;
   skipTurmaSelection?: boolean;
   debt?: { total: number; count: number } | null;
+  cohort?: { codigo: string; nome: string; modo: string } | null;
+  reconciliationOnly?: boolean;
+  onRegularizeDebt?: () => void;
   // Turmas
   turmas: TurmaOption[];
   turmasLoading: boolean;
   progressao: ProgressaoBalcao | null;
   notasLancarDepois: boolean;
   setNotasLancarDepois: (value: boolean) => void;
+  decisaoResultado: ResultadoDecisaoBalcao;
+  setDecisaoResultado: (value: ResultadoDecisaoBalcao) => void;
+  decisaoFonte: string;
+  setDecisaoFonte: (value: string) => void;
+  decisaoMotivo: string;
+  setDecisaoMotivo: (value: string) => void;
+  decisaoObservacao: string;
+  setDecisaoObservacao: (value: string) => void;
   // Wizard state
   step: number;
   setStep: (n: number) => void;
   selectedTurmaId: string | null;
   setSelectedTurmaId: (id: string | null) => void;
+  destinoTurma?: TurmaOption | null;
   // Payment
   metodo: MetodoPagamento;
   setMetodo: (m: MetodoPagamento) => void;
@@ -99,6 +116,16 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
   FINALISTA_PROGRESSION_INVALID:
     "O finalista deve seguir para a classe imediatamente seguinte.",
+  DECISAO_MOTIVO_REQUIRED:
+    "Informe o motivo da decisão administrativa antes de concluir.",
+  ASSISTED_TRANSITION_COHORT_REQUIRED:
+    "Este aluno não pertence à coorte autorizada para decisão administrativa sem notas.",
+  RECONCILIATION_DESTINATION_MISMATCH:
+    "A turma escolhida é diferente da matrícula destino já preparada. Reveja o destino antes de confirmar.",
+  RECONCILIATION_PROGRESSION_INVALID:
+    "A decisão registada não corresponde à progressão entre a turma de origem e o destino preparado.",
+  CONCLUSION_DESTINATION_REVIEW_REQUIRED:
+    "Existe uma matrícula destino preparada. Reveja-a antes de concluir o ciclo do aluno.",
 };
 
 const METODOS_UI = [
@@ -119,24 +146,41 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     onClose,
     alunoNome,
     alunoProcesso,
-    alunoId,
-    escolaId,
     onPostAction,
     turmaAtual,
     matriculaId,
+    responsavelContato,
+    setResponsavelContato,
     anoLetivo,
     service,
+    itensPagamento = [],
+    itensDisponiveis = [],
+    onAdicionarItem,
+    onRemoverItem,
+    paymentAlreadyValidated = false,
     skipTurmaSelection = false,
     debt = null,
+    cohort = null,
+    reconciliationOnly = false,
+    onRegularizeDebt,
     turmas,
     turmasLoading,
     progressao,
     notasLancarDepois,
     setNotasLancarDepois,
+    decisaoResultado,
+    setDecisaoResultado,
+    decisaoFonte,
+    setDecisaoFonte,
+    decisaoMotivo,
+    setDecisaoMotivo,
+    decisaoObservacao,
+    setDecisaoObservacao,
     step,
     setStep,
     selectedTurmaId,
     setSelectedTurmaId,
+    destinoTurma = null,
     metodo,
     setMetodo,
     detalhes,
@@ -200,16 +244,29 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     if (result || step < 3) onClose();
   };
 
-  const selectedTurma = turmas.find((t) => t.id === selectedTurmaId);
+  const selectedTurma = turmas.find((t) => t.id === selectedTurmaId) ?? destinoTurma ?? undefined;
+  const academicOnly = decisaoResultado === "concluido";
+  const singleStep = academicOnly || reconciliationOnly;
+  const financialReady = !debt || debt.total <= 0;
+  const itensAdicionais = itensPagamento.filter(
+    (item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA",
+  );
+  const paymentTotal = service.valor_base + itensAdicionais.reduce(
+    (sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1),
+    0,
+  );
 
   const canSubmit =
     !submitting &&
-    Boolean(selectedTurmaId) &&
-    !(metodo === "tpa" && !detalhes.referencia.trim()) &&
-    !(metodo === "transfer" && !detalhes.evidencia_url.trim());
+    (academicOnly || (Boolean(selectedTurmaId) && financialReady)) &&
+    (academicOnly || paymentAlreadyValidated || (
+      !(metodo === "tpa" && !detalhes.referencia.trim()) &&
+      !(metodo === "transfer" && !detalhes.evidencia_url.trim())
+    ));
   const academicReady =
-    Boolean(selectedTurmaId) &&
-    !(progressao?.estado === "notas_pendentes" && !notasLancarDepois);
+    (academicOnly || Boolean(selectedTurmaId)) &&
+    !(progressao?.estado === "notas_pendentes" && !notasLancarDepois && decisaoFonte !== "declaracao_administrativa_escola") &&
+    !(decisaoFonte === "declaracao_administrativa_escola" && !decisaoMotivo.trim());
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -231,11 +288,13 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
                 id="rematricula-modal-title"
                 className="font-bold text-slate-900"
               >
-                Confirmar rematrícula {anoLetivo.label}
+                {skipTurmaSelection
+                  ? `Regularizar taxa de rematrícula ${anoLetivo.label}`
+                  : `Confirmar rematrícula ${anoLetivo.label}`}
               </h2>
 
               {/* Step indicator */}
-              <div className="flex items-center gap-3 mt-2.5">
+              {!skipTurmaSelection && <div className="flex items-center gap-3 mt-2.5">
                 {STEP_LABELS.map((label, i) => {
                   const s = i + 1;
                   const isActive = s === step;
@@ -265,7 +324,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
                     </div>
                   );
                 })}
-              </div>
+              </div>}
             </div>
 
             {!submitting && (
@@ -289,8 +348,9 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               anoLetivo={anoLetivo}
               selectedTurma={selectedTurma}
               service={service}
+              paymentTotal={paymentTotal}
               metodo={metodo}
-              result={result}
+              paymentAlreadyValidated={paymentAlreadyValidated}
               onPostAction={(action) => onPostAction(action, selectedTurma?.id ?? result.rematricula?.turma_id ?? null)}
             />
           ) : step === 1 ? (
@@ -300,21 +360,41 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               alunoProcesso={alunoProcesso}
               turmaAtual={turmaAtual}
               matriculaId={matriculaId}
+              responsavelContato={responsavelContato}
+              setResponsavelContato={setResponsavelContato}
               anoLetivo={anoLetivo}
               turmas={turmas}
               turmasLoading={turmasLoading}
               progressao={progressao}
+              cohort={cohort}
               skipTurmaSelection={skipTurmaSelection}
-              alunoId={alunoId}
               notasLancarDepois={notasLancarDepois}
               setNotasLancarDepois={setNotasLancarDepois}
+              decisaoResultado={decisaoResultado}
+              setDecisaoResultado={setDecisaoResultado}
+              decisaoFonte={decisaoFonte}
+              setDecisaoFonte={setDecisaoFonte}
+              decisaoMotivo={decisaoMotivo}
+              setDecisaoMotivo={setDecisaoMotivo}
+              decisaoObservacao={decisaoObservacao}
+              setDecisaoObservacao={setDecisaoObservacao}
               selectedTurmaId={selectedTurmaId}
               setSelectedTurmaId={setSelectedTurmaId}
               selectRef={firstFocusRef as React.RefObject<HTMLSelectElement>}
             />
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
-            <StepFinanceiro service={service} debt={debt} selectedTurma={selectedTurma} />
+            <StepFinanceiro
+              service={service}
+              debt={debt}
+              selectedTurma={selectedTurma}
+              itensPagamento={itensPagamento}
+              itensDisponiveis={itensDisponiveis}
+              onAdicionarItem={onAdicionarItem}
+              onRemoverItem={onRemoverItem}
+              onRegularizeDebt={onRegularizeDebt}
+              paymentAlreadyValidated={paymentAlreadyValidated}
+            />
           ) : (
             /* ── Step 3: Payment ────────────────────────────────── */
             <StepPagamento
@@ -325,6 +405,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               submitting={submitting}
               apiError={apiError}
               service={service}
+              itensPagamento={itensPagamento}
+              paymentAlreadyValidated={paymentAlreadyValidated}
             />
           )}
         </div>
@@ -354,8 +436,12 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               submitting={submitting}
               canSubmit={canSubmit}
               academicReady={academicReady}
-              selectedTurmaId={selectedTurmaId}
-              serviceValor={service.valor_base}
+              financialReady={financialReady}
+              onRegularizeDebt={onRegularizeDebt}
+              paymentTotal={paymentTotal}
+              paymentAlreadyValidated={paymentAlreadyValidated}
+              academicOnly={singleStep}
+              reconciliationOnly={reconciliationOnly}
               submit={submit}
             />
           )}
@@ -374,32 +460,52 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
 function StepAcademico({
   alunoNome,
   alunoProcesso,
-  alunoId,
   turmaAtual,
   matriculaId,
+  responsavelContato,
+  setResponsavelContato,
   anoLetivo,
   turmas,
   turmasLoading,
   progressao,
+  cohort,
   skipTurmaSelection,
   notasLancarDepois,
   setNotasLancarDepois,
+  decisaoResultado,
+  setDecisaoResultado,
+  decisaoFonte,
+  setDecisaoFonte,
+  decisaoMotivo,
+  setDecisaoMotivo,
+  decisaoObservacao,
+  setDecisaoObservacao,
   selectedTurmaId,
   setSelectedTurmaId,
   selectRef,
 }: {
   alunoNome: string;
   alunoProcesso: string;
-  alunoId: string | null;
   turmaAtual: string | null;
   matriculaId: string;
+  responsavelContato: string;
+  setResponsavelContato: (value: string) => void;
   anoLetivo: { id: string; ano: number; label: string };
   turmas: TurmaOption[];
   turmasLoading: boolean;
   progressao: ProgressaoBalcao | null;
+  cohort: { codigo: string; nome: string; modo: string } | null;
   skipTurmaSelection: boolean;
   notasLancarDepois: boolean;
   setNotasLancarDepois: (value: boolean) => void;
+  decisaoResultado: ResultadoDecisaoBalcao;
+  setDecisaoResultado: (value: ResultadoDecisaoBalcao) => void;
+  decisaoFonte: string;
+  setDecisaoFonte: (value: string) => void;
+  decisaoMotivo: string;
+  setDecisaoMotivo: (value: string) => void;
+  decisaoObservacao: string;
+  setDecisaoObservacao: (value: string) => void;
   selectedTurmaId: string | null;
   setSelectedTurmaId: (id: string | null) => void;
   selectRef: React.RefObject<HTMLSelectElement>;
@@ -415,6 +521,95 @@ function StepAcademico({
         <InfoRow label="Ano lectivo" value={anoLetivo.label} />
       </div>
 
+      <div>
+        <label htmlFor="rematricula-contacto-encarregado" className="mb-1.5 block text-xs font-bold text-slate-700">
+          Contacto do encarregado
+        </label>
+        <input
+          id="rematricula-contacto-encarregado"
+          type="tel"
+          inputMode="tel"
+          value={responsavelContato}
+          onChange={(event) => setResponsavelContato(event.target.value)}
+          placeholder="Ex.: +244 9XX XXX XXX"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+        />
+        <p className="mt-1.5 text-[11px] text-slate-500">Confirme ou actualize o número que será usado nos contactos da escola.</p>
+      </div>
+
+      {skipTurmaSelection ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <strong className="block text-emerald-950">Regularização da taxa de rematrícula</strong>
+          <span className="mt-1 block text-xs">O aluno já está matriculado em {anoLetivo.label}. A turma e a classe atuais serão preservadas; prossiga apenas para cobrar a taxa e emitir o comprovativo.</span>
+        </div>
+      ) : <>
+      {/* Decisão académica no próprio atendimento */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Decisão académica</p>
+          <p className="mt-1 text-xs text-slate-500">Registe aqui a decisão da escola. Não é necessário sair do balcão para abrir a pauta.</p>
+        </div>
+        {cohort && (
+          <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
+            <strong className="block">{cohort.nome}</strong>
+            <span>Exceção temporária {cohort.codigo}: a decisão administrativa é permitida para esta matrícula e ficará auditada.</span>
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            ["aprovado", "Aprovado"],
+            ["reprovado", "Reprovado"],
+            ["concluido", "Concluído"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setDecisaoResultado(value)}
+              className={`rounded-xl border px-2 py-2 text-xs font-bold transition-colors ${decisaoResultado === value ? "border-[#1F6B3B] bg-[#1F6B3B]/10 text-[#1F6B3B]" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="rematricula-decisao-fonte">
+          Fonte da decisão
+        </label>
+        <select
+          id="rematricula-decisao-fonte"
+          value={decisaoFonte}
+          onChange={(event) => setDecisaoFonte(event.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+        >
+          <option value="raa">RAA / registo académico</option>
+          <option value="declaracao_administrativa_escola">Declaração administrativa da escola</option>
+        </select>
+        {decisaoFonte === "declaracao_administrativa_escola" && (
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="rematricula-decisao-motivo">
+              Motivo obrigatório
+            </label>
+            <input
+              id="rematricula-decisao-motivo"
+              value={decisaoMotivo}
+              onChange={(event) => setDecisaoMotivo(event.target.value)}
+              placeholder="Ex.: decisão confirmada pela direção no balcão"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+            />
+            <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="rematricula-decisao-observacao">
+              Observação (opcional)
+            </label>
+            <textarea
+              id="rematricula-decisao-observacao"
+              value={decisaoObservacao}
+              onChange={(event) => setDecisaoObservacao(event.target.value)}
+              rows={2}
+              placeholder="Contexto adicional para a auditoria"
+              className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Turma selector */}
       {progressao && (
         <div className={`rounded-xl border p-3 text-sm ${progressao.estado === "reprovado" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-sky-200 bg-sky-50 text-sky-800"}`}>
@@ -423,35 +618,7 @@ function StepAcademico({
           {progressao.orientacao?.proximo_passo && (
             <p className="mt-2 text-xs font-semibold">Próximo passo: {progressao.orientacao.proximo_passo}</p>
           )}
-          {progressao.orientacao?.acoes?.length ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {progressao.orientacao.acoes.map((acao) => (
-                <a
-                  key={acao.id}
-                  href={acao.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold ${acao.prioridade === "principal" ? "bg-sky-700 text-white hover:bg-sky-800" : "border border-sky-200 bg-white text-sky-700 hover:bg-sky-50"}`}
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  {acao.label}
-                </a>
-              ))}
-            </div>
-          ) : null}
         </div>
-      )}
-
-      {progressao?.estado === "notas_pendentes" && progressao.turma_origem_id && (
-        <a
-          href={`/secretaria/notas?turmaId=${encodeURIComponent(progressao.turma_origem_id)}${alunoId ? `&alunoId=${encodeURIComponent(alunoId)}` : ""}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-sm font-bold text-sky-700 hover:bg-sky-50"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Lançar notas na tela de Notas
-        </a>
       )}
 
       {progressao?.estado === "notas_pendentes" && (
@@ -469,10 +636,10 @@ function StepAcademico({
         </label>
       )}
 
-      {skipTurmaSelection ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          <strong className="block text-emerald-950">Reconfirmação de matrícula</strong>
-          <span className="text-xs">A matrícula na classe destino já foi preparada. Esta operação apenas regista a taxa de reconfirmação.</span>
+      {decisaoResultado === "concluido" ? (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
+          <strong className="block text-violet-950">Conclusão sem matrícula destino</strong>
+          <span className="text-xs">Será encerrada apenas a matrícula de origem. Não haverá taxa nem criação de matrícula no novo ano.</span>
         </div>
       ) : <div className="space-y-2">
         <label
@@ -513,7 +680,21 @@ function StepAcademico({
             );
           })}
         </select>
+        {!turmasLoading && turmas.length === 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            Não há turma elegível para esta decisão no ano de destino. Escolha
+            <strong> Concluído</strong> quando o ciclo terminar aqui, ou peça à
+            direção para preparar a turma correspondente antes de continuar.
+          </div>
+        )}
+        {selectedTurmaId && turmas.find((turma) => turma.id === selectedTurmaId) && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+            <strong className="block">Destino seleccionado: {turmas.find((turma) => turma.id === selectedTurmaId)?.nome}</strong>
+            <span className="mt-1 block">Esta escolha fica em pré-visualização até clicar em “Concluir rematrícula”. Só então será gravada na matrícula do ano destino.</span>
+          </div>
+        )}
       </div>}
+      </>}
     </div>
   );
 }
@@ -524,11 +705,36 @@ function StepFinanceiro({
   service,
   debt,
   selectedTurma,
+  itensPagamento,
+  itensDisponiveis,
+  onAdicionarItem,
+  onRemoverItem,
+  onRegularizeDebt,
+  paymentAlreadyValidated,
 }: {
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" };
   debt: { total: number; count: number } | null;
   selectedTurma?: TurmaOption;
+  itensPagamento: RematriculaPaymentItem[];
+  itensDisponiveis: RematriculaPaymentItem[];
+  onAdicionarItem?: (item: RematriculaPaymentItem) => void;
+  onRemoverItem?: (id: string, tipo: RematriculaPaymentItem["tipo"]) => void;
+  onRegularizeDebt?: () => void;
+  paymentAlreadyValidated: boolean;
 }) {
+  const itensAdicionais = itensPagamento.filter(
+    (item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA",
+  );
+  const total = service.valor_base + itensAdicionais.reduce(
+    (sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1),
+    0,
+  );
+  const temMensalidade = itensAdicionais.some((item) => item.tipo === "mensalidade");
+  const itemEstaSeleccionado = (item: RematriculaPaymentItem) => itensPagamento.some(
+    (seleccionado) => seleccionado.id === item.id && seleccionado.tipo === item.tipo,
+  );
+  const mensalidadesDisponiveis = itensDisponiveis.filter((item) => item.tipo === "mensalidade");
+  const servicosDisponiveis = itensDisponiveis.filter((item) => item.tipo === "servico");
   return (
     <div className="space-y-5">
       <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -549,20 +755,106 @@ function StepFinanceiro({
             {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
           </span>
         </div>
+        {itensAdicionais.length > 0 && (
+          <div className="border-b border-slate-100 bg-white p-3.5">
+            <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Serviços e cobranças adicionais</p>
+            <div className="space-y-2">
+              {itensAdicionais.map((item) => {
+                const quantidade = Math.max(Number(item.quantidade ?? 1), 1);
+                return (
+                  <div key={`${item.tipo}-${item.id}`} className="flex justify-between gap-3 text-sm">
+                    <span className="text-slate-600">{item.nome || item.descricao || "Serviço escolar"}{quantidade > 1 ? ` × ${quantidade}` : ""}</span>
+                    <strong className="text-slate-900">{kwanza.format(Number(item.preco ?? 0) * quantidade)}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="flex justify-between border-b border-slate-100 p-3.5 bg-white">
-          <span className="text-slate-600">Primeira mensalidade</span>
-          <span className="text-slate-400 italic">Não incluída</span>
+          <span className="text-slate-600">Mensalidade</span>
+          <span className={temMensalidade ? "font-semibold text-emerald-700" : "text-slate-400 italic"}>
+            {temMensalidade ? "Incluída acima" : "Não incluída"}
+          </span>
         </div>
         <div className="flex justify-between p-3.5 bg-slate-50">
           <span className="font-bold text-slate-900">Total a pagar</span>
           <span className="font-black text-[#1F6B3B] text-base">
-            {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
+            {total > 0 ? kwanza.format(total) : "Sem taxa"}
           </span>
         </div>
       </div>
       <p className="text-xs text-slate-500">
         O valor acima foi resolvido para a turma destino. {service.pricing_origin === "classe" ? "Existe uma regra específica para esta classe." : "Não existe regra específica para esta classe; foi usado o valor de fallback."}
       </p>
+      <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+        A turma destino e o valor desta operação só serão gravados quando a secretaria concluir o atendimento. Fechar o modal preserva o rascunho, mas não altera a matrícula.
+      </p>
+
+      {!paymentAlreadyValidated && itensDisponiveis.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">
+          <div className="mb-3">
+            <p className="text-sm font-bold text-emerald-950">Adicionar a esta cobrança</p>
+            <p className="mt-0.5 text-xs text-emerald-800">
+              Os itens seleccionados serão liquidados no mesmo pagamento e constarão no recibo da rematrícula.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {mensalidadesDisponiveis.map((item) => {
+              const seleccionado = itemEstaSeleccionado(item);
+              return (
+                <button
+                  key={`${item.tipo}-${item.id}`}
+                  type="button"
+                  onClick={() => seleccionado ? onRemoverItem?.(item.id, item.tipo) : onAdicionarItem?.(item)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                    seleccionado
+                      ? "border-emerald-500 bg-emerald-100 text-emerald-950"
+                      : "border-emerald-200 bg-white text-slate-700 hover:border-emerald-400"
+                  }`}
+                >
+                  <span>
+                    <span className="block text-xs font-bold">{item.nome || "Mensalidade"}</span>
+                    <span className="block text-[11px]">Mensalidade</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs font-black">
+                    {kwanza.format(Number(item.preco ?? 0))}
+                    <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">
+                      {seleccionado ? "Remover" : "Adicionar"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+            {servicosDisponiveis.map((item) => {
+              const seleccionado = itemEstaSeleccionado(item);
+              return (
+                <button
+                  key={`${item.tipo}-${item.id}`}
+                  type="button"
+                  onClick={() => seleccionado ? onRemoverItem?.(item.id, item.tipo) : onAdicionarItem?.(item)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                    seleccionado
+                      ? "border-emerald-500 bg-emerald-100 text-emerald-950"
+                      : "border-emerald-200 bg-white text-slate-700 hover:border-emerald-400"
+                  }`}
+                >
+                  <span>
+                    <span className="block text-xs font-bold">{item.nome || "Serviço escolar"}</span>
+                    <span className="block text-[11px]">Serviço adicional</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs font-black">
+                    {kwanza.format(Number(item.preco ?? 0))}
+                    <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">
+                      {seleccionado ? "Remover" : "Adicionar"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {debt && debt.total > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
@@ -571,6 +863,15 @@ function StepFinanceiro({
             Existem {debt.count} mensalidade(s) pendente(s), no total de {kwanza.format(debt.total)}.
             Esta taxa não substitui a regularização da dívida.
           </span>
+          {onRegularizeDebt && (
+            <button
+              type="button"
+              onClick={onRegularizeDebt}
+              className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-amber-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-amber-700"
+            >
+              Regularizar dívida neste atendimento
+            </button>
+          )}
         </div>
       )}
 
@@ -596,6 +897,8 @@ function StepPagamento({
   submitting,
   apiError,
   service,
+  itensPagamento,
+  paymentAlreadyValidated,
 }: {
   metodo: MetodoPagamento;
   setMetodo: (m: MetodoPagamento) => void;
@@ -606,7 +909,27 @@ function StepPagamento({
   submitting: boolean;
   apiError: string | null;
   service: { id: string; nome: string; valor_base: number };
+  itensPagamento: RematriculaPaymentItem[];
+  paymentAlreadyValidated: boolean;
 }) {
+  const total = service.valor_base + itensPagamento
+    .filter((item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA")
+    .reduce((sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1), 0);
+  if (paymentAlreadyValidated) {
+    return (
+      <div className="space-y-5">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pagamento</h3>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <strong className="block">Pagamento da rematrícula validado</strong>
+          <span className="mt-1 block text-xs">A secretaria confirmou o comprovativo. Falta apenas concluir a turma e a matrícula deste aluno.</span>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 text-center">
+          Valor recebido: <strong className="text-slate-900">{kwanza.format(total)}</strong>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -739,7 +1062,7 @@ function StepPagamento({
       <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 text-sm text-slate-700 text-center font-medium">
         Confirma que recebeu{" "}
         <strong className="text-slate-900">
-          {kwanza.format(service.valor_base)}
+          {kwanza.format(total)}
         </strong>{" "}
         e deseja concluir a rematrícula?
       </div>
@@ -754,16 +1077,18 @@ function SuccessView({
   anoLetivo,
   selectedTurma,
   service,
+  paymentTotal,
   metodo,
-  result,
+  paymentAlreadyValidated,
   onPostAction,
 }: {
   alunoNome: string;
   anoLetivo: { id: string; ano: number; label: string };
   selectedTurma: TurmaOption | undefined;
   service: { id: string; nome: string; valor_base: number };
+  paymentTotal: number;
   metodo: MetodoPagamento;
-  result: RematriculaResult;
+  paymentAlreadyValidated: boolean;
   onPostAction: (action: EnrollmentPostAction) => void;
 }) {
   const turnoStr = selectedTurma?.turno
@@ -783,7 +1108,7 @@ function SuccessView({
           Rematrícula concluída
         </h3>
         <p className="text-sm text-slate-500 mt-1">
-          O aluno foi rematriculado com sucesso.
+          A matrícula do ano destino foi criada ou actualizada com a turma seleccionada.
         </p>
       </div>
 
@@ -793,9 +1118,9 @@ function SuccessView({
         <InfoRow label="Turma" value={turmaLabel} />
         <InfoRow
           label="Pagamento"
-          value={`${kwanza.format(service.valor_base)} · ${
-            METODOS_UI.find((m) => m.id === metodo)?.label || metodo
-          }`}
+          value={paymentAlreadyValidated
+            ? `${kwanza.format(paymentTotal)} · Comprovativo validado`
+            : `${kwanza.format(paymentTotal)} · ${METODOS_UI.find((m) => m.id === metodo)?.label || metodo}`}
         />
         <div className="flex justify-between">
           <span className="text-slate-500">Estado</span>
@@ -818,9 +1143,21 @@ function FooterSuccess({
   onClose: () => void;
 }) {
   const printUrl = result.comprovante?.printUrl;
+  const reciboUrl = result.recibo?.print_url;
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row">
+      {reciboUrl && (
+        <button
+          onClick={() => window.open(reciboUrl, "_blank", "noopener,noreferrer")}
+          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl
+            bg-amber px-4 py-2.5 text-sm font-bold text-white
+            hover:brightness-110 transition-colors"
+        >
+          <Printer className="h-4 w-4" />
+          Abrir recibo
+        </button>
+      )}
       {printUrl && (
         <>
           <button
@@ -830,7 +1167,7 @@ function FooterSuccess({
               hover:brightness-110 transition-colors"
           >
             <Printer className="h-4 w-4" />
-            Imprimir comprovante
+            Abrir comprovante
           </button>
           <button
             onClick={() => window.open(printUrl, "_blank", "noopener,noreferrer")}
@@ -865,8 +1202,12 @@ function FooterWizard({
   submitting,
   canSubmit,
   academicReady,
-  selectedTurmaId,
-  serviceValor,
+  financialReady,
+  onRegularizeDebt,
+  paymentTotal,
+  paymentAlreadyValidated,
+  academicOnly,
+  reconciliationOnly,
   submit,
 }: {
   step: number;
@@ -875,8 +1216,12 @@ function FooterWizard({
   submitting: boolean;
   canSubmit: boolean;
   academicReady: boolean;
-  selectedTurmaId: string | null;
-  serviceValor: number;
+  financialReady: boolean;
+  onRegularizeDebt?: () => void;
+  paymentTotal: number;
+  paymentAlreadyValidated: boolean;
+  academicOnly: boolean;
+  reconciliationOnly: boolean;
   submit: () => Promise<void>;
 }) {
   return (
@@ -890,18 +1235,20 @@ function FooterWizard({
         {step > 1 ? "Voltar" : "Cancelar"}
       </button>
 
-      {step < 3 && !(step === 2 && serviceValor <= 0) ? (
+      {step < 3 && !academicOnly && !(step === 2 && paymentTotal <= 0 && financialReady) ? (
         <button
-          onClick={() => setStep(step + 1)}
-          disabled={
-            submitting ||
-            (step === 1 && !academicReady) ||
-            (step === 2 && serviceValor <= 0)
-          }
+          onClick={() => {
+            if (step === 2 && !financialReady) {
+              onRegularizeDebt?.();
+              return;
+            }
+            setStep(step + 1);
+          }}
+          disabled={submitting || (step === 1 && !academicReady) || (step === 2 && paymentTotal <= 0 && financialReady) || (step === 2 && !financialReady && !onRegularizeDebt)}
           className="rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-slate-900
             hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Próximo
+          {step === 2 && !financialReady ? "Regularizar dívida" : "Próximo"}
         </button>
       ) : (
         <button
@@ -919,7 +1266,7 @@ function FooterWizard({
           ) : (
             <>
               <Check className="h-4 w-4" />
-              {serviceValor > 0 ? "Pagar e concluir rematrícula" : "Concluir matrícula"}
+              {reconciliationOnly ? "Registar decisão e concluir matrícula" : academicOnly ? "Registar conclusão" : paymentAlreadyValidated ? "Concluir rematrícula" : paymentTotal > 0 ? "Pagar e concluir rematrícula" : "Concluir matrícula"}
             </>
           )}
         </button>

@@ -125,7 +125,7 @@ export default function ReciboPagamentoCompacto({
       : "Recibo de Pagamento";
 
   return (
-    <div className={`flex h-full flex-col space-y-4 bg-white font-sans text-slate-900 ${isDensePrint ? "print:space-y-1.5" : isPrintCompact ? "print:space-y-1.75" : "print:space-y-2"}`}>
+    <div className={`receipt-via-content flex h-full flex-col space-y-4 bg-white font-sans text-slate-900 ${isDensePrint ? "print:space-y-1.5" : isPrintCompact ? "print:space-y-1.75" : "print:space-y-2"}`}>
       <header className={`grid grid-cols-[auto_1fr_auto] items-start gap-4 border-b border-slate-200 pb-4 ${isDensePrint ? "print:gap-2 print:pb-1.5" : isPrintCompact ? "print:gap-2 print:pb-1.75" : "print:pb-2"}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -210,7 +210,7 @@ export default function ReciboPagamentoCompacto({
         <div className={`grid grid-cols-[1fr_auto] items-center gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-2 print:px-2.5 print:py-1.5" : isPrintCompact ? "print:gap-3 print:px-3 print:py-1.5" : "print:px-3 print:py-2"}`}>
           <div className="min-w-0">
             <p className={`text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isUltraDensePrint ? "print:text-[7px]" : "print:text-[8px]"}`}>Valor Pago</p>
-            <p className={`truncate text-xl font-bold leading-tight text-klasse-gold ${isUltraDensePrint ? "print:text-[15px]" : "print:text-lg"}`} title={formatMoney(valorPago)}>
+            <p className={`truncate text-xl font-bold leading-tight text-amber ${isUltraDensePrint ? "print:text-[15px]" : "print:text-lg"}`} title={formatMoney(valorPago)}>
               {formatMoney(valorPago)}
             </p>
           </div>
@@ -278,9 +278,9 @@ export function ReciboPagamentoDuasVias(props: ReciboPagamentoCompactoProps) {
   const isDensePrint = itemCount >= 8;
 
   return (
-    <div className={`space-y-6 bg-white font-sans text-slate-900 print:space-y-0 ${isDensePrint ? "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-2" : isPrintCompact ? "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-2.5" : "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-3"}`}>
+    <div className={`receipt-vias space-y-6 bg-white font-sans text-slate-900 print:space-y-0 ${isDensePrint ? "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-2" : isPrintCompact ? "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-2.5" : "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-3"}`}>
       {vias.map((via, index) => (
-        <section key={via} className="break-inside-avoid bg-white print:flex print:h-full print:min-h-0 print:flex-col print:overflow-visible">
+        <section key={via} className="receipt-via break-inside-avoid bg-white print:flex print:h-full print:min-h-0 print:flex-col print:overflow-visible">
           <p className={`mb-3 text-right text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isDensePrint ? "print:mb-0.5 print:text-[8px]" : isPrintCompact ? "print:mb-0.5 print:text-[8px]" : "print:mb-1"}`}>
             {via}
           </p>

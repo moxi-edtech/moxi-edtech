@@ -974,7 +974,7 @@ export default function CurriculumBuilder({
                                 </span>
                               )}
                               {!p.isCustom && p.recommended && (
-                                <span className="px-1.5 py-0.5 bg-klasse-green-100 text-klasse-green-700 text-[10px] font-bold rounded">
+                                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">
                                   RECOMENDADO
                                 </span>
                               )}

@@ -110,11 +110,11 @@ export async function GET(request: Request) {
             saldo: saldo
         };
 
-        // A virada sem fricção não exige notas fechadas nem aprovação académica.
-        // A decisão de classe fica para a revisão individual posterior da secretaria.
-        if (saldo <= tolerance) {
-            aptos.push(info);
-        } else {
+        // A dívida é uma pendência financeira da activação final, não da
+        // reserva académica. Todos seguem para a validação RAA da RPC; os
+        // inadimplentes continuam destacados para regularização.
+        aptos.push(info);
+        if (saldo > tolerance) {
             inadimplentes.push(info);
         }
     });

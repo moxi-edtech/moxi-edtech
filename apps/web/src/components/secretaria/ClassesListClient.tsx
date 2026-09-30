@@ -52,7 +52,7 @@ export default function ClassesListClient() {
   }, [escolaId]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 p-6">
+    <div className="w-full max-w-6xl mx-auto space-y-6 p-6">
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <h1 className="text-2xl font-bold text-moxinexa-navy">Classes</h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -91,7 +91,7 @@ export default function ClassesListClient() {
                     {classe.nome}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link href={buildPortalHref(escolaSlug || escolaId, `${classeBase}/${classe.id}`)} className="text-klasse-green-600 hover:text-klasse-green-900">
+                    <Link href={buildPortalHref(escolaSlug || escolaId, `${classeBase}/${classe.id}`)} className="text-emerald-600 hover:text-emerald-900">
                         Ver Disciplinas
                     </Link>
                   </td>

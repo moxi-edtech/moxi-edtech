@@ -78,9 +78,9 @@ export const TYPE_COLORS: Record<
   { bgLight: string; border: string; text: string }
 > = {
   primario: {
-    bgLight: "bg-klasse-green-50",
-    border: "border-klasse-green-200",
-    text: "text-klasse-green-700",
+    bgLight: "bg-emerald-50",
+    border: "border-emerald-200",
+    text: "text-emerald-700",
   },
   ciclo1: {
     bgLight: "bg-sky-50",
@@ -93,9 +93,9 @@ export const TYPE_COLORS: Record<
     text: "text-indigo-700",
   },
   tecnico: { // Amarelo/Laranja para Técnico Geral
-    bgLight: "bg-klasse-gold-50",
-    border: "border-klasse-gold-200",
-    text: "text-klasse-gold-700",
+    bgLight: "bg-amber-50",
+    border: "border-amber-200",
+    text: "text-amber-700",
   },
   tecnico_ind: { // Slate/Cinza ou Laranja Escuro para Industrial
     bgLight: "bg-orange-50",

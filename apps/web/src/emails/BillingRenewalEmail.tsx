@@ -113,7 +113,7 @@ export const BillingRenewalEmail = ({
                 <Row>
                   <Column>
                     <Text className="m-0 text-slate-400 text-[11px] uppercase">NIB</Text>
-                    <Text className="m-0 text-klasse-green text-[15px] font-mono font-bold tracking-wider">0040.0000.1234.5678.9012.3</Text>
+                    <Text className="m-0 text-emerald text-[15px] font-mono font-bold tracking-wider">0040.0000.1234.5678.9012.3</Text>
                   </Column>
                 </Row>
               </div>
@@ -121,7 +121,7 @@ export const BillingRenewalEmail = ({
 
             <Section className="text-center mt-[32px] mb-[12px]">
               <Button
-                className="bg-klasse-gold rounded-xl text-klasse-slate text-[14px] font-bold no-underline text-center px-6 py-4 shadow-sm"
+                className="bg-amber rounded-xl text-klasse-slate text-[14px] font-bold no-underline text-center px-6 py-4 shadow-sm"
                 href={linkPagamento}
               >
                 Submeter Comprovativo

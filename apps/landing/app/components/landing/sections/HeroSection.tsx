@@ -2,7 +2,7 @@
 
 import { track } from '@vercel/analytics'
 import { motion, Variants } from 'framer-motion'
-import Image from 'next/image'
+import { LaptopPreview } from './LaptopPreview'
 
 interface HeroSectionProps {
   titleLines: string[]
@@ -10,10 +10,11 @@ interface HeroSectionProps {
   subtitle: string
   primaryCta: { label: string; href: string }
   secondaryCta: { label: string; href: string }
+  ebookCta: { label: string; href: string }
   note: string
 }
 
-export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, secondaryCta, note }: HeroSectionProps) {
+export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, secondaryCta, ebookCta, note }: HeroSectionProps) {
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
@@ -39,11 +40,10 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
 
   return (
     <section className="hero z section-accent">
-      <div className="hero-gradient-bg" aria-hidden="true" />
-      <div className="hero-noise-bg" aria-hidden="true" />
-      <div className="hero-contrast-overlay" aria-hidden="true" />
+      <div className="hero-ambient" aria-hidden="true" />
       <div className="container">
-        <div className="hero-content">
+        <div className="hero-grid">
+          <div className="hero-content">
           <motion.div
             className="hero-copy"
             variants={containerVariants}
@@ -80,29 +80,28 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
                 {secondaryCta.label}
               </a>
             </motion.div>
+            <motion.a
+              variants={itemVariants}
+              href={ebookCta.href}
+              className="hero-ebook-link"
+              onClick={() => track('conversion_click', { section: 'hero', label: ebookCta.label })}
+            >
+              {ebookCta.label} <span aria-hidden="true">→</span>
+            </motion.a>
             <motion.div variants={itemVariants} className="hero-proof">
-              <div className="proof-text">
-                <strong>{note}</strong>
-              </div>
+              <div className="proof-text"><strong>{note}</strong><span>Configuração e formação acompanhadas</span></div>
             </motion.div>
           </motion.div>
+          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
+            className="hero-showcase"
+          >
+            <LaptopPreview />
+          </motion.div>
         </div>
-        <motion.div
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.5, ease: 'easeOut' }}
-          className="hero-bg-image-wrapper"
-          style={{ position: 'absolute', inset: 0, zIndex: -1 }}
-        >
-          <Image
-            src="/diretor%20com%20terno.PNG"
-            alt="Director de escola angolana com terno"
-            fill
-            sizes="100vw"
-            priority
-            className="hero-bg-image"
-          />
-        </motion.div>
       </div>
     </section>
   )

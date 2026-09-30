@@ -11,8 +11,8 @@ import {
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 import type { Database } from '~types/supabase'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
+import { resolveProfessorAcademicContext } from '@/lib/professor/resolveProfessorAcademicContext'
 
-type ProfessorRow = { id: string }
 type TurmaRow = { id: string; curso_id: string | null; classe_id: string | null }
 type TurmaDisciplinaRow = { id: string; curso_matriz_id: string | null; professor_id: string | null }
 type CursoMatrizRow = {
@@ -86,15 +86,6 @@ export async function GET(req: Request) {
 
     const admin = supabase
 
-    const { data: professor } = await admin
-      .from('professores')
-      .select('id')
-      .eq('profile_id', user.id)
-      .eq('escola_id', escolaId)
-      .maybeSingle()
-    const professorId = (professor as ProfessorRow | null)?.id
-    if (!professorId) return NextResponse.json({ error: 'Professor não encontrado' }, { status: 403 })
-
     const { data: turma } = await admin
       .from('turmas')
       .select('id, curso_id, classe_id')
@@ -150,19 +141,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Disciplina não atribuída à turma' }, { status: 404 })
     }
 
-    const { data: assignment } = await admin
-      .from('turma_disciplinas_professores')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('turma_id', turmaIdValue)
-      .eq('session_id', academicContext.anoLetivoId)
-      .eq('disciplina_id', disciplinaIdValue)
-      .eq('professor_id', professorId)
-      .maybeSingle()
-
-    const hasLegacyAssignment = turmaDisciplina.professor_id === professorId
-
-    if (!assignment && !hasLegacyAssignment) {
+    const professorContext = await resolveProfessorAcademicContext({
+      supabase: admin,
+      escolaId,
+      userId: user.id,
+      turmaId: turmaIdValue,
+      disciplinaId: disciplinaIdValue,
+      turmaDisciplinaId: turmaDisciplina.id,
+    })
+    if (!professorContext) {
       return NextResponse.json({ error: 'Professor não atribuído à disciplina' }, { status: 403 })
     }
 

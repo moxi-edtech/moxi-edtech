@@ -36,7 +36,7 @@ export default function MensalidadesPrecosWorkspace({
   };
 
   return (
-    <main className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6 p-4 md:p-6">
       <header className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
           Financeiro
@@ -112,6 +112,6 @@ export default function MensalidadesPrecosWorkspace({
           <PrecosClient escolaId={escolaId} embedded />
         </section>
       )}
-    </main>
+    </div>
   );
 }

@@ -170,7 +170,7 @@ function PaymentActionModal({ result, onClose, onSuccess }: {
     return (
       <ModalShell open title="Preparar pagamento" description={result.label} onClose={onClose}>
         <div className="flex items-center justify-center gap-3 py-12 text-sm font-semibold text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin text-klasse-green" />
+          <Loader2 className="h-5 w-5 animate-spin text-emerald" />
           A carregar mensalidades em aberto...
         </div>
       </ModalShell>

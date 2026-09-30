@@ -161,7 +161,7 @@ export function CartaoEstudante() {
           <div className="relative aspect-[1.58/1] w-full overflow-hidden rounded-[2.5rem] bg-[#0d1711] p-6 text-white shadow-xl ring-1 ring-white/10 flex flex-col justify-between">
             
             {/* Ambient Lighting Ornaments */}
-            <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-klasse-gold/10 blur-[50px]" />
+            <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-amber/10 blur-[50px]" />
             <div className="absolute -left-12 -bottom-12 h-44 w-44 rounded-full bg-emerald-500/10 blur-[50px]" />
 
             {/* Header do Cartão */}
@@ -171,14 +171,14 @@ export function CartaoEstudante() {
                   {data.escola_logo ? (
                     <img src={data.escola_logo} alt="Logo" className="h-full w-full object-contain" />
                   ) : (
-                    <GraduationCap className="h-5 w-5 text-klasse-gold" />
+                    <GraduationCap className="h-5 w-5 text-amber" />
                   )}
                 </div>
                 <h3 className="text-xs font-black uppercase tracking-tight text-white truncate max-w-[170px]">
                   {data.escola}
                 </h3>
               </div>
-              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[9px] font-black uppercase text-klasse-gold backdrop-blur-sm">
+              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[9px] font-black uppercase text-amber backdrop-blur-sm">
                 {data.ano_letivo}
               </span>
             </div>
@@ -204,7 +204,7 @@ export function CartaoEstudante() {
                 </p>
                 
                 <div className="pt-2 space-y-0.5">
-                  <p className="text-[9px] font-black uppercase text-klasse-gold tracking-tight truncate">
+                  <p className="text-[9px] font-black uppercase text-amber tracking-tight truncate">
                     {data.curso}
                   </p>
                   <p className="text-[10px] font-medium text-white/80">

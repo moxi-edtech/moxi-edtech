@@ -130,7 +130,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="bg-klasse-gold-400 text-white hover:brightness-95 focus:ring-4 focus:ring-klasse-gold-400/20 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm"
+        className="bg-amber-400 text-white hover:brightness-95 focus:ring-4 focus:ring-amber-400/20 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm"
       >
         <Calendar className="w-4 h-4" />
         Gerar Cobranças
@@ -151,7 +151,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
           <select
             value={selectedSession}
             onChange={(e) => setSelectedSession(e.target.value)}
-            className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-klasse-gold-400/20 focus:border-klasse-gold-400"
+            className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
           >
             <option value="">Selecione uma sessão/ano</option>
             {sessions.map((s) => (
@@ -161,7 +161,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
             ))}
           </select>
           {!selectedSession && (
-            <p className="mt-1 text-xs text-klasse-gold-700 bg-klasse-gold-50 border border-klasse-gold-100 rounded-lg p-2">
+            <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
               Escolha o ano letivo para filtrar as turmas e gerar cobranças corretamente.
             </p>
           )}
@@ -174,7 +174,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
               type="number"
               value={ano}
               onChange={(e) => setAno(Number(e.target.value))}
-              className="w-full border-slate-300 border rounded-xl p-2 text-sm focus:ring-4 focus:ring-klasse-gold-400/20 focus:border-klasse-gold-400"
+              className="w-full border-slate-300 border rounded-xl p-2 text-sm focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
             />
           </div>
           <div>
@@ -184,7 +184,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
             <select
               value={mes}
               onChange={(e) => setMes(Number(e.target.value))}
-              className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-klasse-gold-400/20 focus:border-klasse-gold-400"
+              className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
             >
               {[...Array(12)].map((_, i) => (
                 <option key={i} value={i + 1}>
@@ -205,7 +205,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
             onFocus={() => {
               if (turmas.length === 0) loadTurmas();
             }}
-            className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-klasse-gold-400/20 focus:border-klasse-gold-400"
+            className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
           >
             <option value="todas">Todas as turmas</option>
             {turmas.map((turma) => (
@@ -241,7 +241,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
           <button
             onClick={handleGerar}
             disabled={loading || status === "success"}
-            className="bg-klasse-gold-400 hover:brightness-95 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+            className="bg-amber-400 hover:brightness-95 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar geração"}
           </button>

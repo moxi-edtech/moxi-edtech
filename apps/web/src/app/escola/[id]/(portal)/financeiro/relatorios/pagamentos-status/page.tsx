@@ -50,7 +50,7 @@ export default function Page() {
 
   const colors: Record<string, string> = {
     pago: 'bg-green-500',
-    pendente: 'bg-klasse-gold-500',
+    pendente: 'bg-amber-500',
     atrasado: 'bg-rose-500',
   };
 

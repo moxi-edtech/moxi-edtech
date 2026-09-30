@@ -16,7 +16,7 @@ export function ActionCard({
       href={href}
       className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md"
     >
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-klasse-green/10 text-klasse-green ring-1 ring-klasse-green/20 group-hover:bg-klasse-green/15">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald/10 text-emerald ring-1 ring-emerald/20 group-hover:bg-emerald/15">
         <Icon className="h-5 w-5" />
       </div>
       <h4 className="text-sm font-semibold text-slate-900">{title}</h4>

@@ -4,17 +4,18 @@ export const navLinks = [
   { href: '#para-quem', label: 'Para quem é' },
   { href: '/diagnostico', label: 'Diagnóstico' },
   { href: '#precos', label: 'Preços' },
+  { href: '/ebook', label: 'E-book gratuito' },
 ]
 
 export const hero = {
   eyebrow: 'Gestão escolar para Angola',
-  titleLines: ['Assuma o controlo total', 'da sua escola hoje.'],
+  titleLines: ['A escola inteira,', 'numa única visão.'],
   subtitle:
-    'Propinas sob controlo. Documentos MED prontos. Sem caos no Excel.',
-  primaryCta: 'Começar agora (2 meses grátis)',
-  diagnosticCta: 'Faça o diagnóstico',
+    'Direção, secretaria, professores, alunos e famílias ligados pela mesma informação. Menos retrabalho. Mais controlo para decidir.',
+  primaryCta: 'Conhecer o KLASSE',
+  diagnosticCta: 'Agendar diagnóstico',
   secondaryCta: 'Fale connosco',
-  note: 'Configuração assistida pela nossa equipa.',
+  note: 'Implementação acompanhada pela nossa equipa.',
 }
 
 export const heroMockup = {
@@ -272,8 +273,19 @@ export const pricingPlans: PricingPlan[] = [
 export const footerLinks = [
   { href: '/diagnostico', label: 'Diagnóstico de Gestão' },
   { href: '/sistema-de-gestao-escolar', label: 'Sistema de Gestão Escolar' },
-  { href: '#', label: 'Termos de Serviço' },
-  { href: '#', label: 'Política de Privacidade' },
-  { href: '#', label: 'Suporte' },
-  { href: '#', label: 'Contacto' },
+  { href: '/termos', label: 'Termos de Serviço' },
+  { href: '/privacidade', label: 'Política de Privacidade' },
+  { href: '/exclusao-de-dados', label: 'Política de Exclusão de Dados' },
+  { href: 'https://wa.me/244933349106', label: 'Suporte', newTab: true },
+  { href: 'mailto:contato@klasse.ao', label: 'Contacto' },
+]
+
+export const socialLinks = [
+  { network: 'facebook', href: 'https://www.facebook.com/profile.php?id=61591621266437', label: 'Facebook' },
+  { network: 'instagram', href: 'https://www.instagram.com/klassegestao', label: 'Instagram' },
+  {
+    network: 'linkedin',
+    href: 'https://www.linkedin.com/company/klasse-sistema-de-gestao-escolar/',
+    label: 'LinkedIn',
+  },
 ]

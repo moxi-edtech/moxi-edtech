@@ -10,6 +10,8 @@ import {
 import type { Database, Json } from "~types/supabase";
 import { requireApiTenantGuard } from "@/lib/api/requireApiTenantGuard";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -331,6 +333,11 @@ export async function POST(req: NextRequest) {
     const user = guard.user;
     const escolaId = guard.tenantId;
 
+    const financeGuard = requireFinanceChargeMessages(
+      await resolveSchoolOperatingProfile(supabase as any, escolaId)
+    );
+    if (!financeGuard.ok) return NextResponse.json(financeGuard, { status: 409 });
+
     const { data: existingIdempotency } = await supabaseAny
       .from("idempotency_keys")
       .select("result")
@@ -414,7 +421,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const valorRecibo = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
+    const valorRecibo = receiptItems.reduce((total, item) => total + item.valor, 0);
     if (!Number.isFinite(valorRecibo) || valorRecibo <= 0) {
       return NextResponse.json(
         { ok: false, error: "Valor inválido para emissão fiscal do recibo." },

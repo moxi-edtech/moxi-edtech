@@ -29,7 +29,7 @@ export function PushSettings({ escolaId }: { escolaId?: string | null }) {
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${isSubscribed ? "bg-klasse-green-50 text-klasse-green" : "bg-slate-50 text-slate-400"}`}>
+          <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${isSubscribed ? "bg-emerald-50 text-emerald" : "bg-slate-50 text-slate-400"}`}>
             {isSubscribed ? <Bell size={20} /> : <BellOff size={20} />}
           </div>
           <div>

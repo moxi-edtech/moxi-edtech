@@ -117,7 +117,7 @@ export function BalcaoServicoModal({
           <select
             value={servicoCodigo}
             onChange={(event) => setSelectedCodigo(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
           >
             {available.length === 0 ? (
               <option value="">Sem serviços ativos</option>
@@ -131,7 +131,7 @@ export function BalcaoServicoModal({
           </select>
 
           {decision?.decision === "GRANTED" && (
-            <div className="flex gap-2 rounded-xl border border-klasse-green-200 bg-klasse-green-50 p-3 text-sm text-klasse-green-900">
+            <div className="flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
               <Check className="mt-0.5 h-4 w-4" />
               <div>
                 <div className="font-bold">Liberado na hora</div>
@@ -154,7 +154,7 @@ export function BalcaoServicoModal({
           )}
 
           {decision?.decision === "REQUIRES_PAYMENT" && (
-            <div className="flex gap-2 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-sm text-klasse-gold-900">
+            <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               <CreditCard className="mt-0.5 h-4 w-4" />
               <div>
                 <div className="font-bold">Requer pagamento</div>
@@ -176,7 +176,7 @@ export function BalcaoServicoModal({
           <button
             onClick={handleContinuar}
             disabled={loading || available.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-70"
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-70"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
             Continuar

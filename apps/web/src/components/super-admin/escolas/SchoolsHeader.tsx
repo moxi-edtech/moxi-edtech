@@ -27,7 +27,7 @@ export function SchoolsHeader({ fallbackSource, onRepairAdmins, loading }: Schoo
           {fallbackSource && (
             <span
               title="A usar base de dados de contingência"
-              className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-klasse-gold-50 text-[#E3B23C] border border-klasse-gold-100"
+              className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-[#E3B23C] border border-amber-100"
             >
               Modo Contingência
             </span>
@@ -51,7 +51,7 @@ export function SchoolsHeader({ fallbackSource, onRepairAdmins, loading }: Schoo
         
         <button 
           onClick={() => router.push("/super-admin/escolas/nova")}
-          className="h-11 px-6 rounded-xl bg-klasse-green text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-sm transition-all active:scale-95"
+          className="h-11 px-6 rounded-xl bg-emerald text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-sm transition-all active:scale-95"
         >
           <div className="flex items-center gap-2">
             <Plus size={16} strokeWidth={3} /> Provisionar Unidade

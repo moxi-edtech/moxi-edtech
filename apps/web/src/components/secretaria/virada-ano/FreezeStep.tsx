@@ -120,10 +120,10 @@ export function FreezeStep({ onComplete, retroactivePending = false }: { onCompl
                 <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs font-bold">
                         <span className="text-slate-500 uppercase tracking-tighter">Processando Lote...</span>
-                        <span className="text-klasse-green">{progressPercent}%</span>
+                        <span className="text-emerald">{progressPercent}%</span>
                     </div>
                     <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-klasse-green transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                        <div className="h-full bg-emerald transition-all duration-500" style={{ width: `${progressPercent}%` }} />
                     </div>
                     <p className="text-[10px] text-slate-400 text-center italic">Isto pode levar alguns minutos. Pode continuar navegando.</p>
                 </div>

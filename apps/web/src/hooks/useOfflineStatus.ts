@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 
 export function useOfflineStatus() {
-  const [online, setOnline] = useState(() => {
-    if (typeof navigator === "undefined") return true;
-    return navigator.onLine;
-  });
+  // O primeiro render precisa ser igual no servidor e no cliente.
+  // A leitura de navigator.onLine acontece depois da hidratação.
+  const [online, setOnline] = useState(true);
 
   useEffect(() => {
+    queueMicrotask(() => setOnline(navigator.onLine));
     const handleOnline = () => setOnline(true);
     const handleOffline = () => setOnline(false);
 

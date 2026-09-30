@@ -76,13 +76,14 @@ export async function POST(req: Request) {
       p_fim_previsto: body.fim_previsto ?? null,
     });
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: error.code === "42501" ? 403 : 409 });
+    const aulaId = data?.id ?? null;
     await dispatchSecretariaNotificacao({
       supabase,
       escolaId,
       key: "AULA_INICIADA",
       actorId: auth.user.id,
       actorRole: "professor",
-      params: { actionUrl: "/secretaria/aulas" },
+      params: { aulaId, actionUrl: `/escola/${escolaId}/operacoes/dashboard` },
     });
     return NextResponse.json({ ok: true, aula: data });
   }
@@ -169,5 +170,13 @@ export async function POST(req: Request) {
     p_professor_id: professor.id,
   });
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: error.code === "42501" ? 403 : 409 });
+  await dispatchSecretariaNotificacao({
+    supabase,
+    escolaId,
+    key: "AULA_INICIADA",
+    actorId: auth.user.id,
+    actorRole: "professor",
+    params: { aulaId, actionUrl: `/escola/${escolaId}/operacoes/dashboard` },
+  });
   return NextResponse.json({ ok: true, aula: data });
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { authorizePedagogicalManage } from '@/lib/escola/disciplinas'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { dispatchProfessorNotificacao } from '@/lib/notificacoes/dispatchProfessorNotificacao'
@@ -61,7 +61,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         entidade_id: turmaId,
       }).catch(() => null)
 
-    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
+    const authz = await authorizePedagogicalManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
     headers.set('Deprecation', 'true')
@@ -187,7 +187,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const status =
         msg.includes('NOT_FOUND')
           ? 404
-          : msg.includes('SKILL_MISMATCH') || msg.includes('TURNO_MISMATCH') || msg.includes('CARGA_EXCEEDED')
+          : msg.includes('SKILL_MISMATCH') || msg.includes('TURNO_MISMATCH') || msg.includes('CARGA_EXCEEDED') || msg.includes('QUADRO_CONFLICT')
             ? 409
             : msg.includes('INVALID_INPUT')
             ? 400
@@ -197,7 +197,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         rpc_error: msg,
         professor_id: professorId,
       })
-      return NextResponse.json({ ok: false, error: msg }, { status, headers })
+      const errorMessage = msg.includes('QUADRO_CONFLICT')
+        ? 'O professor já está ocupado nesse horário noutra disciplina ou turma.'
+        : msg
+      return NextResponse.json({ ok: false, error: errorMessage }, { status, headers })
     }
 
     const rpcRow = (Array.isArray(rpcRows) ? rpcRows[0] : rpcRows) as

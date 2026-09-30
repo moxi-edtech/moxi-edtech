@@ -48,8 +48,8 @@ export function BackofficeShell({
                   href={item.href}
                   className={`flex items-center gap-2 rounded-xl px-3 py-2 ${
                     active
-                      ? 'bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25'
-                      : 'text-slate-400 hover:text-klasse-gold'
+                      ? 'bg-slate-900 text-amber ring-1 ring-amber/25'
+                      : 'text-slate-400 hover:text-amber'
                   }`}
                 >
                   <Icon className="h-5 w-5" />

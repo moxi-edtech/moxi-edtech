@@ -103,7 +103,7 @@ export function RegistoPagamentoModal({
             <select
               value={metodo}
               onChange={(e) => setMetodo(e.target.value as PagamentoMetodo)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-klasse-gold-500/20 focus:border-klasse-gold-500 outline-none transition-all"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
             >
               {METODOS.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -132,7 +132,7 @@ export function RegistoPagamentoModal({
             value={observacao}
             onChange={(e) => setObservacao(e.target.value)}
             rows={3}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-klasse-gold-500/20 focus:border-klasse-gold-500 outline-none transition-all resize-none text-sm"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all resize-none text-sm"
             placeholder="Alguma nota sobre este pagamento..."
           />
         </div>
@@ -148,7 +148,7 @@ export function RegistoPagamentoModal({
           <button
             type="submit"
             disabled={loading || !escolaUuid}
-            className="flex items-center gap-2 bg-klasse-gold-500 hover:bg-klasse-gold-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm shadow-klasse-gold-500/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm shadow-amber-500/20 transition-all disabled:opacity-50"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />

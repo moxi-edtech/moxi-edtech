@@ -236,7 +236,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
   const isTransferencia = assinatura.metodo_pagamento === 'transferencia';
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       
       {/* HEADER DO STATUS (Enterprise Vibe) */}
       <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden relative">
@@ -399,7 +399,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
                     {beneficiosPlano.map((item) => (
                       <div key={item.label} className="flex items-center justify-between">
                         <span>{item.label}</span>
-                        <span className={`font-semibold ${item.enabled ? "text-klasse-green-600" : "text-slate-400"}`}>
+                        <span className={`font-semibold ${item.enabled ? "text-emerald-600" : "text-slate-400"}`}>
                           {item.enabled ? "Ativo" : "Indisponível"}
                         </span>
                       </div>

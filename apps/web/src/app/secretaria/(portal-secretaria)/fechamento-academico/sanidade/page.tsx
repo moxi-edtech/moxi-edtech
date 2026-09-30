@@ -49,7 +49,7 @@ export default function SanidadeFechamentoPage() {
   };
 
   return (
-    <main className="space-y-4 p-6">
+    <div className="space-y-4 p-6">
       <DashboardHeader
         title="Sanidade Pré-Fechamento Acadêmico"
         breadcrumbs={[
@@ -82,6 +82,6 @@ export default function SanidadeFechamentoPage() {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

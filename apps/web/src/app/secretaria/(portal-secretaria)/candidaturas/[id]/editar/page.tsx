@@ -150,7 +150,7 @@ export default function EditarCandidaturaPage() {
         </div>
 
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-klasse-gold-500 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-500 rounded-full mb-4">
             <PencilSquareIcon className="w-8 h-8 text-white" />
           </div>
           <DashboardHeader

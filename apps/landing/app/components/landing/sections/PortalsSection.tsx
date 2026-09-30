@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
+import Image from 'next/image'
 
 import { FadeIn } from '../FadeIn'
 
@@ -35,9 +36,9 @@ const slides: PortalSlide[] = [
     id: 'professor',
     tab: 'Professor',
     badge: 'Portal do Professor',
-    title: 'Portal do Professor, igual ao ambiente real.',
-    description: 'Resumo do dia, minhas turmas e agenda semanal com os mesmos blocos da tela real.',
-    points: ['Aulas hoje, turmas ativas, avaliacoes pendentes e faltas a lancar', 'Acoes diretas: Registrar Presencas e Lancar Notas', 'Turmas por disciplina e agenda organizada por dia'],
+    title: 'Notas, avaliações e pautas no mesmo lugar.',
+    description: 'O professor lança notas, acompanha a turma e publica a pauta sem depender da secretaria.',
+    points: ['Pauta Digital por turma e disciplina', 'Lançamento de notas com histórico claro', 'Publicação pronta para direção e encarregados'],
   },
 ]
 
@@ -46,10 +47,13 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
     return (
       <div className="device-stage device-stage--aluno">
         <div className="portais-device-head">
-          <span className="post-brand">KLASSE</span>
+          <span className="post-brand"><img src="/logo-klasse.png" alt="" />KLASSE</span>
           <span className="post-headline">Portal do Aluno</span>
         </div>
-        <div className="phone">
+        <div className="portal-real-mobile">
+          <Image src="/assets/device-hero-clean.png" alt="Portal do aluno KLASSE no telemóvel com lupa" fill sizes="(max-width: 900px) 92vw, 42vw" />
+        </div>
+        <div className="phone portal-legacy-phone" aria-hidden="true">
           <div className="phone-shell">
             <div className="phone-notch" />
             <div className="phone-screen">
@@ -93,59 +97,61 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
     return (
       <div className="device-stage device-stage--professor">
         <div className="portais-device-head">
-          <span className="post-brand">KLASSE</span>
+          <span className="post-brand"><img src="/logo-klasse.png" alt="" />KLASSE</span>
           <span className="post-headline">Portal do Professor</span>
         </div>
-        <div className="android-shell">
-          <div className="android-frame">
-            <div className="android-screen">
-              <div className="and-status"><span>07:00</span><span>4G - 87%</span></div>
-              <div className="and-header">
-                <div className="ph-logo" aria-hidden="true">
-                  <img src="/logo-klasse.png" alt="" />
-                </div>
-                <div className="ph-header-text">
-                  <div className="ph-portal-lbl">Portal do Professor</div>
-                  <div className="ph-escola">Colegio Nova Geracao</div>
-                </div>
-              </div>
-              <div className="and-student-bar"><span className="alvid-pill">Prof. Mateus Neto</span></div>
-              <div className="and-content">
-                <div className="and-professor-resumo">
-                  <div className="and-section-lbl">Resumo do dia</div>
-                  <div className="and-meta-grid and-meta-grid--professor">
-                    <div className="and-meta-card and-meta-card--professor"><small>Aulas hoje</small><strong>6</strong></div>
-                    <div className="and-meta-card and-meta-card--professor"><small>Turmas ativas</small><strong>4</strong></div>
-                    <div className="and-meta-card and-meta-card--professor"><small>Avaliacoes pendentes</small><strong>3</strong></div>
-                    <div className="and-meta-card and-meta-card--professor"><small>Faltas a lancar</small><strong>2</strong></div>
+        <div className="dashboard-real-frame dashboard-real-frame--notebook portal-professor-dashboard">
+          <div className="dashboard-frame">
+            <div className="dashboard-bar"><span /><span /><span /></div>
+            <div className="dashboard-screen dashboard-screen--real dashboard-screen--teacher">
+              <div className="teacher-portal-ui">
+                <aside className="teacher-sidebar">
+                  <div className="teacher-brand">
+                    <span className="teacher-logo-box"><img src="/logo-klasse.png" alt="" /></span>
+                    <span><b>KLASSE</b><small>gestão escolar</small></span>
                   </div>
-                  <div className="and-quick-actions">
-                    <button type="button" className="and-action-chip and-action-chip--active">Registrar Presencas</button>
-                    <button type="button" className="and-action-chip">Lancar Notas</button>
+                  <div className="teacher-sidebar-context">Portal do Professor</div>
+                  <nav className="teacher-nav">
+                    <span><i />Início</span>
+                    <span><i />Frequências</span>
+                    <span className="active"><i />Notas</span>
+                    <span><i />Materiais</span>
+                    <span><i />Calendário</span>
+                    <span><i />Perfil</span>
+                  </nav>
+                  <div className="teacher-school"><small>Escola</small><b>Klasse Luanda</b></div>
+                </aside>
+                <main className="teacher-workspace">
+                  <div className="teacher-topbar">
+                    <div><small>Professor</small><b>Portal do professor</b></div>
+                    <span className="teacher-sync">Salvo</span>
                   </div>
-                </div>
-                <div className="and-section-lbl and-section-lbl-tight">Minhas turmas</div>
-                <div className="disc-item disc-item--professor">
-                  <span>Turma 9B</span>
-                  <strong>Matematica</strong>
-                </div>
-                <div className="disc-item disc-item--professor">
-                  <span>Turma 8A</span>
-                  <strong>Fisica</strong>
-                </div>
-                <div className="disc-item disc-item--professor">
-                  <span>Turma 7C</span>
-                  <strong className="warn">Quimica</strong>
-                </div>
-                <div className="and-section-lbl and-section-lbl-tight">Agenda semanal</div>
-                <div className="disc-item disc-item--professor">
-                  <span>Segunda</span>
-                  <strong>08:00-09:40</strong>
-                </div>
+                  <div className="teacher-hero-row">
+                    <div><small>Lançamento de notas</small><h3>Pauta Digital</h3><p>Matemática · 10ª A · Iº Trimestre</p></div>
+                    <button type="button">Publicar pauta</button>
+                  </div>
+                  <div className="teacher-kpis">
+                    <article><small>Alunos</small><b>32</b></article>
+                    <article><small>Avaliações</small><b>3/4</b></article>
+                    <article><small>Média</small><b>15.8</b></article>
+                  </div>
+                  <div className="teacher-gradebook">
+                    <div className="teacher-gradebook-head"><b>Lançamento de Notas</b><span>Sincronizado</span></div>
+                    <div className="teacher-table">
+                      <div className="teacher-tr teacher-th"><span>Nº</span><span>Nome do Aluno</span><span>Status</span><span>MAC</span><span>NPP</span><span>NPT</span><span>MT1</span></div>
+                      <div className="teacher-tr"><span>01</span><span><i />Ana Manuel</span><span className="ok">Salvo</span><span>16</span><span>15</span><span>17</span><b>16.0</b></div>
+                      <div className="teacher-tr highlight"><span>02</span><span><i />Bruno José</span><span className="saving">A salvar</span><span>14</span><span>13</span><span>15</span><b>14.0</b></div>
+                      <div className="teacher-tr"><span>03</span><span><i />Carla Domingos</span><span className="ok">Salvo</span><span>18</span><span>17</span><span>19</span><b>18.0</b></div>
+                      <div className="teacher-tr"><span>04</span><span><i />Elisa Mateus</span><span className="ok">Salvo</span><span>15</span><span>16</span><span>16</span><b>15.7</b></div>
+                    </div>
+                  </div>
+                </main>
               </div>
-              <div className="and-nav"><span>Inicio</span><span className="active">Turmas</span><span>Frequencias</span><span>Notas</span><span>Perfil</span></div>
             </div>
           </div>
+          <div className="dashboard-neck" />
+          <div className="dashboard-stand" />
+          <div className="dashboard-base" />
         </div>
       </div>
     )
@@ -154,84 +160,31 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
   return (
     <div className="device-stage device-stage--diretor">
       <div className="portais-device-head">
-        <span className="post-brand">KLASSE</span>
+        <span className="post-brand"><img src="/logo-klasse.png" alt="" />KLASSE</span>
         <span className="post-headline">Portal do Diretor</span>
       </div>
-      <div className="director-shell">
-        <div className="director-frame">
-          <div className="director-bar">
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className="director-screen">
-            <div className="director-kpis">
-              <article>
-                <small>Alunos ativos</small>
-                <strong>583</strong>
-              </article>
-              <article>
-                <small>Turmas</small>
-                <strong>24</strong>
-              </article>
-              <article>
-                <small>Professores</small>
-                <strong>47</strong>
-              </article>
-              <article>
-                <small>Financeiro</small>
-                <strong className="ok">78%</strong>
-              </article>
-            </div>
-
-            <div className="director-revenue">
-              <div className="director-revenue-row">
-                <span>Previsao de receita</span>
-                <strong>Kz 4.2M / Kz 5.4M</strong>
-              </div>
-              <div className="director-revenue-bar">
-                <i style={{ width: '78%' }} />
-              </div>
-              <p className="director-revenue-note">78% realizado no periodo actual</p>
-            </div>
-
-            <div className="director-grid">
-              <div className="director-panel">
-                <p className="director-panel-title">Entradas de hoje</p>
-                <div className="director-item">
-                  <span>Transferencia</span>
-                  <strong>Kz 84.000</strong>
-                </div>
-                <div className="director-item">
-                  <span>TPA</span>
-                  <strong>Kz 46.000</strong>
-                </div>
-                <div className="director-item">
-                  <span>Referencia</span>
-                  <strong>Kz 23.000</strong>
-                </div>
-              </div>
-              <div className="director-panel">
-                <p className="director-panel-title">Atencao prioritaria</p>
-                <div className="director-item">
-                  <span>Turma 9B</span>
-                  <strong className="late">35 dias</strong>
-                </div>
-                <div className="director-item">
-                  <span>Turma 11A</span>
-                  <strong className="warn">18 dias</strong>
-                </div>
-              </div>
-            </div>
+      <div className="dashboard-real-frame dashboard-real-frame--notebook portal-director-dashboard">
+        <div className="dashboard-frame">
+          <div className="dashboard-bar"><span /><span /><span /></div>
+          <div className="dashboard-screen dashboard-screen--real">
+            <Image
+              src="/assets/dashboard-notebook.png"
+              alt="Dashboard real do KLASSE para direção"
+              fill
+              sizes="(max-width: 900px) 92vw, 42vw"
+            />
           </div>
         </div>
+        <div className="dashboard-neck" />
+        <div className="dashboard-stand" />
+        <div className="dashboard-base" />
       </div>
     </div>
   )
 }
 
 export function PortalsSection() {
-  const [activeId, setActiveId] = useState<PortalSlide['id']>('diretor')
+  const [activeId, setActiveId] = useState<PortalSlide['id']>('aluno')
 
   const activeSlide = slides.find((slide) => slide.id === activeId) ?? slides[0]
 

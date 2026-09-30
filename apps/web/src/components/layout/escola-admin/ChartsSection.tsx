@@ -147,7 +147,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
 
       {/* Matrículas por mês */}
       <ChartCard
-        iconBg="bg-klasse-green/10 text-klasse-green"
+        iconBg="bg-emerald/10 text-emerald"
         icon={<TrendingUp className="h-4 w-4" />}
         title={isOperacoes ? "Fluxo de Matrículas" : "Matrículas por Mês"}
         subtitle={isOperacoes ? "Ritmo operacional do ano letivo" : "Evolução do ano letivo"}
@@ -183,7 +183,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
 
       {/* Status das mensalidades */}
       <ChartCard
-        iconBg="bg-klasse-gold/10 text-klasse-gold"
+        iconBg="bg-amber/10 text-amber"
         icon={<Wallet className="h-4 w-4" />}
         title={isOperacoes ? "Saúde da Cobrança" : "Status das Mensalidades"}
         subtitle={isOperacoes ? "Distribuição operacional da carteira" : "Distribuição atual"}

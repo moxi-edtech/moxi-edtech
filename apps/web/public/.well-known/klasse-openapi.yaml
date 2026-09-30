@@ -1,0 +1,274 @@
+openapi: 3.1.0
+info:
+  title: KLASSE API
+  version: 0.2.0
+  description: >-
+    Consultas e operações sobre a escola ativa do utilizador autenticado. O tenant
+    é sempre derivado do JWT e da associação em escola_users — nenhuma operação
+    aceita escola_id como parâmetro.
+
+    Pagamentos são em dois tempos e é obrigatório respeitá-los: prepare com
+    `preparar_pagamento`, mostre o resumo ao utilizador e só depois chame
+    `confirmar_pagamento` com o token devolvido. O token é de uso único e expira
+    em 15 minutos; reenviá-lo devolve o resultado original, nunca cobra duas vezes.
+    Nunca chame `confirmar_pagamento` sem confirmação explícita do utilizador.
+servers:
+  - url: https://app.klasse.ao
+security:
+  - bearerAuth: []
+paths:
+  /api/integrations/chatgpt/buscar_aluno:
+    post:
+      operationId: buscarAluno
+      summary: Busca alunos da escola ativa por nome ou número de processo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, minLength: 2, maxLength: 120 }
+                limit: { type: integer, minimum: 1, maximum: 25, default: 10 }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/listar_inadimplencia:
+    post:
+      operationId: listarInadimplencia
+      summary: Lista alunos com mensalidades vencidas e saldo em aberto.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/resumo_financeiro:
+    post:
+      operationId: obterResumoFinanceiro
+      summary: Resume valores previstos, recebidos, pendentes e inadimplentes.
+      requestBody: { $ref: '#/components/requestBodies/DateRange' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/professores_com_notas:
+    post:
+      operationId: listarProfessoresComNotas
+      summary: Lista professores vinculados a avaliações com notas lançadas no período.
+      requestBody: { $ref: '#/components/requestBodies/DateRange' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/frequencia_turma:
+    post:
+      operationId: obterFrequenciaTurma
+      summary: Resume presença, faltas e atrasos dos alunos de uma turma.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [class_id]
+              properties:
+                class_id: { type: string, format: uuid }
+                start_date: { type: string, format: date }
+                end_date: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/situacao_academica_aluno:
+    post:
+      operationId: obterSituacaoAcademicaAluno
+      summary: Retorna matrícula, turma, média e frequência de um aluno autorizado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [student_id]
+              properties:
+                student_id: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/integrations/chatgpt/lancar_frequencia:
+    post:
+      operationId: lancarFrequencia
+      summary: Regista a presença de uma turma numa data (substitui o que já existir nessa data).
+      description: >-
+        Idempotente por (turma, disciplina, data, aluno). Exige papel de professor
+        ou administrador. Confirme a data e a lista com o utilizador antes de chamar.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [turma_id, disciplina_id, data, presencas]
+              properties:
+                turma_id: { type: string, format: uuid }
+                disciplina_id: { type: string, format: uuid }
+                data: { type: string, format: date }
+                presencas:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items:
+                    type: object
+                    required: [aluno_id, status]
+                    properties:
+                      aluno_id: { type: string, format: uuid }
+                      status:
+                        type: string
+                        enum: [presente, ausente, atrasado, falta, justificada]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/integrations/chatgpt/lancar_notas:
+    post:
+      operationId: lancarNotas
+      summary: Lança notas de uma turma numa disciplina e trimestre (escala 0–20).
+      description: >-
+        Idempotente por (avaliação, aluno). Exige papel de professor atribuído à
+        turma/disciplina, ou administrador/secretaria. Confirme a avaliação e as
+        notas com o utilizador antes de chamar.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [turma_id, disciplina_id, turma_disciplina_id, trimestre, notas]
+              properties:
+                turma_id: { type: string, format: uuid }
+                disciplina_id: { type: string, format: uuid }
+                turma_disciplina_id: { type: string, format: uuid }
+                trimestre: { type: integer, minimum: 1, maximum: 3 }
+                tipo_avaliacao: { type: string, maxLength: 20, default: MAC }
+                is_isento: { type: boolean, default: false }
+                notas:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items:
+                    type: object
+                    required: [aluno_id, valor]
+                    properties:
+                      aluno_id: { type: string, format: uuid }
+                      valor: { type: number, minimum: 0, maximum: 20 }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/integrations/chatgpt/preparar_pagamento:
+    post:
+      operationId: prepararPagamento
+      summary: Primeiro tempo de um pagamento — NÃO cobra nada, devolve um resumo e um token.
+      description: >-
+        O valor é resolvido na base a partir do saldo em aberto da mensalidade; se
+        enviar `valor`, não pode exceder esse saldo. Mostre o resumo devolvido ao
+        utilizador e só avance para `confirmar_pagamento` após confirmação explícita.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [aluno_id, mensalidade_id]
+              properties:
+                aluno_id: { type: string, format: uuid }
+                mensalidade_id: { type: string, format: uuid }
+                valor: { type: number, exclusiveMinimum: 0 }
+                metodo:
+                  type: string
+                  enum: [cash, tpa, transfer, mcx, kwik, kiwk]
+                  default: cash
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/integrations/chatgpt/confirmar_pagamento:
+    post:
+      operationId: confirmarPagamento
+      summary: Segundo tempo — executa o pagamento preparado. Só após confirmação do utilizador.
+      description: >-
+        Use o token devolvido por `preparar_pagamento`. É de uso único e expira em
+        15 minutos. Reenviar o mesmo token devolve o resultado original e não cobra
+        novamente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/integrations/chatgpt/confirmacoes_pendentes:
+    post:
+      operationId: listarConfirmacoesPendentes
+      summary: Lista pagamentos preparados e ainda não confirmados (para retomar uma conversa).
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Supabase JWT
+  requestBodies:
+    DateRange:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              start_date: { type: string, format: date }
+              end_date: { type: string, format: date }
+  responses:
+    Success:
+      description: Consulta autorizada.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok, data]
+            properties:
+              ok: { type: boolean, const: true }
+              tool: { type: string }
+              data: {}
+    Unauthorized:
+      description: JWT ausente, inválido ou expirado.
+    Forbidden:
+      description: Usuário sem vínculo ou papel permitido na escola ativa.
+    Conflict:
+      description: Operação recusada por regra de negócio (ex. mensalidade já paga, valor acima do saldo).
+

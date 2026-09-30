@@ -36,7 +36,7 @@ function fmtNota(v?: number | null) {
 function finalStatus(nota?: number | null) {
   if (typeof nota !== "number") return { label: "Pendente", cls: "bg-slate-100 text-slate-700" };
   return nota >= 10
-    ? { label: "Aprovado", cls: "bg-klasse-green-100 text-klasse-green-700" }
+    ? { label: "Aprovado", cls: "bg-emerald-100 text-emerald-700" }
     : { label: "Reprovado", cls: "bg-red-100 text-red-700" };
 }
 
@@ -181,33 +181,33 @@ export function TabNotas() {
         ) : (
           <section className="space-y-3">
             {!isLiberado && (
-              <div className="relative mb-5 overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/15 via-amber-50 to-amber-100/80 p-4 shadow-sm sm:p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-start gap-3.5">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-slate-950 shadow-md">
-                      <LockIcon size={22} className="animate-pulse" />
+              <div className="relative mb-6 overflow-hidden rounded-3xl border border-amber-200/90 bg-gradient-to-br from-amber-50 via-white to-amber-50/40 p-5 sm:p-6 shadow-sm">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-200/60 shadow-sm">
+                      <LockIcon size={20} className="stroke-[2.2]" />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-black text-slate-950 tracking-tight">
-                          Pauta de Notas Publicada pelos Professores
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                          Pauta de Avaliação Publicada
                         </h3>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-amber-400/30 px-2.5 py-0.5 text-[9px] font-black uppercase text-amber-950">
-                          🔒 Emolumento Pendente
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/80 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/50">
+                          Emolumento de Secretaria
                         </span>
                       </div>
-                      <p className="text-xs font-medium text-slate-700 leading-relaxed max-w-xl">
-                        Os professores já lançaram as notas no sistema. Regularize a taxa de secretaria para desbloquear as médias detalhadas e descarregar o Boletim Oficial em PDF com QR Code de autenticidade.
+                      <p className="text-xs font-normal text-slate-600 leading-relaxed max-w-xl">
+                        As pautas do ano letivo foram lançadas. Regularize a taxa de emissão para visualizar as notas trimestrais detalhadas e descarregar o Boletim Oficial com validação digital via QR Code.
                       </p>
                     </div>
                   </div>
 
                   <Link 
                     href={`/aluno/documentos${query}`}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-xs font-black text-slate-950 shadow-md hover:bg-amber-300 active:scale-95 transition-all shrink-0 self-start sm:self-center"
+                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-bold text-white shadow-sm hover:bg-slate-800 active:scale-98 transition-all shrink-0"
                   >
-                    <span>Desbloquear na Secretaria</span>
-                    <ChevronRight size={16} />
+                    <span>Regularizar e Desbloquear</span>
+                    <ChevronRight size={15} className="text-slate-400" />
                   </Link>
                 </div>
               </div>
@@ -217,10 +217,10 @@ export function TabNotas() {
               {disciplinas.map((disc) => {
                 const status = finalStatus(disc.nota_final);
                 return (
-                  <details key={disc.id} className="group rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm transition-all open:ring-2 open:ring-klasse-green/10">
+                  <details key={disc.id} className="group rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm transition-all open:ring-2 open:ring-emerald/10">
                     <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-slate-900">
                         <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-open:bg-klasse-green-50 group-open:text-klasse-green transition-colors">
+                            <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-open:bg-emerald-50 group-open:text-emerald transition-colors">
                                 <FileText size={16} />
                             </div>
                             <span>{disc.nome}</span>
@@ -353,7 +353,7 @@ export function TabNotas() {
             <p className="mt-1 text-xs text-slate-500">O pedido será vinculado ao seu ano letivo, turma e disciplina. O prazo de resposta é contado a partir do registo.</p>
             {reapreciacaoMessage && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{reapreciacaoMessage}</p>}
             <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={5} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Explique o motivo do pedido." />
-            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setReapreciacaoDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()} className="rounded-lg bg-klasse-green px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button></div>
+            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setReapreciacaoDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()} className="rounded-lg bg-emerald px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button></div>
           </div>
         </div>
       )}
@@ -365,7 +365,7 @@ export function TabNotas() {
             <p className="mt-1 text-xs text-slate-500">A melhoria usa uma sessão oficial de recurso e preserva a maior nota entre a anterior e a obtida.</p>
             {melhoriaMessage && <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{melhoriaMessage}</p>}
             {melhoriaLoading ? <p className="mt-4 text-sm text-slate-500">A carregar sessões...</p> : melhoriaSessoes.length > 0 && <><label className="mt-4 block text-sm font-medium text-slate-700">Sessão de recurso</label><select value={melhoriaSessaoId} onChange={(event) => setMelhoriaSessaoId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">{melhoriaSessoes.map((sessao) => <option key={sessao.id} value={sessao.id}>{new Date(sessao.data_inicio).toLocaleDateString("pt-PT")} — {new Date(sessao.data_fim).toLocaleDateString("pt-PT")} ({sessao.estado})</option>)}</select><textarea value={melhoriaMotivo} onChange={(event) => setMelhoriaMotivo(event.target.value)} rows={4} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Explique o motivo do pedido." /></>}
-            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setMelhoriaDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={melhoriaSaving || melhoriaLoading || melhoriaSessoes.length === 0} onClick={() => void solicitarMelhoria()} className="rounded-lg bg-klasse-green px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{melhoriaSaving ? "A enviar..." : "Enviar pedido"}</button></div>
+            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setMelhoriaDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={melhoriaSaving || melhoriaLoading || melhoriaSessoes.length === 0} onClick={() => void solicitarMelhoria()} className="rounded-lg bg-emerald px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{melhoriaSaving ? "A enviar..." : "Enviar pedido"}</button></div>
           </div>
         </div>
       )}

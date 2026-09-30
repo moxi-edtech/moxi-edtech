@@ -1,3 +1,5 @@
+import { socialLinks } from '../../data/landing'
+
 export function SchemaMarkup() {
   const schema = {
     '@context': 'https://schema.org',
@@ -9,6 +11,7 @@ export function SchemaMarkup() {
         url: 'https://klasse.ao',
         logo: 'https://klasse.ao/logo-klasse.png',
         areaServed: 'AO',
+        sameAs: socialLinks.map((link) => link.href),
       },
       {
         '@type': 'WebSite',

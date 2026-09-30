@@ -32,8 +32,8 @@ export default function KpiSection({ data, isLoading = false }: { data?: KpiData
       icon: Building2,
       trend: "+2.5%",
       trendUp: true,
-      color: "text-klasse-green",
-      bgColor: "bg-klasse-green/5",
+      color: "text-emerald",
+      bgColor: "bg-emerald/5",
     },
     {
       title: "Pessoas na Rede",
@@ -62,8 +62,8 @@ export default function KpiSection({ data, isLoading = false }: { data?: KpiData
       icon: TrendingUp,
       trend: "-0.5%",
       trendUp: false,
-      color: "text-klasse-green",
-      bgColor: "bg-klasse-green/5",
+      color: "text-emerald",
+      bgColor: "bg-emerald/5",
     },
   ];
 
@@ -75,7 +75,7 @@ export default function KpiSection({ data, isLoading = false }: { data?: KpiData
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: idx * 0.1 }}
-          className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 transition-all hover:border-klasse-gold/30 hover:shadow-xl hover:shadow-klasse-gold/5"
+          className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 transition-all hover:border-amber/30 hover:shadow-xl hover:shadow-amber/5"
         >
           {/* Efeito Hover */}
           <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-slate-50 transition-transform group-hover:scale-150" />

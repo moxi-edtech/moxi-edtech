@@ -10,7 +10,13 @@ type EmitParams = {
   escolaId: string;
   matriculaId: string;
   dataHoraEfetivacao: string;
+  tipoOperacao?: "matricula" | "rematricula";
   observacao?: string;
+  itensPagos?: Array<{
+    descricao: string;
+    valor: number;
+    tipo?: "mensalidade" | "servico";
+  }>;
   createdBy?: string | null;
   audit?: {
     portal: "admin_escola" | "secretaria" | "financeiro" | "professor" | "aluno" | "super_admin" | "outro";
@@ -41,7 +47,9 @@ export async function emitirComprovanteMatricula({
   escolaId,
   matriculaId,
   dataHoraEfetivacao,
+  tipoOperacao = "matricula",
   observacao,
+  itensPagos = [],
   createdBy,
   audit,
 }: EmitParams): Promise<EmitComprovanteResult> {
@@ -80,7 +88,7 @@ export async function emitirComprovanteMatricula({
   // Fetch mensalidades
   const { data: mensalidades } = await supabase
     .from("mensalidades")
-    .select("mes_referencia, ano_referencia, valor, data_vencimento, status")
+    .select("mes_referencia, ano_referencia, valor, valor_previsto, valor_pago_total, data_vencimento, data_pagamento_efetiva, status")
     .eq("matricula_id", matriculaId)
     .order("data_vencimento", { ascending: true });
 
@@ -150,6 +158,7 @@ export async function emitirComprovanteMatricula({
 
   const snapshot = {
     tipo_documento: "comprovante_matricula",
+    tipo_operacao: tipoOperacao,
     matricula_id: matriculaId,
     aluno_id: String(matricula.aluno_id),
     aluno_nome: aluno.nome_completo || aluno.nome || "",
@@ -178,10 +187,24 @@ export async function emitirComprovanteMatricula({
       mes: m.mes_referencia,
       ano: m.ano_referencia,
       valor: m.valor,
+      valor_previsto: m.valor_previsto,
+      valor_pago_total: m.valor_pago_total,
       vencimento: m.data_vencimento,
+      pago_em: m.data_pagamento_efetiva,
       status: m.status
     })),
-    valor_total_anual: (mensalidades || []).reduce((acc, m) => acc + Number(m.valor), 0)
+    valor_total_anual: (mensalidades || []).reduce((acc, m) => acc + Number(m.valor), 0),
+    itens_pagos_balcao: itensPagos
+      .filter((item) => item.descricao.trim() && Number.isFinite(item.valor) && item.valor > 0)
+      .map((item) => ({
+        descricao: item.descricao.trim(),
+        valor: Number(item.valor),
+        tipo: item.tipo ?? "servico",
+      })),
+    total_pago_balcao: itensPagos.reduce(
+      (total, item) => total + (Number.isFinite(item.valor) && item.valor > 0 ? Number(item.valor) : 0),
+      0,
+    ),
   };
 
   const { data: doc, error: docError } = await supabase

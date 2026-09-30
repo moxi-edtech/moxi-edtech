@@ -5,7 +5,7 @@ import { Users, GraduationCap, CheckCircle2 } from "lucide-react";
 export default function BrandPanel() {
   return (
     <div className="relative hidden overflow-hidden md:block">
-      <div className="absolute inset-0 bg-klasse-green" />
+      <div className="absolute inset-0 bg-emerald" />
 
       {/* Padrão Geométrico Animado */}
       <motion.svg
@@ -30,12 +30,12 @@ export default function BrandPanel() {
             <circle cx="40" cy="40" r="8" fill="currentColor" />
           </pattern>
         </defs>
-        <rect width="800" height="800" fill="url(#klassePattern)" className="text-klasse-green-800" />
+        <rect width="800" height="800" fill="url(#klassePattern)" className="text-emerald-800" />
       </motion.svg>
 
       {/* Círculos Decorativos de Fundo */}
-      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-klasse-green-400/20 blur-3xl" />
-      <div className="absolute -bottom-20 -left-20 h-96 w-96 rounded-full bg-klasse-green-800/30 blur-3xl" />
+      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
+      <div className="absolute -bottom-20 -left-20 h-96 w-96 rounded-full bg-emerald-800/30 blur-3xl" />
 
       <div className="relative z-10 flex h-full flex-col justify-between p-12">
         {/* Topo: Logo e Branding */}
@@ -90,7 +90,7 @@ export default function BrandPanel() {
             <motion.div
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -right-8 -top-4 flex items-center gap-2 rounded-full bg-klasse-gold px-3 py-1.5 shadow-lg"
+              className="absolute -right-8 -top-4 flex items-center gap-2 rounded-full bg-amber px-3 py-1.5 shadow-lg"
             >
               <CheckCircle2 className="h-3.5 w-3.5 text-white" />
               <span className="text-[10px] font-bold text-white uppercase tracking-wider">Homologado</span>
@@ -101,8 +101,8 @@ export default function BrandPanel() {
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
               className="absolute -left-12 bottom-4 flex items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-lg"
             >
-              <Users className="h-3.5 w-3.5 text-klasse-green" />
-              <span className="text-[10px] font-bold text-klasse-green uppercase tracking-wider">+50 Escolas</span>
+              <Users className="h-3.5 w-3.5 text-emerald" />
+              <span className="text-[10px] font-bold text-emerald uppercase tracking-wider">+50 Escolas</span>
             </motion.div>
           </div>
         </motion.div>

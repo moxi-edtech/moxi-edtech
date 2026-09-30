@@ -377,7 +377,7 @@ export function OnboardingSchoolDetailsSheet({
                     return (
                       <div className="bg-slate-950 text-white rounded-3xl p-5 shadow-lg flex items-center justify-between border border-white/5 gap-4">
                         <div className="space-y-1.5">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest bg-white/10 text-klasse-gold">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest bg-white/10 text-amber">
                             Resumo de Ativação
                           </span>
                           <h4 className="text-sm font-bold tracking-tight">Etapas concluídas</h4>

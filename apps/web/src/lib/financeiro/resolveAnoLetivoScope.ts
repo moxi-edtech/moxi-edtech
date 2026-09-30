@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 
 export type AnoLetivoScope = {
   id: string;
@@ -19,51 +20,27 @@ function normalizeYear(value: unknown): number | null {
 }
 
 export async function resolveAnoLetivoScope(
-  supabase: SupabaseClient<any>,
+  supabase: SupabaseClient,
   escolaId: string,
   params: ResolveParams = {}
 ): Promise<AnoLetivoScope | null> {
-  const requestedId = params.anoLetivoId?.trim() || null;
   const requestedAno = normalizeYear(params.ano);
-
-  let query = supabase
-    .from("anos_letivos")
-    .select("id, ano, data_inicio, data_fim, ativo")
-    .eq("escola_id", escolaId);
-
-  if (requestedId) {
-    query = query.eq("id", requestedId);
-  } else if (requestedAno) {
-    query = query.eq("ano", requestedAno);
-  } else {
-    query = query.eq("ativo", true);
-  }
-
-  const { data, error } = await query
-    .order("ativo", { ascending: false })
-    .order("ano", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  if (!data) {
-    if (!requestedAno) return null;
+  try {
+    const scope = await resolveAcademicYearScope(supabase, {
+      escolaId,
+      requestedAcademicYearId: params.anoLetivoId,
+      requestedYear: requestedAno,
+    });
     return {
-      id: `ano-${requestedAno}`,
-      ano: requestedAno,
-      dataInicio: `${requestedAno}-01-01`,
-      dataFim: `${requestedAno}-12-31`,
+      id: scope.id,
+      ano: scope.ano,
+      dataInicio: scope.dataInicio,
+      dataFim: scope.dataFim,
     };
+  } catch (error) {
+    if (error instanceof AcademicYearContextError && ["ACADEMIC_YEAR_NOT_FOUND", "ACTIVE_ACADEMIC_YEAR_NOT_CONFIGURED"].includes(error.code)) {
+      return null;
+    }
+    throw error;
   }
-
-  const resolvedAno = normalizeYear(data.ano);
-  if (!resolvedAno) return null;
-
-  return {
-    id: String(data.id),
-    ano: resolvedAno,
-    dataInicio: data.data_inicio ? String(data.data_inicio) : null,
-    dataFim: data.data_fim ? String(data.data_fim) : null,
-  };
 }

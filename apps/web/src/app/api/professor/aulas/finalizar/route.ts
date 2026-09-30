@@ -47,7 +47,17 @@ export async function POST(req: Request) {
     key: "AULA_FINALIZADA",
     actorId: auth.user.id,
     actorRole: "professor",
-    params: { actionUrl: "/secretaria/aulas" },
+    params: { aulaId: parsed.data.aula_id, actionUrl: `/escola/${escolaId}/operacoes/dashboard` },
   });
-  return NextResponse.json({ ok: true, aula: data });
+  const { data: frequencias } = await supabase
+    .from("frequencias")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .eq("aula_id", parsed.data.aula_id)
+    .limit(1);
+  return NextResponse.json({
+    ok: true,
+    aula: data,
+    report: { attendance_status: frequencias?.length ? "started" : "pending" },
+  });
 }

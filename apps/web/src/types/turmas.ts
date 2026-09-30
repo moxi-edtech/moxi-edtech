@@ -12,6 +12,7 @@ export interface TurmaItem {
   ano_letivo?: number | null; // Corrected to be number | null based on DB
   status_validacao?: 'ativo' | 'rascunho' | 'arquivado' | string;
   session_id?: string;
+  ano_letivo_id?: string;
   curso_id?: string;
   classe_id?: string;
   is_classe_exame?: boolean;

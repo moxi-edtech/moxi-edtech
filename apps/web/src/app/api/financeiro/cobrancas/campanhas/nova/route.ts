@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { z } from 'zod';
 import { AcademicYearContextError, resolveAcademicYearContext } from '@/lib/academic-year/context';
+import { resolveSchoolOperatingProfile } from '@/lib/school-profile/resolve-school-profile';
+import { requireFinanceChargeMessages } from '@/lib/school-profile/guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +34,11 @@ export async function POST(request: Request) {
     if (!escolaId) {
       return NextResponse.json({ error: 'Escola não identificada' }, { status: 403 });
     }
+
+    const financeGuard = requireFinanceChargeMessages(
+      await resolveSchoolOperatingProfile(supabase as any, escolaId)
+    );
+    if (!financeGuard.ok) return NextResponse.json(financeGuard, { status: 409 });
 
     const body = await request.json();
     const parsedBody = NovaCampanhaSchema.safeParse(body);

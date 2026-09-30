@@ -4,6 +4,17 @@ import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/por
 
 export const dynamic = "force-dynamic";
 
+const PORTAL_DOCUMENT_CODES = [
+  "DOC_DECLARACAO_NOTAS",
+  "DOC_DECLARACAO_FREQUENCIA",
+  "DOC_BOLETIM_TRIMESTRAL",
+  "DOC_COMPROVANTE_MATRICULA",
+  "DOC_CARTAO_ESTUDANTE",
+  "DOC_FICHA_INSCRICAO",
+  "DOC_HISTORICO_ESCOLAR",
+  "DOC_CERTIFICADO_HABILITACOES",
+] as const;
+
 export async function GET(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
@@ -25,7 +36,7 @@ export async function GET(request: Request) {
       .select("id, codigo, nome, descricao, valor_base, exige_pagamento_antes_de_liberar, exige_aprovacao")
       .eq("escola_id", escolaId)
       .eq("ativo", true)
-      .ilike("codigo", "DOC_%")
+      .in("codigo", [...PORTAL_DOCUMENT_CODES])
       .order("nome", { ascending: true });
 
     if (catError) throw catError;
@@ -33,7 +44,7 @@ export async function GET(request: Request) {
     // 2. Buscar pedidos e intenções
     const { data: pedidos, error: pedError } = await supabase
       .from("servico_pedidos")
-      .select("id, status, servico_codigo, valor_cobrado, created_at, pagamento_intents(id, status, meta)")
+      .select("id, status, servico_codigo, valor_cobrado, reason_detail, created_at, pagamento_intents(id, status, meta)")
       .eq("aluno_id", selectedId)
       .eq("escola_id", escolaId)
       .eq("matricula_id", matricula.id)
@@ -70,7 +81,7 @@ export async function GET(request: Request) {
         pagamento_intent_id: intent?.id || null,
         status,
         valor: item.valor_base,
-        reject_reason: (intent?.meta as any)?.reject_reason || null,
+        reject_reason: (intent?.meta as any)?.reject_reason || pedido?.reason_detail || null,
         next_action: status === "granted"
           ? { type: "download", label: "Descarregar", href: "/aluno/documentos" }
           : status === "pending" || status === "blocked"

@@ -231,11 +231,11 @@ export default function IdentidadePage({ params }: Props) {
   }, [escolaParam]);
 
   const inputClass =
-    "w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold placeholder:text-slate-300 bg-slate-50";
+    "w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-amber focus:ring-1 focus:ring-amber placeholder:text-slate-300 bg-slate-50";
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link
@@ -260,11 +260,11 @@ export default function IdentidadePage({ params }: Props) {
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-50 pb-4 mb-2">
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Identidade Oficial</h3>
                   {formData.plano_atual && (
-                    <span className="inline-flex items-center rounded-full bg-klasse-green px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
+                    <span className="inline-flex items-center rounded-full bg-emerald px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
                       Plano {formData.plano_atual}
                     </span>
                   )}
@@ -301,7 +301,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-4 mb-2">Aparência da Marca</h3>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Logótipo (URL)</label>
@@ -349,7 +349,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-50 pb-4 mb-2">
                   <div>
                     <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Dados Bancários</h3>
@@ -357,7 +357,7 @@ export default function IdentidadePage({ params }: Props) {
                   </div>
                   <button
                     type="button"
-                    className="rounded-lg bg-klasse-green px-3 py-2 text-xs font-bold text-white hover:bg-klasse-green-700 disabled:opacity-50"
+                    className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                     disabled={savingBanking}
                     onClick={() => void saveBankingData()}
                   >
@@ -443,13 +443,13 @@ export default function IdentidadePage({ params }: Props) {
             </div>
 
             <aside className="space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-6 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-6 shadow-sm">
                 <div>
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-3 mb-4">Estado da Subscrição</h3>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-bold text-slate-400 uppercase">Status</span>
-                      <Badge className={`${formData.status === 'ativa' ? 'bg-klasse-green-500' : 'bg-rose-500'} text-white border-0 text-[9px] font-black`}>
+                      <Badge className={`${formData.status === 'ativa' ? 'bg-emerald-500' : 'bg-rose-500'} text-white border-0 text-[9px] font-black`}>
                         {formData.status?.toUpperCase()}
                       </Badge>
                     </div>
@@ -470,7 +470,7 @@ export default function IdentidadePage({ params }: Props) {
               </div>
 
               {planoLimites && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+                <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-3 mb-2">Contrato do Plano</h3>
                   <div className="grid gap-3 text-xs text-slate-600">
                     <div className="flex items-center justify-between">
@@ -521,7 +521,7 @@ export default function IdentidadePage({ params }: Props) {
                         {beneficiosPlano.map((item) => (
                           <div key={item.label} className="flex items-center justify-between">
                             <span>{item.label}</span>
-                            <span className={`font-semibold ${item.enabled ? "text-klasse-green-600" : "text-slate-400"}`}>
+                            <span className={`font-semibold ${item.enabled ? "text-emerald-600" : "text-slate-400"}`}>
                               {item.enabled ? "Ativo" : "Indisponível"}
                             </span>
                           </div>
@@ -537,7 +537,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-slate-800">Prévia do logótipo</h3>
                 <div className="flex items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 min-h-[180px]">
                   {logoPreview ? (

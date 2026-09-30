@@ -199,7 +199,7 @@ export default function StudentReclassificationTool() {
                     setResult(null);
                   }}
                   className={`rounded-xl border p-4 text-left transition ${
-                    active ? "border-klasse-green bg-emerald-50" : "border-slate-200 bg-white hover:border-slate-300"
+                    active ? "border-emerald bg-emerald-50" : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -207,7 +207,7 @@ export default function StudentReclassificationTool() {
                       <p className="text-sm font-black text-slate-950">{student.nome}</p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">{student.escola_nome}</p>
                     </div>
-                    {active && <CheckCircle2 className="h-5 w-5 shrink-0 text-klasse-green" />}
+                    {active && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald" />}
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
                     <span>Turma: <strong>{student.turma_nome}</strong></span>
@@ -240,7 +240,7 @@ export default function StudentReclassificationTool() {
               <select
                 value={targetTurmaId}
                 onChange={(event) => setTargetTurmaId(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-green"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-emerald"
               >
                 <option value="">Selecionar turma</option>
                 {turmas.map((turma) => (
@@ -257,7 +257,7 @@ export default function StudentReclassificationTool() {
                   type="checkbox"
                   checked={reprecificarAbertas}
                   onChange={(event) => setReprecificarAbertas(event.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-klasse-green"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald"
                 />
                 <span>
                   <span className="block text-sm font-black text-slate-950">Atualizar meses abertos</span>
@@ -286,7 +286,7 @@ export default function StudentReclassificationTool() {
                 onChange={(event) => setMotivo(event.target.value)}
                 rows={3}
                 placeholder="Ex.: correção de matrícula para classe de exame"
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-klasse-green"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald"
               />
             </label>
 

@@ -91,12 +91,12 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
                     onTouchStart={() => handlePreload(item)}
                     className={`relative flex items-center gap-3 rounded-2xl p-3.5 border transition-all active:scale-95 ${
                       active
-                        ? "border-klasse-green bg-klasse-green-50/60 text-klasse-green shadow-sm"
+                        ? "border-emerald bg-emerald-50/60 text-emerald shadow-sm"
                         : "border-slate-100 bg-slate-50 text-slate-700 hover:bg-slate-100/80"
                     }`}
                   >
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                      active ? "bg-klasse-green text-white" : "bg-white text-slate-600 shadow-sm"
+                      active ? "bg-emerald text-white" : "bg-white text-slate-600 shadow-sm"
                     }`}>
                       <Icon size={20} />
                     </div>

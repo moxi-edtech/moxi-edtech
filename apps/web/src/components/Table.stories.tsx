@@ -30,7 +30,7 @@ export const Default: Story = {
           <td className="px-4 py-3 text-sm">Ana Silva</td>
           <td className="px-4 py-3 text-sm text-slate-600">10ª Classe</td>
           <td className="px-4 py-3 text-right">
-            <button className="text-klasse-gold hover:underline">
+            <button className="text-amber hover:underline">
               Ver
             </button>
           </td>

@@ -1,26 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wallet, Receipt, BadgePercent, Loader2 } from "lucide-react";
+import { Wallet, Receipt, BadgePercent } from "lucide-react";
+import { formatKwanza } from "@/lib/formatters";
 
-const moneyAOA = new Intl.NumberFormat("pt-AO", {
-  style: "currency",
-  currency: "AOA",
-});
-
-export function ResumoCaixaSecretaria({ escolaId }: { escolaId: string }) {
+export function ResumoCaixaSecretaria({
+  escolaId,
+  refreshKey = 0,
+}: {
+  escolaId: string;
+  /** Muda de valor para forçar nova leitura. A página incrementa-o a cada
+   *  pagamento concluído; sem isto o painel ficava com o valor da montagem e
+   *  mostrava um caixa que já não era verdade. */
+  refreshKey?: number;
+}) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/secretaria/balcao/resumo-caixa?escolaId=${escolaId}`)
+    fetch(`/api/secretaria/balcao/resumo-caixa?escolaId=${escolaId}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
         if (j?.ok) setData(j);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [escolaId]);
+  }, [escolaId, refreshKey]);
 
   if (loading) return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -42,7 +47,7 @@ export function ResumoCaixaSecretaria({ escolaId }: { escolaId: string }) {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       <Card 
         title="Cobrado Hoje (Por Mim)" 
-        value={moneyAOA.format(data.cobrado_hoje)} 
+        value={formatKwanza(data.cobrado_hoje == null ? null : Number(data.cobrado_hoje))}
         icon={<Wallet size={16} className="text-emerald-600" />} 
         bgColor="bg-emerald-50"
       />

@@ -116,3 +116,38 @@ supabase_*.tar.gz
 REPORT_SCAN_LIVE.json
 validator-package.json
 *.tsbuildinfo
+
+# Artefactos locais de build/QA
+/tsconfig.tsbuildinfo
+/output/
+/.playwright-mcp/
+/.playwright-cli/
+/artifacts/
+/candidatura-apply/
+
+# ========================================
+# Material local — não versionado aqui (decisão 2026-09-22)
+# ========================================
+
+# Site pessoal; vive em repositório próprio
+/portfolio/
+
+# Artigos, dossiês e referências de trabalho em curso
+/primeira-versao-artigo-tecnico.md
+/techshare-autoavaliacao-rascunho.md
+/docs/LEVANTAMENTO_ESTADO_ARQUITETURA_PUBLIC_SECTOR_READINESS_V0_1.md
+/docs/SPRINT_EXECUTIVO_KLASSE_PUBLIC_SECTOR_READINESS_V0_1.md
+/docs/references/
+/docs/unesco-2026/
+/scripts/build-academic-article-docx.js
+/scripts/render-pdf-pages.js
+
+# Comprovativo pessoal
+/PROPINA 2025.6.pdf
+
+# ========================================
+# Outputs de agentes — ficam no working tree, fora do versionamento
+# (decisão 2026-09-22; os 661 já rastreados foram retirados do índice)
+# agents/exceptions/ continua versionado: o contrato exige excepções documentadas
+# ========================================
+/agents/outputs/

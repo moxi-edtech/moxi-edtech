@@ -160,30 +160,29 @@ export async function POST(req: Request) {
       }
     }
 
-    const { data: matriz } = await supabase
-      .from('curso_matriz')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('curso_id', turma.curso_id)
-      .eq('classe_id', turma.classe_id)
-      .eq('disciplina_id', body.disciplina_id)
-      .eq('ativo', true)
-      .maybeSingle()
-
-    if (!matriz) {
-      return NextResponse.json({ ok: false, error: 'Disciplina não vinculada à matriz da turma' }, { status: 400 })
-    }
-
-    const { data: turmaDisciplina } = await supabase
+    const { data: turmaDisciplinas } = await supabase
       .from('turma_disciplinas')
-      .select('id')
+      .select('id, curso_matriz_id, professor_id')
       .eq('escola_id', escolaId)
       .eq('turma_id', body.turma_id)
-      .eq('curso_matriz_id', matriz.id)
-      .maybeSingle()
 
-    if (!turmaDisciplina) {
-      return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
+    const matrizIds = (turmaDisciplinas ?? []).map((row: any) => row.curso_matriz_id).filter(Boolean)
+    const { data: matrizes } = matrizIds.length
+      ? await supabase
+        .from('curso_matriz')
+        .select('id, disciplina_id, avaliacao_disciplina_id')
+        .eq('escola_id', escolaId)
+        .eq('ativo', true)
+        .in('id', matrizIds)
+      : { data: [] as Array<{ id: string; disciplina_id: string | null; avaliacao_disciplina_id: string | null }> }
+
+    const matriz = (matrizes ?? []).find((row: any) =>
+      row.disciplina_id === body.disciplina_id || row.avaliacao_disciplina_id === body.disciplina_id,
+    )
+    const turmaDisciplina = (turmaDisciplinas ?? []).find((row: any) => row.curso_matriz_id === matriz?.id)
+
+    if (!matriz || !turmaDisciplina) {
+      return NextResponse.json({ ok: false, error: 'Disciplina não vinculada à matriz da turma' }, { status: 400 })
     }
 
     const { data: assignment } = await supabase
@@ -193,18 +192,20 @@ export async function POST(req: Request) {
       .eq('turma_id', body.turma_id)
       .eq('disciplina_id', body.disciplina_id)
       .eq('professor_id', professorId)
-      .maybeSingle()
+      .limit(1)
 
-    if (!assignment) {
+    if (!(assignment?.length || turmaDisciplina.professor_id === professorId)) {
       return NextResponse.json({ ok: false, error: 'Professor não atribuído à disciplina' }, { status: 403 })
     }
+
+    const canonicalDisciplinaId = matriz.disciplina_id ?? body.disciplina_id
 
     // A maior parte da lógica de validação foi movida para a RPC `upsert_frequencias_batch`.
     // A RPC irá resolver a aula, o período, as matrículas e fará o upsert de forma atômica e auditada.
     const { data, error } = await supabase.rpc('upsert_frequencias_batch', {
       p_escola_id: escolaId,
       p_turma_id: body.turma_id,
-      p_disciplina_id: body.disciplina_id,
+      p_disciplina_id: canonicalDisciplinaId,
       p_data: body.data,
       p_presencas: body.presencas,
     });

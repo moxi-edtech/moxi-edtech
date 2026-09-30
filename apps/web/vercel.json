@@ -1,5 +1,4 @@
 {
-  "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs",
   "crons": [
     {
       "path": "/api/jobs/outbox",
@@ -26,5 +25,6 @@
       "destination": "https://klasse.ao/:path*",
       "permanent": true
     }
-  ]
+  ],
+  "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs"
 }

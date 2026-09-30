@@ -93,7 +93,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // 4. Query usando a view que resolve curso/classe
     let query = supabase
       .from('vw_turmas_para_matricula')
-      .select('id, turma_nome, turma_codigo, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id, session_id, ano_letivo')
+      .select('id, turma_nome, turma_codigo, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id, classe_id, session_id, ano_letivo')
       .eq('escola_id', userEscolaId)
       .eq('session_id', context.anoLetivoId)
     
@@ -194,6 +194,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ultima_matricula: null,
         escola_id: t.escola_id ?? escolaId,
         curso_id: t.curso_id ?? null,
+        classe_id: t.classe_id ?? null,
       }))
     } else {
       rows = viewRows as any[]

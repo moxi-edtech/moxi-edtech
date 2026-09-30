@@ -78,7 +78,7 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
       >
         <div className="px-6 py-4 flex items-center justify-between">
           <Link href={dashboardHref} className="flex items-center gap-3" aria-label="Ir para a home do aluno">
-            <div className="h-10 w-10 rounded-xl bg-klasse-gold-500/15 ring-1 ring-klasse-gold-500/30 flex items-center justify-center shadow-lg">
+            <div className="h-10 w-10 rounded-xl bg-amber-500/15 ring-1 ring-amber-500/30 flex items-center justify-center shadow-lg">
               <Image src="/logo-klasse-ui.png" alt="KLASSE" width={20} height={20} className="h-5 w-5 object-contain" />
             </div>
             <div>

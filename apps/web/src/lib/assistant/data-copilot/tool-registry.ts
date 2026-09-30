@@ -8,6 +8,8 @@ import { admissionsPendingTool } from "./tools/admissions-pending";
 import { financeRiskSummaryTool } from "./tools/finance-risk-summary";
 import { schoolDailyBriefingTool } from "./tools/school-daily-briefing";
 import type { DataCopilotResponse, DataCopilotTool, ToolRunParams } from "./types";
+import { canUseRecurringTuition } from "@/lib/school-profile/finance-capabilities";
+import { filterAssistantActionsV2ForProfile } from "../actions-v2";
 
 const DATA_COPILOT_TOOLS: readonly DataCopilotTool[] = [
   schoolDailyBriefingTool,
@@ -31,10 +33,13 @@ export async function runDataCopilotTool(
 
   for (const tool of DATA_COPILOT_TOOLS) {
     if (!hasAssistantPermission(params.role, tool.requiredPermission)) continue;
+    if (tool.module === "financeiro" && params.operatingProfile && !canUseRecurringTuition(params.operatingProfile)) continue;
     if (!tool.match(normalizedQuery, params.context)) continue;
 
     const response = await tool.run(params);
     if (response) {
+      response.insight.actions = filterAssistantActionsV2ForProfile(response.insight.actions, params.operatingProfile);
+      response.actions = response.insight.actions.length > 0 ? response.insight.actions : undefined;
       return {
         ...response,
         toolId: tool.id,

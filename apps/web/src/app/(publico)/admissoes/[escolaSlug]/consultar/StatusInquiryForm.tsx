@@ -823,10 +823,10 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                 )}
 
                 {/* 1. Comprovativo de Matrícula */}
-                <div className="p-6 rounded-2xl border-2 border-klasse-gold/20 bg-white hover:border-klasse-gold/40 transition-colors">
+                <div className="p-6 rounded-2xl border-2 border-amber/20 bg-white hover:border-amber/40 transition-colors">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center text-klasse-gold">
+                      <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber">
                         <FileDown size={24} />
                       </div>
                       <div>
@@ -836,7 +836,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                     </div>
                     <Button
                       variant="outline"
-                      className="border-klasse-gold text-klasse-gold hover:bg-klasse-gold hover:text-white rounded-xl font-bold text-xs h-10 px-4"
+                      className="border-amber text-amber hover:bg-amber hover:text-white rounded-xl font-bold text-xs h-10 px-4"
                       onClick={() => vault.comprovativo_url && window.open(vault.comprovativo_url, '_blank')}
                     >
                       Descarregar

@@ -80,7 +80,7 @@ function getWindowStatus(janela: Janela) {
 
   if (now < inicio) return { label: "Agendada", class: "bg-blue-50 text-blue-700" };
   if (now > fim) return { label: "Encerrada", class: "bg-red-50 text-red-700" };
-  return { label: "Aberta Agora", class: "bg-klasse-green-50 text-klasse-green-700" };
+  return { label: "Aberta Agora", class: "bg-emerald-50 text-emerald-700" };
 }
 
 export default function RematriculaJanelasPage() {
@@ -261,7 +261,7 @@ export default function RematriculaJanelasPage() {
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-klasse-gold-600" />
+            <CalendarClock className="h-5 w-5 text-amber-600" />
             <h2 className="text-sm font-bold text-slate-900">
               {editingId ? "Editar janela" : "Nova janela"}
             </h2>

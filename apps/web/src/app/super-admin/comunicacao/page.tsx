@@ -106,9 +106,9 @@ export default function ComunicacaoPage() {
         <p className="text-slate-500">Envie e-mails customizados ou utilize templates pré-definidos.</p>
       </div>
 
-      <Card className="border-klasse-gold/20 bg-klasse-gold/[0.02]">
+      <Card className="border-amber/20 bg-amber/[0.02]">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-2 text-klasse-gold">
+          <div className="flex items-center gap-2 text-amber">
             <Layout className="h-5 w-5" />
             <CardTitle className="text-lg">Templates Rápidos</CardTitle>
           </div>
@@ -217,7 +217,7 @@ export default function ComunicacaoPage() {
             </div>
 
             <div className="pt-4 flex justify-end">
-              <Button type="submit" disabled={loading} className="gap-2 bg-klasse-gold hover:bg-klasse-gold/90 text-slate-900">
+              <Button type="submit" disabled={loading} className="gap-2 bg-amber hover:bg-amber/90 text-slate-900">
                 {loading ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
                 Enviar Mensagem
               </Button>

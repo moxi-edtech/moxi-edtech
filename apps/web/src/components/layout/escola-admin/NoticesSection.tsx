@@ -52,10 +52,10 @@ const TIPO_CONFIG: Record<string, {
   pulse?: boolean;
 }> = {
   urgente: {
-    borderColor: "border-l-klasse-gold",
-    bgContainer: "bg-klasse-gold-50",
-    iconColor: "text-klasse-gold-700",
-    iconBg: "bg-klasse-gold-100",
+    borderColor: "border-l-amber",
+    bgContainer: "bg-amber-50",
+    iconColor: "text-amber-700",
+    iconBg: "bg-amber-100",
     Icon: Megaphone,
     pulse: true,
   },
@@ -136,7 +136,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
       <header className="mb-5 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div
-            className="rounded-xl bg-klasse-green-50 p-2 text-klasse-green"
+            className="rounded-xl bg-emerald-50 p-2 text-emerald"
           >
             <Megaphone className="h-5 w-5" aria-hidden="true" />
           </div>
@@ -144,7 +144,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
             <div className="flex items-center gap-2">
               <h3 className="truncate text-base font-bold text-slate-900">Avisos recentes</h3>
               {unreadCount > 0 && (
-                <span className="inline-flex items-center rounded-full bg-klasse-green-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-klasse-green">
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald">
                   {unreadCount} {unreadCount === 1 ? "novo" : "novos"}
                 </span>
               )}
@@ -155,7 +155,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
 
         <Link
           href={hrefAll}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-klasse-green hover:bg-klasse-green-50 transition-colors"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-emerald hover:bg-emerald-50 transition-colors"
         >
           Ver tudo <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -177,7 +177,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
           {portalBase === "admin" && (
             <Link
               href={hrefNew}
-              className="mt-4 flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-klasse-green hover:text-klasse-green/80 transition-colors"
+              className="mt-4 flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-emerald hover:text-emerald/80 transition-colors"
             >
               Criar comunicado <ArrowRight className="h-3 w-3" />
             </Link>
@@ -214,7 +214,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                   <button
                     type="button"
                     onClick={() => setExpandedNoticeId((current) => current === n.id ? null : n.id)}
-                    className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2"
+                    className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-offset-2"
                     aria-label={`Abrir aviso: ${n.titulo}`}
                     aria-expanded={expandedNoticeId === n.id}
                   >
@@ -224,8 +224,8 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                       <Icon className="h-4 w-4" />
                       {config.pulse && !n.lido && (
                         <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-klasse-gold-400 opacity-75" />
-                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-klasse-gold" />
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber" />
                         </span>
                       )}
                     </div>
@@ -255,7 +255,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                     <div className="mt-2 shrink-0 sm:mt-0">
                       <Link
                         href={n.action_href}
-                        className="inline-flex w-full items-center justify-center rounded-lg border border-klasse-green/20 px-3 py-1.5 text-xs font-bold text-klasse-green hover:bg-klasse-green/5 transition-colors sm:w-auto"
+                        className="inline-flex w-full items-center justify-center rounded-lg border border-emerald/20 px-3 py-1.5 text-xs font-bold text-emerald hover:bg-emerald/5 transition-colors sm:w-auto"
                       >
                         {n.action_label}
                       </Link>

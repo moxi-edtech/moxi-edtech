@@ -122,8 +122,6 @@ export function useNotificacoes(): UseNotificacoesReturn {
   useEffect(() => {
     if (!userId) return;
 
-    // Fix: Avoiding synchronous setState inside effect to satisfy lint/react rules
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     Promise.resolve().then(() => fetchNotificacoes());
 
     if (!REALTIME_ENABLED) {

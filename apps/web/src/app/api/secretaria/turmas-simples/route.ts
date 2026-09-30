@@ -42,6 +42,7 @@ export async function GET(req: Request) {
     const turno = url.searchParams.get('turno');
     const alunoId = url.searchParams.get('aluno_id');
     const matriculaId = url.searchParams.get('matricula_id');
+    const decisaoResultado = url.searchParams.get('decisao_resultado');
     const anoParam = url.searchParams.get('ano') || url.searchParams.get('ano_letivo');
 
     let anoLetivo = anoParam ? Number(anoParam) : null;
@@ -144,7 +145,7 @@ export async function GET(req: Request) {
     let progressao: {
       aplicada: boolean;
       modo: 'promocao' | 'retencao' | 'indefinida';
-      estado: 'notas_pendentes' | 'reprovado' | 'classe_nao_identificada';
+      estado: 'notas_pendentes' | 'reprovado' | 'concluido' | 'classe_nao_identificada';
       classe_origem: number | null;
       classe_destino: number | null;
       turma_origem_id: string | null;
@@ -181,8 +182,10 @@ export async function GET(req: Request) {
       const classeById = new Map((classesProgressao || []).map((classe: any) => [classe.id, classe]));
       const numeroClasse = (classe: any) => {
         const numero = Number(classe?.numero);
-        if (Number.isFinite(numero) && numero > 0) return numero;
-        const match = String(classe?.nome || '').match(/(\d{1,2})\s*(?:ª|a)?/i);
+        if (Number.isFinite(numero) && numero >= 0) return numero;
+        const nome = String(classe?.nome || '');
+        if (/pré[\s-]*escolar/i.test(nome)) return 0;
+        const match = nome.match(/(\d{1,2})\s*(?:ª|a)?/i);
         return match ? Number(match[1]) : null;
       };
       const origemClasseNumero = numeroClasse(classeById.get(classeOrigemId));
@@ -200,11 +203,27 @@ export async function GET(req: Request) {
           : 'Não foi possível resolver a progressão académica.';
       }
       const progressionDecision = progressionResult?.progression.decision ?? 'pendente';
-      const reprovado = progressionDecision.startsWith('retido');
+      const decisaoManual = decisaoResultado === 'aprovado' || decisaoResultado === 'reprovado' || decisaoResultado === 'concluido'
+        ? decisaoResultado
+        : null;
+      const reprovado = decisaoManual === 'reprovado' || (!decisaoManual && progressionDecision.startsWith('retido'));
+      const concluido = decisaoManual === 'concluido';
       const modo = reprovado ? 'retencao' : 'promocao';
-      const classeDestinoNumero = progressionResult?.progression.etapaDestino?.classeNum
-        ?? (reprovado ? origemClasseNumero : null);
-      const cursoFiltrado = cursoOrigemId
+      // Quando as notas ainda estão pendentes, a decisão final não informa
+      // uma etapa destino, mas o fluxo de balcão permite a rematrícula
+      // provisória para a etapa seguinte. O endpoint de confirmação aplica a
+      // mesma regra e volta a validar a classe escolhida.
+      const classeDestinoNumero = concluido
+        ? null
+        : decisaoManual
+          ? (reprovado ? origemClasseNumero : (origemClasseNumero != null ? origemClasseNumero + 1 : null))
+          : progressionResult?.progression.etapaDestino?.classeNum
+        ?? (reprovado
+          ? origemClasseNumero
+          : (origemClasseNumero != null ? origemClasseNumero + 1 : null));
+      // Pré-Escolar pode transitar para o curso de ensino primário; nas
+      // restantes etapas preservamos o curso da matrícula de origem.
+      const cursoFiltrado = cursoOrigemId && origemClasseNumero !== 0
         ? items.filter((item: any) => !item.curso_id || item.curso_id === cursoOrigemId)
         : items;
       const elegiveis = classeDestinoNumero == null
@@ -213,8 +232,8 @@ export async function GET(req: Request) {
       items = elegiveis;
       progressao = {
         aplicada: origemClasseNumero != null,
-        modo,
-        estado: reprovado ? 'reprovado' : (origemClasseNumero == null ? 'classe_nao_identificada' : 'notas_pendentes'),
+        modo: concluido ? 'indefinida' : modo,
+        estado: concluido ? 'concluido' : (reprovado ? 'reprovado' : (origemClasseNumero == null ? 'classe_nao_identificada' : 'notas_pendentes')),
         classe_origem: origemClasseNumero,
         classe_destino: classeDestinoNumero,
         turma_origem_id: (origem as any)?.turma_id ?? null,
@@ -245,7 +264,11 @@ export async function GET(req: Request) {
     // Fallback operacional:
     // algumas escolas têm turmas em produção, mas a view de matrícula pode vir vazia
     // por defasagem de refresh/critério. Para módulos como horários, usamos turmas reais.
-    if (!error && items.length === 0) {
+    // No balcão de rematrícula, porém, um resultado vazio pode significar que a
+    // progressão académica bloqueou todas as opções. Repor todas as turmas aqui
+    // permitiria escolher uma classe inválida e contrariaria a validação do backend.
+    const hasRematriculaAcademicContext = Boolean(matriculaId && alunoId && sessionId && anoLetivo);
+    if (!error && items.length === 0 && !hasRematriculaAcademicContext) {
       let turmasQuery = supabase
         .from('turmas')
         .select('id, nome, turma_codigo, turma_code, turno, capacidade_maxima, sala, classe_id, curso_id, ano_letivo, status_validacao, session_id')
@@ -273,6 +296,18 @@ export async function GET(req: Request) {
       if (fallbackError) {
         console.error('Erro no fallback de turmas-simples:', fallbackError);
       } else {
+        const fallbackClassIds = Array.from(new Set((turmasFallback || []).map((turma: any) => turma.classe_id).filter(Boolean)));
+        const fallbackCourseIds = Array.from(new Set((turmasFallback || []).map((turma: any) => turma.curso_id).filter(Boolean)));
+        const [{ data: fallbackClasses }, { data: fallbackCursos }] = await Promise.all([
+          fallbackClassIds.length
+            ? supabase.from('classes').select('id, nome').eq('escola_id', escolaId).in('id', fallbackClassIds)
+            : Promise.resolve({ data: [] as any[] }),
+          fallbackCourseIds.length
+            ? supabase.from('cursos').select('id, nome').eq('escola_id', escolaId).in('id', fallbackCourseIds)
+            : Promise.resolve({ data: [] as any[] }),
+        ]);
+        const classeNomeById = new Map((fallbackClasses || []).map((classe: any) => [classe.id, classe.nome]));
+        const cursoNomeById = new Map((fallbackCursos || []).map((curso: any) => [curso.id, curso.nome]));
         items = (turmasFallback || []).map((t: any) => ({
           id: t.id,
           escola_id: escolaId,
@@ -282,8 +317,8 @@ export async function GET(req: Request) {
           turno: t.turno ?? null,
           capacidade_maxima: t.capacidade_maxima ?? null,
           sala: t.sala ?? null,
-          classe_nome: null,
-          curso_nome: null,
+          classe_nome: classeNomeById.get(t.classe_id) ?? null,
+          curso_nome: cursoNomeById.get(t.curso_id) ?? null,
           curso_tipo: null,
           curso_is_custom: null,
           curso_global_hash: null,

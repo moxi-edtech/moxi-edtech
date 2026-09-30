@@ -15,7 +15,7 @@ export default async function ControleCaixaPage({
   const vista = query.vista === "fecho" ? "fecho" : "conciliacao";
 
   return (
-    <main className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6 p-4 md:p-6">
       <InstantWorkspaceTabs
         initialTab={vista}
         ariaLabel="Vistas de controlo de caixa"
@@ -44,6 +44,6 @@ export default async function ControleCaixaPage({
           },
         ]}
       />
-    </main>
+    </div>
   );
 }

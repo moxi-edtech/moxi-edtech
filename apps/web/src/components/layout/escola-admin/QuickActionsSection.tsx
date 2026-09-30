@@ -166,7 +166,7 @@ export default function QuickActionsSection({
             </p>
             <Link
               href={buildPortalHref(escolaParam, "/admin/notas")}
-              className="inline-flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2 text-sm font-semibold text-white hover:brightness-95 transition-all shadow-md shadow-klasse-green/20"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald px-4 py-2 text-sm font-semibold text-white hover:brightness-95 transition-all shadow-md shadow-emerald/20"
             >
               Abrir Painel de Notas
             </Link>
@@ -180,9 +180,9 @@ export default function QuickActionsSection({
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <header className="mb-5">
-        <SecaoLabel className="text-klasse-green">Atalhos do portal</SecaoLabel>
+        <SecaoLabel className="text-emerald">Atalhos do portal</SecaoLabel>
         <div className="mt-1 flex items-center gap-2.5">
-          <div className="rounded-lg bg-klasse-green/10 p-2 text-klasse-green">
+          <div className="rounded-lg bg-emerald/10 p-2 text-emerald">
             <PlusCircle className="h-4 w-4" />
           </div>
           <h3 className="text-sm font-bold text-slate-900">Ações rápidas</h3>
@@ -208,7 +208,7 @@ export default function QuickActionsSection({
         <SheetContent side="right" className="sm:max-w-3xl overflow-y-auto scrollbar-hide">
           <SheetHeader className="border-b border-slate-100 pb-4 mb-4">
             <SheetTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
-              {selectedAction?.icon && <selectedAction.icon className="h-5 w-5 text-klasse-green" />}
+              {selectedAction?.icon && <selectedAction.icon className="h-5 w-5 text-emerald" />}
               {selectedAction?.label}
             </SheetTitle>
             <SheetDescription>

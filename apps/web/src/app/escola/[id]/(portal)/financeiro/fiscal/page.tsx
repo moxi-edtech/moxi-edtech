@@ -104,19 +104,19 @@ export default function FinanceiroFiscalPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-4 md:p-6">
+      <div className="bg-slate-50 p-4 md:p-6">
         <div className="grid min-h-[60vh] place-items-center rounded-xl border border-slate-200 bg-white">
           <div className="inline-flex items-center gap-2 text-sm text-slate-600">
             <Loader2 className="h-4 w-4 animate-spin" />
             A carregar compliance fiscal...
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen space-y-5 bg-slate-50 p-4 md:p-6">
+    <div className="space-y-5 bg-slate-50 p-4 md:p-6">
       <section className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -162,6 +162,6 @@ export default function FinanceiroFiscalPage() {
           onCreated={(doc) => setDocs((prev) => [doc, ...prev])}
         />
       ) : null}
-    </main>
+    </div>
   );
 }

@@ -19,7 +19,7 @@ export default function Loading() {
             <div className="h-3 w-40 rounded-md bg-slate-200" />
             <div className="h-3 w-32 rounded-md bg-slate-200" />
           </div>
-          <div className="h-10 w-full rounded-xl bg-klasse-gold/20 animate-pulse" />
+          <div className="h-10 w-full rounded-xl bg-amber/20 animate-pulse" />
         </aside>
 
         <section className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3 animate-pulse">

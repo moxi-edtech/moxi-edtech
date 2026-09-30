@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
-import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { authorizeTurmasManage, authorizePedagogicalManage } from '@/lib/escola/disciplinas'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 
 export const dynamic = 'force-dynamic'
@@ -139,7 +139,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const escolaIdResolved = await resolveEscolaIdForUser(supabase as any, user.id, escolaId, escolaId)
     if (!escolaIdResolved) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 403 })
 
-    const authz = await authorizeTurmasManage(supabase as any, escolaIdResolved, user.id)
+    const authz = await authorizePedagogicalManage(supabase as any, escolaIdResolved, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
     const parsed = PayloadSchema.safeParse(await req.json().catch(() => ({})))

@@ -14,6 +14,7 @@ import {
   type AiInsightSeverity,
 } from "@/lib/server/ai/ai-insights";
 import type { DBWithRPC } from "@/types/supabase-augment";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -149,6 +150,7 @@ export async function POST(req: Request) {
   }
 
   const role = String(roleRes.papel ?? "").trim().toLowerCase();
+  const operatingProfile = await resolveSchoolOperatingProfile(supabase, resolvedEscolaId);
 
   // Validate assistant view permission
   if (!hasAssistantPermission(role, "assistant.view")) {
@@ -167,6 +169,7 @@ export async function POST(req: Request) {
       role,
       query,
       context,
+      operatingProfile,
     });
     const result = await attachPersistedInsight({
       result: rawResult,
@@ -190,6 +193,7 @@ export async function POST(req: Request) {
       role,
       query,
       context,
+      operatingProfile,
     });
     const result = await attachPersistedInsight({
       result: rawResult,
@@ -218,6 +222,7 @@ export async function POST(req: Request) {
       context,
       allowedFeatures: access.settings?.allowed_features,
       usageLogId: access.usageLogId,
+      operatingProfile,
     });
     const result = await attachPersistedInsight({
       result: rawResult,

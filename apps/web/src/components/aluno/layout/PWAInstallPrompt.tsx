@@ -79,7 +79,7 @@ export function PWAInstallPrompt() {
 
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 shrink-0 bg-gradient-to-br from-klasse-green to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-klasse-green/20">
+                <div className="h-12 w-12 shrink-0 bg-gradient-to-br from-emerald to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald/20">
                   <Download size={24} />
                 </div>
                 <div>

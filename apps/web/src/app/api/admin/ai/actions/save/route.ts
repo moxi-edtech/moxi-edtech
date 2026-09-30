@@ -10,6 +10,8 @@ import {
   normalizeWhatsappPhone,
 } from "@/lib/server/whatsappUtility";
 import type { DBWithRPC } from "@/types/supabase-augment";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -54,8 +56,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Sem permissão para esta escola." }, { status: 403 });
   }
 
+  const isFinanceOperation = parsed.data.createWhatsappDraft
+    || parsed.data.actionType === "finance_message"
+    || (parsed.data.sourceModule === "financeiro" && parsed.data.context?.recommendation_kind === "billing_plan");
+  if (isFinanceOperation) {
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase, schoolId);
+    const financeGuard = requireFinanceChargeMessages(operatingProfile);
+    if (!financeGuard.ok) {
+      return NextResponse.json(financeGuard, { status: 409 });
+    }
+  }
+
   const feature =
-    parsed.data.createWhatsappDraft || parsed.data.actionType === "finance_message"
+    isFinanceOperation
       ? "finance_message"
       : parsed.data.actionType === "communication_draft"
         ? "generate_communication"

@@ -81,6 +81,8 @@ type RaaRiskItem = {
   risco: { codigo: string; label: string; action: string } | null
 }
 
+type RaaViewerScope = "professor_context" | "school_management"
+
 type ReapreciacaoItem = {
   id: string
   protocolo_publico: string
@@ -138,6 +140,9 @@ function ProfessorNotasContent() {
   const [pauta, setPauta] = useState<StudentGradeRow[]>([])
   const [loading, setLoading] = useState(false)
   const [periodosAtivos, setPeriodosAtivos] = useState<Array<1 | 2 | 3>>([])
+  const [loadingPeriodos, setLoadingPeriodos] = useState(false)
+  const [periodosError, setPeriodosError] = useState<string | null>(null)
+  const [periodosRetry, setPeriodosRetry] = useState(0)
   const [turmaStatusFecho, setTurmaStatusFecho] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(1)
@@ -157,7 +162,11 @@ function ProfessorNotasContent() {
   const [raaResult, setRaaResult] = useState<RaaEligibilityResponse | null>(null)
   const [loadingRaa, setLoadingRaa] = useState(false)
   const [raaRisks, setRaaRisks] = useState<RaaRiskItem[]>([])
+  const [raaViewerScope, setRaaViewerScope] = useState<RaaViewerScope | null>(null)
   const [loadingRaaRisks, setLoadingRaaRisks] = useState(false)
+  const [raaRisksLoaded, setRaaRisksLoaded] = useState(false)
+  const [raaRisksError, setRaaRisksError] = useState<string | null>(null)
+  const [raaRisksRetry, setRaaRisksRetry] = useState(0)
   const [reapreciacaoItem, setReapreciacaoItem] = useState<ReapreciacaoItem | null>(null)
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("")
   const [submittingReapreciacao, setSubmittingReapreciacao] = useState(false)
@@ -191,7 +200,7 @@ function ProfessorNotasContent() {
   const atribsByTurma = useMemo(() => {
     return atribs.reduce((acc, a) => {
       const list = acc.get(a.turma.id) || []
-      list.push(a)
+      if (!list.some((item) => item.disciplina.id === a.disciplina.id)) list.push(a)
       acc.set(a.turma.id, list)
       return acc
     }, new Map<string, Atrib[]>())
@@ -437,53 +446,77 @@ function ProfessorNotasContent() {
   useEffect(() => {
     if (!turmaId || !disciplinaId || !anoLetivoId) {
       setRaaRisks([])
+      setRaaViewerScope(null)
+      setRaaRisksLoaded(false)
+      setRaaRisksError(null)
+      setLoadingRaaRisks(false)
       return
     }
     let active = true
     const load = async () => {
       setLoadingRaaRisks(true)
+      setRaaRisksLoaded(false)
+      setRaaRisksError(null)
       try {
         const params = new URLSearchParams({ turma_id: turmaId, disciplina_id: disciplinaId, ano_letivo_id: anoLetivoId })
         const response = await fetch(`/api/academico/raa/riscos?${params.toString()}`, { cache: "no-store" })
         const payload = await response.json().catch(() => null)
         if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível carregar os riscos RAA.")
-        if (active) setRaaRisks(Array.isArray(payload.items) ? payload.items as RaaRiskItem[] : [])
+        if (active) {
+          setRaaViewerScope(payload.viewer_scope === "school_management" ? "school_management" : "professor_context")
+          setRaaRisks(Array.isArray(payload.items) ? payload.items as RaaRiskItem[] : [])
+        }
       } catch (cause) {
         if (active) {
           setRaaRisks([])
-          toastError("Não foi possível carregar o painel RAA", cause instanceof Error ? cause.message : "Tente novamente.")
+          setRaaViewerScope(null)
+          setRaaRisksError(cause instanceof Error ? cause.message : "Não foi possível carregar os riscos RAA.")
         }
       } finally {
-        if (active) setLoadingRaaRisks(false)
+        if (active) {
+          setLoadingRaaRisks(false)
+          setRaaRisksLoaded(true)
+        }
       }
     }
     void load()
     return () => { active = false }
-  }, [turmaId, disciplinaId, anoLetivoId, toastError])
+  }, [turmaId, disciplinaId, anoLetivoId, raaRisksRetry])
 
   useEffect(() => {
     if (!turmaId) {
       setPeriodosAtivos([])
+      setPeriodosError(null)
+      setLoadingPeriodos(false)
       return
     }
 
     let active = true
     const load = async () => {
-      const periodosParams = new URLSearchParams({ turma_id: turmaId })
-      if (anoLetivoId) periodosParams.set("ano_letivo_id", anoLetivoId)
-      const res = await fetch(`/api/professor/periodos?${periodosParams.toString()}`, { cache: "no-store" })
-      const json = await res.json().catch(() => null)
-      if (!active) return
-      if (res.ok && json?.ok && Array.isArray(json.items)) {
-        const numeros = json.items
-          .map((item: { numero?: number }) => item?.numero)
-          .filter((n: number | undefined) => n === 1 || n === 2 || n === 3)
-        setPeriodosAtivos(numeros)
-        if (numeros.length > 0 && !numeros.includes(trimestreSelecionado)) {
-          setTrimestreSelecionado(numeros[0])
+      setLoadingPeriodos(true)
+      setPeriodosError(null)
+      try {
+        const periodosParams = new URLSearchParams({ turma_id: turmaId })
+        if (anoLetivoId) periodosParams.set("ano_letivo_id", anoLetivoId)
+        const res = await fetch(`/api/professor/periodos?${periodosParams.toString()}`, { cache: "no-store" })
+        const json = await res.json().catch(() => null)
+        if (!active) return
+        if (!res.ok || !json?.ok || !Array.isArray(json.items)) {
+          throw new Error(json?.message || json?.error || "Não foi possível carregar os trimestres.")
         }
-      } else {
-        setPeriodosAtivos([])
+        const numeros: Array<1 | 2 | 3> = Array.from(new Set<1 | 2 | 3>(json.items
+          .map((item: { numero?: number | string | null }) => Number(item?.numero))
+          .filter((n: number): n is 1 | 2 | 3 => n === 1 || n === 2 || n === 3)))
+          .sort((a, b) => a - b)
+        setPeriodosAtivos(numeros)
+        setTrimestreSelecionado((atual) => numeros.includes(atual) ? atual : (numeros[0] ?? 1))
+      } catch (cause) {
+        if (active) {
+          setPeriodosAtivos([])
+          setPeriodosError(cause instanceof Error ? cause.message : "Não foi possível carregar os trimestres.")
+        }
+      } finally {
+        if (active) setLoadingPeriodos(false)
       }
     }
 
@@ -491,7 +524,7 @@ function ProfessorNotasContent() {
     return () => {
       active = false
     }
-  }, [turmaId, anoLetivoId, trimestreSelecionado])
+  }, [turmaId, anoLetivoId, periodosRetry])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return
@@ -671,7 +704,7 @@ function ProfessorNotasContent() {
                 <div className="h-9 w-full rounded-xl bg-slate-100" />
                 <div className="h-9 w-full rounded-xl bg-slate-100" />
                 <div className="h-9 w-full rounded-xl bg-slate-100" />
-                <div className="h-10 w-full rounded-xl bg-klasse-gold/20" />
+                <div className="h-10 w-full rounded-xl bg-amber/20" />
               </div>
             ) : (
               <>
@@ -686,7 +719,7 @@ function ProfessorNotasContent() {
                       setDisciplinaNome(null)
                       setPauta([])
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     required
                   >
                     <option value="">Turma</option>
@@ -708,7 +741,7 @@ function ProfessorNotasContent() {
                       setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
                       setDisciplinaNome(atrib?.disciplina.nome ?? null)
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     required
                     disabled={!turmaId}
                   >
@@ -724,16 +757,28 @@ function ProfessorNotasContent() {
                   <select
                     value={trimestreSelecionado}
                     onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                    disabled={!turmaId || periodosAtivos.length === 0}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0}
                   >
-                    {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
+                    {loadingPeriodos && <option value={trimestreSelecionado}>A carregar trimestres...</option>}
+                    {!loadingPeriodos && periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Nenhum trimestre configurado</option>}
                     {periodosAtivos.map((periodo) => (
                       <option key={periodo} value={periodo}>
                         {`Trimestre ${periodo}`}
                       </option>
                     ))}
                   </select>
+                  {turmaId && periodosError && (
+                    <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                      <p>{periodosError}</p>
+                      <button type="button" onClick={() => setPeriodosRetry((value) => value + 1)} className="mt-2 font-bold underline">
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
+                  {turmaId && !loadingPeriodos && !periodosError && periodosAtivos.length === 0 && (
+                    <p className="text-xs text-slate-600">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
+                  )}
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2 text-sm text-slate-600">
                   <div className="font-semibold text-slate-900">Ações</div>
@@ -741,7 +786,7 @@ function ProfessorNotasContent() {
                     type="button"
                     onClick={handleExportMiniPauta}
                     disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || notasBloqueadas}
-                    className="w-full rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                    className="w-full rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                   >
                     {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
                   </button>
@@ -770,7 +815,7 @@ function ProfessorNotasContent() {
                       setDisciplinaNome(null)
                       setPauta([])
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                   >
                     <option value="">Turma</option>
                     {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
@@ -791,7 +836,7 @@ function ProfessorNotasContent() {
                       setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
                       setDisciplinaNome(atrib?.disciplina.nome ?? null)
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     disabled={!turmaId}
                   >
                     <option value="">Disciplina</option>
@@ -806,16 +851,28 @@ function ProfessorNotasContent() {
                   <select
                     value={trimestreSelecionado}
                     onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                    disabled={!turmaId || periodosAtivos.length === 0}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0}
                   >
-                    {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
+                    {loadingPeriodos && <option value={trimestreSelecionado}>A carregar trimestres...</option>}
+                    {!loadingPeriodos && periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Nenhum trimestre configurado</option>}
                     {periodosAtivos.map((periodo) => (
                       <option key={periodo} value={periodo}>
                         {`Trimestre ${periodo}`}
                       </option>
                     ))}
                   </select>
+                  {turmaId && periodosError && (
+                    <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 sm:col-span-2">
+                      <p>{periodosError}</p>
+                      <button type="button" onClick={() => setPeriodosRetry((value) => value + 1)} className="mt-2 font-bold underline">
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
+                  {turmaId && !loadingPeriodos && !periodosError && periodosAtivos.length === 0 && (
+                    <p className="text-xs text-slate-600 sm:col-span-2">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
+                  )}
                   <button
                     type="button"
                     onClick={handleSaveNow}
@@ -825,7 +882,7 @@ function ProfessorNotasContent() {
                     {savingNow ? "Salvando..." : "Salvar agora"}
                   </button>
                   {turmaId && disciplinaId && (
-                    <div className={`rounded-lg px-3 py-2 text-xs ${notasBloqueadas ? "bg-klasse-gold-50 text-klasse-gold-800" : "bg-emerald-50 text-emerald-800"}`}>
+                    <div className={`rounded-lg px-3 py-2 text-xs ${notasBloqueadas ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
                       <p className="font-bold">
                         {notasBloqueadas ? "Trimestre fechado para lançamentos" : reaberturaAtiva ? "Reabertura aprovada" : "Trimestre disponível"}
                       </p>
@@ -853,10 +910,10 @@ function ProfessorNotasContent() {
                 Selecione a turma e disciplina para carregar os alunos.
               </div>
             ) : notasBloqueadas ? (
-              <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-700">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
                 <p className="font-bold">Lançamento de notas bloqueado: turma fechada.</p>
-                {reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-klasse-gold-800">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "A solicitação anterior expirou. Envie uma nova justificativa." : "Solicite à escola a abertura temporária deste trimestre."}</p><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-klasse-gold-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-klasse-gold-300" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-klasse-gold px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "Enviando..." : "Solicitar reabertura"}</button></div>}
-                {reopenHistory.length > 0 && <details className="mt-4 rounded-xl border border-klasse-gold-200 bg-white/70 p-3"><summary className="cursor-pointer text-xs font-bold text-klasse-gold-800">Ver histórico de solicitações ({reopenHistory.length})</summary><div className="mt-3 space-y-2">{reopenHistory.map((item) => <div key={item.id} className="rounded-lg border border-slate-100 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><span className="font-bold text-slate-800">{item.status}</span><span className="text-slate-500">{new Date(item.created_at).toLocaleString("pt-PT")}</span></div><p className="mt-1 text-slate-600">{item.motivo}</p>{item.decisao_motivo && <p className="mt-1 text-slate-500">Decisão: {item.decisao_motivo}</p>}</div>)}</div></details>}
+                {reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-amber-800">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "A solicitação anterior expirou. Envie uma nova justificativa." : "Solicite à escola a abertura temporária deste trimestre."}</p><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-amber-300" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "Enviando..." : "Solicitar reabertura"}</button></div>}
+                {reopenHistory.length > 0 && <details className="mt-4 rounded-xl border border-amber-200 bg-white/70 p-3"><summary className="cursor-pointer text-xs font-bold text-amber-800">Ver histórico de solicitações ({reopenHistory.length})</summary><div className="mt-3 space-y-2">{reopenHistory.map((item) => <div key={item.id} className="rounded-lg border border-slate-100 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><span className="font-bold text-slate-800">{item.status}</span><span className="text-slate-500">{new Date(item.created_at).toLocaleString("pt-PT")}</span></div><p className="mt-1 text-slate-600">{item.motivo}</p>{item.decisao_motivo && <p className="mt-1 text-slate-500">Decisão: {item.decisao_motivo}</p>}</div>)}</div></details>}
               </div>
             ) : (
               <div className="space-y-3">
@@ -876,12 +933,12 @@ function ProfessorNotasContent() {
                       const formula = result?.regime?.formula_mfd
                       const formulaText = formula && typeof formula === "object" ? Object.values(formula).find((value) => typeof value === "string" && value.includes("*")) : null
                       const isPendingFormula = result?.status === "pendente_formula"
-                      return <div className={`mt-3 rounded-xl border p-3 text-sm ${isPendingFormula ? "border-klasse-gold-200 bg-klasse-gold-50" : "border-slate-100 bg-slate-50"}`}>
+                      return <div className={`mt-3 rounded-xl border p-3 text-sm ${isPendingFormula ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50"}`}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="font-black uppercase text-slate-800">{(result?.status ?? raaResult.eligibility.status).replace(/_/g, " ")}</span>
                           <span className="text-xs text-slate-500">{raaResult.facts.quantidade_negativas} negativa(s) · {raaResult.facts.percentual_presenca == null ? "frequência pendente" : `${raaResult.facts.percentual_presenca}% presença`}</span>
                         </div>
-                        {isPendingFormula ? <><p className="mt-2 font-semibold text-klasse-gold-900">A turma está em regime de exame. A nota da disciplina já foi encontrada, mas o resultado final ainda depende da MFD e do lançamento do exame.</p><p className="mt-1 text-xs text-klasse-gold-800">Próximo passo: confirmar a sessão e os componentes do exame; o KLASSE atualizará o resultado quando a fórmula estiver completa.</p></> : <p className="mt-2 text-xs text-slate-600">{raaResult.next_action}</p>}
+                        {isPendingFormula ? <><p className="mt-2 font-semibold text-amber-900">A turma está em regime de exame. A nota da disciplina já foi encontrada, mas o resultado final ainda depende da MFD e do lançamento do exame.</p><p className="mt-1 text-xs text-amber-800">Próximo passo: confirmar a sessão e os componentes do exame; o KLASSE atualizará o resultado quando a fórmula estiver completa.</p></> : <p className="mt-2 text-xs text-slate-600">{raaResult.next_action}</p>}
                         {result?.regime?.codigo_regime && <p className="mt-2 text-[11px] font-semibold text-slate-500">Regime: {result.regime.codigo_regime}{formulaText ? ` · Fórmula: ${formulaText}` : ""}</p>}
                         {(result?.status === "reprovado" || raaResult.eligibility.status === "reprovado") && (
                           <div className="mt-3 rounded-lg border border-rose-200 bg-white p-3">
@@ -904,23 +961,39 @@ function ProfessorNotasContent() {
                     })()}
                   </div>
                 )}
-                {turmaId && disciplinaId && (loadingRaaRisks || raaRisks.length > 0) && (
-                  <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 shadow-sm">
+                {turmaId && disciplinaId && (loadingRaaRisks || raaRisksLoaded || raaRisksError) && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-bold text-slate-900">Painel de risco RAA</p>
-                        <p className="mt-1 text-xs text-slate-600">Alunos desta turma e disciplina que exigem atenção, sem sair do contexto atual.</p>
+                        <p className="mt-1 text-xs text-slate-600">{raaViewerScope === "school_management" ? "Visão de acompanhamento da escola para esta turma e disciplina." : "Apenas alunos desta turma e disciplina atribuída ao professor que exigem atenção."}</p>
                       </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-klasse-gold-900">{loadingRaaRisks ? "A atualizar…" : `${raaRisks.length} pendência(s)`}</span>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-amber-900" aria-live="polite">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
                     </div>
-                    {!loadingRaaRisks && <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {raaRisks.map((item) => (
-                        <button key={item.matricula_id} type="button" onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="rounded-lg border border-klasse-gold-200 bg-white p-3 text-left transition hover:border-klasse-gold-400">
-                          <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold text-slate-900">{item.aluno_nome}</span><span className="text-[10px] font-black uppercase text-klasse-gold-800">{item.risco?.label}</span></div>
-                          <p className="mt-1 text-xs text-slate-600">{item.risco?.action}</p>
-                        </button>
-                      ))}
-                    </div>}
+                    {raaRisksError ? (
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3 text-sm text-slate-700">
+                        <p>{raaRisksError}</p>
+                        <button type="button" onClick={() => setRaaRisksRetry((value) => value + 1)} className="mt-3 min-h-11 w-full rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white sm:w-auto">Tentar novamente</button>
+                      </div>
+                    ) : loadingRaaRisks ? (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="A carregar riscos RAA">
+                        {[1, 2].map((item) => <div key={item} className="h-20 animate-pulse rounded-lg bg-white/80" />)}
+                      </div>
+                    ) : raaRisks.length === 0 ? (
+                      <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                        <p className="font-bold">Nenhum aluno exige atenção nesta turma e disciplina.</p>
+                        <p className="mt-1 text-xs text-emerald-800">Continue a completar notas e frequência; o painel será atualizado quando os dados mudarem.</p>
+                      </div>
+                    ) : (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {raaRisks.map((item) => (
+                          <button key={item.matricula_id} type="button" aria-label={`Ver elegibilidade de ${item.aluno_nome}`} onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="min-h-20 rounded-lg border border-amber-200 bg-white p-3 text-left transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
+                            <div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-bold text-slate-900">{item.aluno_nome}</span><span className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase text-amber-800">{item.risco?.label ?? "Atenção"}</span></div>
+                            <div className="mt-2 flex items-end justify-between gap-2"><p className="text-xs leading-5 text-slate-600">{item.risco?.action ?? "Consultar elegibilidade e completar os dados."}</p><span className="shrink-0 text-[10px] font-black uppercase text-slate-400">Ver detalhe →</span></div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {turmaId && disciplinaId && (loadingExamSessions || examSessions.length > 0) && (
@@ -967,13 +1040,13 @@ function ProfessorNotasContent() {
                         {examLocked ? (
                           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">Esta sessão está {selectedExamSession?.estado}. Consulte a secretaria para corrigir a configuração.</p>
                         ) : !selectedExamComponent ? (
-                          <p className="rounded-lg bg-klasse-gold-50 px-3 py-2 text-xs text-klasse-gold-800">A sessão ainda não tem componentes configurados.</p>
+                          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">A sessão ainda não tem componentes configurados.</p>
                         ) : (
                           <div className="overflow-x-auto rounded-xl border border-slate-100">
                             <table className="min-w-full text-left text-sm">
                               <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-3 py-2">Aluno</th><th className="w-32 px-3 py-2">Nota</th></tr></thead>
                               <tbody className="divide-y divide-slate-100">
-                                {pauta.map((student) => <tr key={student.id}><td className="px-3 py-2 font-medium text-slate-800">{student.nome}</td><td className="px-3 py-2"><input type="number" min="0" max={selectedExamComponent.nota_maxima} step="0.01" value={examNotes[student.id] ?? ""} onChange={(event) => setExamNotes((current) => ({ ...current, [student.id]: event.target.value }))} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20" aria-label={`Nota de exame de ${student.nome}`} /></td></tr>)}
+                                {pauta.map((student) => <tr key={student.id}><td className="px-3 py-2 font-medium text-slate-800">{student.nome}</td><td className="px-3 py-2"><input type="number" min="0" max={selectedExamComponent.nota_maxima} step="0.01" value={examNotes[student.id] ?? ""} onChange={(event) => setExamNotes((current) => ({ ...current, [student.id]: event.target.value }))} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20" aria-label={`Nota de exame de ${student.nome}`} /></td></tr>)}
                               </tbody>
                             </table>
                           </div>

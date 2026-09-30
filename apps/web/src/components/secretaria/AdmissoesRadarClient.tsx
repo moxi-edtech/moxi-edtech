@@ -345,7 +345,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
         <button
           type="button"
           onClick={() => router.push(withSlug('/secretaria/admissoes/nova'))}
-          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-white hover:brightness-95"
+          className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-white hover:brightness-95"
         >
           <Plus className="h-4 w-4" />
           <span>Nova Admissão</span>
@@ -365,7 +365,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
             <div key={col.key} className="rounded-xl bg-slate-950 p-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white">{col.title}</h2>
-                <span className="rounded-full bg-slate-900 px-2 py-1 text-xs text-klasse-gold ring-1 ring-klasse-gold/25">
+                <span className="rounded-full bg-slate-900 px-2 py-1 text-xs text-amber ring-1 ring-amber/25">
                   {count}
                 </span>
               </div>
@@ -394,7 +394,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                           router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${item.id}`))
                         }
                       }}
-                      className="w-full rounded-xl bg-slate-900 p-3 text-left ring-1 ring-white/5 hover:ring-klasse-gold/25"
+                      className="w-full rounded-xl bg-slate-900 p-3 text-left ring-1 ring-white/5 hover:ring-amber/25"
                     >
                       <div className="text-sm font-semibold text-white">{nome}</div>
                       <div className="mt-0.5 text-xs text-slate-400">
@@ -402,7 +402,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                       </div>
                       <div className="mt-1 text-[11px] text-slate-500">{dt}</div>
                       {rawStatus === 'aguardando_pagamento' && (
-                        <div className="mt-1 text-[11px] text-klasse-gold-300">Aguardando pagamento</div>
+                        <div className="mt-1 text-[11px] text-amber-300">Aguardando pagamento</div>
                       )}
                       {item.status !== 'matriculado' && (
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -415,7 +415,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                                 void approve(item)
                               }}
                                 disabled={busy}
-                                className="rounded-lg bg-klasse-gold px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-95 disabled:opacity-60"
+                                className="rounded-lg bg-amber px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-95 disabled:opacity-60"
                               >
                                 Continuar
                               </button>
@@ -439,7 +439,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                                 event.stopPropagation()
                                 router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${item.id}`))
                               }}
-                              className="rounded-lg bg-klasse-green px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-95"
+                              className="rounded-lg bg-emerald px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-95"
                             >
                               {currentStatus === 'aguardando_compensacao' ? 'Validar/Matricular' : currentStatus === 'aguardando_pagamento' ? 'Registar/Matricular' : 'Matricular'}
                             </button>
@@ -480,7 +480,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                     void loadMoreOpen()
                   }}
                   disabled={loadingMoreOpen}
-                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-klasse-gold/40 hover:text-white disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-amber/40 hover:text-white disabled:opacity-60"
                 >
                   {loadingMoreOpen ? 'Carregando...' : 'Carregar mais'}
                 </button>
@@ -493,7 +493,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                     void loadMoreMat()
                   }}
                   disabled={loadingMoreMat}
-                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-klasse-gold/40 hover:text-white disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-amber/40 hover:text-white disabled:opacity-60"
                 >
                   {loadingMoreMat ? 'Carregando...' : 'Carregar mais'}
                 </button>

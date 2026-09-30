@@ -89,14 +89,14 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
               <div key={step} className="flex items-center">
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
                   etapa >= step 
-                    ? 'bg-klasse-gold-400 text-white' 
+                    ? 'bg-amber-400 text-white'
                     : 'bg-slate-200 text-slate-400'
                 }`}>
                   {step}
                 </div>
                 {step < 4 && (
                   <div className={`h-1 w-16 mx-2 ${
-                    etapa > step ? 'bg-klasse-gold-400' : 'bg-slate-200'
+                    etapa > step ? 'bg-amber-400' : 'bg-slate-200'
                   }`} />
                 )}
               </div>
@@ -131,7 +131,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                           );
                         }
                       }}
-                      className="h-4 w-4 text-klasse-gold-400 rounded border-slate-300 focus:ring-klasse-gold-400"
+                      className="h-4 w-4 text-amber-400 rounded border-slate-300 focus:ring-amber-400"
                     />
                     <div className="ml-3 flex-1">
                       <div className="font-medium">
@@ -145,10 +145,10 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                 ))}
               </div>
               
-              <div className="mt-6 p-4 bg-klasse-green-50 rounded-xl">
+              <div className="mt-6 p-4 bg-emerald-50 rounded-xl">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-klasse-green-800">Total selecionado:</span>
-                  <span className="text-2xl font-bold text-klasse-green-700">
+                  <span className="font-medium text-emerald-800">Total selecionado:</span>
+                  <span className="text-2xl font-bold text-emerald-700">
                     {totalSelecionado.toLocaleString()} Kz
                   </span>
                 </div>
@@ -164,7 +164,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   onClick={() => setMetodoPagamento('dinheiro')}
                   className={`p-4 border rounded-xl flex flex-col items-center ${
                     metodoPagamento === 'dinheiro' 
-                      ? 'border-klasse-gold-400 bg-klasse-gold-400/10' 
+                      ? 'border-amber-400 bg-amber-400/10'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -175,7 +175,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   onClick={() => setMetodoPagamento('transferencia')}
                   className={`p-4 border rounded-xl flex flex-col items-center ${
                     metodoPagamento === 'transferencia' 
-                      ? 'border-klasse-gold-400 bg-klasse-gold-400/10' 
+                      ? 'border-amber-400 bg-amber-400/10'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -186,7 +186,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   onClick={() => setMetodoPagamento('multicaixa')}
                   className={`p-4 border rounded-xl flex flex-col items-center ${
                     metodoPagamento === 'multicaixa' 
-                      ? 'border-klasse-gold-400 bg-klasse-gold-400/10' 
+                      ? 'border-amber-400 bg-amber-400/10'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -197,7 +197,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   onClick={() => setMetodoPagamento('mbway')}
                   className={`p-4 border rounded-xl flex flex-col items-center ${
                     metodoPagamento === 'mbway' 
-                      ? 'border-klasse-gold-400 bg-klasse-gold-400/10' 
+                      ? 'border-amber-400 bg-amber-400/10'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -215,7 +215,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                     type="number"
                     value={valorRecebido}
                     onChange={(e) => setValorRecebido(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-4 focus:ring-amber/20 focus:border-amber"
                     placeholder="Ex: 45000"
                   />
                 </div>
@@ -227,7 +227,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                      className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-4 focus:ring-amber/20 focus:border-amber"
                       placeholder="999123456789"
                     />
                   </div>
@@ -238,7 +238,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                     Comprovante (opcional)
                   </label>
                   <div className="mt-1 flex items-center">
-                    <label className="cursor-pointer bg-white py-2 px-3 border border-slate-300 rounded-xl shadow-sm text-sm leading-4 font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-klasse-gold-400">
+                    <label className="cursor-pointer bg-white py-2 px-3 border border-slate-300 rounded-xl shadow-sm text-sm leading-4 font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400">
                       <span>Escolher arquivo</span>
                       <input
                         type="file"
@@ -282,7 +282,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-3 border-t border-slate-200">
                     <span>Total:</span>
-                    <span className="text-klasse-green-700">{totalSelecionado.toLocaleString()} Kz</span>
+                    <span className="text-emerald-700">{totalSelecionado.toLocaleString()} Kz</span>
                   </div>
                 </div>
               </div>
@@ -311,7 +311,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                 etapa === 1 && mensalidadesSelecionadas.length === 0 ||
                 etapa === 2 && (!metodoPagamento || !valorRecebido)
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                  : 'bg-klasse-gold-400 hover:brightness-95 text-white'
+                  : 'bg-amber-400 hover:brightness-95 text-white'
               }`}
             >
               {etapa === 3 ? 'Confirmar Pagamento' : 'Continuar'}

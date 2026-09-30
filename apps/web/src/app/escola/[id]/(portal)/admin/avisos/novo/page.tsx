@@ -64,7 +64,7 @@ export default function AvisosNovoPage() {
           <p className="text-sm text-slate-500">Comunique algo importante para a comunidade escolar.</p>
         </header>
 
-        <form onSubmit={onSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+        <form onSubmit={onSubmit} className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Título</label>
             <input
@@ -72,7 +72,7 @@ export default function AvisosNovoPage() {
               value={form.titulo}
               onChange={onChange}
               placeholder="Ex: Reunião geral sexta-feira"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
             />
           </div>
 
@@ -82,7 +82,7 @@ export default function AvisosNovoPage() {
               name="publico_alvo"
               value={form.publico_alvo}
               onChange={onChange}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
             >
               {PUBLICOS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -100,7 +100,7 @@ export default function AvisosNovoPage() {
               onChange={onChange}
               placeholder="Descreva o aviso com detalhes."
               rows={6}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
             />
           </div>
 
@@ -108,7 +108,7 @@ export default function AvisosNovoPage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+              className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
             >
               {saving ? "Publicando..." : "Publicar aviso"}
             </button>

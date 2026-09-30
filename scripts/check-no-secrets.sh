@@ -47,7 +47,11 @@ fi
 
 SECRET_REGEX='(postgresql://[^[:space:]'"'"'"<>]+:[^[:space:]'"'"'"<>@]+@|sb_secret_[A-Za-z0-9_-]{8,}|sb_publishable_[A-Za-z0-9_-]{8,}|service_role[^[:space:]'"'"'"<>]{8,}|-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|ghp_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{20,}|xox[baprs]-[0-9A-Za-z-]{10,}|sk_(live|test)_[0-9A-Za-z]{16,}|SG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,})'
 
-ALLOWLIST_REGEX='(<PASSWORD>|<project-ref>|<region>|postgresql://postgres\.<project-ref>:<PASSWORD>@aws-1-<region>\.pooler\.supabase\.com:6543/postgres(\?sslmode=require)?|postgresql://postgres\.<project-ref>:<PASSWORD>@aws-1-<region>\.pooler\.supabase\.com:5432/postgres(\?sslmode=require)?|sb-project-ref-auth-token|SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_ANON_KEY|WAHA_API_KEY|OPENAI_API_KEY|GEMINI_API_KEY|SUPABASE_PROJECT_REF|PROJECT_REF)'
+# `service_role` tambem e o nome de uma role do Postgres, e aparece em dumps de ACLs
+# (`role|PRIVILEGIOS`, `role=ROLE/...`), que o SECRET_REGEX le como se fosse uma chave.
+# Esta alternativa cobre apenas essas duas formas de dump: uma chave a serio vem em
+# base64/JWT e nunca traz `|` nem `=` a seguir ao nome. Ver agents/exceptions/EXC-SECRET-001.md
+ALLOWLIST_REGEX='(<PASSWORD>|<project-ref>|<region>|postgresql://postgres\.<project-ref>:<PASSWORD>@aws-1-<region>\.pooler\.supabase\.com:6543/postgres(\?sslmode=require)?|postgresql://postgres\.<project-ref>:<PASSWORD>@aws-1-<region>\.pooler\.supabase\.com:5432/postgres(\?sslmode=require)?|sb-project-ref-auth-token|SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_ANON_KEY|WAHA_API_KEY|OPENAI_API_KEY|GEMINI_API_KEY|SUPABASE_PROJECT_REF|PROJECT_REF|service_role(\|[A-Z,]+|=[A-Za-z/,]+))'
 
 while read -r commit; do
   git diff-tree --no-commit-id --name-only -r "$commit" >>"$files_file"
@@ -58,6 +62,9 @@ sort -u "$files_file" -o "$files_file"
 while read -r commit; do
   while read -r path; do
     [[ -n "$path" ]] || continue
+    # O scanner nao se varre a si proprio: a linha que define o SECRET_REGEX contem os
+    # padroes a letra e dispararia sobre si mesma em todos os commits.
+    [[ "$path" == "scripts/check-no-secrets.sh" ]] && continue
     if ! git cat-file -e "${commit}:${path}" 2>/dev/null; then
       continue
     fi

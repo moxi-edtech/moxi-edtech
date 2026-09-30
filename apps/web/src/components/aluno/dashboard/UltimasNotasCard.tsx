@@ -4,7 +4,7 @@ import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
 
 export default function UltimasNotasCard({ data }: { data: null | { valor?: number; created_at?: string } }) {
   const valor = data?.valor ?? null;
-  const highlight = valor == null ? "text-slate-400" : valor >= 14 ? "text-klasse-green-600" : valor >= 10 ? "text-klasse-gold-600" : "text-rose-500";
+  const highlight = valor == null ? "text-slate-400" : valor >= 14 ? "text-emerald-600" : valor >= 10 ? "text-amber-600" : "text-rose-500";
   return (
     <AlunoCard>
       <div className="flex items-center justify-between">

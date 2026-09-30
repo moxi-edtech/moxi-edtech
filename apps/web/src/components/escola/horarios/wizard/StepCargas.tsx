@@ -86,7 +86,7 @@ export function StepCargas({ escolaId, turmaId, onComplete }: StepCargasProps) {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center gap-4 mb-8">
         <div className="p-4 rounded-2xl bg-white shadow-sm border border-slate-100">
-          <BookOpen className="h-8 w-8 text-klasse-gold" />
+          <BookOpen className="h-8 w-8 text-amber" />
         </div>
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Cargas Horárias</h2>
@@ -128,7 +128,7 @@ export function StepCargas({ escolaId, turmaId, onComplete }: StepCargasProps) {
                         type="number"
                         value={editValue}
                         onChange={e => setEditValue(e.target.value)}
-                        className="w-16 rounded-lg border border-klasse-gold px-2 py-1 text-sm font-bold focus:outline-none"
+                        className="w-16 rounded-lg border border-amber px-2 py-1 text-sm font-bold focus:outline-none"
                         autoFocus
                       />
                       <button onClick={() => handleUpdateCarga(disc.id)} className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100">
@@ -141,7 +141,7 @@ export function StepCargas({ escolaId, turmaId, onComplete }: StepCargasProps) {
                         setEditingId(disc.id);
                         setEditValue(String(disc.carga_horaria_semanal || 0));
                       }}
-                      className="p-2 text-slate-300 hover:text-klasse-gold hover:bg-klasse-gold/5 rounded-lg transition-all"
+                      className="p-2 text-slate-300 hover:text-amber hover:bg-amber/5 rounded-lg transition-all"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>

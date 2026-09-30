@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const PAPEIS_ESCOLA_VALIDOS = [
+  'diretor',
   'admin_escola',
   'admin',
   'staff_admin',

@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { z } from "zod";
 import { recordAuditServer } from "@/lib/audit";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -30,14 +31,8 @@ export async function GET() {
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
 
     const db = supabase as any;
-    const [{ data: activeYear }, { data: school }] = await Promise.all([
-      db.from("anos_letivos")
-        .select("id,ano,ativo,data_inicio,data_fim")
-        .eq("escola_id", escolaId)
-        .eq("ativo", true)
-        .order("ano", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+    const [activeYear, { data: school }] = await Promise.all([
+      resolveAnoLetivoScope(supabase, escolaId),
       db.from("escolas").select("config_portal_admissao").eq("id", escolaId).maybeSingle(),
     ]);
 
@@ -137,14 +132,7 @@ export async function POST(request: Request) {
     ]);
     if (!targetYear) return NextResponse.json({ ok: false, error: "Prepare este ano letivo antes de abrir inscrições." }, { status: 409 });
 
-    const { data: activeYear } = await db
-      .from("anos_letivos")
-      .select("ano")
-      .eq("escola_id", escolaId)
-      .eq("ativo", true)
-      .order("ano", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const activeYear = await resolveAnoLetivoScope(supabase, escolaId);
     if (activeYear?.ano !== undefined && ano_letivo <= Number(activeYear.ano)) {
       return NextResponse.json({ ok: false, error: "Para abrir candidaturas do ano ativo, use a configuração de admissões. Esta operação é exclusiva para o próximo ano e rematrículas." }, { status: 409 });
     }

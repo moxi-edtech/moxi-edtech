@@ -133,7 +133,7 @@ export default function ConfirmarRematriculaPage() {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {returnedAlunoId && <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><strong>Contexto retomado.</strong> A regularização do aluno foi concluída. Confirme agora a rematrícula pendente.</div>}
       {summary && (
-        <div className="mb-4 rounded-md border border-klasse-green-200 bg-klasse-green-50 p-3 text-sm text-klasse-green-900">
+        <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
           <div className="font-medium mb-2">Resultado</div>
           <div>Total inseridos: {summary.total_inserted} • Ignorados: {summary.total_skipped}</div>
           {summary.items.length > 0 && (
@@ -235,7 +235,7 @@ export default function ConfirmarRematriculaPage() {
           <button
             onClick={handleSubmit}
             disabled={loading || sugestoes.length === 0}
-            className="inline-flex justify-center rounded-md border border-transparent bg-klasse-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-klasse-green-700 focus:outline-none focus:ring-2 focus:ring-klasse-green-500 focus:ring-offset-2 disabled:opacity-50"
+            className="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
           >
             {loading ? "Confirmando..." : "Confirmar Rematrícula"}
           </button>

@@ -81,6 +81,9 @@ export async function POST(req: Request) {
       valor: number | null;
       valor_previsto: number | null;
       aluno_id: string | null;
+      matricula_id: string | null;
+      turma_id: string | null;
+      ano_letivo: number | string | null;
       ano_referencia: number | null;
     };
 
@@ -89,7 +92,7 @@ export async function POST(req: Request) {
     if (parsed.data.mensalidade_id) {
       const { data: mensalidadeRow, error: mensalidadeErr } = await supabase
         .from("mensalidades")
-        .select("id, escola_id, status, valor, valor_previsto, aluno_id, ano_referencia")
+        .select("id, escola_id, status, valor, valor_previsto, aluno_id, matricula_id, turma_id, ano_letivo, ano_referencia")
         .eq("id", parsed.data.mensalidade_id)
         .maybeSingle();
 
@@ -115,13 +118,40 @@ export async function POST(req: Request) {
       operation: "WRITE",
     });
     let billingAcademicYearId = academicContext.anoLetivoId;
-    if (mensalidade?.ano_referencia) {
-      const { data: billingYear } = await supabase
+    if (mensalidade?.matricula_id) {
+      const { data: matriculaContext, error: matriculaContextError } = await supabase
+        .from("matriculas")
+        .select("session_id, ano_letivo")
+        .eq("escola_id", escolaId)
+        .eq("id", mensalidade.matricula_id)
+        .maybeSingle();
+      if (matriculaContextError) throw matriculaContextError;
+      if (matriculaContext?.session_id) {
+        billingAcademicYearId = matriculaContext.session_id;
+      } else {
+        const { data: billingYear, error: billingYearError } = await supabase
+          .from("anos_letivos")
+          .select("id")
+          .eq("escola_id", escolaId)
+          .eq("ano", Number(matriculaContext?.ano_letivo ?? mensalidade.ano_letivo))
+          .order("ativo", { ascending: false })
+          .order("data_inicio", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (billingYearError) throw billingYearError;
+        billingAcademicYearId = billingYear?.id ?? academicContext.anoLetivoId;
+      }
+    } else if (mensalidade?.ano_letivo) {
+      const { data: billingYear, error: billingYearError } = await supabase
         .from("anos_letivos")
         .select("id")
         .eq("escola_id", escolaId)
-        .eq("ano", mensalidade.ano_referencia)
+        .eq("ano", Number(mensalidade.ano_letivo))
+        .order("ativo", { ascending: false })
+        .order("data_inicio", { ascending: false })
+        .limit(1)
         .maybeSingle();
+      if (billingYearError) throw billingYearError;
       billingAcademicYearId = billingYear?.id ?? academicContext.anoLetivoId;
     }
 

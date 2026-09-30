@@ -856,9 +856,9 @@ export default function MoxiConfiguracaoAvaliacoes() {
   };
 
   return (
-    <div className="min-h-screen bg-moxinexa-light text-moxinexa-dark flex">
+    <div className="bg-moxinexa-light text-moxinexa-dark flex">
       {/* Main */}
-      <main className="flex-1 p-6 max-w-6xl mx-auto w-full">
+      <div className="flex-1 p-6 max-w-6xl mx-auto w-full">
         <header className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-semibold text-moxinexa-dark">Configuração de Avaliações</h1>
@@ -945,7 +945,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
             </div>
           ))}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

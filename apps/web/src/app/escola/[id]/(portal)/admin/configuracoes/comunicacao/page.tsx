@@ -156,7 +156,8 @@ export default function ComunicacaoConfigPage({ params }: Props) {
 
   useEffect(() => {
     if (!escolaParam) return;
-    if (!qrDataUrl && qrStatus !== "pending_qr") return;
+    // Não substituir um QR já exibido durante a leitura; a actualização fica manual.
+    if (qrDataUrl || qrStatus !== "pending_qr") return;
 
     const timer = window.setInterval(() => {
       loadQr();
@@ -176,7 +177,7 @@ export default function ComunicacaoConfigPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link

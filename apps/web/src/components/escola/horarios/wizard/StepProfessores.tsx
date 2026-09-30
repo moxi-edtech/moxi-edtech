@@ -15,6 +15,7 @@ import {
 
 interface Disciplina {
   id: string;
+  curso_matriz_id?: string | null;
   nome: string;
   professor_id?: string | null;
   professor_nome?: string | null;
@@ -22,6 +23,8 @@ interface Disciplina {
 
 interface Professor {
   id: string;
+  professor_id?: string | null;
+  user_id?: string | null;
   nome: string;
 }
 
@@ -49,7 +52,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
     numero_bi: "",
     habilitacoes: "Licenciatura",
     vinculo_contratual: "Efetivo",
-    carga_horaria_maxima: 20
+    carga_horaria_maxima: 24
   });
   const [savingProf, setSavingProf] = useState(false);
 
@@ -66,11 +69,19 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
       ]);
       const [discJson, profJson] = await Promise.all([discRes.json(), profRes.json()]);
       
-      if (discJson.ok) setDisciplinas(discJson.items || []);
+      if (discJson.ok) {
+        setDisciplinas((discJson.items || []).map((item: any) => ({
+          ...item,
+          curso_matriz_id: item.curso_matriz_id || item.id,
+          id: item.id,
+        })));
+      }
       if (profJson.ok) {
         setProfessores(
           (profJson.items || []).map((p: any) => ({
-            id: p.user_id || p.id,
+            id: p.professor_id || p.id || p.user_id,
+            professor_id: p.professor_id || p.id || null,
+            user_id: p.user_id || null,
             nome: p.nome || "Professor sem nome",
           }))
         );
@@ -87,17 +98,23 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
   }, [turmaId]);
 
   const handleAssign = async (disciplinaId: string, professorId: string) => {
+    const disciplina = disciplinas.find((item) => item.id === disciplinaId);
+    const professor = professores.find((item) => item.id === professorId);
+    const cursoMatrizId = disciplina?.curso_matriz_id || disciplina?.id;
+    if (!cursoMatrizId || !professor) return;
     try {
       const res = await fetch(`/api/secretaria/turmas/${turmaId}/atribuir-professor`, {
         method: "POST",
         body: JSON.stringify({
-          disciplina_id: disciplinaId,
-          professor_id: professorId,
+          curso_matriz_id: cursoMatrizId,
+          professor_id: professor.professor_id || undefined,
+          professor_user_id: professor.professor_id ? undefined : professor.user_id || professor.id,
+          replace_existing: true,
         }),
       });
       const json = await res.json();
       if (json.ok) {
-        const prof = professores.find(p => p.id === professorId);
+        const prof = professor;
         setDisciplinas(prev => prev.map(d => d.id === disciplinaId ? { ...d, professor_id: professorId, professor_nome: prof?.nome } : d));
         setAssigningId(null);
         success("Professor atribuído!");
@@ -128,7 +145,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
           numero_bi: "",
           habilitacoes: "Licenciatura",
           vinculo_contratual: "Efetivo",
-          carga_horaria_maxima: 20
+          carga_horaria_maxima: 24
         });
         // Refresh list
         await fetchData();
@@ -161,7 +178,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <div className="p-4 rounded-2xl bg-white shadow-sm border border-slate-100">
-            <Users className="h-8 w-8 text-klasse-gold" />
+            <Users className="h-8 w-8 text-amber" />
           </div>
           <div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">Atribuição Docente</h2>
@@ -195,8 +212,8 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                   onClick={() => setAssigningId(disc.id)}
                   className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer shadow-sm ${
                     assigningId === disc.id 
-                      ? "bg-klasse-gold/5 border-klasse-gold ring-1 ring-klasse-gold" 
-                      : "bg-white border-slate-200 hover:border-klasse-gold/50"
+                      ? "bg-amber/5 border-amber ring-1 ring-amber"
+                      : "bg-white border-slate-200 hover:border-amber/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -210,7 +227,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                       </p>
                     </div>
                   </div>
-                  <UserPlus className={`w-5 h-5 ${assigningId === disc.id ? 'text-klasse-gold' : 'text-slate-300'}`} />
+                  <UserPlus className={`w-5 h-5 ${assigningId === disc.id ? 'text-amber' : 'text-slate-300'}`} />
                 </div>
               ))}
             </div>
@@ -231,7 +248,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar professor..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm font-bold focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/10 transition-all"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
               />
             </div>
 
@@ -239,7 +256,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
               {filteredProfessores.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-xs text-slate-400 mb-4">Nenhum professor encontrado.</p>
-                  <Button variant="ghost" size="sm" onClick={() => setShowAddModal(true)} className="text-klasse-gold font-bold">
+                  <Button variant="ghost" size="sm" onClick={() => setShowAddModal(true)} className="text-amber font-bold">
                     Cadastrar "{searchTerm}"?
                   </Button>
                 </div>
@@ -250,7 +267,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                     onClick={() => assigningId && handleAssign(assigningId, prof.id)}
                     className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 text-left transition-all group"
                   >
-                    <span className="text-sm font-bold text-slate-700 group-hover:text-klasse-gold">{prof.nome}</span>
+                    <span className="text-sm font-bold text-slate-700 group-hover:text-amber">{prof.nome}</span>
                     <ChevronRight className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
                   </button>
                 ))
@@ -287,7 +304,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                   required
                   value={newProf.nome_completo}
                   onChange={e => setNewProf(v => ({ ...v, nome_completo: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-klasse-gold focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
               <div className="col-span-2">
@@ -297,7 +314,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                   required
                   value={newProf.email}
                   onChange={e => setNewProf(v => ({ ...v, email: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-klasse-gold focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
               <div>
@@ -305,7 +322,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                 <select
                   value={newProf.genero}
                   onChange={e => setNewProf(v => ({ ...v, genero: e.target.value as "M" | "F" }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-klasse-gold focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 >
                   <option value="M">Masculino</option>
                   <option value="F">Feminino</option>
@@ -319,7 +336,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                   maxLength={14}
                   value={newProf.numero_bi}
                   onChange={e => setNewProf(v => ({ ...v, numero_bi: e.target.value.toUpperCase() }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-klasse-gold focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
             </div>

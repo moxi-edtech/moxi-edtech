@@ -21,8 +21,8 @@ export function TaskItem({
       <div
         className="
           h-10 w-10 rounded-xl
-          bg-klasse-gold/10 text-klasse-gold
-          ring-1 ring-klasse-gold/25
+          bg-amber/10 text-amber
+          ring-1 ring-amber/25
           flex items-center justify-center
           shrink-0
         "
@@ -56,9 +56,9 @@ export function TaskItem({
           className="
             h-9 w-9 rounded-lg
             border border-slate-200 bg-white
-            text-klasse-green-600
-            hover:bg-klasse-green-50 hover:border-klasse-green-200
-            focus:outline-none focus:ring-4 focus:ring-klasse-green-200/40
+            text-emerald-600
+            hover:bg-emerald-50 hover:border-emerald-200
+            focus:outline-none focus:ring-4 focus:ring-emerald-200/40
           "
           aria-label="Aprovar"
         >

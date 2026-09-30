@@ -259,7 +259,7 @@ function finalizeResponse(request: NextRequest, response: NextResponse, allowedO
 const PORTAL_RULES: Array<{ prefix: string; roles: string[] }> = [
   {
     prefix: '/admin',
-    roles: ['admin', 'admin_escola', 'staff_admin', 'admin_financeiro', 'super_admin', 'global_admin', 'formacao_admin'],
+    roles: ['admin', 'admin_escola', 'admin_secretaria', 'diretor', 'staff_admin', 'admin_financeiro', 'super_admin', 'global_admin', 'formacao_admin'],
   },
   {
     prefix: '/operacoes',
@@ -267,7 +267,7 @@ const PORTAL_RULES: Array<{ prefix: string; roles: string[] }> = [
   },
   {
     prefix: '/secretaria',
-    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin', 'formacao_secretaria', 'formacao_admin'],
+    roles: ['secretaria', 'admin_secretaria', 'diretor', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin', 'formacao_secretaria', 'formacao_admin'],
   },
   {
     prefix: '/financeiro',

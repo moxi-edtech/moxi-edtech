@@ -26,8 +26,8 @@ const formatRelative = (value: string) => {
 };
 
 const healthColor = (score: number) => {
-  if (score >= 80) return 'bg-klasse-green-500';
-  if (score >= 60) return 'bg-klasse-gold-400';
+  if (score >= 80) return 'bg-emerald-500';
+  if (score >= 60) return 'bg-amber-400';
   return 'bg-rose-500';
 };
 
@@ -46,8 +46,8 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
               onClick={() => setSelecionada(escola)}
               className={`rounded-xl border p-4 text-left transition ${
                 isSelected
-                  ? 'border-klasse-green bg-klasse-green/5 shadow-sm'
-                  : 'border-slate-200 bg-white hover:border-klasse-green/40'
+                  ? 'border-emerald bg-emerald/5 shadow-sm'
+                  : 'border-slate-200 bg-white hover:border-emerald/40'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -60,9 +60,9 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
                 <Badge
                   className={
                     escola.sync_status === 'synced'
-                      ? 'bg-klasse-green-100 text-klasse-green-700'
+                      ? 'bg-emerald-100 text-emerald-700'
                       : escola.sync_status === 'pending'
-                        ? 'bg-klasse-gold-100 text-klasse-gold-700'
+                        ? 'bg-amber-100 text-amber-700'
                         : 'bg-rose-100 text-rose-700'
                   }
                 >
@@ -100,8 +100,8 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
                         alerta.tipo === 'critico'
                           ? 'bg-rose-100 text-rose-700'
                           : alerta.tipo === 'aviso'
-                            ? 'bg-klasse-gold-100 text-klasse-gold-700'
-                            : 'bg-klasse-green-100 text-klasse-green-700'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-emerald-100 text-emerald-700'
                       }`}
                     >
                       {alerta.msg}

@@ -13,13 +13,13 @@ type ApiResult = {
 }
 
 const inputCls =
-  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold'
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber'
 
 const buttonPrimary =
-  'inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60'
+  'inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60'
 
 const buttonSecondary =
-  'inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:text-klasse-gold'
+  'inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:text-amber'
 
 const buttonDanger =
   'inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-95'
@@ -115,8 +115,8 @@ export default function TresViasEntradaClient() {
               onClick={() => setVia(item.key)}
               className={`rounded-xl border px-4 py-2 text-sm font-semibold ${
                 via === item.key
-                  ? 'border-klasse-gold bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25'
-                  : 'border-slate-200 bg-white text-slate-700 hover:text-klasse-gold'
+                  ? 'border-amber bg-slate-900 text-amber ring-1 ring-amber/25'
+                  : 'border-slate-200 bg-white text-slate-700 hover:text-amber'
               }`}
             >
               {item.label}

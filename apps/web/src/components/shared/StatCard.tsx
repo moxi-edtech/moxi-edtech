@@ -9,6 +9,11 @@ type StatCardProps = {
   value: number | string | null | undefined;
   icon: ReactNode;
   href?: string;
+  /**
+   * Torna o cartão accionável (ex.: abrir um modal). Aditivo: quem não passa
+   * onClick continua a receber exactamente o mesmo <div> de antes.
+   */
+  onClick?: () => void;
   tone?: Tone;
   disabled?: boolean;
   animateValue?: boolean;
@@ -16,16 +21,16 @@ type StatCardProps = {
 
 const toneStyles: Record<Tone, { iconBg: string; iconText: string; valueText: string; border: string }> = {
   default: {
-    iconBg: "bg-klasse-green/10",
-    iconText: "text-klasse-green",
-    valueText: "text-klasse-green",
-    border: "border-klasse-green/15",
+    iconBg: "bg-emerald/10",
+    iconText: "text-emerald",
+    valueText: "text-emerald",
+    border: "border-emerald/15",
   },
   warning: {
-    iconBg: "bg-klasse-gold/15",
-    iconText: "text-klasse-gold-700",
-    valueText: "text-klasse-gold-700",
-    border: "border-klasse-gold/30",
+    iconBg: "bg-amber/15",
+    iconText: "text-amber-700",
+    valueText: "text-amber-700",
+    border: "border-amber/30",
   },
   critical: {
     iconBg: "bg-rose-50",
@@ -65,6 +70,7 @@ export default function StatCard({
   value,
   icon,
   href,
+  onClick,
   tone = "default",
   disabled = false,
   animateValue = false,
@@ -73,7 +79,7 @@ export default function StatCard({
   const isNumericValue = typeof value === "number" && Number.isFinite(value);
   const animatedValue = useCountUp(isNumericValue && animateValue ? value : 0);
 
-  return (
+  const card = (
     <div
       className={`rounded-xl border bg-white p-4 shadow-sm transition ${
         disabled ? "opacity-60" : "hover:shadow-md"
@@ -91,7 +97,7 @@ export default function StatCard({
           </span>
         </div>
         {href && !disabled && (
-          <Link href={href} className="text-[10px] font-semibold text-klasse-green hover:underline">
+          <Link href={href} className="text-[10px] font-semibold text-emerald hover:underline">
             Ver todos
           </Link>
         )}
@@ -101,4 +107,16 @@ export default function StatCard({
       </div>
     </div>
   );
+
+  // onClick torna o cartão accionável. O <Link> "Ver todos" só existe quando há
+  // href, por isso nunca há um link dentro do botão.
+  if (onClick && !disabled && !href) {
+    return (
+      <button type="button" onClick={onClick} className="w-full text-left">
+        {card}
+      </button>
+    );
+  }
+
+  return card;
 }

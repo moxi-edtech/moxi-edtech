@@ -1,399 +1,0 @@
-# Fiscal Smoke Auth E2E
-
-timestamp_utc: 20260428T224932Z
-base_url: https://app.klasse.ao
-escola_id: f406f5a7-a077-431c-b118-297224925726
-empresa_id: 11a6aba6-3315-4732-a0b1-383202cf4f9d
-ft_prefixo_serie: FR
-rc_prefixo_serie: RC
-
-## 1) Compliance Probe
-```bash
-curl -sS -X GET 'https://app.klasse.ao/api/fiscal/compliance/status?probe=1' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726'
-```
-status_http: 200
-```http
-HTTP/2 200 
-age: 0
-cache-control: public, max-age=0, must-revalidate
-content-type: application/json
-date: Tue, 28 Apr 2026 22:49:39 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/compliance/status
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::hcnv9-1777416574798-135e0ae907fd
-
-```
-```json
-{"ok":true,"data":{"request_id":"ea9e8b49-fde4-4c6a-9edf-0ce9ffe9451b","escola_id":"f406f5a7-a077-431c-b118-297224925726","empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","source":"binding","empresa":{"id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","nome":"Escola KLASSE","nif":"9999999999","status":"draft"},"metrics":{"documentos_total":115,"documentos_emitidos":108,"saft_total":6,"saft_failed":0,"chaves_ativas":1,"series_ativas":13},"kms":{"configured":true,"region":"us-east-2","keyIdMasked":"arn:aws:...ning","algorithm":"RSASSA_PSS_SHA_256","missing":[],"probeStatus":"ok","probeMessage":"Assinatura KMS executada com sucesso."}}}
-```
-
-## 2) Emiss√£o FT padr√£o (AOA, ProductNumberCode fallback)
-```bash
-curl -sS -X POST 'https://app.klasse.ao/api/fiscal/documentos' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726' -H 'Content-Type: application/json' --data-raw '{"empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","tipo_documento":"FT","prefixo_serie":"FR","origem_documento":"interno","invoice_date":"2026-04-28","moeda":"AOA","cliente":{"nome":"Consumidor final"},"itens":[{"descricao":"Mensalidade - Smoke FT","product_code":"SERV_MENSALIDADE","quantidade":1,"preco_unit":15000,"taxa_iva":14}]}'
-```
-status_http: 201
-```http
-HTTP/2 201 
-cache-control: public, max-age=0, must-revalidate
-content-type: application/json
-date: Tue, 28 Apr 2026 22:49:43 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/documentos
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::nxp6d-1777416580026-5db78e730690
-
-```
-```json
-{"ok":true,"data":{"ok":true,"numero":10,"key_version":1,"documento_id":"784486e0-6bbb-4159-b3c7-12a28206a898","hash_control":"f4035c29b656c8e717e36b3359afec68ed246f17bff456b91152cff22c18367a","numero_formatado":"FT FR/10"},"request_id":"c819588e-5fc2-4881-b50f-c9347320bfbd"}
-```
-
-## 3) Emiss√£o FT isenta (IVA=0 com TaxExemption*)
-```bash
-curl -sS -X POST 'https://app.klasse.ao/api/fiscal/documentos' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726' -H 'Content-Type: application/json' --data-raw '{"empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","tipo_documento":"FT","prefixo_serie":"FR","origem_documento":"interno","invoice_date":"2026-04-28","moeda":"AOA","cliente":{"nome":"Pai sem NIF"},"itens":[{"descricao":"Propina Isenta","product_code":"SERV_PROPINA_ISENTA","quantidade":1,"preco_unit":10000,"taxa_iva":0,"tax_exemption_code":"M07","tax_exemption_reason":"Isencao de IVA - servicos de educacao"}]}'
-```
-status_http: 201
-```http
-HTTP/2 201 
-cache-control: public, max-age=0, must-revalidate
-content-type: application/json
-date: Tue, 28 Apr 2026 22:49:44 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/documentos
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::pqlw7-1777416583384-bde300cf7c57
-
-```
-```json
-{"ok":true,"data":{"ok":true,"numero":11,"key_version":1,"documento_id":"042ca3a5-5101-4052-b3b8-9a553ae76835","hash_control":"e78417da59a97d6eb5875cf60899467d11ac74e6abbf3d8a726f0cf35b290c25","numero_formatado":"FT FR/11"},"request_id":"fbe384c1-a2be-4706-8892-7b5910d9bd1d"}
-```
-
-## 4) Emiss√£o RC com PaymentMechanism
-```bash
-curl -sS -X POST 'https://app.klasse.ao/api/fiscal/documentos' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726' -H 'Content-Type: application/json' --data-raw '{"empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","tipo_documento":"RC","prefixo_serie":"RC","origem_documento":"interno","invoice_date":"2026-04-28","moeda":"AOA","payment_mechanism":"TB","cliente":{"nome":"Consumidor final"},"itens":[{"descricao":"Recebimento de mensalidade","product_code":"SERV_RECEB_MENSAL","quantidade":1,"preco_unit":5000,"taxa_iva":14}]}'
-```
-status_http: 201
-```http
-HTTP/2 201 
-cache-control: public, max-age=0, must-revalidate
-content-type: application/json
-date: Tue, 28 Apr 2026 22:49:46 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/documentos
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::n5bzm-1777416585136-e91dba489ce9
-
-```
-```json
-{"ok":true,"data":{"ok":true,"numero":7,"key_version":1,"documento_id":"298642e1-b7a6-48f6-b241-111a48765459","hash_control":"3c776cd5944b097f4cb6dc7918e1840f6d743f806f48cdb814cdd6978b037ecf","numero_formatado":"RC RC/7"},"request_id":"9f9892e1-40d6-4ee2-9310-6ee1b948ba0f"}
-```
-
-## 5) Emiss√£o FT em moeda estrangeira (USD)
-```bash
-curl -sS -X POST 'https://app.klasse.ao/api/fiscal/documentos' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726' -H 'Content-Type: application/json' --data-raw '{"empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","tipo_documento":"FT","prefixo_serie":"FR","origem_documento":"interno","invoice_date":"2026-04-28","moeda":"USD","taxa_cambio_aoa":920,"cliente":{"nome":"Cliente USD","nif":"999999999"},"itens":[{"descricao":"Servico em moeda externa","product_code":"SERV_USD","product_number_code":"SERV_USD","quantidade":1,"preco_unit":50,"taxa_iva":14}]}'
-```
-status_http: 201
-```http
-HTTP/2 201 
-cache-control: public, max-age=0, must-revalidate
-content-type: application/json
-date: Tue, 28 Apr 2026 22:49:48 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/documentos
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::nwfk4-1777416586978-5367546b6b34
-
-```
-```json
-{"ok":true,"data":{"ok":true,"numero":12,"key_version":1,"documento_id":"ce7d0282-8895-4959-93e0-68f81c06074c","hash_control":"0e570b2d5c4119cb550354883839c9e3f2ee709356924a643f7fe86c828b0e30","numero_formatado":"FT FR/12"},"request_id":"c91011ad-7f37-4c7b-bfc6-c8d8c14bde35"}
-```
-
-## 6) Retifica√ß√£o FT (documento emitido no passo 2)
-```bash
-curl -sS -X POST 'https://app.klasse.ao/api/fiscal/documentos/784486e0-6bbb-4159-b3c7-12a28206a898/rectificar' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726' -H 'Content-Type: application/json' --data-raw '{"motivo":"Correcao operacional no smoke E2E"}'
-```
-status_http: 200
-```http
-HTTP/2 200 
-cache-control: public, max-age=0, must-revalidate
-content-type: application/json
-date: Tue, 28 Apr 2026 22:49:50 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/documentos/[documentoId]/rectificar
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::ljs8l-1777416588501-deddd99f8591
-
-```
-```json
-{"ok":true,"data":{"ok":true,"status":"rectificado","empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","documento_id":"784486e0-6bbb-4159-b3c7-12a28206a898"},"request_id":"4414b6ee-02f8-452b-b4d6-2b054b6e9cb7"}
-```
-
-## 7) Anula√ß√£o FT (documento emitido no passo 3)
-```bash
-curl -sS -X POST 'https://app.klasse.ao/api/fiscal/documentos/042ca3a5-5101-4052-b3b8-9a553ae76835/anular' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726' -H 'Content-Type: application/json' --data-raw '{"motivo":"Anulacao operacional no smoke E2E"}'
-```
-status_http: 200
-```http
-HTTP/2 200 
-cache-control: public, max-age=0, must-revalidate
-content-type: application/json
-date: Tue, 28 Apr 2026 22:49:51 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/documentos/[documentoId]/anular
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::b57fq-1777416590226-cc06fd488b02
-
-```
-```json
-{"ok":true,"data":{"ok":true,"status":"anulado","empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","documento_id":"042ca3a5-5101-4052-b3b8-9a553ae76835"},"request_id":"7db866b4-dbbc-4d5f-ae1b-c1bbe5fa32d7"}
-```
-
-## 8) PDF Fiscal (documento emitido no passo 2)
-```bash
-curl -sS -X GET 'https://app.klasse.ao/api/fiscal/documentos/784486e0-6bbb-4159-b3c7-12a28206a898/pdf' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726'
-```
-status_http: 200
-```http
-HTTP/2 200 
-age: 0
-cache-control: no-store
-content-disposition: inline; filename="fiscal_FT FR/10.pdf"
-content-type: application/pdf
-date: Tue, 28 Apr 2026 22:49:53 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/documentos/[documentoId]/pdf
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::rfsm5-1777416591277-a31287e2c446
-
-```
-```json
-%PDF-1.3
-%ˇˇˇˇ
-9 0 obj
-<<
-/Type /ExtGState
-/ca 1
->>
-endobj
-12 0 obj
-<<
-/Type /ExtGState
-/CA 1
->>
-endobj
-8 0 obj
-<<
-/Type /Page
-/Parent 1 0 R
-/MediaBox [0 0 595.280029 841.890015]
-/Contents 6 0 R
-/Resources 7 0 R
-/UserUnit 1
->>
-endobj
-7 0 obj
-<<
-/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
-/ExtGState <<
-/Gs1 9 0 R
-/Gs2 12 0 R
->>
-/Font <<
-/F2 10 0 R
-/F1 11 0 R
-/F3 13 0 R
->>
-/ColorSpace <<
->>
->>
-endobj
-15 0 obj
-(react-pdf)
-endobj
-16 0 obj
-(react-pdf)
-endobj
-17 0 obj
-(D:20260428224953Z)
-endobj
-14 0 obj
-<<
-/Producer 15 0 R
-/Creator 16 0 R
-/CreationDate 17 0 R
->>
-endobj
-11 0 obj
-<<
-/Type /Font
-/BaseFont /Helvetica
-/Subtype /Type1
-/Encoding /WinAnsiEncoding
->>
-endobj
-10 0 obj
-<<
-/Type /Font
-/BaseFont /Helvetica-Bold
-/Subtype /Type1
-/Encoding /WinAnsiEncoding
->>
-endobj
-13 0 obj
-<<
-/Type /Font
-/BaseFont /Courier
-/Subtype /Type1
-/Encoding /WinAnsiEncoding
->>
-endobj
-4 0 obj
-<<
->>
-endobj
-3 0 obj
-<<
-/Type /Catalog
-/Pages 1 0 R
-/Names 2 0 R
-/ViewerPreferences 5 0 R
->>
-endobj
-1 0 obj
-<<
-/Type /Pages
-/Count 1
-/Kids [8 0 R]
->>
-endobj
-2 0 obj
-<<
-/Dests <<
-  /Names [
-]
->>
->>
-endobj
-5 0 obj
-<<
-/DisplayDocTitle true
->>
-endobj
-6 0 obj
-<<
-/Length 1689
-/Filter /FlateDecode
->>
-stream
-xúÂZMè„6ΩÎW§¶æX$ÅÜ…Óê√Ω”¿Ç2≤ùË^`“@Ú˜î,ãí(€=3¨§’∞≈íD´ã≈«GíCáÓrË¢ƒÑHﬁµ/Õß”A›‰ÛqaºÑé4_{˜è√Ôø∂áˇºˇ÷µØ1yã∆A=¶àíÇR2QÖ$∞◊l‚·˚kﬁΩ∂ˇkﬁΩ%˜ÛkÛ©y<ˇXÂEø}*^§∏ÙÙ“º˚;2˜tl~xPƒƒé÷1ÍGmïºxQøs¯£{˙æ˘ÁSÛxÆä!qtùÀè›;<vﬂ•€L`=$£-’p¿“·Ï§C@œIâÇi@#g„ ¡ÈÓØá9¬MjÚ”ŒytåUˇôÄBÔ˝];#iyTÚÏrk
-ÉO)•∏¡&U¬˚`—ºâe‹É©´pòÄ,0·ƒ‡ΩEVáÓ•ÒD¿ëìC˜‹x–ò»rÔ‰ák!a4*mÍ⁄¶(Zˇ¸Xf`L$…ïö∫‚-WQºê©{n8!àã>ó9∆Û’sÖ•scπ´a,ûﬂª®›É∂˘•˘Ø[m©Ã^*‰∫t7¶øﬁÀ °.äA«lX-˚ı€°9·AnrÔ)üÊˇçD.èëÎC¥Ω9·ƒË%pûT-p#à^Í»îÛÚVÄ(∫p◊yÉo˚¢Ûf4#k´∞»W`ﬁ ,Ì¡™>T!‡µWŸ`[~ΩQjéà¢#é#=›5µù„>∞Qç‡É’√¸éºa¥>˛¥÷W#§˚wBÕ+£ög>
-I›‡ÌØ9E–ãy¢d‘qP
-‰ vºíí#o!#≥†∞ÔEy/,±ûì	ËbNﬁ‡¸°`a«¿ñ,X∫@1$@HkSÜ"3"¢˘¯›˚WÓ_∂ú.H=\/•ÁIiÌºÕwŸ‰ôï“⁄˘dbR>\5ﬂnº©ﬁp≈|ªqòö¨ ˚≈µN”±˛›á!,rxúzgöLé–‹áÔ˛›∞˚£˘–¸£C∑?«⁄ßMÙÆí⁄≈t‡:aÖÎ¡Â¡$‡ƒn3ìº%Òºsﬂêw',!è$u≤£óÂò¢ƒ4Ñ#∞PÒòÒË∆–√.ãåﬁ€ahı@s¿÷¿JÄZ3$Nˆ9Ç‚$°Dö#(∆qfí¢ΩöÇ!-19˘∂Çâ"A¢(C-û3`‹&öºÌ\D˜†ıiyÆ ”;∏åP5•E∞(BD1î`„uóÖ˝‹è2ª]·9LÄ≤ht¥¿h¿© p<Cîîíug,=OJkÁmóLû©ñ÷Œ€ŸÀúÆöo7ﬁXoºhæ›Xa8%≤_\˚Á4Õú·§a zö¬fµw¬y∞3ùæÔ ≈°%≈)¶èrfU/3ﬁ£sÅÓ¥Ê‹–w@QÔŸõ?Í^Ωº(i´â˜kZÔdŒ5—u"p∏wUïTWñ;i`ëf≤åü’Ãj>Q¿E”ﬂÍ’Ω˘,oü≤Ó»hrÓ4ﬁgı?Øÿ«ìÊ;	FÎ√¯‚Ø òx›EH<Û¡m˜YW[ºﬁ≠÷2ˆ“„%1®0íæôÆ≥◊YÎrÍÓ7—º}„æ!;úúªN_g†P⁄
-(¢ó`πﬂuû≥\œ˜æÃfsùvœTÄ•c£€h”¿á¨£ﬂò«´û.)πÎ/mÉº5˛M9AMy>o‡Ä†äà\€…ÖnÉkáyR∫5≤Å?tK„ FAÃØli!YOVRΩÅœ.“îmt¨ø!A®«ñ†ó≥§-ÜzE•»⁄†&€¥cê†˝˙[m ƒ@ÖS2Çî#^∂Ò|”@¢VôÔ…ôœå¯QlB'yëßÿ6&yïfZæTj'˜¶Ÿ≥ÀÚ•RVR∫G∫ØÒ£¥«·k¸‰ùÓ¶óÂ’/qn.”|A„Ø¨Fô¶¢—Ñ≠dûdüX$∆º¿„ŒI7¸ÓÚùyãØÂ Ö$7å∫îdâ–r–[ÈÏ=;Û9hôá]à›Î"á¨…˙≥“ZÿüWÏo±∂”:h•Ó´ˆ∑X€ﬁø¢Œi˘RiÂY\+_*ôrZ„Àõj¯3[ÊO]ˆ5é…èŒ3Ó»'y∏÷yŸeˆ◊mA£ânˇìnÏ˚†ô¯º/r≠‚∞0wØú‘€nAªgÆ&y…ø”{’éåqÂ¸]‹Ú^G€Á&ú˜@ZkÈ§
-ØÏ%$ÔA÷∂Dﬁ6+BñÇÍΩ∑j70‰
-÷T¯ÅVâ|¸ó£D/
-endstream
-endobj
-xref
-0 18
-0000000000 65535 f 
-0000000977 00000 n 
-0000001034 00000 n 
-0000000890 00000 n 
-0000000869 00000 n 
-0000001081 00000 n 
-0000001124 00000 n 
-0000000234 00000 n 
-0000000104 00000 n 
-0000000015 00000 n 
-0000000670 00000 n 
-0000000572 00000 n 
-0000000059 00000 n 
-0000000773 00000 n 
-0000000496 00000 n 
-0000000404 00000 n 
-0000000432 00000 n 
-0000000460 00000 n 
-trailer
-<<
-/Size 18
-/Root 3 0 R
-/Info 14 0 R
-/ID [<c371f4b2a8709bb8d808e9c657b9eb48> <c371f4b2a8709bb8d808e9c657b9eb48>]
->>
-startxref
-2886
-%%EOF
-
-```
-
-## 9) Exporta√ß√£o SAF-T(AO)
-```bash
-curl -sS -X POST 'https://app.klasse.ao/api/fiscal/saft/export' -H 'Cookie: ***' -H 'x-escola-id: f406f5a7-a077-431c-b118-297224925726' -H 'Content-Type: application/json' --data-raw '{"empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","periodo_inicio":"2026-01-01","periodo_fim":"2026-12-31","xsd_version":"AO_SAFT_1.01","metadata":{"canal":"smoke_e2e","fase":"fase_4"}}'
-```
-status_http: 409
-```http
-HTTP/2 409 
-cache-control: public, max-age=0, must-revalidate
-content-type: application/json
-date: Tue, 28 Apr 2026 22:49:57 GMT
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-x-matched-path: /api/fiscal/saft/export
-x-vercel-cache: MISS
-x-vercel-id: gru1::iad1::9t4x7-1777416594074-180891d7b1ff
-
-```
-```json
-{"ok":false,"error":{"code":"FISCAL_SAFT_EXPORT_ALREADY_EXISTS","message":"J√° existe exporta√ß√£o SAF-T(AO) para este per√≠odo.","details":{"request_id":"b53b69d9-f4ed-46d1-9822-b8409a963fc1","empresa_id":"11a6aba6-3315-4732-a0b1-383202cf4f9d","export_id":"9016aa07-3de0-410b-ade2-a210f9c2f474"}}}
-```
-
-## Veredito autom√°tico
-| Etapa | HTTP esperado | HTTP obtido | Resultado |
-|---|---|---|---|
-| 1 Probe | 200 | 200 | PASS |
-| 2 FT padr√£o | 201 | 201 | PASS |
-| 3 FT isenta | 201 | 201 | PASS |
-| 4 RC | 201 | 201 | PASS |
-| 5 FT moeda estrangeira | 201 (opcional) | 201 | PASS |
-| 6 Retifica√ß√£o | 200 | 200 | PASS |
-| 7 Anula√ß√£o | 200 | 200 | PASS |
-| 8 PDF | 200 ou 409 | 200 | PASS |
-| 9 SAF-T | 201 ou 202 | 409 | FAIL |
-
-status_global: FAIL
-## Crit√©rios m√≠nimos de sucesso
-- 1) Probe: HTTP 200
-- 2) FT padr√£o: HTTP 201
-- 3) FT isenta: HTTP 201
-- 4) RC com PaymentMechanism: HTTP 201
-- 6) Retifica√ß√£o: HTTP 200
-- 7) Anula√ß√£o: HTTP 200
-- 8) PDF: HTTP 200 ou HTTP 409 FISCAL_PREVIEW_NOT_ALLOWED
-- 9) SAF-T: HTTP 201 ou HTTP 202
-
-## IDs capturados
-- FT passo 2: 784486e0-6bbb-4159-b3c7-12a28206a898
-- FT passo 3: 042ca3a5-5101-4052-b3b8-9a553ae76835
-
-## Notas
-- Se algum POST retornar 404 SERIE_NAO_ENCONTRADA, crie/ative as s√©ries FR (FT) e RC (RC).
-- Para validar omiss√£o do bloco Currency em AOA no XML, fa√ßa download do ficheiro SAF-T exportado e confirme aus√™ncia de <Currency> em faturas AOA.
-- Para validar renderiza√ß√£o de Currency, rode com TEST_FOREIGN_CURRENCY=1 e confirme <Currency> no documento em USD.

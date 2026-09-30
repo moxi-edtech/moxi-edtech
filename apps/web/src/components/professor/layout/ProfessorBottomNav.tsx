@@ -27,7 +27,7 @@ export function ProfessorBottomNav({ items, activePath }: Props) {
               prefetch
               className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-semibold transition ${
                 active
-                  ? "bg-klasse-green-50 text-klasse-green-700"
+                  ? "bg-emerald-50 text-emerald-700"
                   : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
               }`}
               aria-current={active ? "page" : undefined}

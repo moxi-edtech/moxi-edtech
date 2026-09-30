@@ -4,22 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { BookOpen, FileText, RefreshCw, Search, User } from "lucide-react";
+import { emitirDocumento, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
+import type { TipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 
-type DocumentoTipo =
-  | "declaracao_frequencia"
-  | "boletim_trimestral"
-  | "cartao_estudante"
-  | "ficha_inscricao"
-  | "comprovante_matricula";
-
-type DocumentoResponse = {
-  ok: boolean;
-  docId?: string;
-  hash?: string;
-  publicId?: string;
-  tipo?: DocumentoTipo;
-  error?: string;
-};
+// Mesmo union que a rota de emissão aceita. Estava aqui duplicado (e uma
+// terceira vez, mais curto, em DocumentosEmissaoHub.tsx — esse é outro
+// componente e não se toca); passa a haver uma só definição.
+type DocumentoTipo = TipoDocumentoEmitivel;
 
 type ServicoItem = {
   id: string;
@@ -43,9 +34,15 @@ const TIPOS: Array<{
     icon: FileText,
   },
   {
-    id: "boletim_trimestral",
+    id: "declaracao_notas",
     title: "Declaração com Notas",
-    description: "Notas e aproveitamento para transferências.",
+    description: "Declaração oficial com notas e aproveitamento escolar.",
+    icon: BookOpen,
+  },
+  {
+    id: "boletim_trimestral",
+    title: "Boletim Trimestral",
+    description: "Notas organizadas por trimestre para acompanhamento escolar.",
     icon: BookOpen,
   },
   {
@@ -65,6 +62,18 @@ const TIPOS: Array<{
     title: "Boletim de Matrícula",
     description: "Comprovativo oficial de vinculação.",
     icon: BookOpen,
+  },
+  {
+    id: "historico",
+    title: "Histórico Escolar",
+    description: "Histórico oficial baseado no ano letivo encerrado.",
+    icon: BookOpen,
+  },
+  {
+    id: "certificado",
+    title: "Certificado de Habilitações",
+    description: "Documento final emitido após o fechamento do histórico.",
+    icon: FileText,
   },
 ];
 
@@ -277,22 +286,17 @@ export default function DocumentosEmissaoHubClient({
 
   const selectedServico = useMemo(() => {
     if (!tipo) return null;
-    const normalizeText = (value: string) =>
-      value
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
-    const normalized = tipo.replace("declaracao_", "decl_");
-    const tokens = [tipo, normalized]
-      .flatMap((value) => value.split("_"))
-      .map(normalizeText)
-      .filter(Boolean);
-    return (
-      servicos.find((servico) => {
-        const haystack = normalizeText(`${servico.codigo} ${servico.nome} ${servico.descricao ?? ""}`);
-        return tokens.some((token) => haystack.includes(token));
-      }) ?? null
-    );
+    const codeByType: Record<DocumentoTipo, string> = {
+      declaracao_frequencia: "DOC_DECLARACAO_FREQUENCIA",
+      declaracao_notas: "DOC_DECLARACAO_NOTAS",
+      boletim_trimestral: "DOC_BOLETIM_TRIMESTRAL",
+      cartao_estudante: "DOC_CARTAO_ESTUDANTE",
+      ficha_inscricao: "DOC_FICHA_INSCRICAO",
+      comprovante_matricula: "DOC_COMPROVANTE_MATRICULA",
+      historico: "DOC_HISTORICO_ESCOLAR",
+      certificado: "DOC_CERTIFICADO_HABILITACOES",
+    };
+    return servicos.find((servico) => servico.codigo === codeByType[tipo]) ?? null;
   }, [servicos, tipo]);
 
   const isPago = Boolean(selectedServico && Number(selectedServico.valor_base ?? 0) > 0);
@@ -384,36 +388,22 @@ export default function DocumentosEmissaoHubClient({
         }
       }
 
-      const res = await fetch("/api/secretaria/documentos/emitir", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          alunoId: selectedAluno.id,
-          tipoDocumento: tipo,
-          escolaId,
-          ano_letivo_id: selectedAnoLetivoId,
-          ano_letivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : undefined,
-        }),
+      // `emitirDocumento` devolve sempre o URL de impressão junto com o docId,
+      // e omite `ano_letivo_id` quando é nulo (o zod da rota usa `.optional()`,
+      // não `.nullable()` — enviar `null` dava um erro ilegível). A abertura da
+      // aba mantém-se depois dos awaits, como estava.
+      const emissao = await emitirDocumento({
+        escolaId,
+        alunoId: selectedAluno.id,
+        tipoDocumento: tipo,
+        anoLetivoId: selectedAnoLetivoId,
+        anoLetivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : null,
       });
-      const json = (await res.json().catch(() => ({}))) as DocumentoResponse;
-      if (!res.ok || !json.ok || !json.docId) {
-        throw new Error(json.error || "Falha ao emitir documento");
-      }
+      if (!emissao.ok) throw new Error(emissao.error);
 
-      const destino =
-        tipo === "declaracao_frequencia"
-          ? `/secretaria/documentos/${json.docId}/frequencia/print`
-          : tipo === "boletim_trimestral"
-          ? `/secretaria/documentos/${json.docId}/boletim-trimestral/print`
-          : tipo === "cartao_estudante"
-          ? `/secretaria/documentos/${json.docId}/cartao/print`
-          : tipo === "comprovante_matricula"
-          ? `/secretaria/documentos/${json.docId}/comprovante-matricula/print`
-          : `/secretaria/documentos/${json.docId}/ficha/print`;
-
-      const popup = window.open(destino, "_blank", "noopener,noreferrer");
-      if (!popup) {
-        setPrintQueue((prev) => [{ label: selectedAluno.label, url: destino }, ...prev]);
+      const impressao = abrirParaImpressao(emissao.printUrl);
+      if (!impressao.ok) {
+        setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao emitir documento");
@@ -444,10 +434,10 @@ export default function DocumentosEmissaoHubClient({
               setSelectedAluno(null);
             }}
             placeholder="Buscar aluno por nome, processo ou BI..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/10"
           />
           {loading && (
-            <RefreshCw className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-klasse-green" />
+            <RefreshCw className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-emerald" />
           )}
         </div>
 
@@ -473,7 +463,7 @@ export default function DocumentosEmissaoHubClient({
         )}
 
         {selectedAluno && (
-          <div className="mt-3 rounded-xl border border-klasse-green-200 bg-klasse-green-50 px-4 py-2 text-sm text-klasse-green-800">
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
             Selecionado: <span className="font-semibold">{selectedAluno.label}</span>
           </div>
         )}
@@ -492,19 +482,19 @@ export default function DocumentosEmissaoHubClient({
               onClick={() => setTipo(doc.id)}
               className={`rounded-2xl border px-5 py-6 text-left transition-all ${
                 isActive
-                  ? "border-klasse-gold bg-klasse-gold-50 shadow-sm"
-                  : "border-slate-200 bg-white hover:border-klasse-gold/60"
+                  ? "border-amber bg-amber-50 shadow-sm"
+                  : "border-slate-200 bg-white hover:border-amber/60"
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`rounded-xl p-2 ${isActive ? "bg-klasse-gold/20 text-klasse-gold" : "bg-slate-100 text-slate-500"}`}>
+                <div className={`rounded-xl p-2 ${isActive ? "bg-amber/20 text-amber" : "bg-slate-100 text-slate-500"}`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-slate-900">{doc.title}</h2>
                   <p className="mt-1 text-sm text-slate-500">{doc.description}</p>
                   {priceLabel !== null && (
-                    <p className={`mt-2 text-xs font-semibold ${priceLabel > 0 ? "text-klasse-gold-700" : "text-klasse-green-700"}`}>
+                    <p className={`mt-2 text-xs font-semibold ${priceLabel > 0 ? "text-amber-700" : "text-emerald-700"}`}>
                       {priceLabel > 0 ? `Documento pago · ${priceLabel} Kz` : "Documento grátis"}
                     </p>
                   )}
@@ -561,7 +551,7 @@ export default function DocumentosEmissaoHubClient({
                   onClick={() => setMetodo(item.id as typeof metodo)}
                   className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
                     metodo === item.id
-                      ? "border-klasse-gold bg-klasse-gold-50 text-klasse-gold"
+                      ? "border-amber bg-amber-50 text-amber"
                       : "border-slate-200 bg-white text-slate-600"
                   }`}
                 >
@@ -601,7 +591,7 @@ export default function DocumentosEmissaoHubClient({
       )}
 
       {printQueue.length > 0 && (
-        <div className="rounded-xl border border-klasse-green-200 bg-klasse-green-50 px-4 py-3 text-sm text-klasse-green-800">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           <div className="font-semibold mb-2">Documentos prontos para impressão</div>
           <div className="space-y-2">
             {printQueue.map((doc, index) => (
@@ -609,7 +599,7 @@ export default function DocumentosEmissaoHubClient({
                 key={`${doc.url}-${index}`}
                 type="button"
                 onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
-                className="w-full rounded-lg border border-klasse-green-200 bg-white px-3 py-2 text-left text-xs font-semibold text-klasse-green-800 hover:bg-klasse-green-100"
+                className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
               >
                 Abrir documento
               </button>
@@ -623,7 +613,7 @@ export default function DocumentosEmissaoHubClient({
           type="button"
           onClick={handleEmitir}
           disabled={!canSubmit}
-          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
           {isPago ? "Pagar e Emitir Documento" : "Emitir e Imprimir"}

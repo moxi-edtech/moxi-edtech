@@ -17,6 +17,19 @@ type Aluno = { id: string; nome: string }
 type AlunoApi = { id?: string; aluno_id?: string; profile_id?: string; nome?: string; aluno_nome?: string }
 type AttendanceStatus = 'presente' | 'falta' | 'atraso'
 
+function academicContextNextStep(message: string) {
+  if (/ACTIVE_ACADEMIC_YEAR_NOT_CONFIGURED|ano letivo.*(ativo|configurad)/i.test(message)) {
+    return 'Configure ou active um ano letivo em Administração > Configurações > Calendário e atualize esta página.'
+  }
+  if (/ACADEMIC_CONTEXT_TIMEOUT|timeout|demorou|tempo limite/i.test(message)) {
+    return 'A consulta demorou mais do que o esperado. Tente novamente; os dados preenchidos serão preservados.'
+  }
+  if (/403|permissão|atribuíd/i.test(message)) {
+    return 'Confirme com a secretaria se o professor está atribuído a esta turma e disciplina.'
+  }
+  return 'Atualize a página. Se continuar, confirme com a secretaria o ano letivo e a atribuição da disciplina.'
+}
+
 export default function ProfessorFrequenciasPage() {
   const { success, error, warning } = useToast();
   const [atribs, setAtribs] = useState<Atrib[]>([])
@@ -34,6 +47,7 @@ export default function ProfessorFrequenciasPage() {
   const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? ""
   const [academicYearId, setAcademicYearId] = useState(requestedAcademicYearId)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [studentsError, setStudentsError] = useState<string | null>(null)
   const urlTurmaId = searchParams?.get("turma_id")
   const urlDisciplinaId = searchParams?.get("disciplina_id")
 
@@ -63,12 +77,20 @@ export default function ProfessorFrequenciasPage() {
 
   useEffect(() => {
     (async () => {
-      if (!turmaId) { setAlunos([]); return }
-      const res = await fetch(`/api/professor/turmas/${turmaId}/alunos`, { cache: 'no-store' })
+      if (!turmaId || !disciplinaId) { setAlunos([]); setStudentsError(null); return }
+      setStudentsError(null)
+      const params = new URLSearchParams({ disciplina_id: disciplinaId })
+      if (academicYearId) params.set(ACADEMIC_YEAR_PARAM, academicYearId)
+      const res = await fetch(`/api/professor/turmas/${turmaId}/alunos?${params.toString()}`, { cache: 'no-store' })
       const json = await res.json().catch(()=>null)
-      if (res.ok && json?.ok) setAlunos((json.items as AlunoApi[] || []).map((r) => ({ id: r.id || r.aluno_id || r.profile_id || '', nome: r.nome || r.aluno_nome || 'Aluno' })).filter((r) => r.id))
+      if (!res.ok || !json?.ok) {
+        setAlunos([])
+        setStudentsError(json?.message || json?.error || 'Não foi possível carregar os alunos desta turma.')
+        return
+      }
+      setAlunos((json.items as AlunoApi[] || []).map((r) => ({ id: r.id || r.aluno_id || r.profile_id || '', nome: r.nome || r.aluno_nome || 'Aluno' })).filter((r) => r.id))
     })()
-  }, [turmaId])
+  }, [turmaId, disciplinaId, academicYearId])
 
   useEffect(() => {
     setSubmitStatus('idle')
@@ -184,7 +206,8 @@ export default function ProfessorFrequenciasPage() {
       <form onSubmit={onSubmit} className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
         {loadError && (
           <div className="lg:col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {loadError} Configure ou active um ano letivo em Administração &gt; Configurações &gt; Calendário e atualize esta página.
+            <p className="font-bold">{loadError}</p>
+            <p className="mt-1 text-xs">{academicContextNextStep(loadError)}</p>
           </div>
         )}
         <aside className="space-y-3 sm:space-y-4">
@@ -289,14 +312,21 @@ export default function ProfessorFrequenciasPage() {
           <button
             type="submit"
             disabled={saving || !turmaId || !disciplinaId}
-            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-95"
+            className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all active:scale-95 disabled:opacity-50 ${submitStatus === 'failed' ? 'bg-rose-600 hover:bg-rose-700' : submitStatus === 'saved' ? 'bg-emerald-700 hover:bg-emerald-800' : submitStatus === 'pending' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
           >
-            {saving ? 'A Guardar Chamada...' : 'Finalizar & Guardar Chamada'}
+            {saving ? 'A Guardar Chamada...' : submitStatus === 'saved' ? <><CheckCircle2 className="h-4 w-4" /> Chamada Guardada</> : submitStatus === 'pending' ? 'Chamada Guardada Offline' : submitStatus === 'failed' ? 'Tentar Novamente' : 'Finalizar & Guardar Chamada'}
           </button>
         </aside>
 
         {/* Lado Direito: Lista de Alunos e Chamada em 1-Click */}
         <section className="space-y-4">
+          {studentsError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              <p className="font-bold">Não foi possível carregar os alunos.</p>
+              <p className="mt-1">{studentsError}</p>
+              <p className="mt-1 text-xs">Confirme a atribuição do professor à disciplina e tente novamente.</p>
+            </div>
+          )}
           
           {/* BARRA DE AÇÕES EM LOTE (Chamada por Exceção) */}
           {alunos.length > 0 && (

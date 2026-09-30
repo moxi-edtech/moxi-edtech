@@ -442,13 +442,13 @@ export default function SubscricoesCockpitClient() {
                 placeholder="Buscar centro, email ou sigla..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-green focus:ring-1 focus:ring-klasse-green/20"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald focus:ring-1 focus:ring-emerald/20"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-green"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald"
             >
               <option value="all">Todos os estados</option>
               <option value="trial">Em Trial</option>
@@ -459,7 +459,7 @@ export default function SubscricoesCockpitClient() {
             <select
               value={provinceFilter}
               onChange={(e) => setProvinceFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-green"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald"
             >
               <option value="all">Todas províncias</option>
               {provinces.map((province) => (
@@ -558,7 +558,7 @@ export default function SubscricoesCockpitClient() {
                                   href={item.billing.comprovativo_url} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-[10px] font-bold text-klasse-green hover:underline flex items-center gap-1"
+                                  className="text-[10px] font-bold text-emerald hover:underline flex items-center gap-1"
                                 >
                                   <FileText className="h-3 w-3" /> Ver Prova
                                 </a>
@@ -587,7 +587,7 @@ export default function SubscricoesCockpitClient() {
                         <div className="flex flex-wrap justify-end gap-2">
                           {item.billing?.last_payment_status === 'pendente' && (
                             <>
-                              <Button size="sm" onClick={() => handleConfirmPayment(item)} disabled={busyId === item.escola_id} className="bg-klasse-green hover:bg-klasse-green/90">
+                              <Button size="sm" onClick={() => handleConfirmPayment(item)} disabled={busyId === item.escola_id} className="bg-emerald hover:bg-emerald/90">
                                 <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
                               </Button>
                               <Button size="sm" variant="secondary" onClick={() => handleRejectPayment(item)} disabled={busyId === item.escola_id} className="border-rose-200 text-rose-700 hover:bg-rose-50">
@@ -649,12 +649,12 @@ export default function SubscricoesCockpitClient() {
               </h2>
               <p className="mt-1 text-xs leading-5 text-slate-500">Dados usados em lembretes, emails e instruções de pagamento.</p>
             </div>
-            <Link href="/super-admin/cobrancas" className="text-xs font-semibold text-klasse-green hover:underline">Cobranças</Link>
+            <Link href="/super-admin/cobrancas" className="text-xs font-semibold text-emerald hover:underline">Cobranças</Link>
           </div>
 
           {previewOpen ? (
-            <div className="mt-4 rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-klasse-green">Preview do lembrete</p>
+            <div className="mt-4 rounded-xl border border-emerald/20 bg-emerald/5 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald">Preview do lembrete</p>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{previewMessage}</p>
             </div>
           ) : null}
@@ -670,7 +670,7 @@ export default function SubscricoesCockpitClient() {
                   type="checkbox" 
                   checked={settings.auto_reminders_enabled} 
                   onChange={(e) => setSettings(p => ({ ...p, auto_reminders_enabled: e.target.checked }))}
-                  className="h-4 w-4 rounded border-slate-300 text-klasse-green focus:ring-klasse-green"
+                  className="h-4 w-4 rounded border-slate-300 text-emerald focus:ring-emerald"
                 />
               </div>
             </div>
@@ -702,7 +702,7 @@ export default function SubscricoesCockpitClient() {
               <Eye className="mr-2 h-4 w-4" />
               Preview
             </Button>
-            <Button className="shadow-lg shadow-klasse-green/10" onClick={saveSettings} disabled={saving}>
+            <Button className="shadow-lg shadow-emerald/10" onClick={saveSettings} disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
               {saving ? "A guardar..." : "Guardar"}
             </Button>
@@ -713,7 +713,7 @@ export default function SubscricoesCockpitClient() {
   );
 }
 
-const inputClass = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-klasse-green focus:bg-white";
+const inputClass = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald focus:bg-white";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -726,10 +726,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Stat({ label, value, tone }: { label: string; value: number; tone: "gold" | "amber" | "rose" | "green" }) {
   const colors = {
-    gold: "text-klasse-gold",
+    gold: "text-amber",
     amber: "text-amber-700",
     rose: "text-rose-700",
-    green: "text-klasse-green",
+    green: "text-emerald",
   };
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

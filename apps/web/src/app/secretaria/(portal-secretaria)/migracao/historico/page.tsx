@@ -31,11 +31,11 @@ export default function HistoricoImportacao() {
   }, []);
 
   if (loading) {
-    return <main className="p-6">Carregando histórico…</main>;
+    return <div className="p-6">Carregando histórico…</div>;
   }
 
   return (
-    <main className="p-6 space-y-4">
+    <div className="p-6 space-y-4">
       <div>
         <DashboardHeader
           title="Histórico de Importações"
@@ -65,7 +65,7 @@ export default function HistoricoImportacao() {
               <div className="pt-2 flex items-center gap-2">
                 <a
                   href={`../alunos?importId=${encodeURIComponent(item.id)}&step=review`}
-                  className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-white bg-klasse-green-600 hover:bg-klasse-green-700"
+                  className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700"
                 >
                   Reabrir Wizard na Revisão
                 </a>
@@ -80,6 +80,6 @@ export default function HistoricoImportacao() {
           </Card>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

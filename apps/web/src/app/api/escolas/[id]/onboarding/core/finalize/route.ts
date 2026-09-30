@@ -13,6 +13,7 @@ import { invalidateEscolaSlugCache } from "@/lib/tenant/resolveEscolaParam"
 import { supabaseServerRole } from "@/lib/supabaseServerRole"
 import { buildBaseHorarioAssignments } from "@/lib/horarios/buildBaseHorarioAssignments"
 import { resolveUniversalLoginUrl } from "@/middleware"
+import { ensureCurriculumCourseOffering } from "@/lib/academico/curriculo-operacao"
 
 type FinalizePendingAction = {
   title: string
@@ -659,6 +660,15 @@ export async function POST(
           },
         }
 
+        const { error: installLockError } = await (sserver as any).rpc('lock_curriculo_install', {
+          p_escola_id: escolaIdResolved,
+          p_preset_key: cursoKey,
+          p_ano_letivo_id: anoLetivoRow.id,
+        })
+        if (installLockError) {
+          throw new Error(`Erro ao iniciar instalação do currículo de ${cursoNome}: ${installLockError.message}`)
+        }
+
         const { data: installRaw, error: installError } = await (sserver as any).rpc(
           'curriculo_install_orchestrated',
           {
@@ -701,6 +711,11 @@ export async function POST(
           cursoId = cursoRow.id
         }
         resolvedCourseIds.set(cursoNome.trim().toLowerCase(), cursoId)
+
+        const offering = await ensureCurriculumCourseOffering(sserver, escolaIdResolved, cursoId, cursoKey)
+        if (offering.error) {
+          throw new Error(`Currículo publicado, mas o calendário não foi associado para ${cursoNome}: ${offering.error}`)
+        }
 
         const classNames = Array.from(new Set(courseRows.map((row) => row.nome)))
         const { data: classRows, error: classError } = await sserver

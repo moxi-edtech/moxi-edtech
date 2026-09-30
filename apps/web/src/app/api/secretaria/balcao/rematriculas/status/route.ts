@@ -6,11 +6,27 @@ import {
   AcademicYearContextError,
   resolveAcademicYearContext,
 } from "@/lib/academic-year/context";
-import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
+import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
+import { resolveOpenRematriculaWindow, resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// Matrículas que contam para o percurso do aluno. Inclui as de anos já fechados
+// (transferido) porque são elas que dizem em que ano o aluno ficou.
+const MATRICULA_STATUS_REAIS = [
+  "ativo",
+  "ativa",
+  "active",
+  "pendente",
+  "aprovado",
+  "aprovada",
+  "transferido",
+  "concluido",
+  "concluida",
+];
 
 export async function GET(request: Request) {
   try {
@@ -66,17 +82,71 @@ export async function GET(request: Request) {
       requestedAcademicYearId: ano_letivo_id,
       operation: "READ",
     });
-    const targetAnoLetivoId = academicContext.anoLetivoId;
-    const targetAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
+    const sourceAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
+    const openTargetWindow = await resolveOpenRematriculaWindow(supabase, escolaId, sourceAnoLetivoAno);
+
+    // O ano-alvo é o ano seguinte ao da matrícula do aluno, não o ano activo da
+    // escola mais um. Para um aluno atrasado as duas contas divergem: com a
+    // escola em 2026 e a última matrícula em 2025, o balcão anunciava
+    // "2027/2028" — um ano que não existe e que nenhuma janela cobre, enquanto
+    // o ano para que ele realmente precisa de se rematricular é 2026. Para quem
+    // já está no ano activo o resultado é o mesmo de antes (2026 + 1 = 2027),
+    // pelo que só os alunos atrasados mudam de comportamento.
+    const { data: ultimaMatriculaDoAluno } = await supabase
+      .from("matriculas")
+      .select("ano_letivo")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", aluno_id)
+      .not("ano_letivo", "is", null)
+      .in("status", MATRICULA_STATUS_REAIS)
+      .order("ano_letivo", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const anoLetivoDoAluno = Number(ultimaMatriculaDoAluno?.ano_letivo ?? 0);
+
+    const targetAnoLetivoAno = openTargetWindow?.ano_letivo
+      ?? (anoLetivoDoAluno > 0 ? anoLetivoDoAluno + 1 : sourceAnoLetivoAno + 1);
+    const targetScope = await resolveAnoLetivoScope(supabase, escolaId, { ano: targetAnoLetivoAno });
+    const targetAnoLetivoId = targetScope?.id ?? academicContext.anoLetivoId;
+    const targetAnoLetivoLabel = `${targetAnoLetivoAno}/${targetAnoLetivoAno + 1}`;
+    const rematriculaWindow = openTargetWindow
+      ? { configured: true, open: true, window: openTargetWindow }
+      : await resolveRematriculaWindow(supabase, escolaId, targetAnoLetivoAno);
+
+    if (!rematriculaWindow.open) {
+      return NextResponse.json({
+        ok: true,
+        status: "WINDOW_CLOSED",
+        service: null,
+        debt: { total: 0, count: 0 },
+        pedido: null,
+        comprovante: null,
+        ano_letivo: {
+          id: targetAnoLetivoId,
+          ano: targetAnoLetivoAno,
+          label: targetAnoLetivoLabel,
+        },
+        destino_turma_id: null,
+        reclassificacao: null,
+        reconciliation: null,
+        window: {
+          configured: rematriculaWindow.configured,
+          open: false,
+          data_inicio: rematriculaWindow.window?.data_inicio ?? null,
+          data_fim: rematriculaWindow.window?.data_fim ?? null,
+        },
+        context: academicContext,
+      });
+    }
 
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
-    const { data: matriculaOrigem } = await supabase
+    let { data: matriculaOrigem } = await supabase
       .from("matriculas")
       .select("id, ano_letivo, status, turma_id")
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
-      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada"])
+      .in("status", MATRICULA_STATUS_REAIS)
       .maybeSingle();
 
     if (!matriculaOrigem) {
@@ -89,9 +159,77 @@ export async function GET(request: Request) {
         { status: 404 },
       );
     }
+    if (Number(matriculaOrigem.ano_letivo ?? 0) >= targetAnoLetivoAno) {
+      const { data: matriculaAnteriorPorAno } = await supabase
+        .from("matriculas")
+        .select("id, ano_letivo, status, turma_id")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", aluno_id)
+        .lt("ano_letivo", targetAnoLetivoAno)
+        .in("status", MATRICULA_STATUS_REAIS)
+        .order("ano_letivo", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      // Curtume pode já apresentar a reserva de 2026 como matrícula actual.
+      // A origem do atendimento continua a ser a matrícula histórica de 2025,
+      // identificada pela coorte autorizada, mesmo quando não aparece na lista
+      // operacional corrente do aluno.
+      const { data: cohortOrigin } = matriculaAnteriorPorAno
+        ? { data: null }
+        : await (supabase as any)
+            .from("academic_transition_cohort_members")
+            .select("matricula_origem_id, cohort:academic_transition_cohorts!inner(ativo, ano_destino)")
+            .eq("escola_id", escolaId)
+            .eq("aluno_id", aluno_id)
+            .eq("status", "elegivel")
+            .eq("cohort.ativo", true)
+            .eq("cohort.ano_destino", targetAnoLetivoAno)
+            .limit(1)
+            .maybeSingle();
+      const { data: matriculaAnteriorPorCohort } = cohortOrigin?.matricula_origem_id
+        ? await supabase
+            .from("matriculas")
+            .select("id, ano_letivo, status, turma_id")
+            .eq("escola_id", escolaId)
+            .eq("aluno_id", aluno_id)
+            .eq("id", cohortOrigin.matricula_origem_id)
+            .maybeSingle()
+        : { data: null };
+      const matriculaAnterior = matriculaAnteriorPorAno ?? matriculaAnteriorPorCohort;
+      if (!matriculaAnterior) {
+        return NextResponse.json({
+          ok: true,
+          status: "SOURCE_RECORD_REQUIRED",
+          service: null,
+          debt: { total: 0, count: 0 },
+          pedido: null,
+          comprovante: null,
+          ano_letivo: { id: targetAnoLetivoId, ano: targetAnoLetivoAno, label: targetAnoLetivoLabel },
+          destino_turma_id: null,
+          reclassificacao: null,
+          reconciliation: null,
+          context: academicContext,
+        });
+      }
+      matriculaOrigem = matriculaAnterior;
+    }
 
-    // A rematrícula só é elegível quando ainda não existe matrícula do aluno
-    // no ano destino. A matrícula de origem pode ser do ano anterior.
+    const { data: cohortMember } = await (supabase as any)
+      .from("academic_transition_cohort_members")
+      .select("status, cohort:academic_transition_cohorts!inner(codigo, nome, modo, ativo, ano_origem, ano_destino, expira_em)")
+      .eq("escola_id", escolaId)
+      .eq("matricula_origem_id", matriculaOrigem.id)
+      .eq("status", "elegivel")
+      .maybeSingle();
+    const cohort = Array.isArray(cohortMember?.cohort) ? cohortMember.cohort[0] : cohortMember?.cohort;
+    const cohortAtivo = cohort?.ativo === true
+      && Number(cohort?.ano_origem) === Number(matriculaOrigem.ano_letivo)
+      && Number(cohort?.ano_destino) === targetAnoLetivoAno
+      && (!cohort?.expira_em || new Date(`${cohort.expira_em}T23:59:59`).getTime() >= Date.now());
+
+    // A matrícula destino criada pela promoção é a matrícula operacional do
+    // aluno. No Balcão ela é preservada: a operação seguinte cobra somente a
+    // taxa de rematrícula, sem seleccionar nem alterar turma/classe.
     const { data: matriculaDestino } = await supabase
       .from("matriculas")
       .select("id, turma_id")
@@ -114,12 +252,15 @@ export async function GET(request: Request) {
 
     const { data: mensalidadesFinanceiras } = await supabase
       .from("mensalidades")
-      .select("status, valor_previsto, valor, valor_pago_total")
+      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, mes_referencia, ano_referencia")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
-      .eq("matricula_id", matricula_id);
+      .eq("matricula_id", matriculaOrigem.id);
+    const today = todayInLuanda();
     const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter(
-      (mensalidade: any) => !["pago", "isento", "cancelado"].includes(String(mensalidade.status).toLowerCase()),
+      (mensalidade: any) =>
+        !["pago", "isento", "cancelado"].includes(String(mensalidade.status).toLowerCase()) &&
+        isMensalidadeVencida(mensalidade, today),
     );
     const dividaTotal = mensalidadesEmAberto.reduce(
       (total: number, mensalidade: any) => total + Math.max(
@@ -137,13 +278,20 @@ export async function GET(request: Request) {
       .eq("codigo", "SERV_REMATRICULA")
       .maybeSingle();
 
-    const targetTurmaId = destino_turma_id ?? reclassificacao?.destino_turma_id ?? matriculaDestino?.turma_id ?? matriculaOrigem?.turma_id ?? null;
+    // A matrícula de origem nunca é uma turma de destino. Usá-la como
+    // fallback fazia o estado do balcão apresentar a turma/classe antiga
+    // como se já fosse a progressão concluída, sobretudo após o pagamento
+    // ser validado antes da escolha da turma.
+    const targetTurmaId = destino_turma_id ?? matriculaDestino?.turma_id ?? reclassificacao?.destino_turma_id ?? null;
     const { data: targetTurma } = targetTurmaId
-      ? await supabase.from("turmas").select("curso_id, classe_id").eq("escola_id", escolaId).eq("id", targetTurmaId).maybeSingle()
+      ? await supabase.from("turmas").select("id, nome, turma_code, turno, curso_id, classe_id, classes(nome)").eq("escola_id", escolaId).eq("id", targetTurmaId).maybeSingle()
       : { data: null };
+    const targetClasse = Array.isArray((targetTurma as any)?.classes)
+      ? (targetTurma as any).classes[0]
+      : (targetTurma as any)?.classes;
     const targetPricing = await resolveValorConfirmacao(supabase, {
       escolaId,
-      anoLetivo: normalizeAnoLetivo(academicContext.anoLetivoLabel),
+      anoLetivo: targetAnoLetivoAno,
       cursoId: targetTurma?.curso_id,
       classeId: targetTurma?.classe_id,
       valorGlobal: service?.valor_base,
@@ -152,20 +300,59 @@ export async function GET(request: Request) {
     // ── Check existing pedido ─────────────────────────────────────────────
     const { data: pedidosExistentes } = await supabase
       .from("servico_pedidos")
-      .select("id, status, created_at, reason_code, valor_cobrado, contexto")
+      .select("id, status, created_at, reason_code, reason_detail, valor_cobrado, contexto")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("servico_codigo", "SERV_REMATRICULA")
       .in("status", ["pending_payment", "granted"])
       .order("created_at", { ascending: false });
-    const pedidoExistente = (pedidosExistentes ?? []).find(
-      (pedido: any) => pedido.contexto?.ano_letivo_id === targetAnoLetivoId,
-    ) ?? (pedidosExistentes ?? []).find(
+    const pedidosDoAno = (pedidosExistentes ?? []).filter(
+      (pedido: any) => pedido.contexto?.ano_letivo_id === targetAnoLetivoId
+        || Number(pedido.contexto?.ano_letivo) === Number(targetAnoLetivoAno),
+    );
+    const pedidoExistente = pedidosDoAno.find(
+      (pedido: any) => pedido.contexto?.origem === "portal_rematricula",
+    ) ?? pedidosDoAno[0] ?? (pedidosExistentes ?? []).find(
       (pedido: any) => !pedido.contexto || Object.keys(pedido.contexto).length === 0,
     );
     const pedidoLegado = Boolean(
       pedidoExistente && (!pedidoExistente.contexto || Object.keys(pedidoExistente.contexto).length === 0),
     );
+
+    // Pedido pendente sem intent nem pagamento associado é uma operação
+    // abandonada, não um pagamento em andamento.
+    let pedidoTemPagamentoAssociado = false;
+    if (pedidoExistente?.status === "pending_payment") {
+      const { data: intents } = await supabase
+        .from("pagamento_intents")
+        .select("id, status, reference, evidence_url")
+        .eq("escola_id", escolaId)
+        .eq("servico_pedido_id", pedidoExistente.id)
+        .limit(1);
+      const { data: pagamentos } = await supabase
+        .from("pagamentos")
+        .select("id, meta")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", aluno_id)
+        .limit(50);
+      pedidoTemPagamentoAssociado = Boolean(
+        (intents ?? []).length > 0 ||
+        (pagamentos ?? []).some((pagamento: any) =>
+          pagamento.meta?.pedido_id === pedidoExistente.id ||
+          pagamento.meta?.servico_pedido_id === pedidoExistente.id,
+        ),
+      );
+      const pagamentosDoPedido = (pagamentos ?? []).filter((pagamento: any) =>
+        pagamento.meta?.pedido_id === pedidoExistente.id ||
+        pagamento.meta?.servico_pedido_id === pedidoExistente.id,
+      );
+      const tentativaReiniciavel = Boolean((intents ?? []).length) && (intents ?? []).every((intent: any) =>
+        String(intent.status).toLowerCase() === "draft" &&
+        !String(intent.reference ?? "").trim() &&
+        !String(intent.evidence_url ?? "").trim(),
+      ) && pagamentosDoPedido.length === 0;
+      if (tentativaReiniciavel) pedidoTemPagamentoAssociado = false;
+    }
 
     // ── Check comprovante for granted pedido ──────────────────────────────
     let comprovanteData: { docId: string; publicId: string; printUrl: string } | null = null;
@@ -191,18 +378,34 @@ export async function GET(request: Request) {
 
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
-    if (pedidoExistente?.status === "granted") {
+    const pedidoTemMatriculaDestino = Boolean(pedidoExistente?.contexto?.matricula_destino_id);
+    const comprovantePendente = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino && !comprovanteData;
+    // Pagamento concedido sem matrícula destino é uma operação interrompida:
+    // não pode voltar a READY nem desaparecer da operação da secretaria.
+    // Mantê-la na fila de reconciliação permite escolher a turma e completar
+    // a progressão sem cobrar novamente.
+    const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino && !comprovanteData;
+    const pedidoConcluido = pedidoExistente?.status === "granted" && (pedidoTemMatriculaDestino || Boolean(comprovanteData));
+    if (comprovantePendente) {
+      status = "DOCUMENT_PENDING";
+    } else if (pagamentoSemProgressao) {
+      status = "RECONCILIATION_REQUIRED";
+    } else if (pedidoConcluido) {
       status = "ALREADY_COMPLETED";
     } else if (pedidoExistente?.status === "pending_payment") {
       status = pedidoLegado
         ? "LEGACY_REVIEW_REQUIRED"
         : pedidoExistente.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED"
           ? "RECONCILIATION_REQUIRED"
+        : !pedidoTemPagamentoAssociado
+          ? "PENDING_ORDER_REVIEW"
         : "PAYMENT_IN_PROGRESS";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
-    } else if (matriculaDestino) {
-      status = reclassificacao ? "FINALIST_PENDING" : "RECONFIRMATION_REQUIRED";
+    } else if (matriculaDestino?.turma_id && !reclassificacao) {
+      status = "RECONFIRMATION_REQUIRED";
+    } else if (reclassificacao) {
+      status = "FINALIST_PENDING";
     } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
       status = "PRICE_NOT_CONFIGURED";
     }
@@ -237,6 +440,7 @@ export async function GET(request: Request) {
             valor_cobrado: pedidoExistente.valor_cobrado
               ? Number(pedidoExistente.valor_cobrado)
               : undefined,
+            has_payment_intent: pedidoTemPagamentoAssociado,
           }
         : null,
       reconciliation: pedidoLegado
@@ -244,14 +448,43 @@ export async function GET(request: Request) {
             can_cancel: pedidoExistente?.status === "pending_payment",
             reason: "Pedido incompleto sem ano letivo identificado",
           }
+        : pedidoExistente?.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED"
+          ? {
+              can_cancel: true,
+              reason: pedidoExistente.reason_detail ?? "A matrícula precisa de reconciliação",
+            }
+        : status === "PENDING_ORDER_REVIEW"
+          ? {
+              can_cancel: true,
+              reason: "Tentativa sem pagamento liquidado; pode ser cancelada e reiniciada no Balcão.",
+            }
         : null,
+      window: {
+        configured: rematriculaWindow.configured,
+        open: rematriculaWindow.open,
+        data_inicio: rematriculaWindow.window?.data_inicio ?? null,
+        data_fim: rematriculaWindow.window?.data_fim ?? null,
+      },
       comprovante: comprovanteData,
       ano_letivo: {
         id: targetAnoLetivoId,
         ano: targetAnoLetivoAno,
-        label: academicContext.anoLetivoLabel,
+        label: targetAnoLetivoLabel,
       },
-      destino_turma_id: matriculaDestino?.turma_id ?? null,
+      destino_turma_id: targetTurmaId,
+      destino_turma: targetTurma
+        ? {
+            id: targetTurma.id,
+            nome: targetTurma.nome ?? "—",
+            turno: targetTurma.turno ?? null,
+            classe_nome: targetClasse?.nome ?? null,
+            curso_nome: null,
+            turma_codigo: targetTurma.turma_code ?? null,
+            capacidade_maxima: null,
+            ocupacao_atual: 0,
+            session_id: null,
+          }
+        : null,
       reclassificacao: reclassificacao
         ? {
             id: reclassificacao.id,
@@ -260,6 +493,11 @@ export async function GET(request: Request) {
             destino_turma_id: reclassificacao.destino_turma_id,
           }
         : null,
+      cohort: cohortAtivo ? {
+        codigo: cohort.codigo,
+        nome: cohort.nome,
+        modo: cohort.modo,
+      } : null,
       context: academicContext,
     });
   } catch (error) {

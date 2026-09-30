@@ -25,6 +25,8 @@ export type PagamentoPendenteRow = {
   estado_operacional: "sem_comprovativo" | "comprovativo_enviado";
   idade_horas: number;
   prioridade: "normal" | "importante" | "urgente";
+  pagamento_ids?: string[];
+  quantidade_itens?: number;
 };
 
 export type PagamentosPendentesFilters = {
@@ -39,7 +41,7 @@ type ValidarPagamentoReturn = {
 };
 
 type ValidarPagamentoRpc = (
-  fn: "validar_pagamento",
+  fn: "validar_lote_pagamentos",
   args: { p_pagamento_id: string; p_aprovado: boolean; p_mensagem_secretaria?: string | null },
 ) => Promise<{ data: ValidarPagamentoReturn | null; error: { message: string } | null }>;
 
@@ -57,6 +59,10 @@ type ExtendedDatabase = Omit<Database, "public"> & {
           p_aprovado: boolean;
           p_mensagem_secretaria?: string | null;
         };
+        Returns: ValidarPagamentoReturn;
+      };
+      validar_lote_pagamentos: {
+        Args: { p_pagamento_id: string; p_aprovado: boolean; p_mensagem_secretaria?: string | null };
         Returns: ValidarPagamentoReturn;
       };
     };
@@ -105,7 +111,20 @@ export function usePagamentosPendentes(pageSize = 20, filters: PagamentosPendent
         setTotal(0);
         setError(queryError.message || "Falha ao carregar pagamentos pendentes.");
       } else {
-        setRows((data as PagamentoPendenteRow[]) ?? []);
+        const grouped = new Map<string, PagamentoPendenteRow>();
+        for (const row of (data as PagamentoPendenteRow[]) ?? []) {
+          const key = row.tipo_entidade === "mensalidade" && row.comprovante_url ? `proof:${row.comprovante_url}` : `payment:${row.pagamento_id}`;
+          const current = grouped.get(key);
+          if (!current) {
+            grouped.set(key, { ...row, pagamento_ids: [row.pagamento_id], quantidade_itens: 1 });
+          } else {
+            current.pagamento_ids = [...(current.pagamento_ids ?? []), row.pagamento_id];
+            current.quantidade_itens = (current.quantidade_itens ?? 1) + 1;
+            current.valor_esperado = Number(current.valor_esperado) + Number(row.valor_esperado);
+            current.valor_enviado = Number(current.valor_enviado) + Number(row.valor_enviado);
+          }
+        }
+        setRows([...grouped.values()]);
         setTotal(count ?? 0);
       }
 
@@ -137,7 +156,7 @@ export function usePagamentosPendentes(pageSize = 20, filters: PagamentosPendent
       setActioningById((prev) => ({ ...prev, [pagamentoId]: true }));
       setRows((prev) => prev.filter((row) => row.pagamento_id !== pagamentoId));
 
-      const { data, error: rpcError } = await supabase.rpc("validar_pagamento", {
+      const { data, error: rpcError } = await (supabase.rpc.bind(supabase) as unknown as ValidarPagamentoRpc)("validar_lote_pagamentos", {
         p_pagamento_id: pagamentoId,
         p_aprovado: aprovado,
         p_mensagem_secretaria: mensagemSecretaria ?? undefined,

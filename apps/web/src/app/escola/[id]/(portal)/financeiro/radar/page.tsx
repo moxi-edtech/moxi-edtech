@@ -183,7 +183,10 @@ export default function SistemaCobrancas() {
 
   return (
     <div className="font-sora text-slate-900">
-      <main className="flex-1 space-y-6">
+      {/* Sem `<main>` próprio: o AppShell já abre um e soma `p-4 md:p-6`. Dois
+          `<main>` aninhados são HTML inválido e duplicam a goteira. A largura e
+          a goteira seguem o `AlunosListClient`. */}
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-6 py-8">
         
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -202,7 +205,7 @@ export default function SistemaCobrancas() {
             onClick={() => setMostrarCriarCampanha(true)}
             disabled={writeBlockedByAcademicYear}
             title={writeBlockedByAcademicYear ? "Edição bloqueada no ano histórico" : undefined}
-            className="flex items-center gap-2 rounded-xl bg-klasse-green px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-klasse-green/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl bg-emerald px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
             Nova Campanha
@@ -237,7 +240,7 @@ export default function SistemaCobrancas() {
           
           {/* COLUNA ESQUERDA - Radar (Ocupa 2/3 em telas grandes) */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-4">
                 <h2 className="font-semibold text-lg text-slate-900">Radar de Inadimplência</h2>
                 <p className="text-sm text-slate-500">
@@ -255,13 +258,13 @@ export default function SistemaCobrancas() {
           <div className="space-y-6">
             
             {/* Box de Seleção Atual */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="font-semibold text-sm text-slate-900 mb-2 uppercase tracking-wide">
                 Público Alvo
               </h3>
               <p className="text-sm text-slate-600">
                 {selecionadosRadar.length > 0 ? (
-                  <span className="font-medium text-klasse-green">
+                  <span className="font-medium text-emerald">
                     {selecionadosRadar.length} aluno(s) selecionado(s)
                   </span>
                 ) : (
@@ -271,7 +274,7 @@ export default function SistemaCobrancas() {
             </div>
 
             {/* Lista de Campanhas */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="font-semibold text-sm text-slate-900 mb-4 uppercase tracking-wide">
                 Últimas Campanhas
               </h3>
@@ -322,7 +325,7 @@ export default function SistemaCobrancas() {
                     type="text"
                     value={novaCampanha.nome}
                     onChange={(e) => setNovaCampanha({ ...novaCampanha, nome: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                     placeholder="Ex: Cobrança Mensalidade Março"
                     required
                   />
@@ -334,7 +337,7 @@ export default function SistemaCobrancas() {
                     <select
                       value={novaCampanha.canal}
                       onChange={(e) => setNovaCampanha({ ...novaCampanha, canal: e.target.value as Campanha['canal'] })}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                       required
                     >
                       <option value="whatsapp">WhatsApp</option>
@@ -349,7 +352,7 @@ export default function SistemaCobrancas() {
                     <select
                       value={novaCampanha.template_id ?? ""}
                       onChange={(e) => setNovaCampanha({ ...novaCampanha, template_id: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                     >
                       <option value="">Selecione...</option>
                       {templates.map((t) => (
@@ -365,7 +368,7 @@ export default function SistemaCobrancas() {
                   <button
                     type="submit"
                     disabled={submitting || writeBlockedByAcademicYear}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-green px-4 py-3 text-sm font-bold text-white transition-all hover:bg-klasse-green/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-3 text-sm font-bold text-white transition-all hover:bg-emerald/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {submitting ? "A criar campanha..." : "Disparar Campanha"}
                   </button>
@@ -379,7 +382,7 @@ export default function SistemaCobrancas() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

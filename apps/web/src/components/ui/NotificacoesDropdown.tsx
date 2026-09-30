@@ -258,7 +258,7 @@ export function NotificacoesDropdown() {
               <button
                 type="button"
                 onClick={handleModalAction}
-                className="rounded-lg bg-klasse-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green-700"
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
               >
                 {modalNotificacao?.action_label || "Abrir"}
               </button>

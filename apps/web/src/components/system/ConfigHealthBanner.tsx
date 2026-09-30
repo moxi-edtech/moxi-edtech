@@ -60,9 +60,9 @@ export default function ConfigHealthBanner() {
   }
 
   return (
-    <div className="w-full bg-klasse-gold/10 border-b border-klasse-gold/20 text-slate-900 text-sm">
+    <div className="w-full bg-amber/10 border-b border-amber/20 text-slate-900 text-sm">
       <div className="max-w-screen-2xl mx-auto px-4 py-2 flex items-start gap-3">
-        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-klasse-gold/20 border border-klasse-gold/30 text-[10px] mt-0.5">!</span>
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber/20 border border-amber/30 text-[10px] mt-0.5">!</span>
         <div className="flex-1">
           <strong>Configuração incompleta:</strong> defina as variáveis de ambiente ausentes para que as APIs funcionem corretamente.
           <div className="mt-1">

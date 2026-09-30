@@ -138,7 +138,7 @@ export default function Sidebar({
       {/* Header / Brand */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800/80">
         <Link href={homeHref} className="flex items-center gap-3 min-w-0" aria-label="Ir para a home do portal">
-          <div className="h-10 w-10 rounded-xl bg-klasse-gold/15 ring-1 ring-klasse-gold/30 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-amber/15 ring-1 ring-amber/30 flex items-center justify-center">
             <Image
               src="/logo-klasse-ui.png"
               alt="KLASSE"
@@ -160,7 +160,7 @@ export default function Sidebar({
           onClick={() => setCollapsed((v) => !v)}
           className={cn(
             "hidden md:inline-flex h-9 w-9 items-center justify-center rounded-lg",
-            "hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+            "hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
           )}
           aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
         >
@@ -179,8 +179,16 @@ export default function Sidebar({
             return (
               <li key={it.href}>
                 <div className="flex items-center gap-2">
-                  <Link
-                    href={it.href}
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExpanded((prev) => ({
+                          ...prev,
+                          [it.href]: collapsed ? true : !prev[it.href],
+                        }));
+                        if (collapsed) setCollapsed(false);
+                      }}
                     className={cn(
                       "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
                       "transition-all duration-200",
@@ -189,6 +197,7 @@ export default function Sidebar({
                         : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
                     )}
                     title={collapsed ? it.label : undefined}
+                    aria-expanded={Boolean(isExpanded)}
                   >
                     <Icon
                       className={cn(
@@ -203,24 +212,37 @@ export default function Sidebar({
                         {it.badge}
                       </span>
                     )}
-                  </Link>
-
-                  {!collapsed && hasChildren && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpanded((prev) => ({ ...prev, [it.href]: !prev[it.href] }))
-                      }
-                      className={cn(
-                        "h-8 w-8 rounded-lg flex items-center justify-center transition-colors",
-                        it.active ? "text-[#E3B23C]" : "text-slate-500 hover:text-[#E3B23C] hover:bg-slate-900"
-                      )}
-                      aria-label={isExpanded ? "Recolher" : "Expandir"}
-                    >
+                    {!collapsed && (
                       <ChevronDown
-                        className={cn("h-4 w-4 transition-transform duration-300", isExpanded && "rotate-180")}
+                        className={cn("ml-auto h-4 w-4 transition-transform duration-300", isExpanded && "rotate-180")}
                       />
-                    </button>
+                    )}
+                  </button>
+                  ) : (
+                    <Link
+                      href={it.href}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
+                        "transition-all duration-200",
+                        it.active
+                          ? "bg-[#1F6B3B]/10 text-white ring-1 ring-[#1F6B3B]/30"
+                          : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
+                      )}
+                      title={collapsed ? it.label : undefined}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-5 w-5 shrink-0 transition-colors",
+                          it.active ? "text-[#E3B23C]" : "text-slate-500 group-hover:text-[#E3B23C]"
+                        )}
+                      />
+                      {!collapsed && <span className="truncate font-medium">{it.label}</span>}
+                      {it.badge && !collapsed && (
+                        <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 ring-1 ring-rose-500/20">
+                          {it.badge}
+                        </span>
+                      )}
+                    </Link>
                   )}
                 </div>
 

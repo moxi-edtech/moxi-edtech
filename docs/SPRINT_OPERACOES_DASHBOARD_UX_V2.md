@@ -17,6 +17,24 @@ O commit `db2fb9586` alinhou Secretaria, Admin e Operações na mesma gramática
 
 Destinos, permissões, filas e módulos exclusivos continuam diferentes por função. TypeScript e `git diff --check` passaram.
 
+## Atualização — 2026-09-22 (corrigida em 2026-09-23)
+
+A afirmação de 2026-08-17 mantém-se verdadeira para `components/layout/operacoes/**` — que está limpo — e **não** se verifica nas páginas da rota `app/escola/[id]/(portal)/operacoes/**`.
+
+**Correcção ao método.** As medições desta nota foram feitas sobre uma pasta que é 88% re-exports: 68 dos 77 ficheiros `.tsx` de `operacoes/**` são stubs de 2 a 5 linhas que delegam noutro ficheiro. Os números medem a casca de navegação, não as páginas — o código real está em `admin/**`, `secretaria/**` e `financeiro/**` e não foi medido. Valem como pista, não como prova.
+
+Medido na pasta, com essa ressalva: `SecaoLabel` tinha 0 importações; o raio das cascas coexistia em `rounded-2xl` (7) e `rounded-xl` (5); o padding de cartão em `p-4` e `p-5 md:p-6`.
+
+**Esses números foram refeitos em 2026-09-23** sobre a árvore de render do portal — 74 páginas, 335 ficheiros:
+
+- `SecaoLabel` tem **5** importações, `StatCard` **2**, `AcaoRapidaCard` **2** (níveis 5 e 6). A frase desta nota — "reutilizados nos blocos equivalentes" — **confirma-se**. Era a medição do §1 que não a via, por medir uma pasta e não uma árvore de imports.
+- Raio: `rounded-2xl` **40×** vs `rounded-xl` **167×** — a divergência é maior do que se dizia, e o token já é maioria.
+- Padding: `p-5 md:p-6` **não existe nas páginas reais**. Era artefacto de stub.
+
+`<main>` aninhado: esta nota dizia **3** páginas. São **26** ficheiros, em 33 tags. Corrigido em 2026-09-23 (`<main>` → `<div>`, sem tocar em padding). Corrigido também o `min-h-screen` do contentor interno: **8 sítios em 6 ficheiros**.
+
+Medições completas e ordem de execução: `docs/AUDITORIA_PADRONIZACAO_OPERACOES_2026-09-22.md`.
+
 ## Objetivo
 
 Evoluir `/operacoes/dashboard` para um cockpit de trabalho do perfil `admin_financeiro`, preservando uma UI minimalista, profissional e focada em execução diária.

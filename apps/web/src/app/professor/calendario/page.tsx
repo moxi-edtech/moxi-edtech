@@ -248,7 +248,7 @@ export default function ProfessorCalendarioPage() {
           <>
             <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
               <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/10">
-                <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-klasse-gold/10 blur-3xl" />
+                <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-amber/10 blur-3xl" />
                 <div className="absolute -bottom-10 left-0 h-32 w-32 rounded-full bg-emerald-400/10 blur-3xl" />
                 <div className="relative z-10 space-y-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">

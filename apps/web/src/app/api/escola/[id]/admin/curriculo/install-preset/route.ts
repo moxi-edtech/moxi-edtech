@@ -6,7 +6,7 @@ import { emitirEvento } from '@/lib/eventos/emitirEvento';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { applyCurriculumPreset, type CurriculumKey } from '@/lib/academico/curriculum-apply';
 import { CURRICULUM_PRESETS_META } from '@/lib/academico/curriculum-presets';
-import { buildInstallPresetSkippedAppliedPayload } from '@/lib/academico/curriculo-operacao';
+import { buildInstallPresetSkippedAppliedPayload, ensureCurriculumCourseOffering } from '@/lib/academico/curriculo-operacao';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -125,26 +125,6 @@ function isMissingOrchestratorFunction(err: { message?: string | null; code?: st
     message.includes('curriculo_install_orchestrated') ||
     (message.includes('curriculo_publish') && message.includes('is not unique'))
   );
-}
-
-async function ensureInstalledCourseOffering(
-  supabase: any,
-  escolaId: string,
-  cursoId: string,
-  presetKey: string,
-) {
-  const { data, error } = await supabase.rpc('ensure_k12_course_offering', {
-    p_escola_id: escolaId,
-    p_course_id: cursoId,
-    p_curriculum_preset_id: presetKey,
-  });
-
-  if (error) {
-    return { offeringId: null as string | null, error: error.message || 'Falha ao associar o calendário do curso.' };
-  }
-
-  const offeringId = Array.isArray(data) ? data[0] : data;
-  return { offeringId: typeof offeringId === 'string' ? offeringId : null, error: null };
 }
 
 async function compensateInstallPartialFailure(args: {
@@ -307,7 +287,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (orchestrated?.ok === false && orchestrated?.step === 'already_published') {
         const cursoId = orchestrated?.applied?.curso_id;
         if (cursoId) {
-          const offering = await ensureInstalledCourseOffering(
+          const offering = await ensureCurriculumCourseOffering(
             supabase,
             resolvedEscolaId,
             cursoId,
@@ -354,7 +334,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         }, { status: 409 });
       }
 
-      const offering = await ensureInstalledCourseOffering(
+      const offering = await ensureCurriculumCourseOffering(
         supabase,
         resolvedEscolaId,
         cursoId,
@@ -374,7 +354,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
     }
 
-    console.warn('[curriculo.install-preset] RPC curriculo_install_orchestrated indisponível, usando fallback legado.');
+    if (orchestratedError && isMissingOrchestratorFunction(orchestratedError)) {
+      console.error('[curriculo.install-preset] RPC curriculo_install_orchestrated indisponível; instalação bloqueada para preservar o fluxo único.');
+      return NextResponse.json({
+        ok: false,
+        code: 'CURRICULUM_ORCHESTRATOR_UNAVAILABLE',
+        step: 'orchestrator',
+        error: 'A instalação do currículo está temporariamente indisponível. A escola precisa aplicar as migrations académicas antes de tentar novamente.',
+        message: 'A instalação do currículo está temporariamente indisponível. Tente novamente após a atualização do sistema.',
+      }, { status: 503 });
+    }
 
     const normalizedCourseCode = courseCode.trim().toUpperCase();
     const { data: cursoExistente } = await supabase
@@ -444,7 +433,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }, { status: 500 });
     }
 
-    const offering = await ensureInstalledCourseOffering(
+        const offering = await ensureCurriculumCourseOffering(
       supabase,
       resolvedEscolaId,
       cursoId,

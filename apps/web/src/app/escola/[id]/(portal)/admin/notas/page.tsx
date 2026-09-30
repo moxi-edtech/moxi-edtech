@@ -397,7 +397,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                         {notaValue !== null ? (
                           <div className={`font-mono font-bold text-lg ${
                             notaValue >= 10 ? 'text-green-600' : 
-                            notaValue >= 5 ? 'text-klasse-gold-600' : 'text-red-600'
+                            notaValue >= 5 ? 'text-amber-600' : 'text-red-600'
                           }`}>
                             {notaValue.toFixed(1)}
                           </div>
@@ -407,12 +407,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                       </td>
                       <td className="px-4 py-3 text-center">
                         {status === 'approved' && (
-                          <span className="inline-flex items-center rounded-full bg-klasse-green-100 px-2.5 py-0.5 text-xs font-bold text-klasse-green-700">
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
                             ✓ Aprovado
                           </span>
                         )}
                         {status === 'recovery' && (
-                          <span className="inline-flex items-center rounded-full bg-klasse-gold-100 px-2.5 py-0.5 text-xs font-bold text-klasse-gold-700">
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
                             ⚠ Recuperação
                           </span>
                         )}

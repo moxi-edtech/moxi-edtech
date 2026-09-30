@@ -92,6 +92,9 @@ type ConvertResponse = {
   ok?: boolean
   idempotent?: boolean
   comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null
+  recibo?: { ok?: boolean; status?: 'available' | 'pending' | 'error'; print_url?: string; error?: string } | null
+  itens_pagamento?: Array<{ nome?: string; descricao?: string; preco?: number; valor?: number; quantidade?: number }>
+  valor_total?: number
   error?: string
   details?: string
   code?: string
@@ -103,6 +106,9 @@ type ConvertResponse = {
 const getErrorMessage = (err: unknown, fallback: string) => {
   return err instanceof Error ? err.message : fallback
 }
+
+const formatAoa = (value: number | undefined) =>
+  new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(Number(value ?? 0))
 
 const displayProtocol = (detail: Pick<CandidaturaDetail, 'id' | 'protocolo_publico'>) =>
   detail.protocolo_publico || `#${detail.id.split('-')[0].toUpperCase()}`
@@ -171,6 +177,9 @@ export function AdmissaoConversionSheet({
     alunoId: string;
     numeroMatricula: string;
     comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null;
+    recibo?: { ok?: boolean; status?: 'available' | 'pending' | 'error'; print_url?: string; error?: string } | null;
+    itensPagamento: ConvertResponse['itens_pagamento'];
+    valorTotal: number;
   } | null>(null)
   const [credentials, setCredentials] = useState<{
     login: string;
@@ -450,6 +459,9 @@ export function AdmissaoConversionSheet({
         alunoId: newAlunoId,
         numeroMatricula: json?.numero_matricula ?? '',
         comprovante: json.comprovante ?? null,
+        recibo: json.recibo ?? null,
+        itensPagamento: json.itens_pagamento ?? [],
+        valorTotal: Number(json.valor_total ?? 0),
       })
 
       onSuccess(json.matricula_id)
@@ -601,7 +613,7 @@ export function AdmissaoConversionSheet({
       <SheetContent className="sm:max-w-[540px] p-0 flex flex-col h-full border-l-0 shadow-2xl overflow-hidden">
         <SheetHeader className="p-8 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3 mb-2">
-            <div className="bg-klasse-gold p-2 rounded-xl">
+            <div className="bg-amber p-2 rounded-xl">
               <Check className="w-5 h-5 text-white" />
             </div>
             <Badge variant="outline" className="text-[10px] uppercase border-white/20 text-white/60">
@@ -617,7 +629,7 @@ export function AdmissaoConversionSheet({
         <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="w-10 h-10 text-klasse-gold animate-spin" />
+              <Loader2 className="w-10 h-10 text-amber animate-spin" />
               <p className="text-sm font-bold text-slate-400">Carregando dados do candidato...</p>
             </div>
           ) : enrollmentResult ? (
@@ -630,16 +642,43 @@ export function AdmissaoConversionSheet({
                 A matrícula de <strong className="text-slate-900">{studentData.nome}</strong> foi concluída com sucesso.
               </p>
 
-              <div className={`mb-6 w-full rounded-2xl border p-4 text-left ${enrollmentResult.comprovante?.ok ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
                 <p className="text-xs font-black uppercase tracking-widest text-slate-500">Número da matrícula</p>
                 <p className="mt-1 text-xl font-black text-slate-900">{enrollmentResult.numeroMatricula || 'Gerado no sistema'}</p>
-                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Comprovativo de matrícula</p>
+                <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-500">Comprovante de matrícula</p>
                 {enrollmentResult.comprovante?.ok && enrollmentResult.comprovante.printUrl ? (
-                  <a href={enrollmentResult.comprovante.printUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovativo</a>
+                  <a href={enrollmentResult.comprovante.printUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovante</a>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-800">A matrícula está concluída, mas o comprovativo ainda não foi emitido. Emita-o pela área de documentos.</p>
+                  <p className="mt-2 text-xs text-amber-800">A matrícula está concluída, mas o comprovante ainda não foi emitido. Emita-o pela área de documentos.</p>
                 )}
                 {enrollmentResult.comprovante?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.comprovante.error}</p>}
+                <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-500">Recibo financeiro</p>
+                {enrollmentResult.recibo?.ok && enrollmentResult.recibo.print_url ? (
+                  <a href={enrollmentResult.recibo.print_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo</a>
+                ) : enrollmentResult.recibo?.status === 'pending' ? (
+                  <p className="mt-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Pagamento registado. O recibo será disponibilizado após a liquidação.</p>
+                ) : (
+                  <p className="mt-2 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">Não foi possível emitir o recibo automaticamente. Tente novamente pela área de documentos.</p>
+                )}
+                {enrollmentResult.recibo?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.recibo.error}</p>}
+              </div>
+
+              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">Itens pagos</p>
+                  <span className="text-xs font-black text-slate-700">{enrollmentResult.itensPagamento?.length ?? 0} item(ns) · {Math.max((enrollmentResult.itensPagamento?.length ?? 0) - 1, 0)} serviço(s) selecionado(s)</span>
+                </div>
+                <div className="mt-3 divide-y divide-slate-200">
+                  {(enrollmentResult.itensPagamento ?? []).map((item, index) => (
+                    <div key={`${item.nome ?? item.descricao ?? 'item'}-${index}`} className="flex items-center justify-between gap-4 py-2 text-sm">
+                      <span className="text-slate-600">{item.nome ?? item.descricao ?? 'Serviço escolar'}{Number(item.quantidade ?? 1) > 1 ? ` × ${item.quantidade}` : ''}</span>
+                      <strong className="text-slate-900">{formatAoa(Number(item.preco ?? item.valor ?? 0) * Number(item.quantidade ?? 1))}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-300 pt-3 text-sm font-black">
+                  <span>Total</span><span>{formatAoa(enrollmentResult.valorTotal)}</span>
+                </div>
               </div>
 
               <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
@@ -655,7 +694,8 @@ export function AdmissaoConversionSheet({
                 <p className="text-xs font-black uppercase tracking-widest text-slate-500">Checklist do atendimento</p>
                 <div className="mt-3 space-y-2 text-xs">
                   <div className="flex items-center justify-between gap-3"><span>Matrícula criada</span><span className="font-black text-emerald-700">Concluído</span></div>
-                  <div className="flex items-center justify-between gap-3"><span>Comprovativo</span><span className={enrollmentResult.comprovante?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.comprovante?.ok ? "Disponível" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Comprovante de matrícula</span><span className={enrollmentResult.comprovante?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.comprovante?.ok ? "Disponível" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Recibo financeiro</span><span className={enrollmentResult.recibo?.ok ? "font-black text-emerald-700" : enrollmentResult.recibo?.status === 'error' ? "font-black text-rose-700" : "font-black text-amber-700"}>{enrollmentResult.recibo?.ok ? "Disponível" : enrollmentResult.recibo?.status === 'error' ? "Erro" : "Pendente"}</span></div>
                   <div className="flex items-center justify-between gap-3"><span>Portal do aluno</span><span className={credentials ? "font-black text-emerald-700" : "font-black text-amber-700"}>{credentials ? "Liberado" : "Pendente"}</span></div>
                   <div className="flex items-center justify-between gap-3"><span>WhatsApp preparado</span><span className={notificationSent ? "font-black text-emerald-700" : "font-black text-amber-700"}>{notificationSent ? "Concluído" : "Pendente"}</span></div>
                 </div>
@@ -720,7 +760,7 @@ export function AdmissaoConversionSheet({
                 <div className="pt-4 flex flex-col gap-3">
                   <button
                     onClick={onClose}
-                    className="text-slate-400 hover:text-klasse-gold font-bold text-sm transition-colors"
+                    className="text-slate-400 hover:text-amber font-bold text-sm transition-colors"
                   >
                     Fechar e atender próximo candidato
                   </button>
@@ -1120,7 +1160,7 @@ export function AdmissaoConversionSheet({
             <Button
               onClick={() => void handleEfetivar()}
               disabled={submitting || !academic.turmaId || !payment.amount}
-              className="flex-[2] h-14 rounded-2xl bg-klasse-gold hover:brightness-95 text-white font-black text-base shadow-xl shadow-klasse-gold/20"
+              className="flex-[2] h-14 rounded-2xl bg-amber hover:brightness-95 text-white font-black text-base shadow-xl shadow-amber/20"
               loading={submitting}
             >
               {submitting ? 'Processando...' : 'Efetivar Matrícula Agora'}
@@ -1177,7 +1217,7 @@ export function AdmissaoConversionSheet({
                 onClick={() => void handleEfetivar({ capacidade: true, motivo: capacityOverrideMotivo })}
                 disabled={submitting || capacityOverrideMotivo.trim().length < 10}
                 loading={submitting}
-                className="flex-[2] bg-klasse-gold text-white"
+                className="flex-[2] bg-amber text-white"
               >
                 Confirmar override
               </Button>

@@ -31,9 +31,11 @@ export async function GET(
     }
 
     const { id: turmaId } = await params;
+    const searchParams = new URL(_req.url).searchParams
+    const disciplinaId = searchParams.get("disciplina_id")
     const academicContext = await resolveAcademicYearContext(supabase, {
       userId: user.id,
-      requestedAcademicYearId: new URL(_req.url).searchParams.get("ano_letivo_id"),
+      requestedAcademicYearId: searchParams.get("ano_letivo_id"),
       operation: "READ",
     });
     await assertAcademicYearEntity(supabase, {
@@ -52,15 +54,35 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Professor não encontrado" }, { status: 403 });
     }
 
-    const { data: tdp } = await supabase
+    let tdpQuery = supabase
       .from("turma_disciplinas_professores")
       .select("id")
       .eq("escola_id", escolaId)
       .eq("turma_id", turmaId)
       .eq("professor_id", professorId)
-      .maybeSingle();
+    if (disciplinaId) tdpQuery = tdpQuery.eq("disciplina_id", disciplinaId)
+    const { data: tdp } = await tdpQuery.limit(1)
 
-    const hasAccess = Boolean(tdp);
+    let hasAccess = Boolean(tdp?.length)
+    if (!hasAccess) {
+      const { data: directAssignments } = await supabase
+        .from("turma_disciplinas")
+        .select("curso_matriz_id")
+        .eq("escola_id", escolaId)
+        .eq("turma_id", turmaId)
+        .eq("professor_id", professorId)
+      const matrizIds = (directAssignments ?? []).map((row: any) => row.curso_matriz_id).filter(Boolean)
+      if (matrizIds.length > 0) {
+        let matrizQuery = supabase
+          .from("curso_matriz")
+          .select("id")
+          .eq("escola_id", escolaId)
+          .in("id", matrizIds)
+        if (disciplinaId) matrizQuery = matrizQuery.eq("disciplina_id", disciplinaId)
+        const { data: matchingMatrizes } = await matrizQuery.limit(1)
+        hasAccess = Boolean(matchingMatrizes?.length)
+      }
+    }
 
     if (!hasAccess) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
@@ -71,6 +93,7 @@ export async function GET(
       .select("id, aluno_id, alunos!inner(id, nome)")
       .eq("escola_id", escolaId)
       .eq("turma_id", turmaId)
+      .eq("session_id", academicContext.anoLetivoId)
       .in("status", ACTIVE_MATRICULA_STATUSES)
       .order("created_at", { ascending: true });
 

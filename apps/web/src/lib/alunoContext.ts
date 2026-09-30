@@ -2,6 +2,7 @@ import { supabaseRouteClient } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
 import { resolveAuthorizedStudentIds } from "@/lib/portalAlunoAuth";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 
 export type AlunoContext = {
   userId: string;
@@ -56,19 +57,9 @@ export async function getAlunoContext() {
     alunoId = alunoIds[0] ?? null;
 
     if (alunoId) {
-      let activeAno: number | null = null;
-
-      if (escolaId) {
-        const { data: activeAnoRow } = await supabase
-          .from("anos_letivos")
-          .select("ano")
-          .eq('escola_id', escolaId)
-          .eq('ativo', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        activeAno = typeof activeAnoRow?.ano === 'number' ? activeAnoRow.ano : null;
-      }
+      const activeAno = escolaId
+        ? (await resolveAnoLetivoScope(supabase, escolaId))?.ano ?? null
+        : null;
 
       let matQuery = supabase
         .from("matriculas")

@@ -207,7 +207,7 @@ export default function ConfigurationStep({
                   </span>
                 )}
                 {curso.status_aprovacao === 'aprovado' && (
-                  <span className="px-2 py-0.5 text-xs font-semibold text-klasse-green-700 bg-klasse-green-50 rounded-full border border-klasse-green-200">
+                  <span className="px-2 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200">
                     Aprovado
                   </span>
                 )}
@@ -274,7 +274,7 @@ export default function ConfigurationStep({
                   </span>
                 )}
                 {turma.status_validacao === 'ativo' && (
-                  <span className="px-2 py-0.5 text-xs font-semibold text-klasse-green-700 bg-klasse-green-50 rounded-full border border-klasse-green-200">
+                  <span className="px-2 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200">
                     Ativo
                   </span>
                 )}

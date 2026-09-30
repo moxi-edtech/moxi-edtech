@@ -324,7 +324,7 @@ export function ConfigStep({
             <select 
               value={selectedTarget}
               onChange={(e) => setSelectedTarget(e.target.value)}
-              className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-klasse-gold/10 transition-all"
+              className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
             >
               {targets.map(s => (
                 <option key={s.id} value={s.id}>
@@ -407,7 +407,7 @@ export function ConfigStep({
                 type="number"
                 value={reajuste}
                 onChange={(e) => setReajuste(Number(e.target.value))}
-                className="w-full h-12 rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-klasse-gold/10 transition-all"
+                className="w-full h-12 rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
                 placeholder="Ex: 10"
               />
             </div>
@@ -431,7 +431,7 @@ export function ConfigStep({
         {/* Lado Direito: Resumo do Espelhamento */}
         <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Copy className="h-4 w-4 text-klasse-gold" /> O que será transportado:
+            <Copy className="h-4 w-4 text-amber" /> O que será transportado:
           </h3>
           <ul className="space-y-3">
             <li className="flex items-center gap-3 text-xs text-slate-600">

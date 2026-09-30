@@ -26,7 +26,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
  * - Gold (#E3B23C) = action/active states
  * - Green (#1F6B3B) = brand/headings
  * - Radius: rounded-xl (cards/inputs/buttons), rounded-full (badges)
- * - Focus: ring-4 ring-klasse-gold/20 + border-klasse-gold
+ * - Focus: ring-4 ring-amber/20 + border-amber
  */
 
 // -----------------------------
@@ -121,13 +121,13 @@ function StatusBadge({ status }: { status?: string | null }) {
 
   // Ajusta conforme teus status reais do backend
   const styles: Record<string, string> = {
-    ativo: "bg-klasse-green-50 text-klasse-green-700 border-klasse-green-200",
-    matriculado: "bg-klasse-green-50 text-klasse-green-700 border-klasse-green-200",
-    pendente: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
-    submetida: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
+    ativo: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    matriculado: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    pendente: "bg-amber-50 text-amber-800 border-amber-200",
+    submetida: "bg-amber-50 text-amber-800 border-amber-200",
     em_analise: "bg-sky-50 text-sky-700 border-sky-200",
     aprovada: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    suspenso: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
+    suspenso: "bg-amber-50 text-amber-800 border-amber-200",
     inativo: "bg-rose-50 text-rose-700 border-rose-200",
     arquivado: "bg-slate-100 text-slate-600 border-slate-200",
     todos: "bg-slate-100 text-slate-600 border-slate-200",
@@ -338,7 +338,7 @@ export default function AlunosListClient() {
             Voltar
           </button>
 
-          <h1 className="text-2xl font-black text-klasse-green tracking-tight">Gestão de Alunos</h1>
+          <h1 className="text-2xl font-black text-emerald tracking-tight">Gestão de Alunos</h1>
           <p className="text-sm text-slate-600 mt-1">
             Leads (candidaturas) podem aparecer como <span className="font-semibold">pendentes</span> até a conversão para matrícula.
           </p>
@@ -346,7 +346,7 @@ export default function AlunosListClient() {
 
         <Link
           href={`${secretariaBase}/matriculas/nova`}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-klasse-gold text-white hover:brightness-95 shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-amber text-white hover:brightness-95 shadow-sm"
         >
           <Plus size={16} />
           Nova Admissão
@@ -387,7 +387,7 @@ export default function AlunosListClient() {
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar por nome, responsável, processo ou login…"
                 className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none
-                           focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                           focus:ring-4 focus:ring-amber/20 focus:border-amber"
               />
             </div>
 
@@ -401,7 +401,7 @@ export default function AlunosListClient() {
                     className={[
                       "whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold border transition-all",
                       active
-                        ? "bg-white border-klasse-gold text-klasse-gold ring-1 ring-klasse-gold/25"
+                        ? "bg-white border-amber text-amber ring-1 ring-amber/25"
                         : "bg-white border-slate-200 text-slate-600 hover:text-slate-800",
                     ].join(" ")}
                   >
@@ -438,7 +438,7 @@ export default function AlunosListClient() {
                 {loading ? (
                   <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                     <td colSpan={5} className="p-12 text-center text-slate-600">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-klasse-gold" />
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-amber" />
                       Carregando…
                     </td>
                   </tr>
@@ -507,7 +507,7 @@ export default function AlunosListClient() {
                               </p>
 
                               {isLead ? (
-                                <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200 uppercase">
+                                <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 text-amber-800 border-amber-200 uppercase">
                                   Lead
                                 </span>
                               ) : null}
@@ -552,7 +552,7 @@ export default function AlunosListClient() {
                             {matriculaHref && (aluno.status || "").toLowerCase() !== "ativo" ? (
                               <Link
                                 href={matriculaHref}
-                                className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 transition"
+                                className="p-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber-50 transition"
                                 title="Abrir matrícula"
                               >
                                 <Plus className="w-4 h-4" />
@@ -572,7 +572,7 @@ export default function AlunosListClient() {
 
                                 <Link
                                   href={`${secretariaBase}/alunos/${aluno.id}/editar`}
-                                  className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 transition"
+                                  className="p-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber-50 transition"
                                   title="Editar"
                                 >
                                   <Pencil className="w-4 h-4" />

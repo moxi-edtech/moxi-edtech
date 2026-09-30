@@ -27,6 +27,8 @@ BOOTSTRAP_STATE=true
 POLL_MS=15000
 FOLLOWUP_AFTER_HOURS=24
 MAX_FOLLOWUPS=2
+BUSINESS_HOURS=08h–17h30
+CALL_WINDOWS=10h–12h, 13h–14h, 14h–15h, 16h–17h
 STATE_FILE=/data/state.json
 ```
 
@@ -36,3 +38,7 @@ STATE_FILE=/data/state.json
 2. Criar `.env.agent` com as variáveis acima, sem o commitar.
 3. Primeiro executar com `AGENT_DRY_RUN=true` e confirmar os rascunhos nos logs.
 4. Para ativar o envio autónomo, mudar apenas `AGENT_DRY_RUN=false` e executar `docker compose -f docker-compose.sales-agent.yml up -d --build`.
+
+### Factos operacionais
+
+O agente não pode inventar horários de atendimento. `BUSINESS_HOURS` é o expediente geral (08h–17h30) e `CALL_WINDOWS` contém exclusivamente os intervalos que podem ser sugeridos para uma ligação de esclarecimento. Fora desses intervalos, a IA não deve sugerir horários.

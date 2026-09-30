@@ -91,7 +91,7 @@ export function FichaRapidaModal({ alunoId, onClose, onSuccess }: FichaRapidaMod
       <div className="space-y-6 py-4">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
-             <Loader2 className="w-8 h-8 text-klasse-gold animate-spin" />
+             <Loader2 className="w-8 h-8 text-amber animate-spin" />
              <p className="text-sm text-slate-500 font-medium">Localizando ficha do aluno...</p>
           </div>
         ) : error ? (
@@ -122,7 +122,7 @@ export function FichaRapidaModal({ alunoId, onClose, onSuccess }: FichaRapidaMod
                   value={form.bi_numero}
                   onChange={e => setForm(p => ({ ...p, bi_numero: e.target.value.toUpperCase() }))}
                   placeholder="Ex: 001234567LA041"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/10 focus:border-klasse-gold transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-amber/10 focus:border-amber transition-all"
                 />
               </div>
 
@@ -134,7 +134,7 @@ export function FichaRapidaModal({ alunoId, onClose, onSuccess }: FichaRapidaMod
                   type="date" 
                   value={form.data_nascimento}
                   onChange={e => setForm(p => ({ ...p, data_nascimento: e.target.value }))}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/10 focus:border-klasse-gold transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-amber/10 focus:border-amber transition-all"
                 />
               </div>
 
@@ -145,7 +145,7 @@ export function FichaRapidaModal({ alunoId, onClose, onSuccess }: FichaRapidaMod
                   value={form.pai_nome}
                   onChange={e => setForm(p => ({ ...p, pai_nome: e.target.value }))}
                   placeholder="Nome completo do pai"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/10 focus:border-klasse-gold transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-amber/10 focus:border-amber transition-all"
                 />
               </div>
 
@@ -156,7 +156,7 @@ export function FichaRapidaModal({ alunoId, onClose, onSuccess }: FichaRapidaMod
                   value={form.mae_nome}
                   onChange={e => setForm(p => ({ ...p, mae_nome: e.target.value }))}
                   placeholder="Nome completo da mãe"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/10 focus:border-klasse-gold transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-amber/10 focus:border-amber transition-all"
                 />
               </div>
 
@@ -167,7 +167,7 @@ export function FichaRapidaModal({ alunoId, onClose, onSuccess }: FichaRapidaMod
                   value={form.responsavel}
                   onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))}
                   placeholder="Nome do encarregado"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/10 focus:border-klasse-gold transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-amber/10 focus:border-amber transition-all"
                 />
               </div>
 
@@ -178,7 +178,7 @@ export function FichaRapidaModal({ alunoId, onClose, onSuccess }: FichaRapidaMod
                   value={form.telefone_responsavel}
                   onChange={e => setForm(p => ({ ...p, telefone_responsavel: e.target.value }))}
                   placeholder="Ex: 923 000 000"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/10 focus:border-klasse-gold transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-amber/10 focus:border-amber transition-all"
                 />
               </div>
             </div>

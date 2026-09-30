@@ -266,7 +266,7 @@ export default async function OperacoesAcademicasPage({
           <div className="flex items-center gap-4 flex-wrap">
             <Link
               href={buildPortalHref(escolaParam, "/operacoes/academico/wizard")}
-              className="text-xs font-semibold text-klasse-green hover:underline"
+              className="text-xs font-semibold text-emerald hover:underline"
             >
               Abrir wizard simplificado
             </Link>
@@ -467,7 +467,7 @@ export default async function OperacoesAcademicasPage({
               <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" /> Fechamento Académico
               </h2>
-              <Link href={buildPortalHref(escolaParam, `/operacoes/academico/fechamento-academico?${monitorQuery}`)} className="text-xs font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, `/operacoes/academico/fechamento-academico?${monitorQuery}`)} className="text-xs font-semibold text-emerald hover:underline">
                 Abrir monitor
               </Link>
             </div>
@@ -477,9 +477,9 @@ export default async function OperacoesAcademicasPage({
                   const estado = String(job.estado || "");
                   const step = lastStepByRun.get(job.run_id);
                   const statusClass = ["FAILED"].includes(estado)
-                    ? "bg-klasse-gold/20 text-klasse-gold"
+                    ? "bg-amber/20 text-amber"
                     : ["DONE"].includes(estado)
-                      ? "bg-klasse-green/10 text-klasse-green"
+                      ? "bg-emerald/10 text-emerald"
                       : "bg-slate-100 text-slate-600";
                   return (
                     <div key={job.run_id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-xs">
@@ -501,7 +501,7 @@ export default async function OperacoesAcademicasPage({
               )}
             </div>
             {fechamentoStuck.length > 0 && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-klasse-gold">
+              <div className="mt-3 flex items-center gap-2 text-xs text-amber">
                 <Clock className="h-3.5 w-3.5" /> {fechamentoStuck.length} job(s) acima de 30m sem conclusão.
               </div>
             )}
@@ -514,7 +514,7 @@ export default async function OperacoesAcademicasPage({
               <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <FileText className="h-4 w-4" /> Documentos Oficiais (Lote)
               </h2>
-              <Link href={buildPortalHref(escolaParam, `/operacoes/documentos-oficiais?${monitorQuery}`)} className="text-xs font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, `/operacoes/documentos-oficiais?${monitorQuery}`)} className="text-xs font-semibold text-emerald hover:underline">
                 Abrir monitor
               </Link>
             </div>
@@ -523,9 +523,9 @@ export default async function OperacoesAcademicasPage({
                 (filteredLotes as LoteJob[]).map((job) => {
                   const status = String(job.status || "");
                   const statusClass = ["FAILED"].includes(status)
-                    ? "bg-klasse-gold/20 text-klasse-gold"
+                    ? "bg-amber/20 text-amber"
                     : ["SUCCESS"].includes(status)
-                      ? "bg-klasse-green/10 text-klasse-green"
+                      ? "bg-emerald/10 text-emerald"
                       : "bg-slate-100 text-slate-600";
                   return (
                     <div key={job.id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-xs">
@@ -549,7 +549,7 @@ export default async function OperacoesAcademicasPage({
               )}
             </div>
             {loteStuck.length > 0 && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-klasse-gold">
+              <div className="mt-3 flex items-center gap-2 text-xs text-amber">
                 <Clock className="h-3.5 w-3.5" /> {loteStuck.length} job(s) acima de 30m sem conclusão.
               </div>
             )}
@@ -559,7 +559,7 @@ export default async function OperacoesAcademicasPage({
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
           <div className="flex items-center gap-2">
-            {fechamentoFalhas + loteFalhas > 0 ? <AlertTriangle className="h-4 w-4 text-klasse-gold" /> : <CheckCircle2 className="h-4 w-4 text-klasse-green" />}
+            {fechamentoFalhas + loteFalhas > 0 ? <AlertTriangle className="h-4 w-4 text-amber" /> : <CheckCircle2 className="h-4 w-4 text-emerald" />}
             {fechamentoFalhas + loteFalhas > 0
               ? "Há falhas recentes. Recomenda-se revisar os logs dos jobs."
               : "Nenhuma falha recente registrada nos jobs."}
@@ -579,7 +579,7 @@ export default async function OperacoesAcademicasPage({
               <p className="text-xs text-slate-500 mt-1">
                 Corrigir pendências e reexecutar o fechamento a partir do monitor.
               </p>
-              <Link href={buildPortalHref(escolaParam, "/admin/notas")} className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/admin/notas")} className="text-[10px] font-semibold text-emerald hover:underline">
                 Abrir notas
               </Link>
             </div>
@@ -588,7 +588,7 @@ export default async function OperacoesAcademicasPage({
               <p className="text-xs text-slate-500 mt-1">
                 Solicitar reabertura auditada e repetir fechamento com justificativa.
               </p>
-              <Link href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico")} className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico")} className="text-[10px] font-semibold text-emerald hover:underline">
                 Abrir fechamento
               </Link>
             </div>
@@ -597,7 +597,7 @@ export default async function OperacoesAcademicasPage({
               <p className="text-xs text-slate-500 mt-1">
                 Revalidar roles do operador antes de reprocessar.
               </p>
-              <Link href={buildPortalHref(escolaParam, "/admin/configuracoes/seguranca")} className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/admin/configuracoes/seguranca")} className="text-[10px] font-semibold text-emerald hover:underline">
                 Ver acessos
               </Link>
             </div>
@@ -606,7 +606,7 @@ export default async function OperacoesAcademicasPage({
               <p className="text-xs text-slate-500 mt-1">
                 Reprocessar o lote com falha e verificar o download.
               </p>
-              <Link href={buildPortalHref(escolaParam, "/operacoes/documentos-oficiais")} className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/operacoes/documentos-oficiais")} className="text-[10px] font-semibold text-emerald hover:underline">
                 Abrir documentos oficiais
               </Link>
             </div>

@@ -1,9 +1,9 @@
 # POP-P0-03 - Turmas, Curriculo e Tratamento de Cursos (Admin)
 
-Versao: 1.6.0
-Data: 2026-06-28
+Versao: 1.7.0
+Data: 2026-08-21
 Modulo: Admin da Escola
-Perfil principal: admin_escola
+Perfis autorizados: admin, admin_escola, admin_financeiro, admin_secretaria, diretor
 Tempo medio alvo: 20-60 minutos por ciclo de curso
 
 ## 1. Objetivo
@@ -102,6 +102,11 @@ Diagrama textual de dependencias:
 - Ano letivo e periodos com estado minimamente definido.
 - Janela de alteracao autorizada.
 
+Regra de escopo pedagógico:
+- `secretaria` e `financeiro` podem consultar o estado das turmas, mas não podem editar currículo, horários ou atribuir professores.
+- `admin`, `admin_escola`, `admin_financeiro`, `admin_secretaria` e `diretor` podem executar essas operações dentro da escola autenticada.
+- O banco aplica a mesma regra no RPC `curriculo_publish*` e nas políticas RLS; a UI apenas antecipa a restrição.
+
 ## 7.1 Estado fiel ao codigo
 
 - A pagina `/escola/{id}/admin/configuracoes/turmas` renderiza o titulo `Gestão de Turmas & Currículo`.
@@ -171,6 +176,16 @@ Comportamento tecnico observado:
 Regra de bloqueio:
 - se houver `Classes sem currículo publicado`, publicar antes de gerar turmas.
 
+### 10.1 Ajuste pelo Command Center de Turmas
+
+Na lista `/escola/{id}/admin/turmas` ou `/escola/{id}/operacoes/turmas`, o botão de currículo abre o modal `Currículo da classe`.
+
+- A alteração é feita no currículo da classe, não em uma turma isolada.
+- Ao aplicar/publicar, a mesma matriz é considerada para todas as turmas da classe (A, B, C e turnos diferentes).
+- O modal permite adicionar/remover disciplinas e mostra o estado do rascunho antes da publicação.
+- A remoção é bloqueada quando existem avaliações associadas às disciplinas materializadas.
+- O editor padrão de disciplina é reutilizado dentro do modal, evitando um segundo caminho paralelo.
+
 ## 11. Procedimento D - Fluxo de Oferta Formativa (estrutura)
 
 1. Abrir `Configurações > Oferta Formativa`.
@@ -201,7 +216,7 @@ Regra de bloqueio:
 |---|---|---|---|
 | `Nenhum curso cadastrado` | Oferta formativa ainda nao criada | Criar curso em `Oferta Formativa` ou pelo assistente | Curso criado nao aparece |
 | `Publique o currículo...` ao gerar turmas | Curso/classe em rascunho | Publicar curriculo primeiro | Mesmo publicado continuar bloqueado |
-| `permission denied: admin_escola required` ao publicar | Usuario sem papel operacional exigido no contexto da escola | Validar papel em `profiles` e `escola_users` (`admin_escola`/`admin`) e repetir publicacao | Papel correto e erro persistir |
+| `permission denied: pedagogical administrator required` ao publicar | Usuario sem papel pedagógico autorizado no contexto da escola | Validar papel em `profiles` e `escola_users` (`admin`, `admin_escola`, `admin_financeiro`, `admin_secretaria` ou `diretor`) e repetir publicação | Papel correto e erro persistir |
 | Falha ao salvar classes base | Dados invalidos ou conflito | Revisar linha alterada e salvar novamente | Erro recorrente |
 | Falha em instalar preset | Parametros invalidos ou erro backend | Repetir com preset valido | Persistencia do erro |
 | `step=orchestrator` no install | Falha transacional na RPC orquestradora | Corrigir causa raiz e reexecutar install (rollback total garantido) | Reincidencia apos nova tentativa |
@@ -242,6 +257,8 @@ Regra de bloqueio:
 - `POST /api/escolas/{id}/cursos/{cursoId}/avaliacao`
 - `GET/POST/PUT/DELETE /api/escolas/{id}/classes`
 - `GET/POST/PUT/DELETE /api/escolas/{id}/disciplinas`
+- `GET/POST/DELETE /api/escolas/{id}/turmas/{turmaId}/curriculo/classe`
+  - opera sobre o currículo da classe e aplica a matriz a todas as turmas da classe
 - Commit final de configuracao:
 - `POST /api/escola/{id}/admin/setup/commit` (com `Idempotency-Key`)
 
@@ -264,6 +281,6 @@ Regra de bloqueio:
 
 ## 18. Revisao e versao
 
-- Ultima revisao: 2026-06-28
-- Proxima revisao: 2026-07-12
-- Mudancas desta versao: alinhado aos labels reais da pagina `Gestão de Turmas & Currículo` e ao `Command Center de Turmas`.
+- Ultima revisao: 2026-08-21
+- Proxima revisao: 2026-09-04
+- Mudancas desta versao: currículo por classe, modal único, sincronização entre turmas da mesma classe e RBAC pedagógico alinhado entre UI, API, RPC e RLS.

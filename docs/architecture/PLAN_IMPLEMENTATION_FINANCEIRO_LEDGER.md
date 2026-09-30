@@ -17,26 +17,28 @@ Atualmente, a "verdade financeira" do aluno está dispersa entre `mensalidades`,
 ### 2.1 Tabela `public.financeiro_ledger`
 Uma tabela imutável (append-only) que registra todo movimento de débito (geração de dívida) e crédito (liquidação).
 
+> Espelhado de `supabase/migrations/20260510000000_financeiro_ledger_foundation.sql`. Nomes de colunas, constraints e índices abaixo são os **aplicados**, não uma proposta: quem for procurar estes objetos na base encontra-os com estes nomes.
+
 ```sql
-CREATE TABLE public.financeiro_ledger (
+CREATE TABLE IF NOT EXISTS public.financeiro_ledger (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    escola_id uuid NOT NULL REFERENCES public.escolas(id),
-    aluno_id uuid NOT NULL REFERENCES public.alunos(id),
+    escola_id uuid NOT NULL REFERENCES public.escolas(id) ON DELETE CASCADE,
+    aluno_id uuid NOT NULL REFERENCES public.alunos(id) ON DELETE CASCADE,
     
     -- Natureza
     tipo public.financeiro_tipo_transacao NOT NULL, -- 'debito' | 'credito'
-    origem public.financeiro_origem NOT NULL, -- 'mensalidade', 'matricula', 'venda_avulsa', 'estorno', 'ajuste'
+    origem public.financeiro_origem NOT NULL, -- 'mensalidade', 'matricula', 'venda_avulsa', 'multa', 'taxa_extra', 'estorno', 'ajuste', 'servico_balcao'
     
     -- Rastreabilidade (Links)
-    referencia_tabela text NOT NULL, -- ex: 'mensalidades', 'pagamentos'
+    referencia_tabela text NOT NULL, -- 'mensalidades', 'pagamentos', 'financeiro_lancamentos'
     referencia_id uuid NOT NULL,
     tipo_evento text NOT NULL, -- ex: 'criado', 'liquidado', 'estornado', 'cancelado', 'ajuste_valor'
     versao_evento int NOT NULL DEFAULT 1, -- permite múltiplos eventos legítimos na mesma referência
     event_key text NOT NULL, -- hash/chave idempotente do evento de origem
 
     -- Financeiro
-    valor numeric(14,2) NOT NULL,
-    saldo_apos_movimento numeric(14,2), -- opcional: snapshot assíncrono (não fonte primária)
+    valor numeric(14,2) NOT NULL CHECK (valor >= 0),
+    saldo_apos_movimento numeric(14,2), -- snapshot para auditoria e performance (não fonte primária)
     
     -- Tempo
     data_competencia date NOT NULL, -- Mês/Ano que a cobrança se refere
@@ -49,12 +51,29 @@ CREATE TABLE public.financeiro_ledger (
 );
 
 -- Idempotência forte por evento, não apenas por referência
-CREATE UNIQUE INDEX ux_financeiro_ledger_event_key
+CREATE UNIQUE INDEX ux_ledger_event_key
   ON public.financeiro_ledger(event_key);
 
 -- Ordenação determinística para extrato/saldo por aluno
-CREATE INDEX ix_financeiro_ledger_aluno_movimento
+CREATE INDEX ix_ledger_escola_aluno_movimento
   ON public.financeiro_ledger(escola_id, aluno_id, data_movimento, id);
+
+-- Leitura por aluno (extrato recente) e por competência (KPIs mensais)
+CREATE INDEX ix_ledger_aluno_data
+  ON public.financeiro_ledger(aluno_id, data_movimento DESC);
+CREATE INDEX ix_ledger_escola_competencia
+  ON public.financeiro_ledger(escola_id, data_competencia);
+
+-- Rastreabilidade do evento de origem
+CREATE INDEX ix_ledger_referencia
+  ON public.financeiro_ledger(referencia_tabela, referencia_id);
+
+-- RLS activa, com isolamento por escola
+ALTER TABLE public.financeiro_ledger ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Acesso Ledger por Escola" ON public.financeiro_ledger
+    FOR ALL
+    USING (escola_id IN (SELECT escola_id FROM public.escola_users WHERE user_id = auth.uid()));
 ```
 
 ## 3. Estratégia de Implementação: "Shadow Writing"

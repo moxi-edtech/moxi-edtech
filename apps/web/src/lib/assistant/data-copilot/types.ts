@@ -1,5 +1,6 @@
 import type { AssistantActionV2 } from "../actions-v2";
 import type { AiWidgetContext } from "../screen-context";
+import type { SchoolOperatingProfile } from "@/lib/school-profile/types";
 
 export type DataCopilotModule = "financeiro" | "secretaria" | "academico" | "direcao";
 
@@ -46,6 +47,7 @@ export type ToolRunParams = {
   role: string;
   query: string;
   context?: AiWidgetContext;
+  operatingProfile?: SchoolOperatingProfile;
 };
 
 export type DataCopilotTool = {

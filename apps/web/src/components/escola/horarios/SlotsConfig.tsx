@@ -21,7 +21,7 @@ export type HorarioSlot = {
 
 // --- CONSTANTS ---
 const TURNOS = [
-    { id: "matinal", label: "Matinal", icon: Sun, color: "text-klasse-gold-500 bg-klasse-gold-50" },
+    { id: "matinal", label: "Matinal", icon: Sun, color: "text-amber-500 bg-amber-50" },
     { id: "tarde", label: "Vespertino", icon: Sunset, color: "text-orange-500 bg-orange-50" },
     { id: "noite", label: "Noturno", icon: Moon, color: "text-indigo-500 bg-indigo-50" },
 ];
@@ -159,17 +159,17 @@ export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all
                    ${showGenerator 
                       ? "bg-slate-100 text-slate-900" 
-                      : "bg-white border border-slate-200 text-slate-700 hover:border-klasse-gold"
+                      : "bg-white border border-slate-200 text-slate-700 hover:border-amber"
                    }
                 `}
              >
-                <Wand2 className="w-4 h-4 text-klasse-gold" />
+                <Wand2 className="w-4 h-4 text-amber" />
                 {showGenerator ? "Fechar Gerador" : "Gerador Mágico"}
              </button>
              
              <button 
                 onClick={onSave}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-klasse-gold text-white font-bold text-sm shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber text-white font-bold text-sm shadow-sm hover:brightness-110 active:scale-95 transition-all"
              >
                 <Save className="w-4 h-4" />
                 Salvar Tudo
@@ -195,7 +195,7 @@ export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
                        }
                     `}
                   >
-                     <t.icon className={`w-4 h-4 ${activeTurno === t.id ? "text-klasse-gold" : "text-slate-400"}`} />
+                     <t.icon className={`w-4 h-4 ${activeTurno === t.id ? "text-amber" : "text-slate-400"}`} />
                      {t.label}
                   </button>
                ))}
@@ -211,7 +211,7 @@ export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
                          onClick={() => setActiveDia(d.id)}
                          className={`py-2 rounded-lg text-xs font-bold transition-all border
                             ${activeDia === d.id 
-                               ? "bg-klasse-gold border-klasse-gold text-white" 
+                               ? "bg-amber border-amber text-white"
                                : "bg-white border-slate-100 text-slate-500 hover:border-slate-300"
                             }
                          `}
@@ -249,7 +249,7 @@ export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
                            </p>
                         </div>
                      </div>
-                     <button type="button" onClick={handleAddSlot} className="text-xs font-bold text-klasse-gold hover:underline flex items-center gap-1">
+                     <button type="button" onClick={handleAddSlot} className="text-xs font-bold text-amber hover:underline flex items-center gap-1">
                         <Plus className="w-3 h-3" /> Adicionar Tempo
                      </button>
                   </div>
@@ -260,7 +260,7 @@ export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
                         <div className="h-full flex flex-col items-center justify-center text-slate-400 py-20 opacity-50">
                            <Clock className="w-16 h-16 mb-4 text-slate-200" />
                            <p>Nenhum horário definido para este dia.</p>
-                           <button onClick={() => setShowGenerator(true)} className="mt-4 text-klasse-gold font-bold text-sm underline">
+                           <button onClick={() => setShowGenerator(true)} className="mt-4 text-amber font-bold text-sm underline">
                               Usar Gerador Automático
                            </button>
                         </div>
@@ -271,13 +271,13 @@ export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
                                  {/* Timeline Dot */}
                                  <div className={`
                                     absolute -left-[31px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-[3px] border-white shadow-sm z-10
-                                    ${slot.is_intervalo ? "bg-klasse-gold-400" : "bg-klasse-gold"}
+                                    ${slot.is_intervalo ? "bg-amber-400" : "bg-amber"}
                                  `} />
 
                                  <div className={`
                                     flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-md hover:scale-[1.01]
                                     ${slot.is_intervalo 
-                                       ? "bg-klasse-gold-50/50 border-klasse-gold-100" 
+                                       ? "bg-amber-50/50 border-amber-100"
                                        : "bg-white border-slate-100"
                                     }
                                     ${slotIssues.invalid.has(slot.id) || slotIssues.overlap.has(slot.id)
@@ -301,7 +301,7 @@ export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
                                     ) : <div className="flex flex-1 items-center gap-5">
                                        <div className={`
                                           flex flex-col items-center justify-center w-12 h-12 rounded-lg border
-                                          ${slot.is_intervalo ? "bg-white border-klasse-gold-200 text-klasse-gold-600" : "bg-slate-50 border-slate-200 text-slate-900"}
+                                          ${slot.is_intervalo ? "bg-white border-amber-200 text-amber-600" : "bg-slate-50 border-slate-200 text-slate-900"}
                                        `}>
                                           {slot.is_intervalo ? (
                                              <Coffee className="w-5 h-5" />
@@ -337,7 +337,7 @@ export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
                                     </div>}
 
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
-                                        <button type="button" onClick={() => setEditingId(editingId === slot.id ? null : slot.id)} className="p-2 text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 rounded-lg" aria-label="Editar tempo">
+                                        <button type="button" onClick={() => setEditingId(editingId === slot.id ? null : slot.id)} className="p-2 text-slate-400 hover:text-amber hover:bg-amber-50 rounded-lg" aria-label="Editar tempo">
                                             <Settings2 className="w-4 h-4" />
                                         </button>
                                         <button 
@@ -451,8 +451,8 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
       <div className="bg-slate-900 text-white rounded-[2.5rem] p-8 shadow-2xl border border-white/5 animate-in zoom-in-95 duration-300">
          <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-4">
-               <div className="h-12 w-12 rounded-2xl bg-klasse-gold/20 flex items-center justify-center border border-klasse-gold/30">
-                  <Wand2 className="w-6 h-6 text-klasse-gold" />
+               <div className="h-12 w-12 rounded-2xl bg-amber/20 flex items-center justify-center border border-amber/30">
+                  <Wand2 className="w-6 h-6 text-amber" />
                </div>
                <div>
                   <h3 className="text-xl font-black tracking-tight">Gerador de Grade Base</h3>
@@ -475,7 +475,7 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
                            type="time" 
                            value={config.inicio}
                            onChange={e => setConfig({...config, inicio: e.target.value})}
-                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-klasse-gold transition-all"
+                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-amber transition-all"
                         />
                      </div>
                      <div className="space-y-2">
@@ -484,7 +484,7 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
                            type="number" 
                            value={config.duracao}
                            onChange={e => setConfig({...config, duracao: parseInt(e.target.value)})}
-                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-klasse-gold transition-all"
+                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-amber transition-all"
                         />
                      </div>
                   </div>
@@ -496,7 +496,7 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
                            type="number" 
                            value={config.qtd}
                            onChange={e => setConfig({...config, qtd: parseInt(e.target.value)})}
-                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-klasse-gold transition-all"
+                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-amber transition-all"
                         />
                      </div>
                      <div className="space-y-2">
@@ -505,7 +505,7 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
                            type="number" 
                            value={config.duracaoIntervalo}
                            onChange={e => setConfig({...config, duracaoIntervalo: parseInt(e.target.value)})}
-                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-klasse-gold transition-all"
+                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-amber transition-all"
                         />
                      </div>
                   </div>
@@ -516,7 +516,7 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
                            type="checkbox" 
                            checked={config.intervalo}
                            onChange={e => setConfig({...config, intervalo: e.target.checked})}
-                           className="w-5 h-5 rounded-lg border-0 bg-slate-700 text-klasse-gold focus:ring-offset-slate-900"
+                           className="w-5 h-5 rounded-lg border-0 bg-slate-700 text-amber focus:ring-offset-slate-900"
                         />
                         <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">Habilitar Intervalo (Recreio)</span>
                      </label>
@@ -527,7 +527,7 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
                            <select 
                               value={config.intervaloApos}
                               onChange={e => setConfig({...config, intervaloApos: parseInt(e.target.value)})}
-                              className="bg-slate-800 border-0 rounded-lg text-xs font-bold py-1 px-3 focus:ring-klasse-gold"
+                              className="bg-slate-800 border-0 rounded-lg text-xs font-bold py-1 px-3 focus:ring-amber"
                            >
                               {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}ª aula</option>)}
                            </select>
@@ -535,15 +535,15 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
                      )}
                   </div>
 
-                  <label className="flex items-center gap-3 cursor-pointer group p-4 rounded-2xl bg-klasse-gold/5 border border-klasse-gold/10">
+                  <label className="flex items-center gap-3 cursor-pointer group p-4 rounded-2xl bg-amber/5 border border-amber/10">
                      <input 
                         type="checkbox" 
                         checked={config.aplicarTodosDias}
                         onChange={e => setConfig({...config, aplicarTodosDias: e.target.checked})}
-                        className="w-5 h-5 rounded-lg border-0 bg-slate-700 text-klasse-gold focus:ring-offset-slate-900"
+                        className="w-5 h-5 rounded-lg border-0 bg-slate-700 text-amber focus:ring-offset-slate-900"
                      />
                      <div className="flex flex-col">
-                        <span className="text-xs font-black text-klasse-gold uppercase tracking-tight">Replicar Semana Inteira</span>
+                        <span className="text-xs font-black text-amber uppercase tracking-tight">Replicar Semana Inteira</span>
                         <span className="text-[9px] text-slate-500 font-bold">Aplica esta grade de Segunda a Sexta automaticamente.</span>
                      </div>
                   </label>
@@ -555,12 +555,12 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Pré-visualização da Grade</label>
                <div className="bg-slate-800/50 rounded-3xl p-6 border border-white/5 grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto custom-scrollbar">
                   {generatedPreview.map((p, i) => (
-                     <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${p.is_intervalo ? 'bg-klasse-gold/10 border-klasse-gold/20' : 'bg-white/5 border-white/5'}`}>
+                     <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${p.is_intervalo ? 'bg-amber/10 border-amber/20' : 'bg-white/5 border-white/5'}`}>
                         <div className="flex items-center gap-3">
-                           <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-black ${p.is_intervalo ? 'bg-klasse-gold text-slate-900' : 'bg-white/10 text-slate-400'}`}>
+                           <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-black ${p.is_intervalo ? 'bg-amber text-slate-900' : 'bg-white/10 text-slate-400'}`}>
                               {p.is_intervalo ? <Coffee size={14} /> : `${p.label.charAt(0)}º`}
                            </div>
-                           <span className={`text-xs font-bold ${p.is_intervalo ? 'text-klasse-gold' : 'text-white'}`}>{p.label}</span>
+                           <span className={`text-xs font-bold ${p.is_intervalo ? 'text-amber' : 'text-white'}`}>{p.label}</span>
                         </div>
                         <div className="flex items-center gap-2 font-mono text-[10px] font-bold text-slate-400">
                            <span>{p.inicio}</span>
@@ -573,7 +573,7 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
 
                <button 
                   onClick={handleGenerate}
-                  className="w-full py-5 bg-klasse-gold text-slate-900 font-black rounded-[2rem] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-klasse-gold/20 text-sm uppercase tracking-widest mt-4"
+                  className="w-full py-5 bg-amber text-slate-900 font-black rounded-[2rem] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-amber/20 text-sm uppercase tracking-widest mt-4"
                >
                   Aplicar Estrutura de Horários
                </button>

@@ -22,8 +22,8 @@ const statusStyles: Record<PillStatus, { color: string; bg: string; border: stri
 
 export function Pill({ label, status, colorClass, bgClass, icon, className = "" }: Props) {
   const preset = status ? statusStyles[status] : null;
-  const finalColor = colorClass ?? preset?.color ?? "text-klasse-green-700";
-  const finalBg = bgClass ?? preset?.bg ?? "bg-klasse-green-50";
+  const finalColor = colorClass ?? preset?.color ?? "text-emerald-700";
+  const finalBg = bgClass ?? preset?.bg ?? "bg-emerald-50";
   const finalBorder = preset?.border ?? "border-transparent";
 
   return (

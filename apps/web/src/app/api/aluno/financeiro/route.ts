@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     // 1. Buscar Mensalidades (Legado, para compatibilidade de UI e botões de pagar)
     const { data: mensalidades, error: mensError } = await supabase
       .from("mensalidades")
-      .select("id, ano_referencia, mes_referencia, valor_previsto, valor, data_vencimento, status, data_pagamento_efetiva")
+      .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, data_vencimento, status, data_pagamento_efetiva")
       .eq("aluno_id", alunoId)
       .eq("escola_id", ctx.escolaId)
       .gte("ano_referencia", fromAno)
@@ -138,7 +138,7 @@ export async function GET(request: Request) {
       return { 
         id: m.id, 
         competencia, 
-        valor: Number(m.valor_previsto ?? m.valor ?? 0), 
+        valor: Math.max(Number(m.valor_previsto ?? m.valor ?? 0) - Number(m.valor_pago_total ?? 0), 0),
         vencimento, 
         status, 
         pago_em: m.data_pagamento_efetiva,

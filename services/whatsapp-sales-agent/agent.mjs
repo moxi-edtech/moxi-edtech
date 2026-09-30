@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
+import { applyResponsePolicy } from "./response-policy.mjs";
+import { buildAiRuntimeConfig, buildFollowUpDelaysMs, followUpHoursFromEnv } from "./runtime-policy.mjs";
 
 const required = ["WAHA_BASE_URL", "WAHA_API_KEY", "WAHA_SESSION", "AI_API_KEY"];
 for (const name of required) {
@@ -9,20 +11,51 @@ for (const name of required) {
 const baseUrl = process.env.WAHA_BASE_URL.trim().replace(/\/$/, "");
 const apiKey = process.env.WAHA_API_KEY.trim();
 const session = process.env.WAHA_SESSION.trim();
-const aiProvider = (process.env.AI_PROVIDER || "deepseek").trim().toLowerCase();
-const aiKey = process.env.AI_API_KEY.trim();
-const aiModel = (process.env.AI_MODEL || (aiProvider === "deepseek" ? "deepseek-v4-flash" : "gemini-2.5-flash")).trim();
-const fallbackProvider = (process.env.AI_FALLBACK_PROVIDER || "gemini").trim().toLowerCase();
-const fallbackKey = (process.env.AI_FALLBACK_API_KEY || "").trim();
-const fallbackModel = (process.env.AI_FALLBACK_MODEL || "gemini-2.5-flash").trim();
+const {
+  provider: aiProvider,
+  key: aiKey,
+  model: aiModel,
+  fallbackProvider,
+  fallbackKey,
+  fallbackModel,
+} = buildAiRuntimeConfig(process.env);
 const dryRun = String(process.env.AGENT_DRY_RUN || "true").toLowerCase() !== "false";
 const pollMs = Math.max(5000, Number(process.env.POLL_MS || 15000));
-const followUpHours = Math.max(1, Number(process.env.FOLLOWUP_AFTER_HOURS || 24));
-const maxFollowUps = Math.max(0, Number(process.env.MAX_FOLLOWUPS || 2));
+const followUpHours = followUpHoursFromEnv(process.env.FOLLOWUP_AFTER_HOURS);
+const followUpDelaysMs = buildFollowUpDelaysMs(followUpHours);
+const maxFollowUps = Math.min(followUpDelaysMs.length, Math.max(0, Number(process.env.MAX_FOLLOWUPS || followUpDelaysMs.length)));
+const requestTimeoutMs = Math.max(5000, Number(process.env.REQUEST_TIMEOUT_MS || 15000));
+const gateBaseUrl = (process.env.KLASSE_GATE_BASE_URL || "https://app.klasse.ao").trim().replace(/\/$/, "");
+const gateSecret = (process.env.AGENT_GATE_SECRET || process.env.WAHA_WEBHOOK_SECRET || "").trim();
+const aiMinIntervalMs = Math.max(1000, Number(process.env.AI_MIN_INTERVAL_MS || 15000));
+const maxNewChatsPerTick = Math.max(1, Number(process.env.MAX_NEW_CHATS_PER_TICK || 1));
+const chatPageSize = Math.min(100, Math.max(25, Number(process.env.CHAT_PAGE_SIZE || 100)));
+const maxChatPages = Math.min(20, Math.max(1, Number(process.env.MAX_CHAT_PAGES || 10)));
+const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
+const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const queueEnabled = Boolean(supabaseUrl && supabaseServiceKey && String(process.env.SUPABASE_AGENT_QUEUE_ENABLED || "true").toLowerCase() !== "false");
+const queueBatchSize = Math.min(50, Math.max(1, Number(process.env.SUPABASE_AGENT_QUEUE_BATCH_SIZE || 20)));
+const workerId = (process.env.SUPABASE_AGENT_WORKER_ID || crypto.randomUUID()).trim();
+const reconciliationIntervalMs = Math.max(60000, Number(process.env.SUPABASE_AGENT_RECONCILIATION_INTERVAL_MS || 300000));
+const reconciliationChatLimit = Math.min(100, Math.max(10, Number(process.env.SUPABASE_AGENT_RECONCILIATION_CHAT_LIMIT || 50)));
+const humanTakeoverPauseMs = Math.max(60 * 60 * 1000, Number(process.env.HUMAN_TAKEOVER_PAUSE_MS || 24 * 60 * 60 * 1000));
+const businessTimeZone = "Africa/Luanda";
+// Horário operacional só pode vir da configuração da VPS.
+const businessHours = (process.env.BUSINESS_HOURS || "").trim();
+const callWindows = (process.env.CALL_WINDOWS || "10h–12h, 13h–14h, 14h–15h, 16h–17h").trim();
+const managedLabelIds = new Set(["4", "7", "10", "11", "13", "14"]);
+const unsupportedInstitutionPattern = /\bcentro\s+de\s+forma(?:ç|c)(?:a|ã)o|forma(?:ç|c)(?:a|ã)o\s+profissional|instituto\s+de\s+forma(?:ç|c)(?:a|ã)o\b/i;
+const disinterestPattern = /\b(?:não|nao)\s+(?:tenho|temos|tem|queremos?)\s+interesse|(?:não|nao)\s+precisamos?|remov(?:a|er)|parem|parar|cancelar|não contactar|nao contactar|sem interesse/i;
+const maleHandoffChatId = (process.env.HANDOFF_MALE_CHAT_ID || "").trim();
+const femaleHandoffChatId = (process.env.HANDOFF_FEMALE_CHAT_ID || "").trim();
+const testChatIds = new Set(String(process.env.TEST_CHAT_IDS || "").split(",").map((id) => id.trim()).filter(Boolean));
 const stateFile = process.env.STATE_FILE || "/data/state.json";
+const activationGeneration = process.env.AGENT_GENERATION || "new-only-2026-08-18-v2-lid-typing";
 const knowledge = await fs.readFile(new URL("./knowledge.md", import.meta.url), "utf8");
 
 let state = {};
+let lastAiRequestAt = 0;
+let lastReconciliationAt = 0;
 try { state = JSON.parse(await fs.readFile(stateFile, "utf8")); } catch { state = {}; }
 const bootstrap = String(process.env.BOOTSTRAP_STATE || "true").toLowerCase() !== "false";
 
@@ -31,78 +64,516 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const now = () => Date.now();
 const mask = (id) => String(id).replace(/(\d{3})\d+(\d{2}@)/, "$1***$2");
 
+async function persistState() {
+  const temporaryFile = stateFile + ".tmp";
+  await fs.mkdir(new URL(".", "file://" + stateFile).pathname, { recursive: true });
+  await fs.writeFile(temporaryFile, JSON.stringify(state, null, 2));
+  await fs.rename(temporaryFile, stateFile);
+}
+
+function schedulingContext() {
+  const nowDate = new Date();
+  const dateFormatter = new Intl.DateTimeFormat("pt-AO", { timeZone: businessTimeZone, dateStyle: "full", timeStyle: "short" });
+  const dayFormatter = new Intl.DateTimeFormat("en-US", { timeZone: businessTimeZone, weekday: "short" });
+  const days = [];
+  for (let offset = 1; days.length < 3 && offset <= 10; offset += 1) {
+    const date = new Date(nowDate.getTime() + offset * 86400000);
+    if (["Sat", "Sun"].includes(dayFormatter.format(date))) continue;
+    days.push(new Intl.DateTimeFormat("pt-AO", { timeZone: businessTimeZone, weekday: "long" }).format(date));
+  }
+  return businessHours
+    ? "Data/hora actual em Angola: " + dateFormatter.format(nowDate) + ". Atendimento oficial: " + businessHours + ". Intervalos autorizados para ligações: " + callWindows + ". Próximos dias úteis disponíveis: " + days.join("; ") + ". Ao responder, mostre somente o dia da semana e o intervalo autorizado, sem data numérica; nunca sugira um horário fora dos intervalos."
+    : "Não há horário oficial de atendimento configurado. Não informe horas, disponibilidade ou início/fim do expediente; encaminhe essa confirmação para um atendente.";
+}
+
+function localParts() {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: businessTimeZone, weekday: "short", hour: "2-digit", hour12: false }).formatToParts(new Date());
+  return Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+}
+
+function outsideBusinessHoursReply(hasQualificationData = false) {
+  const { weekday, hour } = localParts();
+  const weekend = weekday === "Sat" || weekday === "Sun";
+  if (weekend) return hasQualificationData
+    ? "Obrigado pelas informações. Na segunda-feira retomaremos o atendimento e daremos seguimento ao seu pedido."
+    : "Obrigado pela mensagem e um óptimo fim de semana. O nosso expediente desta semana encerrou. Para garantir um atendimento rápido na segunda-feira, envie:\n\n1. Que tipo de instituição é a sua\n2. Quantos alunos em média\n3. Localização\n4. Seu cargo e nome\n\nNa segunda-feira, assim que iniciarmos o dia, retomamos o contacto.";
+  if (Number(hour) >= 17 && hasQualificationData) return "Obrigado pelas informações. Amanhã, " + nextBusinessDayLabel() + ", retomaremos o atendimento e daremos seguimento ao seu pedido.";
+  if (Number(hour) >= 17) return "Obrigado pela mensagem. O nosso expediente de hoje encerrou. Amanhã, " + nextBusinessDayLabel() + ", retomaremos o atendimento. Para adiantar, envie:\n\n1. Que tipo de instituição é a sua\n2. Quantos alunos em média\n3. Localização\n4. Seu cargo e nome";
+  return "Obrigado pela mensagem. O atendimento será retomado no próximo período útil. Para adiantar, envie:\n\n1. Que tipo de instituição é a sua\n2. Quantos alunos em média\n3. Localização\n4. Seu cargo e nome";
+}
+
+function nonTextMediaKind(message) {
+  const type = String(message?.type || "").toLowerCase();
+  const mimetype = String(message?.mimetype || message?.media?.mimetype || "").toLowerCase();
+  if (type.includes("audio") || type === "ptt" || mimetype.startsWith("audio/")) return "áudio";
+  if (type.includes("image") || mimetype.startsWith("image/")) return "imagem";
+  if (type.includes("video") || mimetype.startsWith("video/")) return "vídeo";
+  return "ficheiro";
+}
+
+function mediaOnlyReply(message) {
+  const kind = nonTextMediaKind(message);
+  return "Recebemos o seu " + kind + ". Neste momento, o atendimento automático do KLASSE ainda não consegue analisar este formato. Por favor, escreva a sua dúvida ou descreva o que precisa para podermos ajudar.";
+}
+
+function messageTimestampMs(message) {
+  const timestamp = Number(message?.timestamp || 0);
+  return timestamp > 100000000000 ? timestamp : timestamp * 1000;
+}
+
+function outsideHoursContextualReply(reply, hasQualificationData = false) {
+  const contextual = normalizeSalesLanguage(String(reply || "").trim());
+  if (!contextual) return outsideBusinessHoursReply(hasQualificationData);
+  if (/(?:equipa|equipe|atendimento).{0,80}(?:continuidade|retomad|próximo período útil|proximo periodo util)/i.test(contextual)) return contextual;
+  return contextual + " A nossa equipa dará continuidade no próximo período útil.";
+}
+
+function isBusinessHours() {
+  if (!businessHours) return false;
+  const { weekday, hour } = localParts();
+  if (["Sat", "Sun"].includes(weekday)) return false;
+  const range = businessHours.match(/(\d{1,2})h(?:([0-5]\d))?.*?(\d{1,2})h(?:([0-5]\d))?/i);
+  if (!range) return true;
+  const start = Number(range[1]) * 60 + Number(range[2] || 0);
+  const end = Number(range[3]) * 60 + Number(range[4] || 0);
+  const currentHour = Number(hour);
+  const currentMinute = Number(new Intl.DateTimeFormat("en-US", { timeZone: businessTimeZone, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date()).find((part) => part.type === "minute")?.value || 0);
+  const current = currentHour * 60 + currentMinute;
+  return current >= start && current < end;
+}
+
+function localDateKey() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: businessTimeZone }).format(new Date());
+}
+
+function nextBusinessDayLabel() {
+  const weekday = localParts().weekday;
+  const next = { Mon: "terça-feira", Tue: "quarta-feira", Wed: "quinta-feira", Thu: "sexta-feira", Fri: "segunda-feira", Sat: "segunda-feira", Sun: "segunda-feira" };
+  return next[weekday] || "próximo dia útil";
+}
+
+function unsupportedInstitutionReply() {
+  return "Neste momento, o KLASSE é destinado exclusivamente à gestão de escolas. Não atendemos centros de formação. Agradecemos o seu contacto.";
+}
+
+function isDirectChat(chatId) {
+  return chatId.endsWith("@c.us") || chatId.endsWith("@lid");
+}
+
+function isInternalChat(chatId) {
+  return chatId === maleHandoffChatId || chatId === femaleHandoffChatId;
+}
+
+function qualificationDataProvided(messages) {
+  const text = messages.map(textOf).join("\n");
+  return /\b(?:escola|col[eé]gio|ensino|institui[cç][aã]o|privada|p[uú]blica)\b/i.test(text)
+    || /\b\d{2,5}\s*(?:alunos?|estudantes?)?\b/i.test(text)
+    || /\b(?:Luanda|Kilamba|Viana|Huambo|Benguela|localiza[cç][aã]o)\b/i.test(text)
+    || /\b(?:director|diretor|secret[aá]ri[oa]|professor|professora|gestor|respons[aá]vel)\b/i.test(text);
+}
+
+function classifyObjection(messages) {
+  const text = messages.map(textOf).join(" ").toLowerCase();
+  if (/pre[cç]o|caro|investimento|or[cç]amento|mensalidade|valor/.test(text)) return "price";
+  if (/dire[cç][aã]o|decisor|autoriza[cç][aã]o|respons[aá]vel|aprova[cç][aã]o/.test(text)) return "authority";
+  if (/pr[oó]ximo ano|mais tarde|agora n[aã]o|sem urg[eê]ncia|depois/.test(text)) return "timing";
+  if (/internet|conex[aã]o|rede|offline/.test(text)) return "internet";
+  if (/migr[aç][aã]o|trocar|sistema atual|software atual|concorrente/.test(text)) return "migration";
+  if (/confian[cç]a|receio|medo|risco|seguran[cç]a/.test(text)) return "trust";
+  if (/implementar|implementa[cç][aã]o|treinamento|forma[cç][aã]o|suporte/.test(text)) return "implementation";
+  return null;
+}
+
+function commercialContext(entry, decision, messages, labels) {
+  const previous = entry.commercialContext || {};
+  return {
+    institution: decision?.institution || previous.institution || null,
+    location: decision?.location || previous.location || null,
+    role: decision?.role || previous.role || null,
+    studentCount: decision?.studentCount ?? previous.studentCount ?? null,
+    stage: decision?.stage || previous.stage || null,
+    objection: classifyObjection(messages) || previous.objection || null,
+    nextAction: followUpStageKey(labels, decision) || previous.nextAction || null,
+    lastIntent: decision?.intent || previous.lastIntent || null,
+    lastUpdatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeSalesLanguage(reply) {
+  let normalized = String(reply || "")
+    .replace(/apresenta(?:ção|cao)|demonstra(?:ção|cao)|\bdemo\b/gi, "ligação para saber mais detalhes");
+  normalized = normalized.replace(/^\s*(?:Perfeito[!,]?|Para avançar[,]?)\s*/i, "");
+  normalized = normalized.replace(/,?\s*\d{1,2}\/\d{1,2}/g, "");
+  const times = [...normalized.matchAll(/\b\d{1,2}h(?:\d{2})?\b/g)].map((match) => match[0]);
+  if (times.length > 1 && /ligação para saber mais detalhes/i.test(normalized)) {
+    const weekday = normalized.match(/\b(segunda-feira|terça-feira|quarta-feira|quinta-feira|sexta-feira)\b/i)?.[1] || "";
+    return "Podemos marcar uma ligação para saber mais detalhes" + (weekday ? " na " + weekday : "") + " às " + times[0] + ". Esse horário funciona para si?";
+  }
+  return normalized;
+}
+
+function currentDayPeriod() {
+  const hour = Number(localParts().hour);
+  if (hour < 12) return "manhã";
+  if (hour < 18) return "tarde";
+  return "noite";
+}
+
+function confirmedCallReply(chat, latestText) {
+  const time = latestText.match(/\b(?:10|11|12|13|14|16|17)h(?:\s*\d{2})?\b/i)?.[0] || "no horário combinado";
+  const name = String(chat.name || "").trim();
+  const greeting = name ? "Perfeito, " + name + ", " : "Perfeito, ";
+  return greeting + "às " + time + " ligaremos para esclarecimentos. Obrigado e continuação de uma óptima " + currentDayPeriod() + ".";
+}
+
 async function waha(path, options = {}) {
-  const response = await fetch(baseUrl + path, { ...options, headers: { ...headers, ...(options.headers || {}) } });
+  const response = await fetch(baseUrl + path, { ...options, signal: AbortSignal.timeout(requestTimeoutMs), headers: { ...headers, ...(options.headers || {}) } });
   const body = await response.text();
   let json; try { json = JSON.parse(body); } catch { json = body; }
   if (!response.ok) throw new Error("WAHA " + response.status + ": " + (typeof json === "string" ? json : JSON.stringify(json)));
   return json;
 }
 
-async function getChats() {
-  const result = await waha("/api/" + encodeURIComponent(session) + "/chats/overview?limit=100&offset=0");
-  return Array.isArray(result) ? result : result.data || result.chats || [];
+async function supabaseRequest(path, options = {}) {
+  if (!queueEnabled) throw new Error("Supabase agent queue is not configured");
+  const response = await fetch(supabaseUrl + path, {
+    ...options,
+    signal: AbortSignal.timeout(requestTimeoutMs),
+    headers: {
+      apikey: supabaseServiceKey,
+      Authorization: "Bearer " + supabaseServiceKey,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  const body = await response.text();
+  let json; try { json = JSON.parse(body); } catch { json = body; }
+  if (!response.ok) throw new Error("Supabase " + response.status + ": " + (typeof json === "string" ? json : JSON.stringify(json)));
+  return json;
 }
 
-async function getMessages(chatId) {
-  const result = await waha("/api/" + encodeURIComponent(session) + "/chats/" + encodeURIComponent(chatId) + "/messages?limit=30");
-  return Array.isArray(result) ? result : result.data || result.messages || [];
+async function claimInboxEvents() {
+  return supabaseRequest("/rest/v1/rpc/claim_whatsapp_agent_inbox", {
+    method: "POST",
+    body: JSON.stringify({ p_session_name: session, p_limit: queueBatchSize, p_worker_id: workerId }),
+  });
 }
 
-async function callAi(provider, key, model, prompt) {
-  if (!key) throw new Error("Chave do provedor de IA ausente");
+async function updateInboxEvent(id, update) {
+  await supabaseRequest("/rest/v1/whatsapp_agent_inbox_events?id=eq." + encodeURIComponent(id), {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(update),
+  });
+}
 
-  if (provider === "deepseek") {
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.25,
-        max_tokens: 700,
-        response_format: { type: "json_object" },
-      }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error((payload.error && payload.error.message) || "DeepSeek " + response.status);
-    return String(payload.choices?.[0]?.message?.content || "").trim();
+async function humanGate(chatId) {
+  const gateChatId = await resolveCanonicalChatId(chatId);
+  if (testChatIds.has(chatId) || testChatIds.has(gateChatId)) {
+    console.log("[HUMAN_GATE_TEST] " + mask(chatId));
+    return true;
   }
+  const phone = gateChatId.split("@")[0].replace(/\D/g, "");
+  const isLid = gateChatId.endsWith("@lid");
+  const identity = isLid ? gateChatId : phone;
+  if (!identity || !gateSecret) {
+    console.error("[HUMAN_GATE_BLOCKED] gate secret or phone is missing");
+    return false;
+  }
+  const payload = session + "\n" + identity;
+  const signature = crypto.createHmac("sha256", gateSecret).update(payload).digest("hex");
+  const endpoint = gateBaseUrl + "/api/jobs/waha-agent/eligibility?session=" + encodeURIComponent(session) + (isLid ? "&chatId=" + encodeURIComponent(gateChatId) : "&phone=" + encodeURIComponent(phone));
+  try {
+    const response = await fetch(endpoint, {
+      signal: AbortSignal.timeout(requestTimeoutMs),
+      headers: { "X-Agent-Signature": signature, Accept: "application/json" },
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => null);
+    const eligible = response.ok && result?.ok === true && result?.eligible === true;
+    if (!eligible) console.log("[HUMAN_GATE_SKIP] " + mask(chatId) + " reason=" + String(result?.reason || "gate_error"));
+    return eligible;
+  } catch (error) {
+    console.error("[HUMAN_GATE_ERROR] " + mask(chatId) + " " + (error instanceof Error ? error.message : String(error)));
+    return false;
+  }
+}
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), {
+async function getChats() {
+  const chats = [];
+  const seen = new Set();
+  for (let page = 0; page < maxChatPages; page += 1) {
+    const offset = page * chatPageSize;
+    const result = await waha("/api/" + encodeURIComponent(session) + "/chats/overview?limit=" + chatPageSize + "&offset=" + offset);
+    const batch = Array.isArray(result) ? result : result.data || result.chats || [];
+    for (const chat of batch) {
+      const chatId = String(chat?.id || "");
+      if (chatId && !seen.has(chatId)) {
+        seen.add(chatId);
+        chats.push(chat);
+      }
+    }
+    if (batch.length < chatPageSize) break;
+  }
+  if (chats.length >= chatPageSize * maxChatPages) {
+    console.warn("[CHAT_PAGINATION_LIMIT] pages=" + maxChatPages + " chats=" + chats.length);
+  }
+  return chats;
+}
+
+async function getMessages(chatId, fallbackMessageId = "") {
+  const result = await waha("/api/" + encodeURIComponent(session) + "/chats/" + encodeURIComponent(chatId) + "/messages?limit=100");
+  const rawMessages = Array.isArray(result) ? result : result.data || result.messages || [];
+  const messages = rawMessages.map((message) => ({ ...message, id: messageIdOf(message) }));
+  if (messages.some((message) => !message.fromMe && textOf(message)) || !fallbackMessageId || !queueEnabled) return messages;
+  try {
+    const stored = await supabaseRequest("/rest/v1/communication_messages?id=eq." + encodeURIComponent(fallbackMessageId) + "&select=id,body,received_at,direction");
+    const message = Array.isArray(stored) ? stored[0] : null;
+    if (message?.body && message.direction === "inbound") {
+      return [...messages, { id: message.id, fromMe: false, body: message.body, timestamp: Math.floor(new Date(message.received_at).getTime() / 1000) }];
+    }
+  } catch (error) {
+    console.error("[QUEUE_MESSAGE_FALLBACK_ERROR] " + (error instanceof Error ? error.message : String(error)));
+  }
+  return messages;
+}
+
+async function getChatLabels(chatId) {
+  try {
+    const result = await waha("/api/" + encodeURIComponent(session) + "/labels/chats/" + encodeURIComponent(chatId));
+    return Array.isArray(result) ? result : result.labels || [];
+  } catch (error) {
+    console.error("[LABELS_READ_ERROR] " + mask(chatId) + " " + (error instanceof Error ? error.message : String(error)));
+    return [];
+  }
+}
+
+function labelContext(labels) {
+  return (Array.isArray(labels) ? labels : [])
+    .map((label) => String(label?.name || label?.id || "").trim())
+    .filter(Boolean)
+    .join(", ") || "nenhuma label atribuída";
+}
+
+function hasInsufficientStructureLabel(labels) {
+  return (Array.isArray(labels) ? labels : []).some((label) => {
+    const name = String(label?.name || "").toLowerCase();
+    return String(label?.id) === "9" || /(?:não|nao) tem estrutura|sem estrutura|estrutura inadequada/.test(name);
+  });
+}
+
+function followUpStageKey(labels, decision = null) {
+  const values = (Array.isArray(labels) ? labels : []).map((label) => (String(label?.id || "") + " " + String(label?.name || "")).toLowerCase());
+  if (values.some((value) => /(?:^|\s)8\s|demonstra|apresenta/.test(value))) return "demonstracao";
+  if (values.some((value) => /(?:^|\s)11\s|reuni[aã]o|dia da reuni/.test(value))) return "reuniao";
+  if (values.some((value) => /(?:^|\s)4\s|por ligar|liga[cç][aã]o/.test(value))) return "ligacao";
+  const reply = String(decision?.reply || "").toLowerCase();
+  if (/liga[cç][aã]o para saber mais detalhes|marcar|pr[oó]ximo passo/.test(reply)) return "ligacao";
+  return null;
+}
+
+function nextFollowUpAt(followUpNumber) {
+  const delay = followUpDelaysMs[followUpNumber];
+  return delay ? now() + delay : null;
+}
+
+function followUpInstruction(followUpNumber) {
+  const firstDelayHours = Math.round(followUpDelaysMs[0] / (60 * 60 * 1000));
+  const secondDelayHours = Math.round(followUpDelaysMs[1] / (60 * 60 * 1000));
+  const thirdDelayHours = Math.round(followUpDelaysMs[2] / (60 * 60 * 1000));
+  const instructions = [
+    `Primeiro follow-up (após ${firstDelayHours} horas): retome apenas o passo pendente, de forma curta, sem assumir que o lead confirmou algo.`,
+    `Segundo follow-up (após ${secondDelayHours} horas): faça uma única pergunta objetiva sobre o passo pendente; não repita a apresentação.`,
+    `Terceiro follow-up (após ${thirdDelayHours} horas): relembre o contexto em uma frase e ofereça continuidade sem pressionar.`,
+    "Follow-up de reativação (7 dias): reconheça que pode ter havido correria e pergunte se ainda faz sentido continuar.",
+    "Follow-up de reativação (30 dias): reabra o assunto apenas se houver histórico de interesse; não invente novidade.",
+    "Follow-up de reativação (60 dias): faça uma última tentativa contextual e respeitosa.",
+    "Follow-up final (90 dias): encerre o ciclo e ofereça contacto futuro apenas se houver interesse.",
+  ];
+  return instructions[followUpNumber] || "Não há mais follow-ups autorizados para este ciclo.";
+}
+
+async function resolveCanonicalChatId(chatId) {
+  const value = String(chatId || "").trim();
+  if (!value.endsWith("@lid")) return value;
+  try {
+    const contact = await waha("/api/" + encodeURIComponent(session) + "/contacts/" + encodeURIComponent(value));
+    const canonicalId = String(contact?.id || "").trim();
+    return canonicalId.endsWith("@c.us") ? canonicalId : value;
+  } catch (error) {
+    console.error("[CONTACT_RESOLVE_ERROR] " + mask(value) + " " + (error instanceof Error ? error.message : String(error)));
+    return value;
+  }
+}
+
+async function setPresence(chatId, presence) {
+  if (dryRun) return;
+  await waha("/api/" + encodeURIComponent(session) + "/presence", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.25, maxOutputTokens: 700, responseMimeType: "application/json" } }),
+    body: JSON.stringify({ chatId, presence }),
   });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error((payload.error && payload.error.message) || "Gemini " + response.status);
-  return String(payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "").trim();
+}
+
+async function updateLeadLabels(chatId, messages, decision) {
+  const existing = await waha("/api/" + encodeURIComponent(session) + "/labels/chats/" + encodeURIComponent(chatId));
+  const preserved = (Array.isArray(existing) ? existing : []).filter((label) => !managedLabelIds.has(String(label.id))).map((label) => ({ id: String(label.id) }));
+  const text = messages.map(textOf).join("\n");
+  const mentionedCounts = [...text.matchAll(/\b(\d{2,5})\s*(?:alunos|alunas|estudantes)\b/gi)].map((match) => Number(match[1]));
+  const studentCount = Math.max(Number(decision.studentCount) || 0, ...mentionedCounts, 0);
+  const intent = String(decision.intent || "").toLowerCase();
+  const stage = String(decision.stage || "").toLowerCase();
+  const stageLabel = decision.handoff || /ligar|chamada|contact/.test(stage + " " + intent) ? "4" : /reun|agend|demonstr|hor[aá]rio/.test(stage + " " + intent) ? "11" : "7";
+  const labels = [{ id: stageLabel }, { id: decision.handoff ? "13" : "14" }];
+  if (studentCount >= 400) labels.push({ id: "10" });
+  await waha("/api/" + encodeURIComponent(session) + "/labels/chats/" + encodeURIComponent(chatId), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ labels: [...preserved, ...labels] }),
+  });
+  console.log("[LABELS] " + mask(chatId) + " stage=" + stageLabel + " students=" + studentCount);
+}
+
+async function notifyHandoff(chat, messages, decision) {
+  if (testChatIds.has(String(chat.id || ""))) {
+    console.log("[HANDOFF_TEST_ONLY] " + mask(chat.id));
+    return true;
+  }
+  const recipient = decision.contactGender === "male" ? maleHandoffChatId : decision.contactGender === "female" ? femaleHandoffChatId : "";
+  if (!recipient) {
+    console.log("[HANDOFF_NO_ROUTE] " + mask(chat.id) + " gender=" + String(decision.contactGender || "unknown"));
+    return false;
+  }
+  const latest = latestInbound(messages);
+  const text = [
+    "NOVO REPASSE COMERCIAL",
+    "Lead: " + (chat.name || "Sem nome"),
+    "Instituição: " + (decision.institution || "não identificada"),
+    "Alunos: " + (decision.studentCount || "não informado"),
+    "Localização: " + (decision.location || "não informada"),
+    "Cargo: " + (decision.role || "não informado"),
+    "Última mensagem: " + textOf(latest),
+  ].join("\n");
+  await waha("/api/sendText", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session, chatId: recipient, text, id: "klasse-handoff-" + crypto.randomUUID(), linkPreview: false }),
+  });
+  console.log("[HANDOFF_SENT] " + mask(chat.id) + " gender=" + decision.contactGender);
+  return true;
 }
 
 function textOf(message) {
   return String(message && (message.body || (message.text && message.text.body) || message.caption) || "").trim();
 }
 
+function messageIdOf(message) {
+  const candidates = [message?.id, message?._data?.id, message?.key];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    if (!candidate || typeof candidate !== "object") continue;
+    const value = candidate._serialized || candidate.serialized || candidate.id;
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
 function conversationText(messages) {
-  return messages.filter((message) => textOf(message)).slice(-16)
+  return messages.filter((message) => textOf(message)).sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)).slice(-40)
     .map((message) => (message.fromMe ? "KLASSE" : "LEAD") + ": " + textOf(message)).join("\n");
 }
 
-async function generateDecision(chat, messages, followUp) {
+function latestInbound(messages) {
+  return messages.filter((message) => !message.fromMe && textOf(message))
+    .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
+}
+
+function latestInboundMessage(messages) {
+  return messages.filter((message) => !message.fromMe)
+    .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
+}
+
+function replyTarget(chatId, inbound) {
+  const inboundFrom = String(inbound?.from || "").trim();
+  if (inboundFrom.endsWith("@lid")) {
+    if (inboundFrom !== chatId) console.log("[REPLY_TARGET_LID] " + mask(chatId) + " -> " + mask(inboundFrom));
+    return inboundFrom;
+  }
+  return chatId;
+}
+
+function latestOutbound(messages) {
+  return messages.filter((message) => message.fromMe && textOf(message))
+    .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
+}
+
+async function callAi(provider, key, model, prompt) {
+  if (!key) throw new Error("Chave do provedor de IA ausente");
+  if (provider === "deepseek") {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      signal: AbortSignal.timeout(requestTimeoutMs),
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], temperature: 0.2, max_tokens: 240, response_format: { type: "json_object" } }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error((payload.error && (payload.error.message || payload.error)) || "DeepSeek " + response.status);
+    return String(payload.choices?.[0]?.message?.content || "").trim();
+  }
+  if (provider !== "gemini") throw new Error("Provedor de IA não suportado: " + provider);
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), {
+    method: "POST",
+    signal: AbortSignal.timeout(requestTimeoutMs),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 240, responseMimeType: "application/json" } }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error((payload.error && (payload.error.message || payload.error)) || "Gemini " + response.status);
+  return String(payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "").trim();
+}
+
+async function generateDecision(chat, messages, followUp, context = {}) {
+  const waitMs = lastAiRequestAt + aiMinIntervalMs - now();
+  if (waitMs > 0) await sleep(waitMs);
+  lastAiRequestAt = now();
   const prompt = [
     "Você é o agente comercial autónomo do KLASSE no WhatsApp.",
-    "Responda somente em JSON válido, sem markdown, com as chaves reply, intent, handoff, optOut e followUpHours.",
-    "Use português natural de Angola e seja breve, respondendo a pergunta antes de pedir dados.",
+    "Responda somente em JSON válido, sem markdown, com as chaves reply, intent, handoff, optOut, followUpHours, studentCount, stage, contactGender, institution, location e role.",
+    "Use português claro, cordial e profissional de Angola. Seja humano e natural, mas não informal: não use gírias, emojis ou excesso de intimidade. Responda primeiro à última mensagem, sem enrolação.",
+    "Escreva reply como 2 a 4 blocos curtos separados por uma linha em branco. Cada bloco deve conter uma única ideia: primeiro a resposta directa, depois apenas o contexto necessário e, por último, uma única próxima acção concreta.",
+    "Não use frases de enchimento como 'se quiser' em todas as respostas. Não repita a mesma conclusão, promessa de continuidade ou chamada para acção já enviada.",
+    "Responda no idioma predominante da última mensagem do lead; se o lead escrever em inglês, responda em inglês. Não traduza nem repita o formulário sem necessidade.",
+    "Nunca peça desculpa sem necessidade, nunca repita o histórico e nunca explique o processo. Toda resposta deve terminar com uma única próxima ação concreta: pedir o próximo dado, confirmar um horário específico, sugerir um único horário ou informar que o atendente assumirá. Ao marcar ligação, sugira sempre um único horário concreto entre 10h e 17h; nunca liste dois horários nem uma faixa de horários na mesma mensagem.",
+    "Faça uma pergunta por vez. Adapte a formalidade ao contacto, mantendo sempre o padrão institucional do KLASSE. Não force a venda: responda ao que foi perguntado e conduza naturalmente para o próximo passo.",
+    "Quando não souber ou a questão exigir intervenção humana, não invente: informe que um atendente dará continuidade.",
+    "Na primeira qualificação, envie exactamente este bloco, com uma linha por item e sem texto antes ou depois:\n1. Que tipo de instituição é a sua\n2. Quantos alunos em média\n3. Localização\n4. Seu cargo e nome\nDepois disso, faça apenas uma pergunta por mensagem.",
+    "Reconheça dados já enviados, mesmo quando vierem numa frase única. Não peça o nome da instituição separadamente; se o lead informar um nome como Escola do Futuro, guarde-o. Nunca repita uma pergunta já respondida e peça somente o dado que falta.",
+    "Fluxo obrigatório: com os quatro dados completos, avance imediatamente para marcar uma ligação para saber mais detalhes. Se os dados estiverem incompletos, peça somente o que falta uma vez. Se esta for a segunda tentativa e ainda faltar dado, diga 'Perfeito' e sugira a ligação; não faça uma terceira recolha de dados.",
+    "Se o lead responder com um horário depois de uma proposta de ligação, confirme de forma curta: 'Perfeito, [nome], às [horário] ligaremos para esclarecimentos. Obrigado e continuação de uma óptima [manhã/tarde/noite].'",
+    "Não repita cumprimentos, contexto ou informações já respondidas; avance diretamente para o próximo passo comercial.",
     "Nunca invente preços, descontos, funcionalidades ou disponibilidade.",
-    "Se perguntarem preço, diga que um consultor apresentará o plano adequado após conhecer a instituição.",
-    "Peça no máximo duas informações por mensagem.",
+    "Se perguntarem preço, não informe valores pelo WhatsApp nem invente preços; diga que um consultor poderá informar o preço durante uma ligação.",
+    "Depois dos quatro dados iniciais, peça apenas uma informação por mensagem, somente quando necessária para avançar.",
+    "Quando já souber instituição, alunos, localização e cargo, proponha imediatamente uma ligação para saber mais detalhes, com data e horário concretos. Nunca use apresentação, demonstração, demo ou reunião como nome do próximo passo.",
+    "Não pergunte a dor no WhatsApp. A descoberta da dor será feita pelo atendente durante a ligação.",
+    schedulingContext(),
     "handoff=true para reclamação, contrato, negociação, preço final, pedido de humano ou dúvida fora da base.",
     "optOut=true se o lead pedir para parar, remover ou não contactar.",
     "Para follow-up, não pressione: reconheça o contexto e faça uma pergunta simples.",
-    "followUpHours deve ser 0 se não for necessário acompanhamento, ou entre 24 e 72 se for.",
+    context.outsideBusinessHours ? "Está fora do horário de atendimento. Responda ao assunto específico da última mensagem com o contexto disponível, sem negociar, marcar horários ou prometer execução imediata; acrescente apenas que a equipa dará continuidade no próximo período útil." : "",
+    "followUpHours é apenas informativo e não agenda mensagens. A cadência é controlada pelo agente e pode ser interrompida a qualquer momento. studentCount deve ser um número ou null. stage deve ser um de: por_acompanhar, por_ligar, reuniao, importante. contactGender só pode ser male ou female quando o nome indicar claramente; caso contrário, unknown.",
     knowledge,
     "Nome do contacto: " + (chat.name || "não informado"),
     "É follow-up: " + (followUp ? "sim" : "não"),
+    "Perguntas anteriores sobre dados de qualificação: " + Number(context.qualificationAttempts || 0),
+    "Número deste follow-up: " + (Number(context.followUpNumber || 0) + 1),
+    followUpInstruction(Number(context.followUpNumber || 0)),
+    "Labels atuais do contacto: " + labelContext(context.labels),
+    "Contexto comercial persistido: " + JSON.stringify(context.commercialContext || {}),
+    "Use o contexto persistido como memória operacional, mas corrija-o se a conversa mais recente trouxer informação nova ou contraditória.",
+    "As labels são contexto operacional obrigatório. Se houver uma label indicando falta de estrutura, não ofereça demonstração, reunião ou follow-up comercial; não contradiga essa decisão da equipa.",
+    "Se houver label de reunião/demonstração e o lead não tiver respondido, trate isto como follow-up pendente: não finja que o lead confirmou ou respondeu; faça referência ao próximo passo pendente.",
     "Conversa:", conversationText(messages),
   ].join("\n\n");
 
@@ -114,85 +585,368 @@ async function generateDecision(chat, messages, followUp) {
     raw = await callAi(fallbackProvider, fallbackKey, fallbackModel, prompt);
     console.warn("[AI_FALLBACK] provider=" + fallbackProvider);
   }
-  if (!raw) throw new Error("Gemini não retornou uma decisão");
+  if (!raw) throw new Error("O provedor de IA não retornou uma decisão");
   const decision = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, ""));
   if (!decision.reply || decision.optOut) return { ...decision, reply: null };
-  return decision;
+  return applyResponsePolicy(decision, { businessHours, callWindows });
 }
 
-async function send(chatId, text) {
-  if (dryRun) { console.log("[DRY_RUN] " + mask(chatId) + " <- " + text); return "dry-" + crypto.randomUUID(); }
-  const result = await waha("/api/sendText", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session, chatId, text, id: "klasse-sales-" + crypto.randomUUID(), linkPreview: false }),
-  });
-  return result.id || result.messageId || "sent";
-}
-
-async function processChat(chat) {
-  const chatId = String(chat.id || "");
-  if (!chatId.endsWith("@c.us") || chatId === "status@broadcast") return;
-  const messages = await getMessages(chatId);
-  const lastInbound = messages.filter((message) => !message.fromMe && textOf(message)).at(-1);
-  if (!lastInbound || !lastInbound.id) return;
-  const entry = state[chatId] || { followUps: 0 };
-  if (entry.lastInboundId === lastInbound.id) return;
-  const decision = await generateDecision(chat, messages, false);
-  entry.lastInboundId = lastInbound.id;
-  entry.updatedAt = now();
-  entry.followUps = 0;
-  if (decision.reply) {
-    await send(chatId, decision.reply);
-    entry.lastOutboundAt = now();
-    entry.nextFollowUpAt = decision.followUpHours ? now() + decision.followUpHours * 3600000 : null;
-    console.log("[REPLY] " + mask(chatId) + " intent=" + decision.intent + " handoff=" + Boolean(decision.handoff));
+function splitReplyBlocks(value, maxChars = 220) {
+  const normalized = String(value || "").replace(/[ \t]+\n/g, "\n").trim();
+  if (!normalized) return [];
+  const blocks = [];
+  for (const paragraph of normalized.split(/\n{2,}/)) {
+    if (paragraph.length <= maxChars) {
+      blocks.push(paragraph.trim());
+      continue;
+    }
+    const sentences = paragraph.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [paragraph];
+    let current = "";
+    for (const sentence of sentences.map((part) => part.trim()).filter(Boolean)) {
+      if (current && (current.length + sentence.length + 1 > maxChars)) {
+        blocks.push(current);
+        current = "";
+      }
+      if (sentence.length <= maxChars) {
+        current = current ? current + " " + sentence : sentence;
+        continue;
+      }
+      for (const word of sentence.split(/\s+/)) {
+        if (current && (current.length + word.length + 1 > maxChars)) {
+          blocks.push(current);
+          current = "";
+        }
+        current = current ? current + " " + word : word;
+      }
+    }
+    if (current) blocks.push(current);
   }
-  state[chatId] = entry;
+  return blocks.filter(Boolean);
+}
+
+async function send(chatId, text, idempotencyKey = "") {
+  const blocks = splitReplyBlocks(text);
+  if (!blocks.length) return "sent";
+  if (dryRun) { console.log("[DRY_RUN_BLOCKS] " + mask(chatId) + " count=" + blocks.length); return "dry-" + crypto.randomUUID(); }
+  const baseKey = idempotencyKey || crypto.randomUUID();
+  let lastMessageId = "sent";
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index];
+    const stableId = "klasse-sales-" + crypto.createHash("sha256").update(baseKey + ":block:" + index).digest("hex").slice(0, 32);
+    try {
+      await setPresence(chatId, "typing");
+      await sleep(Math.min(2500, Math.max(900, block.length * 18)));
+      const result = await waha("/api/sendText", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session, chatId, text: block, id: stableId, linkPreview: false }),
+      });
+      lastMessageId = messageIdOf(result) || String(result.messageId || "").trim() || lastMessageId;
+    } finally {
+      try { await setPresence(chatId, "paused"); } catch (error) { console.error("[PRESENCE_ERROR] " + mask(chatId) + " " + error.message); }
+    }
+  }
+  if (blocks.length > 1) console.log("[REPLY_BLOCKS] " + mask(chatId) + " count=" + blocks.length + " maxChars=220");
+  return lastMessageId;
+}
+
+async function processChat(chat, options = {}) {
+  const chatId = String(chat.id || "");
+  if (!isDirectChat(chatId) || chatId === "status@broadcast" || isInternalChat(chatId)) {
+    if (isInternalChat(chatId)) console.log("[SKIP_INTERNAL_CHAT] " + mask(chatId));
+    return false;
+  }
+  if (!options.gateAlreadyChecked && !(await humanGate(chatId))) return false;
+  const messages = await getMessages(chatId, options.queueEvent?.communication_message_id || "");
+  const latestInboundAny = latestInboundMessage(messages);
+  if (!latestInboundAny || !latestInboundAny.id) return false;
+  const labels = await getChatLabels(chatId);
+  if (hasInsufficientStructureLabel(labels)) {
+    console.log("[SKIP_INSUFFICIENT_STRUCTURE] " + mask(chatId));
+    return false;
+  }
+  const lastInbound = latestInbound(messages);
+  // Trabalhar numa cópia impede que uma falha de envio contamine o estado em memória.
+  // A mensagem só é confirmada em state depois de uma ação concluída.
+  const stateKey = await resolveCanonicalChatId(chatId);
+  const entry = { ...(state[stateKey] || state[chatId] || { followUps: 0 }) };
+  if (!lastInbound || !lastInbound.id) {
+    const alreadyNotified = entry.nonTextNoticeForInboundId === latestInboundAny.id;
+    const recentInbound = now() - messageTimestampMs(latestInboundAny) <= 30 * 60 * 1000;
+    if (alreadyNotified || !recentInbound) return false;
+    const mediaReplyTarget = stateKey.endsWith("@c.us") ? stateKey : replyTarget(chatId, latestInboundAny);
+    entry.lastAgentOutboundId = await send(mediaReplyTarget, mediaOnlyReply(latestInboundAny), latestInboundAny.id);
+    entry.nonTextNoticeForInboundId = latestInboundAny.id;
+    entry.nonTextNoticeAt = now();
+    entry.lastInboundId = latestInboundAny.id;
+    entry.lastOutboundAt = now();
+    state[stateKey] = entry;
+    console.log("[MEDIA_ONLY_GUIDANCE] " + mask(chatId));
+    return true;
+  }
+  // WAHA/WEBJS pode emitir eventos de mídia sem texto imediatamente depois
+  // de uma mensagem textual. Ignoramos a mídia isolada, mas não descartamos
+  // um texto novo só porque o último evento bruto não tem body.
+  if (latestInboundAny && !textOf(latestInboundAny) && entry.lastInboundId === lastInbound.id) {
+    console.log("[SKIP_NON_TEXT_INBOUND] " + mask(chatId));
+    return false;
+  }
+  if (chat.name && !entry.leadName) entry.leadName = String(chat.name).trim();
+  if (entry.optOut) {
+    console.log("[SKIP_OPTOUT] " + mask(chatId));
+    return false;
+  }
+  if (disinterestPattern.test(textOf(lastInbound))) {
+    entry.nextFollowUpAt = null;
+    entry.followUpStageKey = null;
+    entry.lastInboundId = lastInbound.id;
+    entry.optOut = true;
+    state[stateKey] = entry;
+    console.log("[STOP_DISINTEREST] " + mask(chatId));
+    return false;
+  }
+  const deferredInbound = entry.deferredInboundId === lastInbound.id;
+  const replyChatId = stateKey.endsWith("@c.us") ? stateKey : replyTarget(chatId, lastInbound);
+  const lastOutbound = latestOutbound(messages);
+  const lastOutboundAt = messageTimestampMs(lastOutbound);
+  const manualTakeover = Boolean(
+    lastOutbound?.id &&
+    entry.lastAgentOutboundId &&
+    lastOutbound.id !== entry.lastAgentOutboundId &&
+    lastOutboundAt > Number(entry.lastOutboundAt || 0) + 1000
+  );
+  if (manualTakeover) {
+    entry.handoff = true;
+    entry.handoffNotified = true;
+    entry.humanTakeoverUntil = now() + humanTakeoverPauseMs;
+    entry.lastInboundId = lastInbound.id;
+    entry.nextFollowUpAt = null;
+    state[stateKey] = entry;
+    console.log("[HUMAN_TAKEOVER_DETECTED] " + mask(chatId));
+    return false;
+  }
+  if (Number(entry.humanTakeoverUntil || 0) > now()) {
+    console.log("[HUMAN_TAKEOVER_PAUSED] " + mask(chatId));
+    return false;
+  }
+  if (entry.humanTakeoverUntil) {
+    entry.humanTakeoverUntil = null;
+    entry.handoff = false;
+    entry.handoffNotified = false;
+  }
+  const outboundAfterInbound = lastOutbound && Number(lastOutbound.timestamp || 0) >= Number(lastInbound.timestamp || 0);
+  const noActionConfirmed = entry.noActionForInboundId === lastInbound.id;
+  if (outboundAfterInbound && entry.lastInboundId !== lastInbound.id) {
+    entry.lastInboundId = lastInbound.id;
+    entry.nextFollowUpAt = null;
+    state[stateKey] = entry;
+    console.log("[SKIP_ALREADY_REPLIED] " + mask(chatId));
+    return false;
+  }
+  const inboundAcknowledged = entry.lastInboundId === lastInbound.id && (Boolean(outboundAfterInbound) || noActionConfirmed || entry.handoffNotified === true);
+  if (inboundAcknowledged && !(deferredInbound && isBusinessHours())) return false;
+  if (entry.handoff && entry.handoffNotified === true) {
+    console.log("[HANDOFF_WAITING] " + mask(chatId));
+    return false;
+  }
+  if (entry.unsupportedInstitution) return false;
+  const testConversation = testChatIds.has(chatId) || testChatIds.has(stateKey);
+  const latestText = textOf(lastInbound);
+  if (entry.callProposed && /\b(?:10|11|13|14|16|17)h(?:\s*\d{2})?\b/i.test(latestText)) {
+    entry.lastAgentOutboundId = await send(replyChatId, confirmedCallReply(chat, latestText), lastInbound.id);
+    entry.lastInboundId = lastInbound.id;
+    entry.handoff = !testConversation;
+    entry.handoffNotified = false;
+    entry.callProposed = false;
+    entry.lastOutboundAt = now();
+    state[stateKey] = entry;
+    console.log("[CALL_CONFIRMED] " + mask(chatId));
+    return true;
+  }
+  if (unsupportedInstitutionPattern.test(textOf(lastInbound))) {
+    entry.lastAgentOutboundId = await send(replyChatId, unsupportedInstitutionReply(), lastInbound.id);
+    entry.unsupportedInstitution = true;
+    entry.lastInboundId = lastInbound.id;
+    entry.lastOutboundAt = now();
+    state[stateKey] = entry;
+    try { await updateLeadLabels(chatId, messages, { intent: "", stage: "por_acompanhar", studentCount: null }); }
+    catch (error) { console.error("[LABEL_ERROR] " + mask(chatId) + " " + error.message); }
+    console.log("[UNSUPPORTED_INSTITUTION] " + mask(chatId));
+    return true;
+  }
+  if (!isBusinessHours() && !testConversation) {
+    entry.deferredInboundId = lastInbound.id;
+    entry.lastInboundId = lastInbound.id;
+    state[stateKey] = entry;
+    console.log("[OUTSIDE_HOURS_DEFERRED] " + mask(chatId));
+    return false;
+  }
+  if (deferredInbound) entry.deferredInboundId = null;
+  const decision = await generateDecision(chat, messages, false, { ...entry, labels });
+  entry.updatedAt = now();
+  entry.commercialContext = commercialContext(entry, decision, messages, labels);
+  entry.followUps = 0;
+  entry.followUpStageKey = null;
+  entry.nextFollowUpAt = null;
+  entry.handoff = testConversation ? false : Boolean(decision.handoff);
+  entry.noActionForInboundId = null;
+  if (decision.reply) {
+    decision.reply = normalizeSalesLanguage(decision.reply);
+    entry.lastAgentOutboundId = await send(replyChatId, decision.reply, lastInbound.id);
+    entry.lastOutboundAt = now();
+    entry.followUpStageKey = !entry.handoff ? followUpStageKey(labels, decision) : null;
+    entry.nextFollowUpAt = entry.followUpStageKey ? nextFollowUpAt(0) : null;
+    console.log("[REPLY] " + mask(chatId) + " intent=" + decision.intent + " handoff=" + Boolean(decision.handoff));
+    if (/\b(?:tipo|alunos|localiza(?:ção|cao)|cargo|nome)\b/i.test(decision.reply)) entry.qualificationAttempts = Number(entry.qualificationAttempts || 0) + 1;
+    entry.callProposed = /ligação para saber mais detalhes/i.test(decision.reply);
+  }
+  if (entry.handoff && !entry.handoffNotified) {
+    try { entry.handoffNotified = await notifyHandoff(chat, messages, decision); }
+    catch (error) { console.error("[HANDOFF_ERROR] " + mask(chatId) + " " + error.message); }
+    if (!entry.handoffNotified) throw new Error("Handoff não confirmado; a mensagem ficará pendente para nova tentativa.");
+  }
+  try { await updateLeadLabels(chatId, messages, decision); }
+  catch (error) { console.error("[LABEL_ERROR] " + mask(chatId) + " " + error.message); }
+  if (!decision.reply && !entry.handoff) entry.noActionForInboundId = lastInbound.id;
+  entry.lastInboundId = lastInbound.id;
+  state[stateKey] = entry;
+  return true;
 }
 
 async function processFollowUp(chat) {
   const chatId = String(chat.id || "");
-  const entry = state[chatId];
-  if (!entry || !entry.nextFollowUpAt || entry.followUps >= maxFollowUps || entry.nextFollowUpAt > now()) return;
+  if (isInternalChat(chatId)) return;
+  if (!(await humanGate(chatId))) return;
+  const stateKey = await resolveCanonicalChatId(chatId);
+  const entry = state[stateKey] || state[chatId];
+  if (!entry || entry.optOut || !entry.nextFollowUpAt || entry.followUps >= maxFollowUps || entry.nextFollowUpAt > now()) return;
   const messages = await getMessages(chatId);
-  const decision = await generateDecision(chat, messages, true);
-  entry.followUps += 1;
+  const latestInboundAny = latestInboundMessage(messages);
+  if (latestInboundAny && !textOf(latestInboundAny)) return;
+  const lastInbound = latestInbound(messages);
+  if (!lastInbound || lastInbound.id !== entry.lastInboundId || entry.handoff || entry.unsupportedInstitution) {
+    entry.nextFollowUpAt = null;
+    return;
+  }
+  const labels = await getChatLabels(chatId);
+  if (hasInsufficientStructureLabel(labels)) {
+    entry.nextFollowUpAt = null;
+    console.log("[SKIP_FOLLOW_UP_INSUFFICIENT_STRUCTURE] " + mask(chatId));
+    return;
+  }
+  if (!isBusinessHours()) return;
+  const currentStageKey = followUpStageKey(labels);
+  if (!entry.followUpStageKey || currentStageKey !== entry.followUpStageKey) {
+    entry.nextFollowUpAt = null;
+    console.log("[SKIP_FOLLOW_UP_NO_PENDING_STAGE] " + mask(chatId));
+    return;
+  }
+  if (disinterestPattern.test(textOf(lastInbound))) {
+    entry.nextFollowUpAt = null;
+    entry.optOut = true;
+    console.log("[STOP_FOLLOW_UP_DISINTEREST] " + mask(chatId));
+    return;
+  }
+  const replyChatId = stateKey.endsWith("@c.us") ? stateKey : replyTarget(chatId, lastInbound);
+  const followUpNumber = entry.followUps;
+  const decision = await generateDecision(chat, messages, true, { ...entry, labels, followUpNumber });
+  entry.commercialContext = commercialContext(entry, decision, messages, labels);
   entry.nextFollowUpAt = null;
   if (decision.reply) {
-    await send(chatId, decision.reply);
+    decision.reply = normalizeSalesLanguage(decision.reply);
+    entry.lastAgentOutboundId = await send(replyChatId, decision.reply, lastInbound.id);
+    entry.followUps = followUpNumber + 1;
     entry.lastOutboundAt = now();
-    entry.nextFollowUpAt = decision.followUpHours ? now() + decision.followUpHours * 3600000 : null;
-    console.log("[FOLLOW_UP] " + mask(chatId) + " number=" + entry.followUps);
+    entry.nextFollowUpAt = nextFollowUpAt(entry.followUps);
+    console.log("[FOLLOW_UP] " + mask(chatId) + " number=" + entry.followUps + " next=" + Boolean(entry.nextFollowUpAt));
   }
 }
 
 async function tick() {
-  const chats = await getChats();
+  if (queueEnabled) {
+    const events = await claimInboxEvents();
+    console.log("[QUEUE_TICK] events=" + (Array.isArray(events) ? events.length : 0));
+    for (const event of Array.isArray(events) ? events : []) {
+      const chat = { id: String(event.chat_id || "") };
+      try {
+        if (!(await humanGate(chat.id))) {
+          await updateInboxEvent(event.id, { status: "pending", available_at: new Date(Date.now() + 60000).toISOString(), locked_at: null, locked_by: null, last_error: "human_gate_not_eligible", updated_at: new Date().toISOString() });
+          continue;
+        }
+        await processChat(chat, { gateAlreadyChecked: true, queueEvent: event });
+        await processFollowUp(chat);
+        await updateInboxEvent(event.id, { status: "processed", processed_at: new Date().toISOString(), locked_at: null, locked_by: null, last_error: null, updated_at: new Date().toISOString() });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const retryDelay = Math.min(3600000, Math.max(60000, 60000 * Math.pow(2, Math.min(Number(event.attempts || 1), 5))));
+        const nextStatus = Number(event.attempts || 1) >= 8 ? "dead_letter" : "failed";
+        await updateInboxEvent(event.id, { status: nextStatus, available_at: new Date(Date.now() + retryDelay).toISOString(), locked_at: null, locked_by: null, last_error: message.slice(0, 1000), updated_at: new Date().toISOString() }).catch((updateError) => console.error("[QUEUE_UPDATE_ERROR] " + updateError.message));
+        console.error("[QUEUE_EVENT_ERROR] " + mask(chat.id) + " " + message);
+      } finally {
+        await persistState().catch((error) => console.error("[STATE_PERSIST_ERROR] " + error.message));
+      }
+    }
+    if (now() - lastReconciliationAt >= reconciliationIntervalMs) {
+      lastReconciliationAt = now();
+      const allChats = (await getChats()).sort((a, b) => Number(b.lastMessage?.timestamp || 0) - Number(a.lastMessage?.timestamp || 0));
+      const chats = allChats.slice(0, reconciliationChatLimit);
+      console.log("[RECONCILIATION] chats=" + chats.length + " of=" + allChats.length);
+      let reconciled = 0;
+      for (const chat of chats) {
+        try {
+          if (await processChat(chat)) reconciled += 1;
+          await processFollowUp(chat);
+          if (reconciled >= maxNewChatsPerTick) break;
+        } catch (error) { console.error("[RECONCILIATION_ERROR] " + mask(chat.id) + " " + error.message); }
+      }
+      await persistState().catch((error) => console.error("[STATE_PERSIST_ERROR] " + error.message));
+    }
+    return;
+  }
+  const chats = (await getChats()).sort((a, b) => Number(b.lastMessage?.timestamp || 0) - Number(a.lastMessage?.timestamp || 0));
+  console.log("[TICK] chats=" + chats.length + " pageSize=" + chatPageSize + " maxPages=" + maxChatPages);
+  if (state.__activationGeneration !== activationGeneration) {
+    for (const chat of chats) {
+      const chatId = String(chat.id || "");
+      if (!isDirectChat(chatId) || isInternalChat(chatId)) continue;
+      try {
+        const messages = await getMessages(chatId);
+        const inbound = latestInbound(messages);
+        if (inbound && inbound.id) state[chatId] = { lastInboundId: inbound.id, followUps: 0, bootstrappedAt: now() };
+      } catch (error) { console.error("[ACTIVATION_BOOTSTRAP_ERROR] " + mask(chatId) + " " + error.message); }
+    }
+    state.__activationGeneration = activationGeneration;
+    state.__bootstrapped = true;
+    await persistState();
+    console.log("Activation baseline created; historical messages will not trigger replies.");
+    return;
+  }
   if (bootstrap && !state.__bootstrapped) {
     for (const chat of chats) {
       const chatId = String(chat.id || "");
-      if (!chatId.endsWith("@c.us")) continue;
+      if (!isDirectChat(chatId) || isInternalChat(chatId)) continue;
       try {
         const messages = await getMessages(chatId);
-        const inbound = messages.filter((message) => !message.fromMe && textOf(message)).at(-1);
+        const inbound = latestInbound(messages);
         if (inbound && inbound.id) state[chatId] = { lastInboundId: inbound.id, followUps: 0, bootstrappedAt: now() };
       } catch (error) { console.error("[BOOTSTRAP_ERROR] " + mask(chatId) + " " + error.message); }
     }
     state.__bootstrapped = true;
-    await fs.mkdir(new URL(".", "file://" + stateFile).pathname, { recursive: true }).catch(() => {});
-    await fs.writeFile(stateFile, JSON.stringify(state, null, 2));
+    await persistState();
     console.log("State bootstrapped; existing messages will not trigger replies.");
     return;
   }
+  let newChatsProcessed = 0;
   for (const chat of chats) {
     try {
-      await processChat(chat);
+      const processed = await processChat(chat);
+      if (processed) newChatsProcessed += 1;
       await processFollowUp(chat);
+      if (newChatsProcessed >= maxNewChatsPerTick) break;
     } catch (error) { console.error("[CHAT_ERROR] " + mask(chat.id) + " " + error.message); }
   }
-  await fs.mkdir(new URL(".", "file://" + stateFile).pathname, { recursive: true }).catch(() => {});
-  await fs.writeFile(stateFile, JSON.stringify(state, null, 2));
+  await persistState();
+  console.log("[TICK_DONE] chats=" + chats.length);
 }
 
 console.log("KLASSE WhatsApp Sales Agent session=" + session + " dryRun=" + dryRun + " pollMs=" + pollMs);

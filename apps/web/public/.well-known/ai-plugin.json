@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "KLASSE",
+  "name_for_model": "klasse",
+  "description_for_human": "Consulta e executa operações autorizadas no KLASSE com confirmação para pagamentos.",
+  "description_for_model": "Use para consultar dados, lançar frequência e notas e registar pagamentos em dois tempos. Nunca forneça school_id. Para pagamentos, prepare, mostre o resumo e só confirme após autorização explícita do utilizador.",
+  "auth": {
+    "type": "user_http",
+    "authorization_type": "bearer"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://app.klasse.ao/.well-known/klasse-openapi.yaml"
+  },
+  "logo_url": "https://klasse.ao/icon.png",
+  "legal_info_url": "https://klasse.ao/privacidade"
+}

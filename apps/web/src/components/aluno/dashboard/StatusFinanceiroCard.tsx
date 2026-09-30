@@ -6,7 +6,7 @@ export default function StatusFinanceiroCard({ data }: { data: null | { emDia?: 
   const pendentes = data?.pendentes ?? 0;
   const emDia = Boolean(data?.emDia);
   const label = emDia ? "Em dia" : `Pendentes: ${pendentes}`;
-  const color = emDia ? "text-klasse-green-700" : pendentes > 0 ? "text-klasse-gold-700" : "text-slate-500";
+  const color = emDia ? "text-emerald-700" : pendentes > 0 ? "text-amber-700" : "text-slate-500";
 
   return (
     <AlunoCard>

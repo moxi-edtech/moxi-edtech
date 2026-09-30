@@ -4,6 +4,14 @@
  */
 export function buildPortalHref(escolaSlug: string | null | undefined, path: string) {
   if (!escolaSlug) return path;
+
+  // APIs legadas/SQL podem devolver um caminho já prefixado com /escola/{uuid},
+  // enquanto a navegação web usa o slug. Normalizamos ambos para um único
+  // prefixo antes de aplicar o contexto do portal.
+  const prefixedSchoolPath = path.match(/^\/escola\/[^/]+(\/.*)?$/);
+  if (prefixedSchoolPath) {
+    path = prefixedSchoolPath[1] || "/";
+  }
   
   // If path already starts with /escola/[slug], return it
   if (path.startsWith(`/escola/${escolaSlug}`)) {
@@ -85,7 +93,9 @@ export function buildContextualPortalHref(
   path: string,
   pathname: string | null | undefined,
 ) {
-  return buildPortalHref(escolaSlug, toContextualPortalPath(path, pathname));
+  const prefixedSchoolPath = path.match(/^\/escola\/[^/]+(\/.*)?$/);
+  const normalizedPath = prefixedSchoolPath ? (prefixedSchoolPath[1] || "/") : path;
+  return buildPortalHref(escolaSlug, toContextualPortalPath(normalizedPath, pathname));
 }
 
 export function getEscolaParamFromPath(pathname: string | null | undefined) {

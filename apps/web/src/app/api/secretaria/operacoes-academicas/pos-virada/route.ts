@@ -183,9 +183,13 @@ export async function POST(request: Request) {
     const input = parsed.data;
     if (input.action === "promote_after_payment") {
       if (!input.aluno_id) return NextResponse.json({ ok: false, error: "Aluno obrigatório" }, { status: 400 });
-      const { data, error } = input.turma_destino_id
-        ? await db.rpc("promover_aluno_pos_pagamento", { p_escola_id: escolaId, p_aluno_id: input.aluno_id, p_from_session_id: previous.id, p_to_session_id: current.id, p_turma_destino_id: input.turma_destino_id })
-        : await db.rpc("promover_aluno_pos_pagamento", { p_escola_id: escolaId, p_aluno_id: input.aluno_id, p_from_session_id: previous.id, p_to_session_id: current.id });
+      const { data, error } = await db.rpc("preparar_aluno_para_rematricula", {
+        p_escola_id: escolaId,
+        p_aluno_id: input.aluno_id,
+        p_from_session_id: previous.id,
+        p_to_session_id: current.id,
+        p_turma_destino_id: input.turma_destino_id ?? null,
+      });
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 409 });
       await db.rpc("sync_reclassificacoes_virada", { p_escola_id: escolaId, p_origem_session_id: previous.id, p_destino_session_id: current.id });
       return NextResponse.json({ ok: true, result: data });

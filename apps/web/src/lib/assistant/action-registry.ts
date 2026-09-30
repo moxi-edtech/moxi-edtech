@@ -4,6 +4,8 @@ import {
   AI_ADMIN_ROLES as ADMIN_ROLES,
   AI_WIDGET_ROLES as ALL_ROLES,
 } from "@/lib/roles/ai-roles";
+import type { SchoolOperatingProfile } from "@/lib/school-profile/types";
+import { canUseFinanceChargeMessages } from "@/lib/school-profile/finance-capabilities";
 
 export type AssistantAction = {
   key: string;
@@ -131,11 +133,21 @@ export const ASSISTANT_ACTIONS: AssistantAction[] = [
   },
 ];
 
-export function getActionsForRole(role: string, module?: string): AssistantAction[] {
+function canUseActionForOperatingProfile(action: AssistantAction, profile?: SchoolOperatingProfile) {
+  if (!profile) return true;
+  const isFinanceAction = action.module === "financeiro"
+    || action.key === "create_whatsapp_draft"
+    || action.key === "generate_billing_plan"
+    || action.key === "create_finance_draft";
+  return !isFinanceAction || canUseFinanceChargeMessages(profile);
+}
+
+export function getActionsForRole(role: string, module?: string, profile?: SchoolOperatingProfile): AssistantAction[] {
   const cleanRole = role.toLowerCase().trim();
   return ASSISTANT_ACTIONS.filter((action) => {
     if (!action.roles.includes(cleanRole)) return false;
     if (module && action.module !== "any" && action.module !== module) return false;
+    if (!canUseActionForOperatingProfile(action, profile)) return false;
     return true;
   });
 }

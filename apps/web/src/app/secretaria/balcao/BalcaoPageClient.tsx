@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
@@ -13,8 +14,13 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
   const returnToParam = searchParams?.get("returnTo") ?? null;
   const returnTo = returnToParam?.startsWith("/") && !returnToParam.startsWith("//") ? returnToParam : null;
 
+  // O resumo de caixa é carregado uma vez na montagem; este contador obriga-o a
+  // reler sempre que um pagamento é concluído no balcão.
+  const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
+  const aoConcluirPagamento = useCallback(() => setCaixaRefreshKey((atual) => atual + 1), []);
+
   return (
-    <div className="min-h-screen bg-slate-50 pb-12">
+    <div className="bg-slate-50 pb-12">
       <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-4">
         <div className="max-w-[1720px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -33,17 +39,18 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
         </div>
       </header>
 
-      <main className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <ResumoCaixaSecretaria escolaId={escolaId} />
+      <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={caixaRefreshKey} />
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[700px]">
-          <BalcaoAtendimento 
-            escolaId={escolaId} 
+          <BalcaoAtendimento
+            escolaId={escolaId}
             selectedAlunoId={alunoId}
             showSearch={true}
             returnTo={returnTo}
+            onPagamentoConcluido={aoConcluirPagamento}
           />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

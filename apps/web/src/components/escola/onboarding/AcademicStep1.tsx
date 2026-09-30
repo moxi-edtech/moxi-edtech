@@ -66,7 +66,7 @@ export default function AcademicStep1({
               Entidade Verificada
             </h3>
             {schoolPlan && (
-              <span className="inline-flex items-center rounded-full bg-klasse-green px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+              <span className="inline-flex items-center rounded-full bg-emerald px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
                 Plano {schoolPlan}
               </span>
             )}
@@ -79,9 +79,9 @@ export default function AcademicStep1({
       </div>
 
       {/* NOVO: ATALHO PARA TEMPLATES OFICIAIS */}
-      <div className="rounded-2xl border border-klasse-gold/20 bg-klasse-gold/5 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="rounded-2xl border border-amber/20 bg-amber/5 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
-           <h3 className="text-sm font-bold text-klasse-gold-700 flex items-center gap-2">
+           <h3 className="text-sm font-bold text-amber-700 flex items-center gap-2">
             <Wand2 className="h-4 w-4" />
             Configuração Automática (Recomendado)
           </h3>
@@ -91,7 +91,7 @@ export default function AcademicStep1({
         <div className="relative">
           <button 
             onClick={() => setShowTemplates(!showTemplates)}
-            className="inline-flex items-center gap-2 rounded-xl bg-white border border-klasse-gold/30 px-5 py-2.5 text-sm font-bold text-klasse-gold shadow-sm transition-all hover:bg-klasse-gold/5"
+            className="inline-flex items-center gap-2 rounded-xl bg-white border border-amber/30 px-5 py-2.5 text-sm font-bold text-amber shadow-sm transition-all hover:bg-amber/5"
           >
             Importar Modelo Oficial
             <ChevronDown className={`h-4 w-4 transition-transform ${showTemplates ? 'rotate-180' : ''}`} />
@@ -308,12 +308,12 @@ export default function AcademicStep1({
               </div>
 
               <div className="flex-1">
-                <label className={`${labelClass} text-klasse-gold-600`}>Travar Notas</label>
+                <label className={`${labelClass} text-amber-600`}>Travar Notas</label>
                 <input
                   type="datetime-local"
                   value={periodo.trava_notas_em}
                   onChange={(e) => onPeriodoChange(periodo.numero, "trava_notas_em", e.target.value)}
-                  className={`${inputClass} bg-white border-klasse-gold-200 focus:border-klasse-gold-400 focus:ring-klasse-gold-400`}
+                  className={`${inputClass} bg-white border-amber-200 focus:border-amber-400 focus:ring-amber-400`}
                 />
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function AcademicStep1({
         <div className="text-xs text-slate-500">
           {sessaoAtiva ? (
             <span className="flex items-center gap-2">
-              <Check className="h-3 w-3 text-klasse-green-500" />
+              <Check className="h-3 w-3 text-emerald-500" />
               Sessão ativa: <strong className="text-slate-900">{sessaoAtiva.nome}</strong> ({periodos.length} períodos)
             </span>
           ) : (

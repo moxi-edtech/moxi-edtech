@@ -151,7 +151,7 @@ export function RematriculaBalcaoCard({
                 bg-rose-100 px-4 py-2.5 text-sm font-bold text-rose-700
                 hover:bg-rose-200 transition-colors"
             >
-              Ver dívidas
+              Regularizar no balcão
             </button>
           </div>
         </div>
@@ -200,6 +200,7 @@ export function RematriculaBalcaoCard({
                     day: "2-digit",
                     month: "2-digit",
                     year: "numeric",
+                    timeZone: "Africa/Luanda",
                   })}
                 </strong>
               </p>
@@ -221,7 +222,7 @@ export function RematriculaBalcaoCard({
                     text-[#1F6B3B] hover:bg-[#1F6B3B]/5 transition-colors"
                 >
                   <Printer className="h-4 w-4" />
-                  Imprimir comprovante
+                  Abrir comprovante
                 </button>
                 <button
                   onClick={() => window.open(comprovante.printUrl, "_blank", "noopener,noreferrer")}
@@ -285,6 +286,22 @@ export function RematriculaBalcaoCard({
               Abrir pendência
             </button>
           </div>
+        </div>
+      );
+
+    // ── WINDOW_CLOSED ─────────────────────────────────────────────────────
+    case "WINDOW_CLOSED":
+      return (
+        <div className="xl:col-span-12 rounded-2xl border border-slate-300 bg-slate-50 shadow-sm p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-slate-600" />
+            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700">
+              Período de rematrícula fechado
+            </h3>
+          </div>
+          <p className="text-sm text-slate-600">
+            Abra uma janela de rematrícula para este ano letivo antes de iniciar novas operações.
+          </p>
         </div>
       );
 

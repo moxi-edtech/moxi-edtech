@@ -416,7 +416,7 @@ export function PautaRapidaModal({
                   onClick={() => setPeriodoNumero(periodo.numero)}
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                     active
-                      ? "bg-klasse-green text-white"
+                      ? "bg-emerald text-white"
                       : "border border-slate-200 bg-white text-slate-600"
                   }`}
                 >

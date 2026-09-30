@@ -687,9 +687,9 @@ export default function DocumentosOficiaisBatchClient() {
               </div>
               <div className="flex items-center gap-3">
                 <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${
-                  job.status === "SUCCESS" ? "bg-klasse-green-50 text-klasse-green-700" :
+                  job.status === "SUCCESS" ? "bg-emerald-50 text-emerald-700" :
                   job.status === "FAILED" ? "bg-rose-50 text-rose-700" :
-                  "bg-klasse-gold-50 text-klasse-gold-700"
+                  "bg-amber-50 text-amber-700"
                 }`}>
                   {job.status}
                 </span>
@@ -720,7 +720,7 @@ export default function DocumentosOficiaisBatchClient() {
                   </button>
                 )}
                 {!job.download_url && job.status === "PROCESSING" && (
-                  <span className="inline-flex items-center gap-1 text-klasse-gold-600">
+                  <span className="inline-flex items-center gap-1 text-amber-600">
                     <RefreshCw className="h-3 w-3 animate-spin" /> A processar…
                   </span>
                 )}
@@ -824,7 +824,7 @@ export default function DocumentosOficiaisBatchClient() {
                                 Sem avaliação
                               </span>
                             ) : (
-                              <span className="inline-flex items-center rounded-full bg-klasse-gold-50 px-2.5 py-1 text-[11px] font-semibold text-klasse-gold-700">
+                              <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
                                 {pendenciaTipo.pendentes} nota(s) pendentes
                               </span>
                             )}
