@@ -6,7 +6,7 @@ validated_head: `bc43d92b22eaa870513c4656460d83b91ec07924`
 
 ## Mudanças aplicadas no branch
 
-- `supabase/migrations/20260930092612_fix_secretaria_batch_payment_atomicity.sql`
+- `supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql`
 - `apps/web/src/app/api/secretaria/pagamentos/processar/route.ts`
 - `apps/web/src/components/secretaria/BalcaoAtendimento.tsx`
 
