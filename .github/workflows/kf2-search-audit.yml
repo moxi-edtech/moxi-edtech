@@ -18,6 +18,9 @@ jobs:
       - name: KF2 Path Filter Regression Tests
         run: node --test scripts/kf2-path-filter.test.mjs
 
+      - name: KLASSE UI Standards Regression Tests
+        run: node --test scripts/check-klasse-ui-standards.test.mjs
+
       - name: Detect KF2-relevant changes
         id: changes
         run: node scripts/kf2-path-filter.mjs

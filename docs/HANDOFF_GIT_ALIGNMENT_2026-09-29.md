@@ -77,3 +77,19 @@ Se for necessário voltar ao estado anterior:
 ```bash
 git switch backup/pre-main-alignment-20260929-42df91e23
 ```
+
+## Continuação — validação remota GitHub/Vercel
+
+Revisão executada em 2026-09-29 usando GitHub e Vercel como fontes de verdade.
+
+- O PR #136 permanece aberto, sem merge e sem deploy promovido por este alinhamento.
+- `integration/main-alignment-20260929` preserva `codex/reabertura-notas` como ancestral e está 8 commits à frente dela.
+- A comparação GitHub entre essas branches não mostrou alterações nos 27 ficheiros de UI acusados pelo gate; as diferenças de aplicação estão concentradas em hooks/painéis operacionais e hardening vindo da `main`.
+- O deployment que actualmente serve `app.klasse.ao` está `READY`, target `production`, vindo de `codex/reabertura-notas` no commit `8493b827d59baa16301027240fae025de7b1c1d8`.
+- `klasse.ao` também está `READY` em produção a partir da mesma branch e commit.
+- Portanto, a configuração de Production Branch não deve ser confundida com o artefacto actualmente promovido: a produção activa é da `codex/reabertura-notas`.
+- A falha do `KLASSE UI Standards` no PR era um falso bloqueio de regressão: o checker varria o ficheiro inteiro sempre que ele aparecia no diff, fazendo dívida visual pré-existente parecer mudança nova.
+- O checker foi ajustado para, em CI/PR, avaliar apenas linhas adicionadas/modificadas pelo diff. Quando recebe ficheiros explicitamente, mantém a varredura integral.
+- Foram adicionados testes de regressão provando que violações legadas em linhas intocadas não bloqueiam, enquanto novo hex directo e novo `rounded-2xl` operacional continuam bloqueando.
+- O patch remoto do PR foi verificado em 952 ficheiros / 30.036 linhas adicionadas contra os padrões do scanner de secrets; foram encontrados 0 matches suspeitos.
+- Nenhuma migration remota, merge, promoção ou deploy de produção foi executado.

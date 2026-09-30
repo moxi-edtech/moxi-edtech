@@ -36,29 +36,70 @@ function git(args) {
     .filter(Boolean);
 }
 
+const explicitFiles = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
+
+function comparisonRange() {
+  if (process.env.GITHUB_BASE_REF) return `origin/${process.env.GITHUB_BASE_REF}...HEAD`;
+  if (process.env.CI) return "HEAD~1..HEAD";
+  return null;
+}
+
 function changedFiles() {
-  const explicit = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
-  if (explicit.length > 0) return explicit;
+  if (explicitFiles.length > 0) return explicitFiles;
 
-  if (process.env.GITHUB_BASE_REF) {
+  const range = comparisonRange();
+  if (range) {
     try {
-      return git(["diff", "--name-only", "--diff-filter=ACMR", `origin/${process.env.GITHUB_BASE_REF}...HEAD`]);
+      return git(["diff", "--name-only", "--diff-filter=ACMR", range]);
     } catch {
       return git(["diff", "--name-only", "--diff-filter=ACMR", "HEAD~1", "HEAD"]);
-    }
-  }
-
-  if (process.env.CI) {
-    try {
-      return git(["diff", "--name-only", "--diff-filter=ACMR", "HEAD~1", "HEAD"]);
-    } catch {
-      return git(["diff", "--name-only", "--diff-filter=ACMR", "HEAD"]);
     }
   }
 
   const tracked = git(["diff", "--name-only", "--diff-filter=ACMR", "HEAD"]);
   const untracked = git(["ls-files", "--others", "--exclude-standard"]);
   return [...new Set([...tracked, ...untracked])];
+}
+
+function parseAddedLineNumbers(diff) {
+  const added = new Set();
+
+  for (const line of diff.split("\n")) {
+    const match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+    if (!match) continue;
+
+    const start = Number(match[1]);
+    const count = match[2] === undefined ? 1 : Number(match[2]);
+    for (let offset = 0; offset < count; offset += 1) {
+      added.add(start + offset);
+    }
+  }
+
+  return added;
+}
+
+function addedLineNumbers(file) {
+  if (explicitFiles.length > 0) return null;
+
+  const primaryRange = comparisonRange();
+  if (!primaryRange) return null;
+
+  const ranges = primaryRange === "HEAD~1..HEAD" ? [primaryRange] : [primaryRange, "HEAD~1..HEAD"];
+
+  for (const range of ranges) {
+    try {
+      const diff = execFileSync(
+        "git",
+        ["diff", "--unified=0", "--no-color", "--diff-filter=ACMR", range, "--", file],
+        { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      );
+      return parseAddedLineNumbers(diff);
+    } catch {
+      // Try the fallback range; if all ranges fail, scan the whole file rather than bypass the gate.
+    }
+  }
+
+  return null;
 }
 
 function isException(file) {
@@ -109,8 +150,12 @@ const findings = [];
 for (const file of changedFiles().filter(shouldScan)) {
   const absolute = path.join(repoRoot, file);
   const lines = readFileSync(absolute, "utf8").split("\n");
+  const addedLines = addedLineNumbers(file);
 
   lines.forEach((line, index) => {
+    const lineNumber = index + 1;
+    if (addedLines !== null && !addedLines.has(lineNumber)) return;
+
     for (const rule of rules) {
       if (rule.test(line, file)) {
         findings.push({
