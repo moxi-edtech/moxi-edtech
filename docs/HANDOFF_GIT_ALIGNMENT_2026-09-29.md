@@ -204,10 +204,27 @@ Nenhum `migration repair`, `db push`, DDL remoto ou alteração de history foi e
 - Performance: 259 FKs sem índice (INFO), 49 `auth_rls_initplan` (WARN), 25 tabelas sem PK (INFO), 260 índices não usados (INFO) e 112 casos de multiple permissive policies (WARN).
 - Esses itens são backlog existente e não foram introduzidos pelo PR #136.
 
+### Validação de Preview — 2026-09-30
+
+- O ambiente Preview do projeto web não tinha `KLASSE_AUTH_URL`; o preview anterior estava `READY` no build, mas `GET /` respondia HTTP 500 com `Missing KLASSE_AUTH_URL in production`.
+- `KLASSE_AUTH_URL` foi copiado do environment Production para **Preview** como Config, sem alterar o valor de Production e sem expor o valor no log.
+- A integração Git do Vercel tentou criar novos previews, mas todos os project statuses foram bloqueados por `build-rate-limit`.
+- Para não depender do build remoto, foi criada uma cópia temporária limpa da branch no commit `94728a3d9082114ad0b2cbdc9cc68824d8dd8bbb`, autenticada via GitHub CLI, sem usar o checkout local potencialmente divergente.
+- `vercel pull --environment=preview` + `vercel build` completou com exit code 0. O Next.js 15.5.7 gerou 182 páginas estáticas, funções serverless e `.vercel/output`.
+- O output foi publicado com `vercel deploy --prebuilt`, **sem `--prod` e sem promoção**.
+- Deployment de evidência: `dpl_Cn7JhwodC7KX7G73M3pHHothf7cw`.
+- Preview URL: `https://moxi-edtech-g46fajv9p-moxinexas-projects.vercel.app`.
+- Estado Vercel: `READY`, target preview (`target: null`), source CLI, commit `94728a3d...`.
+- Smoke test de `GET /`: HTTP 307 para `https://auth.klasse.ao/login?...redirect=<preview>/redirect`, comportamento esperado.
+- Runtime logs do deployment: nenhum `error` ou `fatal` no intervalo de validação.
+- `KF2 Search Audit #913` no mesmo commit terminou `success`.
+- Production `CRON_SECRET`: presente, não vazio e sem leading/trailing whitespace; o antigo `INVALID_CRON_SECRET` não permanece como blocker.
+- Configuração Vercel confirmada via API: Production Branch = `main`, rootDirectory = `apps/web`.
+
 ### Decisão desta revisão
 
-**Não recomendar merge ainda.**
+O **gate técnico de build/runtime do artefacto passou**. Não há blocker de código identificado nesta revisão e o banco live está compatível com as funcionalidades auditadas.
 
-Motivo principal: o merge em `main` pode disparar um deployment de produção pelo Git integration, enquanto o head actual ainda não foi validado por um build Vercel/Next de preview completo. O banco live está compatível com as funcionalidades novas auditadas, portanto o risco imediato não é schema incompatível; o risco é promover um artefacto 21 commits à frente da produção sem prova de build/deploy.
+Ainda não é um release limpo via Git integration porque a conta Vercel está no `build-rate-limit`. Um merge em `main` pode disparar uma tentativa de deployment de Production que será bloqueada pela cota. Portanto, antes do merge/release, a decisão humana necessária é escolher entre aguardar/liberar a cota ou, após aprovação explícita, usar o mesmo fluxo de build local + deployment prebuilt para Production. Nenhuma dessas ações foi executada aqui.
 
-Em paralelo, o drift de migration history precisa de decisão humana antes do próximo `db push`. A correção deve ser feita como reconciliação explícita de history apenas depois de confirmar integralmente que cada versão local representa estado já aplicado. Não executar automaticamente a migration `20270825140000` em produção apenas para alinhar a tabela de migrations.
+O drift de migration history permanece um risco operacional independente do PR: resolver explicitamente antes do próximo `db push`; não reaplicar `20270825140000` cegamente em produção.
