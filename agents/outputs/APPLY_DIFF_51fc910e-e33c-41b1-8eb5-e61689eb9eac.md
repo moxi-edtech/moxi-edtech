@@ -8,7 +8,7 @@ base_head_reviewed: `51fc910ee33c41b15eb5e61689eb9eacea525357`
 
 Path generated with `supabase migration new fix_secretaria_batch_payment_atomicity`:
 
-`supabase/migrations/20260930092612_fix_secretaria_batch_payment_atomicity.sql`
+`supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql`
 
 ```sql
 CREATE OR REPLACE FUNCTION public.financeiro_registrar_pagamentos_secretaria_batch(
