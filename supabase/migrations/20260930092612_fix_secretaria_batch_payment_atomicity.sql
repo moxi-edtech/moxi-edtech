@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION public.financeiro_registrar_pagamentos_secretaria_bat
 )
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = pg_catalog, public, auth, extensions
 AS $$
 DECLARE
