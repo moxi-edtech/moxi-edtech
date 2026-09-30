@@ -1,79 +1,44 @@
-# Aprovação necessária — Agent 3
-run_id:    51fc910e-e33c-41b1-8eb5-e61689eb9eac
-timestamp: 2026-09-30T09:26:12Z
+# PENDING APPROVAL — fiscal-recovery-20260930-01
 
-## Acção proposta
+status: PENDING_APPROVAL
+branch: `recovery/fiscal-agt-preservation-20260930`
+base_main: `1a283020191934148964d6e416ad6e80f2ec1217`
+proposed_patch_sha256: `1f4f5dcc40e4c82029f3aec6045c4087d812582fc93d3a439470e18150385325`
 
-Corrigir o P1 aberto no PR #136 tornando o checkout multi-item da Secretaria atomicamente transacional.
+## Approval requested
 
-A mudança proposta:
+This recovery restores the fiscal/AGT work that was lost during the main-alignment merge while preserving the newer finance, Secretaria, KF2 and Vercel behavior already present in current `main`.
 
-1. adiciona a RPC `financeiro_registrar_pagamentos_secretaria_batch`, que:
-   - valida tenant/role;
-   - aceita 1–50 itens;
-   - serializa concorrência pela chave do checkout com `pg_advisory_xact_lock`;
-   - usa uma chave filha `<batch-key>:<index>` por pagamento;
-   - chama o writer canónico `financeiro_registrar_pagamento_secretaria` dentro de **uma única transação Postgres**;
-   - replica as guardas de mensalidade, matrícula, ano letivo e janela de cobrança necessárias ao fluxo;
-   - rejeita estado parcial preexistente em vez de “completar” silenciosamente;
-   - devolve todos os pagamentos e marca retries completos como idempotentes.
+The proposed functional diff is documented in:
 
-2. altera `/api/secretaria/pagamentos/processar`:
-   - mantém o caminho canónico existente para checkout de 1 item;
-   - usa uma única chamada RPC batch para 2+ itens;
-   - emite/enriquece recibo somente após commit bem-sucedido;
-   - não reemite recibo automaticamente em retry idempotente;
-   - preserva audit trail e o contrato de resposta.
+`agents/outputs/APPLY_DIFF_fiscal-recovery-20260930-01.md`
 
-3. altera `BalcaoAtendimento` para reutilizar a mesma `Idempotency-Key` quando o utilizador repete exactamente o mesmo checkout após timeout/erro de rede.
+## Scope after approval
 
-O P0 checklist foi verificado antes desta proposta e está integralmente marcado como concluído.
+The approval authorizes ONLY:
 
-## Diff
+- commit/push of the already validated recovery diff to this recovery branch;
+- creation/update of a recovery PR to `main`;
+- CI, typecheck, tests, build and Preview validation.
 
-O diff exacto proposto, incluindo o SQL completo da migration e os hunks exactos de API/UI, está versionado em:
+It does NOT authorize:
 
-`agents/outputs/APPLY_DIFF_51fc910e-e33c-41b1-8eb5-e61689eb9eac.md`
+- applying `20260930174453_recover_fiscal_hardening_current_contract.sql` to Supabase production;
+- merging the recovery PR to `main`;
+- Production deployment.
 
-Migration reservada pelo comando oficial `supabase migration new fix_secretaria_batch_payment_atomicity`:
+Those remain separate gates.
 
-`supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql`
+## Risk controls
 
-Resumo dos ficheiros funcionais que serão alterados somente após aprovação:
+- 60 restored historical migrations are already recorded in Supabase production and therefore restore Git history rather than schedule new DDL.
+- The one new migration is isolated under version `20260930174453`.
+- No production mutation has been performed.
+- Four cross-era conflicts were manually reconciled instead of blindly choosing PR #131 or current `main`.
+- Full TypeScript, fiscal tests, KF2/security/UI/performance and Production-mode build are green.
 
-```diff
-+ supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql
-~ apps/web/src/app/api/secretaria/pagamentos/processar/route.ts
-~ apps/web/src/components/secretaria/BalcaoAtendimento.tsx
-```
+## Required approval
 
-Nenhum SQL remoto, migration repair, merge ou deployment de Production faz parte deste apply.
+Create/record a commit with exactly:
 
-## Risco
-
-A migration cria um novo contrato SQL financeiro e executa writes em `pagamentos` através do writer canónico. Se a validação batch estiver errada, o impacto possível é bloqueio indevido de checkout ou alteração da semântica de recebimento multi-item.
-
-Mitigações obrigatórias antes de qualquer merge/deploy:
-
-- testar primeiro em ambiente local/descartável;
-- provar rollback integral quando um item posterior falha;
-- provar idempotência e concorrência;
-- manter checkout de item único no caminho canónico actual;
-- KF2 verde;
-- build/preview Next/Vercel verde;
-- nenhuma aplicação remota em produção durante a validação.
-
-Rollback de código: `git revert` dos commits deste run.
-A migration ainda não foi aplicada ao Supabase remoto, portanto não existe rollback de banco a executar neste momento.
-
-## Aprovação
-
-Aprovado explicitamente pelo responsável em 2026-09-30.
-
-Commit de aprovação: `APPROVE: 51fc910e-e33c-41b1-8eb5-e61689eb9eac`
-
-## Como rejeitar
-
-Commit com mensagem:
-
-`REJECT: 51fc910e-e33c-41b1-8eb5-e61689eb9eac [motivo]`
+`APPROVE: fiscal-recovery-20260930-01`
