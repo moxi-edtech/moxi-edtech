@@ -255,16 +255,16 @@ Validações:
 - P1 review thread resolvida;
 - 0 review threads abertas no PR.
 
-Nenhum SQL foi aplicado ao Supabase de produção.
+A migration `fix_secretaria_batch_payment_atomicity` foi aplicada ao Supabase de produção em 2026-09-30 e registrada remotamente como versão `20260930104911`.
 
 ### Ordem de release
 
-**Não deployar o app antes da migration.** O código da API já depende de `financeiro_registrar_pagamentos_secretaria_batch`, mas a RPC ainda não existe no banco live.
+**A migration necessária já está aplicada.** A RPC `financeiro_registrar_pagamentos_secretaria_batch` existe no banco live e foi validada antes de qualquer merge/deploy.
 
 Ordem obrigatória:
 
-1. aprovação separada para aplicar `20260930092612` no Supabase de produção;
-2. validar função/grants/advisors;
+1. migration aplicada no Supabase de produção ✅;
+2. função/grants/advisors validados ✅;
 3. merge em `main`;
 4. deploy/promote;
 5. smoke test pós-release.
