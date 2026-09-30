@@ -569,6 +569,7 @@ function useCheckout({
   const [billingWindowIssue, setBillingWindowIssue] = useState<BillingWindowIssue | null>(null);
   const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
+  const checkoutRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
   // Serviços que emitem documento e acabaram de ser pagos. O carrinho é limpo no
   // sucesso, e sem isto o item pago desaparecia do ecrã sem forma de emitir o
   // documento — que é exactamente o que faltava ao pagar uma declaração.
@@ -580,21 +581,30 @@ function useCheckout({
     setIsSubmitting(true);
 
     try {
+      const checkoutPayload = {
+        escola_id: escolaId,
+        aluno_id: aluno.id,
+        matricula_id: aluno.matricula_id,
+        ano_letivo_id: academicYearId,
+        metodo_pagamento: carrinho.metodo,
+        detalhes: carrinho.detalhes,
+        itens: carrinho.itens,
+      };
+      const fingerprint = JSON.stringify(checkoutPayload);
+      if (!checkoutRequestRef.current || checkoutRequestRef.current.fingerprint !== fingerprint) {
+        checkoutRequestRef.current = {
+          fingerprint,
+          key: crypto.randomUUID(),
+        };
+      }
+
       const response = await fetch("/api/secretaria/pagamentos/processar", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
+          "Idempotency-Key": checkoutRequestRef.current.key,
         },
-        body: JSON.stringify({
-          escola_id: escolaId,
-          aluno_id: aluno.id,
-          matricula_id: aluno.matricula_id,
-          ano_letivo_id: academicYearId,
-          metodo_pagamento: carrinho.metodo,
-          detalhes: carrinho.detalhes,
-          itens: carrinho.itens,
-        }),
+        body: JSON.stringify(checkoutPayload),
       });
 
       const json = await response.json().catch(() => ({}));
@@ -635,6 +645,7 @@ function useCheckout({
       );
       success("Pagamento processado com sucesso!");
       setBillingWindowIssue(null);
+      checkoutRequestRef.current = null;
       carrinho.limpar();
       onSuccess();
       return true;
