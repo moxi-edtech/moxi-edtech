@@ -115,7 +115,7 @@ async function emitBatchReceipt({
   origin: string | undefined;
   lastPayment: Record<string, unknown>;
 }): Promise<BatchReceiptResult> {
-  const lastItem = items.at(-1);
+  const lastItem = items[items.length - 1];
   if (!lastItem) {
     return { ok: false, error: "Recibo não aplicável" };
   }
