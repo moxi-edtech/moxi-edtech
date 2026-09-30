@@ -6,6 +6,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import { emitirEvento } from "@/lib/eventos/emitirEvento";
 import type { Database } from "~types/supabase";
+import { buildPaymentIdempotencyKey } from "@/lib/financeiro/paymentIdempotency";
 
 const BodySchema = z.object({
   aluno_id: z.string().uuid("aluno_id inválido"),
@@ -29,14 +30,30 @@ const normalizeMetodoPagamento = (
   return null;
 };
 
+const normalizeCanonicalPagamentoMetodo = (
+  raw?: string
+): Database["public"]["Enums"]["pagamento_metodo"] => {
+  const value = raw?.toLowerCase().trim();
+  if (!value || ["cash", "dinheiro", "numerario"].includes(value)) return "cash";
+  if (["tpa", "tpa_fisico"].includes(value)) return "tpa";
+  if (["transfer", "transferencia", "deposito", "dep"].includes(value)) return "transfer";
+  if (["mcx", "multicaixa", "mcx_express", "mbway", "referencia"].includes(value)) return "mcx";
+  if (["kwik", "kiwk"].includes(value)) return "kwik";
+  return "cash";
+};
+
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id: escolaId } = await context.params;
   try {
-    const idempotencyKey =
+    const rawIdempotencyKey =
       req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    const idempotencyKey = buildPaymentIdempotencyKey(
+      "venda-avulsa",
+      rawIdempotencyKey,
+    );
     if (!idempotencyKey) {
       return NextResponse.json(
         { ok: false, error: "Idempotency-Key header é obrigatório" },
@@ -86,7 +103,7 @@ export async function POST(
       .from("pagamentos")
       .select("id, referencia, meta")
       .eq("escola_id", resolvedEscolaId)
-      .contains("meta", { idempotency_key: idempotencyKey })
+      .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
     if (existingPagamento) {
       const referencia = (existingPagamento as { referencia?: string | null }).referencia ?? null;
@@ -99,6 +116,68 @@ export async function POST(
         lancamento_id: lancamentoId,
         idempotent: true,
       });
+    }
+
+    const { error: claimError } = await s
+      .from("idempotency_keys")
+      .insert({
+        escola_id: resolvedEscolaId,
+        scope: "financeiro_venda_avulsa",
+        key: idempotencyKey,
+        result: null,
+      });
+
+    if (claimError) {
+      if (claimError.code !== "23505") {
+        return NextResponse.json(
+          { ok: false, error: "Falha ao reservar identidade da venda" },
+          { status: 500 },
+        );
+      }
+
+      const { data: existingClaim } = await s
+        .from("idempotency_keys")
+        .select("result")
+        .eq("escola_id", resolvedEscolaId)
+        .eq("scope", "financeiro_venda_avulsa")
+        .eq("key", idempotencyKey)
+        .maybeSingle();
+
+      if (existingClaim?.result) {
+        return NextResponse.json({
+          ...(existingClaim.result as Record<string, unknown>),
+          idempotent: true,
+        });
+      }
+
+      const { data: concurrentPagamento } = await s
+        .from("pagamentos")
+        .select("id, referencia")
+        .eq("escola_id", resolvedEscolaId)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+
+      if (concurrentPagamento) {
+        const concurrentReferencia =
+          (concurrentPagamento as { referencia?: string | null }).referencia ?? null;
+        return NextResponse.json({
+          ok: true,
+          pagamento_id: (concurrentPagamento as { id: string }).id,
+          lancamento_id: concurrentReferencia?.startsWith("venda_avulsa:")
+            ? concurrentReferencia.split(":")[1]
+            : null,
+          idempotent: true,
+        });
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Venda com esta Idempotency-Key já está em processamento",
+          code: "IDEMPOTENCY_IN_PROGRESS",
+        },
+        { status: 409 },
+      );
     }
 
     const metodoPagamento = normalizeMetodoPagamento(body.metodo);
@@ -130,21 +209,43 @@ export async function POST(
 
     const lancamentoId = (lancRes.data as { id: string }).id;
     const referencia = `venda_avulsa:${lancamentoId}`;
-    const pagamentoRes = await s
-      .from("pagamentos")
-      .insert({
-        escola_id: resolvedEscolaId,
-        aluno_id: body.aluno_id,
-        valor_pago: body.valor,
-        status: body.pago_imediato ? "pago" : "pendente",
-        metodo: body.metodo ?? undefined,
-        reference: referencia,
-        referencia,
-        evidence_url: body.comprovativo_url ?? undefined,
-        meta: { idempotency_key: idempotencyKey, origem: "venda_avulsa" },
-      })
-      .select("id")
-      .single();
+    const pagamentoRes = body.pago_imediato
+      ? await s.rpc("financeiro_registrar_pagamento_secretaria", {
+          p_escola_id: resolvedEscolaId,
+          p_aluno_id: body.aluno_id,
+          p_mensalidade_id: null,
+          p_valor: body.valor,
+          p_metodo: normalizeCanonicalPagamentoMetodo(body.metodo),
+          p_reference: referencia,
+          p_evidence_url: body.comprovativo_url ?? undefined,
+          p_gateway_ref: undefined,
+          p_meta: {
+            idempotency_key: idempotencyKey,
+            origem: "venda_avulsa",
+            lancamento_id: lancamentoId,
+            descricao: body.descricao,
+          },
+        })
+      : await s
+          .from("pagamentos")
+          .insert({
+            escola_id: resolvedEscolaId,
+            aluno_id: body.aluno_id,
+            valor_pago: body.valor,
+            status: "pending",
+            metodo: normalizeCanonicalPagamentoMetodo(body.metodo),
+            reference: referencia,
+            referencia,
+            evidence_url: body.comprovativo_url ?? undefined,
+            idempotency_key: idempotencyKey,
+            meta: {
+              idempotency_key: idempotencyKey,
+              origem: "venda_avulsa",
+              lancamento_id: lancamentoId,
+            },
+          })
+          .select("id")
+          .single();
 
     if (pagamentoRes.error || !pagamentoRes.data) {
       await s
@@ -211,11 +312,20 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({
+    const responsePayload = {
       ok: true,
       lancamento_id: lancamentoId,
       pagamento_id: (pagamentoRes.data as { id: string }).id,
-    });
+    };
+
+    await s
+      .from("idempotency_keys")
+      .update({ result: responsePayload })
+      .eq("escola_id", resolvedEscolaId)
+      .eq("scope", "financeiro_venda_avulsa")
+      .eq("key", idempotencyKey);
+
+    return NextResponse.json(responsePayload);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

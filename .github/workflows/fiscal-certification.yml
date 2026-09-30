@@ -1,0 +1,72 @@
+name: Fiscal Certification
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/lib/fiscal/**"
+      - "apps/web/src/app/api/fiscal/**"
+      - "apps/web/src/app/api/financeiro/recibos/**"
+      - "apps/web/src/templates/pdf/fiscal/**"
+      - "apps/web/tools/fiscal/**"
+      - "apps/web/tests/unit/**fiscal**"
+      - "apps/web/tests/unit/**agt**"
+      - "apps/web/tests/unit/**saft**"
+      - "apps/web/tests/unit/**payment-idempotency**"
+      - "supabase/migrations/**"
+      - ".github/workflows/fiscal-certification.yml"
+      - "apps/web/package.json"
+  workflow_dispatch:
+
+jobs:
+  fiscal-certification:
+    name: Fiscal Certification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install SAF-T XSD validator
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils poppler-utils
+
+      - name: Fiscal certification typecheck
+        run: pnpm --dir apps/web typecheck:fiscal-certification
+
+      - name: Fiscal certification regression suite
+        run: pnpm --dir apps/web test:unit:fiscal-certification
+
+      - name: Certification runner dry-run
+        run: |
+          pnpm --dir apps/web fiscal:agt:certification:run \
+            --empresa-id 11111111-1111-4111-8111-111111111111 \
+            --year 2026 \
+            --run-id ci-dry-run \
+            --now 2026-09-28T07:30:00Z \
+            --out-dir /tmp/agt-certification-ci
+
+      - name: Assert dry-run never executed external writes
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = '/tmp/agt-certification-ci/ci-dry-run/manifest.json';
+          const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+          if (m.mode !== 'dry-run') throw new Error('runner was not dry-run');
+          if (Object.values(m.points).some(p => p.status === 'executed')) {
+            throw new Error('dry-run unexpectedly executed a certification point');
+          }
+          NODE

@@ -39,7 +39,6 @@ type SetupDefaultsData = {
   razao_social_default?: string;
   nif_default?: string;
   key_version_default?: number;
-  private_key_ref_default?: string;
   public_key_pem_default?: string;
   key_fingerprint_default?: string;
 };
@@ -61,7 +60,7 @@ type FormState = {
 };
 
 const CURRENT_YEAR = new Date().getUTCFullYear();
-const DEFAULT_KMS_PRIVATE_KEY_REF = "kms://us-east-2/alias/klasse-fiscal-signing";
+const DEFAULT_KMS_PRIVATE_KEY_REF = "";
 
 async function postJson<T>(
   url: string,
@@ -200,10 +199,7 @@ export function FiscalOnboarding({
           nif: prev.nif || json.data?.nif_default || "",
           keyVersion:
             prev.keyVersion || String(json.data?.key_version_default ?? 1),
-          privateKeyRef:
-            prev.privateKeyRef ||
-            json.data?.private_key_ref_default ||
-            DEFAULT_KMS_PRIVATE_KEY_REF,
+          privateKeyRef: prev.privateKeyRef || DEFAULT_KMS_PRIVATE_KEY_REF,
           publicKeyPem: prev.publicKeyPem || json.data?.public_key_pem_default || "",
           keyFingerprint: prev.keyFingerprint || json.data?.key_fingerprint_default || "",
         }));
@@ -283,38 +279,6 @@ export function FiscalOnboarding({
         return;
       }
 
-      if (needsSeries) {
-        const seriesPayloads = [
-          {
-            empresa_id: resolvedEmpresaId,
-            tipo_documento: "FT",
-            prefixo: String(CURRENT_YEAR),
-            origem_documento: "interno",
-            ativa: true,
-            metadata: { origem: "fiscal_onboarding_ui" },
-          },
-          {
-            empresa_id: resolvedEmpresaId,
-            tipo_documento: "FR",
-            prefixo: String(CURRENT_YEAR),
-            origem_documento: "interno",
-            ativa: true,
-            metadata: { origem: "fiscal_onboarding_ui" },
-          },
-        ];
-
-        for (const payload of seriesPayloads) {
-          const seriesRes = await postJson("/api/fiscal/setup/series", payload);
-          if (!seriesRes.ok && seriesRes.status !== 409) {
-            error(
-              "Falha ao criar série fiscal",
-              seriesRes.json.error?.message ?? "Não foi possível cadastrar série fiscal."
-            );
-            return;
-          }
-        }
-      }
-
       if (needsKey) {
         let resolvedPublicKeyPem = form.publicKeyPem.trim();
         let resolvedKeyFingerprint = form.keyFingerprint.trim();
@@ -348,6 +312,46 @@ export function FiscalOnboarding({
             chaveRes.json.error?.message ?? "Não foi possível registrar chave fiscal."
           );
           return;
+        }
+      }
+
+      if (needsSeries) {
+        const seriesPayloads = ["FT", "FR"] as const;
+
+        for (const tipoDocumento of seriesPayloads) {
+          const idempotencyKey = [
+            "agt-series",
+            resolvedEmpresaId,
+            tipoDocumento,
+            String(CURRENT_YEAR),
+            "SEDE",
+            "N",
+          ].join(":");
+
+          const response = await fetch("/api/fiscal/provisioning/series", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Idempotency-Key": idempotencyKey,
+            },
+            body: JSON.stringify({
+              empresa_id: resolvedEmpresaId,
+              tipo_documento: tipoDocumento,
+              series_year: CURRENT_YEAR,
+              establishment_number: "SEDE",
+              series_contingency_indicator: "N",
+            }),
+          });
+          const json = (await response.json().catch(() => ({}))) as ApiEnvelope;
+
+          if (!response.ok || json.ok !== true) {
+            error(
+              `Falha ao provisionar série AGT ${tipoDocumento}`,
+              json.error?.message ??
+                "Não foi possível obter a série electrónica junto da AGT."
+            );
+            return;
+          }
         }
       }
 
@@ -439,7 +443,7 @@ export function FiscalOnboarding({
           {requiresKeyForm ? (
             <div className="space-y-4 border-t border-slate-200 pt-4">
               <h3 className="font-sora text-sm font-semibold text-slate-900">
-                Configuração da Chave Fiscal
+                Configuração da Chave Fiscal AGT
               </h3>
 
               <label className="block space-y-1.5">
@@ -482,7 +486,7 @@ export function FiscalOnboarding({
                     value={form.privateKeyRef}
                     onChange={(event) => setField("privateKeyRef", event.target.value)}
                     className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 font-mono text-xs text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/30"
-                    placeholder="kms://us-east-2/alias/klasse-fiscal-signing"
+                    placeholder="kms://REGIAO/chave-privada-contribuinte-agt"
                     required
                   />
                 </div>

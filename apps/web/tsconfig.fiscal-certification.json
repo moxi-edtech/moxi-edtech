@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/lib/fiscal/certification/**/*.ts",
+    "src/lib/fiscal/agtCertificationPlan.ts",
+    "src/lib/fiscal/discounts.ts",
+    "src/lib/fiscal/customerIdentity.ts",
+    "src/lib/fiscal/pdfMoney.ts",
+    "src/lib/fiscal/saftAo.ts",
+    "src/lib/fiscal/mapper.ts",
+    "src/templates/pdf/fiscal/FiscalDocumentV1.tsx",
+    "src/app/api/fiscal/provisioning/series/route.ts",
+    "src/app/api/fiscal/documentos/[documentoId]/pdf/route.ts",
+    "tools/fiscal/agt-certification-*.ts",
+    "tools/fiscal/agt-series-*.ts",
+    "tests/unit/agt-certification-*.ts",
+    "tests/unit/agt-series-*.ts",
+    "tests/unit/fiscal-pdf-*.tsx",
+    "tests/unit/fiscal-pdf-*.ts"
+  ]
+}

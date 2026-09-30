@@ -3,6 +3,12 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { roleMatchesAllowedRoles } from "@/lib/permissions";
 import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import {
+  addExact,
+  exactToJsonNumber,
+  parseExactDecimal,
+  type ExactDecimal,
+} from "@/lib/fiscal/decimal";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -176,15 +182,24 @@ export async function getFechoCaixaData({
     });
   }
 
-  const totals: FechoTotals = { especie: 0, tpa: 0, transferencia: 0, mcx: 0, total: 0 };
+  const zero = parseExactDecimal("0");
+  const exactTotals: Record<"especie" | "tpa" | "transferencia" | "mcx" | "total", ExactDecimal> = {
+    especie: zero,
+    tpa: zero,
+    transferencia: zero,
+    mcx: zero,
+    total: zero,
+  };
+
   const items: FechoItem[] = (rows || []).map((row: any) => {
     const metodo = mapMetodo(row.metodo);
-    const valor = Number(row.valor_pago ?? 0);
-    totals.total += valor;
-    if (metodo === "especie") totals.especie += valor;
-    if (metodo === "tpa") totals.tpa += valor;
-    if (metodo === "transferencia") totals.transferencia += valor;
-    if (metodo === "mcx") totals.mcx += valor;
+    const valorExact = parseExactDecimal(row.valor_pago ?? "0", "valor_pago");
+    exactTotals.total = addExact(exactTotals.total, valorExact);
+    if (metodo === "especie") exactTotals.especie = addExact(exactTotals.especie, valorExact);
+    if (metodo === "tpa") exactTotals.tpa = addExact(exactTotals.tpa, valorExact);
+    if (metodo === "transferencia") exactTotals.transferencia = addExact(exactTotals.transferencia, valorExact);
+    if (metodo === "mcx") exactTotals.mcx = addExact(exactTotals.mcx, valorExact);
+    const valor = exactToJsonNumber(valorExact, 2);
 
     const alunoNome = row.aluno_id ? alunoMap.get(row.aluno_id) ?? "—" : "—";
     const operadorNome = row.created_by ? operadorMap.get(row.created_by) ?? "—" : "—";
@@ -211,6 +226,14 @@ export async function getFechoCaixaData({
       descricao,
     };
   });
+
+  const totals: FechoTotals = {
+    especie: exactToJsonNumber(exactTotals.especie, 2),
+    tpa: exactToJsonNumber(exactTotals.tpa, 2),
+    transferencia: exactToJsonNumber(exactTotals.transferencia, 2),
+    mcx: exactToJsonNumber(exactTotals.mcx, 2),
+    total: exactToJsonNumber(exactTotals.total, 2),
+  };
 
   const operadorLabel = operadorFilter
     ? operadorFilter === user.id

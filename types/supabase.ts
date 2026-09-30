@@ -8503,11 +8503,15 @@ export type Database = {
       }
       fiscal_documentos: {
         Row: {
+          agt_document_status: string
+          agt_rejected_document_id: string | null
+          agt_rejected_document_no: string | null
           assinatura_base64: string | null
           canonical_string: string | null
           cliente_id: string | null
           cliente_nif: string | null
           cliente_nome: string
+          contingency_indicator: string
           created_at: string
           created_by: string | null
           documento_origem_id: string | null
@@ -8524,6 +8528,12 @@ export type Database = {
           payment_mechanism: string | null
           pdf_storage_path: string | null
           rectifica_documento_id: string | null
+          reference_reason: string | null
+          saft_canonical_string: string | null
+          saft_hash: string | null
+          saft_hash_anterior: string | null
+          saft_hash_control: number | null
+          saft_required: boolean
           serie_id: string
           status: string
           system_entry: string
@@ -8535,11 +8545,15 @@ export type Database = {
           xml_storage_path: string | null
         }
         Insert: {
+          agt_document_status?: string
+          agt_rejected_document_id?: string | null
+          agt_rejected_document_no?: string | null
           assinatura_base64?: string | null
           canonical_string?: string | null
           cliente_id?: string | null
           cliente_nif?: string | null
           cliente_nome: string
+          contingency_indicator?: string
           created_at?: string
           created_by?: string | null
           documento_origem_id?: string | null
@@ -8556,6 +8570,12 @@ export type Database = {
           payment_mechanism?: string | null
           pdf_storage_path?: string | null
           rectifica_documento_id?: string | null
+          reference_reason?: string | null
+          saft_canonical_string?: string | null
+          saft_hash?: string | null
+          saft_hash_anterior?: string | null
+          saft_hash_control?: number | null
+          saft_required?: boolean
           serie_id: string
           status: string
           system_entry?: string
@@ -8567,11 +8587,15 @@ export type Database = {
           xml_storage_path?: string | null
         }
         Update: {
+          agt_document_status?: string
+          agt_rejected_document_id?: string | null
+          agt_rejected_document_no?: string | null
           assinatura_base64?: string | null
           canonical_string?: string | null
           cliente_id?: string | null
           cliente_nif?: string | null
           cliente_nome?: string
+          contingency_indicator?: string
           created_at?: string
           created_by?: string | null
           documento_origem_id?: string | null
@@ -8588,6 +8612,12 @@ export type Database = {
           payment_mechanism?: string | null
           pdf_storage_path?: string | null
           rectifica_documento_id?: string | null
+          reference_reason?: string | null
+          saft_canonical_string?: string | null
+          saft_hash?: string | null
+          saft_hash_anterior?: string | null
+          saft_hash_control?: number | null
+          saft_required?: boolean
           serie_id?: string
           status?: string
           system_entry?: string
@@ -8599,6 +8629,13 @@ export type Database = {
           xml_storage_path?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fiscal_documentos_agt_rejected_document_fk"
+            columns: ["agt_rejected_document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fiscal_documentos_documento_origem_fk"
             columns: ["documento_origem_id"]
@@ -8932,7 +8969,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           empresa_id: string
+          establishment_number: string | null
+          first_document_no: string | null
           id: string
+          last_document_no: string | null
           metadata: Json
           periodo_fim: string
           periodo_inicio: string
@@ -8945,7 +8985,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           empresa_id: string
+          establishment_number?: string | null
+          first_document_no?: string | null
           id?: string
+          last_document_no?: string | null
           metadata?: Json
           periodo_fim: string
           periodo_inicio: string
@@ -8958,7 +9001,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           empresa_id?: string
+          establishment_number?: string | null
+          first_document_no?: string | null
           id?: string
+          last_document_no?: string | null
           metadata?: Json
           periodo_fim?: string
           periodo_inicio?: string
@@ -8977,7 +9023,17 @@ export type Database = {
       }
       fiscal_series: {
         Row: {
+          agt_provisioned_at: string | null
+          agt_series_code: string | null
+          agt_status: string
+          agt_submission_uuid: string | null
           ativa: boolean
+          authorized_quantity: number | null
+          contingency_activated_at: string | null
+          contingency_closed_at: string | null
+          contingency_last_deactivated_at: string | null
+          contingency_state: string | null
+          contingency_state_changed_at: string | null
           created_at: string
           descontinuada_em: string | null
           empresa_id: string
@@ -8985,12 +9041,24 @@ export type Database = {
           metadata: Json
           origem_documento: string
           prefixo: string
+          series_contingency_indicator: string | null
+          series_year: number | null
           tipo_documento: string
           ultimo_numero: number
           updated_at: string
         }
         Insert: {
+          agt_provisioned_at?: string | null
+          agt_series_code?: string | null
+          agt_status?: string
+          agt_submission_uuid?: string | null
           ativa?: boolean
+          authorized_quantity?: number | null
+          contingency_activated_at?: string | null
+          contingency_closed_at?: string | null
+          contingency_last_deactivated_at?: string | null
+          contingency_state?: string | null
+          contingency_state_changed_at?: string | null
           created_at?: string
           descontinuada_em?: string | null
           empresa_id: string
@@ -8998,12 +9066,24 @@ export type Database = {
           metadata?: Json
           origem_documento: string
           prefixo: string
+          series_contingency_indicator?: string | null
+          series_year?: number | null
           tipo_documento: string
           ultimo_numero?: number
           updated_at?: string
         }
         Update: {
+          agt_provisioned_at?: string | null
+          agt_series_code?: string | null
+          agt_status?: string
+          agt_submission_uuid?: string | null
           ativa?: boolean
+          authorized_quantity?: number | null
+          contingency_activated_at?: string | null
+          contingency_closed_at?: string | null
+          contingency_last_deactivated_at?: string | null
+          contingency_state?: string | null
+          contingency_state_changed_at?: string | null
           created_at?: string
           descontinuada_em?: string | null
           empresa_id?: string
@@ -9011,6 +9091,8 @@ export type Database = {
           metadata?: Json
           origem_documento?: string
           prefixo?: string
+          series_contingency_indicator?: string | null
+          series_year?: number | null
           tipo_documento?: string
           ultimo_numero?: number
           updated_at?: string
@@ -26701,7 +26783,7 @@ export type Database = {
           p_escola_id: string
           p_evidence_url?: string
           p_gateway_ref?: string
-          p_mensalidade_id: string
+          p_mensalidade_id: string | null
           p_meta?: Json
           p_metodo: Database["public"]["Enums"]["pagamento_metodo"]
           p_reference?: string

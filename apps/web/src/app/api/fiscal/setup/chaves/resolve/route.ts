@@ -165,7 +165,6 @@ export async function POST(req: Request) {
       data: {
         request_id: requestId,
         region,
-        key_id: keyId,
         key_fingerprint: keyFingerprint,
         public_key_pem: publicKeyPem,
       },

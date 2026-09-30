@@ -1,0 +1,10 @@
+-- Migration-history alignment for a concurrent BILL-010 reconciliation applied to the live project.
+--
+-- The effective lifecycle guard from this intermediate migration is superseded by the
+-- source-complete migrations that follow:
+--   20260927211718_bill_010_reconcile_document_lifecycle_guards.sql
+--   20260927212200_bill_010_lifecycle_source_alignment.sql
+--
+-- This no-op file intentionally preserves the live migration version/name in Git so a
+-- fresh migration history does not drift from the project while the later migrations
+-- establish the final lifecycle state.
