@@ -36,10 +36,8 @@ DECLARE
   v_numero_origem int;
   v_numero_destino int;
   v_numero_matricula bigint;
-  v_reprovado boolean := false;
   v_raa jsonb;
   v_decision text;
-  v_resultado_historico text;
   v_decisao_origem text;
   v_actor_id uuid := public.safe_auth_uid();
   v_jwt_role text := coalesce(
@@ -130,7 +128,6 @@ BEGIN
       );
   END IF;
 
-  v_reprovado := false;
   v_decisao_origem := 'transitou';
 
   SELECT c.id, c.numero, c.nome, t.curso_id
