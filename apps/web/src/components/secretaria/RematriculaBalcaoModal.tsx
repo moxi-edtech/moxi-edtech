@@ -496,8 +496,6 @@ function StepAcademico({
   cohort: { codigo: string; nome: string; modo: string } | null;
   reconciliationOnly: boolean;
   skipTurmaSelection: boolean;
-  notasLancarDepois: boolean;
-  setNotasLancarDepois: (value: boolean) => void;
   decisaoResultado: ResultadoDecisaoBalcao;
   setDecisaoResultado: (value: ResultadoDecisaoBalcao) => void;
   decisaoFonte: string;
