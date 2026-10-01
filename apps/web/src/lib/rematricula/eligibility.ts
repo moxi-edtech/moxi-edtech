@@ -41,8 +41,9 @@ export function classifyRematriculaAcademicEligibility(
     decision,
     destino = null,
     efetivacaoMatriculaBloqueada = false,
-    disciplinaIdsPendentes = [],
+    disciplinaIdsPendentes,
   } = normalized;
+  const pendingDisciplineIds = disciplinaIdsPendentes ?? [];
 
   if (decision === "transitou") {
     return {
@@ -50,7 +51,7 @@ export function classifyRematriculaAcademicEligibility(
       code: "ACADEMIC_READY",
       mode: "regular",
       reason: "O RAA autorizou a progressão para a etapa seguinte.",
-      disciplinaIdsPendentes,
+      disciplinaIdsPendentes: pendingDisciplineIds,
     };
   }
 
@@ -62,7 +63,7 @@ export function classifyRematriculaAcademicEligibility(
         mode: "conditional",
         reason:
           "O RAA reconhece inscrição condicional, mas a efetivação da matrícula ainda depende da resolução académica indicada.",
-        disciplinaIdsPendentes,
+        disciplinaIdsPendentes: pendingDisciplineIds,
       };
     }
 
@@ -72,7 +73,7 @@ export function classifyRematriculaAcademicEligibility(
       mode: "conditional",
       reason:
         "O RAA autorizou a progressão condicional para a etapa seguinte; as disciplinas pendentes continuam rastreadas.",
-      disciplinaIdsPendentes,
+      disciplinaIdsPendentes: pendingDisciplineIds,
     };
   }
 
@@ -83,7 +84,7 @@ export function classifyRematriculaAcademicEligibility(
       mode: null,
       reason:
         "As notas e os dados académicos precisam estar completos antes da rematrícula.",
-      disciplinaIdsPendentes,
+      disciplinaIdsPendentes: pendingDisciplineIds,
     };
   }
 
@@ -94,7 +95,7 @@ export function classifyRematriculaAcademicEligibility(
       mode: null,
       reason:
         "Existem disciplinas em recurso. Conclua ou acompanhe o recurso antes de efetivar a rematrícula.",
-      disciplinaIdsPendentes,
+      disciplinaIdsPendentes: pendingDisciplineIds,
     };
   }
 
@@ -105,7 +106,7 @@ export function classifyRematriculaAcademicEligibility(
       mode: null,
       reason:
         "O ciclo académico foi concluído; este aluno não segue pelo fluxo de rematrícula.",
-      disciplinaIdsPendentes,
+      disciplinaIdsPendentes: pendingDisciplineIds,
     };
   }
 
@@ -115,7 +116,7 @@ export function classifyRematriculaAcademicEligibility(
     mode: null,
     reason:
       "A decisão RAA vigente não autoriza progressão para a etapa seguinte.",
-    disciplinaIdsPendentes,
+    disciplinaIdsPendentes: pendingDisciplineIds,
   };
 }
 
