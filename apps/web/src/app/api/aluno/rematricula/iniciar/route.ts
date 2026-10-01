@@ -128,8 +128,17 @@ export async function POST(request: Request) {
 
     if (error) {
       const message = error.message || "Não foi possível iniciar a rematrícula.";
-      const status = message.includes("FINANCEIRO:") || message.includes("AUTH:") ? 403 : 409;
-      return NextResponse.json({ ok: false, error: message.replace(/^(DATA|FINANCEIRO|AUTH|ACADEMICO):\s*/, "") }, { status });
+      const code = message.includes("REMATRICULA_ACADEMIC_BLOCKED")
+        ? "ACADEMIC_CONDITIONAL_BLOCKED"
+        : message.includes("REMATRICULA_DEBT_REQUIRED")
+          ? "REMATRICULA_DEBT_REQUIRED"
+          : undefined;
+      const status = message.includes("AUTH:") ? 403 : 409;
+      return NextResponse.json({
+        ok: false,
+        error: message.replace(/^(DATA|FINANCEIRO|AUTH|ACADEMICO):\s*/, ""),
+        ...(code ? { code } : {}),
+      }, { status });
     }
 
     return NextResponse.json(data ?? { ok: false, error: "Resposta inválida ao iniciar rematrícula." });
