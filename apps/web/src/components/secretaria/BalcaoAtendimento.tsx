@@ -1008,6 +1008,7 @@ function Catalogo({
   rematriculaState,
   rematriculaPrice,
   rematriculaAnoLabel,
+  rematriculaAcademic,
   reconcilingPedido,
   rematriculaError,
   onResolverPedido,
@@ -1029,6 +1030,10 @@ function Catalogo({
   rematriculaState: RematriculaCardState | "CHECKING" | null;
   rematriculaPrice: number | null;
   rematriculaAnoLabel: string | null;
+  rematriculaAcademic: {
+    reason?: string;
+    disciplina_ids_pendentes?: string[];
+  } | null | undefined;
   reconcilingPedido: boolean;
   rematriculaError: string | null;
   onResolverPedido: () => Promise<void>;
@@ -1219,11 +1224,11 @@ function Catalogo({
               <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 p-3.5 text-xs text-sky-950">
                 <strong className="block">Recurso académico em aberto</strong>
                 <p className="mt-1 text-sky-900/80">
-                  {rematricula.academic?.reason ?? "O RAA ainda não autorizou a efetivação da rematrícula."}
+                  {rematriculaAcademic?.reason ?? "O RAA ainda não autorizou a efetivação da rematrícula."}
                 </p>
-                {(rematricula.academic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
+                {(rematriculaAcademic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
                   <p className="mt-2 font-semibold">
-                    Disciplinas pendentes: {rematricula.academic?.disciplina_ids_pendentes?.length}
+                    Disciplinas pendentes: {rematriculaAcademic?.disciplina_ids_pendentes?.length}
                   </p>
                 ) : null}
                 <CodigoEstado estado="ACADEMIC_REVIEW_REQUIRED" />
@@ -1241,11 +1246,11 @@ function Catalogo({
               <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-3.5 text-xs text-violet-950">
                 <strong className="block">Inscrição condicional reconhecida, mas ainda não efetivável</strong>
                 <p className="mt-1 text-violet-900/80">
-                  {rematricula.academic?.reason ?? "O RAA exige resolver a pendência académica antes da ativação da matrícula."}
+                  {rematriculaAcademic?.reason ?? "O RAA exige resolver a pendência académica antes da ativação da matrícula."}
                 </p>
-                {(rematricula.academic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
+                {(rematriculaAcademic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
                   <p className="mt-2 font-semibold">
-                    Disciplinas pendentes: {rematricula.academic?.disciplina_ids_pendentes?.length}
+                    Disciplinas pendentes: {rematriculaAcademic?.disciplina_ids_pendentes?.length}
                   </p>
                 ) : null}
                 <CodigoEstado estado="ACADEMIC_CONDITIONAL_BLOCKED" />
@@ -2175,6 +2180,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 }
                 rematriculaPrice={rematricula.service?.valor_base ?? null}
                 rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
+                rematriculaAcademic={rematricula.academic}
                 reconcilingPedido={rematricula.reconciling}
                 rematriculaError={rematricula.apiError}
                 onResolverPedido={rematricula.resolveLegacyPedido}
