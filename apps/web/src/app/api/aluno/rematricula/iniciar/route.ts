@@ -5,6 +5,7 @@ import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveRematriculaSource } from "@/lib/alunoRematriculaSource";
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 
 export const dynamic = "force-dynamic";
 
@@ -53,25 +54,22 @@ export async function POST(request: Request) {
         turma_id: matricula.turma_id,
       });
       const decision = academic.progression.decision;
-      const conditionalEnrollmentBlocked = decision === "inscricao_condicional"
-        && academic.progression.destino !== "proxima_etapa";
-      if (decision === "pendente" || decision === "recurso" || conditionalEnrollmentBlocked) {
+      const academicEligibility = classifyRematriculaAcademicEligibility(decision);
+      if (!academicEligibility.eligible) {
+        const code = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
+          ? "ACADEMIC_PROMOTION_PENDING"
+          : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+            ? "ACADEMIC_CYCLE_COMPLETED"
+            : "ACADEMIC_NOT_APPROVED";
         return NextResponse.json({
           ok: false,
-          error: conditionalEnrollmentBlocked
-            ? "A inscrição condicional ainda não autoriza a matrícula na classe seguinte."
-            : decision === "recurso"
-            ? "Existem disciplinas em recurso antes da rematrícula."
-            : "A situação académica ainda não está fechada.",
-          code: "ACADEMIC_PROMOTION_PENDING",
+          error: academicEligibility.reason,
+          code,
           academic: {
             decision,
             disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
           },
         }, { status: 409 });
-      }
-      if (decision === "concluiu") {
-        return NextResponse.json({ ok: false, error: "O ciclo académico foi concluído e não possui classe seguinte.", code: "ACADEMIC_CYCLE_COMPLETED" }, { status: 409 });
       }
     } catch (error) {
       if (error instanceof RaaProgressionUnavailableError) {
