@@ -548,7 +548,7 @@ function StepAcademico({
           <div>
             <p className="text-sm font-bold text-amber-950">Reconciliação académica histórica</p>
             <p className="mt-1 text-xs text-amber-800">
-              Esta decisão existe somente para concluir uma operação antiga. Novas rematrículas exigem notas fechadas e resultado aprovado no RAA.
+              Esta decisão existe somente para concluir uma operação antiga. Novas rematrículas obedecem exclusivamente à decisão e aos bloqueios devolvidos pelo RAA.
             </p>
           </div>
           {cohort && (
