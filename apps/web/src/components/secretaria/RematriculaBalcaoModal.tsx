@@ -487,7 +487,6 @@ function StepAcademico({
   setSelectedTurmaId,
   selectRef,
 }: {
-  result: RematriculaResult;
   alunoNome: string;
   alunoProcesso: string;
   turmaAtual: string | null;
