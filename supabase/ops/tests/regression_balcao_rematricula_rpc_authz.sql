@@ -102,6 +102,10 @@ SELECT pg_temp._balcao_authz_ensure_auth_user(
   '00000000-0000-4000-8000-000000000904'::uuid,
   'balcao.authz.outsider@klasse.test'
 );
+SELECT pg_temp._balcao_authz_ensure_auth_user(
+  '00000000-0000-4000-8000-000000000906'::uuid,
+  'balcao.authz.financeiro@klasse.test'
+);
 
 INSERT INTO public.escolas (id, nome, status, onboarding_finalizado)
 VALUES
@@ -122,6 +126,12 @@ VALUES
     '00000000-0000-4000-8000-000000000903'::uuid,
     'staff',
     'professor'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000901'::uuid,
+    '00000000-0000-4000-8000-000000000906'::uuid,
+    'staff',
+    'financeiro'
   )
 ON CONFLICT DO NOTHING;
 
@@ -184,7 +194,35 @@ BEGIN
     END IF;
   END;
 
-  -- 3) Secretaria is valid only for its own school.
+  -- 3) Financeiro is intentionally NOT allowed to finalize rematricula.
+  -- The database authority must mirror the HTTP route exactly.
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'sub', '00000000-0000-4000-8000-000000000906',
+      'role', 'authenticated'
+    )::text,
+    true
+  );
+
+  BEGIN
+    PERFORM public.finalizar_rematricula_balcao(
+      '00000000-0000-4000-8000-000000000901'::uuid,
+      '00000000-0000-4000-8000-000000000911'::uuid,
+      '00000000-0000-4000-8000-000000000912'::uuid,
+      '00000000-0000-4000-8000-000000000913'::uuid,
+      '00000000-0000-4000-8000-000000000914'::uuid,
+      '00000000-0000-4000-8000-000000000915'::uuid
+    );
+    RAISE EXCEPTION 'BAL-GR-001 failed: financeiro call succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_state = RETURNED_SQLSTATE, v_msg = MESSAGE_TEXT;
+    IF v_state <> '42501' OR position('AUTH_FORBIDDEN' in v_msg) = 0 THEN
+      RAISE EXCEPTION 'BAL-GR-001 failed: expected AUTH_FORBIDDEN/42501 for financeiro, got [%] %', v_state, v_msg;
+    END IF;
+  END;
+
+  -- 4) Secretaria is valid only for its own school.
   PERFORM set_config(
     'request.jwt.claims',
     json_build_object(
@@ -211,7 +249,7 @@ BEGIN
     END IF;
   END;
 
-  -- 4) Secretaria in the requested school must pass the authz gate. The fake
+  -- 5) Secretaria in the requested school must pass the authz gate. The fake
   -- academic-year id should be the first domain error reached.
   BEGIN
     PERFORM public.finalizar_rematricula_balcao(

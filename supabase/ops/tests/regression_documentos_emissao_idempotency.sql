@@ -45,6 +45,10 @@ SELECT pg_temp._ensure_auth_user(
   '00000000-0000-4000-8000-000000001003'::uuid,
   'balcao.doc.professor@klasse.test'
 );
+SELECT pg_temp._ensure_auth_user(
+  '00000000-0000-4000-8000-000000001005'::uuid,
+  'balcao.doc.financeiro@klasse.test'
+);
 
 INSERT INTO public.escolas (id, nome, status, onboarding_finalizado)
 VALUES ('00000000-0000-4000-8000-000000001001'::uuid, 'Escola BAL-GR-003', 'ativa', true)
@@ -67,6 +71,12 @@ VALUES
     '00000000-0000-4000-8000-000000001003'::uuid,
     'staff',
     'professor'
+  ),
+  (
+    '00000000-0000-4000-8000-000000001001'::uuid,
+    '00000000-0000-4000-8000-000000001005'::uuid,
+    'staff',
+    'financeiro'
   )
 ON CONFLICT DO NOTHING;
 
@@ -223,6 +233,40 @@ BEGIN
     GET STACKED DIAGNOSTICS v_state = RETURNED_SQLSTATE, v_msg = MESSAGE_TEXT;
     IF v_state <> '42501' OR position('AUTH_FORBIDDEN' in v_msg) = 0 THEN
       RAISE EXCEPTION 'BAL-GR-003 failed: expected AUTH_FORBIDDEN/42501, got [%] %', v_state, v_msg;
+    END IF;
+  END;
+END;
+$$;
+
+DO $$
+DECLARE
+  v_msg text;
+  v_state text;
+BEGIN
+  -- Financeiro is not part of K12_SECRETARIA_OPERACIONAL_ROLE_GROUP.
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'sub', '00000000-0000-4000-8000-000000001005',
+      'role', 'authenticated',
+      'escola_id', '00000000-0000-4000-8000-000000001001'
+    )::text,
+    true
+  );
+
+  BEGIN
+    PERFORM public.emitir_documento_final_idempotente(
+      '00000000-0000-4000-8000-000000001001'::uuid,
+      '00000000-0000-4000-8000-000000001004'::uuid,
+      2026,
+      'declaracao_notas',
+      'bal-gr-003-financeiro'
+    );
+    RAISE EXCEPTION 'BAL-GR-003 failed: financeiro call succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_state = RETURNED_SQLSTATE, v_msg = MESSAGE_TEXT;
+    IF v_state <> '42501' OR position('AUTH_FORBIDDEN' in v_msg) = 0 THEN
+      RAISE EXCEPTION 'BAL-GR-003 failed: expected AUTH_FORBIDDEN/42501 for financeiro, got [%] %', v_state, v_msg;
     END IF;
   END;
 END;

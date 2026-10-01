@@ -62,7 +62,6 @@ BEGIN
       ARRAY[
         'secretaria',
         'secretaria_financeiro',
-        'financeiro',
         'admin_financeiro',
         'admin',
         'admin_escola',

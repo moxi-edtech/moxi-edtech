@@ -84,11 +84,9 @@ BEGIN
         'secretaria',
         'secretaria_financeiro',
         'admin_financeiro',
-        'admin_secretaria',
         'admin',
         'admin_escola',
-        'staff_admin',
-        'diretor'
+        'staff_admin'
       ]::text[]
     ) THEN
       RAISE EXCEPTION 'AUTH_FORBIDDEN: sem permissão para emitir documento final'
