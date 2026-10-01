@@ -75,28 +75,49 @@ jobs:
   database-regressions:
     name: Database regressions
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: 2.72.7
+      - name: Verify PostgreSQL client
+        run: psql --version
 
-      - name: Start disposable Supabase
-        run: supabase start
+      - name: Bootstrap minimal Balcao contract
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_balcao_p0_minimal.sql
 
-      - name: Rebuild database from migrations
-        run: supabase db reset
+      - name: Apply BAL-GR-001 migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826121000_harden_balcao_rematricula_rpc_authz.sql
 
       - name: BAL-GR-001 authorization regression
         env:
-          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_balcao_rematricula_rpc_authz.sql
+
+      - name: Apply BAL-GR-003 migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826122000_idempotent_secretaria_document_emission.sql
 
       - name: BAL-GR-003 document idempotency regression
         env:
-          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_emissao_idempotency.sql
