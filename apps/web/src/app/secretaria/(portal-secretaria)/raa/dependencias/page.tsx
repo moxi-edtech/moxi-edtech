@@ -181,7 +181,7 @@ export default function DependenciasAcademicasPage() {
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
                 {item.origem.ano_letivo ? <span className="rounded-lg bg-slate-50 px-2 py-1">Origem {item.origem.ano_letivo}</span> : null}
                 {item.destino?.ano_letivo ? <span className="rounded-lg bg-slate-50 px-2 py-1">Destino {item.destino.ano_letivo}</span> : null}
-                {item.resultado.fonte ? <span className="rounded-lg bg-slate-50 px-2 py-1">{item.resultado.fonte.replaceAll("_", " ")}</span> : null}
+                {item.resultado.fonte ? <span className="rounded-lg bg-slate-50 px-2 py-1">{item.resultado.fonte.replace(/_/g, " ")}</span> : null}
                 {typeof item.resultado.nota === "number" ? <span className="rounded-lg bg-slate-50 px-2 py-1">Nota {item.resultado.nota.toFixed(1)}</span> : null}
               </div>
 
