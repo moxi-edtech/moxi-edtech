@@ -257,7 +257,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       && !(decisaoFonte === "declaracao_administrativa_escola" && !decisaoMotivo.trim())
     : skipTurmaSelection
       ? true
-      : progressao?.estado === "aprovado" && Boolean(selectedTurmaId);
+      : ["aprovado", "condicional"].includes(progressao?.estado ?? "") && Boolean(selectedTurmaId);
 
   const canSubmit =
     !submitting &&
@@ -610,17 +610,30 @@ function StepAcademico({
         </div>
       ) : (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <strong className="block text-emerald-950">Resultado académico obrigatório: aprovado</strong>
+          <strong className="block text-emerald-950">Decisão académica controlada pelo RAA</strong>
           <span className="mt-1 block text-xs">
-            O Balcão não altera o resultado académico. A rematrícula só avança depois de as notas estarem fechadas e o RAA confirmar a aprovação.
+            O Balcão não altera o resultado académico. A rematrícula avança somente quando o RAA autoriza a etapa seguinte — de forma regular ou condicional.
           </span>
         </div>
       )}
 
       {/* Turma selector */}
       {progressao && (
-        <div className={`rounded-xl border p-3 text-sm ${progressao.estado === "reprovado" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-sky-200 bg-sky-50 text-sky-800"}`}>
-          <strong>{progressao.orientacao?.titulo ?? (progressao.estado === "reprovado" ? "Retenção académica" : "Progressão académica")}</strong>
+        <div className={`rounded-xl border p-3 text-sm ${
+          progressao.estado === "reprovado"
+            ? "border-amber-200 bg-amber-50 text-amber-800"
+            : progressao.estado === "condicional"
+              ? "border-violet-200 bg-violet-50 text-violet-900"
+              : "border-sky-200 bg-sky-50 text-sky-800"
+        }`}>
+          <strong>
+            {progressao.orientacao?.titulo
+              ?? (progressao.estado === "reprovado"
+                ? "Retenção académica"
+                : progressao.estado === "condicional"
+                  ? "Progressão condicional"
+                  : "Progressão académica")}
+          </strong>
           <p className="mt-1 text-xs">{progressao.orientacao?.mensagem ?? progressao.mensagem}</p>
           {progressao.orientacao?.proximo_passo && (
             <p className="mt-2 text-xs font-semibold">Próximo passo: {progressao.orientacao.proximo_passo}</p>
@@ -674,9 +687,8 @@ function StepAcademico({
         </select>
         {!turmasLoading && turmas.length === 0 && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            Não há turma elegível para esta decisão no ano de destino. Escolha
-            <strong> Concluído</strong> quando o ciclo terminar aqui, ou peça à
-            direção para preparar a turma correspondente antes de continuar.
+            Não há turma elegível para a decisão devolvida pelo RAA no ano de destino.
+            Corrija a configuração da classe/turma ou resolva a situação académica indicada antes de continuar.
           </div>
         )}
         {selectedTurmaId && turmas.find((turma) => turma.id === selectedTurmaId) && (
