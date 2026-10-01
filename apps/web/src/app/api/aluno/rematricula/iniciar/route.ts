@@ -5,6 +5,7 @@ import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveRematriculaSource } from "@/lib/alunoRematriculaSource";
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 
 export const dynamic = "force-dynamic";
 
@@ -53,31 +54,66 @@ export async function POST(request: Request) {
         turma_id: matricula.turma_id,
       });
       const decision = academic.progression.decision;
-      const conditionalEnrollmentBlocked = decision === "inscricao_condicional"
-        && academic.progression.destino !== "proxima_etapa";
-      if (decision === "pendente" || decision === "recurso" || conditionalEnrollmentBlocked) {
+      const academicEligibility = classifyRematriculaAcademicEligibility({
+        decision,
+        destino: academic.progression.destino,
+        efetivacaoMatriculaBloqueada: academic.efetivacaoMatriculaBloqueada,
+        disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
+      });
+      if (!academicEligibility.eligible) {
+        const code = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
+          ? "ACADEMIC_PROMOTION_PENDING"
+          : academicEligibility.code === "ACADEMIC_REVIEW_REQUIRED"
+            ? "ACADEMIC_REVIEW_REQUIRED"
+            : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
+              ? "ACADEMIC_CONDITIONAL_BLOCKED"
+              : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+                ? "ACADEMIC_CYCLE_COMPLETED"
+                : "ACADEMIC_NOT_APPROVED";
         return NextResponse.json({
           ok: false,
-          error: conditionalEnrollmentBlocked
-            ? "A inscrição condicional ainda não autoriza a matrícula na classe seguinte."
-            : decision === "recurso"
-            ? "Existem disciplinas em recurso antes da rematrícula."
-            : "A situação académica ainda não está fechada.",
-          code: "ACADEMIC_PROMOTION_PENDING",
+          error: academicEligibility.reason,
+          code,
           academic: {
             decision,
             disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
           },
         }, { status: 409 });
       }
-      if (decision === "concluiu") {
-        return NextResponse.json({ ok: false, error: "O ciclo académico foi concluído e não possui classe seguinte.", code: "ACADEMIC_CYCLE_COMPLETED" }, { status: 409 });
-      }
     } catch (error) {
       if (error instanceof RaaProgressionUnavailableError) {
         return NextResponse.json({ ok: false, error: error.message, code: "ACADEMIC_PROMOTION_PENDING" }, { status: 409 });
       }
       throw error;
+    }
+
+    const { data: openBalances, error: openBalancesError } = await supabase
+      .from("mensalidades")
+      .select("status, valor_previsto, valor, valor_pago_total")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", ctx.alunoId)
+      .or(`matricula_id.eq.${matricula.id},ano_referencia.eq.${matricula.ano_letivo}`);
+
+    if (openBalancesError) {
+      throw new Error(`Falha ao verificar situação financeira: ${openBalancesError.message}`);
+    }
+
+    const hasOpenBalance = (openBalances ?? []).some((mensalidade: any) => {
+      const status = String(mensalidade.status ?? "").toLowerCase();
+      const saldo = Math.max(
+        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0)
+          - Number(mensalidade.valor_pago_total ?? 0),
+        0,
+      );
+      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
+    });
+
+    if (hasOpenBalance) {
+      return NextResponse.json({
+        ok: false,
+        error: "Regularize todos os saldos em aberto antes de rematricular.",
+        code: "REMATRICULA_DEBT_REQUIRED",
+      }, { status: 409 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -92,8 +128,17 @@ export async function POST(request: Request) {
 
     if (error) {
       const message = error.message || "Não foi possível iniciar a rematrícula.";
-      const status = message.includes("FINANCEIRO:") || message.includes("AUTH:") ? 403 : 409;
-      return NextResponse.json({ ok: false, error: message.replace(/^(DATA|FINANCEIRO|AUTH|ACADEMICO):\s*/, "") }, { status });
+      const code = message.includes("REMATRICULA_ACADEMIC_BLOCKED")
+        ? "ACADEMIC_CONDITIONAL_BLOCKED"
+        : message.includes("REMATRICULA_DEBT_REQUIRED")
+          ? "REMATRICULA_DEBT_REQUIRED"
+          : undefined;
+      const status = message.includes("AUTH:") ? 403 : 409;
+      return NextResponse.json({
+        ok: false,
+        error: message.replace(/^(DATA|FINANCEIRO|AUTH|ACADEMICO):\s*/, ""),
+        ...(code ? { code } : {}),
+      }, { status });
     }
 
     return NextResponse.json(data ?? { ok: false, error: "Resposta inválida ao iniciar rematrícula." });

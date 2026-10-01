@@ -7,9 +7,10 @@ import {
   resolveAcademicYearContext,
 } from "@/lib/academic-year/context";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
-import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
 import { resolveOpenRematriculaWindow, resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
+import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progression-server";
+import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -227,6 +228,41 @@ export async function GET(request: Request) {
       && Number(cohort?.ano_destino) === targetAnoLetivoAno
       && (!cohort?.expira_em || new Date(`${cohort.expira_em}T23:59:59`).getTime() >= Date.now());
 
+    // Regra canónica: o Balcão consome a decisão do RAA. Não existe override
+    // manual de "lançar notas depois". Progressão regular e inscrição
+    // condicional autorizada podem avançar; estados bloqueados permanecem
+    // explícitos e orientados pelo próprio RAA.
+    let academicDecision: any = null;
+    let academicGuidance: any = null;
+    let academicEligibility = classifyRematriculaAcademicEligibility(null);
+    if (matriculaOrigem.turma_id) {
+      try {
+        const academic = await resolveRaaProgressionForMatricula(supabase, escolaId, {
+          id: matriculaOrigem.id,
+          aluno_id,
+          turma_id: matriculaOrigem.turma_id,
+        });
+        academicDecision = academic.progression.decision;
+        academicGuidance = academic.orientacao;
+        academicEligibility = classifyRematriculaAcademicEligibility({
+          decision: academic.progression.decision,
+          destino: academic.progression.destino,
+          efetivacaoMatriculaBloqueada: academic.efetivacaoMatriculaBloqueada,
+          disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
+        });
+      } catch (error) {
+        academicEligibility = {
+          eligible: false,
+          code: "ACADEMIC_RESULT_PENDING",
+          mode: null,
+          reason: error instanceof Error
+            ? error.message
+            : "Não foi possível confirmar o resultado académico desta matrícula.",
+          disciplinaIdsPendentes: [],
+        };
+      }
+    }
+
     // A matrícula destino criada pela promoção é a matrícula operacional do
     // aluno. No Balcão ela é preservada: a operação seguinte cobra somente a
     // taxa de rematrícula, sem seleccionar nem alterar turma/classe.
@@ -256,12 +292,17 @@ export async function GET(request: Request) {
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("matricula_id", matriculaOrigem.id);
-    const today = todayInLuanda();
-    const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter(
-      (mensalidade: any) =>
-        !["pago", "isento", "cancelado"].includes(String(mensalidade.status).toLowerCase()) &&
-        isMensalidadeVencida(mensalidade, today),
-    );
+    // "Sem dívida" significa saldo aberto zero na matrícula de origem.
+    // Não esperamos o vencimento para descobrir o bloqueio: esta leitura
+    // precisa antecipar o mesmo guard que o banco aplica ao conceder o pedido.
+    const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter((mensalidade: any) => {
+      const status = String(mensalidade.status ?? "").toLowerCase();
+      const saldo = Math.max(
+        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
+        0,
+      );
+      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
+    });
     const dividaTotal = mensalidadesEmAberto.reduce(
       (total: number, mensalidade: any) => total + Math.max(
         Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
@@ -400,6 +441,16 @@ export async function GET(request: Request) {
         : !pedidoTemPagamentoAssociado
           ? "PENDING_ORDER_REVIEW"
         : "PAYMENT_IN_PROGRESS";
+    } else if (!academicEligibility.eligible) {
+      status = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
+        ? "ACADEMIC_PENDING"
+        : academicEligibility.code === "ACADEMIC_REVIEW_REQUIRED"
+          ? "ACADEMIC_REVIEW_REQUIRED"
+          : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
+            ? "ACADEMIC_CONDITIONAL_BLOCKED"
+            : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+              ? "ACADEMIC_CYCLE_COMPLETED"
+              : "ACADEMIC_NOT_APPROVED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {
@@ -430,6 +481,15 @@ export async function GET(request: Request) {
         count: mensalidadesEmAberto.filter((mensalidade: any) =>
           Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0) > 0,
         ).length,
+      },
+      academic: {
+        decision: academicDecision,
+        eligible: academicEligibility.eligible,
+        code: academicEligibility.code,
+        mode: academicEligibility.mode,
+        reason: academicEligibility.reason,
+        disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
+        guidance: academicGuidance,
       },
       pedido: pedidoExistente
         ? {

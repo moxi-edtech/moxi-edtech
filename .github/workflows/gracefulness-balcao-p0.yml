@@ -4,8 +4,14 @@ on:
   pull_request:
     paths:
       - "apps/web/src/app/api/secretaria/balcao/rematriculas/route.ts"
+      - "apps/web/src/app/api/secretaria/balcao/rematriculas/status/route.ts"
+      - "apps/web/src/app/api/secretaria/turmas-simples/route.ts"
+      - "apps/web/src/app/api/aluno/rematricula/status/route.ts"
+      - "apps/web/src/app/api/aluno/rematricula/iniciar/route.ts"
+      - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/PagamentosPendentesWindow.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHub.tsx"
       - "apps/web/src/components/secretaria/AdmissaoWizardClient.tsx"
@@ -15,6 +21,8 @@ on:
       - "apps/web/src/lib/documentos/emissaoClient.ts"
       - "apps/web/src/lib/financeiro/checkout-payment-state.ts"
       - "apps/web/src/lib/secretaria/rematricula-result.ts"
+      - "apps/web/src/lib/rematricula/eligibility.ts"
+      - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
       - "apps/web/tests/unit/checkout-payment-state.spec.ts"
       - "apps/web/tests/unit/rematricula-result.spec.ts"
       - "supabase/migrations/**"
@@ -53,7 +61,8 @@ jobs:
           cd apps/web
           node --test --import tsx \
             tests/unit/checkout-payment-state.spec.ts \
-            tests/unit/rematricula-result.spec.ts
+            tests/unit/rematricula-result.spec.ts \
+            tests/unit/rematricula-eligibility.spec.ts
 
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
@@ -72,8 +81,14 @@ jobs:
         run: |
           pnpm -C apps/web exec eslint \
             src/app/api/secretaria/balcao/rematriculas/route.ts \
+            src/app/api/secretaria/balcao/rematriculas/status/route.ts \
+            src/app/api/secretaria/turmas-simples/route.ts \
+            src/app/api/aluno/rematricula/status/route.ts \
+            src/app/api/aluno/rematricula/iniciar/route.ts \
+            src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
+            src/components/secretaria/PagamentosPendentesWindow.tsx \
             src/components/secretaria/DocumentosEmissaoHubClient.tsx \
             src/components/secretaria/DocumentosEmissaoHub.tsx \
             src/components/secretaria/AdmissaoWizardClient.tsx \
@@ -83,8 +98,10 @@ jobs:
             src/lib/documentos/emissaoClient.ts \
             src/lib/financeiro/checkout-payment-state.ts \
             src/lib/secretaria/rematricula-result.ts \
+            src/lib/rematricula/eligibility.ts \
             tests/unit/checkout-payment-state.spec.ts \
             tests/unit/rematricula-result.spec.ts \
+            tests/unit/rematricula-eligibility.spec.ts \
             --max-warnings 10000
 
 
@@ -127,6 +144,16 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_balcao_rematricula_rpc_authz.sql
+
+      - name: Apply strict rematricula eligibility migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826123000_enforce_strict_balcao_rematricula_eligibility.sql
+
+      - name: Strict rematricula eligibility regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_balcao_rematricula_strict_eligibility.sql
 
       - name: Apply BAL-GR-003 migration
         env:

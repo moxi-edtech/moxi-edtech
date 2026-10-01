@@ -29,6 +29,7 @@ export type RaaProgressionServerResult = {
   disciplinas: Array<{ disciplina_id: string; status: RaaAcademicStatus }>
   frequencia: { percentual_presenca: number | null; frequencia_min_percent: number }
   decreto: RaaDecretoResult | null
+  efetivacaoMatriculaBloqueada: boolean
   orientacao: RaaProgressionGuidance
 }
 
@@ -45,6 +46,7 @@ function buildGuidance(
   decreto: RaaDecretoResult | null,
   matriculaId: string,
   escolaId: string,
+  efetivacaoMatriculaBloqueada = decreto?.efetivacaoMatriculaBloqueada === true,
 ): RaaProgressionGuidance {
   const query = `?matricula_id=${encodeURIComponent(matriculaId)}`
   const fechamentoHref = `/secretaria/fechamento-academico${query}`
@@ -65,6 +67,22 @@ function buildGuidance(
             { id: "concluir_notas", label: "Abrir notas", href: `/secretaria/notas${query}`, prioridade: "principal" },
             { id: "verificar_frequencia", label: "Verificar frequência", href: `/professor/frequencias${query}`, prioridade: "secundaria" },
           ],
+    }
+  }
+  if (progression.decision === "inscricao_condicional") {
+    const bloqueada = efetivacaoMatriculaBloqueada
+    return {
+      estado: bloqueada ? "bloqueado" : "pronto",
+      titulo: bloqueada ? "Inscrição condicional pendente de resolução" : "Progressão condicional autorizada",
+      mensagem: bloqueada
+        ? "O RAA reconhece a inscrição condicional, mas a matrícula ainda não pode ser efetivada."
+        : "O RAA autoriza a etapa seguinte com disciplinas pendentes que continuarão rastreadas.",
+      proximo_passo: bloqueada
+        ? "Concluir o recurso ou exame indicado pelo RAA e verificar novamente."
+        : "Continuar a rematrícula preservando as disciplinas pendentes.",
+      acoes: bloqueada
+        ? [{ id: "abrir_recursos", label: "Abrir recursos e reapreciações", href: `/secretaria/raa/reapreciacoes${query}`, prioridade: "principal" }]
+        : [{ id: "continuar_matricula", label: "Continuar rematrícula", href: `/secretaria/rematricula${query}`, prioridade: "principal" }],
     }
   }
   if (progression.decision === "recurso") {
@@ -251,6 +269,8 @@ export async function resolveRaaProgressionForMatricula(
       disciplinaIdsPendentes: legalProgression?.disciplinaIdsPendentes ?? (databaseResult.disciplina_ids_pendentes ?? []) as string[],
       etapaDestino: legalProgression?.etapaDestino ?? databaseResult.etapa_destino ?? null,
     }
+    const efetivacaoMatriculaBloqueada = legal?.efetivacaoMatriculaBloqueada
+      ?? Boolean(databaseResult.efetivacao_matricula_bloqueada)
     return {
       regime,
       disciplinas: databaseDisciplinas,
@@ -260,7 +280,14 @@ export async function resolveRaaProgressionForMatricula(
       },
       progression: finalProgression,
       decreto: legal,
-      orientacao: buildGuidance(finalProgression, legal, matricula.id, escolaId),
+      efetivacaoMatriculaBloqueada,
+      orientacao: buildGuidance(
+        finalProgression,
+        legal,
+        matricula.id,
+        escolaId,
+        efetivacaoMatriculaBloqueada,
+      ),
     }
   }
 
@@ -357,6 +384,7 @@ export async function resolveRaaProgressionForMatricula(
     disciplinas: statuses,
     frequencia: { percentual_presenca: percentualPresenca, frequencia_min_percent: frequenciaMinima },
     decreto: null,
+    efetivacaoMatriculaBloqueada: false,
     progression,
     orientacao: buildGuidance(progression, null, matricula.id, escolaId),
   }

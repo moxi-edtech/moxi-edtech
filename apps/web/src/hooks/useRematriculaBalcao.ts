@@ -5,6 +5,11 @@ import { useState, useCallback, useEffect } from "react";
 
 export type RematriculaCardState =
   | "READY"
+  | "ACADEMIC_PENDING"
+  | "ACADEMIC_REVIEW_REQUIRED"
+  | "ACADEMIC_CONDITIONAL_BLOCKED"
+  | "ACADEMIC_NOT_APPROVED"
+  | "ACADEMIC_CYCLE_COMPLETED"
   | "DEBT_BLOCKED"
   | "PRICE_NOT_CONFIGURED"
   | "RECONFIRMATION_REQUIRED"
@@ -34,7 +39,7 @@ export interface TurmaOption {
 export interface ProgressaoBalcao {
   aplicada: boolean;
   modo: "promocao" | "retencao" | "indefinida";
-  estado: "notas_pendentes" | "reprovado" | "concluido" | "classe_nao_identificada";
+  estado: "aprovado" | "condicional" | "notas_pendentes" | "recurso" | "reprovado" | "concluido" | "classe_nao_identificada";
   classe_origem: number | null;
   classe_destino: number | null;
   turma_origem_id: string | null;
@@ -106,6 +111,20 @@ interface StatusResponse {
   status: RematriculaCardState;
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
   debt: { total: number; count: number } | null;
+  academic?: {
+    decision: string | null;
+    eligible: boolean;
+    code: string;
+    mode?: "regular" | "conditional" | null;
+    reason: string;
+    disciplina_ids_pendentes?: string[];
+    guidance?: {
+      titulo?: string;
+      mensagem?: string;
+      proximo_passo?: string;
+      acoes?: Array<{ id: string; label: string; href: string; prioridade: "principal" | "secundaria" }>;
+    } | null;
+  } | null;
   pedido: {
     id: string;
     status: string;
@@ -146,7 +165,17 @@ const ERROR_MESSAGES: Record<string, string> = {
   REMATRICULA_SOURCE_INVALID:
     "A matrícula actual do aluno não foi encontrada.",
   REMATRICULA_DEBT_REQUIRED:
-    "Regularize as dívidas antes de rematricular.",
+    "Regularize todos os saldos em aberto antes de rematricular.",
+  REMATRICULA_ACADEMIC_PENDING:
+    "Conclua as notas e os dados académicos antes de tentar novamente.",
+  REMATRICULA_ACADEMIC_REVIEW_REQUIRED:
+    "Conclua ou acompanhe o recurso académico antes de efetivar a rematrícula.",
+  REMATRICULA_ACADEMIC_CONDITIONAL_BLOCKED:
+    "A inscrição condicional foi reconhecida pelo RAA, mas ainda não pode ser efetivada.",
+  REMATRICULA_ACADEMIC_NOT_APPROVED:
+    "A decisão RAA vigente não autoriza progressão para a etapa seguinte.",
+  REMATRICULA_ACADEMIC_CYCLE_COMPLETED:
+    "O ciclo académico foi concluído; não existe rematrícula para a etapa seguinte.",
   REMATRICULA_PRICE_NOT_CONFIGURED:
     "O emolumento ainda não foi configurado pela escola.",
   PAYMENT_REQUIRED: "O pagamento não foi confirmado.",
@@ -155,8 +184,6 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Pagamento confirmado; atendimento enviado para reconciliação.",
   REMATRICULA_PROGRESSION_INVALID:
     "A turma destino não respeita a progressão académica do aluno.",
-  REMATRICULA_DECISION_REQUIRED:
-    "Confirme que as notas serão lançadas posteriormente.",
   CROSS_YEAR_ENTITY_MISMATCH:
     "A turma seleccionada não pertence ao ano lectivo.",
   DOCUMENT_PENDING:
@@ -196,6 +223,7 @@ export function useRematriculaBalcao(opts: {
   const [loading, setLoading] = useState(false);
   const [service, setService] = useState<StatusResponse["service"]>(null);
   const [debt, setDebt] = useState<StatusResponse["debt"]>(null);
+  const [academic, setAcademic] = useState<StatusResponse["academic"]>(null);
   const [pedido, setPedido] = useState<StatusResponse["pedido"]>(null);
   const [comprovante, setComprovante] =
     useState<StatusResponse["comprovante"]>(null);
@@ -209,7 +237,6 @@ export function useRematriculaBalcao(opts: {
   // ── Turmas ──────────────────────────────────────────────────────────────
   const [turmas, setTurmas] = useState<TurmaOption[]>([]);
   const [progressao, setProgressao] = useState<ProgressaoBalcao | null>(null);
-  const [notasLancarDepois, setNotasLancarDepois] = useState(false);
   const [decisaoResultado, setDecisaoResultado] = useState<ResultadoDecisaoBalcao>("aprovado");
   const [decisaoFonte, setDecisaoFonte] = useState("raa");
   const [decisaoMotivo, setDecisaoMotivo] = useState("");
@@ -262,6 +289,7 @@ export function useRematriculaBalcao(opts: {
         setCardState(data.status);
         setService(data.service);
         setDebt(data.debt);
+        setAcademic(data.academic ?? null);
         setPedido(data.pedido);
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
@@ -294,7 +322,7 @@ export function useRematriculaBalcao(opts: {
     setTurmas([]);
     setProgressao(null);
     setCohort(null);
-    setNotasLancarDepois(false);
+    setAcademic(null);
     setDecisaoResultado("aprovado");
     setDecisaoFonte("raa");
     setDecisaoMotivo("");
@@ -310,7 +338,6 @@ export function useRematriculaBalcao(opts: {
           selectedTurmaId?: string | null;
           metodo?: MetodoPagamento;
           detalhes?: typeof DETALHES_VAZIOS;
-          notasLancarDepois?: boolean;
           decisaoResultado?: ResultadoDecisaoBalcao;
           decisaoFonte?: string;
           decisaoMotivo?: string;
@@ -322,7 +349,6 @@ export function useRematriculaBalcao(opts: {
         setSelectedTurmaId(draft.selectedTurmaId ?? null);
         if (draft.metodo) setMetodoState(draft.metodo);
         if (draft.detalhes) setDetalhesState({ ...DETALHES_VAZIOS, ...draft.detalhes });
-        setNotasLancarDepois(Boolean(draft.notasLancarDepois));
         if (draft.decisaoResultado) setDecisaoResultado(draft.decisaoResultado);
         if (draft.decisaoFonte) setDecisaoFonte(draft.decisaoFonte);
         if (draft.decisaoMotivo) setDecisaoMotivo(draft.decisaoMotivo);
@@ -343,7 +369,6 @@ export function useRematriculaBalcao(opts: {
         selectedTurmaId,
         metodo,
         detalhes,
-        notasLancarDepois,
         decisaoResultado,
         decisaoFonte,
         decisaoMotivo,
@@ -355,7 +380,7 @@ export function useRematriculaBalcao(opts: {
     } catch {
       // A persistência é uma melhoria; nunca deve bloquear a operação.
     }
-  }, [decisaoFonte, decisaoMotivo, decisaoObservacao, decisaoResultado, draftKey, detalhes, idempotencyKey, metodo, notasLancarDepois, opts.alunoId, opts.matriculaId, responsavelContato, result, selectedTurmaId, step]);
+  }, [decisaoFonte, decisaoMotivo, decisaoObservacao, decisaoResultado, draftKey, detalhes, idempotencyKey, metodo, opts.alunoId, opts.matriculaId, responsavelContato, result, selectedTurmaId, step]);
 
   useEffect(() => {
     if (!modalOpen) setResponsavelContato(opts.responsavelContato ?? "");
@@ -369,9 +394,12 @@ export function useRematriculaBalcao(opts: {
   // ────────────────────────────────────────────────────────────────────────
   // Lazy-fetch turmas when modal opens
   // ────────────────────────────────────────────────────────────────────────
-  const fetchTurmas = useCallback(async (decision: ResultadoDecisaoBalcao = decisaoResultado) => {
+  const fetchTurmas = useCallback(async (
+    decision: ResultadoDecisaoBalcao = decisaoResultado,
+    allowManualDecision = false,
+  ) => {
     if (!anoLetivo?.id || !opts.alunoId) return;
-    if (turmasFetchedFor === decision) return;
+    if (turmasFetchedFor === decision && !allowManualDecision) return;
 
     setTurmasLoading(true);
     try {
@@ -380,7 +408,7 @@ export function useRematriculaBalcao(opts: {
         aluno_id: opts.alunoId,
       });
       if (opts.matriculaId) params.set("matricula_id", opts.matriculaId);
-      params.set("decisao_resultado", decision);
+      if (allowManualDecision) params.set("decisao_resultado", decision);
       const res = await fetch(
         `/api/secretaria/turmas-simples?${params.toString()}`,
       );
@@ -438,7 +466,6 @@ export function useRematriculaBalcao(opts: {
     if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
       setDecisaoResultado("aprovado");
       setDecisaoFonte("raa");
-      setNotasLancarDepois(false);
     }
     if (!["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) void fetchTurmas();
   }, [cardState, destinoTurmaId, fetchTurmas, selectedTurmaId]);
@@ -450,11 +477,10 @@ export function useRematriculaBalcao(opts: {
     setSelectedTurmaId(null);
     setDecisaoFonte("declaracao_administrativa_escola");
     setDecisaoMotivo("");
-    setNotasLancarDepois(true);
     setResult(null);
     setApiError(null);
-    void fetchTurmas();
-  }, [fetchTurmas]);
+    void fetchTurmas(decisaoResultado, true);
+  }, [decisaoResultado, fetchTurmas]);
 
   const closeModal = useCallback(() => {
     if (submitting) return;
@@ -558,11 +584,15 @@ export function useRematriculaBalcao(opts: {
   // Submit rematrícula
   // ────────────────────────────────────────────────────────────────────────
   const submit = useCallback(async () => {
+    const requiresDestination = reconciliationMode
+      ? decisaoResultado !== "concluido"
+      : true;
+
     if (
       !opts.alunoId ||
       !opts.matriculaId ||
       !anoLetivo?.id ||
-      (!selectedTurmaId && (decisaoResultado !== "concluido" || reconciliationMode))
+      (requiresDestination && !selectedTurmaId)
     ) {
       return;
     }
@@ -571,8 +601,6 @@ export function useRematriculaBalcao(opts: {
     setApiError(null);
     setResult(null);
     const requestKey = idempotencyKey ?? crypto.randomUUID();
-    const decisaoAdministrativa = decisaoFonte === "declaracao_administrativa_escola";
-    const pagamentoApenas = ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "");
     setIdempotencyKey(requestKey);
 
     try {
@@ -612,16 +640,13 @@ export function useRematriculaBalcao(opts: {
           matricula_id: opts.matriculaId,
           ano_letivo_id: anoLetivo.id,
           destino_turma_id: selectedTurmaId ?? undefined,
-          metodo: decisaoResultado === "concluido" && !pagamentoApenas ? undefined : metodo,
+          metodo,
           reference: detalhes.referencia.trim() || null,
           evidence_url: detalhes.evidencia_url.trim() || null,
           gateway_ref: detalhes.gateway_ref.trim() || null,
           contacto_encarregado: responsavelContato.trim() || undefined,
-          notas_lancar_depois: notasLancarDepois || decisaoAdministrativa,
-          decisao_resultado: decisaoResultado,
-          decisao_fonte: decisaoFonte || undefined,
-          decisao_motivo: decisaoMotivo.trim() || undefined,
-          decisao_observacao: decisaoObservacao.trim() || undefined,
+          // O fluxo normal não envia qualquer override académico. A decisão
+          // é consumida exclusivamente do RAA no servidor.
           itens: opts.itensPagamento?.map(({ id, tipo }) => ({ id, tipo })) ?? [],
         }),
       });
@@ -677,7 +702,6 @@ export function useRematriculaBalcao(opts: {
     selectedTurmaId,
     metodo,
     detalhes,
-    notasLancarDepois,
     decisaoFonte,
     decisaoMotivo,
     decisaoObservacao,
@@ -703,6 +727,7 @@ export function useRematriculaBalcao(opts: {
     // Data from status endpoint
     service,
     debt,
+    academic,
     pedido,
     comprovante,
     anoLetivo,
@@ -719,8 +744,6 @@ export function useRematriculaBalcao(opts: {
     turmas,
     turmasLoading,
     progressao,
-    notasLancarDepois,
-    setNotasLancarDepois,
     decisaoResultado,
     setDecisaoResultado,
     decisaoFonte,

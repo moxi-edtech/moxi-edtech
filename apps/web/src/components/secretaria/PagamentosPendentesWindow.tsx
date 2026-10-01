@@ -409,8 +409,6 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           turmas={rematricula.turmas}
           turmasLoading={rematricula.turmasLoading}
           progressao={rematricula.progressao}
-          notasLancarDepois={rematricula.notasLancarDepois}
-          setNotasLancarDepois={rematricula.setNotasLancarDepois}
           decisaoResultado={rematricula.decisaoResultado}
           setDecisaoResultado={rematricula.setDecisaoResultado}
           decisaoFonte={rematricula.decisaoFonte}

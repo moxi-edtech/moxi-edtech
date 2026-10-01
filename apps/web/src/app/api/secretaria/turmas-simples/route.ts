@@ -145,7 +145,7 @@ export async function GET(req: Request) {
     let progressao: {
       aplicada: boolean;
       modo: 'promocao' | 'retencao' | 'indefinida';
-      estado: 'notas_pendentes' | 'reprovado' | 'concluido' | 'classe_nao_identificada';
+      estado: 'aprovado' | 'condicional' | 'notas_pendentes' | 'recurso' | 'reprovado' | 'concluido' | 'classe_nao_identificada';
       classe_origem: number | null;
       classe_destino: number | null;
       turma_origem_id: string | null;
@@ -207,20 +207,26 @@ export async function GET(req: Request) {
         ? decisaoResultado
         : null;
       const reprovado = decisaoManual === 'reprovado' || (!decisaoManual && progressionDecision.startsWith('retido'));
-      const concluido = decisaoManual === 'concluido';
-      const modo = reprovado ? 'retencao' : 'promocao';
-      // Quando as notas ainda estão pendentes, a decisão final não informa
-      // uma etapa destino, mas o fluxo de balcão permite a rematrícula
-      // provisória para a etapa seguinte. O endpoint de confirmação aplica a
-      // mesma regra e volta a validar a classe escolhida.
+      const concluido = decisaoManual === 'concluido' || (!decisaoManual && progressionDecision === 'concluiu');
+      const condicionalAutorizada = !decisaoManual
+        && progressionDecision === 'inscricao_condicional'
+        && progressionResult?.progression.destino === 'proxima_etapa'
+        && progressionResult?.efetivacaoMatriculaBloqueada !== true;
+      const aprovado = decisaoManual === 'aprovado' || (!decisaoManual && progressionDecision === 'transitou');
+      const podeProgredir = aprovado || condicionalAutorizada;
+      const modo = reprovado ? 'retencao' : (podeProgredir ? 'promocao' : 'indefinida');
+
+      // O destino normal vem do RAA. "transitou" e inscrição condicional
+      // efetivável expõem a etapa seguinte. Recurso, pendência e inscrição
+      // condicional bloqueada não recebem turma por fallback.
       const classeDestinoNumero = concluido
         ? null
-        : decisaoManual
-          ? (reprovado ? origemClasseNumero : (origemClasseNumero != null ? origemClasseNumero + 1 : null))
-          : progressionResult?.progression.etapaDestino?.classeNum
-        ?? (reprovado
+        : reprovado
           ? origemClasseNumero
-          : (origemClasseNumero != null ? origemClasseNumero + 1 : null));
+          : podeProgredir
+            ? (progressionResult?.progression.etapaDestino?.classeNum
+              ?? (origemClasseNumero != null ? origemClasseNumero + 1 : null))
+            : null;
       // Pré-Escolar pode transitar para o curso de ensino primário; nas
       // restantes etapas preservamos o curso da matrícula de origem.
       const cursoFiltrado = cursoOrigemId && origemClasseNumero !== 0
@@ -233,7 +239,19 @@ export async function GET(req: Request) {
       progressao = {
         aplicada: origemClasseNumero != null,
         modo: concluido ? 'indefinida' : modo,
-        estado: concluido ? 'concluido' : (reprovado ? 'reprovado' : (origemClasseNumero == null ? 'classe_nao_identificada' : 'notas_pendentes')),
+        estado: concluido
+          ? 'concluido'
+          : reprovado
+            ? 'reprovado'
+            : origemClasseNumero == null
+              ? 'classe_nao_identificada'
+              : condicionalAutorizada
+                ? 'condicional'
+                : aprovado
+                  ? 'aprovado'
+                  : progressionDecision === 'recurso'
+                    ? 'recurso'
+                    : 'notas_pendentes',
         classe_origem: origemClasseNumero,
         classe_destino: classeDestinoNumero,
         turma_origem_id: (origem as any)?.turma_id ?? null,
@@ -254,10 +272,13 @@ export async function GET(req: Request) {
             : progressionDecision === 'concluiu'
               ? 'Aluno concluinte: não existe uma etapa seguinte para rematrícula.'
               : reprovado
-                ? `Resultado global ${progressionDecision}: retenção na ${origemClasseNumero}ª classe.`
-                : progressionDecision === 'inscricao_condicional'
-                  ? `Inscrição condicional: etapa seguinte ${classeDestinoNumero ?? 'não identificada'}ª classe, com disciplinas pendentes visíveis.`
-            : progressionResult?.orientacao?.mensagem ?? `Estado global ${progressionDecision}: concluir a análise académica antes de rematricular.`,
+                ? `Resultado global ${progressionDecision}: o aluno não está aprovado para rematrícula.`
+                : condicionalAutorizada
+                  ? `Inscrição condicional autorizada pelo RAA: progressão para a ${classeDestinoNumero ?? 'próxima'}ª classe com ${progressionResult?.progression.disciplinaIdsPendentes.length ?? 0} disciplina(s) pendente(s) rastreada(s).`
+                  : aprovado
+                    ? `Resultado académico aprovado: progressão para a ${classeDestinoNumero ?? 'próxima'}ª classe.`
+                    : progressionResult?.orientacao?.mensagem
+                      ?? `Estado global ${progressionDecision}: resolver a situação académica antes de rematricular.`,
       };
     }
 

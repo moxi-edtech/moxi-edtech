@@ -6,6 +6,7 @@ import { resolveRematriculaSource } from '@/lib/alunoRematriculaSource'
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from '@/lib/academico/raa-progression-server'
 import { resolveValorConfirmacao } from '@/lib/financeiro/resolve-confirmacao'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { classifyRematriculaAcademicEligibility } from '@/lib/rematricula/eligibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,32 +93,31 @@ export async function GET() {
     }
 
     const academicDecision = academic?.progression.decision ?? 'pendente'
-    const conditionalEnrollmentBlocked = academicDecision === 'inscricao_condicional'
-      && academic?.progression.destino !== 'proxima_etapa'
-    if (academicDecision === 'pendente' || academicDecision === 'recurso' || conditionalEnrollmentBlocked) {
+    const academicEligibility = classifyRematriculaAcademicEligibility({
+      decision: academicDecision,
+      destino: academic?.progression.destino ?? null,
+      efetivacaoMatriculaBloqueada: academic?.efetivacaoMatriculaBloqueada ?? false,
+      disciplinaIdsPendentes: academic?.progression.disciplinaIdsPendentes ?? [],
+    })
+    if (!academicEligibility.eligible) {
+      const code = academicEligibility.code === 'ACADEMIC_RESULT_PENDING'
+        ? 'ACADEMIC_PROMOTION_PENDING'
+        : academicEligibility.code === 'ACADEMIC_REVIEW_REQUIRED'
+          ? 'ACADEMIC_REVIEW_REQUIRED'
+          : academicEligibility.code === 'ACADEMIC_CONDITIONAL_BLOCKED'
+            ? 'ACADEMIC_CONDITIONAL_BLOCKED'
+            : academicEligibility.code === 'ACADEMIC_CYCLE_COMPLETED'
+              ? 'ACADEMIC_CYCLE_COMPLETED'
+              : 'ACADEMIC_NOT_APPROVED'
       return NextResponse.json({
         ok: true,
         eligible: false,
-        code: 'ACADEMIC_PROMOTION_PENDING',
-        reason: conditionalEnrollmentBlocked
-          ? 'A inscrição condicional ainda não autoriza a matrícula na classe seguinte.'
-          : academicDecision === 'recurso'
-          ? 'Existem disciplinas em recurso antes da rematrícula.'
-          : 'A escola ainda está a concluir a sua situação académica.',
+        code,
+        reason: academicEligibility.reason,
         academic: {
           decision: academicDecision,
           disciplinaIdsPendentes: academic?.progression.disciplinaIdsPendentes ?? [],
         },
-      })
-    }
-
-    if (academicDecision === 'concluiu') {
-      return NextResponse.json({
-        ok: true,
-        eligible: false,
-        code: 'ACADEMIC_CYCLE_COMPLETED',
-        reason: 'O ciclo académico foi concluído e não existe uma classe seguinte para rematrícula.',
-        academic: { decision: academicDecision, disciplinaIdsPendentes: [] },
       })
     }
 
@@ -335,18 +335,24 @@ export async function GET() {
     // cobranças do novo ano não podem retroativamente invalidar a origem.
     const { data: mens, error: mensalidadesError } = await supabase
       .from('mensalidades')
-      .select('id')
+      .select('status, valor_previsto, valor, valor_pago_total')
       .eq('escola_id', escolaId)
       .eq('aluno_id', alunoId)
       .or(`matricula_id.eq.${sourceMatricula.id},ano_referencia.eq.${sourceMatricula.ano_letivo}`)
-      .in('status', ['pendente', 'atrasado', 'pago_parcial'])
-      .limit(1)
 
     if (mensalidadesError) {
       throw new Error(`Falha ao verificar situação financeira: ${mensalidadesError.message}`)
     }
 
-    const hasDebt = (mens?.length ?? 0) > 0
+    const hasDebt = (mens ?? []).some((mensalidade: any) => {
+      const status = String(mensalidade.status ?? '').toLowerCase()
+      const saldo = Math.max(
+        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0)
+          - Number(mensalidade.valor_pago_total ?? 0),
+        0,
+      )
+      return saldo > 0 && !['pago', 'isento', 'cancelado'].includes(status)
+    })
 
     // A reserva criada pela virada, isoladamente, não conclui a rematrícula.
     // Já um pedido concedido que aponta para uma matrícula destino activa é
@@ -371,20 +377,37 @@ export async function GET() {
       })
     }
 
+    if (hasDebt) {
+      return NextResponse.json({
+        ok: true,
+        eligible: false,
+        code: 'REMATRICULA_DEBT_REQUIRED',
+        nextAno,
+        hasDebt: true,
+        academic: academic ? {
+          decision: academicDecision,
+          destino: academic.progression.destino,
+          disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
+        } : null,
+        rematricula: rematriculaData,
+        reason: 'Regularize todos os saldos em aberto antes de rematricular.',
+      })
+    }
+
     return NextResponse.json({
       ok: true,
       eligible: true,
       nextAno,
-      hasDebt,
+      hasDebt: false,
       academic: academic ? {
         decision: academicDecision,
         destino: academic.progression.destino,
         disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
       } : null,
       rematricula: rematriculaData,
-      reason: hasDebt 
-        ? 'Possui pendências financeiras que impedem a rematrícula automática.' 
-        : 'Elegível para rematrícula.'
+      reason: academicEligibility.mode === 'conditional'
+        ? 'O RAA autorizou a progressão condicional e não existem saldos em aberto.'
+        : 'O RAA autorizou a progressão e não existem saldos em aberto.'
     })
 
   } catch (err: any) {
