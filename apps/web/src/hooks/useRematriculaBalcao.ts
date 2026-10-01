@@ -6,6 +6,8 @@ import { useState, useCallback, useEffect } from "react";
 export type RematriculaCardState =
   | "READY"
   | "ACADEMIC_PENDING"
+  | "ACADEMIC_REVIEW_REQUIRED"
+  | "ACADEMIC_CONDITIONAL_BLOCKED"
   | "ACADEMIC_NOT_APPROVED"
   | "ACADEMIC_CYCLE_COMPLETED"
   | "DEBT_BLOCKED"
@@ -37,7 +39,7 @@ export interface TurmaOption {
 export interface ProgressaoBalcao {
   aplicada: boolean;
   modo: "promocao" | "retencao" | "indefinida";
-  estado: "aprovado" | "notas_pendentes" | "reprovado" | "concluido" | "classe_nao_identificada";
+  estado: "aprovado" | "condicional" | "notas_pendentes" | "recurso" | "reprovado" | "concluido" | "classe_nao_identificada";
   classe_origem: number | null;
   classe_destino: number | null;
   turma_origem_id: string | null;
@@ -113,7 +115,9 @@ interface StatusResponse {
     decision: string | null;
     eligible: boolean;
     code: string;
+    mode?: "regular" | "conditional" | null;
     reason: string;
+    disciplina_ids_pendentes?: string[];
     guidance?: {
       titulo?: string;
       mensagem?: string;
