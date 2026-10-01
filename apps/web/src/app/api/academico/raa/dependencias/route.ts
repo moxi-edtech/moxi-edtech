@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const authz = await requireRoleInSchool({
     supabase,
     escolaId,
-    roles: ["admin", "admin_escola", "staff_admin", "admin_secretaria", "diretor", "secretaria", "professor"],
+    roles: ["admin", "admin_escola", "staff_admin", "admin_secretaria", "diretor", "secretaria"],
   });
   if (authz.error) return authz.error;
 
