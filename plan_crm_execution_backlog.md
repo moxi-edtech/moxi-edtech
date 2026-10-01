@@ -636,7 +636,11 @@ Permitir que o KLASSE opere escolas públicas sem assumir o modelo financeiro da
    - `canUseAutomaticLegalAssessment()` devolve deliberadamente `false` enquanto não existir registry/evidência regulatória aprovada.
    - `regulatory_profile`, `assessment_policy` e `document_profile` ainda não governam todos os fluxos académicos/documentais.
 
-5. **Falta E2E específico de escola pública**
+5. **Portais aluno/professor ainda não fechados por capability**
+   - Portal do aluno ainda apresenta Financeiro de forma fixa, consulta mensalidades/alertas e pode bloquear por inadimplência sem resolver o perfil operacional.
+   - Portal do professor é academicamente neutro, mas `assessment_policy` ainda não governa pauta/notas; policies MED continuam pendentes e não devem ativar automação legal.
+
+6. **Falta E2E específico de escola pública**
    - Criar fixture `public + budget`.
    - Provar que writers incompatíveis falham no servidor/DB.
    - Provar matrícula, académico, documentos, RLS e navegação sem dependência de propina.
