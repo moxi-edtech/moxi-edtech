@@ -247,7 +247,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   };
 
   const selectedTurma = turmas.find((t) => t.id === selectedTurmaId) ?? destinoTurma ?? undefined;
-  const academicOnly = decisaoResultado === "concluido";
+  const academicOnly = reconciliationOnly && decisaoResultado === "concluido";
   const singleStep = academicOnly || reconciliationOnly;
   const financialReady = !debt || debt.total <= 0;
   const itensAdicionais = itensPagamento.filter(
@@ -258,17 +258,21 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     0,
   );
 
+  const academicReady = reconciliationOnly
+    ? (academicOnly || Boolean(selectedTurmaId))
+      && !(decisaoFonte === "declaracao_administrativa_escola" && !decisaoMotivo.trim())
+    : skipTurmaSelection
+      ? true
+      : progressao?.estado === "aprovado" && Boolean(selectedTurmaId);
+
   const canSubmit =
     !submitting &&
-    (academicOnly || (Boolean(selectedTurmaId) && financialReady)) &&
+    academicReady &&
+    (academicOnly || financialReady) &&
     (academicOnly || paymentAlreadyValidated || (
       !(metodo === "tpa" && !detalhes.referencia.trim()) &&
       !(metodo === "transfer" && !detalhes.evidencia_url.trim())
     ));
-  const academicReady =
-    (academicOnly || Boolean(selectedTurmaId)) &&
-    !(progressao?.estado === "notas_pendentes" && !notasLancarDepois && decisaoFonte !== "declaracao_administrativa_escola") &&
-    !(decisaoFonte === "declaracao_administrativa_escola" && !decisaoMotivo.trim());
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -370,6 +374,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               turmasLoading={turmasLoading}
               progressao={progressao}
               cohort={cohort}
+              reconciliationOnly={reconciliationOnly}
               skipTurmaSelection={skipTurmaSelection}
               notasLancarDepois={notasLancarDepois}
               setNotasLancarDepois={setNotasLancarDepois}
@@ -472,6 +477,7 @@ function StepAcademico({
   turmasLoading,
   progressao,
   cohort,
+  reconciliationOnly,
   skipTurmaSelection,
   notasLancarDepois,
   setNotasLancarDepois,
@@ -498,6 +504,7 @@ function StepAcademico({
   turmasLoading: boolean;
   progressao: ProgressaoBalcao | null;
   cohort: { codigo: string; nome: string; modo: string } | null;
+  reconciliationOnly: boolean;
   skipTurmaSelection: boolean;
   notasLancarDepois: boolean;
   setNotasLancarDepois: (value: boolean) => void;
@@ -546,59 +553,61 @@ function StepAcademico({
           <span className="mt-1 block text-xs">O aluno já está matriculado em {anoLetivo.label}. A turma e a classe atuais serão preservadas; prossiga apenas para cobrar a taxa e emitir o comprovativo.</span>
         </div>
       ) : <>
-      {/* Decisão académica no próprio atendimento */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
-        <div>
-          <p className="text-sm font-bold text-slate-900">Decisão académica</p>
-          <p className="mt-1 text-xs text-slate-500">Registe aqui a decisão da escola. Não é necessário sair do balcão para abrir a pauta.</p>
-        </div>
-        {cohort && (
-          <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
-            <strong className="block">{cohort.nome}</strong>
-            <span>Exceção temporária {cohort.codigo}: a decisão administrativa é permitida para esta matrícula e ficará auditada.</span>
+      {reconciliationOnly ? (
+        /* Exceção histórica: usada apenas para recuperar operações antigas já
+           iniciadas/pagas. Não é um caminho de elegibilidade para nova rematrícula. */
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-bold text-amber-950">Reconciliação académica histórica</p>
+            <p className="mt-1 text-xs text-amber-800">
+              Esta decisão existe somente para concluir uma operação antiga. Novas rematrículas exigem notas fechadas e resultado aprovado no RAA.
+            </p>
           </div>
-        )}
-        <div className="grid grid-cols-3 gap-2">
-          {([
-            ["aprovado", "Aprovado"],
-            ["reprovado", "Reprovado"],
-            ["concluido", "Concluído"],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setDecisaoResultado(value)}
-              className={`rounded-xl border px-2 py-2 text-xs font-bold transition-colors ${decisaoResultado === value ? "border-[#1F6B3B] bg-[#1F6B3B]/10 text-[#1F6B3B]" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="rematricula-decisao-fonte">
-          Fonte da decisão
-        </label>
-        <select
-          id="rematricula-decisao-fonte"
-          value={decisaoFonte}
-          onChange={(event) => setDecisaoFonte(event.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
-        >
-          <option value="raa">RAA / registo académico</option>
-          <option value="declaracao_administrativa_escola">Declaração administrativa da escola</option>
-        </select>
-        {decisaoFonte === "declaracao_administrativa_escola" && (
+          {cohort && (
+            <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
+              <strong className="block">{cohort.nome}</strong>
+              <span>Exceção auditada {cohort.codigo}; não cria uma regra geral de rematrícula.</span>
+            </div>
+          )}
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              ["aprovado", "Aprovado"],
+              ["reprovado", "Reprovado"],
+              ["concluido", "Concluído"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setDecisaoResultado(value)}
+                className={`rounded-xl border px-2 py-2 text-xs font-bold transition-colors ${decisaoResultado === value ? "border-[#1F6B3B] bg-[#1F6B3B]/10 text-[#1F6B3B]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className="block text-xs font-bold uppercase tracking-wide text-amber-800" htmlFor="rematricula-decisao-fonte">
+            Fonte da decisão
+          </label>
+          <select
+            id="rematricula-decisao-fonte"
+            value={decisaoFonte}
+            onChange={(event) => setDecisaoFonte(event.target.value)}
+            className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+          >
+            <option value="declaracao_administrativa_escola">Declaração administrativa da escola</option>
+          </select>
           <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="rematricula-decisao-motivo">
+            <label className="block text-xs font-bold uppercase tracking-wide text-amber-800" htmlFor="rematricula-decisao-motivo">
               Motivo obrigatório
             </label>
             <input
               id="rematricula-decisao-motivo"
               value={decisaoMotivo}
               onChange={(event) => setDecisaoMotivo(event.target.value)}
-              placeholder="Ex.: decisão confirmada pela direção no balcão"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+              placeholder="Motivo da reconciliação histórica"
+              className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
             />
-            <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="rematricula-decisao-observacao">
+            <label className="block text-xs font-bold uppercase tracking-wide text-amber-800" htmlFor="rematricula-decisao-observacao">
               Observação (opcional)
             </label>
             <textarea
@@ -607,11 +616,18 @@ function StepAcademico({
               onChange={(event) => setDecisaoObservacao(event.target.value)}
               rows={2}
               placeholder="Contexto adicional para a auditoria"
-              className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+              className="w-full resize-none rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
             />
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <strong className="block text-emerald-950">Resultado académico obrigatório: aprovado</strong>
+          <span className="mt-1 block text-xs">
+            O Balcão não altera o resultado académico. A rematrícula só avança depois de as notas estarem fechadas e o RAA confirmar a aprovação.
+          </span>
+        </div>
+      )}
 
       {/* Turma selector */}
       {progressao && (
@@ -624,22 +640,7 @@ function StepAcademico({
         </div>
       )}
 
-      {progressao?.estado === "notas_pendentes" && (
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={notasLancarDepois}
-            onChange={(event) => setNotasLancarDepois(event.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1F6B3B] focus:ring-[#1F6B3B]"
-          />
-          <span>
-            <strong className="block text-slate-900">Lançar notas depois e rematricular agora</strong>
-            <span className="mt-0.5 block text-xs text-slate-500">A progressão fica provisória até o fechamento académico.</span>
-          </span>
-        </label>
-      )}
-
-      {decisaoResultado === "concluido" ? (
+      {reconciliationOnly && decisaoResultado === "concluido" ? (
         <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
           <strong className="block text-violet-950">Conclusão sem matrícula destino</strong>
           <span className="text-xs">Será encerrada apenas a matrícula de origem. Não haverá taxa nem criação de matrícula no novo ano.</span>
