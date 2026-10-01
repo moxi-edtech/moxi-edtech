@@ -30,7 +30,7 @@ import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPos
 import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
 import { getTipoDocumentoFromCodigo } from "@/lib/documentos/identificacao";
 import { OmniSearchInput } from "@/components/secretaria/OmniSearchInput";
-import { docPrintUrl, isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
+import { isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 import { emitirDocumento as emitirDocumentoViaApi, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import { kwanza } from "@/lib/formatters";
 import { resolveCheckoutPaymentState } from "@/lib/financeiro/checkout-payment-state";
@@ -1942,22 +1942,19 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     else audit.setOpen(false);
   }, [dossier.aluno?.id]);
 
-  const handleSelectAluno = useCallback(
-    (alunoId: string) => {
-      if (dossier.aluno?.id && dossier.aluno.id !== alunoId) {
-        carrinho.limpar();
-        checkout.setPagos([]);
-        checkout.setPendentes([]);
-        checkout.setPrintQueue([]);
-      }
-      setItensRematricula([]);
-      void dossier.load(alunoId);
-      setSearchOpen(false);
-    },
-    [carrinho, checkout.setPagos, checkout.setPendentes, checkout.setPrintQueue, dossier]
-  );
+  const handleSelectAluno = (alunoId: string) => {
+    if (dossier.aluno?.id && dossier.aluno.id !== alunoId) {
+      carrinho.limpar();
+      checkout.setPagos([]);
+      checkout.setPendentes([]);
+      checkout.setPrintQueue([]);
+    }
+    setItensRematricula([]);
+    void dossier.load(alunoId);
+    setSearchOpen(false);
+  };
 
-  const handleTrocarAluno = useCallback(() => {
+  const handleTrocarAluno = () => {
     carrinho.limpar();
     checkout.setPagos([]);
     checkout.setPendentes([]);
@@ -1968,7 +1965,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     setSearchListOpen(false);
     setSearchActiveIndex(-1);
     setSearchOpen(true);
-  }, [carrinho, checkout.setPagos, checkout.setPendentes, checkout.setPrintQueue, dossier, search]);
+  };
 
   // A busca devolve `turma`/`bi_numero`/`total_em_atraso`; o dossiê usa outros
   // nomes. O adaptador concentra essa diferença aqui em vez de a espalhar pelo
