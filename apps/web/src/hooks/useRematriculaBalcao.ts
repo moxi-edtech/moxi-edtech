@@ -17,6 +17,7 @@ export type RematriculaCardState =
   | "LEGACY_REVIEW_REQUIRED"
   | "ALREADY_COMPLETED"
   | "DOCUMENT_PENDING"
+  | "ACADEMIC_HISTORY_PENDING"
   | "PAYMENT_IN_PROGRESS"
   | "PENDING_ORDER_REVIEW"
   | "RECONCILIATION_REQUIRED"
@@ -188,6 +189,8 @@ const ERROR_MESSAGES: Record<string, string> = {
     "A turma seleccionada não pertence ao ano lectivo.",
   DOCUMENT_PENDING:
     "Rematrícula concluída; comprovante pendente de emissão.",
+  ACADEMIC_HISTORY_PENDING:
+    "Rematrícula concluída; falta reconciliar o histórico académico da matrícula de origem.",
   REMATRICULA_LEGACY_REVIEW_REQUIRED:
     "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
   GUARDIAN_CONTACT_REQUIRED: "Não foi possível validar o contacto do encarregado.",
