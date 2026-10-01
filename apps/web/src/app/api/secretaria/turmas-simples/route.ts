@@ -145,7 +145,7 @@ export async function GET(req: Request) {
     let progressao: {
       aplicada: boolean;
       modo: 'promocao' | 'retencao' | 'indefinida';
-      estado: 'aprovado' | 'notas_pendentes' | 'reprovado' | 'concluido' | 'classe_nao_identificada';
+      estado: 'aprovado' | 'condicional' | 'notas_pendentes' | 'recurso' | 'reprovado' | 'concluido' | 'classe_nao_identificada';
       classe_origem: number | null;
       classe_destino: number | null;
       turma_origem_id: string | null;
