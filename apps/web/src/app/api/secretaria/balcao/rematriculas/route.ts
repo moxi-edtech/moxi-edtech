@@ -280,45 +280,49 @@ export async function POST(request: Request) {
     const numeroDestino = classeNumero(classeById.get(turmaDestino?.classe_id));
     // A matrícula destino preexistente já passou por uma operação anterior.
     // Para uma nova rematrícula, porém, a autoridade académica é sempre o RAA.
-    let raaAtual: any = null;
-    if (!reconfirmacaoApenas) {
-      const { data, error: raaAtualError } = await (supabase as any).rpc("resolve_raa_progression_for_matricula", {
+    const { data: raaAtual, error: raaAtualError } = await (supabase as any).rpc(
+      "resolve_raa_progression_for_matricula",
+      {
         p_escola_id: escolaId,
         p_matricula_id: origemMatriculaId,
-      });
-      if (raaAtualError) throw raaAtualError;
-      raaAtual = data;
+      },
+    );
+    if (raaAtualError) throw raaAtualError;
 
-      const academicEligibility = classifyRematriculaAcademicEligibility(
-        String(raaAtual?.decision ?? "") as any,
-      );
-      if (!academicEligibility.eligible) {
-        const code = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
-          ? "REMATRICULA_ACADEMIC_PENDING"
-          : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-            ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
-            : "REMATRICULA_ACADEMIC_NOT_APPROVED";
-        return NextResponse.json({
-          ok: false,
-          error: academicEligibility.reason,
-          code,
-          academic: { decision: raaAtual?.decision ?? null },
-        }, { status: 409 });
-      }
+    const academicEligibility = classifyRematriculaAcademicEligibility(
+      String(raaAtual?.decision ?? "") as any,
+    );
+    if (!academicEligibility.eligible) {
+      const code = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
+        ? "REMATRICULA_ACADEMIC_PENDING"
+        : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+          ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
+          : "REMATRICULA_ACADEMIC_NOT_APPROVED";
+      return NextResponse.json({
+        ok: false,
+        error: academicEligibility.reason,
+        code,
+        academic: { decision: raaAtual?.decision ?? null },
+      }, { status: 409 });
+    }
 
-      if (numeroOrigem !== null && numeroDestino !== null) {
-        if (numeroOrigem === 12) {
-          return NextResponse.json({ ok: false, error: "A 12ª classe não tem uma classe seguinte configurada.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
-        }
-        const esperado = numeroOrigem + 1;
-        if (numeroDestino !== esperado) {
-          return NextResponse.json({ ok: false, error: "Aluno aprovado deve seguir para a classe imediatamente seguinte.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
-        }
+    if (numeroOrigem !== null && numeroDestino !== null) {
+      if (numeroOrigem === 12) {
+        return NextResponse.json({ ok: false, error: "A 12ª classe não tem uma classe seguinte configurada.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
       }
-      if (turmaOrigem?.curso_id && turmaDestino?.curso_id && turmaOrigem.curso_id !== turmaDestino.curso_id && !(numeroOrigem === 0 && numeroDestino === 1)) {
-        return NextResponse.json({ ok: false, error: "A turma destino pertence a outro curso.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+      const esperado = numeroOrigem + 1;
+      if (numeroDestino !== esperado) {
+        return NextResponse.json({ ok: false, error: "Aluno aprovado deve seguir para a classe imediatamente seguinte.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
       }
+    }
+    if (turmaOrigem?.curso_id && turmaDestino?.curso_id && turmaOrigem.curso_id !== turmaDestino.curso_id && !(numeroOrigem === 0 && numeroDestino === 1)) {
+      return NextResponse.json({ ok: false, error: "A turma destino pertence a outro curso.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+    }
 
+    // Reconfirmações preservam a matrícula destino já criada, mas não escapam
+    // ao gate académico. Só evitamos regravar o resultado histórico quando a
+    // operação já o materializou anteriormente.
+    if (!reconfirmacaoApenas) {
       const { error: origemResultadoError } = await (supabase as any).rpc("finalizar_origem_academica", {
         p_escola_id: escolaId,
         p_matricula_id: origemMatriculaId,
