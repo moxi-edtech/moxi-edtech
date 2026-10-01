@@ -1944,23 +1944,31 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
 
   const handleSelectAluno = useCallback(
     (alunoId: string) => {
-      if (dossier.aluno?.id && dossier.aluno.id !== alunoId) carrinho.limpar();
+      if (dossier.aluno?.id && dossier.aluno.id !== alunoId) {
+        carrinho.limpar();
+        checkout.setPagos([]);
+        checkout.setPendentes([]);
+        checkout.setPrintQueue([]);
+      }
       setItensRematricula([]);
       void dossier.load(alunoId);
       setSearchOpen(false);
     },
-    [carrinho, dossier]
+    [carrinho, checkout.setPagos, checkout.setPendentes, checkout.setPrintQueue, dossier]
   );
 
   const handleTrocarAluno = useCallback(() => {
     carrinho.limpar();
+    checkout.setPagos([]);
+    checkout.setPendentes([]);
+    checkout.setPrintQueue([]);
     setItensRematricula([]);
     dossier.clear();
     search.clear();
     setSearchListOpen(false);
     setSearchActiveIndex(-1);
     setSearchOpen(true);
-  }, [carrinho, dossier, search]);
+  }, [carrinho, checkout.setPagos, checkout.setPendentes, checkout.setPrintQueue, dossier, search]);
 
   // A busca devolve `turma`/`bi_numero`/`total_em_atraso`; o dossiê usa outros
   // nomes. O adaptador concentra essa diferença aqui em vez de a espalhar pelo
