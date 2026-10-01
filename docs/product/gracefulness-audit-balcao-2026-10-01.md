@@ -11,6 +11,19 @@ Este documento aplica o padrão definido em [Graciosidade no KLASSE](./graciosid
 
 ---
 
+## Estado de implementação
+
+| ID | Estado | Branch / evidência |
+|---|---|---|
+| BAL-GR-001 | **IMPLEMENTADO — validação pendente** | `gracefulness/balcao-hardening`: authz dentro da RPC + regressão cross-tenant/role |
+| BAL-GR-002 | **IMPLEMENTADO — validação pendente** | checkout preserva `settled | pending | unknown`; documento só libera em `settled` |
+| BAL-GR-003 | **IMPLEMENTADO — validação pendente** | idempotência server-side de documentos + replay/fingerprint + regressão SQL |
+| BAL-GR-004 | **IMPLEMENTADO — validação pendente** | `DOCUMENT_PENDING` classificado e apresentado como conclusão parcial |
+
+**Não considerar fechado ainda.** O fechamento exige CI verde, regressões SQL em banco descartável, aplicação da migration no ambiente alvo e prova pós-migration conforme a seção 11.
+
+---
+
 ## 1. Resumo executivo
 
 A auditoria encontrou quatro problemas P0 confirmados, além de riscos P1/P2. A conclusão técnica é que os P0 atuais não exigem XState, TanStack Query, CASL, Zustand ou outra biblioteca nova. São problemas de contrato de domínio, autorização, idempotência, recuperação e representação correta dos estados.
