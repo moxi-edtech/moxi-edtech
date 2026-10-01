@@ -390,7 +390,7 @@ export async function GET() {
           disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
         } : null,
         rematricula: rematriculaData,
-        reason: 'Regularize as mensalidades pendentes antes de rematricular.',
+        reason: 'Regularize todos os saldos em aberto antes de rematricular.',
       })
     }
 
