@@ -538,10 +538,11 @@ BEGIN
     v_fonte := 'raa';
 
     IF v_exame_sessao_id IS NOT NULL THEN
-      SELECT coalesce(es.tipo, 'raa') INTO v_fonte
+      SELECT es.tipo INTO v_fonte
       FROM public.exame_sessoes es
       WHERE es.id = v_exame_sessao_id
         AND es.escola_id = p_escola_id;
+      v_fonte := coalesce(v_fonte, 'raa');
     END IF;
 
     SELECT EXISTS (
@@ -699,12 +700,20 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
-AS $$
+AS $
 DECLARE
-  v_matricula_id uuid := coalesce(NEW.matricula_id, OLD.matricula_id);
-  v_escola_id uuid := coalesce(NEW.escola_id, OLD.escola_id);
+  v_matricula_id uuid;
+  v_escola_id uuid;
   v_destino record;
 BEGIN
+  IF TG_OP = 'DELETE' THEN
+    v_matricula_id := OLD.matricula_id;
+    v_escola_id := OLD.escola_id;
+  ELSE
+    v_matricula_id := NEW.matricula_id;
+    v_escola_id := NEW.escola_id;
+  END IF;
+
   FOR v_destino IN
     SELECT m.id
     FROM public.matriculas m
@@ -717,9 +726,13 @@ BEGIN
       v_destino.id
     );
   END LOOP;
-  RETURN coalesce(NEW, OLD);
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
 END;
-$$;
+$;
 
 REVOKE ALL ON FUNCTION public.trigger_sync_dependencias_exame_resultado()
   FROM PUBLIC, anon, authenticated;
