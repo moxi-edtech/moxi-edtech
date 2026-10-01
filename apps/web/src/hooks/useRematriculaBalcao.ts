@@ -1,3 +1,4 @@
+import { classifyRematriculaResponse } from "@/lib/secretaria/rematricula-result";
 import { useState, useCallback, useEffect } from "react";
 
 // ─── Exported Types ──────────────────────────────────────────────────────────
