@@ -8,6 +8,8 @@
 
 **Nota atual:** 8/10 em fricção, navegação e preservação de contexto
 
+> **Referência canônica:** este sprint aplica princípios de Graciosidade ao fluxo académico. A definição transversal e obrigatória está em `docs/product/graciosidade.md`.
+
 ### Atualização — linguagem única entre portais (2026-08-17)
 
 Concluído no commit `db2fb9586` o alinhamento visual compartilhado entre Secretaria, Admin e Operações:

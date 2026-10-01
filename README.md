@@ -2,6 +2,10 @@
 
 Este repositório contém o módulo acadêmico/secretaria do Moxi Nexa, preparado para operação em escolas de Angola com foco em importação em massa, backfill automático da estrutura acadêmica, matrícula por turma (RPC) e rematrícula em massa. Para detalhes aprofundados do fluxo de importação e matrícula, consulte também `README-IMP.md`.
 
+## Padrão de produto — Graciosidade
+
+Todos os fluxos de utilizador do KLASSE devem seguir o padrão canônico de **Graciosidade**: estado explícito, contexto preservado, ação segura, feedback verdadeiro, próximo passo e recuperação. A referência obrigatória para novas funcionalidades, correções e revisões de UI/UX é `docs/product/graciosidade.md`.
+
 Principais URLs (App Router)
 - Wizard de Importação: `/migracao/alunos`
 - Deep link: `/migracao/alunos?importId={uuid}&step=review` reabre diretamente na Revisão de Matrícula do import.

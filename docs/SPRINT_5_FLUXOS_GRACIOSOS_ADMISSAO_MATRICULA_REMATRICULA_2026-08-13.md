@@ -3,6 +3,8 @@
 Data: 13 de agosto de 2026
 Objetivo: transformar os fluxos de entrada e continuidade do aluno em jornadas orientadas, resilientes e idempotentes.
 
+> **Referência canônica:** os critérios deste sprint são históricos e específicos ao seu escopo. A definição transversal e obrigatória de Graciosidade do KLASSE está em `docs/product/graciosidade.md`.
+
 ## Escopo
 
 ### A. Portal público de admissão
