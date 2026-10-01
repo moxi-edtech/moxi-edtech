@@ -763,7 +763,7 @@ Sugestão de inventário:
 
 | Fluxo | Estado atual | Fricção | Risco | Lacunas de graciosidade | Próxima ação |
 |---|---|---|---|---|---|
-| Balcão | a auditar | a medir | a medir | a identificar | mapear |
+| Balcão | **auditado — baseline 2026-10-01** | confirmada | **4 P0 + P1/P2** | `BAL-GR-001..012` | [executar gates do relatório](./gracefulness-audit-balcao-2026-10-01.md) |
 | Documentos | a auditar | a medir | a medir | a identificar | mapear |
 | Pagamentos | a auditar | a medir | a medir | a identificar | mapear |
 | Notas | a auditar | a medir | a medir | a identificar | mapear |
@@ -772,6 +772,10 @@ Sugestão de inventário:
 | Configurações | a auditar | a medir | a medir | a identificar | mapear |
 
 Não preencher avaliação por suposição. A auditoria deve usar o código e, quando necessário, comportamento real da aplicação.
+
+### Baselines concluídos
+
+- **Balcão de Atendimento — 2026-10-01:** [`gracefulness-audit-balcao-2026-10-01.md`](./gracefulness-audit-balcao-2026-10-01.md). Os IDs `BAL-GR-001..012` são a referência para commits, PRs, testes e evidências de fechamento. O relatório mantém a decisão de **não instalar biblioteca antes de uma lacuna recorrente demonstrada**.
 
 ---
 
