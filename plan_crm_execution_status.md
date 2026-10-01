@@ -2,6 +2,7 @@
 
 Referência principal: [plan_crm_execution.md](/Users/gundja/moxi-edtech/plan_crm_execution.md:1)
 Última validação live DB: 2026-06-28
+Última revisão do estado técnico no GitHub: 2026-10-01
 
 Este documento traduz o plano em uma matriz objetiva de cobertura, separada pelas 3 frentes operacionais:
 
@@ -82,6 +83,28 @@ Legenda:
 - `Super Admin`: fila de uploads, provisionamento seguro, autoria de ações e painel de relatórios operacionais de tempo médio e conversão por parceiro
 - `Parceiro`: login de membros, PIN individual, CRM pré-vendas, conversão para onboarding, ledger de comissão recorrente, acompanhamento das 6 etapas operacionais, download de templates, dashboard de SLA com filtros integrados e registo manual de follow-up
 
+## Estado da Variante Escola Pública — P3.5
+
+Referência técnica detalhada: [docs/STATUS_ESCOLAS_PUBLICAS_2026-10-01.md](docs/STATUS_ESCOLAS_PUBLICAS_2026-10-01.md)
+
+| Camada | Status | Evidência / observação |
+|---|---|---|
+| Perfil institucional `private/public` | `feito` | `school_operating_profiles`, resolver central e UI Super Admin |
+| Versionamento + auditoria | `feito` | `school_profile_audit_logs` append-only + RPC administrativa |
+| RLS do perfil institucional | `feito` | leitura por tenant ou Super Admin; escrita administrativa controlada |
+| Bloqueio de mensalidades/cobranças | `feito` | guards de `finance_model` em geração de mensalidades, cobranças, mensagens financeiras, IA e WhatsApp |
+| Suspensão por inadimplência | `feito` para modelos sem propina | `canUseFinancialSuspension()` condiciona o bloqueio |
+| Writers de pagamento/balcão | `parcial` | ainda é necessário fechar o hard gate no writer canónico/SQL e nos caminhos alternativos |
+| `budget` | `parcial` | capability existe; fluxo E2E ainda não está fechado |
+| `emoluments_only` | `parcial` | capability existe; fluxo E2E ainda não está fechado |
+| Política académica MED | `falta` operacional | chaves existem como `*_pending`; decisão legal automática permanece desativada |
+| Perfil documental MED | `falta` operacional | scaffold existe, mas ainda não governa todas as emissões |
+| E2E escola pública | `falta` | falta fixture pública e prova de rejeição dos writers incompatíveis |
+
+**Estado consolidado:** fundação concluída; enforcement financeiro parcial; ainda não classificar como pilot-ready para escola pública.
+
+**Blocker principal:** nenhum endpoint ou RPC de pagamento pode contornar o perfil institucional. O enforcement deve existir no boundary de escrita, não apenas na UI.
+
 ## Próxima Ordem de Execução
 
 Estado actual após sincronização do live DB:
@@ -99,5 +122,5 @@ Próximos blocos reais:
 - P3.2: Cockpit administrativo de comissão (`feito`; faltam extrato mensal, export CSV/PDF, penalidade SLA e suspensão automática por inadimplência)
 - P3.3: Trial K12 explícito de aquisição
 - P3.4: Tarefas/fila persistida de follow-up comercial
-- P3.5: Variante “escola pública” sem financeiro transacional
+- P3.5: Variante “escola pública” sem financeiro transacional (`parcial`; fundação + guards principais implementados, faltam hard gate em todos os writers, operação budget/emolumentos e E2E público)
 - P3.6: Canal WhatsApp rastreável para CRM comercial
