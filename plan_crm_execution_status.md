@@ -99,6 +99,8 @@ Referência técnica detalhada: [docs/STATUS_ESCOLAS_PUBLICAS_2026-10-01.md](doc
 | `emoluments_only` | `parcial` | capability existe; fluxo E2E ainda não está fechado |
 | Política académica MED | `falta` operacional | chaves existem como `*_pending`; decisão legal automática permanece desativada |
 | Perfil documental MED | `falta` operacional | scaffold existe, mas ainda não governa todas as emissões |
+| Portal do aluno | `não alinhado` | financeiro é fixo na navegação; layout, finance-alert e API financeira ainda ignoram `finance_model` |
+| Portal do professor | `parcialmente alinhado` | navegação é académica/neutra, mas `assessment_policy` ainda não governa o runtime de notas/pauta |
 | E2E escola pública | `falta` | falta fixture pública e prova de rejeição dos writers incompatíveis |
 
 **Estado consolidado:** fundação concluída; enforcement financeiro parcial; ainda não classificar como pilot-ready para escola pública.
