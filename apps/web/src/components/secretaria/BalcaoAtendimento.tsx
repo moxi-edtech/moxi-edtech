@@ -880,8 +880,8 @@ const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> =
     descricao: "Não há nada a cobrar — o aluno já está matriculado.",
   },
   DEBT_BLOCKED: {
-    titulo: "Mensalidades em atraso impedem a rematrícula",
-    descricao: "Cobre primeiro as mensalidades em atraso, no aviso acima.",
+    titulo: "Saldo em aberto impede a rematrícula",
+    descricao: "Regularize todos os saldos da matrícula de origem antes de continuar.",
   },
   PRICE_NOT_CONFIGURED: {
     titulo: "Taxa de rematrícula sem valor definido",
