@@ -356,7 +356,7 @@ USING (
     dependencias_academicas_transicao.escola_id = public.current_tenant_escola_id()
     AND public.user_has_role_in_school(
       dependencias_academicas_transicao.escola_id,
-      ARRAY['admin','admin_escola','staff_admin','admin_secretaria','diretor','secretaria','professor']::text[]
+      ARRAY['admin','admin_escola','staff_admin','admin_secretaria','diretor','secretaria']::text[]
     )
   )
 );
@@ -376,7 +376,7 @@ USING (
           d.escola_id = public.current_tenant_escola_id()
           AND public.user_has_role_in_school(
             d.escola_id,
-            ARRAY['admin','admin_escola','staff_admin','admin_secretaria','diretor','secretaria','professor']::text[]
+            ARRAY['admin','admin_escola','staff_admin','admin_secretaria','diretor','secretaria']::text[]
           )
         )
       )
