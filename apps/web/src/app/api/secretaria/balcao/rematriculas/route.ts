@@ -29,11 +29,6 @@ const Body = z.object({
   evidence_url: z.string().trim().min(1).nullable().optional(),
   gateway_ref: z.string().trim().min(1).nullable().optional(),
   contacto_encarregado: z.string().trim().min(7).max(32).regex(/^[0-9+().\-\s]+$/).optional(),
-  notas_lancar_depois: z.boolean().optional(),
-  decisao_resultado: z.enum(["aprovado", "reprovado", "concluido"]).optional(),
-  decisao_fonte: z.string().trim().min(1).max(80).optional(),
-  decisao_motivo: z.string().trim().min(1).max(500).optional(),
-  decisao_observacao: z.string().trim().max(1000).optional(),
   itens: z.array(z.object({
     id: z.string().uuid(),
     tipo: z.enum(["mensalidade", "servico"]),
