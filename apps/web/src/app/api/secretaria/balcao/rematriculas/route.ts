@@ -680,7 +680,7 @@ export async function POST(request: Request) {
         },
         created_by: user.id,
       })
-      .select("id")
+      .select("id, contexto")
       .single();
     if (pedidoError) throw pedidoError;
 
