@@ -30,9 +30,10 @@ import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPos
 import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
 import { getTipoDocumentoFromCodigo } from "@/lib/documentos/identificacao";
 import { OmniSearchInput } from "@/components/secretaria/OmniSearchInput";
-import { docPrintUrl, isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
+import { isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 import { emitirDocumento as emitirDocumentoViaApi, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import { kwanza } from "@/lib/formatters";
+import { resolveCheckoutPaymentState } from "@/lib/financeiro/checkout-payment-state";
 import Link from "next/link";
 
 const ACADEMIC_YEAR_PARAM = "ano_letivo_id";
@@ -570,10 +571,12 @@ function useCheckout({
   const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const checkoutRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const documentRequestRef = useRef<Map<string, { fingerprint: string; key: string }>>(new Map());
   // Serviços que emitem documento e acabaram de ser pagos. O carrinho é limpo no
   // sucesso, e sem isto o item pago desaparecia do ecrã sem forma de emitir o
   // documento — que é exactamente o que faltava ao pagar uma declaração.
   const [pagos, setPagos] = useState<Servico[]>([]);
+  const [pendentes, setPendentes] = useState<Servico[]>([]);
   const { success, error } = useToast();
 
   const checkout = useCallback(async (): Promise<boolean> => {
@@ -638,12 +641,26 @@ function useCheckout({
           ]);
         }
       }
-      setPagos(
-        carrinho.itens.filter(
-          (item): item is Servico => item.tipo === "servico" && getDocTipo(item) !== null,
-        ),
+      const documentosDoCheckout = carrinho.itens.filter(
+        (item): item is Servico => item.tipo === "servico" && getDocTipo(item) !== null,
       );
-      success("Pagamento processado com sucesso!");
+      const settlement = resolveCheckoutPaymentState(json);
+
+      if (settlement.state === "settled") {
+        setPagos(documentosDoCheckout);
+        setPendentes([]);
+        success("Pagamento confirmado com sucesso.");
+      } else {
+        // O backend pode aceitar/registar uma transação que ainda não está
+        // liquidada (TPA, transferência, MCX/Kwik). Isso NÃO libera o documento.
+        setPagos([]);
+        setPendentes(documentosDoCheckout);
+        success(
+          settlement.state === "pending"
+            ? "Pagamento registado. Aguarda validação antes de liberar documentos."
+            : "Pagamento registado. Confirme o estado antes de emitir documentos.",
+        );
+      }
       setBillingWindowIssue(null);
       checkoutRequestRef.current = null;
       carrinho.limpar();
@@ -693,18 +710,36 @@ function useCheckout({
         return null;
       }
 
+      const fingerprint = JSON.stringify({
+        escolaId,
+        alunoId: aluno.id,
+        servicoId: servico.id,
+        tipoDocumento,
+        anoLetivoId: academicYearId ?? null,
+      });
+      const previousRequest = documentRequestRef.current.get(servico.id);
+      const request =
+        previousRequest?.fingerprint === fingerprint
+          ? previousRequest
+          : { fingerprint, key: crypto.randomUUID() };
+      documentRequestRef.current.set(servico.id, request);
+
       setEmittingDocId(servico.id);
       try {
         const resultado = await emitirDocumentoViaApi({
           escolaId,
           alunoId: aluno.id,
           tipoDocumento,
+          idempotencyKey: request.key,
           anoLetivoId: academicYearId,
         });
         if (!resultado.ok) {
+          // A chave permanece associada à tentativa: retry após timeout/500 não
+          // pode fabricar um segundo documento oficial.
           error(resultado.error);
           return null;
         }
+        documentRequestRef.current.delete(servico.id);
         return resultado.printUrl;
       } finally {
         setEmittingDocId(null);
@@ -720,6 +755,8 @@ function useCheckout({
     setPrintQueue,
     pagos,
     setPagos,
+    pendentes,
+    setPendentes,
     checkout,
     emitirDocumento,
     billingWindowIssue,
@@ -1468,6 +1505,36 @@ function CarrinhoPanel({
           })
         )}
 
+        {checkout.pendentes.length > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-800 font-mono">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Pagamento registado — aguarda validação
+              </p>
+              <button
+                type="button"
+                onClick={() => checkout.setPendentes([])}
+                className="text-amber-700/70 hover:text-amber-900 transition-colors"
+                aria-label="Fechar aviso de pagamento pendente"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p className="text-[11px] text-amber-900/80">
+              O pagamento ainda não está confirmado. O documento só será liberado depois da liquidação.
+            </p>
+            {checkout.pendentes.map((servico) => (
+              <div key={servico.id} className="flex items-center justify-between gap-3">
+                <p className="min-w-0 truncate text-xs font-semibold text-slate-700">{servico.nome}</p>
+                <span className="flex-shrink-0 rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                  Aguardando
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {checkout.pagos.length > 0 && (
           <div className="bg-emerald/5 border border-emerald/25 rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -1875,25 +1942,30 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     else audit.setOpen(false);
   }, [dossier.aluno?.id]);
 
-  const handleSelectAluno = useCallback(
-    (alunoId: string) => {
-      if (dossier.aluno?.id && dossier.aluno.id !== alunoId) carrinho.limpar();
-      setItensRematricula([]);
-      void dossier.load(alunoId);
-      setSearchOpen(false);
-    },
-    [carrinho, dossier]
-  );
+  const handleSelectAluno = (alunoId: string) => {
+    if (dossier.aluno?.id && dossier.aluno.id !== alunoId) {
+      carrinho.limpar();
+      checkout.setPagos([]);
+      checkout.setPendentes([]);
+      checkout.setPrintQueue([]);
+    }
+    setItensRematricula([]);
+    void dossier.load(alunoId);
+    setSearchOpen(false);
+  };
 
-  const handleTrocarAluno = useCallback(() => {
+  const handleTrocarAluno = () => {
     carrinho.limpar();
+    checkout.setPagos([]);
+    checkout.setPendentes([]);
+    checkout.setPrintQueue([]);
     setItensRematricula([]);
     dossier.clear();
     search.clear();
     setSearchListOpen(false);
     setSearchActiveIndex(-1);
     setSearchOpen(true);
-  }, [carrinho, dossier, search]);
+  };
 
   // A busca devolve `turma`/`bi_numero`/`total_em_atraso`; o dossiê usa outros
   // nomes. O adaptador concentra essa diferença aqui em vez de a espalhar pelo

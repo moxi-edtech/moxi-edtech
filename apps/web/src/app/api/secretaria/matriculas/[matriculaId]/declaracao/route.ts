@@ -15,6 +15,16 @@ export const revalidate = 0;
 const SUNSET_DATE = "2027-03-31";
 const REPLACEMENT_ENDPOINT = "/api/secretaria/documentos/emitir";
 
+function withDeprecationHeaders(response: NextResponse) {
+  response.headers.set("Deprecation", "true");
+  response.headers.set("Sunset", `${SUNSET_DATE}T23:59:59Z`);
+  response.headers.set("Link", `<${REPLACEMENT_ENDPOINT}>; rel="successor-version"`);
+  response.headers.set("X-Deprecated-Endpoint", "true");
+  response.headers.set("X-Replacement-Endpoint", REPLACEMENT_ENDPOINT);
+  response.headers.set("Warning", `299 - "Deprecated endpoint. Use ${REPLACEMENT_ENDPOINT} until ${SUNSET_DATE}."`);
+  return response;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ matriculaId: string }> }
@@ -87,6 +97,62 @@ export async function GET(
 
   const aluno = (matricula as any).alunos || {};
   const turma = (matricula as any).turmas || {};
+  const idempotencyKey = `legacy-declaracao:${matriculaId}:${academicContext.anoLetivoId}`;
+  const idempotencyFingerprint = createHash("sha256")
+    .update(JSON.stringify({
+      escolaId,
+      matriculaId,
+      alunoId: matricula.aluno_id,
+      anoLetivoId: academicContext.anoLetivoId,
+      tipoDocumento: "declaracao_frequencia",
+    }))
+    .digest("hex");
+
+  const { data: existingDoc } = await (supabase as any)
+    .from("documentos_emitidos")
+    .select("id, public_id, hash_validacao, idempotency_fingerprint")
+    .eq("escola_id", escolaId)
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle();
+
+  if (existingDoc?.id) {
+    if (existingDoc.idempotency_fingerprint !== idempotencyFingerprint) {
+      return NextResponse.json(
+        { ok: false, error: "Conflito de idempotência no endpoint legado.", code: "IDEMPOTENCY_KEY_REUSED", ...deprecationPayload },
+        { status: 409 },
+      );
+    }
+
+    recordAuditServer({
+      escolaId,
+      portal: "secretaria",
+      acao: "LEGACY_ENDPOINT_USED",
+      entity: "api_legacy",
+      entityId: matriculaId,
+      details: {
+        endpoint: "/api/secretaria/matriculas/[matriculaId]/declaracao",
+        replacement_endpoint: REPLACEMENT_ENDPOINT,
+        matricula_id: matriculaId,
+        aluno_id: matricula.aluno_id,
+        doc_status: 200,
+        ano_letivo_id: academicContext.anoLetivoId,
+        deprecated: true,
+        sunset_date: SUNSET_DATE,
+        idempotent: true,
+      },
+    }).catch(() => null);
+
+    return withDeprecationHeaders(NextResponse.json({
+      ok: true,
+      docId: existingDoc.id,
+      publicId: existingDoc.public_id,
+      hash: existingDoc.hash_validacao,
+      tipo: "declaracao_frequencia",
+      print_url: `/secretaria/documentos/${existingDoc.id}/frequencia/print`,
+      idempotent: true,
+      ...deprecationPayload,
+    }));
+  }
 
   const hashBase = `${randomUUID()}-${matricula.id}-${Date.now()}`;
   const hashValidacao = createHash("sha256").update(hashBase).digest("hex");
@@ -124,9 +190,52 @@ export async function GET(
       dados_snapshot: snapshot as any,
       created_by: user.id,
       hash_validacao: hashValidacao,
+      idempotency_key: idempotencyKey,
+      idempotency_fingerprint: idempotencyFingerprint,
     })
     .select("id, public_id")
     .single();
+
+  if ((docError as { code?: string } | null)?.code === "23505") {
+    const { data: replayDoc } = await (supabase as any)
+      .from("documentos_emitidos")
+      .select("id, public_id, hash_validacao, idempotency_fingerprint")
+      .eq("escola_id", escolaId)
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+
+    if (replayDoc?.id && replayDoc.idempotency_fingerprint === idempotencyFingerprint) {
+      recordAuditServer({
+        escolaId,
+        portal: "secretaria",
+        acao: "LEGACY_ENDPOINT_USED",
+        entity: "api_legacy",
+        entityId: matriculaId,
+        details: {
+          endpoint: "/api/secretaria/matriculas/[matriculaId]/declaracao",
+          replacement_endpoint: REPLACEMENT_ENDPOINT,
+          matricula_id: matriculaId,
+          aluno_id: matricula.aluno_id,
+          doc_status: 200,
+          ano_letivo_id: academicContext.anoLetivoId,
+          deprecated: true,
+          sunset_date: SUNSET_DATE,
+          idempotent: true,
+        },
+      }).catch(() => null);
+
+      return withDeprecationHeaders(NextResponse.json({
+        ok: true,
+        docId: replayDoc.id,
+        publicId: replayDoc.public_id,
+        hash: replayDoc.hash_validacao,
+        tipo: "declaracao_frequencia",
+        print_url: `/secretaria/documentos/${replayDoc.id}/frequencia/print`,
+        idempotent: true,
+        ...deprecationPayload,
+      }));
+    }
+  }
 
   recordAuditServer({
     escolaId,
@@ -167,15 +276,9 @@ export async function GET(
     hash: hashValidacao,
     tipo: "declaracao_frequencia",
     print_url: `/secretaria/documentos/${doc.id}/frequencia/print`,
+    idempotent: false,
     ...deprecationPayload,
   });
 
-  response.headers.set("Deprecation", "true");
-  response.headers.set("Sunset", `${SUNSET_DATE}T23:59:59Z`);
-  response.headers.set("Link", `<${REPLACEMENT_ENDPOINT}>; rel="successor-version"`);
-  response.headers.set("X-Deprecated-Endpoint", "true");
-  response.headers.set("X-Replacement-Endpoint", REPLACEMENT_ENDPOINT);
-  response.headers.set("Warning", `299 - "Deprecated endpoint. Use ${REPLACEMENT_ENDPOINT} until ${SUNSET_DATE}."`);
-
-  return response;
+  return withDeprecationHeaders(response);
 }

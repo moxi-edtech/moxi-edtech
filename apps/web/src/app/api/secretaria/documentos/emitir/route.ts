@@ -43,8 +43,37 @@ const FINAL_DOC_BACKEND_TYPE: Record<TipoDocumento, string> = {
   ficha_inscricao: "ficha_inscricao",
 };
 
+function buildDocumentFingerprint(input: {
+  escolaId: string;
+  alunoId: string;
+  tipoDocumento: TipoDocumento;
+  anoLetivoId?: string | null;
+  anoLetivo?: number | null;
+}) {
+  return createHash("sha256")
+    .update(JSON.stringify({
+      escolaId: input.escolaId,
+      alunoId: input.alunoId,
+      tipoDocumento: input.tipoDocumento,
+      anoLetivoId: input.anoLetivoId ?? null,
+      anoLetivo: input.anoLetivo ?? null,
+    }))
+    .digest("hex");
+}
+
 export async function POST(request: Request) {
   try {
+    const idempotencyKey = (
+      request.headers.get("Idempotency-Key")
+      ?? request.headers.get("idempotency-key")
+      ?? ""
+    ).trim();
+    if (idempotencyKey.length < 8 || idempotencyKey.length > 200) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório e deve ter entre 8 e 200 caracteres.", code: "IDEMPOTENCY_KEY_REQUIRED" },
+        { status: 400 },
+      );
+    }
     const supabase = await supabaseServerTyped<Database>();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
@@ -107,40 +136,92 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
       }
 
-      const { data: result, error: rpcError } = await supabase
-        .rpc("emitir_documento_final", {
+      const { data: result, error: rpcError } = await (supabase as any)
+        .rpc("emitir_documento_final_idempotente", {
           p_escola_id: escolaId,
           p_aluno_id: alunoId,
           p_ano_letivo: anoLetivoNumero,
-          p_tipo_documento: FINAL_DOC_BACKEND_TYPE[tipoDocumento] as any,
-        })
-        .single();
+          p_tipo_documento: FINAL_DOC_BACKEND_TYPE[tipoDocumento],
+          p_idempotency_key: idempotencyKey,
+        });
 
       if (rpcError) {
-        return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
+        const reused = String(rpcError.message ?? "").includes("IDEMPOTENCY_KEY_REUSED");
+        return NextResponse.json(
+          {
+            ok: false,
+            error: reused
+              ? "Esta Idempotency-Key já foi usada para outra emissão."
+              : rpcError.message,
+            code: reused ? "IDEMPOTENCY_KEY_REUSED" : (rpcError.code ?? null),
+          },
+          { status: reused ? 409 : 400 },
+        );
       }
-      recordAuditServer({
-        escolaId,
-        portal: "secretaria",
-        acao: "DOCUMENTO_FINAL_EMITIDO",
-        entity: "documentos_emitidos",
-        entityId: (result as any)?.id ?? null,
-        details: { alunoId, tipoDocumento, ano_letivo: anoLetivoNumero, ano_letivo_id: academicContext?.anoLetivoId ?? null },
-      }).catch(() => null);
 
-      await dispatchAlunoNotificacao({
-        escolaId,
-        key: "DOCUMENTO_EMITIDO",
-        alunoIds: [alunoId],
-        params: { actionUrl: "/aluno/documentos" },
-        actorId: user.id,
-        actorRole: "secretaria",
-        agrupamentoTTLHoras: 12,
-      });
-      return NextResponse.json(result);
+      const finalResult = (result ?? {}) as Record<string, unknown>;
+      const replay = finalResult.idempotent === true;
+      if (!replay) {
+        recordAuditServer({
+          escolaId,
+          portal: "secretaria",
+          acao: "DOCUMENTO_FINAL_EMITIDO",
+          entity: "documentos_emitidos",
+          entityId: typeof finalResult.docId === "string" ? finalResult.docId : null,
+          details: { alunoId, tipoDocumento, ano_letivo: anoLetivoNumero, ano_letivo_id: academicContext?.anoLetivoId ?? null },
+        }).catch(() => null);
+
+        await dispatchAlunoNotificacao({
+          escolaId,
+          key: "DOCUMENTO_EMITIDO",
+          alunoIds: [alunoId],
+          params: { actionUrl: "/aluno/documentos" },
+          actorId: user.id,
+          actorRole: "secretaria",
+          agrupamentoTTLHoras: 12,
+        });
+      }
+      return NextResponse.json(finalResult);
     }
 
     // Lógica para documentos baseados na matrícula ativa
+    const idempotencyFingerprint = buildDocumentFingerprint({
+      escolaId,
+      alunoId,
+      tipoDocumento,
+      anoLetivoId: academicContext?.anoLetivoId ?? ano_letivo_id ?? null,
+      anoLetivo: ano_letivo ?? null,
+    });
+
+    const { data: existingDocument } = await (supabase as any)
+      .from("documentos_emitidos")
+      .select("id, public_id, hash_validacao, tipo, idempotency_fingerprint")
+      .eq("escola_id", escolaId)
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+
+    if (existingDocument) {
+      if (existingDocument.idempotency_fingerprint !== idempotencyFingerprint) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Esta Idempotency-Key já foi usada para outra emissão.",
+            code: "IDEMPOTENCY_KEY_REUSED",
+          },
+          { status: 409 },
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        docId: existingDocument.id,
+        publicId: existingDocument.public_id,
+        hash: existingDocument.hash_validacao,
+        tipo: existingDocument.tipo,
+        idempotent: true,
+      });
+    }
+
     if (tipoDocumento === "boletim_trimestral" && !academicContext) {
       return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
     }
@@ -238,6 +319,8 @@ export async function POST(request: Request) {
       dados_snapshot: snapshot,
       created_by: user.id,
       hash_validacao: hashValidacao,
+      idempotency_key: idempotencyKey,
+      idempotency_fingerprint: idempotencyFingerprint,
     };
 
     const { data: doc, error: docError } = await supabase
@@ -247,6 +330,40 @@ export async function POST(request: Request) {
       .single();
 
     if (docError || !doc) {
+      // Concorrência: duas requisições com a mesma chave podem chegar até o
+      // INSERT. O índice único deixa apenas uma vencer; a outra devolve o mesmo
+      // documento em vez de fabricar uma segunda emissão.
+      if (docError?.code === "23505") {
+        const { data: replayDoc } = await (supabase as any)
+          .from("documentos_emitidos")
+          .select("id, public_id, hash_validacao, tipo, idempotency_fingerprint")
+          .eq("escola_id", escolaId)
+          .eq("idempotency_key", idempotencyKey)
+          .maybeSingle();
+
+        if (replayDoc?.id) {
+          if (replayDoc.idempotency_fingerprint !== idempotencyFingerprint) {
+            return NextResponse.json(
+              {
+                ok: false,
+                error: "Esta Idempotency-Key já foi usada para outra emissão.",
+                code: "IDEMPOTENCY_KEY_REUSED",
+              },
+              { status: 409 },
+            );
+          }
+
+          return NextResponse.json({
+            ok: true,
+            docId: replayDoc.id,
+            publicId: replayDoc.public_id,
+            hash: replayDoc.hash_validacao,
+            tipo: replayDoc.tipo,
+            idempotent: true,
+          });
+        }
+      }
+
       return NextResponse.json({ ok: false, error: docError?.message || "Falha ao emitir" }, { status: 400 });
     }
 
@@ -275,6 +392,7 @@ export async function POST(request: Request) {
       publicId: doc.public_id,
       hash: hashValidacao,
       tipo: tipoDocumento,
+      idempotent: false,
     });
   } catch (err) {
     if (err instanceof AcademicYearContextError) {

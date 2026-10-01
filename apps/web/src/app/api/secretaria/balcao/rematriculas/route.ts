@@ -576,7 +576,7 @@ export async function POST(request: Request) {
           code: "DOCUMENT_PENDING",
           pedido_id: pedidoExistente.id,
           comprovante,
-        }, { status: 409 });
+        }, { status: 202 });
       }
       const reciboDocId = (pedidoExistente.contexto as any)?.recibo_doc_id;
       return NextResponse.json({
@@ -1066,7 +1066,7 @@ export async function POST(request: Request) {
       audit: { portal: "secretaria", acao: "REMATRICULA_COMPROVANTE_EMITIDO" },
     });
     if (!comprovante.ok) {
-      return NextResponse.json({ ok: false, error: "Pagamento e recibo confirmados, mas o comprovante precisa ser emitido. Tente novamente sem nova cobrança.", code: "DOCUMENT_PENDING", pedido_id: pedido.id, payment: paymentJson.data ?? null, comprovante }, { status: 409 });
+      return NextResponse.json({ ok: false, error: "Pagamento e recibo confirmados, mas o comprovante precisa ser emitido. Tente novamente sem nova cobrança.", code: "DOCUMENT_PENDING", pedido_id: pedido.id, payment: paymentJson.data ?? null, comprovante }, { status: 202 });
     }
 
     recordAuditServer({

@@ -11,10 +11,12 @@ import {
   Printer,
   Smartphone,
   Wallet,
+  AlertTriangle,
   X,
 } from "lucide-react";
 import { EnrollmentPostActions, type EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import type { TurmaOption, RematriculaResult, ProgressaoBalcao, RematriculaPaymentItem, ResultadoDecisaoBalcao } from "@/hooks/useRematriculaBalcao";
+import { isDocumentPendingResult } from "@/lib/secretaria/rematricula-result";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -344,6 +346,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
           {/* ── Success ────────────────────────────────────────────── */}
           {result ? (
             <SuccessView
+              result={result}
               alunoNome={alunoNome}
               anoLetivo={anoLetivo}
               selectedTurma={selectedTurma}
@@ -1073,6 +1076,7 @@ function StepPagamento({
 // ─── Success View ────────────────────────────────────────────────────────────
 
 function SuccessView({
+  result,
   alunoNome,
   anoLetivo,
   selectedTurma,
@@ -1082,6 +1086,7 @@ function SuccessView({
   paymentAlreadyValidated,
   onPostAction,
 }: {
+  result: RematriculaResult;
   alunoNome: string;
   anoLetivo: { id: string; ano: number; label: string };
   selectedTurma: TurmaOption | undefined;
@@ -1097,20 +1102,42 @@ function SuccessView({
   const turmaLabel = selectedTurma
     ? `${selectedTurma.nome}${turnoStr ? ` · ${turnoStr}` : ""}`
     : "—";
+  const documentPending = isDocumentPendingResult(result);
 
   return (
     <div className="space-y-6 text-center py-4">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#1F6B3B]/10">
-        <CheckCircle className="h-8 w-8 text-[#1F6B3B]" />
+      <div
+        className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${
+          documentPending ? "bg-amber-100" : "bg-[#1F6B3B]/10"
+        }`}
+      >
+        {documentPending ? (
+          <AlertTriangle className="h-8 w-8 text-amber-700" />
+        ) : (
+          <CheckCircle className="h-8 w-8 text-[#1F6B3B]" />
+        )}
       </div>
       <div>
         <h3 className="text-xl font-bold text-slate-900">
-          Rematrícula concluída
+          {documentPending
+            ? "Rematrícula concluída · comprovante pendente"
+            : "Rematrícula concluída"}
         </h3>
         <p className="text-sm text-slate-500 mt-1">
-          A matrícula do ano destino foi criada ou actualizada com a turma seleccionada.
+          {documentPending
+            ? "A matrícula e o pagamento foram preservados. Falta apenas emitir o comprovante."
+            : "A matrícula do ano destino foi criada ou actualizada com a turma seleccionada."}
         </p>
       </div>
+
+      {documentPending && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-950">
+          <p className="font-bold">Não faça uma nova cobrança.</p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+            Feche esta etapa para atualizar o atendimento. O Balcão reutiliza o pagamento já confirmado e permite tentar emitir o comprovante novamente.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-sm space-y-2.5">
         <InfoRow label="Aluno" value={alunoNome} />
@@ -1118,17 +1145,25 @@ function SuccessView({
         <InfoRow label="Turma" value={turmaLabel} />
         <InfoRow
           label="Pagamento"
-          value={paymentAlreadyValidated
-            ? `${kwanza.format(paymentTotal)} · Comprovativo validado`
-            : `${kwanza.format(paymentTotal)} · ${METODOS_UI.find((m) => m.id === metodo)?.label || metodo}`}
+          value={paymentTotal <= 0
+            ? "Não aplicável"
+            : paymentAlreadyValidated
+              ? `${kwanza.format(paymentTotal)} · Comprovativo validado`
+              : `${kwanza.format(paymentTotal)} · ${METODOS_UI.find((m) => m.id === metodo)?.label || metodo}`}
         />
-        <div className="flex justify-between">
-          <span className="text-slate-500">Estado</span>
-          <span className="font-semibold text-[#1F6B3B]">Pago</span>
+        <div className="flex justify-between gap-4">
+          <span className="text-slate-500">Matrícula</span>
+          <span className="font-semibold text-[#1F6B3B]">Concluída</span>
         </div>
+        {documentPending && (
+          <div className="flex justify-between gap-4">
+            <span className="text-slate-500">Comprovante</span>
+            <span className="font-semibold text-amber-700">Pendente de emissão</span>
+          </div>
+        )}
       </div>
 
-      <EnrollmentPostActions onAction={onPostAction} />
+      {!documentPending && <EnrollmentPostActions onAction={onPostAction} />}
     </div>
   );
 }
@@ -1144,6 +1179,7 @@ function FooterSuccess({
 }) {
   const printUrl = result.comprovante?.printUrl;
   const reciboUrl = result.recibo?.print_url;
+  const documentPending = isDocumentPendingResult(result);
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row">
@@ -1187,7 +1223,7 @@ function FooterSuccess({
         }rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700
           hover:bg-slate-300 transition-colors`}
       >
-        Fechar
+        {documentPending ? "Fechar e atualizar estado" : "Fechar"}
       </button>
     </div>
   );

@@ -105,6 +105,7 @@ export default function DocumentosEmissaoHubClient({
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const referenceInputRef = useRef<HTMLInputElement | null>(null);
+  const documentRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const [anoLetivoOptions, setAnoLetivoOptions] = useState<Array<{ id: string; nome: string; ano_letivo: number; status: string }>>([]);
   const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<number | null>(null);
   const [loadingAnoLetivo, setLoadingAnoLetivo] = useState(false);
@@ -392,14 +393,33 @@ export default function DocumentosEmissaoHubClient({
       // e omite `ano_letivo_id` quando é nulo (o zod da rota usa `.optional()`,
       // não `.nullable()` — enviar `null` dava um erro ilegível). A abertura da
       // aba mantém-se depois dos awaits, como estava.
+      const documentFingerprint = JSON.stringify({
+        escolaId,
+        alunoId: selectedAluno.id,
+        tipoDocumento: tipo,
+        anoLetivoId: selectedAnoLetivoId ?? null,
+        anoLetivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : null,
+      });
+      if (!documentRequestRef.current || documentRequestRef.current.fingerprint !== documentFingerprint) {
+        documentRequestRef.current = {
+          fingerprint: documentFingerprint,
+          key: crypto.randomUUID(),
+        };
+      }
+
       const emissao = await emitirDocumento({
         escolaId,
         alunoId: selectedAluno.id,
         tipoDocumento: tipo,
+        idempotencyKey: documentRequestRef.current.key,
         anoLetivoId: selectedAnoLetivoId,
         anoLetivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : null,
       });
-      if (!emissao.ok) throw new Error(emissao.error);
+      if (!emissao.ok) {
+        // Mantém a chave para que a próxima tentativa seja um replay seguro.
+        throw new Error(emissao.error);
+      }
+      documentRequestRef.current = null;
 
       const impressao = abrirParaImpressao(emissao.printUrl);
       if (!impressao.ok) {
