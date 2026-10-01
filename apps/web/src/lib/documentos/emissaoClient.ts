@@ -16,6 +16,8 @@ export type EmitirDocumentoInput = {
   escolaId: string;
   alunoId: string;
   tipoDocumento: TipoDocumentoEmitivel;
+  /** Reutilizar a mesma chave enquanto a mesma tentativa estiver em retry. */
+  idempotencyKey: string;
   /** Id de `school_sessions`. Obrigatório para histórico, certificado,
    *  comprovante, notas e boletim. */
   anoLetivoId?: string | null;
@@ -34,7 +36,7 @@ export type EmitirDocumentoResult =
 export async function emitirDocumento(
   input: EmitirDocumentoInput
 ): Promise<EmitirDocumentoResult> {
-  const { escolaId, alunoId, tipoDocumento, anoLetivoId, anoLetivo } = input;
+  const { escolaId, alunoId, tipoDocumento, idempotencyKey, anoLetivoId, anoLetivo } = input;
 
   const corpo: Record<string, unknown> = { alunoId, escolaId, tipoDocumento };
   // O zod da rota declara `.optional()`, não `.nullable()`. Enviar
@@ -49,7 +51,10 @@ export async function emitirDocumento(
   try {
     const response = await fetch("/api/secretaria/documentos/emitir", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
       body: JSON.stringify(corpo),
     });
 
