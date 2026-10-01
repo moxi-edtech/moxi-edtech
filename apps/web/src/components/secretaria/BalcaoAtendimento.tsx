@@ -860,8 +860,8 @@ const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> =
     descricao: "O RAA reconhece a progressão condicional, mas a efetivação ainda depende da resolução indicada.",
   },
   ACADEMIC_NOT_APPROVED: {
-    titulo: "Aluno ainda não aprovado para rematrícula",
-    descricao: "A decisão RAA vigente não autoriza progressão para a etapa seguinte.",
+    titulo: "Decisão RAA não autoriza progressão",
+    descricao: "A decisão académica vigente não permite efetivar a rematrícula para a etapa seguinte.",
   },
   ACADEMIC_CYCLE_COMPLETED: {
     titulo: "Ciclo académico concluído",
