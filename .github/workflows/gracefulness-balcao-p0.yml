@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - "apps/web/src/app/api/secretaria/balcao/rematriculas/route.ts"
+      - "apps/web/src/app/api/secretaria/balcao/rematriculas/status/route.ts"
+      - "apps/web/src/app/api/secretaria/turmas-simples/route.ts"
+      - "apps/web/src/app/api/aluno/rematricula/status/route.ts"
+      - "apps/web/src/app/api/aluno/rematricula/iniciar/route.ts"
+      - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx"
@@ -75,6 +80,11 @@ jobs:
         run: |
           pnpm -C apps/web exec eslint \
             src/app/api/secretaria/balcao/rematriculas/route.ts \
+            src/app/api/secretaria/balcao/rematriculas/status/route.ts \
+            src/app/api/secretaria/turmas-simples/route.ts \
+            src/app/api/aluno/rematricula/status/route.ts \
+            src/app/api/aluno/rematricula/iniciar/route.ts \
+            src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
             src/components/secretaria/DocumentosEmissaoHubClient.tsx \
