@@ -170,8 +170,6 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Pagamento confirmado; atendimento enviado para reconciliação.",
   REMATRICULA_PROGRESSION_INVALID:
     "A turma destino não respeita a progressão académica do aluno.",
-  REMATRICULA_DECISION_REQUIRED:
-    "Confirme que as notas serão lançadas posteriormente.",
   CROSS_YEAR_ENTITY_MISMATCH:
     "A turma seleccionada não pertence ao ano lectivo.",
   DOCUMENT_PENDING:
@@ -732,7 +730,6 @@ export function useRematriculaBalcao(opts: {
     turmas,
     turmasLoading,
     progressao,
-    notasLancarDepois,
     decisaoResultado,
     setDecisaoResultado,
     decisaoFonte,
