@@ -11,6 +11,7 @@ on:
       - "apps/web/src/components/aluno/academico/AcademicCarryoversCard.tsx"
       - "apps/web/src/components/aluno/tabs/TabNotas.tsx"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/RematriculaBalcaoModal.tsx"
       - "apps/web/src/hooks/useRematriculaBalcao.ts"
       - "apps/web/src/lib/academico/dependencias-transicao.ts"
       - "apps/web/src/lib/academico/dependencias-transicao-server.ts"
@@ -20,6 +21,7 @@ on:
       - "supabase/migrations/20270826124000_academic_carryovers_lifecycle.sql"
       - "supabase/ops/tests/bootstrap_academic_carryovers_minimal.sql"
       - "supabase/ops/tests/regression_academic_carryovers_lifecycle.sql"
+      - "docs/CONTRATO_ESTADOS_MATRICULA_REMATRICULA.md"
       - ".github/workflows/gracefulness-academic-carryovers.yml"
 
 permissions:
