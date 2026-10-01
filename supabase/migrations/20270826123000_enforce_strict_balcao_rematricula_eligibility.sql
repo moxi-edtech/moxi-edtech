@@ -1,9 +1,11 @@
 BEGIN;
 
 -- Gracefulness / rematrícula estrita.
--- Regra canónica: uma nova rematrícula só pode concluir quando o RAA já
--- determinou progressão aprovada (decision = 'transitou'). Notas pendentes,
--- recurso, inscrição condicional, retenção e conclusão de ciclo não podem ser
+-- Regra canónica: uma nova rematrícula só pode concluir quando o RAA autoriza
+-- a etapa seguinte. Isso inclui progressão regular (transitou) e inscrição
+-- condicional efetivável (inscricao_condicional + destino=proxima_etapa +
+-- efetivacao_matricula_bloqueada=false). Notas/dados pendentes, recurso,
+-- retenção, conclusão de ciclo e inscrição condicional bloqueada não podem ser
 -- convertidos em rematrícula por fallback administrativo.
 --
 -- A dívida continua protegida em profundidade por
@@ -118,17 +120,24 @@ BEGIN
   v_raa := public.resolve_raa_progression_for_matricula(p_escola_id, v_origem.id);
   v_decision := lower(coalesce(v_raa->>'decision', ''));
 
-  IF v_decision <> 'transitou' THEN
+  IF v_decision NOT IN ('transitou', 'inscricao_condicional')
+     OR coalesce((v_raa->>'efetivacao_matricula_bloqueada')::boolean, false)
+     OR (
+       v_decision = 'inscricao_condicional'
+       AND lower(coalesce(v_raa->>'destino', '')) <> 'proxima_etapa'
+     ) THEN
     RAISE EXCEPTION USING
       ERRCODE = '23514',
-      MESSAGE = 'REMATRICULA_ACADEMIC_NOT_APPROVED',
+      MESSAGE = 'REMATRICULA_ACADEMIC_BLOCKED',
       DETAIL = format(
-        'A rematrícula exige resultado académico aprovado no RAA; decisão atual: %s.',
-        nullif(v_decision, '')
+        'O RAA não autoriza a efetivação da rematrícula; decisão=%s destino=%s bloqueada=%s.',
+        nullif(v_decision, ''),
+        nullif(lower(coalesce(v_raa->>'destino', '')), ''),
+        coalesce((v_raa->>'efetivacao_matricula_bloqueada')::boolean, false)
       );
   END IF;
 
-  v_decisao_origem := 'transitou';
+  v_decisao_origem := v_decision;
 
   SELECT c.id, c.numero, c.nome, t.curso_id
     INTO v_classe_origem
@@ -231,7 +240,7 @@ GRANT EXECUTE ON FUNCTION public.finalizar_rematricula_balcao(uuid, uuid, uuid, 
 
 -- Portal do Aluno: a mesma regra precisa existir dentro da RPC executável por
 -- authenticated. A API é apenas UX/defesa em profundidade; chamada direta ao
--- Data API não pode reintroduzir retenção, inscrição condicional ou dívida.
+-- Data API não pode contornar a decisão RAA, o bloqueio condicional ou a dívida.
 CREATE OR REPLACE FUNCTION public.aluno_iniciar_rematricula(
   p_matricula_id uuid,
   p_servicos_ids uuid[] DEFAULT '{}'::uuid[]
@@ -312,13 +321,20 @@ BEGIN
   END IF;
 
   v_raa := public.resolve_raa_progression_for_matricula(v_escola_id, v_mat.id);
-  IF lower(COALESCE(v_raa->>'decision', '')) <> 'transitou' THEN
+  IF lower(coalesce(v_raa->>'decision', '')) NOT IN ('transitou', 'inscricao_condicional')
+     OR coalesce((v_raa->>'efetivacao_matricula_bloqueada')::boolean, false)
+     OR (
+       lower(coalesce(v_raa->>'decision', '')) = 'inscricao_condicional'
+       AND lower(coalesce(v_raa->>'destino', '')) <> 'proxima_etapa'
+     ) THEN
     RAISE EXCEPTION USING
       ERRCODE = '23514',
-      MESSAGE = 'REMATRICULA_ACADEMIC_NOT_APPROVED',
+      MESSAGE = 'REMATRICULA_ACADEMIC_BLOCKED',
       DETAIL = format(
-        'A rematrícula exige resultado académico aprovado no RAA; decisão atual: %s.',
-        nullif(lower(COALESCE(v_raa->>'decision', '')), '')
+        'O RAA não autoriza a efetivação da rematrícula; decisão=%s destino=%s bloqueada=%s.',
+        nullif(lower(coalesce(v_raa->>'decision', '')), ''),
+        nullif(lower(coalesce(v_raa->>'destino', '')), ''),
+        coalesce((v_raa->>'efetivacao_matricula_bloqueada')::boolean, false)
       );
   END IF;
 
