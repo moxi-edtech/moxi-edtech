@@ -20,7 +20,37 @@ Este documento aplica o padrão definido em [Graciosidade no KLASSE](./graciosid
 | BAL-GR-003 | **IMPLEMENTADO — validação pendente** | idempotência server-side de documentos + replay/fingerprint + regressão SQL |
 | BAL-GR-004 | **IMPLEMENTADO — validação pendente** | `DOCUMENT_PENDING` classificado e apresentado como conclusão parcial |
 
-**Não considerar fechado ainda.** O fechamento exige CI verde, regressões SQL em banco descartável, aplicação da migration no ambiente alvo e prova pós-migration conforme a seção 11.
+**Estado de validação do código:** CI dedicado e KF2 verdes no SHA `39ef34ae4c4a238412c666ee08a3369639826afd`.
+
+**Não considerar fechado ainda.** O fechamento exige aplicação controlada no ambiente alvo e prova pós-migration conforme a seção 11.
+
+### Reconciliação do banco live — 2026-10-01
+
+A inspeção read-only do projeto Supabase mostrou drift de **histórico**, não de schema, nas duas migrations que precedem este P0:
+
+| Migration | Histórico live | Efeito material live | Ação de release |
+|---|---|---|---|
+| `20270825140000_free_tier_security_performance_hardening.sql` | ausente | **presente** — grants restritos, views `security_invoker`, MV/índices e RPCs de hardening confirmados | reparar histórico; **não reexecutar** |
+| `20270826120000_fix_matriculas_session_id_on_creation.sql` | ausente | **presente** — os seis writers auditados já inserem `session_id` em `matriculas` | reparar histórico; **não reexecutar** |
+| `20270826121000_harden_balcao_rematricula_rpc_authz.sql` | ausente | **não presente** — RPC live ainda é `SECURITY DEFINER` sem o novo `AUTH_FORBIDDEN` | aplicar após repair |
+| `20270826122000_idempotent_secretaria_document_emission.sql` | ausente | **não presente** — `documentos_emitidos.idempotency_key` e wrapper idempotente ainda não existem | aplicar após 261210 |
+
+Release order obrigatório:
+
+```text
+verificar novamente invariantes
+→ repair history 20270825140000
+→ repair history 20270826120000
+→ aplicar 20270826121000
+→ regressão/prova BAL-GR-001
+→ aplicar 20270826122000
+→ regressão/prova BAL-GR-003
+→ advisors
+→ smoke dos fluxos
+→ só então fechar P0 / merge
+```
+
+Produção **não foi modificada** durante esta reconciliação.
 
 ---
 
