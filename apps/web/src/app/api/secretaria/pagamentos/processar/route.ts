@@ -6,6 +6,8 @@ import { recordAuditServer } from "@/lib/audit";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { isFiscalEngineEnabledForSchool } from "@/lib/fiscal/financeiroFiscalAdapter";
+import { processSettledPaymentFiscal } from "@/lib/fiscal/paymentFiscalDocument";
 import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -193,6 +195,17 @@ async function emitBatchReceipt({
 
 /** Compatibility endpoint kept for the Secretaria Balcão contract used by older clients. */
 export async function POST(request: Request) {
+  const idempotencyKey =
+    request.headers.get("Idempotency-Key") ??
+    request.headers.get("idempotency-key");
+
+  if (!idempotencyKey) {
+    return NextResponse.json(
+      { ok: false, error: "Idempotency-Key header é obrigatório" },
+      { status: 400 }
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = legacyPayloadSchema.safeParse(body);
   if (!parsed.success) {
@@ -292,6 +305,8 @@ export async function POST(request: Request) {
     throw err;
   }
 
+  const fiscalEnabled = await isFiscalEngineEnabledForSchool(escolaId);
+
   const baseMeta = {
     origem: parsed.data.origem ?? "secretaria_pagamentos_processar_compat",
     pedido_id: parsed.data.pedido_id ?? null,
@@ -349,31 +364,109 @@ export async function POST(request: Request) {
   const ultimoPagamento = asRecord(batch.data);
   const idempotent = batch.idempotent === true;
 
-  // Receipt RPCs are themselves idempotent: on retry they return the existing
-  // receipt instead of creating a duplicate. This closes the small gap between
-  // the committed financial batch and HTTP response delivery.
-  const recibo = await emitBatchReceipt({
-    supabase,
-    escolaId,
-    items: itensPagamento,
-    metodo,
-    origin: parsed.data.origem,
-    lastPayment: ultimoPagamento,
-  });
+  const fiscalResults: Array<Record<string, unknown>> = [];
+  const fiscalOkByPaymentId = new Map<string, boolean>();
+
+  if (fiscalEnabled) {
+    for (const row of pagamentos) {
+      const payment = asRecord(row);
+      const paymentId = getStringField(payment, "id");
+      const status = getStringField(payment, "status");
+
+      if (!paymentId) {
+        fiscalResults.push({
+          ok: false,
+          code: "PAYMENT_ID_MISSING",
+          error: "Pagamento sem identificador para processamento fiscal.",
+        });
+        continue;
+      }
+
+      if (!status || !["settled", "concluido", "pago"].includes(status)) {
+        fiscalResults.push({
+          ok: true,
+          payment_id: paymentId,
+          pending_settlement: true,
+          skipped: true,
+        });
+        fiscalOkByPaymentId.set(paymentId, true);
+        continue;
+      }
+
+      try {
+        const result = await processSettledPaymentFiscal({
+          paymentId,
+          createdBy: user.id,
+        });
+        fiscalResults.push({
+          ok: true,
+          payment_id: paymentId,
+          kind: result.kind,
+          document: result.document,
+          reprocess: "reprocess" in result ? result.reprocess : null,
+          agt_submission: result.agtSubmission,
+        });
+        fiscalOkByPaymentId.set(paymentId, true);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[SECRETARIA-PAGAMENTOS-BATCH][FISCAL_ERROR]", {
+          paymentId,
+          message,
+        });
+        fiscalResults.push({
+          ok: false,
+          payment_id: paymentId,
+          error: message,
+        });
+        fiscalOkByPaymentId.set(paymentId, false);
+      }
+    }
+  }
+
+  const fiscal =
+    fiscalEnabled
+      ? {
+          ok: fiscalResults.every((result) => result.ok === true),
+          enabled: true,
+          results: fiscalResults,
+        }
+      : {
+          ok: true,
+          enabled: false,
+          skipped: true,
+        };
+
+  // Operational receipts remain the fallback while the fiscal engine is not
+  // enabled for the school. When fiscal is enabled, RC/FR owns the receipt
+  // surface and we avoid emitting a parallel non-fiscal document.
+  const recibo: BatchReceiptResult = fiscalEnabled
+    ? { ok: false, error: "Recibo operacional substituído pelo documento fiscal." }
+    : await emitBatchReceipt({
+        supabase,
+        escolaId,
+        items: itensPagamento,
+        metodo,
+        origin: parsed.data.origem,
+        lastPayment: ultimoPagamento,
+      });
 
   if (!idempotent) {
     pagamentos.forEach((row, index) => {
       const payment = asRecord(row);
+      const paymentId = getStringField(payment, "id");
       recordAuditServer({
         escolaId,
         portal: "secretaria",
         acao: "PAGAMENTO_REGISTRADO",
         entity: "pagamento",
-        entityId: getStringField(payment, "id"),
+        entityId: paymentId,
         details: {
           valor: itensPagamento[index]?.preco ?? null,
           metodo,
-          fiscal_ok: false,
+          fiscal_ok: fiscalEnabled
+            ? (paymentId ? fiscalOkByPaymentId.get(paymentId) ?? false : false)
+            : false,
+          fiscal_enabled: fiscalEnabled,
           ano_letivo_id: academicContext.anoLetivoId,
           batch_idempotency_key: requestId,
         },
@@ -385,7 +478,7 @@ export async function POST(request: Request) {
     ok: true,
     data: ultimoPagamento,
     recibo,
-    fiscal: { ok: false, error: "Emissão fiscal desativada" },
+    fiscal,
     pagamentos,
     idempotent,
   });

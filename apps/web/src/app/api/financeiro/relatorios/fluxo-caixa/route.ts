@@ -4,6 +4,7 @@ import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { percentFromCounts, safeCount } from "@/lib/financeiro/exact";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,10 @@ export async function GET(req: Request) {
       requestedAcademicYearId: new URL(req.url).searchParams.get("ano_letivo_id"),
       operation: "READ",
     });
-    const academicYear = Number(academicContext.anoLetivoLabel.slice(0, 4));
+    const academicYear = safeCount(
+      academicContext.anoLetivoLabel.slice(0, 4),
+      "ano_letivo"
+    );
 
     // Prefer view simples (vw_financeiro_escola_dia). Se não existir, retorna vazio.
     let query = (supabase as any)
@@ -75,9 +79,9 @@ export async function GET(req: Request) {
     }
 
     const series = (data ?? []).map((row) => {
-      const total = Number(row.qtd_total ?? 0);
-      const pagos = Number(row.qtd_pagos ?? 0);
-      const pct = total > 0 ? (pagos / total) * 100 : 0;
+      const total = safeCount(row.qtd_total ?? 0, "qtd_total");
+      const pagos = safeCount(row.qtd_pagos ?? 0, "qtd_pagos");
+      const pct = percentFromCounts(pagos, total, 2);
       return {
         dia: row.dia,
         qtdTotal: total,

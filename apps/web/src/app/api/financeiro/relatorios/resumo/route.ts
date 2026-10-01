@@ -3,6 +3,14 @@ import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
+import {
+  exactMoney,
+  moneyToJson,
+  percentFromCounts,
+  safeCount,
+  sumExact,
+} from "@/lib/financeiro/exact";
+import { addExact, subExact } from "@/lib/fiscal/decimal";
 
 export const dynamic = "force-dynamic";
 
@@ -85,9 +93,9 @@ export async function GET(req: Request) {
 
     propinasRows = propinas ?? [];
 
-    let despesasTotal = 0;
-    let entradasTotal = 0;
-    let saldoAnterior = 0;
+    let despesasTotalExact = exactMoney("0", "despesasTotal");
+    let entradasTotalExact = exactMoney("0", "entradasTotal");
+    let saldoAnteriorExact = exactMoney("0", "saldoAnterior");
 
     if (anoScope?.dataInicio && anoScope?.dataFim) {
       const [despesasRes, entradasRes, saldoAnteriorRes] = await Promise.all([
@@ -131,25 +139,49 @@ export async function GET(req: Request) {
         );
       }
 
-      despesasTotal = (despesasRes.data ?? []).reduce((sum, row) => sum + Number(row.valor ?? 0), 0);
-      entradasTotal = (entradasRes.data ?? []).reduce((sum, row) => sum + Number(row.valor ?? 0), 0);
-      saldoAnterior = (saldoAnteriorRes.data ?? []).reduce((sum, row) => {
-        const valor = Number(row.valor ?? 0);
-        return sum + (row.tipo === "credito" ? valor : -valor);
-      }, 0);
+      despesasTotalExact = sumExact(
+        (despesasRes.data ?? []).map((row) => row.valor ?? "0"),
+        "despesas.valor"
+      );
+      entradasTotalExact = sumExact(
+        (entradasRes.data ?? []).map((row) => row.valor ?? "0"),
+        "entradas.valor"
+      );
+      saldoAnteriorExact = (saldoAnteriorRes.data ?? []).reduce((sum, row) => {
+        const valor = exactMoney(row.valor ?? "0", "saldo_anterior.valor");
+        return row.tipo === "credito" ? addExact(sum, valor) : subExact(sum, valor);
+      }, exactMoney("0", "saldoAnterior"));
     }
 
     const resumo = propinasRows.reduce(
       (acc, row) => {
-        acc.mensalidades += Number(row.qtd_mensalidades ?? 0);
-        acc.emAtraso += Number(row.qtd_em_atraso ?? 0);
-        acc.pagasAdiantadas += Number(row.qtd_pagas_adiantadas ?? 0);
-        acc.parciais += Number(row.qtd_parciais ?? 0);
-        acc.previsto += Number(row.total_previsto ?? 0);
-        acc.pago += Number(row.total_pago ?? 0);
-        acc.pagoAdiantado += Number(row.total_pago_adiantado ?? 0);
-        acc.parcialEmAberto += Number(row.total_parcial_em_aberto ?? 0);
-        acc.atraso += Number(row.total_em_atraso ?? 0);
+        acc.mensalidades += safeCount(row.qtd_mensalidades ?? 0, "qtd_mensalidades");
+        acc.emAtraso += safeCount(row.qtd_em_atraso ?? 0, "qtd_em_atraso");
+        acc.pagasAdiantadas += safeCount(
+          row.qtd_pagas_adiantadas ?? 0,
+          "qtd_pagas_adiantadas"
+        );
+        acc.parciais += safeCount(row.qtd_parciais ?? 0, "qtd_parciais");
+        acc.previsto = addExact(
+          acc.previsto,
+          exactMoney(row.total_previsto ?? "0", "total_previsto")
+        );
+        acc.pago = addExact(
+          acc.pago,
+          exactMoney(row.total_pago ?? "0", "total_pago")
+        );
+        acc.pagoAdiantado = addExact(
+          acc.pagoAdiantado,
+          exactMoney(row.total_pago_adiantado ?? "0", "total_pago_adiantado")
+        );
+        acc.parcialEmAberto = addExact(
+          acc.parcialEmAberto,
+          exactMoney(row.total_parcial_em_aberto ?? "0", "total_parcial_em_aberto")
+        );
+        acc.atraso = addExact(
+          acc.atraso,
+          exactMoney(row.total_em_atraso ?? "0", "total_em_atraso")
+        );
         return acc;
       },
       {
@@ -157,13 +189,30 @@ export async function GET(req: Request) {
         emAtraso: 0,
         pagasAdiantadas: 0,
         parciais: 0,
-        previsto: 0,
-        pago: 0,
-        pagoAdiantado: 0,
-        parcialEmAberto: 0,
-        atraso: 0,
+        previsto: exactMoney("0", "previsto"),
+        pago: exactMoney("0", "pago"),
+        pagoAdiantado: exactMoney("0", "pagoAdiantado"),
+        parcialEmAberto: exactMoney("0", "parcialEmAberto"),
+        atraso: exactMoney("0", "atraso"),
       }
     );
+
+    const despesasTotal = moneyToJson(despesasTotalExact);
+    const entradasTotal = moneyToJson(entradasTotalExact);
+    const saldoAnterior = moneyToJson(saldoAnteriorExact);
+    const saldoPeriodoExact = subExact(entradasTotalExact, despesasTotalExact);
+    const saldoAcumuladoExact = addExact(saldoAnteriorExact, saldoPeriodoExact);
+    const resumoJson = {
+      mensalidades: resumo.mensalidades,
+      emAtraso: resumo.emAtraso,
+      pagasAdiantadas: resumo.pagasAdiantadas,
+      parciais: resumo.parciais,
+      previsto: moneyToJson(resumo.previsto),
+      pago: moneyToJson(resumo.pago),
+      pagoAdiantado: moneyToJson(resumo.pagoAdiantado),
+      parcialEmAberto: moneyToJson(resumo.parcialEmAberto),
+      atraso: moneyToJson(resumo.atraso),
+    };
 
     return NextResponse.json({
       ok: true,
@@ -174,14 +223,13 @@ export async function GET(req: Request) {
         fim: anoScope?.dataFim ?? null,
       },
       resumo: {
-        ...resumo,
+        ...resumoJson,
         despesasTotal,
         entradasTotal,
         saldoAnterior,
-        saldoPeriodo: entradasTotal - despesasTotal,
-        saldoAcumulado: saldoAnterior + entradasTotal - despesasTotal,
-        taxaAtrasoPct:
-          resumo.mensalidades > 0 ? Number(((resumo.emAtraso / resumo.mensalidades) * 100).toFixed(1)) : 0,
+        saldoPeriodo: moneyToJson(saldoPeriodoExact),
+        saldoAcumulado: moneyToJson(saldoAcumuladoExact),
+        taxaAtrasoPct: percentFromCounts(resumo.emAtraso, resumo.mensalidades, 1),
       },
     });
   } catch (err: unknown) {

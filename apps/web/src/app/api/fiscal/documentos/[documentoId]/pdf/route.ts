@@ -7,6 +7,13 @@ import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { FiscalDocumentV1 } from "@/templates/pdf/fiscal/FiscalDocumentV1";
+import { resolveFiscalPdfMoney } from "@/lib/fiscal/pdfMoney";
+import {
+  CONSUMIDOR_FINAL_NIF,
+  CONSUMIDOR_FINAL_NOME,
+  FISCAL_ADDRESS_UNKNOWN,
+  isGenericConsumidorFinal,
+} from "@/lib/fiscal/customerIdentity";
 import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +26,6 @@ const paramsSchema = z.object({
   documentoId: z.string().uuid(),
 });
 
-const CONSUMIDOR_FINAL_NIF = "999999999";
-const DESCONHECIDO = "Desconhecido";
 
 function jsonError(status: number, code: string, message: string, details?: JsonRecord) {
   return NextResponse.json(
@@ -74,11 +79,20 @@ function resolveClienteFallback({
   morada: string | null;
 }) {
   const safeNif = normalizeString(nif) ?? CONSUMIDOR_FINAL_NIF;
-  const isConsumidorFinal = safeNif === CONSUMIDOR_FINAL_NIF;
-  return {
-    nome: isConsumidorFinal ? "Consumidor final" : (normalizeString(nome) ?? "Cliente"),
+  const safeNome = normalizeString(nome);
+  const genericConsumidorFinal = isGenericConsumidorFinal({
+    nome: safeNome,
     nif: safeNif,
-    morada: isConsumidorFinal ? DESCONHECIDO : (normalizeString(morada) ?? DESCONHECIDO),
+  });
+
+  return {
+    nome: genericConsumidorFinal
+      ? CONSUMIDOR_FINAL_NOME
+      : (safeNome ?? "Cliente sem NIF"),
+    nif: safeNif,
+    morada: genericConsumidorFinal
+      ? FISCAL_ADDRESS_UNKNOWN
+      : (normalizeString(morada) ?? FISCAL_ADDRESS_UNKNOWN),
   };
 }
 
@@ -99,6 +113,10 @@ export async function GET(
 
   try {
     const supabase = await supabaseRouteClient<Database>();
+    // Live fiscal schema is ahead of the generated Database type for a few
+    // canonical BILL-009 columns. Keep auth/access checks typed, but isolate
+    // schema-drift reads behind this local client until types are regenerated.
+    const fiscalDb = supabase as any;
     const {
       data: { user },
       error: authError,
@@ -110,10 +128,10 @@ export async function GET(
       });
     }
 
-    const { data: doc, error: docError } = await supabase
+    const { data: doc, error: docError } = await fiscalDb
       .from("fiscal_documentos")
       .select(
-        "id, empresa_id, numero_formatado, tipo_documento, invoice_date, cliente_nome, cliente_nif, total_bruto_aoa, total_impostos_aoa, total_liquido_aoa, hash_control, status, payload, moeda"
+        "id, empresa_id, numero_formatado, tipo_documento, invoice_date, cliente_nome, cliente_nif, total_bruto_aoa, total_impostos_aoa, total_liquido_aoa, hash_control, status, payload, moeda, documento_origem_id, rectifica_documento_id, reference_reason"
       )
       .eq("id", parsedParams.data.documentoId)
       .maybeSingle();
@@ -162,17 +180,27 @@ export async function GET(
       });
     }
 
-    const [{ data: empresa }, { data: itens, error: itensError }] = await Promise.all([
-      supabase
+    const sourceDocumentoId = doc.documento_origem_id ?? doc.rectifica_documento_id;
+    const [{ data: empresa }, { data: itens, error: itensError }, { data: sourceDocumento }] =
+      await Promise.all([
+      fiscalDb
       .from("fiscal_empresas")
       .select("nome, nif, certificado_agt_numero, endereco")
       .eq("id", doc.empresa_id)
       .maybeSingle(),
-      supabase
+      fiscalDb
         .from("fiscal_documento_itens")
-        .select("id, descricao, quantidade, preco_unit, taxa_iva, total_bruto_aoa, product_code, tax_exemption_code")
+        .select("id, descricao, quantidade, preco_unit, unit_price_base, settlement_amount, taxa_iva, total_liquido_moeda, total_impostos_moeda, total_bruto_moeda, total_bruto_aoa, product_code, tax_exemption_code")
         .eq("documento_id", doc.id)
         .order("linha_no", { ascending: true }),
+      sourceDocumentoId
+        ? fiscalDb
+            .from("fiscal_documentos")
+            .select("id, numero_formatado")
+            .eq("id", sourceDocumentoId)
+            .eq("empresa_id", doc.empresa_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
 
     if (itensError) {
@@ -195,25 +223,39 @@ export async function GET(
       morada: clienteMoradaPayload,
     });
 
+    const moeda = (normalizeString(doc.moeda) ?? "AOA").toUpperCase();
+    const pdfMoney = resolveFiscalPdfMoney({
+      moeda,
+      totalsAoa: {
+        incidencia: doc.total_liquido_aoa,
+        imposto: doc.total_impostos_aoa,
+        totalGeral: doc.total_bruto_aoa,
+      },
+      items: itens ?? [],
+    });
+
     const itensSafe = (itens ?? []).map((item, index) => {
       const taxExemptionCode = normalizeString(item.tax_exemption_code);
+      const money = pdfMoney.itemAmounts[index];
       return {
         id: item.id,
         codigo: normalizeString(item.product_code) ?? `ITEM-${index + 1}`,
         descricao: item.descricao ?? "Item fiscal",
-        precoUnitario: Number(item.preco_unit ?? 0),
+        precoUnitario: money?.unitPrice ?? 0,
         quantidade: Number(item.quantidade ?? 0),
         taxaIva: Number(item.taxa_iva ?? 0),
         motivoIsencaoCode: taxExemptionCode ?? undefined,
-        total: Number(item.total_bruto_aoa ?? 0),
+        settlementAmount: money?.settlementAmount ?? 0,
+        total: money?.total ?? 0,
       };
     });
+
+    const totalsInDocumentCurrency = pdfMoney.totals;
 
     const agtNumero = resolveAgtNumber(empresa?.certificado_agt_numero);
     const assinatura4 = resolveHash4(doc.hash_control);
     const statusPdf = resolvePdfStatus(doc.status);
     const tipoDocumento = normalizeString(doc.tipo_documento) ?? "FT";
-    const moeda = (normalizeString(doc.moeda) ?? "AOA").toUpperCase();
 
     const element = createElement(FiscalDocumentV1, {
       documento: {
@@ -224,16 +266,22 @@ export async function GET(
         empresa: {
           nome: empresa?.nome ?? "-",
           nif: empresa?.nif ?? "-",
-          morada: normalizeString(empresa?.endereco) ?? DESCONHECIDO,
+          morada: normalizeString(empresa?.endereco) ?? FISCAL_ADDRESS_UNKNOWN,
         },
         cliente,
         itens: itensSafe,
-        totais: {
-          incidencia: Number(doc.total_liquido_aoa ?? 0),
-          imposto: Number(doc.total_impostos_aoa ?? 0),
-          totalGeral: Number(doc.total_bruto_aoa ?? 0),
-        },
+        totais: totalsInDocumentCurrency,
         moeda,
+        referencia: sourceDocumento?.numero_formatado
+          ? {
+              numero: String(sourceDocumento.numero_formatado),
+              motivo:
+                normalizeString(doc.reference_reason) ??
+                normalizeString(
+                  ((payload?.metadata ?? null) as JsonRecord | null)?.reference_reason
+                ),
+            }
+          : null,
       },
       assinaturaCurta: assinatura4,
       agtNumber: agtNumero,

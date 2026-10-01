@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Input } from "@/components/ui/Input";
 import { registrarPagamentoAction, PagamentoMetodo } from "@/features/financeiro/actions";
@@ -46,8 +46,13 @@ export function RegistoPagamentoModal({
   const [observacao, setObservacao] = useState("");
   const { success, error } = useToast();
   const { escolaId: resolvedEscolaId } = useEscolaId();
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   const escolaUuid = UUID_REGEX.test(escolaId) ? escolaId : resolvedEscolaId;
+
+  useEffect(() => {
+    idempotencyKeyRef.current = null;
+  }, [alunoId, mensalidadeId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +61,8 @@ export function RegistoPagamentoModal({
       return;
     }
     setLoading(true);
+    const idempotencyKey = idempotencyKeyRef.current ?? crypto.randomUUID();
+    idempotencyKeyRef.current = idempotencyKey;
 
     const res = await registrarPagamentoAction({
       escola_id: escolaUuid,
@@ -64,6 +71,7 @@ export function RegistoPagamentoModal({
       valor,
       metodo,
       reference,
+      idempotency_key: idempotencyKey,
       meta: { observacao, origem: "portal_financeiro" },
     });
 
@@ -71,6 +79,7 @@ export function RegistoPagamentoModal({
 
     if (res.success) {
       success("Pagamento registado", "O pagamento foi processado e liquidado com sucesso.");
+      idempotencyKeyRef.current = null;
       onClose();
     } else {
       error("Erro no registo", res.error || "Não foi possível registar o pagamento.");

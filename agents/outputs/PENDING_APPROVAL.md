@@ -1,79 +1,45 @@
-# Aprovação necessária — Agent 3
-run_id:    51fc910e-e33c-41b1-8eb5-e61689eb9eac
-timestamp: 2026-09-30T09:26:12Z
+# PENDING APPROVAL — fiscal-recovery-migration-20260930-02
 
-## Acção proposta
+status: PENDING_APPROVAL
+branch: `recovery/fiscal-agt-preservation-20260930`
+base_functional_head: `b50e0ff7e0f497d3a6bc5949409fa4d50f467f21`
+proposed_delta_sha256: `30fa684e6bc9caa9c0bd6d553e7860658e8d573d1c61ed4d3bcb15c17e3f3028`
 
-Corrigir o P1 aberto no PR #136 tornando o checkout multi-item da Secretaria atomicamente transacional.
+## Approval requested
 
-A mudança proposta:
+Post-push migration review found two pre-production issues in the still-unapplied recovery migration:
 
-1. adiciona a RPC `financeiro_registrar_pagamentos_secretaria_batch`, que:
-   - valida tenant/role;
-   - aceita 1–50 itens;
-   - serializa concorrência pela chave do checkout com `pg_advisory_xact_lock`;
-   - usa uma chave filha `<batch-key>:<index>` por pagamento;
-   - chama o writer canónico `financeiro_registrar_pagamento_secretaria` dentro de **uma única transação Postgres**;
-   - replica as guardas de mensalidade, matrícula, ano letivo e janela de cobrança necessárias ao fluxo;
-   - rejeita estado parcial preexistente em vez de “completar” silenciosamente;
-   - devolve todos os pagamentos e marca retries completos como idempotentes.
+1. a genuine proof resubmission could update `evidence_url` and then be misclassified as an idempotent replay, causing the API to delete the replacement proof;
+2. the migration preflight could call `pg_get_functiondef` on an aggregate and abort before applying.
 
-2. altera `/api/secretaria/pagamentos/processar`:
-   - mantém o caminho canónico existente para checkout de 1 item;
-   - usa uma única chamada RPC batch para 2+ itens;
-   - emite/enriquece recibo somente após commit bem-sucedido;
-   - não reemite recibo automaticamente em retry idempotente;
-   - preserva audit trail e o contrato de resposta.
+The exact proposed correction is documented in:
 
-3. altera `BalcaoAtendimento` para reutilizar a mesma `Idempotency-Key` quando o utilizador repete exactamente o mesmo checkout após timeout/erro de rede.
+`agents/outputs/APPLY_DIFF_fiscal-recovery-migration-20260930-02.md`
 
-O P0 checklist foi verificado antes desta proposta e está integralmente marcado como concluído.
+## Scope
 
-## Diff
+Approval authorizes ONLY:
 
-O diff exacto proposto, incluindo o SQL completo da migration e os hunks exactos de API/UI, está versionado em:
+- commit/push of the two-file micro-diff with SHA-256 above;
+- CI/Fiscal Certification rerun;
+- PR #137 and Preview validation.
 
-`agents/outputs/APPLY_DIFF_51fc910e-e33c-41b1-8eb5-e61689eb9eac.md`
+It does NOT authorize:
 
-Migration reservada pelo comando oficial `supabase migration new fix_secretaria_batch_payment_atomicity`:
+- applying `20260930174453_recover_fiscal_hardening_current_contract.sql` to Supabase production;
+- merging PR #137;
+- Production deployment.
 
-`supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql`
+## Validation already completed
 
-Resumo dos ficheiros funcionais que serão alterados somente após aprovação:
+- targeted migration tests: 10/10 PASS;
+- full fiscal suite: 104/104 PASS;
+- fiscal typecheck: PASS;
+- full migration executed successfully in isolated PostgreSQL 17 with `ON_ERROR_STOP`;
+- resubmission/retry semantics proven in the database harness;
+- key custody, legacy RPC revocation, payment guards and five TRUNCATE guards proven in the harness;
+- live read-only audit confirms the required preflight invariants exist in Supabase production.
 
-```diff
-+ supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql
-~ apps/web/src/app/api/secretaria/pagamentos/processar/route.ts
-~ apps/web/src/components/secretaria/BalcaoAtendimento.tsx
-```
+## Required approval
 
-Nenhum SQL remoto, migration repair, merge ou deployment de Production faz parte deste apply.
-
-## Risco
-
-A migration cria um novo contrato SQL financeiro e executa writes em `pagamentos` através do writer canónico. Se a validação batch estiver errada, o impacto possível é bloqueio indevido de checkout ou alteração da semântica de recebimento multi-item.
-
-Mitigações obrigatórias antes de qualquer merge/deploy:
-
-- testar primeiro em ambiente local/descartável;
-- provar rollback integral quando um item posterior falha;
-- provar idempotência e concorrência;
-- manter checkout de item único no caminho canónico actual;
-- KF2 verde;
-- build/preview Next/Vercel verde;
-- nenhuma aplicação remota em produção durante a validação.
-
-Rollback de código: `git revert` dos commits deste run.
-A migration ainda não foi aplicada ao Supabase remoto, portanto não existe rollback de banco a executar neste momento.
-
-## Aprovação
-
-Aprovado explicitamente pelo responsável em 2026-09-30.
-
-Commit de aprovação: `APPROVE: 51fc910e-e33c-41b1-8eb5-e61689eb9eac`
-
-## Como rejeitar
-
-Commit com mensagem:
-
-`REJECT: 51fc910e-e33c-41b1-8eb5-e61689eb9eac [motivo]`
+`APPROVE: fiscal-recovery-migration-20260930-02`

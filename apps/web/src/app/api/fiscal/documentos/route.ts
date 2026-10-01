@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 import { recordAuditServer } from "@/lib/audit";
 import {
   type PostFiscalDocumentoRequestInput,
@@ -10,6 +12,19 @@ import {
   postFiscalDocumentoRequestSchema,
 } from "@/lib/schemas/fiscal-documento.schema";
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
+import { applyFiscalDiscounts } from "@/lib/fiscal/discounts";
+import {
+  CONSUMIDOR_FINAL_NIF,
+  CONSUMIDOR_FINAL_NOME,
+  FISCAL_ADDRESS_UNKNOWN,
+  normalizeFiscalCustomerInput,
+} from "@/lib/fiscal/customerIdentity";
+import { ensureSaftDocumentSignature } from "@/lib/fiscal/saftDocumentSignature";
+import { queueAgtDocumentSubmission } from "@/lib/fiscal/agtSubmissionQueue";
+import {
+  FISCAL_TAX_PROFILE_CODES,
+  type FiscalTaxProfileCode,
+} from "@/lib/fiscal/taxProfiles";
 import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +80,10 @@ type FiscalDatabase = Database & {
         Args: FiscalFinalizarAssinaturaArgs;
         Returns: FiscalEmitirDocumentoResult;
       };
+      fiscal_resolve_education_tax_profile: {
+        Args: { p_empresa_id: string };
+        Returns: string;
+      };
     };
   };
 };
@@ -77,6 +96,10 @@ type FiscalSerieLookup = {
   origem_documento: string;
   ativa: boolean;
   descontinuada_em: string | null;
+  agt_status?: string | null;
+  agt_series_code?: string | null;
+  series_year?: number | null;
+  series_contingency_indicator?: string | null;
 };
 
 type FiscalKmsKeyLookup = {
@@ -93,14 +116,7 @@ type NormalizeResult =
   | { ok: true; data: PostFiscalDocumentoInput }
   | { ok: false; status: number; code: string; message: string; details?: JsonRecord };
 
-const CONSUMIDOR_FINAL_NIF = "999999999";
-const CONSUMIDOR_FINAL_NOME = "Consumidor final";
-const DESCONHECIDO = "Desconhecido";
-
-function normalizeClienteAddressField(value: string | undefined): string {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : DESCONHECIDO;
-}
+const AGT_FE_SUBMISSION_TYPES = new Set(["FT", "FR", "FG", "GF", "NC", "ND", "RC", "RE"]);
 
 function toProductCode(descricao: string, index: number): string {
   const normalized = descricao
@@ -194,51 +210,68 @@ async function resolveEmpresaContext({
 function normalizePostInput({
   input,
   empresaId,
+  uiTaxProfileCode,
 }: {
   input: PostFiscalDocumentoRequestInput;
   empresaId: string | null;
+  uiTaxProfileCode?: FiscalTaxProfileCode | null;
 }): NormalizeResult {
   if ("empresa_id" in input) {
-    const clienteNome = input.cliente.nome.trim();
-    const clienteNif = input.cliente.nif?.trim();
-    const isConsumidorFinal = !clienteNif;
-    const normalizedAddressDetail = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.address_detail);
-    const normalizedCity = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.city);
-    const normalizedPostalCode = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.postal_code);
-    const normalizedCountry = isConsumidorFinal
-      ? DESCONHECIDO
-      : normalizeClienteAddressField(input.cliente.country);
+    const normalizedCustomer = normalizeFiscalCustomerInput(input.cliente);
+    const normalizedItems = input.itens.map((item, index) => {
+      const productCode = item.product_code.trim();
+      const productNumberCode = item.product_number_code?.trim();
+      return {
+        ...item,
+        product_code: productCode,
+        product_number_code:
+          productNumberCode && productNumberCode.length > 0
+            ? productNumberCode
+            : productCode || toProductCode(item.descricao, index),
+      };
+    });
+
+    let discountedItems = normalizedItems;
+    try {
+      discountedItems = applyFiscalDiscounts(
+        normalizedItems,
+        input.global_discount_pct
+      );
+    } catch (error) {
+      return {
+        ok: false,
+        status: 400,
+        code: "FISCAL_DISCOUNT_INVALID",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Configuração de desconto fiscal inválida.",
+      };
+    }
+
     return {
       ok: true,
       data: {
         ...input,
         cliente: {
           ...input.cliente,
-          nome: isConsumidorFinal ? CONSUMIDOR_FINAL_NOME : clienteNome,
-          nif: isConsumidorFinal ? CONSUMIDOR_FINAL_NIF : clienteNif,
-          address_detail: normalizedAddressDetail,
-          city: normalizedCity,
-          postal_code: normalizedPostalCode,
-          country: normalizedCountry,
+          nome: normalizedCustomer.nome,
+          nif: normalizedCustomer.nif,
+          address_detail: normalizedCustomer.address_detail,
+          city: normalizedCustomer.city,
+          postal_code: normalizedCustomer.postal_code,
+          country: normalizedCustomer.country,
         },
-        itens: input.itens.map((item, index) => {
-          const productCode = item.product_code.trim();
-          const productNumberCode = item.product_number_code?.trim();
-          return {
-            ...item,
-            product_code: productCode,
-            product_number_code:
-              productNumberCode && productNumberCode.length > 0
-                ? productNumberCode
-                : productCode || toProductCode(item.descricao, index),
-          };
-        }),
+        itens: discountedItems,
+        metadata: {
+          ...(input.metadata ?? {}),
+          ...(normalizedCustomer.identifiedWithoutNif
+            ? { cliente_sem_nif_identificado: true }
+            : {}),
+          ...(input.global_discount_pct != null
+            ? { global_discount_pct: input.global_discount_pct }
+            : {}),
+        },
       },
     };
   }
@@ -253,21 +286,33 @@ function normalizePostInput({
     };
   }
 
+  if (!uiTaxProfileCode) {
+    return {
+      ok: false,
+      status: 409,
+      code: "FISCAL_EDUCATION_TAX_PROFILE_UNRESOLVED",
+      message:
+        "O enquadramento IVA do ensino desta entidade fiscal ainda não foi validado.",
+    };
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   return {
     ok: true,
     data: {
       empresa_id: empresaId,
       tipo_documento: input.tipo_documento,
-      prefixo_serie: String(input.ano_fiscal),
+      prefixo_serie: ["PP", "GR", "GT"].includes(input.tipo_documento)
+        ? input.tipo_documento
+        : String(input.ano_fiscal),
       origem_documento: "interno",
       cliente: {
         nome: CONSUMIDOR_FINAL_NOME,
         nif: CONSUMIDOR_FINAL_NIF,
-        address_detail: DESCONHECIDO,
-        city: DESCONHECIDO,
-        postal_code: DESCONHECIDO,
-        country: DESCONHECIDO,
+        address_detail: FISCAL_ADDRESS_UNKNOWN,
+        city: FISCAL_ADDRESS_UNKNOWN,
+        postal_code: FISCAL_ADDRESS_UNKNOWN,
+        country: "AO",
       },
       invoice_date: today,
       moeda: "AOA",
@@ -280,7 +325,16 @@ function normalizePostInput({
         descricao: item.descricao,
         quantidade: 1,
         preco_unit: item.valor,
-        taxa_iva: 14,
+        product_type:
+          input.tipo_documento === "GR" || input.tipo_documento === "GT"
+            ? "P"
+            : "S",
+        operation_type: "SE",
+        unit_of_measure: "UN",
+        tax_profile_code: uiTaxProfileCode,
+        tax_country_region: "AO",
+        unit_price_base: item.valor,
+        settlement_amount: 0,
       })),
       metadata: {
         ...(input.metadata ?? {}),
@@ -337,15 +391,24 @@ export async function GET() {
       });
     }
 
-    const { data, error } = await supabase
+    let documentosQuery = supabase
       .from("fiscal_documentos")
       .select(
-        "id, numero_formatado, invoice_date, created_at, cliente_nome, total_bruto_aoa, hash_control, key_version, status"
+        "id, numero_formatado, invoice_date, created_at, cliente_nome, total_bruto_aoa, hash_control, key_version, status, tipo_documento, documento_origem_id, rectifica_documento_id, agt_document_status, agt_rejected_document_id"
       )
-      .eq("empresa_id", ctx.empresaId)
-      .order("invoice_date", { ascending: false })
-      .order("numero", { ascending: false })
-      .limit(100);
+      .eq("empresa_id", ctx.empresaId);
+
+    documentosQuery = applyKf2ListInvariants(documentosQuery, {
+      defaultLimit: 50,
+      maxLimit: 50,
+      order: [
+        { column: "invoice_date", ascending: false },
+        { column: "numero", ascending: false },
+        { column: "id", ascending: false },
+      ],
+    });
+
+    const { data, error } = await documentosQuery;
 
     if (error) {
       return jsonError(
@@ -359,6 +422,102 @@ export async function GET() {
       );
     }
 
+    const documentIds = (data ?? []).map((row) => row.id);
+    const agtByDocument = new Map<
+      string,
+      {
+        submission_status: string | null;
+        validation_status: string | null;
+        request_id: string | null;
+        error_code: string | null;
+        dead_lettered_at: string | null;
+      }
+    >();
+
+    if (documentIds.length > 0) {
+      const admin = supabaseServerRole<FiscalDatabase>() as any;
+      const { data: links, error: linksError } = await admin
+        .from("fiscal_agt_submission_documentos")
+        .select("documento_id,submission_id,validation_status")
+        .eq("empresa_id", ctx.empresaId)
+        .in("documento_id", documentIds);
+
+      if (linksError) {
+        return jsonError(
+          500,
+          "FISCAL_AGT_STATUS_LIST_FAILED",
+          linksError.message || "Falha ao carregar o estado AGT dos documentos.",
+          { request_id: requestId, empresa_id: ctx.empresaId }
+        );
+      }
+
+      const submissionIds = Array.from(
+        new Set(
+          (links ?? [])
+            .map((link: { submission_id?: string | null }) => link.submission_id ?? null)
+            .filter((value: string | null): value is string => Boolean(value))
+        )
+      );
+
+      let submissionById = new Map<
+        string,
+        {
+          status: string | null;
+          request_id: string | null;
+          error_code: string | null;
+          dead_lettered_at: string | null;
+        }
+      >();
+
+      if (submissionIds.length > 0) {
+        const { data: submissions, error: submissionsError } = await admin
+          .from("fiscal_agt_submissions")
+          .select("id,status,request_id,error_code,dead_lettered_at")
+          .eq("empresa_id", ctx.empresaId)
+          .in("id", submissionIds);
+
+        if (submissionsError) {
+          return jsonError(
+            500,
+            "FISCAL_AGT_STATUS_LIST_FAILED",
+            submissionsError.message || "Falha ao carregar submissões AGT.",
+            { request_id: requestId, empresa_id: ctx.empresaId }
+          );
+        }
+
+        submissionById = new Map(
+          (submissions ?? []).map(
+            (submission: {
+              id: string;
+              status: string | null;
+              request_id: string | null;
+              error_code: string | null;
+              dead_lettered_at: string | null;
+            }) => [
+              submission.id,
+              {
+                status: submission.status,
+                request_id: submission.request_id,
+                error_code: submission.error_code,
+                dead_lettered_at: submission.dead_lettered_at,
+              },
+            ]
+          )
+        );
+      }
+
+      for (const link of links ?? []) {
+        const submission = submissionById.get(link.submission_id);
+        agtByDocument.set(link.documento_id, {
+          submission_status: submission?.status ?? null,
+          validation_status: link.validation_status ?? null,
+          request_id: submission?.request_id ?? null,
+          error_code: submission?.error_code ?? null,
+          dead_lettered_at: submission?.dead_lettered_at ?? null,
+        });
+      }
+    }
+
     const docs = (data ?? []).map((row) => ({
       id: row.id,
       numero: row.numero_formatado ?? "Sem número",
@@ -369,6 +528,20 @@ export async function GET() {
       key_version: String(row.key_version ?? "1"),
       status:
         row.status === "anulado" ? "ANULADO" : row.status === "rectificado" ? "RETIFICADO" : "EMITIDO",
+      tipo_documento: row.tipo_documento,
+      documento_origem_id: row.documento_origem_id ?? null,
+      rectifica_documento_id: row.rectifica_documento_id ?? null,
+      agt_document_status: row.agt_document_status === "C" ? "C" : "N",
+      agt_rejected_document_id: row.agt_rejected_document_id ?? null,
+      agt_submission_status:
+        agtByDocument.get(row.id)?.submission_status ?? null,
+      agt_validation_status:
+        agtByDocument.get(row.id)?.validation_status ?? null,
+      agt_request_id: agtByDocument.get(row.id)?.request_id ?? null,
+      agt_error_code: agtByDocument.get(row.id)?.error_code ?? null,
+      agt_dead_lettered: Boolean(
+        agtByDocument.get(row.id)?.dead_lettered_at
+      ),
     }));
 
     return NextResponse.json({
@@ -415,9 +588,73 @@ export async function POST(req: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     const ctx = await resolveEmpresaContext({ supabase, userId: user.id, escolaId });
+    const requestedEmpresaId =
+      "empresa_id" in parsed.data ? parsed.data.empresa_id : ctx.empresaId;
+
+    if (!requestedEmpresaId) {
+      return jsonError(
+        403,
+        "FISCAL_EMPRESA_CONTEXT_REQUIRED",
+        "Não foi possível identificar a empresa fiscal ativa para emissão.",
+        { request_id: requestId, escola_id: escolaId }
+      );
+    }
+
+    const authz = await requireFiscalAccessByCompanyOrSchool({
+      supabase,
+      userId: user.id,
+      empresaId: requestedEmpresaId,
+      escolaId,
+    });
+
+    if (!authz.ok) {
+      return jsonError(authz.status, authz.code, authz.message, {
+        request_id: requestId,
+        empresa_id: requestedEmpresaId,
+        escola_id: escolaId,
+      });
+    }
+
+    let uiTaxProfileCode: FiscalTaxProfileCode | null = null;
+    if (!("empresa_id" in parsed.data)) {
+      const fiscalResolver = supabaseServerRole<FiscalDatabase>();
+      const { data: profileCode, error: profileError } = await fiscalResolver.rpc(
+        "fiscal_resolve_education_tax_profile",
+        { p_empresa_id: requestedEmpresaId }
+      );
+
+      if (profileError) {
+        const mapped = mapRpcError(
+          profileError.message ?? "Falha ao resolver enquadramento IVA do ensino."
+        );
+        return jsonError(
+          mapped.status,
+          mapped.code,
+          profileError.message || "Falha ao resolver enquadramento IVA do ensino.",
+          { request_id: requestId, empresa_id: requestedEmpresaId }
+        );
+      }
+
+      if (
+        !Object.values(FISCAL_TAX_PROFILE_CODES).includes(
+          profileCode as FiscalTaxProfileCode
+        )
+      ) {
+        return jsonError(
+          500,
+          "FISCAL_TAX_PROFILE_INCONSISTENT",
+          "O enquadramento IVA resolvido não corresponde a um perfil tributário suportado.",
+          { request_id: requestId, empresa_id: requestedEmpresaId }
+        );
+      }
+
+      uiTaxProfileCode = profileCode as FiscalTaxProfileCode;
+    }
+
     const normalized = normalizePostInput({
       input: parsed.data,
       empresaId: ctx.empresaId,
+      uiTaxProfileCode,
     });
 
     if (!normalized.ok) {
@@ -429,21 +666,6 @@ export async function POST(req: Request) {
 
     const input = normalized.data;
     const auditEscolaId = escolaId;
-
-    const authz = await requireFiscalAccessByCompanyOrSchool({
-      supabase,
-      userId: user.id,
-      empresaId: input.empresa_id,
-      escolaId,
-    });
-
-    if (!authz.ok) {
-      return jsonError(authz.status, authz.code, authz.message, {
-        request_id: requestId,
-        empresa_id: input.empresa_id,
-        escola_id: escolaId,
-      });
-    }
 
     const semanticSeries = await resolveSerieSemantica({
       supabase,
@@ -465,8 +687,8 @@ export async function POST(req: Request) {
       p_empresa_id: input.empresa_id,
       p_serie_id: semanticSeries.data.id,
       p_tipo_documento: input.tipo_documento,
-      p_prefixo_serie: input.prefixo_serie,
-      p_origem_documento: input.origem_documento,
+      p_prefixo_serie: semanticSeries.data.prefixo,
+      p_origem_documento: semanticSeries.data.origem_documento,
       p_cliente: input.cliente as Json,
       p_invoice_date: input.invoice_date,
       p_moeda: input.moeda,
@@ -520,8 +742,24 @@ export async function POST(req: Request) {
     }
 
     if (rpcData.status === "pendente_assinatura" && rpcData.canonical_string) {
+      try {
+        await ensureSaftDocumentSignature(rpcData.documento_id);
+      } catch (error) {
+        return jsonError(
+          500,
+          "FISCAL_SAFT_SIGN_FAILED",
+          error instanceof Error
+            ? error.message
+            : "Falha ao preparar/finalizar assinatura SAF-T.",
+          {
+            request_id: requestId,
+            empresa_id: input.empresa_id,
+            documento_id: rpcData.documento_id,
+          }
+        );
+      }
+
       const keyRefLookup = await resolveKmsPrivateKeyRef({
-        supabase,
         empresaId: input.empresa_id,
         keyVersion: rpcData.key_version,
       });
@@ -559,7 +797,8 @@ export async function POST(req: Request) {
         );
       }
 
-      const { data: finalizeData, error: finalizeError } = await supabase.rpc(
+      const fiscalPrivileged = supabaseServerRole<FiscalDatabase>();
+      const { data: finalizeData, error: finalizeError } = await fiscalPrivileged.rpc(
         "fiscal_finalizar_assinatura",
         {
           p_documento_id: rpcData.documento_id,
@@ -611,10 +850,29 @@ export async function POST(req: Request) {
         }).catch(() => null);
       }
 
+      let agtSubmission: Record<string, unknown> | null = null;
+      if (AGT_FE_SUBMISSION_TYPES.has(input.tipo_documento)) {
+        try {
+          agtSubmission = await queueAgtDocumentSubmission({
+            documentoId: finalizeData.documento_id,
+            createdBy: user.id,
+          });
+        } catch (error) {
+          agtSubmission = {
+            queued: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Falha ao enfileirar submissão AGT.",
+          };
+        }
+      }
+
       return NextResponse.json(
         {
           ok: true,
           data: finalizeData,
+          agt_submission: agtSubmission,
           request_id: requestId,
         },
         { status: 201 }
@@ -638,10 +896,32 @@ export async function POST(req: Request) {
       }).catch(() => null);
     }
 
+    let agtSubmission: Record<string, unknown> | null = null;
+    if (
+      rpcData.status === "emitido" &&
+      AGT_FE_SUBMISSION_TYPES.has(input.tipo_documento)
+    ) {
+      try {
+        agtSubmission = await queueAgtDocumentSubmission({
+          documentoId: rpcData.documento_id,
+          createdBy: user.id,
+        });
+      } catch (error) {
+        agtSubmission = {
+          queued: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Falha ao enfileirar submissão AGT.",
+        };
+      }
+    }
+
     return NextResponse.json(
       {
         ok: true,
         data: rpcData,
+        agt_submission: agtSubmission,
         request_id: requestId,
       },
       { status: 201 }
@@ -663,84 +943,158 @@ async function resolveSerieSemantica({
   escolaId: string | null;
   requestId: string;
 }) {
-  const { data, error } = await supabase
-    .from("fiscal_series")
-    .select("id, empresa_id, tipo_documento, prefixo, origem_documento, ativa, descontinuada_em")
-    .eq("empresa_id", input.empresa_id)
-    .eq("tipo_documento", input.tipo_documento)
-    .eq("prefixo", input.prefixo_serie)
-    .eq("origem_documento", input.origem_documento)
-    .eq("ativa", true)
-    .is("descontinuada_em", null)
-    .limit(2);
+  const invoiceYear = Number(input.invoice_date.slice(0, 4));
+  const contingencyIndicator =
+    input.origem_documento === "contingencia" ? "C" : "N";
+  const seriesClient = supabase as any;
 
-  if (error) {
-    return {
-      ok: false as const,
-      status: 500,
-      code: "SERIE_LOOKUP_FAILED",
-      message: error.message || "Falha ao resolver semanticamente a série fiscal.",
-      details: {
-        request_id: requestId,
-        escola_id: escolaId,
-        empresa_id: input.empresa_id,
-        tipo_documento: input.tipo_documento,
-        prefixo_serie: input.prefixo_serie,
-        origem_documento: input.origem_documento,
-      },
-    };
-  }
+  if (!AGT_FE_SUBMISSION_TYPES.has(input.tipo_documento)) {
+    const { data: localData, error: localError } = await seriesClient
+      .from("fiscal_series")
+      .select(
+        "id, empresa_id, tipo_documento, prefixo, origem_documento, ativa, descontinuada_em, agt_status, agt_series_code, series_year, series_contingency_indicator"
+      )
+      .eq("empresa_id", input.empresa_id)
+      .eq("tipo_documento", input.tipo_documento)
+      .eq("prefixo", input.prefixo_serie)
+      .eq("origem_documento", input.origem_documento)
+      .eq("agt_status", "legacy")
+      .eq("ativa", true)
+      .is("descontinuada_em", null)
+      .limit(2);
 
-  const rows = ((data ?? []) as FiscalSerieLookup[]);
-  if (rows.length === 0) {
-    return {
-      ok: false as const,
-      status: 404,
-      code: "SERIE_NAO_ENCONTRADA",
-      message: "Nenhuma série activa encontrada para a combinação semântica informada.",
-      details: {
-        request_id: requestId,
-        escola_id: escolaId,
-        empresa_id: input.empresa_id,
-        tipo_documento: input.tipo_documento,
-        prefixo_serie: input.prefixo_serie,
-        origem_documento: input.origem_documento,
-      },
-    };
-  }
+    if (localError) {
+      return {
+        ok: false as const,
+        status: 500,
+        code: "SERIE_LOCAL_LOOKUP_FAILED",
+        message: localError.message || "Falha ao resolver série local.",
+        details: {
+          request_id: requestId,
+          escola_id: escolaId,
+          empresa_id: input.empresa_id,
+          tipo_documento: input.tipo_documento,
+        },
+      };
+    }
 
-  if (rows.length > 1) {
+    const localRows = (localData ?? []) as FiscalSerieLookup[];
+    if (localRows.length === 1) {
+      return { ok: true as const, data: localRows[0] };
+    }
+
+    if (localRows.length > 1) {
+      return {
+        ok: false as const,
+        status: 409,
+        code: "SERIE_LOCAL_AMBIGUA",
+        message: "Mais de uma série local activa corresponde ao documento.",
+        details: {
+          request_id: requestId,
+          empresa_id: input.empresa_id,
+          tipo_documento: input.tipo_documento,
+          prefixo: input.prefixo_serie,
+        },
+      };
+    }
+
     return {
       ok: false as const,
       status: 409,
-      code: "SERIE_AMBIGUA",
-      message: "Mais de uma série activa corresponde ao contrato semântico informado.",
+      code: "LOCAL_SERIES_REQUIRED",
+      message:
+        "Nenhuma série local activa foi encontrada para este tipo de documento.",
       details: {
         request_id: requestId,
         escola_id: escolaId,
         empresa_id: input.empresa_id,
         tipo_documento: input.tipo_documento,
-        prefixo_serie: input.prefixo_serie,
-        origem_documento: input.origem_documento,
+        prefixo: input.prefixo_serie,
       },
     };
   }
 
-  return { ok: true as const, data: rows[0] };
+  const { data: agtData, error: agtError } = await seriesClient
+    .from("fiscal_series")
+    .select(
+      "id, empresa_id, tipo_documento, prefixo, origem_documento, ativa, descontinuada_em, agt_status, agt_series_code, series_year, series_contingency_indicator"
+    )
+    .eq("empresa_id", input.empresa_id)
+    .eq("tipo_documento", input.tipo_documento)
+    .eq("agt_status", "provisioned")
+    .eq("series_year", invoiceYear)
+    .eq("series_contingency_indicator", contingencyIndicator)
+    .eq("ativa", true)
+    .is("descontinuada_em", null)
+    .order("agt_provisioned_at", { ascending: false })
+    .limit(2);
+
+  if (agtError) {
+    return {
+      ok: false as const,
+      status: 500,
+      code: "SERIE_AGT_LOOKUP_FAILED",
+      message: agtError.message || "Falha ao resolver série AGT provisionada.",
+      details: {
+        request_id: requestId,
+        escola_id: escolaId,
+        empresa_id: input.empresa_id,
+        tipo_documento: input.tipo_documento,
+        series_year: invoiceYear,
+        contingency_indicator: contingencyIndicator,
+      },
+    };
+  }
+
+  const agtRows = (agtData ?? []) as FiscalSerieLookup[];
+  if (agtRows.length === 1) {
+    return { ok: true as const, data: agtRows[0] };
+  }
+
+  if (agtRows.length > 1) {
+    return {
+      ok: false as const,
+      status: 409,
+      code: "SERIE_AGT_AMBIGUA",
+      message: "Mais de uma série AGT activa corresponde ao tipo, ano e regime informados.",
+      details: {
+        request_id: requestId,
+        empresa_id: input.empresa_id,
+        tipo_documento: input.tipo_documento,
+        series_year: invoiceYear,
+        contingency_indicator: contingencyIndicator,
+      },
+    };
+  }
+
+  return {
+    ok: false as const,
+    status: 409,
+    code: "AGT_SERIES_REQUIRED",
+    message:
+      "Nenhuma série AGT provisionada foi encontrada para o tipo, ano e regime informados. Provisione a série na AGT antes da emissão.",
+    details: {
+      request_id: requestId,
+      escola_id: escolaId,
+      empresa_id: input.empresa_id,
+      tipo_documento: input.tipo_documento,
+      series_year: invoiceYear,
+      contingency_indicator: contingencyIndicator,
+    },
+  };
 }
 
 // A validação de chave fiscal activa ocorre na RPC atómica.
 
 async function resolveKmsPrivateKeyRef({
-  supabase,
   empresaId,
   keyVersion,
 }: {
-  supabase: FiscalSupabaseClient;
   empresaId: string;
   keyVersion: number;
 }) {
-  const { data, error } = await supabase
+  const admin = supabaseServerRole<FiscalDatabase>();
+  const { data, error } = await admin
     .from("fiscal_chaves")
     .select("private_key_ref")
     .eq("empresa_id", empresaId)

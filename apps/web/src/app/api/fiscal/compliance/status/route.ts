@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getFiscalKmsReadiness } from "@/lib/fiscal/kmsReadiness";
 import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
@@ -131,6 +132,8 @@ export async function GET(req: Request) {
       });
     }
 
+    const admin = supabaseServerRole<Database>();
+
     const [
       empresaRes,
       docsTotalRes,
@@ -163,7 +166,7 @@ export async function GET(req: Request) {
         .select("id", { count: "exact", head: true })
         .eq("empresa_id", empresaId)
         .eq("status", "failed"),
-      supabase
+      admin
         .from("fiscal_chaves")
         .select("id", { count: "exact", head: true })
         .eq("empresa_id", empresaId)
@@ -172,6 +175,7 @@ export async function GET(req: Request) {
         .from("fiscal_series")
         .select("id", { count: "exact", head: true })
         .eq("empresa_id", empresaId)
+        .eq("agt_status", "provisioned")
         .eq("ativa", true)
         .is("descontinuada_em", null),
     ]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 
 type Mensalidade = { id: string; competencia: string; valor: number };
@@ -11,7 +11,12 @@ type DadosPagamento = {
   titular_conta?: string;
   kwik_chave?: string;
 };
-const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
+
+const money = new Intl.NumberFormat("pt-AO", {
+  style: "currency",
+  currency: "AOA",
+  maximumFractionDigits: 0,
+});
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
@@ -28,15 +33,25 @@ async function compressImage(file: File): Promise<File> {
   const ctx = canvas.getContext("2d");
   if (!ctx) return file;
   ctx.drawImage(bitmap, 0, 0, w, h);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.78),
+  );
   if (!blob) return file;
-  return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+  return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+    type: "image/jpeg",
+  });
 }
 
-function uploadWithProgress(url: string, formData: FormData, onProgress: (pct: number) => void) {
+function uploadWithProgress(
+  url: string,
+  formData: FormData,
+  onProgress: (pct: number) => void,
+  idempotencyKey: string,
+) {
   return new Promise<{ ok?: boolean; error?: string }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
+    xhr.setRequestHeader("Idempotency-Key", idempotencyKey);
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
       onProgress(Math.round((event.loaded / event.total) * 100));
@@ -74,11 +89,14 @@ export function PaymentDrawer({
   const [progress, setProgress] = useState(0);
   const [friendlyError, setFriendlyError] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState("");
+  const uploadAttemptRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const selectionKey = mensalidades.map((item) => item.id).sort().join(",");
 
   useEffect(() => {
-    if (!open || !mensalidades.length) return;
+    if (!open || !selectionKey) return;
     setMensagem("");
-  }, [open, mensalidades]);
+    uploadAttemptRef.current = null;
+  }, [open, selectionKey]);
 
   if (!open || !mensalidades.length) return null;
   const total = mensalidades.reduce((sum, item) => sum + item.valor, 0);
@@ -99,20 +117,40 @@ export function PaymentDrawer({
     const fd = new FormData();
     mensalidades.forEach((item) => fd.append("mensalidadeIds", item.id));
     fd.append("file", file);
-    if (mensagem.trim()) {
-      fd.append("mensagem", mensagem.trim());
-    }
+    if (mensagem.trim()) fd.append("mensagem", mensagem.trim());
     if (studentId) fd.append("studentId", studentId);
+
+    const fingerprint = [
+      selectionKey,
+      file.name,
+      file.size,
+      file.lastModified,
+    ].join(":");
+    if (!uploadAttemptRef.current || uploadAttemptRef.current.fingerprint !== fingerprint) {
+      uploadAttemptRef.current = {
+        fingerprint,
+        key: crypto.randomUUID(),
+      };
+    }
 
     setSending(true);
     setProgress(0);
     try {
-      const json = await uploadWithProgress("/api/aluno/financeiro/comprovativo", fd, setProgress);
+      const json = await uploadWithProgress(
+        "/api/aluno/financeiro/comprovativo",
+        fd,
+        setProgress,
+        uploadAttemptRef.current.key,
+      );
       if (!json?.ok) throw new Error(json?.error ?? "Falha ao anexar comprovativo");
+      uploadAttemptRef.current = null;
       onUploaded(mensalidades.map((item) => item.id));
       onClose();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Não foi possível anexar o comprovativo. Tente novamente.";
+      const message =
+        e instanceof Error
+          ? e.message
+          : "Não foi possível anexar o comprovativo. Tente novamente.";
       setFriendlyError(message);
     } finally {
       setSending(false);
@@ -121,11 +159,24 @@ export function PaymentDrawer({
 
   return (
     <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose}>
-      <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-4 shadow-xl" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-4 shadow-xl"
+        style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <p className="text-sm font-semibold text-slate-900">Pagamento consolidado</p>
-        <p className="text-xs text-slate-500">{mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}</p>
+        <p className="text-xs text-slate-500">
+          {mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}
+        </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {mensalidades.map((item) => <span key={item.id} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{item.competencia} · {money.format(item.valor)}</span>)}
+          {mensalidades.map((item) => (
+            <span
+              key={item.id}
+              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+            >
+              {item.competencia} · {money.format(item.valor)}
+            </span>
+          ))}
         </div>
         <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
           <p className="font-medium text-slate-900">Coordenadas bancárias</p>
@@ -138,7 +189,9 @@ export function PaymentDrawer({
           <p>Referência: LOTE-{mensalidades[0].id.slice(0, 8).toUpperCase()}</p>
         </div>
         <label className="mt-4 block">
-          <span className="mb-2 block text-xs text-slate-500">Mensagem para a secretaria (opcional)</span>
+          <span className="mb-2 block text-xs text-slate-500">
+            Mensagem para a secretaria (opcional)
+          </span>
           <textarea
             className="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
             rows={3}
@@ -151,11 +204,22 @@ export function PaymentDrawer({
         </label>
         <label className="mt-4 block">
           <span className="mb-2 block text-xs text-slate-500">Comprovativo (PDF/Imagem)</span>
-          <input type="file" className="block w-full text-sm" accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) void submitFile(f); }} disabled={sending} />
+          <input
+            type="file"
+            className="block w-full text-sm"
+            accept=".pdf,image/jpeg,image/png,image/webp"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void submitFile(f);
+            }}
+            disabled={sending}
+          />
         </label>
         {sending && <p className="mt-2 text-xs text-slate-500">Upload: {progress}%</p>}
         {friendlyError && <p className="mt-2 text-xs text-red-600">{friendlyError}</p>}
-        <Button tone="green" className="mt-4 min-h-11 w-full" disabled={sending}>{sending ? "A anexar..." : "Anexar Comprovativo"}</Button>
+        <Button tone="green" className="mt-4 min-h-11 w-full" disabled={sending}>
+          {sending ? "A anexar..." : "Anexar Comprovativo"}
+        </Button>
       </div>
     </div>
   );
