@@ -326,18 +326,24 @@ export async function GET() {
     // cobranças do novo ano não podem retroativamente invalidar a origem.
     const { data: mens, error: mensalidadesError } = await supabase
       .from('mensalidades')
-      .select('id')
+      .select('status, valor_previsto, valor, valor_pago_total')
       .eq('escola_id', escolaId)
       .eq('aluno_id', alunoId)
       .or(`matricula_id.eq.${sourceMatricula.id},ano_referencia.eq.${sourceMatricula.ano_letivo}`)
-      .in('status', ['pendente', 'atrasado', 'pago_parcial'])
-      .limit(1)
 
     if (mensalidadesError) {
       throw new Error(`Falha ao verificar situação financeira: ${mensalidadesError.message}`)
     }
 
-    const hasDebt = (mens?.length ?? 0) > 0
+    const hasDebt = (mens ?? []).some((mensalidade: any) => {
+      const status = String(mensalidade.status ?? '').toLowerCase()
+      const saldo = Math.max(
+        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0)
+          - Number(mensalidade.valor_pago_total ?? 0),
+        0,
+      )
+      return saldo > 0 && !['pago', 'isento', 'cancelado'].includes(status)
+    })
 
     // A reserva criada pela virada, isoladamente, não conclui a rematrícula.
     // Já um pedido concedido que aponta para uma matrícula destino activa é
