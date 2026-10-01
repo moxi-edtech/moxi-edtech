@@ -334,10 +334,17 @@ export async function POST(request: Request) {
       const { error: origemResultadoError } = await (supabase as any).rpc("finalizar_origem_academica", {
         p_escola_id: escolaId,
         p_matricula_id: origemMatriculaId,
-        p_resultado_final: academicEligibility.mode === "conditional" ? "inscricao_condicional" : "aprovado",
+        // historico_anos mantém o contrato físico legado; a nuance de
+        // inscrição condicional fica no snapshot RAA + lifecycle das
+        // dependências académicas, sem inventar um quarto resultado anual.
+        p_resultado_final: "aprovado",
         p_fonte: "raa",
-        p_motivo: null,
-        p_observacao: null,
+        p_motivo: academicEligibility.mode === "conditional"
+          ? "Progressão condicional autorizada pelo RAA"
+          : null,
+        p_observacao: academicEligibility.mode === "conditional"
+          ? `Disciplinas pendentes: ${academicEligibility.disciplinaIdsPendentes.join(", ")}`
+          : null,
       });
       if (origemResultadoError) {
         return NextResponse.json({
