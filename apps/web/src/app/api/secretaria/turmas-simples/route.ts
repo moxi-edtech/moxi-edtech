@@ -208,17 +208,22 @@ export async function GET(req: Request) {
         : null;
       const reprovado = decisaoManual === 'reprovado' || (!decisaoManual && progressionDecision.startsWith('retido'));
       const concluido = decisaoManual === 'concluido' || (!decisaoManual && progressionDecision === 'concluiu');
+      const condicionalAutorizada = !decisaoManual
+        && progressionDecision === 'inscricao_condicional'
+        && progressionResult?.progression.destino === 'proxima_etapa'
+        && progressionResult?.efetivacaoMatriculaBloqueada !== true;
       const aprovado = decisaoManual === 'aprovado' || (!decisaoManual && progressionDecision === 'transitou');
-      const modo = reprovado ? 'retencao' : (aprovado ? 'promocao' : 'indefinida');
+      const podeProgredir = aprovado || condicionalAutorizada;
+      const modo = reprovado ? 'retencao' : (podeProgredir ? 'promocao' : 'indefinida');
 
-      // Regra normal: só um resultado académico fechado como aprovado expõe
-      // turma da etapa seguinte. Pendência de notas, recurso, inscrição
-      // condicional ou retenção não ganham um destino por fallback.
+      // O destino normal vem do RAA. "transitou" e inscrição condicional
+      // efetivável expõem a etapa seguinte. Recurso, pendência e inscrição
+      // condicional bloqueada não recebem turma por fallback.
       const classeDestinoNumero = concluido
         ? null
         : reprovado
           ? origemClasseNumero
-          : aprovado
+          : podeProgredir
             ? (progressionResult?.progression.etapaDestino?.classeNum
               ?? (origemClasseNumero != null ? origemClasseNumero + 1 : null))
             : null;
@@ -240,9 +245,13 @@ export async function GET(req: Request) {
             ? 'reprovado'
             : origemClasseNumero == null
               ? 'classe_nao_identificada'
-              : aprovado
-                ? 'aprovado'
-                : 'notas_pendentes',
+              : condicionalAutorizada
+                ? 'condicional'
+                : aprovado
+                  ? 'aprovado'
+                  : progressionDecision === 'recurso'
+                    ? 'recurso'
+                    : 'notas_pendentes',
         classe_origem: origemClasseNumero,
         classe_destino: classeDestinoNumero,
         turma_origem_id: (origem as any)?.turma_id ?? null,
@@ -264,10 +273,12 @@ export async function GET(req: Request) {
               ? 'Aluno concluinte: não existe uma etapa seguinte para rematrícula.'
               : reprovado
                 ? `Resultado global ${progressionDecision}: o aluno não está aprovado para rematrícula.`
-                : aprovado
-                  ? `Resultado académico aprovado: progressão para a ${classeDestinoNumero ?? 'próxima'}ª classe.`
-                  : progressionResult?.orientacao?.mensagem
-                    ?? `Estado global ${progressionDecision}: concluir e aprovar o resultado académico antes de rematricular.`,
+                : condicionalAutorizada
+                  ? `Inscrição condicional autorizada pelo RAA: progressão para a ${classeDestinoNumero ?? 'próxima'}ª classe com ${progressionResult?.progression.disciplinaIdsPendentes.length ?? 0} disciplina(s) pendente(s) rastreada(s).`
+                  : aprovado
+                    ? `Resultado académico aprovado: progressão para a ${classeDestinoNumero ?? 'próxima'}ª classe.`
+                    : progressionResult?.orientacao?.mensagem
+                      ?? `Estado global ${progressionDecision}: resolver a situação académica antes de rematricular.`,
       };
     }
 
