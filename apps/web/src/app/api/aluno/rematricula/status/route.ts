@@ -405,7 +405,9 @@ export async function GET() {
         disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
       } : null,
       rematricula: rematriculaData,
-      reason: 'Aluno aprovado e sem dívida: elegível para rematrícula.'
+      reason: academicEligibility.mode === 'conditional'
+        ? 'O RAA autorizou a progressão condicional e não existem saldos em aberto.'
+        : 'O RAA autorizou a progressão e não existem saldos em aberto.'
     })
 
   } catch (err: any) {
