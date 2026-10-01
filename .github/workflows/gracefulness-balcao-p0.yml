@@ -7,6 +7,9 @@ on:
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx"
+      - "apps/web/src/components/secretaria/DocumentosEmissaoHub.tsx"
+      - "apps/web/src/components/secretaria/AdmissaoWizardClient.tsx"
+      - "apps/web/src/app/api/secretaria/matriculas/**/declaracao/route.ts"
       - "apps/web/src/components/secretaria/RematriculaBalcaoModal.tsx"
       - "apps/web/src/hooks/useRematriculaBalcao.ts"
       - "apps/web/src/lib/documentos/emissaoClient.ts"
@@ -55,6 +58,16 @@ jobs:
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
 
+      - name: Canonical document emission client
+        run: |
+          matches="$(grep -RFn 'fetch("/api/secretaria/documentos/emitir"' apps/web/src --include='*.ts' --include='*.tsx' || true)"
+          unexpected="$(printf '%s\\n' "$matches" | grep -v '^apps/web/src/lib/documentos/emissaoClient.ts:' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "Direct document-emission callers bypass the idempotent client:" >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+
       - name: Focused ESLint
         run: |
           pnpm -C apps/web exec eslint \
@@ -62,6 +75,9 @@ jobs:
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
             src/components/secretaria/DocumentosEmissaoHubClient.tsx \
+            src/components/secretaria/DocumentosEmissaoHub.tsx \
+            src/components/secretaria/AdmissaoWizardClient.tsx \
+            "src/app/api/secretaria/matriculas/[matriculaId]/declaracao/route.ts" \
             src/components/secretaria/RematriculaBalcaoModal.tsx \
             src/hooks/useRematriculaBalcao.ts \
             src/lib/documentos/emissaoClient.ts \

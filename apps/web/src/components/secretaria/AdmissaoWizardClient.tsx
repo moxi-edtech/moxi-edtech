@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import BalcaoAtendimento from "./BalcaoAtendimento";
 import { EnrollmentPostActionModal } from "./EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "./EnrollmentPostActions";
+import { emitirDocumento } from "@/lib/documentos/emissaoClient";
 
 /**
  * KLASSE Standard:
@@ -1656,6 +1657,7 @@ function Step3Pagamento(props: {
   const [servicos, setServicos] = useState<Array<{ id: string; codigo: string; nome: string; descricao?: string | null; preco: number }>>([]);
   const [servicosSelecionados, setServicosSelecionados] = useState<string[]>([]);
   const [priceLoading, setPriceLoading] = useState(false);
+  const postActionDocumentRequestRef = useRef<Map<string, string>>(new Map());
   const router = useRouter();
   const contextualHref = useCallback((path: string) => {
     const contextualPath = toContextualPortalPath(path, secretariaBase);
@@ -1983,32 +1985,41 @@ function Step3Pagamento(props: {
               if (passo.id === "emitir_boletim") {
                 if (result.comprovante?.printUrl) {
                   window.open(result.comprovante.printUrl, "_blank");
-                } else if (targetEscolaId) {
+                } else if (targetEscolaId && targetAlunoId) {
                   // Fallback: emitir manualmente se a auto-emissão falhou
                   try {
-                    const res = await fetch("/api/secretaria/documentos/emitir", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        alunoId: targetAlunoId,
-                        tipoDocumento: "comprovante_matricula",
-                        escolaId: targetEscolaId,
-                        ano_letivo_id: new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM),
-                      }),
+                    const academicYearId = new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM);
+                    const fingerprint = JSON.stringify({
+                      escolaId: targetEscolaId,
+                      alunoId: targetAlunoId,
+                      tipoDocumento: "comprovante_matricula",
+                      anoLetivoId: academicYearId,
                     });
-                    const json = await res.json();
-                    if (json.ok && json.docId) {
-                      window.open(`/secretaria/documentos/${json.docId}/comprovante-matricula/print`, "_blank");
+                    const idempotencyKey =
+                      postActionDocumentRequestRef.current.get(fingerprint) ?? crypto.randomUUID();
+                    postActionDocumentRequestRef.current.set(fingerprint, idempotencyKey);
+
+                    const emissao = await emitirDocumento({
+                      escolaId: targetEscolaId,
+                      alunoId: targetAlunoId,
+                      tipoDocumento: "comprovante_matricula",
+                      idempotencyKey,
+                      anoLetivoId: academicYearId,
+                    });
+                    if (emissao.ok) {
+                      postActionDocumentRequestRef.current.delete(fingerprint);
+                      window.open(emissao.printUrl, "_blank");
                     } else {
-                      console.error("Erro ao emitir documento:", json.error);
-                      // Se falhar o atalho, vai para o hub como fallback seguro
+                      console.error("Erro ao emitir documento:", emissao.error);
+                      // Se falhar o atalho, vai para o hub como fallback seguro.
+                      // A mesma chave fica retida para um retry desta intenção.
                       router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                     }
                   } catch (err) {
                     router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                   }
                 } else {
-                  router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                  router.push(`${secretariaBase}/documentos?tipo=comprovante_matricula`);
                 }
               } else if (passo.id === "registar_propina") {
                 setShowPaymentModal(true);

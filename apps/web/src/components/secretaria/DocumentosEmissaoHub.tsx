@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, FileText, Loader2, Search, User } from "lucide-react";
+import { emitirDocumento } from "@/lib/documentos/emissaoClient";
 
 type DocumentoTipo =
   | "declaracao_frequencia"
@@ -10,14 +11,6 @@ type DocumentoTipo =
   | "cartao_estudante"
   | "ficha_inscricao";
 
-type DocumentoResponse = {
-  ok: boolean;
-  docId?: string;
-  hash?: string;
-  publicId?: string;
-  tipo?: DocumentoTipo;
-  error?: string;
-};
 
 const TIPOS: Array<{
   id: DocumentoTipo;
@@ -61,6 +54,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const emissionRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -124,26 +118,29 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/secretaria/documentos/emitir", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ alunoId: selectedAluno.id, tipoDocumento: tipo, escolaId }),
+      const fingerprint = JSON.stringify({
+        escolaId,
+        alunoId: selectedAluno.id,
+        tipoDocumento: tipo,
       });
-      const json = (await res.json().catch(() => ({}))) as DocumentoResponse;
-      if (!res.ok || !json.ok || !json.docId) {
-        throw new Error(json.error || "Falha ao emitir documento");
+      const request =
+        emissionRequestRef.current?.fingerprint === fingerprint
+          ? emissionRequestRef.current
+          : { fingerprint, key: crypto.randomUUID() };
+      emissionRequestRef.current = request;
+
+      const emissao = await emitirDocumento({
+        escolaId,
+        alunoId: selectedAluno.id,
+        tipoDocumento: tipo,
+        idempotencyKey: request.key,
+      });
+      if (!emissao.ok) {
+        throw new Error(emissao.error || "Falha ao emitir documento");
       }
 
-      const destino =
-        tipo === "declaracao_frequencia"
-          ? `/secretaria/documentos/${json.docId}/frequencia/print`
-          : tipo === "boletim_trimestral"
-          ? `/secretaria/documentos/${json.docId}/boletim-trimestral/print`
-          : tipo === "cartao_estudante"
-          ? `/secretaria/documentos/${json.docId}/cartao/print`
-          : `/secretaria/documentos/${json.docId}/ficha/print`;
-
-      router.push(destino);
+      emissionRequestRef.current = null;
+      router.push(emissao.printUrl);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao emitir documento");
     } finally {
