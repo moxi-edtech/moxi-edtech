@@ -10,6 +10,8 @@ import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
 import { resolveOpenRematriculaWindow, resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
+import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progression-server";
+import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -227,6 +229,34 @@ export async function GET(request: Request) {
       && Number(cohort?.ano_destino) === targetAnoLetivoAno
       && (!cohort?.expira_em || new Date(`${cohort.expira_em}T23:59:59`).getTime() >= Date.now());
 
+    // Regra canónica da rematrícula normal: o resultado académico precisa
+    // estar fechado como aprovado. A antiga virada assistida continua visível
+    // apenas para recuperação de operações históricas já existentes; ela não
+    // transforma notas pendentes numa nova rematrícula elegível.
+    let academicDecision: any = null;
+    let academicGuidance: any = null;
+    let academicEligibility = classifyRematriculaAcademicEligibility(null);
+    if (matriculaOrigem.turma_id) {
+      try {
+        const academic = await resolveRaaProgressionForMatricula(supabase, escolaId, {
+          id: matriculaOrigem.id,
+          aluno_id,
+          turma_id: matriculaOrigem.turma_id,
+        });
+        academicDecision = academic.progression.decision;
+        academicGuidance = academic.orientacao;
+        academicEligibility = classifyRematriculaAcademicEligibility(academic.progression.decision);
+      } catch (error) {
+        academicEligibility = {
+          eligible: false,
+          code: "ACADEMIC_RESULT_PENDING",
+          reason: error instanceof Error
+            ? error.message
+            : "Não foi possível confirmar o resultado académico desta matrícula.",
+        };
+      }
+    }
+
     // A matrícula destino criada pela promoção é a matrícula operacional do
     // aluno. No Balcão ela é preservada: a operação seguinte cobra somente a
     // taxa de rematrícula, sem seleccionar nem alterar turma/classe.
@@ -400,6 +430,12 @@ export async function GET(request: Request) {
         : !pedidoTemPagamentoAssociado
           ? "PENDING_ORDER_REVIEW"
         : "PAYMENT_IN_PROGRESS";
+    } else if (!academicEligibility.eligible) {
+      status = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
+        ? "ACADEMIC_PENDING"
+        : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+          ? "ACADEMIC_CYCLE_COMPLETED"
+          : "ACADEMIC_NOT_APPROVED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {
@@ -430,6 +466,13 @@ export async function GET(request: Request) {
         count: mensalidadesEmAberto.filter((mensalidade: any) =>
           Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0) > 0,
         ).length,
+      },
+      academic: {
+        decision: academicDecision,
+        eligible: academicEligibility.eligible,
+        code: academicEligibility.code,
+        reason: academicEligibility.reason,
+        guidance: academicGuidance,
       },
       pedido: pedidoExistente
         ? {
