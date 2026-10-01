@@ -11,6 +11,7 @@ on:
       - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/PagamentosPendentesWindow.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHub.tsx"
       - "apps/web/src/components/secretaria/AdmissaoWizardClient.tsx"
@@ -87,6 +88,7 @@ jobs:
             src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
+            src/components/secretaria/PagamentosPendentesWindow.tsx \
             src/components/secretaria/DocumentosEmissaoHubClient.tsx \
             src/components/secretaria/DocumentosEmissaoHub.tsx \
             src/components/secretaria/AdmissaoWizardClient.tsx \
