@@ -420,14 +420,24 @@ export async function GET(request: Request) {
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
     const pedidoTemMatriculaDestino = Boolean(pedidoExistente?.contexto?.matricula_destino_id);
-    const comprovantePendente = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino && !comprovanteData;
+    const historicoAcademicoPendente =
+      pedidoExistente?.status === "granted" &&
+      pedidoTemMatriculaDestino &&
+      pedidoExistente?.contexto?.academic_history_pending === true;
+    const comprovantePendente =
+      pedidoExistente?.status === "granted" &&
+      pedidoTemMatriculaDestino &&
+      !historicoAcademicoPendente &&
+      !comprovanteData;
     // Pagamento concedido sem matrícula destino é uma operação interrompida:
     // não pode voltar a READY nem desaparecer da operação da secretaria.
     // Mantê-la na fila de reconciliação permite escolher a turma e completar
     // a progressão sem cobrar novamente.
     const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino && !comprovanteData;
     const pedidoConcluido = pedidoExistente?.status === "granted" && (pedidoTemMatriculaDestino || Boolean(comprovanteData));
-    if (comprovantePendente) {
+    if (historicoAcademicoPendente) {
+      status = "ACADEMIC_HISTORY_PENDING";
+    } else if (comprovantePendente) {
       status = "DOCUMENT_PENDING";
     } else if (pagamentoSemProgressao) {
       status = "RECONCILIATION_REQUIRED";
