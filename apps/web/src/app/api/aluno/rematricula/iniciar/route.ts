@@ -54,13 +54,22 @@ export async function POST(request: Request) {
         turma_id: matricula.turma_id,
       });
       const decision = academic.progression.decision;
-      const academicEligibility = classifyRematriculaAcademicEligibility(decision);
+      const academicEligibility = classifyRematriculaAcademicEligibility({
+        decision,
+        destino: academic.progression.destino,
+        efetivacaoMatriculaBloqueada: academic.efetivacaoMatriculaBloqueada,
+        disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
+      });
       if (!academicEligibility.eligible) {
         const code = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
           ? "ACADEMIC_PROMOTION_PENDING"
-          : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-            ? "ACADEMIC_CYCLE_COMPLETED"
-            : "ACADEMIC_NOT_APPROVED";
+          : academicEligibility.code === "ACADEMIC_REVIEW_REQUIRED"
+            ? "ACADEMIC_REVIEW_REQUIRED"
+            : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
+              ? "ACADEMIC_CONDITIONAL_BLOCKED"
+              : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+                ? "ACADEMIC_CYCLE_COMPLETED"
+                : "ACADEMIC_NOT_APPROVED";
         return NextResponse.json({
           ok: false,
           error: academicEligibility.reason,
