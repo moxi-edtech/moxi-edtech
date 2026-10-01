@@ -13,7 +13,6 @@ import { recordAuditServer } from "@/lib/audit";
 import type { Database } from "~types/supabase";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
-import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
 import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 
@@ -555,14 +554,16 @@ export async function POST(request: Request) {
       .eq("matricula_id", origemMatriculaId);
     if (mensalidadesError) throw mensalidadesError;
 
-    const today = todayInLuanda();
+    // O gate financeiro é saldo aberto zero, em paridade com o trigger do
+    // banco. Bloqueamos antes de criar/cobrar o pedido para não receber dinheiro
+    // e descobrir a dívida apenas na finalização.
     const mensalidadesPendentes = (mensalidadesOrigem ?? []).filter((mensalidade: any) => {
       const status = String(mensalidade.status ?? "").toLowerCase();
       const saldo = Math.max(
         Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
         0,
       );
-      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status) && isMensalidadeVencida(mensalidade, today);
+      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
     });
     if (mensalidadesPendentes.length > 0) {
       const total = mensalidadesPendentes.reduce((sum, mensalidade: any) => sum + Math.max(
@@ -571,7 +572,7 @@ export async function POST(request: Request) {
       ), 0);
       return NextResponse.json({
         ok: false,
-        error: "Regularize as mensalidades do ano anterior antes de concluir a rematrícula.",
+        error: "Regularize todos os saldos em aberto da matrícula de origem antes de rematricular.",
         code: "REMATRICULA_DEBT_REQUIRED",
         debt: { count: mensalidadesPendentes.length, total },
       }, { status: 409 });
