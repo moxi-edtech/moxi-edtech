@@ -16,7 +16,10 @@ import {
 } from "lucide-react";
 import { EnrollmentPostActions, type EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import type { TurmaOption, RematriculaResult, ProgressaoBalcao, RematriculaPaymentItem, ResultadoDecisaoBalcao } from "@/hooks/useRematriculaBalcao";
-import { isDocumentPendingResult } from "@/lib/secretaria/rematricula-result";
+import {
+  isAcademicHistoryPendingResult,
+  isDocumentPendingResult,
+} from "@/lib/secretaria/rematricula-result";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -110,6 +113,8 @@ const ERROR_MESSAGES: Record<string, string> = {
     "A turma seleccionada não pertence ao ano lectivo.",
   DOCUMENT_PENDING:
     "Rematrícula concluída; comprovante pendente de emissão.",
+  ACADEMIC_HISTORY_PENDING:
+    "Rematrícula concluída; falta reconciliar o histórico académico da matrícula de origem.",
   REMATRICULA_LEGACY_REVIEW_REQUIRED:
     "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
   FINALISTA_PROGRESSION_INVALID:
@@ -1104,15 +1109,17 @@ function SuccessView({
     ? `${selectedTurma.nome}${turnoStr ? ` · ${turnoStr}` : ""}`
     : "—";
   const documentPending = isDocumentPendingResult(result);
+  const academicHistoryPending = isAcademicHistoryPendingResult(result);
+  const partialCompletion = documentPending || academicHistoryPending;
 
   return (
     <div className="space-y-6 text-center py-4">
       <div
         className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${
-          documentPending ? "bg-amber-100" : "bg-[#1F6B3B]/10"
+          partialCompletion ? "bg-amber-100" : "bg-[#1F6B3B]/10"
         }`}
       >
-        {documentPending ? (
+        {partialCompletion ? (
           <AlertTriangle className="h-8 w-8 text-amber-700" />
         ) : (
           <CheckCircle className="h-8 w-8 text-[#1F6B3B]" />
@@ -1120,22 +1127,28 @@ function SuccessView({
       </div>
       <div>
         <h3 className="text-xl font-bold text-slate-900">
-          {documentPending
-            ? "Rematrícula concluída · comprovante pendente"
-            : "Rematrícula concluída"}
+          {academicHistoryPending
+            ? "Rematrícula concluída · histórico académico pendente"
+            : documentPending
+              ? "Rematrícula concluída · comprovante pendente"
+              : "Rematrícula concluída"}
         </h3>
         <p className="text-sm text-slate-500 mt-1">
-          {documentPending
-            ? "A matrícula e o pagamento foram preservados. Falta apenas emitir o comprovante."
-            : "A matrícula do ano destino foi criada ou actualizada com a turma seleccionada."}
+          {academicHistoryPending
+            ? "A matrícula e o pagamento foram preservados. Falta apenas reconciliar o histórico académico da matrícula de origem."
+            : documentPending
+              ? "A matrícula e o pagamento foram preservados. Falta apenas emitir o comprovante."
+              : "A matrícula do ano destino foi criada ou actualizada com a turma seleccionada."}
         </p>
       </div>
 
-      {documentPending && (
+      {partialCompletion && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-950">
           <p className="font-bold">Não faça uma nova cobrança.</p>
           <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
-            Feche esta etapa para atualizar o atendimento. O Balcão reutiliza o pagamento já confirmado e permite tentar emitir o comprovante novamente.
+            {academicHistoryPending
+              ? "Feche esta etapa para atualizar o atendimento. Ao retomar, o Balcão reutiliza a matrícula e o pagamento já confirmados e tenta reconciliar somente o histórico académico."
+              : "Feche esta etapa para atualizar o atendimento. O Balcão reutiliza o pagamento já confirmado e permite tentar emitir o comprovante novamente."}
           </p>
         </div>
       )}
@@ -1162,9 +1175,15 @@ function SuccessView({
             <span className="font-semibold text-amber-700">Pendente de emissão</span>
           </div>
         )}
+        {academicHistoryPending && (
+          <div className="flex justify-between gap-4">
+            <span className="text-slate-500">Histórico académico</span>
+            <span className="font-semibold text-amber-700">Pendente de reconciliação</span>
+          </div>
+        )}
       </div>
 
-      {!documentPending && <EnrollmentPostActions onAction={onPostAction} />}
+      {!partialCompletion && <EnrollmentPostActions onAction={onPostAction} />}
     </div>
   );
 }
@@ -1181,6 +1200,8 @@ function FooterSuccess({
   const printUrl = result.comprovante?.printUrl;
   const reciboUrl = result.recibo?.print_url;
   const documentPending = isDocumentPendingResult(result);
+  const academicHistoryPending = isAcademicHistoryPendingResult(result);
+  const partialCompletion = documentPending || academicHistoryPending;
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row">
@@ -1224,7 +1245,7 @@ function FooterSuccess({
         }rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700
           hover:bg-slate-300 transition-colors`}
       >
-        {documentPending ? "Fechar e atualizar estado" : "Fechar"}
+        {partialCompletion ? "Fechar e atualizar estado" : "Fechar"}
       </button>
     </div>
   );
