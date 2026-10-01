@@ -618,7 +618,7 @@ export async function POST(request: Request) {
           valor_origem: targetPricing.origem,
           reconfirmacao_apenas: reconfirmacaoApenas,
           vinculo_financeiro: vinculoFinanceiro,
-          notas_lancar_depois: body.notas_lancar_depois === true,
+          regra_academica: "raa_aprovado_obrigatorio",
           idempotency_key: idempotencyKey,
         },
         created_by: user.id,
@@ -750,114 +750,10 @@ export async function POST(request: Request) {
       }
     }
 
-    let rematriculaCondicionalConcluida = false;
-
-    // A virada histórica deixou algumas matrículas destino ativas antes de
-    // existir a autorização académica. Mantemos a vaga, mas só concluímos a
+    // O antigo bypass "lançar notas depois" foi removido do fluxo normal.
+    // Qualquer operação histórica excepcional é tratada exclusivamente pela
+    // rota de reconciliação; novas rematrículas chegam aqui apenas com RAA aprovado.
     let matriculaDestinoId = "";
-
-    // rematrícula mediante autorização explícita para lançar notas depois.
-    if (matriculaDestino && !reclassificacao && raaAtual?.decision === "pendente" && !decisaoAdministrativa) {
-      if (body.notas_lancar_depois !== true) {
-        await (supabase as any).from("servico_pedidos").update({
-          status: "pending_payment",
-          reason_code: "PROMOTION_AUTHORIZATION_REQUIRED",
-          reason_detail: "A promoção académica ainda tem notas pendentes.",
-        }).eq("id", pedido.id).eq("escola_id", escolaId);
-        return NextResponse.json({
-          ok: false,
-          error: "A promoção tem notas pendentes. Confirme o lançamento posterior das notas para concluir.",
-          code: "PROMOTION_AUTHORIZATION_REQUIRED",
-          payment: paymentJson.data ?? null,
-          pedido_id: pedido.id,
-        }, { status: 409 });
-      }
-
-      const { data: authorizationData, error: authorizationError } = await (supabase as any).rpc("autorizar_promocao_com_pendencias", {
-        p_escola_id: escolaId,
-        p_aluno_id: body.aluno_id,
-        p_matricula_origem_id: origemMatriculaId,
-        p_destino_ano_letivo_id: academicContext.anoLetivoId,
-        p_destino_turma_id: body.destino_turma_id,
-        p_motivo: "Promoção autorizada no Balcão; notas serão lançadas posteriormente",
-      });
-      if (!authorizationError && authorizationData?.id) {
-        await (supabase as any).from("promocoes_com_pendencias").update({
-          fonte_decisao: body.decisao_fonte ?? "declaracao_administrativa_escola",
-          observacao_decisao: body.decisao_observacao ?? null,
-        }).eq("id", authorizationData.id).eq("escola_id", escolaId);
-      }
-      if (authorizationError) {
-        await (supabase as any).from("servico_pedidos").update({
-          status: "pending_payment",
-          reason_code: "PROMOTION_AUTHORIZATION_REQUIRED",
-          reason_detail: authorizationError.message,
-        }).eq("id", pedido.id).eq("escola_id", escolaId);
-        return NextResponse.json({
-          ok: false,
-          error: "Pagamento confirmado, mas a promoção com pendências precisa de autorização.",
-          code: "PROMOTION_AUTHORIZATION_REQUIRED",
-          details: authorizationError.message,
-          payment: paymentJson.data ?? null,
-          pedido_id: pedido.id,
-        }, { status: 409 });
-      }
-
-      const destinoId = String(matriculaDestino.id);
-      matriculaDestinoId = destinoId;
-      await (supabase as any).from("servico_pedidos").update({
-        status: "granted",
-        matricula_id: destinoId,
-        contexto: {
-          ...(pedido.contexto ?? {}),
-          matricula_destino_id: destinoId,
-          promocao_com_pendencias: true,
-          decisao: "promovido_com_pendencias",
-        },
-      }).eq("id", pedido.id).eq("escola_id", escolaId);
-      await (supabase as any).from("promocoes_com_pendencias").update({
-        matricula_destino_id: destinoId,
-        status: "concluida",
-        concluido_em: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }).eq("escola_id", escolaId)
-        .eq("matricula_origem_id", origemMatriculaId)
-        .eq("destino_ano_letivo_id", academicContext.anoLetivoId)
-        .eq("status", "autorizada");
-      rematriculaCondicionalConcluida = true;
-    }
-
-    if (body.notas_lancar_depois === true && !matriculaDestino) {
-      const { data: authorizationData, error: authorizationError } = await (supabase as any).rpc("autorizar_promocao_com_pendencias", {
-        p_escola_id: escolaId,
-        p_aluno_id: body.aluno_id,
-        p_matricula_origem_id: origemMatriculaId,
-        p_destino_ano_letivo_id: academicContext.anoLetivoId,
-        p_destino_turma_id: body.destino_turma_id,
-        p_motivo: "Promoção autorizada no Balcão; notas serão lançadas posteriormente",
-      });
-      if (!authorizationError && authorizationData?.id) {
-        await (supabase as any).from("promocoes_com_pendencias").update({
-          fonte_decisao: body.decisao_fonte ?? "declaracao_administrativa_escola",
-          observacao_decisao: body.decisao_observacao ?? null,
-        }).eq("id", authorizationData.id).eq("escola_id", escolaId);
-      }
-      if (authorizationError) {
-        await (supabase as any).from("servico_pedidos").update({
-          status: "pending_payment",
-          reason_code: "PROMOTION_AUTHORIZATION_REQUIRED",
-          reason_detail: authorizationError.message,
-        }).eq("id", pedido.id).eq("escola_id", escolaId);
-        return NextResponse.json({
-          ok: false,
-          error: "Pagamento confirmado, mas a promoção com pendências precisa de autorização.",
-          code: "PROMOTION_AUTHORIZATION_REQUIRED",
-          details: authorizationError.message,
-          payment: paymentJson.data ?? null,
-          pedido_id: pedido.id,
-        }, { status: 409 });
-      }
-    }
 
     let finalizacao: any;
     let finalizacaoError: any = null;
@@ -877,8 +773,6 @@ export async function POST(request: Request) {
           vinculo_financeiro: vinculoFinanceiro,
         },
       }).eq("id", pedido.id).eq("escola_id", escolaId);
-    } else if (rematriculaCondicionalConcluida) {
-      finalizacao = { ok: true, matricula_id: matriculaDestinoId };
     } else if (matriculaDestino && reclassificacao) {
       const result = await (supabase as any).rpc("finalistas_matricular_novo_ciclo", {
         p_escola_id: escolaId,
