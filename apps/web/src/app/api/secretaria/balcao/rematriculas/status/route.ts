@@ -228,10 +228,10 @@ export async function GET(request: Request) {
       && Number(cohort?.ano_destino) === targetAnoLetivoAno
       && (!cohort?.expira_em || new Date(`${cohort.expira_em}T23:59:59`).getTime() >= Date.now());
 
-    // Regra canónica da rematrícula normal: o resultado académico precisa
-    // estar fechado como aprovado. A antiga virada assistida continua visível
-    // apenas para recuperação de operações históricas já existentes; ela não
-    // transforma notas pendentes numa nova rematrícula elegível.
+    // Regra canónica: o Balcão consome a decisão do RAA. Não existe override
+    // manual de "lançar notas depois". Progressão regular e inscrição
+    // condicional autorizada podem avançar; estados bloqueados permanecem
+    // explícitos e orientados pelo próprio RAA.
     let academicDecision: any = null;
     let academicGuidance: any = null;
     let academicEligibility = classifyRematriculaAcademicEligibility(null);
@@ -244,14 +244,21 @@ export async function GET(request: Request) {
         });
         academicDecision = academic.progression.decision;
         academicGuidance = academic.orientacao;
-        academicEligibility = classifyRematriculaAcademicEligibility(academic.progression.decision);
+        academicEligibility = classifyRematriculaAcademicEligibility({
+          decision: academic.progression.decision,
+          destino: academic.progression.destino,
+          efetivacaoMatriculaBloqueada: academic.efetivacaoMatriculaBloqueada,
+          disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
+        });
       } catch (error) {
         academicEligibility = {
           eligible: false,
           code: "ACADEMIC_RESULT_PENDING",
+          mode: null,
           reason: error instanceof Error
             ? error.message
             : "Não foi possível confirmar o resultado académico desta matrícula.",
+          disciplinaIdsPendentes: [],
         };
       }
     }
@@ -437,9 +444,13 @@ export async function GET(request: Request) {
     } else if (!academicEligibility.eligible) {
       status = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
         ? "ACADEMIC_PENDING"
-        : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-          ? "ACADEMIC_CYCLE_COMPLETED"
-          : "ACADEMIC_NOT_APPROVED";
+        : academicEligibility.code === "ACADEMIC_REVIEW_REQUIRED"
+          ? "ACADEMIC_REVIEW_REQUIRED"
+          : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
+            ? "ACADEMIC_CONDITIONAL_BLOCKED"
+            : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+              ? "ACADEMIC_CYCLE_COMPLETED"
+              : "ACADEMIC_NOT_APPROVED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {
@@ -475,7 +486,9 @@ export async function GET(request: Request) {
         decision: academicDecision,
         eligible: academicEligibility.eligible,
         code: academicEligibility.code,
+        mode: academicEligibility.mode,
         reason: academicEligibility.reason,
+        disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
         guidance: academicGuidance,
       },
       pedido: pedidoExistente
