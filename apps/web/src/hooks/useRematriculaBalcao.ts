@@ -392,7 +392,7 @@ export function useRematriculaBalcao(opts: {
     allowManualDecision = false,
   ) => {
     if (!anoLetivo?.id || !opts.alunoId) return;
-    if (turmasFetchedFor === decision) return;
+    if (turmasFetchedFor === decision && !allowManualDecision) return;
 
     setTurmasLoading(true);
     try {
