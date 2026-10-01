@@ -181,6 +181,8 @@ export function RematriculaBanner() {
     'DESTINATION_CLASS_NOT_CONFIGURED',
     'REMATRICULA_WINDOW_CLOSED',
     'ACADEMIC_PROMOTION_PENDING',
+    'ACADEMIC_REVIEW_REQUIRED',
+    'ACADEMIC_CONDITIONAL_BLOCKED',
     'ACADEMIC_NOT_APPROVED',
     'ACADEMIC_CYCLE_COMPLETED',
     'REMATRICULA_DEBT_REQUIRED',
@@ -197,10 +199,30 @@ export function RematriculaBanner() {
       </div>
     }
 
+    if (status.code === 'ACADEMIC_REVIEW_REQUIRED') {
+      return <div className="mb-6 rounded-3xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
+        <p className="font-black">Recurso académico pendente</p>
+        <p className="mt-1">{status.reason || 'O RAA ainda não autorizou a efetivação da rematrícula.'}</p>
+        {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}
+        <p className="mt-2 text-xs font-semibold">Próximo passo: acompanhe o recurso com a secretaria e atualize o estado depois da decisão.</p>
+        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-sky-800 shadow-sm">Atualizar estado</button>
+      </div>
+    }
+
+    if (status.code === 'ACADEMIC_CONDITIONAL_BLOCKED') {
+      return <div className="mb-6 rounded-3xl border border-violet-200 bg-violet-50 p-5 text-sm text-violet-900">
+        <p className="font-black">Inscrição condicional ainda não efetivável</p>
+        <p className="mt-1">{status.reason || 'O RAA reconhece a progressão condicional, mas ainda existe uma etapa académica obrigatória.'}</p>
+        {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}
+        <p className="mt-2 text-xs font-semibold">Próximo passo: conclua o recurso ou exame indicado pelo RAA e atualize o estado.</p>
+        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-violet-800 shadow-sm">Atualizar estado</button>
+      </div>
+    }
+
     if (status.code === 'ACADEMIC_NOT_APPROVED') {
       return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900">
         <p className="font-black">Resultado académico não autoriza rematrícula</p>
-        <p className="mt-1">{status.reason || 'A rematrícula exige resultado académico aprovado.'}</p>
+        <p className="mt-1">{status.reason || 'A decisão RAA vigente não autoriza progressão para a etapa seguinte.'}</p>
         <p className="mt-2 text-xs font-semibold">Procure a secretaria apenas se acreditar que o resultado académico está incorreto.</p>
         <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button>
       </div>
@@ -218,7 +240,7 @@ export function RematriculaBanner() {
       return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
         <p className="font-black">Regularização financeira necessária</p>
         <p className="mt-1">{status.reason || 'Regularize todos os saldos em aberto antes de rematricular.'}</p>
-        <p className="mt-2 text-xs font-semibold">O resultado académico está aprovado, mas a rematrícula permanece bloqueada enquanto houver saldo em aberto.</p>
+        <p className="mt-2 text-xs font-semibold">O RAA autoriza a progressão, mas a rematrícula permanece bloqueada enquanto houver saldo em aberto.</p>
         <button type="button" onClick={() => window.location.assign('/aluno/financeiro')} className="mt-3 rounded-xl bg-amber-700 px-4 py-2 text-xs font-black text-white">Abrir financeiro</button>
       </div>
     }
@@ -283,6 +305,19 @@ export function RematriculaBanner() {
                   ? 'Consulte o valor em dívida, envie o comprovativo e aguarde a validação. Depois poderá pagar a taxa da sua classe destino.'
                   : `Confirme a continuidade no Ano Letivo ${status.nextAno} com o valor calculado para a sua classe destino.`)}
           </p>
+          {status.academic?.decision === 'inscricao_condicional' ? (
+            <div className="mt-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-900">
+              <p className="font-black">Progressão condicional autorizada pelo RAA</p>
+              <p className="mt-1">
+                A rematrícula pode avançar para a próxima classe. As disciplinas pendentes continuam registadas e precisam ser acompanhadas.
+              </p>
+              {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 ? (
+                <p className="mt-2 font-bold">
+                  Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {status.rematricula?.destination || status.rematricula?.service ? (
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-700">
               {status.rematricula?.destination ? (
