@@ -225,7 +225,6 @@ export function useRematriculaBalcao(opts: {
   // ── Turmas ──────────────────────────────────────────────────────────────
   const [turmas, setTurmas] = useState<TurmaOption[]>([]);
   const [progressao, setProgressao] = useState<ProgressaoBalcao | null>(null);
-  const [notasLancarDepois, setNotasLancarDepois] = useState(false);
   const [decisaoResultado, setDecisaoResultado] = useState<ResultadoDecisaoBalcao>("aprovado");
   const [decisaoFonte, setDecisaoFonte] = useState("raa");
   const [decisaoMotivo, setDecisaoMotivo] = useState("");
@@ -312,7 +311,6 @@ export function useRematriculaBalcao(opts: {
     setProgressao(null);
     setCohort(null);
     setAcademic(null);
-    setNotasLancarDepois(false);
     setDecisaoResultado("aprovado");
     setDecisaoFonte("raa");
     setDecisaoMotivo("");
@@ -328,7 +326,6 @@ export function useRematriculaBalcao(opts: {
           selectedTurmaId?: string | null;
           metodo?: MetodoPagamento;
           detalhes?: typeof DETALHES_VAZIOS;
-          notasLancarDepois?: boolean;
           decisaoResultado?: ResultadoDecisaoBalcao;
           decisaoFonte?: string;
           decisaoMotivo?: string;
@@ -340,7 +337,6 @@ export function useRematriculaBalcao(opts: {
         setSelectedTurmaId(draft.selectedTurmaId ?? null);
         if (draft.metodo) setMetodoState(draft.metodo);
         if (draft.detalhes) setDetalhesState({ ...DETALHES_VAZIOS, ...draft.detalhes });
-        setNotasLancarDepois(Boolean(draft.notasLancarDepois));
         if (draft.decisaoResultado) setDecisaoResultado(draft.decisaoResultado);
         if (draft.decisaoFonte) setDecisaoFonte(draft.decisaoFonte);
         if (draft.decisaoMotivo) setDecisaoMotivo(draft.decisaoMotivo);
@@ -361,7 +357,6 @@ export function useRematriculaBalcao(opts: {
         selectedTurmaId,
         metodo,
         detalhes,
-        notasLancarDepois,
         decisaoResultado,
         decisaoFonte,
         decisaoMotivo,
@@ -373,7 +368,7 @@ export function useRematriculaBalcao(opts: {
     } catch {
       // A persistência é uma melhoria; nunca deve bloquear a operação.
     }
-  }, [decisaoFonte, decisaoMotivo, decisaoObservacao, decisaoResultado, draftKey, detalhes, idempotencyKey, metodo, notasLancarDepois, opts.alunoId, opts.matriculaId, responsavelContato, result, selectedTurmaId, step]);
+  }, [decisaoFonte, decisaoMotivo, decisaoObservacao, decisaoResultado, draftKey, detalhes, idempotencyKey, metodo, opts.alunoId, opts.matriculaId, responsavelContato, result, selectedTurmaId, step]);
 
   useEffect(() => {
     if (!modalOpen) setResponsavelContato(opts.responsavelContato ?? "");
@@ -459,7 +454,6 @@ export function useRematriculaBalcao(opts: {
     if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
       setDecisaoResultado("aprovado");
       setDecisaoFonte("raa");
-      setNotasLancarDepois(false);
     }
     if (!["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) void fetchTurmas();
   }, [cardState, destinoTurmaId, fetchTurmas, selectedTurmaId]);
@@ -471,7 +465,6 @@ export function useRematriculaBalcao(opts: {
     setSelectedTurmaId(null);
     setDecisaoFonte("declaracao_administrativa_escola");
     setDecisaoMotivo("");
-    setNotasLancarDepois(true);
     setResult(null);
     setApiError(null);
     void fetchTurmas(decisaoResultado, true);
@@ -579,11 +572,15 @@ export function useRematriculaBalcao(opts: {
   // Submit rematrícula
   // ────────────────────────────────────────────────────────────────────────
   const submit = useCallback(async () => {
+    const requiresDestination = reconciliationMode
+      ? decisaoResultado !== "concluido"
+      : true;
+
     if (
       !opts.alunoId ||
       !opts.matriculaId ||
       !anoLetivo?.id ||
-      (!selectedTurmaId && (decisaoResultado !== "concluido" || reconciliationMode))
+      (requiresDestination && !selectedTurmaId)
     ) {
       return;
     }
@@ -592,7 +589,6 @@ export function useRematriculaBalcao(opts: {
     setApiError(null);
     setResult(null);
     const requestKey = idempotencyKey ?? crypto.randomUUID();
-    const pagamentoApenas = ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "");
     setIdempotencyKey(requestKey);
 
     try {
@@ -632,19 +628,13 @@ export function useRematriculaBalcao(opts: {
           matricula_id: opts.matriculaId,
           ano_letivo_id: anoLetivo.id,
           destino_turma_id: selectedTurmaId ?? undefined,
-          metodo: decisaoResultado === "concluido" && !pagamentoApenas ? undefined : metodo,
+          metodo,
           reference: detalhes.referencia.trim() || null,
           evidence_url: detalhes.evidencia_url.trim() || null,
           gateway_ref: detalhes.gateway_ref.trim() || null,
           contacto_encarregado: responsavelContato.trim() || undefined,
-          // O fluxo normal não decide resultado académico. A rematrícula
-          // consome exclusivamente o resultado fechado pelo RAA. Decisões
-          // manuais permanecem apenas na rota de reconciliação histórica.
-          notas_lancar_depois: undefined,
-          decisao_resultado: undefined,
-          decisao_fonte: undefined,
-          decisao_motivo: undefined,
-          decisao_observacao: undefined,
+          // O fluxo normal não envia qualquer override académico. A decisão
+          // é consumida exclusivamente do RAA no servidor.
           itens: opts.itensPagamento?.map(({ id, tipo }) => ({ id, tipo })) ?? [],
         }),
       });
@@ -700,7 +690,6 @@ export function useRematriculaBalcao(opts: {
     selectedTurmaId,
     metodo,
     detalhes,
-    notasLancarDepois,
     decisaoFonte,
     decisaoMotivo,
     decisaoObservacao,
@@ -744,7 +733,6 @@ export function useRematriculaBalcao(opts: {
     turmasLoading,
     progressao,
     notasLancarDepois,
-    setNotasLancarDepois,
     decisaoResultado,
     setDecisaoResultado,
     decisaoFonte,
