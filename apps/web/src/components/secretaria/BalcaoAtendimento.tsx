@@ -845,7 +845,19 @@ type OperacaoCopy = {
 const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> = {
   READY: {
     titulo: "Rematrícula escolar",
-    descricao: "Pagamento, atualização da matrícula e comprovativo.",
+    descricao: "Aluno aprovado e sem dívida: seleccione a turma destino e conclua a rematrícula.",
+  },
+  ACADEMIC_PENDING: {
+    titulo: "Notas ainda não fechadas",
+    descricao: "Conclua o lançamento das notas e o resultado académico antes de rematricular.",
+  },
+  ACADEMIC_NOT_APPROVED: {
+    titulo: "Aluno ainda não aprovado para rematrícula",
+    descricao: "A rematrícula normal exige resultado académico aprovado no RAA.",
+  },
+  ACADEMIC_CYCLE_COMPLETED: {
+    titulo: "Ciclo académico concluído",
+    descricao: "Não há rematrícula para a classe seguinte; siga para o fecho e documentos finais.",
   },
   RECONFIRMATION_REQUIRED: {
     titulo: "Pagar taxa de rematrícula",
@@ -1176,6 +1188,47 @@ function Catalogo({
                   {rematriculaAnoLabel ?? "este ano letivo"}. Abra-a antes de iniciar novas operações.
                 </p>
                 <CodigoEstado estado="WINDOW_CLOSED" />
+              </div>
+            ) : null}
+            {rematriculaState === "ACADEMIC_PENDING" ? (
+              <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
+                <strong className="block">Rematrícula bloqueada: faltam notas ou fecho académico</strong>
+                <p className="mt-1 text-amber-900/80">
+                  Não existe bypass por “lançar depois”. Conclua as notas e confirme a aprovação; depois actualize o estado.
+                </p>
+                <CodigoEstado estado="ACADEMIC_PENDING" />
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Link href="/secretaria/notas" className="rounded-xl bg-amber-700 px-3 py-2 text-center font-bold text-white hover:bg-amber-800">
+                    Abrir notas
+                  </Link>
+                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-amber-300 bg-white px-3 py-2 font-bold text-amber-900 hover:bg-amber-100">
+                    Verificar novamente
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {rematriculaState === "ACADEMIC_NOT_APPROVED" ? (
+              <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-900">
+                <strong className="block">Resultado académico não autoriza rematrícula</strong>
+                <p className="mt-1 text-rose-800/80">
+                  Apenas alunos aprovados seguem por este fluxo. Reveja o resultado académico; não altere a decisão dentro do Balcão.
+                </p>
+                <CodigoEstado estado="ACADEMIC_NOT_APPROVED" />
+                <Link href="/secretaria/fechamento-academico" className="mt-3 block rounded-xl bg-rose-700 px-3 py-2 text-center font-bold text-white hover:bg-rose-800">
+                  Abrir fechamento académico
+                </Link>
+              </div>
+            ) : null}
+            {rematriculaState === "ACADEMIC_CYCLE_COMPLETED" ? (
+              <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-3.5 text-xs text-violet-950">
+                <strong className="block">Ciclo concluído — não há rematrícula seguinte</strong>
+                <p className="mt-1 text-violet-900/80">
+                  O aluno terminou a etapa académica. O próximo passo é o fecho documental, não uma nova rematrícula.
+                </p>
+                <CodigoEstado estado="ACADEMIC_CYCLE_COMPLETED" />
+                <Link href="/secretaria/documentos-oficiais" className="mt-3 block rounded-xl bg-violet-700 px-3 py-2 text-center font-bold text-white hover:bg-violet-800">
+                  Abrir documentos oficiais
+                </Link>
               </div>
             ) : null}
             {rematriculaError ? (
