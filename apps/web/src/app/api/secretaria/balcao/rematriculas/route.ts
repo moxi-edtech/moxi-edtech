@@ -15,6 +15,7 @@ import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
 import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
+import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -121,20 +122,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || "Payload inválido" }, { status: 400 });
     }
     const body = parsed.data;
-    const decisaoAdministrativa = body.decisao_fonte === "declaracao_administrativa_escola";
-    let academicOnlyConclusion = body.decisao_resultado === "concluido" && !body.destino_turma_id;
-    if (!academicOnlyConclusion && !body.destino_turma_id) {
+
+    // A rematrícula normal não decide o resultado académico. O resultado vem
+    // exclusivamente do RAA e precisa estar fechado como aprovado.
+    if (!body.destino_turma_id) {
       return NextResponse.json({ ok: false, error: "Seleccione a turma destino antes de concluir.", code: "REMATRICULA_DESTINATION_REQUIRED" }, { status: 400 });
     }
-    if (!academicOnlyConclusion && !body.metodo) {
+    if (!body.metodo) {
       return NextResponse.json({ ok: false, error: "Seleccione o método de pagamento.", code: "PAYMENT_METHOD_REQUIRED" }, { status: 400 });
-    }
-    if (body.decisao_fonte === "declaracao_administrativa_escola" && !body.decisao_motivo?.trim()) {
-      return NextResponse.json({
-        ok: false,
-        error: "O motivo da decisão administrativa é obrigatório.",
-        code: "DECISAO_MOTIVO_REQUIRED",
-      }, { status: 400 });
     }
 
     let academicContext;
@@ -232,28 +227,6 @@ export async function POST(request: Request) {
       matricula = matriculaAnterior;
     }
     const origemMatriculaId = String(matricula.id);
-    if (body.decisao_fonte === "declaracao_administrativa_escola") {
-      const { data: cohortMember, error: cohortError } = await (supabase as any)
-        .from("academic_transition_cohort_members")
-        .select("id, cohort:academic_transition_cohorts!inner(ativo, ano_origem, ano_destino, expira_em)")
-        .eq("escola_id", escolaId)
-        .eq("matricula_origem_id", origemMatriculaId)
-        .eq("status", "elegivel")
-        .maybeSingle();
-      if (cohortError) throw cohortError;
-      const cohort = Array.isArray(cohortMember?.cohort) ? cohortMember.cohort[0] : cohortMember?.cohort;
-      const cohortAtivo = cohort?.ativo === true
-        && Number(cohort?.ano_origem) === Number(matricula.ano_letivo)
-        && Number(cohort?.ano_destino) === targetAnoLetivoAno
-        && (!cohort?.expira_em || new Date(`${cohort.expira_em}T23:59:59`).getTime() >= Date.now());
-      if (!cohortAtivo) {
-        return NextResponse.json({
-          ok: false,
-          error: "A decisão administrativa sem notas está disponível apenas para alunos incluídos na coorte de virada assistida.",
-          code: "ASSISTED_TRANSITION_COHORT_REQUIRED",
-        }, { status: 403 });
-      }
-    }
     const { data: matriculaDestino } = await supabase
       .from("matriculas")
       .select("id, turma_id")
@@ -277,7 +250,6 @@ export async function POST(request: Request) {
     // essa matrícula: o atendimento passa a ser apenas financeiro.
     if (matriculaDestino?.turma_id && !body.destino_turma_id) {
       body.destino_turma_id = matriculaDestino.turma_id;
-      academicOnlyConclusion = false;
       if (!body.metodo) {
         return NextResponse.json({
           ok: false,
@@ -307,75 +279,8 @@ export async function POST(request: Request) {
     const classeById = new Map((classes || []).map((classe: any) => [classe.id, classe]));
     const numeroOrigem = classeNumero(classeById.get(turmaOrigem?.classe_id));
     const numeroDestino = classeNumero(classeById.get(turmaDestino?.classe_id));
-    if (decisaoAdministrativa && matriculaDestino && !reconfirmacaoApenas) {
-      if (body.decisao_resultado === "concluido") {
-        return NextResponse.json({
-          ok: false,
-          error: "Há uma matrícula destino preparada. Reveja-a antes de concluir o ciclo do aluno.",
-          code: "CONCLUSION_DESTINATION_REVIEW_REQUIRED",
-        }, { status: 409 });
-      }
-      if (String(matriculaDestino.turma_id ?? "") !== String(body.destino_turma_id ?? "")) {
-        return NextResponse.json({
-          ok: false,
-          error: "A turma escolhida não corresponde à matrícula destino já preparada. Reveja o destino antes de confirmar a decisão.",
-          code: "RECONCILIATION_DESTINATION_MISMATCH",
-        }, { status: 409 });
-      }
-      if (numeroOrigem === null || numeroDestino === null) {
-        return NextResponse.json({
-          ok: false,
-          error: "Não foi possível validar a progressão entre as classes de origem e destino.",
-          code: "RECONCILIATION_PROGRESSION_INVALID",
-        }, { status: 409 });
-      }
-      const esperado = body.decisao_resultado === "reprovado" ? numeroOrigem : numeroOrigem + 1;
-      if (numeroDestino !== esperado) {
-        return NextResponse.json({
-          ok: false,
-          error: body.decisao_resultado === "reprovado"
-            ? "A reprovação exige a mesma classe no destino preparado."
-            : "A aprovação exige a classe imediatamente seguinte no destino preparado.",
-          code: "RECONCILIATION_PROGRESSION_INVALID",
-        }, { status: 409 });
-      }
-    }
-    // Uma matrícula destino existente já passou pela promoção/reclassificação.
-    // O Balcão apenas cobra a reconfirmação ou resolve a decisão de finalista.
-    if (!matriculaDestino) {
-      const resultado = await supabase
-        .from("historico_anos")
-        .select("resultado_final")
-        .eq("escola_id", escolaId)
-        .eq("aluno_id", body.aluno_id)
-        .eq("ano_letivo", Number(matricula.ano_letivo))
-        .maybeSingle();
-      const resultadoFinal = String(resultado.data?.resultado_final || "").toLowerCase();
-      const reprovado = body.decisao_resultado === "reprovado"
-        || ["reprovado", "reprovada", "reprovado_por_faltas"].includes(String(matricula.status).toLowerCase())
-        || resultadoFinal.includes("reprov");
-      const decisaoAdministrativa = body.decisao_fonte === "declaracao_administrativa_escola";
-      const notasPendentes = !decisaoAdministrativa && !reprovado && !resultadoFinal.includes("aprov");
-      if (notasPendentes && body.notas_lancar_depois !== true) {
-        return NextResponse.json({ ok: false, error: "Confirme que as notas serão lançadas posteriormente antes de rematricular.", code: "REMATRICULA_DECISION_REQUIRED" }, { status: 409 });
-      }
-
-      if (numeroOrigem !== null && numeroDestino !== null) {
-        if (numeroOrigem === 12 && !reprovado) {
-          return NextResponse.json({ ok: false, error: "A 12ª classe não tem uma classe seguinte configurada.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
-        }
-        const esperado = reprovado ? numeroOrigem : numeroOrigem + 1;
-        if (numeroDestino !== esperado) {
-          return NextResponse.json({ ok: false, error: reprovado ? "O aluno deve permanecer na classe em que reprovou." : "A turma destino deve ser a classe imediatamente seguinte.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
-        }
-      }
-      if (turmaOrigem?.curso_id && turmaDestino?.curso_id && turmaOrigem.curso_id !== turmaDestino.curso_id && !(numeroOrigem === 0 && numeroDestino === 1)) {
-        return NextResponse.json({ ok: false, error: "A turma destino pertence a outro curso.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
-      }
-    }
-
-    // Uma matrícula já promovida para 2026 não passa por nova decisão
-    // académica no Balcão. O atendimento limita-se a regularizar a taxa.
+    // A matrícula destino preexistente já passou por uma operação anterior.
+    // Para uma nova rematrícula, porém, a autoridade académica é sempre o RAA.
     let raaAtual: any = null;
     if (!reconfirmacaoApenas) {
       const { data, error: raaAtualError } = await (supabase as any).rpc("resolve_raa_progression_for_matricula", {
@@ -384,44 +289,53 @@ export async function POST(request: Request) {
       });
       if (raaAtualError) throw raaAtualError;
       raaAtual = data;
-      const decision = String(raaAtual?.decision ?? "").toLowerCase();
-      const resultadoFinal = body.decisao_resultado ?? (["retido", "retido_por_faltas", "retido_por_indisciplina", "reprovado"].includes(decision)
-        ? "reprovado"
-        : ["concluiu", "concluido", "concluida"].includes(decision)
-          ? "concluido"
-          : "aprovado");
+
+      const academicEligibility = classifyRematriculaAcademicEligibility(
+        String(raaAtual?.decision ?? "") as any,
+      );
+      if (!academicEligibility.eligible) {
+        const code = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
+          ? "REMATRICULA_ACADEMIC_PENDING"
+          : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+            ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
+            : "REMATRICULA_ACADEMIC_NOT_APPROVED";
+        return NextResponse.json({
+          ok: false,
+          error: academicEligibility.reason,
+          code,
+          academic: { decision: raaAtual?.decision ?? null },
+        }, { status: 409 });
+      }
+
+      if (numeroOrigem !== null && numeroDestino !== null) {
+        if (numeroOrigem === 12) {
+          return NextResponse.json({ ok: false, error: "A 12ª classe não tem uma classe seguinte configurada.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+        }
+        const esperado = numeroOrigem + 1;
+        if (numeroDestino !== esperado) {
+          return NextResponse.json({ ok: false, error: "Aluno aprovado deve seguir para a classe imediatamente seguinte.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+        }
+      }
+      if (turmaOrigem?.curso_id && turmaDestino?.curso_id && turmaOrigem.curso_id !== turmaDestino.curso_id && !(numeroOrigem === 0 && numeroDestino === 1)) {
+        return NextResponse.json({ ok: false, error: "A turma destino pertence a outro curso.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+      }
+
       const { error: origemResultadoError } = await (supabase as any).rpc("finalizar_origem_academica", {
         p_escola_id: escolaId,
         p_matricula_id: origemMatriculaId,
-        p_resultado_final: resultadoFinal,
-        p_fonte: body.decisao_fonte ?? (body.notas_lancar_depois ? "declaracao_administrativa_escola" : "raa"),
-        p_motivo: body.decisao_motivo ?? (body.notas_lancar_depois ? "Promoção autorizada no Balcão; notas serão lançadas posteriormente" : null),
-        p_observacao: body.decisao_observacao ?? null,
+        p_resultado_final: "aprovado",
+        p_fonte: "raa",
+        p_motivo: null,
+        p_observacao: null,
       });
       if (origemResultadoError) {
         return NextResponse.json({
           ok: false,
-          error: "Não foi possível registar o resultado académico da matrícula de origem.",
+          error: "Não foi possível registar o resultado académico aprovado da matrícula de origem.",
           code: "ACADEMIC_RESULT_RECONCILIATION_REQUIRED",
           details: origemResultadoError.message,
         }, { status: 409 });
       }
-    }
-
-    if (academicOnlyConclusion) {
-      recordAuditServer({
-        escolaId,
-        portal: "secretaria",
-        acao: "ACADEMIC_ORIGIN_CONCLUDED_AT_BALCAO",
-        entity: "matriculas",
-        entityId: origemMatriculaId,
-        details: { aluno_id: body.aluno_id, ano_origem: matricula.ano_letivo, fonte: body.decisao_fonte ?? "raa" },
-      }).catch(() => undefined);
-      return NextResponse.json({
-        ok: true,
-        academic_only: true,
-        message: "Resultado académico registado. Não foi criada matrícula de destino.",
-      });
     }
 
     const { data: service, error: serviceError } = await (supabase as any)
