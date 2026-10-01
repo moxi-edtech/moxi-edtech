@@ -103,6 +103,87 @@ Já existem guards em fluxos relevantes de:
 
 ---
 
+## 2.4 Estado dos portais do aluno e do professor
+
+### Portal do aluno — NÃO ALINHADO ainda
+
+A revisão de 2026-10-01 encontrou dependências financeiras privadas que ainda ignoram o perfil operacional da escola.
+
+Evidências:
+
+- `apps/web/src/app/(portal-aluno)/aluno/AlunoLayoutClient.tsx`
+  - inclui `/aluno/financeiro` de forma fixa nos itens de navegação;
+  - pré-carrega endpoints financeiros independentemente do `finance_model`.
+- `apps/web/src/components/aluno/layout/AlunoBottomNav.tsx`
+  - assume “Financeiro” entre os quatro itens principais.
+- `apps/web/src/app/(portal-aluno)/aluno/layout.tsx`
+  - lê `configuracoes_financeiro.bloquear_inadimplentes`;
+  - consulta `mensalidades` vencidas;
+  - pode redirecionar o aluno para `/aluno/desabilitado`;
+  - não resolve `SchoolOperatingProfile` antes de aplicar esse bloqueio.
+- `apps/web/src/app/api/aluno/home/finance-alert/route.ts`
+  - consulta `mensalidades` directamente;
+  - não aplica capability guard.
+- `apps/web/src/app/api/aluno/financeiro/route.ts`
+  - expõe mensalidades, ledger, pagamentos/serviços e resumo financeiro;
+  - não deriva o comportamento do `finance_model`.
+- `apps/web/src/components/aluno/tabs/TabFinanceiro.tsx`
+  - é desenhado em torno de mensalidades, saldos, pagamento e comprovativo;
+  - não diferencia `tuition`, `budget` e `emoluments_only`.
+
+Risco concreto:
+
+> Uma escola `public + budget` pode continuar mostrando “Financeiro”, consultar mensalidades e até bloquear o portal por inadimplência histórica/configurada, apesar de o modelo institucional não suportar propina recorrente.
+
+Portanto, o portal do aluno **não está pronto para escola pública**.
+
+Comportamento alvo:
+
+| Capability | `tuition` | `budget` | `emoluments_only` | `mixed` |
+|---|---:|---:|---:|---:|
+| Mostrar mensalidades | sim | não | não | definir contrato |
+| Alertas de propina | sim | não | não | definir contrato |
+| Bloqueio por inadimplência de propina | sim, se política habilitada | não | não | definir contrato |
+| Mostrar serviços/emolumentos | quando aplicável | quando aplicável | sim | sim |
+| Mostrar recibos/histórico permitido | sim | conforme operação | sim | sim |
+| Entrada “Financeiro” | sim | somente se houver capability útil | sim | sim |
+
+A decisão de navegação deve vir das mesmas capabilities do backend; não de `school_sector` isoladamente.
+
+### Portal do professor — PARCIALMENTE ALINHADO
+
+O portal do professor não carrega módulos de propina/cobrança e, por isso, não herda o principal problema financeiro do portal do aluno.
+
+Entretanto, a camada académica ainda não está derivada do perfil operacional da escola.
+
+Evidências:
+
+- `apps/web/src/lib/professorNav.ts`
+  - navegação é académica e neutra: Início, Frequências, Notas, Materiais, Calendário e Perfil.
+- `apps/web/src/app/api/professor/pauta/route.ts`
+  - resolve o modelo de avaliação através da configuração académica existente;
+  - não resolve `SchoolOperatingProfile` nem `assessment_policy`.
+- `apps/web/src/app/api/professor/notas/route.ts`
+  - grava via `lancar_notas_batch`;
+  - não há evidência de enforcement por `school_operating_profiles`/`assessment_policy` nesse boundary.
+- `canUseAutomaticLegalAssessment()`
+  - permanece deliberadamente `false`;
+  - não está ligado ao runtime do portal do professor.
+
+Consequência:
+
+> Uma escola pública pode usar o portal do professor com o modelo académico configurado manualmente, mas o KLASSE ainda não deve afirmar que o comportamento de avaliação está automaticamente alinhado ao MED apenas porque o perfil da escola é `public` ou possui uma policy `med_angola_*`.
+
+Comportamento alvo:
+
+1. frequência, materiais, calendário e atribuições continuam comuns entre escolas públicas e privadas;
+2. lançamento de notas continua permitido quando o professor possui atribuição válida;
+3. fórmula, componentes, escalas e progressão só podem ser alterados automaticamente por `assessment_policy` quando existir policy registry versionado e aprovado;
+4. até esse gate existir, `custom`/configuração académica explícita continua sendo a fonte operacional;
+5. o portal deve expor o regime efetivo de avaliação quando houver mais de um regime suportado, sem inferir regra legal pelo setor.
+
+---
+
 ## 3. Blockers antes de um piloto público
 
 ### PUB-001 — Invariantes institucionais
@@ -211,9 +292,11 @@ Para ativação é necessário:
 
 Falta ligar o perfil aos emissores/documentos apropriados e impedir a emissão de um template incompatível com a instituição.
 
-### PUB-007 — Navegação e UX
+### PUB-007 — Navegação e UX dos portais
 
 A UI deve derivar capacidades do perfil, sem duplicar regras de negócio.
+
+#### Portal administrativo/operacional
 
 Uma escola sem propina recorrente não deve receber:
 
@@ -222,6 +305,26 @@ Uma escola sem propina recorrente não deve receber:
 - campanhas de cobrança de propina;
 - ações IA de cobrança;
 - suspensão académica por dívida de mensalidade.
+
+#### Portal do aluno
+
+Antes do piloto público:
+
+- remover/transformar “Financeiro” por capability;
+- impedir `finance-alert` para modelos sem propina;
+- impedir bloqueio do portal por inadimplência quando `canUseFinancialSuspension(profile) === false`;
+- fazer `/api/aluno/financeiro` retornar apenas capacidades compatíveis;
+- separar mensalidade recorrente de serviço/emolumento;
+- garantir que uma dívida histórica de um modelo anterior não bloqueie uma escola que mudou de perfil sem regra explícita de transição.
+
+#### Portal do professor
+
+Antes de declarar suporte MED automático:
+
+- manter navegação académica independente do setor;
+- não inferir fórmula legal a partir de `school_sector`;
+- ligar `assessment_policy` ao runtime somente após registry normativo aprovado;
+- testar lançamento/pauta/frequência numa fixture pública.
 
 O backend continua sendo a autoridade; a UI é apenas a representação.
 
