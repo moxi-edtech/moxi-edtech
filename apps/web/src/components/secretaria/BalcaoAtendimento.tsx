@@ -875,6 +875,10 @@ const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> =
     titulo: "Emitir comprovativo pendente",
     descricao: "O pagamento e o recibo já foram confirmados; falta apenas emitir o comprovativo.",
   },
+  ACADEMIC_HISTORY_PENDING: {
+    titulo: "Reconciliar histórico académico",
+    descricao: "A matrícula e o pagamento estão concluídos. Falta apenas registar o fecho académico da matrícula de origem.",
+  },
   FINALIST_PENDING: {
     titulo: "Finalista: decidir continuidade",
     descricao: "Cobrar a taxa e escolher entre continuar os estudos ou concluir.",
@@ -2171,6 +2175,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                   rematricula.cardState === "READY" ||
                   rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
                   rematricula.cardState === "DOCUMENT_PENDING" ||
+                  rematricula.cardState === "ACADEMIC_HISTORY_PENDING" ||
                   rematricula.cardState === "FINALIST_PENDING"
                 }
                 rematriculaState={
@@ -2238,7 +2243,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           service={rematricula.service}
           itensPagamento={itensRematricula}
           itensDisponiveis={itensDisponiveisNaRematricula}
-          paymentAlreadyValidated={rematricula.cardState === "DOCUMENT_PENDING"}
+          paymentAlreadyValidated={rematricula.cardState === "DOCUMENT_PENDING" || rematricula.cardState === "ACADEMIC_HISTORY_PENDING"}
           onAdicionarItem={(item) => setItensRematricula((previous) => (
             previous.some((selected) => selected.id === item.id && selected.tipo === item.tipo)
               ? previous
@@ -2251,7 +2256,11 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           cohort={rematricula.cohort}
           reconciliationOnly={rematricula.reconciliationMode}
           onRegularizeDebt={() => setDebtModalOpen(true)}
-          skipTurmaSelection={rematricula.cardState === "RECONFIRMATION_REQUIRED" || rematricula.cardState === "DOCUMENT_PENDING"}
+          skipTurmaSelection={
+            rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
+            rematricula.cardState === "DOCUMENT_PENDING" ||
+            rematricula.cardState === "ACADEMIC_HISTORY_PENDING"
+          }
           turmas={rematricula.turmas}
           turmasLoading={rematricula.turmasLoading}
           progressao={rematricula.progressao}
