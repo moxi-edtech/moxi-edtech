@@ -46,6 +46,7 @@ function buildGuidance(
   decreto: RaaDecretoResult | null,
   matriculaId: string,
   escolaId: string,
+  efetivacaoMatriculaBloqueada = decreto?.efetivacaoMatriculaBloqueada === true,
 ): RaaProgressionGuidance {
   const query = `?matricula_id=${encodeURIComponent(matriculaId)}`
   const fechamentoHref = `/secretaria/fechamento-academico${query}`
@@ -69,7 +70,7 @@ function buildGuidance(
     }
   }
   if (progression.decision === "inscricao_condicional") {
-    const bloqueada = decreto?.efetivacaoMatriculaBloqueada === true
+    const bloqueada = efetivacaoMatriculaBloqueada
     return {
       estado: bloqueada ? "bloqueado" : "pronto",
       titulo: bloqueada ? "Inscrição condicional pendente de resolução" : "Progressão condicional autorizada",
@@ -268,6 +269,8 @@ export async function resolveRaaProgressionForMatricula(
       disciplinaIdsPendentes: legalProgression?.disciplinaIdsPendentes ?? (databaseResult.disciplina_ids_pendentes ?? []) as string[],
       etapaDestino: legalProgression?.etapaDestino ?? databaseResult.etapa_destino ?? null,
     }
+    const efetivacaoMatriculaBloqueada = legal?.efetivacaoMatriculaBloqueada
+      ?? Boolean(databaseResult.efetivacao_matricula_bloqueada)
     return {
       regime,
       disciplinas: databaseDisciplinas,
@@ -277,9 +280,14 @@ export async function resolveRaaProgressionForMatricula(
       },
       progression: finalProgression,
       decreto: legal,
-      efetivacaoMatriculaBloqueada: legal?.efetivacaoMatriculaBloqueada
-        ?? Boolean(databaseResult.efetivacao_matricula_bloqueada),
-      orientacao: buildGuidance(finalProgression, legal, matricula.id, escolaId),
+      efetivacaoMatriculaBloqueada,
+      orientacao: buildGuidance(
+        finalProgression,
+        legal,
+        matricula.id,
+        escolaId,
+        efetivacaoMatriculaBloqueada,
+      ),
     }
   }
 
