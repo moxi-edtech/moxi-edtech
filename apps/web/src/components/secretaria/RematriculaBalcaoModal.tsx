@@ -50,8 +50,6 @@ interface RematriculaBalcaoModalProps {
   turmas: TurmaOption[];
   turmasLoading: boolean;
   progressao: ProgressaoBalcao | null;
-  notasLancarDepois: boolean;
-  setNotasLancarDepois: (value: boolean) => void;
   decisaoResultado: ResultadoDecisaoBalcao;
   setDecisaoResultado: (value: ResultadoDecisaoBalcao) => void;
   decisaoFonte: string;
@@ -108,8 +106,6 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Pagamento confirmado; atendimento enviado para reconciliação.",
   REMATRICULA_PROGRESSION_INVALID:
     "A turma destino não respeita a progressão académica do aluno.",
-  REMATRICULA_DECISION_REQUIRED:
-    "Confirme que as notas serão lançadas posteriormente.",
   CROSS_YEAR_ENTITY_MISMATCH:
     "A turma seleccionada não pertence ao ano lectivo.",
   DOCUMENT_PENDING:
@@ -168,8 +164,6 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     turmas,
     turmasLoading,
     progressao,
-    notasLancarDepois,
-    setNotasLancarDepois,
     decisaoResultado,
     setDecisaoResultado,
     decisaoFonte,
@@ -376,8 +370,6 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               cohort={cohort}
               reconciliationOnly={reconciliationOnly}
               skipTurmaSelection={skipTurmaSelection}
-              notasLancarDepois={notasLancarDepois}
-              setNotasLancarDepois={setNotasLancarDepois}
               decisaoResultado={decisaoResultado}
               setDecisaoResultado={setDecisaoResultado}
               decisaoFonte={decisaoFonte}
@@ -479,8 +471,6 @@ function StepAcademico({
   cohort,
   reconciliationOnly,
   skipTurmaSelection,
-  notasLancarDepois,
-  setNotasLancarDepois,
   decisaoResultado,
   setDecisaoResultado,
   decisaoFonte,
