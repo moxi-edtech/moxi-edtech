@@ -6,6 +6,7 @@ import { resolveRematriculaSource } from '@/lib/alunoRematriculaSource'
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from '@/lib/academico/raa-progression-server'
 import { resolveValorConfirmacao } from '@/lib/financeiro/resolve-confirmacao'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { classifyRematriculaAcademicEligibility } from '@/lib/rematricula/eligibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,32 +93,22 @@ export async function GET() {
     }
 
     const academicDecision = academic?.progression.decision ?? 'pendente'
-    const conditionalEnrollmentBlocked = academicDecision === 'inscricao_condicional'
-      && academic?.progression.destino !== 'proxima_etapa'
-    if (academicDecision === 'pendente' || academicDecision === 'recurso' || conditionalEnrollmentBlocked) {
+    const academicEligibility = classifyRematriculaAcademicEligibility(academicDecision)
+    if (!academicEligibility.eligible) {
+      const code = academicEligibility.code === 'ACADEMIC_RESULT_PENDING'
+        ? 'ACADEMIC_PROMOTION_PENDING'
+        : academicEligibility.code === 'ACADEMIC_CYCLE_COMPLETED'
+          ? 'ACADEMIC_CYCLE_COMPLETED'
+          : 'ACADEMIC_NOT_APPROVED'
       return NextResponse.json({
         ok: true,
         eligible: false,
-        code: 'ACADEMIC_PROMOTION_PENDING',
-        reason: conditionalEnrollmentBlocked
-          ? 'A inscrição condicional ainda não autoriza a matrícula na classe seguinte.'
-          : academicDecision === 'recurso'
-          ? 'Existem disciplinas em recurso antes da rematrícula.'
-          : 'A escola ainda está a concluir a sua situação académica.',
+        code,
+        reason: academicEligibility.reason,
         academic: {
           decision: academicDecision,
           disciplinaIdsPendentes: academic?.progression.disciplinaIdsPendentes ?? [],
         },
-      })
-    }
-
-    if (academicDecision === 'concluiu') {
-      return NextResponse.json({
-        ok: true,
-        eligible: false,
-        code: 'ACADEMIC_CYCLE_COMPLETED',
-        reason: 'O ciclo académico foi concluído e não existe uma classe seguinte para rematrícula.',
-        academic: { decision: academicDecision, disciplinaIdsPendentes: [] },
       })
     }
 
@@ -371,20 +362,35 @@ export async function GET() {
       })
     }
 
+    if (hasDebt) {
+      return NextResponse.json({
+        ok: true,
+        eligible: false,
+        code: 'REMATRICULA_DEBT_REQUIRED',
+        nextAno,
+        hasDebt: true,
+        academic: academic ? {
+          decision: academicDecision,
+          destino: academic.progression.destino,
+          disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
+        } : null,
+        rematricula: rematriculaData,
+        reason: 'Regularize as mensalidades pendentes antes de rematricular.',
+      })
+    }
+
     return NextResponse.json({
       ok: true,
       eligible: true,
       nextAno,
-      hasDebt,
+      hasDebt: false,
       academic: academic ? {
         decision: academicDecision,
         destino: academic.progression.destino,
         disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
       } : null,
       rematricula: rematriculaData,
-      reason: hasDebt 
-        ? 'Possui pendências financeiras que impedem a rematrícula automática.' 
-        : 'Elegível para rematrícula.'
+      reason: 'Aluno aprovado e sem dívida: elegível para rematrícula.'
     })
 
   } catch (err: any) {
