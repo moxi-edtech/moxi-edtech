@@ -70,3 +70,33 @@ jobs:
             tests/unit/checkout-payment-state.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             --max-warnings 10000
+
+
+  database-regressions:
+    name: Database regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.72.7
+
+      - name: Start disposable Supabase
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset
+
+      - name: BAL-GR-001 authorization regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_balcao_rematricula_rpc_authz.sql
+
+      - name: BAL-GR-003 document idempotency regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_emissao_idempotency.sql
