@@ -59,7 +59,7 @@ export function canStartRematricula(input: {
       academic,
       financial: {
         code: "REMATRICULA_DEBT_REQUIRED" as const,
-        reason: "Regularize as mensalidades vencidas antes de rematricular.",
+        reason: "Regularize todos os saldos em aberto antes de rematricular.",
       },
     };
   }
