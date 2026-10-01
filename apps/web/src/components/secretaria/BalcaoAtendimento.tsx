@@ -845,15 +845,23 @@ type OperacaoCopy = {
 const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> = {
   READY: {
     titulo: "Rematrícula escolar",
-    descricao: "Aluno aprovado e sem dívida: seleccione a turma destino e conclua a rematrícula.",
+    descricao: "O RAA autorizou a progressão e não há saldo em aberto. Selecione a turma destino e conclua.",
   },
   ACADEMIC_PENDING: {
-    titulo: "Notas ainda não fechadas",
-    descricao: "Conclua o lançamento das notas e o resultado académico antes de rematricular.",
+    titulo: "Notas ou dados académicos ainda pendentes",
+    descricao: "Conclua o fecho académico e verifique novamente.",
+  },
+  ACADEMIC_REVIEW_REQUIRED: {
+    titulo: "Recurso académico pendente",
+    descricao: "O RAA exige concluir ou acompanhar o recurso antes de efetivar a rematrícula.",
+  },
+  ACADEMIC_CONDITIONAL_BLOCKED: {
+    titulo: "Inscrição condicional ainda bloqueada",
+    descricao: "O RAA reconhece a progressão condicional, mas a efetivação ainda depende da resolução indicada.",
   },
   ACADEMIC_NOT_APPROVED: {
     titulo: "Aluno ainda não aprovado para rematrícula",
-    descricao: "A rematrícula normal exige resultado académico aprovado no RAA.",
+    descricao: "A decisão RAA vigente não autoriza progressão para a etapa seguinte.",
   },
   ACADEMIC_CYCLE_COMPLETED: {
     titulo: "Ciclo académico concluído",
@@ -1192,9 +1200,9 @@ function Catalogo({
             ) : null}
             {rematriculaState === "ACADEMIC_PENDING" ? (
               <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
-                <strong className="block">Rematrícula bloqueada: faltam notas ou fecho académico</strong>
+                <strong className="block">Rematrícula bloqueada: faltam notas ou dados académicos</strong>
                 <p className="mt-1 text-amber-900/80">
-                  Não existe bypass por “lançar depois”. Conclua as notas e confirme a aprovação; depois actualize o estado.
+                  Não existe bypass por “lançar depois”. Conclua os dados exigidos pelo RAA e verifique novamente.
                 </p>
                 <CodigoEstado estado="ACADEMIC_PENDING" />
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1207,11 +1215,55 @@ function Catalogo({
                 </div>
               </div>
             ) : null}
+            {rematriculaState === "ACADEMIC_REVIEW_REQUIRED" ? (
+              <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 p-3.5 text-xs text-sky-950">
+                <strong className="block">Recurso académico em aberto</strong>
+                <p className="mt-1 text-sky-900/80">
+                  {rematricula.academic?.reason ?? "O RAA ainda não autorizou a efetivação da rematrícula."}
+                </p>
+                {(rematricula.academic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
+                  <p className="mt-2 font-semibold">
+                    Disciplinas pendentes: {rematricula.academic?.disciplina_ids_pendentes?.length}
+                  </p>
+                ) : null}
+                <CodigoEstado estado="ACADEMIC_REVIEW_REQUIRED" />
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Link href="/secretaria/raa/reapreciacoes" className="rounded-xl bg-sky-700 px-3 py-2 text-center font-bold text-white hover:bg-sky-800">
+                    Abrir recursos
+                  </Link>
+                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-sky-200 bg-white px-3 py-2 font-bold text-sky-900 hover:bg-sky-100">
+                    Verificar novamente
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {rematriculaState === "ACADEMIC_CONDITIONAL_BLOCKED" ? (
+              <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-3.5 text-xs text-violet-950">
+                <strong className="block">Inscrição condicional reconhecida, mas ainda não efetivável</strong>
+                <p className="mt-1 text-violet-900/80">
+                  {rematricula.academic?.reason ?? "O RAA exige resolver a pendência académica antes da ativação da matrícula."}
+                </p>
+                {(rematricula.academic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
+                  <p className="mt-2 font-semibold">
+                    Disciplinas pendentes: {rematricula.academic?.disciplina_ids_pendentes?.length}
+                  </p>
+                ) : null}
+                <CodigoEstado estado="ACADEMIC_CONDITIONAL_BLOCKED" />
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Link href="/secretaria/raa/reapreciacoes" className="rounded-xl bg-violet-700 px-3 py-2 text-center font-bold text-white hover:bg-violet-800">
+                    Resolver pendência
+                  </Link>
+                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-violet-200 bg-white px-3 py-2 font-bold text-violet-900 hover:bg-violet-100">
+                    Verificar novamente
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {rematriculaState === "ACADEMIC_NOT_APPROVED" ? (
               <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-900">
                 <strong className="block">Resultado académico não autoriza rematrícula</strong>
                 <p className="mt-1 text-rose-800/80">
-                  Apenas alunos aprovados seguem por este fluxo. Reveja o resultado académico; não altere a decisão dentro do Balcão.
+                  O Balcão não altera a decisão académica. Reveja o resultado no RAA e corrija somente dados comprovadamente incorretos.
                 </p>
                 <CodigoEstado estado="ACADEMIC_NOT_APPROVED" />
                 <Link href="/secretaria/fechamento-academico" className="mt-3 block rounded-xl bg-rose-700 px-3 py-2 text-center font-bold text-white hover:bg-rose-800">
