@@ -591,7 +591,8 @@ export function useRematriculaBalcao(opts: {
           }),
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok && response.status !== 202) {
+        const outcome = classifyRematriculaResponse(response.status, data);
+        if (outcome === "error") {
           throw new Error(data.error || "Não foi possível concluir a reconciliação.");
         }
         setResult(data);
@@ -626,10 +627,11 @@ export function useRematriculaBalcao(opts: {
 
       const data = await res.json();
 
-      if (data.ok || res.status === 202) {
-        // Success or partial success (document pending)
+      const outcome = classifyRematriculaResponse(res.status, data);
+      if (outcome !== "error") {
+        // Completed or a known partial completion such as DOCUMENT_PENDING.
         setResult(data);
-        setStep(4); // → success view
+        setStep(4);
         try { sessionStorage.removeItem(draftKey); } catch {}
       } else {
         // Map error code to human message, fall back to raw error
@@ -648,7 +650,11 @@ export function useRematriculaBalcao(opts: {
             }),
           });
           const reconciliationData = await reconciliationResponse.json().catch(() => ({}));
-          if (reconciliationResponse.ok || reconciliationResponse.status === 202) {
+          const reconciliationOutcome = classifyRematriculaResponse(
+            reconciliationResponse.status,
+            reconciliationData,
+          );
+          if (reconciliationOutcome !== "error") {
             setResult(reconciliationData);
             setStep(4);
             try { sessionStorage.removeItem(draftKey); } catch {}
