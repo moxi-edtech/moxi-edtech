@@ -581,11 +581,86 @@ Sair do follow-up apenas visual/manual e criar uma fila rastreável de trabalho 
 
 **Status**
 
-`fora_do_escopo_actual`
+`parcial`
 
-**Observação**
+**Revisão técnica**
 
-Excluído da execução actual por decisão explícita do utilizador.
+2026-10-01
+
+**Objetivo**
+
+Permitir que o KLASSE opere escolas públicas sem assumir o modelo financeiro das escolas privadas, mantendo o mesmo núcleo multi-tenant e ativando capacidades por perfil institucional.
+
+**Cobertura actual**
+
+- Fundação implementada em `school_operating_profiles`, com:
+  - `school_sector = private | public`
+  - `finance_model = tuition | budget | emoluments_only | mixed`
+  - `assessment_policy`
+  - `regulatory_profile`
+  - `document_profile`
+  - vigência e versionamento do perfil
+- RLS aplicado ao perfil institucional.
+- Alteração de perfil restrita a Super Admin.
+- Mudanças exigem motivo e confirmação explícita.
+- Auditoria append-only em `school_profile_audit_logs`.
+- Resolver central em `apps/web/src/lib/school-profile/resolve-school-profile.ts`.
+- UI de administração em `apps/web/src/components/super-admin/SchoolOperatingProfileSettings.tsx`.
+- Guards financeiros aplicados a:
+  - geração de mensalidades
+  - cobranças e campanhas de cobrança
+  - mensagens financeiras e WhatsApp `finance_charge`
+  - suspensão por inadimplência
+  - sugestões/actions financeiras do KLASSE IA
+- Implementação-base introduzida pelos commits:
+  - `1d14611686923d85a9edd91f9f7f4ab3109b9a3b`
+  - `afc3e648ee3291f06feea2c8278bcc755e173544`
+
+**Lacunas / blockers**
+
+1. **Hard gate financeiro incompleto**
+   - Os writers canónicos de pagamento ainda precisam validar o perfil no boundary servidor/SQL.
+   - Caminhos a fechar incluem balcão, batch de pagamentos, registo financeiro, conciliação e conversão de admissão.
+   - Esconder UI ou bloquear geração de mensalidades não é suficiente: nenhum writer pode aceitar uma operação incompatível com o perfil.
+
+2. **Invariantes de combinação ainda não fechadas**
+   - Hoje `school_sector = public` e `finance_model = tuition` podem coexistir.
+   - Se a regra de produto for “escola pública não cobra propina recorrente”, essa combinação deve ser recusada no RPC/banco.
+   - O significado de `mixed` também deve ser formalizado. Actualmente `canUseRecurringTuition()` só aceita `tuition`, enquanto `canUseEmoluments()` aceita `emoluments_only | mixed`.
+
+3. **Modelo orçamental e emolumentos ainda são scaffold**
+   - `canUseBudgetModule()` e `canUseEmoluments()` existem, mas ainda não fecham um fluxo operacional E2E.
+
+4. **Académico/regulatório MED ainda não está operacional**
+   - As policies `med_angola_*` estão declaradas como pendentes.
+   - `canUseAutomaticLegalAssessment()` devolve deliberadamente `false` enquanto não existir registry/evidência regulatória aprovada.
+   - `regulatory_profile`, `assessment_policy` e `document_profile` ainda não governam todos os fluxos académicos/documentais.
+
+5. **Falta E2E específico de escola pública**
+   - Criar fixture `public + budget`.
+   - Provar que writers incompatíveis falham no servidor/DB.
+   - Provar matrícula, académico, documentos, RLS e navegação sem dependência de propina.
+
+**Nível de prontidão**
+
+- Nível 1 — Fundação de domínio: **feito**
+- Nível 2 — Enforcement financeiro: **parcial**
+- Nível 3 — Operação pública E2E: **falta**
+- Nível 4 — Pilot-ready: **falta**
+
+**Critério de pronto**
+
+A variante pública só é considerada `feito` quando:
+
+- combinações institucionais inválidas forem recusadas no banco/RPC;
+- todos os writers financeiros respeitarem o perfil institucional;
+- orçamento/emolumentos tiverem contratos operacionais definidos e testados;
+- políticas académicas/documentais públicas só forem ativadas por configuração aprovada e comprovável;
+- existir E2E autenticado cobrindo isolamento multi-tenant, matrícula, académico, documentos e rejeição de operações financeiras incompatíveis.
+
+**SSOT técnico**
+
+- `docs/STATUS_ESCOLAS_PUBLICAS_2026-10-01.md`
 
 ---
 
@@ -624,7 +699,8 @@ Levar o CRM comercial do parceiro além de links estáticos de WhatsApp e dar ra
 9. `P3.1` Funil ponta a ponta unificado
 10. `P3.3` Trial K12 explícito
 11. `P3.4` Fila persistida de follow-up comercial
-12. `P3.6` Canal WhatsApp rastreável para CRM comercial
+12. `P3.5` Fechar variante escola pública (hard gates + E2E)
+13. `P3.6` Canal WhatsApp rastreável para CRM comercial
 
 ## Definição de “3 frentes cobertas”
 
