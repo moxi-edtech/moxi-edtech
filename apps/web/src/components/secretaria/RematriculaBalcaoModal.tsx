@@ -1087,6 +1087,7 @@ function SuccessView({
   paymentAlreadyValidated,
   onPostAction,
 }: {
+  result: RematriculaResult;
   alunoNome: string;
   anoLetivo: { id: string; ano: number; label: string };
   selectedTurma: TurmaOption | undefined;
