@@ -174,9 +174,55 @@ export function RematriculaBanner() {
 
   if (loading) return <div className="mb-6 h-28 animate-pulse rounded-3xl border border-slate-200 bg-white" aria-label="A verificar rematrícula" />
   if (statusError && !status) return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p className="font-black">Não foi possível verificar a rematrícula.</p><p className="mt-1">{statusError}</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-rose-700 px-4 py-2 text-xs font-black text-white">Tentar novamente</button></div>
-  if (!status || (!status.eligible && !status.alreadyDone && !['CURRENT_ACADEMIC_YEAR_UNAVAILABLE', 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE', 'SERVICE_NOT_CONFIGURED', 'DESTINATION_CLASS_NOT_CONFIGURED', 'REMATRICULA_WINDOW_CLOSED', 'ACADEMIC_PROMOTION_PENDING'].includes(status.code || ''))) return null
+  if (!status || (!status.eligible && !status.alreadyDone && ![
+    'CURRENT_ACADEMIC_YEAR_UNAVAILABLE',
+    'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE',
+    'SERVICE_NOT_CONFIGURED',
+    'DESTINATION_CLASS_NOT_CONFIGURED',
+    'REMATRICULA_WINDOW_CLOSED',
+    'ACADEMIC_PROMOTION_PENDING',
+    'ACADEMIC_NOT_APPROVED',
+    'ACADEMIC_CYCLE_COMPLETED',
+    'REMATRICULA_DEBT_REQUIRED',
+  ].includes(status.code || ''))) return null
+
   if (!status.eligible && !status.alreadyDone) {
-    if (status.code === 'ACADEMIC_PROMOTION_PENDING') return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p className="font-black">Rematrícula ainda não disponível</p><p className="mt-1">{status.reason || 'A escola ainda está a concluir a sua situação académica. Consulte a secretaria para mais informações.'}</p>{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}<button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button></div>
+    if (status.code === 'ACADEMIC_PROMOTION_PENDING') {
+      return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+        <p className="font-black">Rematrícula ainda não disponível</p>
+        <p className="mt-1">{status.reason || 'As notas e o resultado académico precisam estar fechados antes da rematrícula.'}</p>
+        {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}
+        <p className="mt-2 text-xs font-semibold">Próximo passo: aguarde a escola concluir as notas e confirmar a aprovação.</p>
+        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button>
+      </div>
+    }
+
+    if (status.code === 'ACADEMIC_NOT_APPROVED') {
+      return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900">
+        <p className="font-black">Resultado académico não autoriza rematrícula</p>
+        <p className="mt-1">{status.reason || 'A rematrícula exige resultado académico aprovado.'}</p>
+        <p className="mt-2 text-xs font-semibold">Procure a secretaria apenas se acreditar que o resultado académico está incorreto.</p>
+        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button>
+      </div>
+    }
+
+    if (status.code === 'ACADEMIC_CYCLE_COMPLETED') {
+      return <div className="mb-6 rounded-3xl border border-violet-200 bg-violet-50 p-5 text-sm text-violet-900">
+        <p className="font-black">Ciclo académico concluído</p>
+        <p className="mt-1">{status.reason || 'Não existe uma classe seguinte para rematrícula.'}</p>
+        <p className="mt-2 text-xs font-semibold">Próximo passo: consulte os documentos finais ou contacte a secretaria.</p>
+      </div>
+    }
+
+    if (status.code === 'REMATRICULA_DEBT_REQUIRED') {
+      return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+        <p className="font-black">Regularização financeira necessária</p>
+        <p className="mt-1">{status.reason || 'Regularize todos os saldos em aberto antes de rematricular.'}</p>
+        <p className="mt-2 text-xs font-semibold">O resultado académico está aprovado, mas a rematrícula permanece bloqueada enquanto houver saldo em aberto.</p>
+        <button type="button" onClick={() => window.location.assign('/aluno/financeiro')} className="mt-3 rounded-xl bg-amber-700 px-4 py-2 text-xs font-black text-white">Abrir financeiro</button>
+      </div>
+    }
+
     const title = status.code === 'SERVICE_NOT_CONFIGURED'
       ? 'Taxa da classe destino ainda não configurada'
       : status.code === 'DESTINATION_CLASS_NOT_CONFIGURED'
