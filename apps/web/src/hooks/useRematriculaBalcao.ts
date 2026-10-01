@@ -442,7 +442,7 @@ export function useRematriculaBalcao(opts: {
 
   useEffect(() => {
     if (!modalOpen) return;
-    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
+    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
       if (destinoTurmaId) {
         setSelectedTurmaId(destinoTurmaId);
         return;
@@ -463,14 +463,14 @@ export function useRematriculaBalcao(opts: {
     setModalOpen(true);
     setResult(null);
     setApiError(null);
-    if (!selectedTurmaId && ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
+    if (!selectedTurmaId && ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
       setSelectedTurmaId(destinoTurmaId);
     }
-    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
+    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
       setDecisaoResultado("aprovado");
       setDecisaoFonte("raa");
     }
-    if (!["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) void fetchTurmas();
+    if (!["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) void fetchTurmas();
   }, [cardState, destinoTurmaId, fetchTurmas, selectedTurmaId]);
 
   const openReconciliationModal = useCallback(() => {
