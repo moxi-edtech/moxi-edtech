@@ -571,6 +571,7 @@ function useCheckout({
   const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const checkoutRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const documentRequestRef = useRef<Map<string, { fingerprint: string; key: string }>>(new Map());
   // Serviços que emitem documento e acabaram de ser pagos. O carrinho é limpo no
   // sucesso, e sem isto o item pago desaparecia do ecrã sem forma de emitir o
   // documento — que é exactamente o que faltava ao pagar uma declaração.
@@ -709,18 +710,36 @@ function useCheckout({
         return null;
       }
 
+      const fingerprint = JSON.stringify({
+        escolaId,
+        alunoId: aluno.id,
+        servicoId: servico.id,
+        tipoDocumento,
+        anoLetivoId: academicYearId ?? null,
+      });
+      const previousRequest = documentRequestRef.current.get(servico.id);
+      const request =
+        previousRequest?.fingerprint === fingerprint
+          ? previousRequest
+          : { fingerprint, key: crypto.randomUUID() };
+      documentRequestRef.current.set(servico.id, request);
+
       setEmittingDocId(servico.id);
       try {
         const resultado = await emitirDocumentoViaApi({
           escolaId,
           alunoId: aluno.id,
           tipoDocumento,
+          idempotencyKey: request.key,
           anoLetivoId: academicYearId,
         });
         if (!resultado.ok) {
+          // A chave permanece associada à tentativa: retry após timeout/500 não
+          // pode fabricar um segundo documento oficial.
           error(resultado.error);
           return null;
         }
+        documentRequestRef.current.delete(servico.id);
         return resultado.printUrl;
       } finally {
         setEmittingDocId(null);
