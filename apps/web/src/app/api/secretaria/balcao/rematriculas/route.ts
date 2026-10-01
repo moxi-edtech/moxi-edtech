@@ -284,20 +284,33 @@ export async function POST(request: Request) {
     );
     if (raaAtualError) throw raaAtualError;
 
-    const academicEligibility = classifyRematriculaAcademicEligibility(
-      String(raaAtual?.decision ?? "") as any,
-    );
+    const academicEligibility = classifyRematriculaAcademicEligibility({
+      decision: String(raaAtual?.decision ?? "") as any,
+      destino: raaAtual?.destino ?? null,
+      efetivacaoMatriculaBloqueada: Boolean(raaAtual?.efetivacao_matricula_bloqueada),
+      disciplinaIdsPendentes: Array.isArray(raaAtual?.disciplina_ids_pendentes)
+        ? raaAtual.disciplina_ids_pendentes
+        : [],
+    });
     if (!academicEligibility.eligible) {
       const code = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
         ? "REMATRICULA_ACADEMIC_PENDING"
-        : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-          ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
-          : "REMATRICULA_ACADEMIC_NOT_APPROVED";
+        : academicEligibility.code === "ACADEMIC_REVIEW_REQUIRED"
+          ? "REMATRICULA_ACADEMIC_REVIEW_REQUIRED"
+          : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
+            ? "REMATRICULA_ACADEMIC_CONDITIONAL_BLOCKED"
+            : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+              ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
+              : "REMATRICULA_ACADEMIC_NOT_APPROVED";
       return NextResponse.json({
         ok: false,
         error: academicEligibility.reason,
         code,
-        academic: { decision: raaAtual?.decision ?? null },
+        academic: {
+          decision: raaAtual?.decision ?? null,
+          destino: raaAtual?.destino ?? null,
+          disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
+        },
       }, { status: 409 });
     }
 
@@ -321,7 +334,7 @@ export async function POST(request: Request) {
       const { error: origemResultadoError } = await (supabase as any).rpc("finalizar_origem_academica", {
         p_escola_id: escolaId,
         p_matricula_id: origemMatriculaId,
-        p_resultado_final: "aprovado",
+        p_resultado_final: academicEligibility.mode === "conditional" ? "inscricao_condicional" : "aprovado",
         p_fonte: "raa",
         p_motivo: null,
         p_observacao: null,
