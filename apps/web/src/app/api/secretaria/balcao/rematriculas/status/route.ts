@@ -7,7 +7,6 @@ import {
   resolveAcademicYearContext,
 } from "@/lib/academic-year/context";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
-import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
 import { resolveOpenRematriculaWindow, resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progression-server";
@@ -286,12 +285,17 @@ export async function GET(request: Request) {
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("matricula_id", matriculaOrigem.id);
-    const today = todayInLuanda();
-    const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter(
-      (mensalidade: any) =>
-        !["pago", "isento", "cancelado"].includes(String(mensalidade.status).toLowerCase()) &&
-        isMensalidadeVencida(mensalidade, today),
-    );
+    // "Sem dívida" significa saldo aberto zero na matrícula de origem.
+    // Não esperamos o vencimento para descobrir o bloqueio: esta leitura
+    // precisa antecipar o mesmo guard que o banco aplica ao conceder o pedido.
+    const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter((mensalidade: any) => {
+      const status = String(mensalidade.status ?? "").toLowerCase();
+      const saldo = Math.max(
+        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
+        0,
+      );
+      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
+    });
     const dividaTotal = mensalidadesEmAberto.reduce(
       (total: number, mensalidade: any) => total + Math.max(
         Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
