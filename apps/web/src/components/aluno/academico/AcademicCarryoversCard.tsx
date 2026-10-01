@@ -62,7 +62,7 @@ function StatusIcon({ status }: { status: CarryoverStatus }) {
 function fonteLabel(source?: string | null) {
   if (source === "extraordinario") return "Exame extraordinário";
   if (source === "recurso") return "Recurso";
-  return source ? source.replaceAll("_", " ") : null;
+  return source ? source.replace(/_/g, " ") : null;
 }
 
 export function AcademicCarryoversCard({ studentId }: { studentId?: string | null }) {
