@@ -165,7 +165,17 @@ const ERROR_MESSAGES: Record<string, string> = {
   REMATRICULA_SOURCE_INVALID:
     "A matrícula actual do aluno não foi encontrada.",
   REMATRICULA_DEBT_REQUIRED:
-    "Regularize as dívidas antes de rematricular.",
+    "Regularize todos os saldos em aberto antes de rematricular.",
+  REMATRICULA_ACADEMIC_PENDING:
+    "Conclua as notas e os dados académicos antes de tentar novamente.",
+  REMATRICULA_ACADEMIC_REVIEW_REQUIRED:
+    "Conclua ou acompanhe o recurso académico antes de efetivar a rematrícula.",
+  REMATRICULA_ACADEMIC_CONDITIONAL_BLOCKED:
+    "A inscrição condicional foi reconhecida pelo RAA, mas ainda não pode ser efetivada.",
+  REMATRICULA_ACADEMIC_NOT_APPROVED:
+    "A decisão RAA vigente não autoriza progressão para a etapa seguinte.",
+  REMATRICULA_ACADEMIC_CYCLE_COMPLETED:
+    "O ciclo académico foi concluído; não existe rematrícula para a etapa seguinte.",
   REMATRICULA_PRICE_NOT_CONFIGURED:
     "O emolumento ainda não foi configurado pela escola.",
   PAYMENT_REQUIRED: "O pagamento não foi confirmado.",
