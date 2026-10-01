@@ -1,6 +1,6 @@
 -- Regression test: BAL-GR-003 — official document emission idempotency.
 --
--- Run after 20261001131712_idempotent_secretaria_document_emission.sql.
+-- Run after 20270826122000_idempotent_secretaria_document_emission.sql.
 -- The test stubs the legacy final-document implementation inside this
 -- transaction so it can exercise the idempotency wrapper without requiring a
 -- complete academic-history fixture. ROLLBACK restores the real function.
