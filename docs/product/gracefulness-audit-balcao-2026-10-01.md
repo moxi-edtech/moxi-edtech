@@ -15,42 +15,43 @@ Este documento aplica o padrão definido em [Graciosidade no KLASSE](./graciosid
 
 | ID | Estado | Branch / evidência |
 |---|---|---|
-| BAL-GR-001 | **IMPLEMENTADO — validação pendente** | `gracefulness/balcao-hardening`: authz dentro da RPC + regressão cross-tenant/role |
-| BAL-GR-002 | **IMPLEMENTADO — validação pendente** | checkout preserva `settled | pending | unknown`; documento só libera em `settled` |
-| BAL-GR-003 | **IMPLEMENTADO — validação pendente** | idempotência server-side de documentos + replay/fingerprint + regressão SQL |
-| BAL-GR-004 | **IMPLEMENTADO — validação pendente** | `DOCUMENT_PENDING` classificado e apresentado como conclusão parcial |
+| BAL-GR-001 | **DB LIVE + CI PASS — smoke funcional pendente** | guard interno aplicado em produção; provas live `AUTH_REQUIRED/42501` e `AUTH_FORBIDDEN/42501`; regressão SQL verde |
+| BAL-GR-002 | **IMPLEMENTADO + CI PASS — deploy pendente** | checkout preserva `settled | pending | unknown`; documento só libera em `settled` |
+| BAL-GR-003 | **DB LIVE + CI PASS — smoke funcional pendente** | colunas + constraint + unique index + wrapper idempotente aplicados em produção; regressão SQL verde |
+| BAL-GR-004 | **IMPLEMENTADO + CI PASS — deploy pendente** | `DOCUMENT_PENDING` classificado e apresentado como conclusão parcial |
 
-**Estado de validação do código:** CI dedicado e KF2 verdes no SHA `39ef34ae4c4a238412c666ee08a3369639826afd`.
+**Estado de validação do código:** Gracefulness Balcão P0 e KF2 verdes no SHA `8862d360a9585453ec10fcdf9057864a728f8262`.
 
-**Não considerar fechado ainda.** O fechamento exige aplicação controlada no ambiente alvo e prova pós-migration conforme a seção 11.
+**Estado do banco live:** migrations `20270825140000`, `20270826120000`, `20270826121000` e `20270826122000` estão registradas no histórico remoto. Os dois primeiros foram reconciliados sem reexecutar DDL porque seus efeitos já existiam; os dois últimos foram aplicados e provados em produção.
 
-### Reconciliação do banco live — 2026-10-01
+**Não considerar os quatro P0 totalmente fechados ainda.** `BAL-GR-002` e `BAL-GR-004` dependem do merge/deploy do código web, e o fechamento final exige smoke do fluxo real conforme a seção 11.
 
-A inspeção read-only do projeto Supabase mostrou drift de **histórico**, não de schema, nas duas migrations que precedem este P0:
+### Reconciliação e aplicação do banco live — 2026-10-01
 
-| Migration | Histórico live | Efeito material live | Ação de release |
-|---|---|---|---|
-| `20270825140000_free_tier_security_performance_hardening.sql` | ausente | **presente** — grants restritos, views `security_invoker`, MV/índices e RPCs de hardening confirmados | reparar histórico; **não reexecutar** |
-| `20270826120000_fix_matriculas_session_id_on_creation.sql` | ausente | **presente** — os seis writers auditados já inserem `session_id` em `matriculas` | reparar histórico; **não reexecutar** |
-| `20270826121000_harden_balcao_rematricula_rpc_authz.sql` | ausente | **não presente** — RPC live ainda é `SECURITY DEFINER` sem o novo `AUTH_FORBIDDEN` | aplicar após repair |
-| `20270826122000_idempotent_secretaria_document_emission.sql` | ausente | **não presente** — `documentos_emitidos.idempotency_key` e wrapper idempotente ainda não existem | aplicar após 261210 |
+O gate de release foi executado contra o projeto Supabase de produção.
 
-Release order obrigatório:
+| Migration | Estado final | Evidência |
+|---|---|---|
+| `20270825140000_free_tier_security_performance_hardening.sql` | **histórico reparado; DDL não reexecutado** | invariantes live confirmaram views `security_invoker`, MV/índice de pendências, grants restritos e remoção de índice duplicado |
+| `20270826120000_fix_matriculas_session_id_on_creation.sql` | **histórico reparado; DDL não reexecutado** | os seis writers auditados de `matriculas` já contêm `session_id` |
+| `20270826121000_harden_balcao_rematricula_rpc_authz.sql` | **aplicada e registrada** | chamada sem subject retorna `AUTH_REQUIRED / 42501`; caller autenticado sem vínculo retorna `AUTH_FORBIDDEN / 42501`; `anon_execute=false`; `search_path=""` |
+| `20270826122000_idempotent_secretaria_document_emission.sql` | **aplicada e registrada** | colunas `idempotency_key/fingerprint`, constraint de par, unique index por escola, advisory lock, replay guard e wrapper autenticado presentes no live |
+
+Prova de segurança adicional de `BAL-GR-003`: caller autenticado fora do contexto da escola retorna `AUTH_FORBIDDEN / 42501` antes de qualquer emissão.
+
+Advisors pós-DDL:
+- nenhum dos dois RPCs novos é executável por `anon`;
+- permanecem avisos históricos do projeto para funções `SECURITY DEFINER` executáveis por `authenticated`; para estes dois RPCs isso é **intencional e protegido por autorização interna**, devendo continuar coberto por regressão;
+- baseline restante: 13 tabelas com RLS sem policy, 46 SECURITY DEFINER executáveis por anon, além de dívida de performance já conhecida.
+
+Próximo gate:
 
 ```text
-verificar novamente invariantes
-→ repair history 20270825140000
-→ repair history 20270826120000
-→ aplicar 20270826121000
-→ regressão/prova BAL-GR-001
-→ aplicar 20270826122000
-→ regressão/prova BAL-GR-003
-→ advisors
-→ smoke dos fluxos
-→ só então fechar P0 / merge
+merge/deploy do código web
+→ smoke do Balcão real
+→ atualizar este relatório
+→ fechar BAL-GR-001..004
 ```
-
-Produção **não foi modificada** durante esta reconciliação.
 
 ---
 
@@ -426,14 +427,14 @@ Regra mantida:
 ## 10. Ordem de execução
 
 ### Gate 0 — Segurança
-- [ ] **BAL-GR-001** — fechar autorização da RPC privilegiada.
+- [x] **BAL-GR-001** — correção + regressão + prova DB live concluídas; smoke funcional pós-deploy ainda obrigatório para fechamento final.
 
 ### Gate 1 — Verdade do sistema
-- [ ] **BAL-GR-002** — `pending` não pode ser apresentado como pago.
-- [ ] **BAL-GR-004** — `DOCUMENT_PENDING` deve permanecer estado parcial visível.
+- [x] **BAL-GR-002** — correção e testes concluídos na branch; deploy/smoke pendentes.
+- [x] **BAL-GR-004** — correção e testes concluídos na branch; deploy/smoke pendentes.
 
 ### Gate 2 — Retry seguro
-- [ ] **BAL-GR-003** — idempotência de emissão documental.
+- [x] **BAL-GR-003** — correção + regressão + prova DB live concluídas; smoke funcional pós-deploy ainda obrigatório para fechamento final.
 
 ### Gate 3 — Recuperação
 - [ ] **BAL-GR-005**
