@@ -5,6 +5,9 @@ import { useState, useCallback, useEffect } from "react";
 
 export type RematriculaCardState =
   | "READY"
+  | "ACADEMIC_PENDING"
+  | "ACADEMIC_NOT_APPROVED"
+  | "ACADEMIC_CYCLE_COMPLETED"
   | "DEBT_BLOCKED"
   | "PRICE_NOT_CONFIGURED"
   | "RECONFIRMATION_REQUIRED"
@@ -34,7 +37,7 @@ export interface TurmaOption {
 export interface ProgressaoBalcao {
   aplicada: boolean;
   modo: "promocao" | "retencao" | "indefinida";
-  estado: "notas_pendentes" | "reprovado" | "concluido" | "classe_nao_identificada";
+  estado: "aprovado" | "notas_pendentes" | "reprovado" | "concluido" | "classe_nao_identificada";
   classe_origem: number | null;
   classe_destino: number | null;
   turma_origem_id: string | null;
@@ -106,6 +109,18 @@ interface StatusResponse {
   status: RematriculaCardState;
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
   debt: { total: number; count: number } | null;
+  academic?: {
+    decision: string | null;
+    eligible: boolean;
+    code: string;
+    reason: string;
+    guidance?: {
+      titulo?: string;
+      mensagem?: string;
+      proximo_passo?: string;
+      acoes?: Array<{ id: string; label: string; href: string; prioridade: "principal" | "secundaria" }>;
+    } | null;
+  } | null;
   pedido: {
     id: string;
     status: string;
@@ -196,6 +211,7 @@ export function useRematriculaBalcao(opts: {
   const [loading, setLoading] = useState(false);
   const [service, setService] = useState<StatusResponse["service"]>(null);
   const [debt, setDebt] = useState<StatusResponse["debt"]>(null);
+  const [academic, setAcademic] = useState<StatusResponse["academic"]>(null);
   const [pedido, setPedido] = useState<StatusResponse["pedido"]>(null);
   const [comprovante, setComprovante] =
     useState<StatusResponse["comprovante"]>(null);
@@ -262,6 +278,7 @@ export function useRematriculaBalcao(opts: {
         setCardState(data.status);
         setService(data.service);
         setDebt(data.debt);
+        setAcademic(data.academic ?? null);
         setPedido(data.pedido);
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
@@ -294,6 +311,7 @@ export function useRematriculaBalcao(opts: {
     setTurmas([]);
     setProgressao(null);
     setCohort(null);
+    setAcademic(null);
     setNotasLancarDepois(false);
     setDecisaoResultado("aprovado");
     setDecisaoFonte("raa");
@@ -369,7 +387,10 @@ export function useRematriculaBalcao(opts: {
   // ────────────────────────────────────────────────────────────────────────
   // Lazy-fetch turmas when modal opens
   // ────────────────────────────────────────────────────────────────────────
-  const fetchTurmas = useCallback(async (decision: ResultadoDecisaoBalcao = decisaoResultado) => {
+  const fetchTurmas = useCallback(async (
+    decision: ResultadoDecisaoBalcao = decisaoResultado,
+    allowManualDecision = false,
+  ) => {
     if (!anoLetivo?.id || !opts.alunoId) return;
     if (turmasFetchedFor === decision) return;
 
@@ -380,7 +401,7 @@ export function useRematriculaBalcao(opts: {
         aluno_id: opts.alunoId,
       });
       if (opts.matriculaId) params.set("matricula_id", opts.matriculaId);
-      params.set("decisao_resultado", decision);
+      if (allowManualDecision) params.set("decisao_resultado", decision);
       const res = await fetch(
         `/api/secretaria/turmas-simples?${params.toString()}`,
       );
@@ -453,8 +474,8 @@ export function useRematriculaBalcao(opts: {
     setNotasLancarDepois(true);
     setResult(null);
     setApiError(null);
-    void fetchTurmas();
-  }, [fetchTurmas]);
+    void fetchTurmas(decisaoResultado, true);
+  }, [decisaoResultado, fetchTurmas]);
 
   const closeModal = useCallback(() => {
     if (submitting) return;
@@ -571,7 +592,6 @@ export function useRematriculaBalcao(opts: {
     setApiError(null);
     setResult(null);
     const requestKey = idempotencyKey ?? crypto.randomUUID();
-    const decisaoAdministrativa = decisaoFonte === "declaracao_administrativa_escola";
     const pagamentoApenas = ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "");
     setIdempotencyKey(requestKey);
 
@@ -617,11 +637,14 @@ export function useRematriculaBalcao(opts: {
           evidence_url: detalhes.evidencia_url.trim() || null,
           gateway_ref: detalhes.gateway_ref.trim() || null,
           contacto_encarregado: responsavelContato.trim() || undefined,
-          notas_lancar_depois: notasLancarDepois || decisaoAdministrativa,
-          decisao_resultado: decisaoResultado,
-          decisao_fonte: decisaoFonte || undefined,
-          decisao_motivo: decisaoMotivo.trim() || undefined,
-          decisao_observacao: decisaoObservacao.trim() || undefined,
+          // O fluxo normal não decide resultado académico. A rematrícula
+          // consome exclusivamente o resultado fechado pelo RAA. Decisões
+          // manuais permanecem apenas na rota de reconciliação histórica.
+          notas_lancar_depois: undefined,
+          decisao_resultado: undefined,
+          decisao_fonte: undefined,
+          decisao_motivo: undefined,
+          decisao_observacao: undefined,
           itens: opts.itensPagamento?.map(({ id, tipo }) => ({ id, tipo })) ?? [],
         }),
       });
@@ -703,6 +726,7 @@ export function useRematriculaBalcao(opts: {
     // Data from status endpoint
     service,
     debt,
+    academic,
     pedido,
     comprovante,
     anoLetivo,
