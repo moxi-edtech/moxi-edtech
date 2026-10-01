@@ -1,0 +1,72 @@
+name: Gracefulness Balcao P0
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/api/secretaria/balcao/rematriculas/route.ts"
+      - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
+      - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx"
+      - "apps/web/src/components/secretaria/RematriculaBalcaoModal.tsx"
+      - "apps/web/src/hooks/useRematriculaBalcao.ts"
+      - "apps/web/src/lib/documentos/emissaoClient.ts"
+      - "apps/web/src/lib/financeiro/checkout-payment-state.ts"
+      - "apps/web/src/lib/secretaria/rematricula-result.ts"
+      - "apps/web/tests/unit/checkout-payment-state.spec.ts"
+      - "apps/web/tests/unit/rematricula-result.spec.ts"
+      - "supabase/migrations/**"
+      - "supabase/ops/tests/regression_balcao_*.sql"
+      - "supabase/ops/tests/regression_documentos_*.sql"
+      - ".github/workflows/gracefulness-balcao-p0.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web-contracts:
+    name: Web contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Gracefulness unit regressions
+        run: |
+          cd apps/web
+          node --test --import tsx \
+            tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/rematricula-result.spec.ts
+
+      - name: Web typecheck
+        run: pnpm -C apps/web typecheck
+
+      - name: Focused ESLint
+        run: |
+          pnpm -C apps/web exec eslint \
+            src/app/api/secretaria/balcao/rematriculas/route.ts \
+            src/app/api/secretaria/documentos/emitir/route.ts \
+            src/components/secretaria/BalcaoAtendimento.tsx \
+            src/components/secretaria/DocumentosEmissaoHubClient.tsx \
+            src/components/secretaria/RematriculaBalcaoModal.tsx \
+            src/hooks/useRematriculaBalcao.ts \
+            src/lib/documentos/emissaoClient.ts \
+            src/lib/financeiro/checkout-payment-state.ts \
+            src/lib/secretaria/rematricula-result.ts \
+            tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/rematricula-result.spec.ts \
+            --max-warnings 10000
