@@ -351,13 +351,7 @@ CREATE POLICY dependencias_academicas_transicao_select
 ON public.dependencias_academicas_transicao
 FOR SELECT TO authenticated
 USING (
-  EXISTS (
-    SELECT 1
-    FROM public.alunos a
-    WHERE a.id = dependencias_academicas_transicao.aluno_id
-      AND a.escola_id = dependencias_academicas_transicao.escola_id
-      AND a.usuario_auth_id = (SELECT auth.uid())
-  )
+  public.portal_user_can_access_aluno(dependencias_academicas_transicao.aluno_id)
   OR (
     dependencias_academicas_transicao.escola_id = public.current_tenant_escola_id()
     AND public.user_has_role_in_school(
@@ -375,10 +369,9 @@ USING (
   EXISTS (
     SELECT 1
     FROM public.dependencias_academicas_transicao d
-    JOIN public.alunos a ON a.id = d.aluno_id AND a.escola_id = d.escola_id
     WHERE d.id = dependencias_academicas_transicao_eventos.dependencia_id
       AND (
-        a.usuario_auth_id = (SELECT auth.uid())
+        public.portal_user_can_access_aluno(d.aluno_id)
         OR (
           d.escola_id = public.current_tenant_escola_id()
           AND public.user_has_role_in_school(
