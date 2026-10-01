@@ -693,7 +693,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
-AS $
+AS $$
 DECLARE
   v_matricula_id uuid;
   v_escola_id uuid;
@@ -725,7 +725,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.trigger_sync_dependencias_exame_resultado()
   FROM PUBLIC, anon, authenticated;
