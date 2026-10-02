@@ -25,10 +25,11 @@ test("extraordinário aprovado encerra a dependência", () => {
   assert.match(item.description, /extraordinário/);
 });
 
-test("resultado negativo encerra a tentativa mas exige próximo passo", () => {
+test("resultado negativo encerra a avaliação mas mantém decisão académica aberta", () => {
   const item = describeAcademicCarryover("resolvida_reprovada", "recurso");
-  assert.equal(item.terminal, true);
+  assert.equal(item.terminal, false);
   assert.equal(item.tone, "rose");
+  assert.match(item.title, /decisão académica necessária/i);
   assert.ok(item.nextAction);
 });
 
