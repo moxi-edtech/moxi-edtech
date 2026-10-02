@@ -2,7 +2,7 @@ BEGIN;
 
 -- A matrícula destino existia antes da migration. O backfill deve materializar
 -- a dependência automaticamente, usando RAA/snapshot, sem chamada manual.
-DO $
+DO $case1$
 DECLARE
   v_status text;
   v_destino uuid;
@@ -22,9 +22,9 @@ BEGIN
     RAISE EXCEPTION 'carryover regression: migration backfill destination missing';
   END IF;
 END;
-$;
+$case1$;
 
-DO $
+DO $case2$
 DECLARE
   v_relrowsecurity boolean;
   v_def text;
@@ -91,7 +91,7 @@ BEGIN
     RAISE EXCEPTION 'carryover regression: lifecycle trigger missing';
   END IF;
 END;
-$$;
+$case2$;
 
 INSERT INTO public.escolas(id, nome)
 VALUES ('00000000-0000-0000-0000-000000000101', 'Escola Carryover');
@@ -152,7 +152,7 @@ SELECT public.sync_dependencias_academicas_transicao(
   '00000000-0000-0000-0000-000000000302'
 );
 
-DO $$
+DO $case3$
 DECLARE
   v_status text;
 BEGIN
@@ -166,7 +166,7 @@ BEGIN
     RAISE EXCEPTION 'carryover regression: expected em_recurso, got %', v_status;
   END IF;
 END;
-$$;
+$case3$;
 
 INSERT INTO public.exame_sessoes(id, escola_id, tipo, estado)
 VALUES (
@@ -218,7 +218,7 @@ SELECT public.sync_dependencias_academicas_transicao(
   '00000000-0000-0000-0000-000000000302'
 );
 
-DO $$
+DO $case4$
 DECLARE
   v_status text;
   v_note numeric;
@@ -249,6 +249,6 @@ BEGIN
     RAISE EXCEPTION 'carryover regression: expected audit transitions, got %', v_events;
   END IF;
 END;
-$$;
+$case4$;
 
 ROLLBACK;
