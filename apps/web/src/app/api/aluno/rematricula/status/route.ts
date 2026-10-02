@@ -172,6 +172,22 @@ export async function GET() {
       })
     }
 
+    // Uma matrícula do ano destino pode ter sido criada pela virada/promoção.
+    // Expomos essa existência separadamente do pagamento para a UI nunca
+    // afirmar "vaga reservada" sem um registo real.
+    const { data: destinationReservation, error: destinationReservationError } = await supabase
+      .from('matriculas')
+      .select('id, status, ativo, turma_id, ano_letivo')
+      .eq('escola_id', escolaId)
+      .eq('aluno_id', alunoId)
+      .eq('origem_transicao_matricula_id', sourceMatricula.id)
+      .eq('ano_letivo', nextAno)
+      .in('status', ['pendente', 'ativo', 'ativa', 'active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (destinationReservationError) throw new Error(`Falha ao verificar reserva de destino: ${destinationReservationError.message}`)
+
     // Uma matrícula do ano destino pode ter sido criada pela virada/promoção
     // em lote. Ela não representa, por si só, uma rematrícula paga pelo portal.
     const { data: existingCandidaturas, error: candidaturaError } = await supabase
@@ -320,6 +336,12 @@ export async function GET() {
         classe_nome: targetClass.nome ?? `${targetClassNumber}.ª classe`,
         classe_numero: targetClassNumber,
       },
+      reservation: destinationReservation ? {
+        matricula_id: destinationReservation.id,
+        status: destinationReservation.status,
+        ativo: Boolean(destinationReservation.ativo),
+        turma_id: destinationReservation.turma_id ?? null,
+      } : null,
     }
 
     if (!rematriculaService || !targetPricing || targetPricing.valor <= 0) {
