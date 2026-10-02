@@ -283,7 +283,7 @@ GRANT EXECUTE ON FUNCTION public.sync_dependencias_academicas_transicao(uuid, uu
 -- Backfill idempotente das transições já existentes. O sync usa o RAA atual,
 -- dependências materializadas e o snapshot do pedido, por isso não inventa
 -- disciplinas nem depende de uma ação manual para tornar a fila visível.
-DO $
+DO $backfill$
 DECLARE
   v_row record;
 BEGIN
@@ -300,6 +300,6 @@ BEGIN
     );
   END LOOP;
 END;
-$;
+$backfill$;
 
 COMMIT;
