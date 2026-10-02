@@ -51,11 +51,13 @@ export function describeAcademicCarryover(
       };
     case "resolvida_reprovada":
       return {
-        terminal: true,
+        // A avaliação terminou, mas a situação operacional do aluno não.
+        // Não inferimos retenção/cancelamento sem uma regra RAA explícita.
+        terminal: false,
         tone: "rose",
-        title: "Resultado negativo após resolução",
+        title: "Resultado negativo — decisão académica necessária",
         description: `O ${sourceLabel} foi concluído, mas a disciplina permaneceu com resultado negativo.`,
-        nextAction: "Consultar a secretaria para a decisão académica seguinte prevista pelo RAA.",
+        nextAction: "A secretaria deve aplicar a decisão académica seguinte prevista pelo RAA antes de encerrar este acompanhamento.",
       };
     case "cancelada":
       return {
