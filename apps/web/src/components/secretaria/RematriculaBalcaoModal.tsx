@@ -38,7 +38,8 @@ interface RematriculaBalcaoModalProps {
   // Academic
   anoLetivo: { id: string; ano: number; label: string };
   // Financial
-  service: { id: string; nome: string; valor_base: number };
+  service: { id: string; nome: string; valor_base: number } | null;
+  paymentRequired?: boolean;
   itensPagamento?: RematriculaPaymentItem[];
   itensDisponiveis?: RematriculaPaymentItem[];
   onAdicionarItem?: (item: RematriculaPaymentItem) => void;
@@ -156,6 +157,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     setResponsavelContato,
     anoLetivo,
     service,
+    paymentRequired = true,
     itensPagamento = [],
     itensDisponiveis = [],
     onAdicionarItem,
@@ -247,15 +249,19 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
 
   const selectedTurma = turmas.find((t) => t.id === selectedTurmaId) ?? destinoTurma ?? undefined;
   const academicOnly = reconciliationOnly && decisaoResultado === "concluido";
-  const singleStep = academicOnly || reconciliationOnly;
-  const financialReady = !debt || debt.total <= 0;
-  const itensAdicionais = itensPagamento.filter(
-    (item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA",
-  );
-  const paymentTotal = service.valor_base + itensAdicionais.reduce(
-    (sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1),
-    0,
-  );
+  const singleStep = academicOnly || reconciliationOnly || !paymentRequired;
+  const financialReady = !paymentRequired || !debt || debt.total <= 0;
+  const itensAdicionais = paymentRequired && service
+    ? itensPagamento.filter(
+        (item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA",
+      )
+    : [];
+  const paymentTotal = paymentRequired && service
+    ? service.valor_base + itensAdicionais.reduce(
+        (sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1),
+        0,
+      )
+    : 0;
 
   const academicReady = reconciliationOnly
     ? (academicOnly || Boolean(selectedTurmaId))
@@ -267,8 +273,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   const canSubmit =
     !submitting &&
     academicReady &&
-    (academicOnly || financialReady) &&
-    (academicOnly || paymentAlreadyValidated || (
+    (academicOnly || !paymentRequired || financialReady) &&
+    (academicOnly || !paymentRequired || paymentAlreadyValidated || (
       !(metodo === "tpa" && !detalhes.referencia.trim()) &&
       !(metodo === "transfer" && !detalhes.evidencia_url.trim())
     ));
@@ -293,13 +299,13 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
                 id="rematricula-modal-title"
                 className="font-bold text-slate-900"
               >
-                {skipTurmaSelection
+                {paymentRequired && skipTurmaSelection
                   ? `Regularizar taxa de rematrícula ${anoLetivo.label}`
                   : `Confirmar rematrícula ${anoLetivo.label}`}
               </h2>
 
               {/* Step indicator */}
-              {!skipTurmaSelection && <div className="flex items-center gap-3 mt-2.5">
+              {paymentRequired && !skipTurmaSelection && <div className="flex items-center gap-3 mt-2.5">
                 {STEP_LABELS.map((label, i) => {
                   const s = i + 1;
                   const isActive = s === step;
@@ -353,7 +359,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               alunoNome={alunoNome}
               anoLetivo={anoLetivo}
               selectedTurma={selectedTurma}
-              service={service}
+              paymentRequired={paymentRequired}
               paymentTotal={paymentTotal}
               metodo={metodo}
               paymentAlreadyValidated={paymentAlreadyValidated}
@@ -424,7 +430,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
           >
             <Loader2 className="h-8 w-8 animate-spin text-[#1F6B3B] mb-3" />
             <p className="text-sm font-semibold text-slate-700">
-              A processar pagamento e rematrícula…
+              {paymentRequired ? "A processar pagamento e rematrícula…" : "A concluir rematrícula…"}
             </p>
           </div>
         )}
@@ -721,7 +727,7 @@ function StepFinanceiro({
   onRegularizeDebt,
   paymentAlreadyValidated,
 }: {
-  service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" };
+  service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
   debt: { total: number; count: number } | null;
   selectedTurma?: TurmaOption;
   itensPagamento: RematriculaPaymentItem[];
@@ -731,10 +737,11 @@ function StepFinanceiro({
   onRegularizeDebt?: () => void;
   paymentAlreadyValidated: boolean;
 }) {
+  const serviceValue = service?.valor_base ?? 0;
   const itensAdicionais = itensPagamento.filter(
-    (item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA",
+    (item) => (!service || item.id !== service.id) && item.codigo !== "SERV_REMATRICULA",
   );
-  const total = service.valor_base + itensAdicionais.reduce(
+  const total = serviceValue + itensAdicionais.reduce(
     (sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1),
     0,
   );
@@ -761,7 +768,7 @@ function StepFinanceiro({
         <div className="flex justify-between border-b border-slate-100 p-3.5 bg-white">
           <span className="text-slate-600">Taxa de rematrícula</span>
           <span className="font-semibold text-slate-900">
-            {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
+            {serviceValue > 0 ? kwanza.format(serviceValue) : "Sem taxa"}
           </span>
         </div>
         {itensAdicionais.length > 0 && (
@@ -917,12 +924,13 @@ function StepPagamento({
   ) => void;
   submitting: boolean;
   apiError: string | null;
-  service: { id: string; nome: string; valor_base: number };
+  service: { id: string; nome: string; valor_base: number } | null;
   itensPagamento: RematriculaPaymentItem[];
   paymentAlreadyValidated: boolean;
 }) {
-  const total = service.valor_base + itensPagamento
-    .filter((item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA")
+  const serviceValue = service?.valor_base ?? 0;
+  const total = serviceValue + itensPagamento
+    .filter((item) => (!service || item.id !== service.id) && item.codigo !== "SERV_REMATRICULA")
     .reduce((sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1), 0);
   if (paymentAlreadyValidated) {
     return (
@@ -1086,7 +1094,7 @@ function SuccessView({
   alunoNome,
   anoLetivo,
   selectedTurma,
-  service,
+  paymentRequired,
   paymentTotal,
   metodo,
   paymentAlreadyValidated,
@@ -1096,7 +1104,7 @@ function SuccessView({
   alunoNome: string;
   anoLetivo: { id: string; ano: number; label: string };
   selectedTurma: TurmaOption | undefined;
-  service: { id: string; nome: string; valor_base: number };
+  paymentRequired: boolean;
   paymentTotal: number;
   metodo: MetodoPagamento;
   paymentAlreadyValidated: boolean;
@@ -1135,20 +1143,28 @@ function SuccessView({
         </h3>
         <p className="text-sm text-slate-500 mt-1">
           {academicHistoryPending
-            ? "A matrícula e o pagamento foram preservados. Falta apenas reconciliar o histórico académico da matrícula de origem."
+            ? (paymentRequired
+                ? "A matrícula e o pagamento foram preservados. Falta apenas reconciliar o histórico académico da matrícula de origem."
+                : "A matrícula foi preservada. Falta apenas reconciliar o histórico académico da matrícula de origem.")
             : documentPending
-              ? "A matrícula e o pagamento foram preservados. Falta apenas emitir o comprovante."
+              ? (paymentRequired
+                  ? "A matrícula e o pagamento foram preservados. Falta apenas emitir o comprovante."
+                  : "A matrícula foi concluída. Falta apenas emitir o comprovante.")
               : "A matrícula do ano destino foi criada ou actualizada com a turma seleccionada."}
         </p>
       </div>
 
       {partialCompletion && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-950">
-          <p className="font-bold">Não faça uma nova cobrança.</p>
+          <p className="font-bold">{paymentRequired ? "Não faça uma nova cobrança." : "Não é necessária cobrança para esta rematrícula."}</p>
           <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
             {academicHistoryPending
-              ? "Feche esta etapa para atualizar o atendimento. Ao retomar, o Balcão reutiliza a matrícula e o pagamento já confirmados e tenta reconciliar somente o histórico académico."
-              : "Feche esta etapa para atualizar o atendimento. O Balcão reutiliza o pagamento já confirmado e permite tentar emitir o comprovante novamente."}
+              ? (paymentRequired
+                  ? "Feche esta etapa para atualizar o atendimento. Ao retomar, o Balcão reutiliza a matrícula e o pagamento já confirmados e tenta reconciliar somente o histórico académico."
+                  : "Feche esta etapa para atualizar o atendimento. Ao retomar, o Balcão reutiliza a matrícula e tenta reconciliar somente o histórico académico.")
+              : (paymentRequired
+                  ? "Feche esta etapa para atualizar o atendimento. O Balcão reutiliza o pagamento já confirmado e permite tentar emitir o comprovante novamente."
+                  : "Feche esta etapa para atualizar o atendimento. A matrícula permanece concluída enquanto o comprovante é emitido.")}
           </p>
         </div>
       )}
