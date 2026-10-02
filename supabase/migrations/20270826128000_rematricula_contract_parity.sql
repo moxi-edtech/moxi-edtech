@@ -61,9 +61,11 @@ AS $$
 DECLARE
   v_actor_id uuid := public.safe_auth_uid();
   v_source record;
-  v_source_turma public.turmas%ROWTYPE;
-  v_target_turma public.turmas%ROWTYPE;
-  v_target public.matriculas%ROWTYPE;
+  -- record keeps the migration compilable in the minimal CI harness while
+  -- preserving runtime row shapes in production.
+  v_source_turma record;
+  v_target_turma record;
+  v_target record;
   v_dest_session uuid;
   v_dest_ano integer;
   v_source_ano integer;
