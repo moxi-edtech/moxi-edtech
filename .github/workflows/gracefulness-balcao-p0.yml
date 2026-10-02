@@ -22,7 +22,9 @@ on:
       - "apps/web/src/lib/financeiro/checkout-payment-state.ts"
       - "apps/web/src/lib/secretaria/rematricula-result.ts"
       - "apps/web/src/lib/rematricula/eligibility.ts"
+      - "apps/web/src/lib/rematricula/debt.ts"
       - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
+      - "apps/web/tests/unit/rematricula-debt.spec.ts"
       - "apps/web/tests/unit/checkout-payment-state.spec.ts"
       - "apps/web/tests/unit/rematricula-result.spec.ts"
       - "supabase/migrations/**"
@@ -62,7 +64,8 @@ jobs:
           node --test --import tsx \
             tests/unit/checkout-payment-state.spec.ts \
             tests/unit/rematricula-result.spec.ts \
-            tests/unit/rematricula-eligibility.spec.ts
+            tests/unit/rematricula-eligibility.spec.ts \
+            tests/unit/rematricula-debt.spec.ts
 
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
@@ -99,9 +102,11 @@ jobs:
             src/lib/financeiro/checkout-payment-state.ts \
             src/lib/secretaria/rematricula-result.ts \
             src/lib/rematricula/eligibility.ts \
+            src/lib/rematricula/debt.ts \
             tests/unit/checkout-payment-state.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
+            tests/unit/rematricula-debt.spec.ts \
             --max-warnings 10000
 
 
@@ -154,6 +159,16 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_balcao_rematricula_strict_eligibility.sql
+
+      - name: Apply rematricula contract parity migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826128000_rematricula_contract_parity.sql
+
+      - name: Rematricula contract parity regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_rematricula_contract_parity.sql
 
       - name: Apply BAL-GR-003 migration
         env:
