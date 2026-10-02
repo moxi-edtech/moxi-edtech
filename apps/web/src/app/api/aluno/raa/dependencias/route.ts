@@ -39,8 +39,12 @@ export async function GET(request: Request) {
       aluno_id: selectedId,
       summary: {
         total: items.length,
-        abertas: items.filter((item) => item.status === "pendente" || item.status === "em_recurso").length,
-        resolvidas: items.filter((item) => item.status.startsWith("resolvida_")).length,
+        abertas: items.filter((item) =>
+          item.status === "pendente"
+          || item.status === "em_recurso"
+          || item.status === "resolvida_reprovada"
+        ).length,
+        resolvidas: items.filter((item) => item.status === "resolvida_aprovada").length,
       },
       items,
     });
