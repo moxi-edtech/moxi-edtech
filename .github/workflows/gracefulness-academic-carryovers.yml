@@ -20,6 +20,7 @@ on:
       - "apps/web/tests/unit/rematricula-result.spec.ts"
       - "supabase/migrations/20270826124000_academic_carryovers_lifecycle.sql"
       - "supabase/migrations/20270826125000_academic_carryovers_backfill_hardening.sql"
+      - "supabase/migrations/20270826126000_academic_carryovers_fk_indexes.sql"
       - "supabase/ops/tests/bootstrap_academic_carryovers_minimal.sql"
       - "supabase/ops/tests/regression_academic_carryovers_lifecycle.sql"
       - "docs/CONTRATO_ESTADOS_MATRICULA_REMATRICULA.md"
@@ -92,6 +93,10 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826125000_academic_carryovers_backfill_hardening.sql
+      - name: Apply carryover FK indexes
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826126000_academic_carryovers_fk_indexes.sql
       - name: Carryover lifecycle regression
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
