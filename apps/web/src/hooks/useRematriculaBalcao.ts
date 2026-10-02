@@ -110,6 +110,7 @@ export type ResultadoDecisaoBalcao = "aprovado" | "reprovado" | "concluido";
 interface StatusResponse {
   ok: boolean;
   status: RematriculaCardState;
+  payment_required?: boolean;
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
   debt: { total: number; count: number } | null;
   academic?: {
@@ -225,6 +226,7 @@ export function useRematriculaBalcao(opts: {
   const [cardState, setCardState] = useState<RematriculaCardState | null>(null);
   const [loading, setLoading] = useState(false);
   const [service, setService] = useState<StatusResponse["service"]>(null);
+  const [paymentRequired, setPaymentRequired] = useState(true);
   const [debt, setDebt] = useState<StatusResponse["debt"]>(null);
   const [academic, setAcademic] = useState<StatusResponse["academic"]>(null);
   const [pedido, setPedido] = useState<StatusResponse["pedido"]>(null);
@@ -291,6 +293,7 @@ export function useRematriculaBalcao(opts: {
         setApiError(null);
         setCardState(data.status);
         setService(data.service);
+        setPaymentRequired(data.payment_required !== false);
         setDebt(data.debt);
         setAcademic(data.academic ?? null);
         setPedido(data.pedido);
@@ -326,6 +329,7 @@ export function useRematriculaBalcao(opts: {
     setProgressao(null);
     setCohort(null);
     setAcademic(null);
+    setPaymentRequired(true);
     setDecisaoResultado("aprovado");
     setDecisaoFonte("raa");
     setDecisaoMotivo("");
@@ -729,6 +733,7 @@ export function useRematriculaBalcao(opts: {
 
     // Data from status endpoint
     service,
+    paymentRequired,
     debt,
     academic,
     pedido,
