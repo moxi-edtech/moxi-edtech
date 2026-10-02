@@ -184,6 +184,8 @@ export function RematriculaBanner() {
     'ACADEMIC_PROMOTION_PENDING',
     'ACADEMIC_REVIEW_REQUIRED',
     'ACADEMIC_CONDITIONAL_BLOCKED',
+    'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED',
+    'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED',
     'ACADEMIC_NOT_APPROVED',
     'ACADEMIC_CYCLE_COMPLETED',
     'REMATRICULA_DEBT_REQUIRED',
@@ -217,6 +219,24 @@ export function RematriculaBanner() {
         {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}
         <p className="mt-2 text-xs font-semibold">Próximo passo: conclua o recurso ou exame indicado pelo RAA e atualize o estado.</p>
         <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-violet-800 shadow-sm">Atualizar estado</button>
+      </div>
+    }
+
+    if (status.code === 'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED') {
+      return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+        <p className="font-black">Retenção por faltas em validação</p>
+        <p className="mt-1">{status.reason || 'A regra escolar precisa ser validada antes da nova matrícula na mesma classe.'}</p>
+        <p className="mt-2 text-xs font-semibold">Próximo passo: contacte a secretaria para rever frequência e a regra aplicável.</p>
+        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-amber-800 shadow-sm">Atualizar estado</button>
+      </div>
+    }
+
+    if (status.code === 'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED') {
+      return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900">
+        <p className="font-black">Decisão administrativa necessária</p>
+        <p className="mt-1">{status.reason || 'A retenção por indisciplina não permite rematrícula automática.'}</p>
+        <p className="mt-2 text-xs font-semibold">Próximo passo: a secretaria/direção deve concluir a decisão disciplinar aplicável.</p>
+        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button>
       </div>
     }
 
@@ -312,6 +332,14 @@ export function RematriculaBanner() {
                     : 'Regularize apenas as mensalidades vencidas. Cobranças futuras não bloqueiam a rematrícula.'
                   : `Confirme a continuidade no Ano Letivo ${status.nextAno} com o valor calculado para a sua classe destino.`)}
           </p>
+          {status.academic?.decision === 'retido' ? (
+            <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
+              <p className="font-black">Repetição da mesma classe autorizada pelo RAA</p>
+              <p className="mt-1">
+                O resultado académico foi retido. A rematrícula continua no próximo ano letivo, mas a classe destino deve ser a mesma da matrícula de origem.
+              </p>
+            </div>
+          ) : null}
           {status.academic?.decision === 'inscricao_condicional' ? (
             <div className="mt-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-900">
               <p className="font-black">Progressão condicional autorizada pelo RAA</p>
