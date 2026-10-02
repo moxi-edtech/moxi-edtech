@@ -1,6 +1,30 @@
 BEGIN;
 
-DO $$
+-- A matrícula destino existia antes da migration. O backfill deve materializar
+-- a dependência automaticamente, usando RAA/snapshot, sem chamada manual.
+DO $
+DECLARE
+  v_status text;
+  v_destino uuid;
+BEGIN
+  SELECT status, matricula_destino_id
+    INTO v_status, v_destino
+  FROM public.dependencias_academicas_transicao
+  WHERE escola_id = '00000000-0000-0000-0000-000000000901'
+    AND matricula_origem_id = '00000000-0000-0000-0000-000000000903'
+    AND disciplina_id = '00000000-0000-0000-0000-000000000905';
+
+  IF v_status IS DISTINCT FROM 'em_recurso' THEN
+    RAISE EXCEPTION 'carryover regression: migration backfill expected em_recurso, got %', v_status;
+  END IF;
+
+  IF v_destino IS DISTINCT FROM '00000000-0000-0000-0000-000000000908'::uuid THEN
+    RAISE EXCEPTION 'carryover regression: migration backfill destination missing';
+  END IF;
+END;
+$;
+
+DO $
 DECLARE
   v_relrowsecurity boolean;
   v_def text;
