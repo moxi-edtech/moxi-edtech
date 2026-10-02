@@ -17,6 +17,7 @@ type RematriculaStatus = {
   academic?: { decision?: string; destino?: string; disciplinaIdsPendentes?: string[] } | null
   nextWindow?: { ano: number; data_inicio?: string | null; data_fim?: string | null } | null
   rematricula?: {
+    payment_required?: boolean
     service?: { id: string; nome: string; valor: number; pricing_origin?: string; tabela_preco_id?: string | null } | null
     services?: Array<{ id: string; codigo: string; nome: string; descricao?: string | null; valor: number }>
     dadosPagamento?: { iban?: string; banco?: string; titular?: string; kwik_chave?: string }
@@ -114,10 +115,13 @@ export function RematriculaBanner() {
     .reduce((total, service) => total + service.valor, 0)
 
   const startPayment = async () => {
+    const paymentRequired = status?.rematricula?.payment_required !== false
     const ok = await confirm({
       title: 'Iniciar rematrícula',
-      message: `Deseja iniciar a rematrícula para ${status?.nextAno}? O total desta transação será ${money.format(selectedTotal)}.`,
-      confirmLabel: 'Continuar para pagamento',
+      message: paymentRequired
+        ? `Deseja iniciar a rematrícula para ${status?.nextAno}? O total desta transação será ${money.format(selectedTotal)}.`
+        : `Deseja enviar o pedido de rematrícula para o Ano Letivo ${status?.nextAno}? Esta escola não exige pagamento neste fluxo.`,
+      confirmLabel: paymentRequired ? 'Continuar para pagamento' : 'Confirmar rematrícula',
     })
     if (!ok) return
     setBusy(true)
@@ -130,8 +134,14 @@ export function RematriculaBanner() {
       })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao iniciar rematrícula')
-      setOpen(true)
-      success('Rematrícula iniciada', 'Confira os dados de pagamento e envie o comprovativo desta transação.')
+      const paymentRequired = json?.payment_required !== false
+      setOpen(paymentRequired)
+      success(
+        paymentRequired ? 'Rematrícula iniciada' : 'Rematrícula enviada',
+        paymentRequired
+          ? 'Confira os dados de pagamento e envie o comprovativo desta transação.'
+          : 'O pedido académico foi registado sem cobrança. Acompanhe o estado no portal.',
+      )
       void fetchStatus()
     } catch (err: unknown) {
       const message = err instanceof Error
@@ -254,6 +264,7 @@ export function RematriculaBanner() {
         : 'Janela de rematrícula ainda não aberta'
     return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p className="font-black">{title}</p><p className="mt-1">{status.reason || 'A rematrícula estará disponível quando a escola concluir a configuração necessária.'}</p>{status.nextWindow?.data_inicio && <p className="mt-2 text-xs font-semibold">Próximo período previsto: {new Intl.DateTimeFormat('pt-AO', { dateStyle: 'medium' }).format(new Date(status.nextWindow.data_inicio))}</p>}<button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button></div>
   }
+  const paymentRequired = status.rematricula?.payment_required !== false
   const paymentIntent = status.rematricula?.paymentIntent
   const hasPendingPayment = Boolean(paymentIntent && paymentIntent.status !== 'settled')
   const isConfirmed = Boolean(
@@ -300,10 +311,14 @@ export function RematriculaBanner() {
                     ? 'O comprovativo foi recebido e está em validação pela secretaria. Não é necessário pagar novamente.'
                     : paymentIntent
                       ? `A transação está disponível. Pague ${money.format(paymentIntent.amount)} e envie o comprovativo.`
-                      : 'O pedido está criado. Conclua o pagamento e envie o comprovativo.')
-              : (status.hasDebt 
+                      : paymentRequired
+                        ? 'O pedido está criado. Conclua o pagamento e envie o comprovativo.'
+                        : 'O pedido académico foi registado e não exige pagamento. Acompanhe o estado até à confirmação da secretaria.')
+              : (status.hasDebt
                   ? 'Consulte o valor em dívida, envie o comprovativo e aguarde a validação. Depois poderá pagar a taxa da sua classe destino.'
-                  : `Confirme a continuidade no Ano Letivo ${status.nextAno} com o valor calculado para a sua classe destino.`)}
+                  : paymentRequired
+                    ? `Confirme a continuidade no Ano Letivo ${status.nextAno} com o valor calculado para a sua classe destino.`
+                    : `Confirme a continuidade no Ano Letivo ${status.nextAno}. Esta rematrícula não exige pagamento.`)}
           </p>
           {status.academic?.decision === 'inscricao_condicional' ? (
             <div className="mt-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-900">
@@ -359,7 +374,7 @@ export function RematriculaBanner() {
                 </>
               ) : (
                 <>
-                  {hasPendingPayment ? 'Continuar pagamento' : 'Ver opções de rematrícula'}
+                  {hasPendingPayment ? 'Continuar pagamento' : paymentRequired ? 'Ver opções de rematrícula' : 'Confirmar rematrícula'}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -377,7 +392,7 @@ export function RematriculaBanner() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4" onClick={() => setOpen(false)}>
           <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between gap-4">
-              <div><p className="text-xs font-black uppercase tracking-widest text-slate-400">Rematrícula {status.nextAno}</p><h4 className="mt-1 text-xl font-black text-slate-900">Confira e pague a rematrícula</h4></div>
+              <div><p className="text-xs font-black uppercase tracking-widest text-slate-400">Rematrícula {status.nextAno}</p><h4 className="mt-1 text-xl font-black text-slate-900">{paymentRequired ? 'Confira e pague a rematrícula' : 'Confirme a rematrícula'}</h4></div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Fechar" className="rounded-full bg-slate-100 p-2 text-slate-500"><X size={18} /></button>
             </div>
 
@@ -395,10 +410,19 @@ export function RematriculaBanner() {
               </div>
             ) : (
               <div className="mt-5 space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm font-black text-slate-900">Serviço obrigatório</p><div className="mt-2 flex items-center justify-between text-sm"><span>{status.rematricula?.service?.nome || 'Rematrícula'}</span><strong>{money.format(status.rematricula?.service?.valor || 0)}</strong></div></div>
-                {(status.rematricula?.services ?? []).length > 0 && <div><p className="text-sm font-black text-slate-900">Serviços adicionais (opcionais)</p><div className="mt-2 space-y-2">{(status.rematricula?.services ?? []).map((service) => <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 ${selectedServices.includes(service.id) ? 'border-amber bg-amber-50' : 'border-slate-200'}`}><input type="checkbox" checked={selectedServices.includes(service.id)} onChange={() => setSelectedServices((current) => current.includes(service.id) ? current.filter((id) => id !== service.id) : [...current, service.id])} className="mt-1 h-4 w-4" /><span className="flex-1 text-sm"><strong className="block text-slate-900">{service.nome}</strong><small className="block text-slate-500">{service.descricao || service.codigo}</small></span><strong className="text-sm text-emerald">{money.format(service.valor)}</strong></label>)}</div></div>}
-                <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-base font-black"><span>Total da transação</span><span>{money.format(selectedTotal)}</span></div>
-                <button type="button" onClick={() => void startPayment()} disabled={starting || !status.rematricula?.service} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{starting ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Continuar para pagamento</button>
+                {paymentRequired ? (
+                  <>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm font-black text-slate-900">Serviço obrigatório</p><div className="mt-2 flex items-center justify-between text-sm"><span>{status.rematricula?.service?.nome || 'Rematrícula'}</span><strong>{money.format(status.rematricula?.service?.valor || 0)}</strong></div></div>
+                    {(status.rematricula?.services ?? []).length > 0 && <div><p className="text-sm font-black text-slate-900">Serviços adicionais (opcionais)</p><div className="mt-2 space-y-2">{(status.rematricula?.services ?? []).map((service) => <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 ${selectedServices.includes(service.id) ? 'border-amber bg-amber-50' : 'border-slate-200'}`}><input type="checkbox" checked={selectedServices.includes(service.id)} onChange={() => setSelectedServices((current) => current.includes(service.id) ? current.filter((id) => id !== service.id) : [...current, service.id])} className="mt-1 h-4 w-4" /><span className="flex-1 text-sm"><strong className="block text-slate-900">{service.nome}</strong><small className="block text-slate-500">{service.descricao || service.codigo}</small></span><strong className="text-sm text-emerald">{money.format(service.valor)}</strong></label>)}</div></div>}
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-base font-black"><span>Total da transação</span><span>{money.format(selectedTotal)}</span></div>
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <p className="font-black">Sem cobrança nesta rematrícula</p>
+                    <p className="mt-1">O pedido será registado academicamente sem taxa, mensalidade ou comprovativo de pagamento.</p>
+                  </div>
+                )}
+                <button type="button" onClick={() => void startPayment()} disabled={starting || (paymentRequired && !status.rematricula?.service)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{starting ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} {paymentRequired ? 'Continuar para pagamento' : 'Confirmar rematrícula'}</button>
                 {flowError && <p className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{flowError}</p>}
               </div>
             )}
