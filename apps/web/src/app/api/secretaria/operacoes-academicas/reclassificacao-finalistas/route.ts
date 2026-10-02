@@ -4,6 +4,8 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { canUseOneOffStudentPayments } from "@/lib/school-profile/finance-capabilities";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -107,6 +109,8 @@ export async function POST(request: Request) {
   if (selectedError) return NextResponse.json({ ok: false, error: selectedError.message }, { status: 409 });
 
   if (action === "enroll") {
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId);
+    const studentPaymentEnabled = canUseOneOffStudentPayments(operatingProfile);
     const turmaDestinoId = turma_destino_id;
     if (!turmaDestinoId) {
       return NextResponse.json({ ok: false, error: "Turma destino é obrigatória" }, { status: 400 });
@@ -147,23 +151,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O finalista deve ser encaminhado para a classe imediatamente seguinte.", code: "FINALISTA_PROGRESSION_INVALID" }, { status: 409 });
     }
 
-    const { data: pedidos } = alunos.length && destinoSessionIds.length
-      ? await (supabase as any)
-          .from("servico_pedidos")
-          .select("aluno_id, contexto")
-          .eq("escola_id", escolaId)
-          .eq("servico_codigo", "SERV_REMATRICULA")
-          .eq("status", "granted")
-          .in("aluno_id", alunos)
-      : { data: [] };
-    const pagos = new Set(
-      (pedidos ?? [])
-        .filter((pedido: any) => destinoSessionIds.includes(pedido.contexto?.ano_letivo_id))
-        .map((pedido: any) => pedido.aluno_id),
-    );
-    const semTaxa = alunos.filter((alunoId) => !pagos.has(alunoId));
-    if (semTaxa.length > 0) {
-      return NextResponse.json({ ok: false, error: "A taxa de reconfirmação deve ser paga no Balcão antes de matricular finalistas no novo ciclo.", code: "FINALISTA_PAYMENT_REQUIRED", alunos_pendentes: semTaxa }, { status: 409 });
+    if (studentPaymentEnabled) {
+      const { data: pedidos } = alunos.length && destinoSessionIds.length
+        ? await (supabase as any)
+            .from("servico_pedidos")
+            .select("aluno_id, contexto")
+            .eq("escola_id", escolaId)
+            .eq("servico_codigo", "SERV_REMATRICULA")
+            .eq("status", "granted")
+            .in("aluno_id", alunos)
+        : { data: [] };
+      const pagos = new Set(
+        (pedidos ?? [])
+          .filter((pedido: any) => destinoSessionIds.includes(pedido.contexto?.ano_letivo_id))
+          .map((pedido: any) => pedido.aluno_id),
+      );
+      const semTaxa = alunos.filter((alunoId) => !pagos.has(alunoId));
+      if (semTaxa.length > 0) {
+        return NextResponse.json({ ok: false, error: "A taxa de reconfirmação deve ser paga no Balcão antes de matricular finalistas no novo ciclo.", code: "FINALISTA_PAYMENT_REQUIRED", alunos_pendentes: semTaxa }, { status: 409 });
+      }
     }
   }
 
