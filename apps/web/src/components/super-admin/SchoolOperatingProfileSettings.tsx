@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ASSESSMENT_POLICIES, FINANCE_MODELS, SCHOOL_SECTORS, type AssessmentPolicyKey, type FinanceModel, type SchoolSector } from "@/lib/school-profile/types";
+import { ASSESSMENT_POLICIES, FINANCE_MODELS, SCHOOL_SECTORS, isValidSchoolFinanceCombination, type AssessmentPolicyKey, type FinanceModel, type SchoolSector } from "@/lib/school-profile/types";
 
 type Profile = {
   status?: string;
@@ -90,13 +90,19 @@ export default function SchoolOperatingProfileSettings({ schoolId }: { schoolId:
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <label className="text-sm font-medium text-gray-700">Setor
-          <select className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.school_sector} onChange={(event) => setProfile({ ...profile, school_sector: event.target.value as SchoolSector })}>
+          <select className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.school_sector} onChange={(event) => {
+            const school_sector = event.target.value as SchoolSector;
+            const finance_model = isValidSchoolFinanceCombination(school_sector, profile.finance_model)
+              ? profile.finance_model
+              : "budget";
+            setProfile({ ...profile, school_sector, finance_model });
+          }}>
             {SCHOOL_SECTORS.map((value) => <option key={value} value={value}>{labels[value]}</option>)}
           </select>
         </label>
         <label className="text-sm font-medium text-gray-700">Modelo financeiro
           <select className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.finance_model} onChange={(event) => setProfile({ ...profile, finance_model: event.target.value as FinanceModel })}>
-            {FINANCE_MODELS.map((value) => <option key={value} value={value}>{labels[value]}</option>)}
+            {FINANCE_MODELS.filter((value) => isValidSchoolFinanceCombination(profile.school_sector, value)).map((value) => <option key={value} value={value}>{labels[value]}</option>)}
           </select>
         </label>
         <label className="text-sm font-medium text-gray-700">Perfil regulatório
