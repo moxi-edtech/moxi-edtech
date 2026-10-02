@@ -120,7 +120,7 @@ RETURNS jsonb
 LANGUAGE sql
 STABLE
 SET search_path TO ''
-AS $
+AS $raa$
   SELECT jsonb_build_object(
     'decision', 'inscricao_condicional',
     'destino', 'proxima_etapa',
@@ -141,7 +141,7 @@ AS $
         '[]'::jsonb
       )
   );
-$;
+$raa$;
 
 
 -- Pre-migration backfill fixture. A migration deve criar a dependência sem
