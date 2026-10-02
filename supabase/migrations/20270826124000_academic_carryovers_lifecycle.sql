@@ -503,15 +503,42 @@ BEGIN
   FOR v_disciplina_id IN
     SELECT DISTINCT q.disciplina_id
     FROM (
+      -- Dependências já materializadas nunca desaparecem só porque o RAA
+      -- deixou de listar a disciplina depois do fecho da matrícula de origem.
       SELECT d.disciplina_id
       FROM public.dependencias_academicas_transicao d
       WHERE d.escola_id = p_escola_id
         AND d.matricula_origem_id = p_matricula_origem_id
+
       UNION ALL
+
+      -- Estado corrente do RAA.
       SELECT value::uuid
       FROM jsonb_array_elements_text(
         coalesce(v_raa->'disciplina_ids_pendentes', '[]'::jsonb)
       )
+
+      UNION ALL
+
+      -- Snapshot auditável capturado no pedido de rematrícula. Este fallback
+      -- é essencial no backfill: a origem pode já estar encerrada quando a
+      -- migration for aplicada.
+      SELECT snapshot.value::uuid
+      FROM public.servico_pedidos sp
+      CROSS JOIN LATERAL jsonb_array_elements_text(
+        CASE
+          WHEN jsonb_typeof(sp.contexto->'raa_disciplina_ids_pendentes') = 'array'
+            THEN sp.contexto->'raa_disciplina_ids_pendentes'
+          ELSE '[]'::jsonb
+        END
+      ) snapshot(value)
+      WHERE sp.escola_id = p_escola_id
+        AND sp.aluno_id = v_origem.aluno_id
+        AND sp.servico_codigo = 'SERV_REMATRICULA'
+        AND (
+          sp.matricula_id = p_matricula_origem_id
+          OR sp.contexto->>'origem_matricula_id' = p_matricula_origem_id::text
+        )
     ) q
   LOOP
     SELECT td.id INTO v_td_id
@@ -538,12 +565,33 @@ BEGIN
       v_fonte := coalesce(v_fonte, 'raa');
     END IF;
 
-    SELECT EXISTS (
-      SELECT 1
-      FROM jsonb_array_elements_text(
-        coalesce(v_raa->'disciplina_ids_pendentes', '[]'::jsonb)
-      ) p(value)
-      WHERE p.value = v_disciplina_id::text
+    SELECT (
+      EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements_text(
+          coalesce(v_raa->'disciplina_ids_pendentes', '[]'::jsonb)
+        ) p(value)
+        WHERE p.value = v_disciplina_id::text
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM public.servico_pedidos sp
+        CROSS JOIN LATERAL jsonb_array_elements_text(
+          CASE
+            WHEN jsonb_typeof(sp.contexto->'raa_disciplina_ids_pendentes') = 'array'
+              THEN sp.contexto->'raa_disciplina_ids_pendentes'
+            ELSE '[]'::jsonb
+          END
+        ) snapshot(value)
+        WHERE sp.escola_id = p_escola_id
+          AND sp.aluno_id = v_origem.aluno_id
+          AND sp.servico_codigo = 'SERV_REMATRICULA'
+          AND (
+            sp.matricula_id = p_matricula_origem_id
+            OR sp.contexto->>'origem_matricula_id' = p_matricula_origem_id::text
+          )
+          AND snapshot.value = v_disciplina_id::text
+      )
     ) INTO v_is_pending;
 
     v_resolved := false;
@@ -786,6 +834,28 @@ CREATE TRIGGER trg_sync_dependencias_exame_sessao
 AFTER UPDATE OF estado ON public.exame_sessoes
 FOR EACH ROW
 EXECUTE FUNCTION public.trigger_sync_dependencias_exame_sessao();
+
+-- Backfill idempotente das transições já existentes. O sync usa o RAA atual,
+-- dependências materializadas e o snapshot do pedido, por isso não inventa
+-- disciplinas nem depende de uma ação manual para tornar a fila visível.
+DO $
+DECLARE
+  v_row record;
+BEGIN
+  FOR v_row IN
+    SELECT m.escola_id, m.id AS matricula_destino_id, m.origem_transicao_matricula_id
+    FROM public.matriculas m
+    WHERE m.origem_transicao_matricula_id IS NOT NULL
+    ORDER BY m.escola_id, m.id
+  LOOP
+    PERFORM public.sync_dependencias_academicas_transicao(
+      v_row.escola_id,
+      v_row.origem_transicao_matricula_id,
+      v_row.matricula_destino_id
+    );
+  END LOOP;
+END;
+$;
 
 COMMENT ON TABLE public.dependencias_academicas_transicao IS
   'Índice operacional de disciplinas carregadas entre matrículas; resolve_estado_resultado permanece SSOT.';
