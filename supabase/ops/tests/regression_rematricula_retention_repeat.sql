@@ -40,7 +40,8 @@ BEGIN
     RAISE EXCEPTION 'REM-GR-003: portal não calcula repetição na mesma classe';
   END IF;
 
-  IF has_function_privilege('authenticated', 'public.aluno_confirmar_rematricula(uuid)', 'EXECUTE') THEN
+  IF to_regprocedure('public.aluno_confirmar_rematricula(uuid)') IS NOT NULL
+     AND has_function_privilege('authenticated', 'public.aluno_confirmar_rematricula(uuid)', 'EXECUTE') THEN
     RAISE EXCEPTION 'REM-GR-003: RPC legado de confirmação continua exposto a authenticated';
   END IF;
 END;
