@@ -1170,7 +1170,13 @@ GRANT EXECUTE ON FUNCTION public.aluno_iniciar_rematricula(uuid, uuid[]) TO auth
 
 -- O endpoint HTTP legado agora chama aluno_iniciar_rematricula. Retiramos o
 -- RPC antigo da superfície authenticated para eliminar um contrato paralelo.
-REVOKE ALL ON FUNCTION public.aluno_confirmar_rematricula(uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.aluno_confirmar_rematricula(uuid) TO service_role;
+DO $
+BEGIN
+  IF to_regprocedure('public.aluno_confirmar_rematricula(uuid)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.aluno_confirmar_rematricula(uuid) FROM PUBLIC, anon, authenticated';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.aluno_confirmar_rematricula(uuid) TO service_role';
+  END IF;
+END;
+$;
 
 COMMIT;
