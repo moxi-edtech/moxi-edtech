@@ -6,6 +6,7 @@ import { resolveRematriculaSource } from "@/lib/alunoRematriculaSource";
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
 
     const { data: openBalances, error: openBalancesError } = await supabase
       .from("mensalidades")
-      .select("status, valor_previsto, valor, valor_pago_total")
+      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento")
       .eq("escola_id", escolaId)
       .eq("aluno_id", ctx.alunoId)
       .or(`matricula_id.eq.${matricula.id},ano_referencia.eq.${matricula.ano_letivo}`);
@@ -98,20 +99,12 @@ export async function POST(request: Request) {
       throw new Error(`Falha ao verificar situação financeira: ${openBalancesError.message}`);
     }
 
-    const hasOpenBalance = (openBalances ?? []).some((mensalidade: any) => {
-      const status = String(mensalidade.status ?? "").toLowerCase();
-      const saldo = Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0)
-          - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      );
-      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
-    });
+    const overdueDebt = summarizeOverdueRematriculaDebt(openBalances ?? []);
 
-    if (hasOpenBalance) {
+    if (overdueDebt.count > 0) {
       return NextResponse.json({
         ok: false,
-        error: "Regularize todos os saldos em aberto antes de rematricular.",
+        error: "Regularize os saldos vencidos antes de rematricular.",
         code: "REMATRICULA_DEBT_REQUIRED",
       }, { status: 409 });
     }
