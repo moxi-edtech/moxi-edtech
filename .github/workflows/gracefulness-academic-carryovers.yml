@@ -80,6 +80,14 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826124000_academic_carryovers_lifecycle.sql
+      - name: Simulate live Supabase grant drift
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT ALL ON TABLE public.dependencias_academicas_transicao TO authenticated;
+          GRANT ALL ON TABLE public.dependencias_academicas_transicao_eventos TO authenticated;
+          SQL
       - name: Apply carryover backfill hardening
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
