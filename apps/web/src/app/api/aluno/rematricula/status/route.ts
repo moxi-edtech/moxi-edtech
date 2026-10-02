@@ -7,6 +7,8 @@ import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } fro
 import { resolveValorConfirmacao } from '@/lib/financeiro/resolve-confirmacao'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { classifyRematriculaAcademicEligibility } from '@/lib/rematricula/eligibility'
+import { resolveSchoolOperatingProfile } from '@/lib/school-profile/resolve-school-profile'
+import { canUseFinancialSuspension } from '@/lib/school-profile/finance-capabilities'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +31,8 @@ export async function GET() {
     if (!escolaId || escolaId !== ctx.escolaId) {
       return NextResponse.json({ ok: false, error: 'Sem acesso à escola do aluno.' }, { status: 403 })
     }
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId)
+    const financialSuspensionEnabled = canUseFinancialSuspension(operatingProfile)
     const activeAno = await resolveAnoLetivoScope(supabase, escolaId)
     if (!activeAno) {
       return NextResponse.json({ ok: true, eligible: false, code: 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE', reason: 'A escola ainda não configurou um ano letivo ativo.' })
@@ -333,18 +337,20 @@ export async function GET() {
 
     // A dívida que bloqueia esta transição pertence à matrícula/ano de origem;
     // cobranças do novo ano não podem retroativamente invalidar a origem.
-    const { data: mens, error: mensalidadesError } = await supabase
-      .from('mensalidades')
-      .select('status, valor_previsto, valor, valor_pago_total')
-      .eq('escola_id', escolaId)
-      .eq('aluno_id', alunoId)
-      .or(`matricula_id.eq.${sourceMatricula.id},ano_referencia.eq.${sourceMatricula.ano_letivo}`)
+    const { data: mens, error: mensalidadesError } = financialSuspensionEnabled
+      ? await supabase
+          .from('mensalidades')
+          .select('status, valor_previsto, valor, valor_pago_total')
+          .eq('escola_id', escolaId)
+          .eq('aluno_id', alunoId)
+          .or(`matricula_id.eq.${sourceMatricula.id},ano_referencia.eq.${sourceMatricula.ano_letivo}`)
+      : { data: [], error: null }
 
     if (mensalidadesError) {
       throw new Error(`Falha ao verificar situação financeira: ${mensalidadesError.message}`)
     }
 
-    const hasDebt = (mens ?? []).some((mensalidade: any) => {
+    const hasDebt = financialSuspensionEnabled && (mens ?? []).some((mensalidade: any) => {
       const status = String(mensalidade.status ?? '').toLowerCase()
       const saldo = Math.max(
         Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0)
