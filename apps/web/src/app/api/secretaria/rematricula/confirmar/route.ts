@@ -9,6 +9,8 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 import { isBillingCompetencyAllowed, resolveTurmaBillingWindow } from '@/lib/financeiro/turma-billing-window'
 import { resolveRegimeAcademico } from '@/lib/academico/regime-academico'
+import { resolveSchoolOperatingProfile } from '@/lib/school-profile/resolve-school-profile'
+import { canUseRecurringTuition } from '@/lib/school-profile/finance-capabilities'
 
 const Body = z.object({
   promocoes: z.array(z.object({ origem_turma_id: z.string().uuid(), destino_turma_id: z.string().uuid() })).optional(),
@@ -34,6 +36,8 @@ export async function POST(req: Request) {
     // Resolve escola
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId)
+    const recurringTuitionEnabled = canUseRecurringTuition(operatingProfile)
     const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["criar_matricula", "configurar_escola"])
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
@@ -51,7 +55,7 @@ export async function POST(req: Request) {
     type InsertedItem = { aluno_id?: string | null; matricula_id?: string | null; aluno_nome?: string | null }
     const resultsPromocoes: Array<{ origem_turma_id: string; destino_turma_id: string; inserted: number; skipped: number; blocked: BlockedItem[] }> = []
 
-    const gerarMensalidades = Boolean((json as any)?.gerar_mensalidades)
+    const gerarMensalidades = recurringTuitionEnabled && Boolean((json as any)?.gerar_mensalidades)
     const gerarTodas = (json as any)?.gerar_todas !== false
 
     // Preferir RPC quando disponível (transacional e mais escalável)
