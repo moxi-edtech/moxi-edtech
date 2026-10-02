@@ -15,6 +15,7 @@ import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -607,25 +608,15 @@ export async function POST(request: Request) {
       .eq("matricula_id", origemMatriculaId);
     if (mensalidadesError) throw mensalidadesError;
 
-    // O gate financeiro é saldo aberto zero, em paridade com o trigger do
-    // banco. Bloqueamos antes de criar/cobrar o pedido para não receber dinheiro
-    // e descobrir a dívida apenas na finalização.
-    const mensalidadesPendentes = (mensalidadesOrigem ?? []).filter((mensalidade: any) => {
-      const status = String(mensalidade.status ?? "").toLowerCase();
-      const saldo = Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      );
-      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
-    });
+    // O gate financeiro bloqueia apenas dívida vencida da matrícula de origem.
+    // Cobranças futuras podem coexistir com a rematrícula sem virar inadimplência.
+    const overdueDebt = summarizeOverdueRematriculaDebt(mensalidadesOrigem ?? []);
+    const mensalidadesPendentes = overdueDebt.rows;
     if (mensalidadesPendentes.length > 0) {
-      const total = mensalidadesPendentes.reduce((sum, mensalidade: any) => sum + Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      ), 0);
+      const total = overdueDebt.total;
       return NextResponse.json({
         ok: false,
-        error: "Regularize todos os saldos em aberto da matrícula de origem antes de rematricular.",
+        error: "Regularize os saldos vencidos da matrícula de origem antes de rematricular.",
         code: "REMATRICULA_DEBT_REQUIRED",
         debt: { count: mensalidadesPendentes.length, total },
       }, { status: 409 });
