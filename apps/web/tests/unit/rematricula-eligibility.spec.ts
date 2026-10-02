@@ -70,19 +70,55 @@ test("recurso permanece bloqueado até a decisão RAA permitir progressão", () 
   assert.equal(result.code, "ACADEMIC_REVIEW_REQUIRED");
 });
 
-test("retenção e conclusão de ciclo não avançam para a próxima etapa", () => {
-  for (const decision of [
-    "retido",
-    "retido_por_faltas",
-    "retido_por_indisciplina",
-    "concluiu",
-  ] as const) {
-    assert.equal(
-      classifyRematriculaAcademicEligibility({ decision }).eligible,
-      false,
-      `${decision} não pode avançar para a próxima etapa`,
-    );
-  }
+test("retido pode rematricular para repetir exatamente a mesma etapa", () => {
+  const result = classifyRematriculaAcademicEligibility({
+    decision: "retido",
+    destino: "mesma_etapa",
+    efetivacaoMatriculaBloqueada: true,
+  });
+
+  assert.equal(result.eligible, true);
+  assert.equal(result.code, "ACADEMIC_REPEAT");
+  assert.equal(result.mode, "repeat");
+});
+
+test("retido nunca pode usar uma turma da etapa seguinte", () => {
+  const result = classifyRematriculaAcademicEligibility({
+    decision: "retido",
+    destino: "proxima_etapa",
+  });
+
+  assert.equal(result.eligible, false);
+  assert.equal(result.code, "ACADEMIC_NOT_APPROVED");
+});
+
+test("retenção por faltas exige validação escolar explícita", () => {
+  const result = classifyRematriculaAcademicEligibility({
+    decision: "retido_por_faltas",
+    destino: "mesma_etapa",
+  });
+
+  assert.equal(result.eligible, false);
+  assert.equal(result.code, "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED");
+});
+
+test("retenção por indisciplina exige decisão administrativa", () => {
+  const result = classifyRematriculaAcademicEligibility({
+    decision: "retido_por_indisciplina",
+    destino: "mesma_etapa",
+  });
+
+  assert.equal(result.eligible, false);
+  assert.equal(result.code, "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED");
+});
+
+test("conclusão de ciclo não cria rematrícula", () => {
+  const result = classifyRematriculaAcademicEligibility({
+    decision: "concluiu",
+  });
+
+  assert.equal(result.eligible, false);
+  assert.equal(result.code, "ACADEMIC_CYCLE_COMPLETED");
 });
 
 test("progressão autorizada com saldo em aberto continua bloqueada financeiramente", () => {
@@ -114,4 +150,34 @@ test("progressão condicional autorizada e sem dívida pode iniciar rematrícula
 
   assert.equal(result.ok, true);
   assert.equal(result.academic.mode, "conditional");
+});
+
+
+test("retido sem dívida pode iniciar repetição", () => {
+  const result = canStartRematricula({
+    academic: {
+      decision: "retido",
+      destino: "mesma_etapa",
+      efetivacaoMatriculaBloqueada: true,
+    },
+    debtTotal: 0,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.academic.mode, "repeat");
+});
+
+test("retido com dívida vencida continua bloqueado apenas financeiramente", () => {
+  const result = canStartRematricula({
+    academic: {
+      decision: "retido",
+      destino: "mesma_etapa",
+      efetivacaoMatriculaBloqueada: true,
+    },
+    debtTotal: 12000,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.academic.code, "ACADEMIC_REPEAT");
+  assert.equal(result.financial?.code, "REMATRICULA_DEBT_REQUIRED");
 });
