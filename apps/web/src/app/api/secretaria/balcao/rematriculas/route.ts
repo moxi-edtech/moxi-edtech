@@ -330,9 +330,13 @@ export async function POST(request: Request) {
           ? "REMATRICULA_ACADEMIC_REVIEW_REQUIRED"
           : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
             ? "REMATRICULA_ACADEMIC_CONDITIONAL_BLOCKED"
-            : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-              ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
-              : "REMATRICULA_ACADEMIC_NOT_APPROVED";
+            : academicEligibility.code === "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+              ? "REMATRICULA_ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+              : academicEligibility.code === "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                ? "REMATRICULA_ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+                  ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
+                  : "REMATRICULA_ACADEMIC_NOT_APPROVED";
       return NextResponse.json({
         ok: false,
         error: academicEligibility.reason,
