@@ -332,14 +332,14 @@ No portal, a jornada financeira deve preservar o mesmo contexto:
 | Recuperação do modal para origem histórica | Implementada no working tree |
 | Atualização do banner ao regressar ao portal | Implementada no working tree |
 | Guards RAA/financeiro nas RPCs de portal, balcão e lote | Aplicados e validados no remoto em 2026-10-02 |
-| Rematrícula de `retido` para repetição da mesma classe | Implementada no branch em REM-GR-003; migration ainda não aplicada no remoto |
+| Rematrícula de `retido` para repetição da mesma classe | Implementada e aplicada no remoto em 2026-10-02 |
 | Retenção por faltas | Bloqueada para validação escolar explícita |
 | Retenção por indisciplina | Bloqueada até decisão administrativa explícita |
 | Separação estrutural entre `status` e `resultado_final` | Não implementada |
 | Filtro estrito de dívida vencida versus valores futuros | Implementado e aplicado no remoto em 2026-10-02 |
 | Acordo aprovado como desbloqueio financeiro | Pendente de política e implementação |
 | Correcção inline de notas/frequência no cockpit | Pendente |
-| Aplicação e validação REM-GR-003 no banco remoto | Pendente |
+| Aplicação e validação REM-GR-003 no banco remoto | Concluída em 2026-10-02 |
 
 ## Auditoria de paridade — 2026-10-02
 
@@ -399,8 +399,11 @@ Contrato:
 Migration preparada:
 `20270826129000_rematricula_retention_repeat.sql`.
 
-Estado em 2026-10-02: implementação e regressões verdes no branch; **a migration
-REM-GR-003 ainda não foi aplicada ao Supabase live**.
+Estado em 2026-10-02: implementação e regressões verdes no branch e migration
+REM-GR-003 aplicada ao Supabase live. O ledger remoto registou
+`20261002125251 rematricula_retention_repeat`; o repositório mantém
+`20270826129000_rematricula_retention_repeat.sql` como migration canónica e
+`20261002125251_rematricula_retention_repeat.sql` como marker de reconciliação.
 
 ## Aplicação ao caso de Enfermagem
 
