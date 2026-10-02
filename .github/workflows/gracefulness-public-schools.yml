@@ -1,0 +1,78 @@
+name: Gracefulness Public Schools
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/lib/school-profile/**"
+      - "apps/web/src/app/api/super-admin/escolas/**/operating-profile/route.ts"
+      - "apps/web/src/components/super-admin/SchoolOperatingProfileSettings.tsx"
+      - "apps/web/src/app/(portal-aluno)/**"
+      - "apps/web/src/components/aluno/**"
+      - "apps/web/src/app/api/aluno/**"
+      - "apps/web/src/app/api/financeiro/pagamentos/mcx/route.ts"
+      - "apps/web/src/app/api/secretaria/balcao/rematriculas/**"
+      - "apps/web/src/app/api/secretaria/rematricula/**"
+      - "apps/web/tests/unit/school-profile-capabilities.spec.ts"
+      - "supabase/migrations/20270826128000_public_school_finance_capability_guards.sql"
+      - "supabase/migrations/20270826129000_public_school_rematricula_capabilities.sql"
+      - "supabase/ops/tests/bootstrap_public_school_capabilities.sql"
+      - "supabase/ops/tests/regression_public_school_capabilities.sql"
+      - ".github/workflows/gracefulness-public-schools.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web-contracts:
+    name: Public-school web contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Capability unit regression
+        run: cd apps/web && node --test --import tsx tests/unit/school-profile-capabilities.spec.ts
+      - name: Web typecheck
+        run: pnpm -C apps/web typecheck
+      - name: Focused ESLint
+        run: |
+          pnpm -C apps/web exec eslint             src/lib/school-profile/types.ts             src/lib/school-profile/finance-capabilities.ts             "src/app/(portal-aluno)/aluno/layout.tsx"             "src/app/(portal-aluno)/aluno/AlunoLayoutClient.tsx"             src/app/api/aluno/home/finance-alert/route.ts             src/app/api/aluno/financeiro/route.ts             src/app/api/aluno/financeiro/comprovativo/route.ts             src/components/aluno/tabs/TabFinanceiro.tsx             src/app/api/aluno/rematricula/status/route.ts             src/app/api/aluno/rematricula/iniciar/route.ts             src/app/api/financeiro/pagamentos/mcx/route.ts             src/app/api/secretaria/balcao/rematriculas/route.ts             src/app/api/secretaria/balcao/rematriculas/status/route.ts             src/app/api/secretaria/rematricula/route.ts             src/app/api/secretaria/rematricula/confirmar/route.ts             tests/unit/school-profile-capabilities.spec.ts             --max-warnings 10000
+
+  database-contracts:
+    name: Public-school database contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap auth/roles
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_balcao_p0_minimal.sql
+      - name: Bootstrap public-school contract
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_public_school_capabilities.sql
+      - name: Apply finance capability guards
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826128000_public_school_finance_capability_guards.sql
+      - name: Apply rematriculation capability guards
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826129000_public_school_rematricula_capabilities.sql
+      - name: Public-school regression
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_public_school_capabilities.sql
