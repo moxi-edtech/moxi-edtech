@@ -103,7 +103,8 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes
     WHERE schemaname='public'
-      AND indexname='idx_dependencias_academicas_transicao_aluno'
+      AND indexname='idx_dependencias_academicas_transicao_aluno_id_fk'
+      AND indexdef LIKE '%(aluno_id)%'
   ) OR NOT EXISTS (
     SELECT 1 FROM pg_indexes
     WHERE schemaname='public'
