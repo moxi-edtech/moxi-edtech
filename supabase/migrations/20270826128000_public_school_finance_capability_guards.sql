@@ -147,10 +147,26 @@ DECLARE
   v_old_status text := CASE WHEN TG_OP = 'UPDATE' THEN lower(COALESCE(OLD.status::text, '')) ELSE '' END;
   v_new_status text := lower(COALESCE(NEW.status::text, ''));
   v_operation text := CASE WHEN NEW.mensalidade_id IS NULL THEN 'student_payment' ELSE 'recurring_tuition' END;
+  v_school_id uuid := NEW.escola_id;
 BEGIN
+  -- Alguns writers históricos informam apenas mensalidade_id. O guard não
+  -- pode cair no fallback privado por ausência do escola_id no payload.
+  IF v_school_id IS NULL AND NEW.mensalidade_id IS NOT NULL THEN
+    SELECT m.escola_id INTO v_school_id
+    FROM public.mensalidades m
+    WHERE m.id = NEW.mensalidade_id;
+  END IF;
+
+  IF v_school_id IS NULL THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23514',
+      MESSAGE = 'FINANCE_SCHOOL_REQUIRED',
+      DETAIL = 'Pagamento sem escola_id resolvível no boundary canónico.';
+  END IF;
+
   IF TG_OP = 'INSERT'
      OR (v_old_status NOT IN ('settled', 'concluido') AND v_new_status IN ('settled', 'concluido')) THEN
-    PERFORM public.assert_school_finance_operation(NEW.escola_id, v_operation);
+    PERFORM public.assert_school_finance_operation(v_school_id, v_operation);
   END IF;
   RETURN NEW;
 END;
