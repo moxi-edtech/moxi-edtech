@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { invalidateSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
-import { ASSESSMENT_POLICIES, FINANCE_MODELS, SCHOOL_SECTORS } from "@/lib/school-profile/types";
+import { ASSESSMENT_POLICIES, FINANCE_MODELS, SCHOOL_SECTORS, isValidSchoolFinanceCombination } from "@/lib/school-profile/types";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,14 @@ const profileSchema = z.object({
   effectiveFrom: z.string().date(),
   reason: z.string().trim().min(3).max(500),
   confirm: z.literal(true),
+}).superRefine((value, ctx) => {
+  if (!isValidSchoolFinanceCombination(value.schoolSector, value.financeModel)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["financeModel"],
+      message: "Escola pública não pode usar propinas/mensalidades recorrentes.",
+    });
+  }
 });
 
 async function requireSuperAdmin() {
