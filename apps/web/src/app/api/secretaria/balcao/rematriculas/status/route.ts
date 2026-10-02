@@ -11,6 +11,7 @@ import { resolveOpenRematriculaWindow, resolveRematriculaWindow } from "@/lib/se
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progression-server";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -292,24 +293,11 @@ export async function GET(request: Request) {
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("matricula_id", matriculaOrigem.id);
-    // "Sem dívida" significa saldo aberto zero na matrícula de origem.
-    // Não esperamos o vencimento para descobrir o bloqueio: esta leitura
-    // precisa antecipar o mesmo guard que o banco aplica ao conceder o pedido.
-    const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter((mensalidade: any) => {
-      const status = String(mensalidade.status ?? "").toLowerCase();
-      const saldo = Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      );
-      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
-    });
-    const dividaTotal = mensalidadesEmAberto.reduce(
-      (total: number, mensalidade: any) => total + Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      ),
-      0,
-    );
+    // O bloqueio financeiro considera somente mensalidades vencidas da origem.
+    // Valores futuros não impedem a confirmação da rematrícula.
+    const overdueDebt = summarizeOverdueRematriculaDebt(mensalidadesFinanceiras ?? []);
+    const mensalidadesEmAberto = overdueDebt.rows;
+    const dividaTotal = overdueDebt.total;
 
     // ── Check service config ──────────────────────────────────────────────
     const { data: service } = await supabase
@@ -458,9 +446,13 @@ export async function GET(request: Request) {
           ? "ACADEMIC_REVIEW_REQUIRED"
           : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
             ? "ACADEMIC_CONDITIONAL_BLOCKED"
-            : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-              ? "ACADEMIC_CYCLE_COMPLETED"
-              : "ACADEMIC_NOT_APPROVED";
+            : academicEligibility.code === "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+              ? "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+              : academicEligibility.code === "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                ? "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+                  ? "ACADEMIC_CYCLE_COMPLETED"
+                  : "ACADEMIC_NOT_APPROVED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {
