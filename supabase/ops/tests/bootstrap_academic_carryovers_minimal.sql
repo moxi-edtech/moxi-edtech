@@ -55,6 +55,23 @@ CREATE TABLE IF NOT EXISTS public.exame_resultados (
   estado text NOT NULL DEFAULT 'submetido'
 );
 
+CREATE TABLE IF NOT EXISTS public.servico_pedidos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  escola_id uuid NOT NULL,
+  aluno_id uuid NOT NULL,
+  matricula_id uuid,
+  servico_escola_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  status text NOT NULL DEFAULT 'granted',
+  reason_code text,
+  reason_detail text,
+  servico_codigo text NOT NULL,
+  servico_nome text NOT NULL DEFAULT 'Rematrícula',
+  valor_cobrado numeric NOT NULL DEFAULT 0,
+  contexto jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_by uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE OR REPLACE FUNCTION public.portal_user_can_access_aluno(p_aluno_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -103,14 +120,104 @@ RETURNS jsonb
 LANGUAGE sql
 STABLE
 SET search_path TO ''
-AS $$
+AS $
   SELECT jsonb_build_object(
     'decision', 'inscricao_condicional',
     'destino', 'proxima_etapa',
     'motivo', 'recurso',
     'efetivacao_matricula_bloqueada', false,
-    'disciplina_ids_pendentes', jsonb_build_array(
-      '00000000-0000-0000-0000-000000000501'::uuid
-    )
+    'disciplina_ids_pendentes',
+      coalesce(
+        (
+          SELECT jsonb_agg(td.avaliacao_disciplina_id ORDER BY td.avaliacao_disciplina_id)
+          FROM public.matriculas m
+          JOIN public.turma_disciplinas td
+            ON td.escola_id = m.escola_id
+           AND td.turma_id = m.turma_id
+          WHERE m.id = p_matricula_id
+            AND m.escola_id = p_escola_id
+            AND td.avaliacao_disciplina_id IS NOT NULL
+        ),
+        '[]'::jsonb
+      )
   );
-$$;
+$;
+
+
+-- Pre-migration backfill fixture. A migration deve criar a dependência sem
+-- qualquer chamada manual a sync_dependencias_academicas_transicao().
+INSERT INTO public.escolas(id, nome)
+VALUES ('00000000-0000-0000-0000-000000000901', 'Escola Backfill')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.alunos(id, escola_id, nome)
+VALUES (
+  '00000000-0000-0000-0000-000000000902',
+  '00000000-0000-0000-0000-000000000901',
+  'Aluno Backfill'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.disciplinas_catalogo(id, escola_id, nome, sigla)
+VALUES (
+  '00000000-0000-0000-0000-000000000905',
+  '00000000-0000-0000-0000-000000000901',
+  'Química',
+  'QUI'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.matriculas(
+  id, escola_id, aluno_id, turma_id, ano_letivo, status, ativo
+) VALUES (
+  '00000000-0000-0000-0000-000000000903',
+  '00000000-0000-0000-0000-000000000901',
+  '00000000-0000-0000-0000-000000000902',
+  '00000000-0000-0000-0000-000000000904',
+  2026,
+  'concluido',
+  false
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.turma_disciplinas(
+  id, escola_id, turma_id, avaliacao_disciplina_id
+) VALUES (
+  '00000000-0000-0000-0000-000000000907',
+  '00000000-0000-0000-0000-000000000901',
+  '00000000-0000-0000-0000-000000000904',
+  '00000000-0000-0000-0000-000000000905'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.matriculas(
+  id, escola_id, aluno_id, turma_id, ano_letivo, status, ativo,
+  origem_transicao_matricula_id
+) VALUES (
+  '00000000-0000-0000-0000-000000000908',
+  '00000000-0000-0000-0000-000000000901',
+  '00000000-0000-0000-0000-000000000902',
+  '00000000-0000-0000-0000-000000000909',
+  2027,
+  'ativo',
+  true,
+  '00000000-0000-0000-0000-000000000903'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.servico_pedidos(
+  id, escola_id, aluno_id, matricula_id, servico_codigo, contexto
+) VALUES (
+  '00000000-0000-0000-0000-000000000910',
+  '00000000-0000-0000-0000-000000000901',
+  '00000000-0000-0000-0000-000000000902',
+  '00000000-0000-0000-0000-000000000903',
+  'SERV_REMATRICULA',
+  jsonb_build_object(
+    'origem_matricula_id', '00000000-0000-0000-0000-000000000903',
+    'raa_disciplina_ids_pendentes', jsonb_build_array(
+      '00000000-0000-0000-0000-000000000905'
+    )
+  )
+)
+ON CONFLICT (id) DO NOTHING;
