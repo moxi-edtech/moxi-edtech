@@ -338,6 +338,35 @@ No portal, a jornada financeira deve preservar o mesmo contexto:
 | Correcção inline de notas/frequência no cockpit | Pendente |
 | Aplicação e validação no banco remoto | Pendente de aprovação |
 
+## Auditoria de paridade — 2026-10-02
+
+A auditoria cruzada de Secretaria, Portal do Aluno, modal de rematrícula e
+entrypoints transacionais confirmou o lifecycle de dependências e introduziu
+dois endurecimentos adicionais:
+
+- **REM-GR-001 — dívida vencida canónica:** somente saldo positivo com
+  `data_vencimento < CURRENT_DATE` bloqueia a confirmação da rematrícula.
+  Cobranças futuras e cobranças que vencem no próprio dia não são
+  inadimplência. Portal, Balcão, RPC do aluno, trigger de concessão e lote devem
+  aplicar a mesma definição.
+- **REM-GR-002 — inscrição condicional estrita no lote:**
+  `inscricao_condicional` só pode avançar quando
+  `destino = 'proxima_etapa'` e
+  `efetivacao_matricula_bloqueada = false`. `recurso`, decisão pendente,
+  conclusão de ciclo, decisão desconhecida ou inscrição condicional bloqueada
+  permanecem fora da efetivação.
+- A progressão anual em massa preserva a matrícula de origem como
+  `concluido` ou `reprovado`; `transferido` não é usado como sinónimo de
+  progressão normal.
+- O Portal só apresenta linguagem de “vaga reservada” quando existe uma
+  matrícula destino real ligada por `origem_transicao_matricula_id`.
+- A cobertura automatizada inclui cobrança futura, vencimento no próprio dia,
+  pagamento parcial vencido e introspecção SQL dos guards de portal/lote.
+
+Migration preparada: `20270826128000_rematricula_contract_parity.sql`.
+Enquanto não for aplicada no ambiente remoto, o código deve ser considerado
+**pronto no branch, mas ainda não promovido para produção**.
+
 ## Aplicação ao caso de Enfermagem
 
 Para uma aluna da 10.ª classe:
