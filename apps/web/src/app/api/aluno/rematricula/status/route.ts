@@ -107,7 +107,11 @@ export async function GET() {
           ? 'ACADEMIC_REVIEW_REQUIRED'
           : academicEligibility.code === 'ACADEMIC_CONDITIONAL_BLOCKED'
             ? 'ACADEMIC_CONDITIONAL_BLOCKED'
-            : academicEligibility.code === 'ACADEMIC_CYCLE_COMPLETED'
+            : academicEligibility.code === 'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED'
+              ? 'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED'
+              : academicEligibility.code === 'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED'
+                ? 'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED'
+                : academicEligibility.code === 'ACADEMIC_CYCLE_COMPLETED'
               ? 'ACADEMIC_CYCLE_COMPLETED'
               : 'ACADEMIC_NOT_APPROVED'
       return NextResponse.json({
