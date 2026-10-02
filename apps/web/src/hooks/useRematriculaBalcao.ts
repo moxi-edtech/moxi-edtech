@@ -17,6 +17,7 @@ export type RematriculaCardState =
   | "LEGACY_REVIEW_REQUIRED"
   | "ALREADY_COMPLETED"
   | "DOCUMENT_PENDING"
+  | "ACADEMIC_HISTORY_PENDING"
   | "PAYMENT_IN_PROGRESS"
   | "PENDING_ORDER_REVIEW"
   | "RECONCILIATION_REQUIRED"
@@ -188,6 +189,8 @@ const ERROR_MESSAGES: Record<string, string> = {
     "A turma seleccionada não pertence ao ano lectivo.",
   DOCUMENT_PENDING:
     "Rematrícula concluída; comprovante pendente de emissão.",
+  ACADEMIC_HISTORY_PENDING:
+    "Rematrícula concluída; falta reconciliar o histórico académico da matrícula de origem.",
   REMATRICULA_LEGACY_REVIEW_REQUIRED:
     "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
   GUARDIAN_CONTACT_REQUIRED: "Não foi possível validar o contacto do encarregado.",
@@ -439,7 +442,7 @@ export function useRematriculaBalcao(opts: {
 
   useEffect(() => {
     if (!modalOpen) return;
-    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
+    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
       if (destinoTurmaId) {
         setSelectedTurmaId(destinoTurmaId);
         return;
@@ -460,14 +463,14 @@ export function useRematriculaBalcao(opts: {
     setModalOpen(true);
     setResult(null);
     setApiError(null);
-    if (!selectedTurmaId && ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
+    if (!selectedTurmaId && ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
       setSelectedTurmaId(destinoTurmaId);
     }
-    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) {
+    if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
       setDecisaoResultado("aprovado");
       setDecisaoFonte("raa");
     }
-    if (!["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING"].includes(cardState ?? "")) void fetchTurmas();
+    if (!["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) void fetchTurmas();
   }, [cardState, destinoTurmaId, fetchTurmas, selectedTurmaId]);
 
   const openReconciliationModal = useCallback(() => {

@@ -70,6 +70,36 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
+async function registrarHistoricoOrigem(
+  supabase: any,
+  input: {
+    escolaId: string;
+    matriculaOrigemId: string;
+    conditional: boolean;
+    disciplinaIdsPendentes: string[];
+  },
+) {
+  const { error } = await supabase.rpc("finalizar_origem_academica", {
+    p_escola_id: input.escolaId,
+    p_matricula_id: input.matriculaOrigemId,
+    // historico_anos mantém o contrato físico legado; a nuance condicional
+    // vive no snapshot RAA + lifecycle das dependências académicas.
+    p_resultado_final: "aprovado",
+    p_fonte: "raa",
+    p_motivo: input.conditional
+      ? "Progressão condicional autorizada pelo RAA"
+      : null,
+    p_observacao: input.conditional
+      ? `Disciplinas pendentes: ${input.disciplinaIdsPendentes.join(", ")}`
+      : null,
+  });
+
+  if (error) {
+    return { ok: false as const, error: error.message };
+  }
+  return { ok: true as const };
+}
+
 async function garantirVinculoFinanceiro(
   supabase: any,
   escolaId: string,
@@ -327,28 +357,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "A turma destino pertence a outro curso.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
     }
 
-    // Reconfirmações preservam a matrícula destino já criada, mas não escapam
-    // ao gate académico. Só evitamos regravar o resultado histórico quando a
-    // operação já o materializou anteriormente.
-    if (!reconfirmacaoApenas) {
-      const { error: origemResultadoError } = await (supabase as any).rpc("finalizar_origem_academica", {
-        p_escola_id: escolaId,
-        p_matricula_id: origemMatriculaId,
-        p_resultado_final: academicEligibility.mode === "conditional" ? "inscricao_condicional" : "aprovado",
-        p_fonte: "raa",
-        p_motivo: null,
-        p_observacao: null,
-      });
-      if (origemResultadoError) {
-        return NextResponse.json({
-          ok: false,
-          error: "Não foi possível registar o resultado académico aprovado da matrícula de origem.",
-          code: "ACADEMIC_RESULT_RECONCILIATION_REQUIRED",
-          details: origemResultadoError.message,
-        }, { status: 409 });
-      }
-    }
-
     const { data: service, error: serviceError } = await (supabase as any)
       .from("servicos_escola")
       .select("id, codigo, nome, valor_base, ativo")
@@ -441,7 +449,7 @@ export async function POST(request: Request) {
 
     const { data: pedidosExistentes } = await (supabase as any)
       .from("servico_pedidos")
-      .select("id, status, contexto")
+      .select("id, status, reason_code, reason_detail, contexto")
       .eq("escola_id", escolaId)
       .eq("aluno_id", body.aluno_id)
       .eq("servico_codigo", SERVICE_CODE)
@@ -475,6 +483,39 @@ export async function POST(request: Request) {
           pedido_id: pedidoExistente.id,
         }, { status: 409 });
       }
+      if ((pedidoExistente.contexto as any)?.academic_history_pending === true) {
+        const historico = await registrarHistoricoOrigem(supabase as any, {
+          escolaId,
+          matriculaOrigemId: origemMatriculaId,
+          conditional: academicEligibility.mode === "conditional",
+          disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+        });
+        if (!historico.ok) {
+          return NextResponse.json({
+            ok: false,
+            status: "pending",
+            error: "A rematrícula já foi concluída, mas o histórico académico da matrícula de origem ainda precisa ser reconciliado.",
+            code: "ACADEMIC_HISTORY_PENDING",
+            pedido_id: pedidoExistente.id,
+            rematricula: { matricula_id: matriculaDestinoId },
+            details: historico.error,
+          }, { status: 202 });
+        }
+        await (supabase as any)
+          .from("servico_pedidos")
+          .update({
+            reason_code: null,
+            reason_detail: null,
+            contexto: {
+              ...(pedidoExistente.contexto ?? {}),
+              academic_history_pending: false,
+              academic_history_recorded_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", pedidoExistente.id)
+          .eq("escola_id", escolaId);
+      }
+
       const garantia = await garantirVinculoFinanceiro(supabase, escolaId, matriculaDestinoId, academicContext.anoLetivoId);
       if (!garantia.ok) {
         return NextResponse.json({
@@ -639,7 +680,7 @@ export async function POST(request: Request) {
         },
         created_by: user.id,
       })
-      .select("id")
+      .select("id, contexto")
       .single();
     if (pedidoError) throw pedidoError;
 
@@ -856,6 +897,57 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
     matriculaDestinoId = String(finalizacao.matricula_id ?? matriculaDestinoId);
+
+    if (!reconfirmacaoApenas) {
+      const historico = await registrarHistoricoOrigem(supabase as any, {
+        escolaId,
+        matriculaOrigemId: origemMatriculaId,
+        conditional: academicEligibility.mode === "conditional",
+        disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+      });
+      if (!historico.ok) {
+        const contextoAtual = {
+          ...(pedido.contexto ?? {}),
+          matricula_destino_id: matriculaDestinoId,
+          academic_history_pending: true,
+        };
+        await (supabase as any)
+          .from("servico_pedidos")
+          .update({
+            reason_code: "ACADEMIC_HISTORY_PENDING",
+            reason_detail: historico.error,
+            contexto: contextoAtual,
+          })
+          .eq("id", pedido.id)
+          .eq("escola_id", escolaId);
+
+        return NextResponse.json({
+          ok: false,
+          status: "pending",
+          error: "Pagamento e matrícula confirmados, mas o histórico académico da matrícula de origem precisa de reconciliação.",
+          code: "ACADEMIC_HISTORY_PENDING",
+          pedido_id: pedido.id,
+          payment: paymentJson.data ?? null,
+          rematricula: { matricula_id: matriculaDestinoId },
+          details: historico.error,
+        }, { status: 202 });
+      }
+
+      await (supabase as any)
+        .from("servico_pedidos")
+        .update({
+          reason_code: null,
+          reason_detail: null,
+          contexto: {
+            ...(pedido.contexto ?? {}),
+            matricula_destino_id: matriculaDestinoId,
+            academic_history_pending: false,
+            academic_history_recorded_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", pedido.id)
+        .eq("escola_id", escolaId);
+    }
 
     // Para uma matrícula criada agora, a mesma garantia é executada depois
     // da finalização, antes de qualquer comprovativo. Se houver falha, o

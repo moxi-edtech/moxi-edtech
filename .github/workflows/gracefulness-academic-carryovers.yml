@@ -1,0 +1,108 @@
+name: Gracefulness Academic Carryovers
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/api/aluno/raa/dependencias/route.ts"
+      - "apps/web/src/app/api/academico/raa/dependencias/route.ts"
+      - "apps/web/src/app/api/secretaria/balcao/rematriculas/route.ts"
+      - "apps/web/src/app/api/secretaria/balcao/rematriculas/status/route.ts"
+      - "apps/web/src/app/secretaria/**/raa/**"
+      - "apps/web/src/components/aluno/academico/AcademicCarryoversCard.tsx"
+      - "apps/web/src/components/aluno/tabs/TabNotas.tsx"
+      - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/RematriculaBalcaoModal.tsx"
+      - "apps/web/src/hooks/useRematriculaBalcao.ts"
+      - "apps/web/src/lib/academico/dependencias-transicao.ts"
+      - "apps/web/src/lib/academico/dependencias-transicao-server.ts"
+      - "apps/web/src/lib/secretaria/rematricula-result.ts"
+      - "apps/web/tests/unit/dependencias-transicao.spec.ts"
+      - "apps/web/tests/unit/rematricula-result.spec.ts"
+      - "supabase/migrations/20270826124000_academic_carryovers_lifecycle.sql"
+      - "supabase/migrations/20270826125000_academic_carryovers_backfill_hardening.sql"
+      - "supabase/migrations/20270826126000_academic_carryovers_fk_indexes.sql"
+      - "supabase/migrations/20270826127000_academic_carryovers_aluno_fk_index.sql"
+      - "supabase/ops/tests/bootstrap_academic_carryovers_minimal.sql"
+      - "supabase/ops/tests/regression_academic_carryovers_lifecycle.sql"
+      - "docs/CONTRATO_ESTADOS_MATRICULA_REMATRICULA.md"
+      - ".github/workflows/gracefulness-academic-carryovers.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Carryover web contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Carryover unit regressions
+        run: |
+          cd apps/web
+          node --test --import tsx             tests/unit/dependencias-transicao.spec.ts             tests/unit/rematricula-result.spec.ts
+      - name: Typecheck
+        run: pnpm -C apps/web typecheck
+      - name: Focused ESLint
+        run: |
+          pnpm -C apps/web exec eslint             src/app/api/aluno/raa/dependencias/route.ts             src/app/api/academico/raa/dependencias/route.ts             src/app/api/secretaria/balcao/rematriculas/route.ts             src/app/api/secretaria/balcao/rematriculas/status/route.ts             "src/app/secretaria/(portal-secretaria)/raa/dependencias/page.tsx"             "src/app/secretaria/(portal-secretaria)/raa/reapreciacoes/page.tsx"             src/components/aluno/academico/AcademicCarryoversCard.tsx             src/components/aluno/tabs/TabNotas.tsx             src/components/secretaria/BalcaoAtendimento.tsx             src/hooks/useRematriculaBalcao.ts             src/lib/academico/dependencias-transicao.ts             src/lib/academico/dependencias-transicao-server.ts             src/lib/secretaria/rematricula-result.ts             tests/unit/dependencias-transicao.spec.ts             tests/unit/rematricula-result.spec.ts             --max-warnings 10000
+
+  database:
+    name: Carryover database regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap carryover contract
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_academic_carryovers_minimal.sql
+      - name: Apply carryover migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826124000_academic_carryovers_lifecycle.sql
+      - name: Simulate live Supabase grant drift
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT ALL ON TABLE public.dependencias_academicas_transicao TO authenticated;
+          GRANT ALL ON TABLE public.dependencias_academicas_transicao_eventos TO authenticated;
+          SQL
+      - name: Apply carryover backfill hardening
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826125000_academic_carryovers_backfill_hardening.sql
+      - name: Apply carryover FK indexes
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826126000_academic_carryovers_fk_indexes.sql
+      - name: Apply carryover aluno FK index
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826127000_academic_carryovers_aluno_fk_index.sql
+      - name: Carryover lifecycle regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_academic_carryovers_lifecycle.sql

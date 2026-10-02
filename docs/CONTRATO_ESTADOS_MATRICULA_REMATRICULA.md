@@ -140,6 +140,39 @@ Destino académico: 10.ª classe
 
 Em ambos os casos, a situação financeira é avaliada separadamente.
 
+### Lifecycle após a progressão condicional
+
+Quando a matrícula destino é efetivada com `inscricao_condicional`, a
+disciplina pendente continua vinculada à matrícula de origem. O KLASSE
+materializa esse acompanhamento em `dependencias_academicas_transicao`, mas
+essa tabela **não decide notas nem aprovação**: `resolve_estado_resultado()`
+continua sendo a fonte canónica.
+
+```text
+matrícula origem + disciplina pendente
+        ↓
+dependência = pendente / em_recurso
+        ↓
+recurso ou exame extraordinário publicado
+        ↓
+resolve_estado_resultado(origem, disciplina)
+        ↓
+resolvida_aprovada | resolvida_reprovada
+```
+
+Regras:
+
+- a matrícula destino permanece ligada à origem por
+  `origem_transicao_matricula_id`;
+- `recurso` e `extraordinario` publicados/encerrados podem resolver a
+  disciplina carregada, inclusive fora das classes de exame;
+- uma dependência não pode ser marcada como resolvida manualmente pela UI;
+- mudanças de estado são sincronizadas a partir do SSOT e registadas em
+  `dependencias_academicas_transicao_eventos`;
+- Portal do Aluno e Secretaria leem a mesma projeção operacional;
+- uma resolução negativa não é escondida: fica
+  `resolvida_reprovada` e exige a próxima decisão prevista pelo RAA.
+
 ## Regra financeira
 
 As propinas vencidas pertencem à validação da rematrícula, não ao resultado
