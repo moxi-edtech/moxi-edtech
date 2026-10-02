@@ -8,7 +8,7 @@ import { resolveValorConfirmacao } from '@/lib/financeiro/resolve-confirmacao'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { classifyRematriculaAcademicEligibility } from '@/lib/rematricula/eligibility'
 import { resolveSchoolOperatingProfile } from '@/lib/school-profile/resolve-school-profile'
-import { canUseFinancialSuspension } from '@/lib/school-profile/finance-capabilities'
+import { canUseFinancialSuspension, canUseOneOffStudentPayments } from '@/lib/school-profile/finance-capabilities'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +33,7 @@ export async function GET() {
     }
     const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId)
     const financialSuspensionEnabled = canUseFinancialSuspension(operatingProfile)
+    const studentPaymentEnabled = canUseOneOffStudentPayments(operatingProfile)
     const activeAno = await resolveAnoLetivoScope(supabase, escolaId)
     if (!activeAno) {
       return NextResponse.json({ ok: true, eligible: false, code: 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE', reason: 'A escola ainda não configurou um ano letivo ativo.' })
@@ -205,7 +206,7 @@ export async function GET() {
     if (servicosError) throw new Error(`Falha ao carregar serviços de rematrícula: ${servicosError.message}`)
 
     const rematriculaService = (servicosRows ?? []).find((service: { codigo?: string }) => service.codigo === 'SERV_REMATRICULA') ?? null
-    const availableServices = (servicosRows ?? [])
+    const availableServices = studentPaymentEnabled ? (servicosRows ?? [])
       .filter((service: { codigo?: string; valor_base?: number | null }) => service.codigo !== 'SERV_REMATRICULA' && Number(service.valor_base ?? 0) > 0)
       .map((service: { id: string; codigo: string; nome: string; descricao?: string | null; valor_base: number }) => ({
         id: service.id,
@@ -213,15 +214,15 @@ export async function GET() {
         nome: service.nome,
         descricao: service.descricao,
         valor: Number(service.valor_base ?? 0),
-      }))
+      })) : []
     const rawPaymentData = escolaRow?.dados_pagamento && typeof escolaRow.dados_pagamento === 'object' ? escolaRow.dados_pagamento as Record<string, unknown> : {}
-    const dadosPagamento = {
+    const dadosPagamento = studentPaymentEnabled ? {
       iban: typeof rawPaymentData.iban === 'string' ? rawPaymentData.iban : undefined,
       banco: typeof rawPaymentData.banco === 'string' ? rawPaymentData.banco : undefined,
       titular: typeof rawPaymentData.titular === 'string' ? rawPaymentData.titular : typeof rawPaymentData.titular_conta === 'string' ? rawPaymentData.titular_conta : undefined,
       kwik_chave: typeof rawPaymentData.kwik_chave === 'string' ? rawPaymentData.kwik_chave : undefined,
-    }
-    const targetPricing = rematriculaService
+    } : {}
+    const targetPricing = studentPaymentEnabled && rematriculaService
       ? await resolveValorConfirmacao(supabase, {
           escolaId,
           anoLetivo: nextAno,
@@ -307,6 +308,7 @@ export async function GET() {
       }
     }
     const rematriculaData = {
+      payment_required: studentPaymentEnabled,
       service: rematriculaService && targetPricing && targetPricing.valor > 0 ? {
         id: rematriculaService.id,
         nome: rematriculaService.nome,
@@ -325,7 +327,7 @@ export async function GET() {
       },
     }
 
-    if (!rematriculaService || !targetPricing || targetPricing.valor <= 0) {
+    if (studentPaymentEnabled && (!rematriculaService || !targetPricing || targetPricing.valor <= 0)) {
       return NextResponse.json({
         ok: true,
         eligible: false,
@@ -412,8 +414,12 @@ export async function GET() {
       } : null,
       rematricula: rematriculaData,
       reason: academicEligibility.mode === 'conditional'
-        ? 'O RAA autorizou a progressão condicional e não existem saldos em aberto.'
-        : 'O RAA autorizou a progressão e não existem saldos em aberto.'
+        ? (financialSuspensionEnabled
+            ? 'O RAA autorizou a progressão condicional e não existem saldos em aberto.'
+            : 'O RAA autorizou a progressão condicional; esta escola não aplica bloqueio por propina.')
+        : (financialSuspensionEnabled
+            ? 'O RAA autorizou a progressão e não existem saldos em aberto.'
+            : 'O RAA autorizou a progressão; esta escola não aplica bloqueio por propina.')
     })
 
   } catch (err: any) {
