@@ -99,6 +99,34 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'carryover regression: lifecycle trigger missing';
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname='public'
+      AND indexname='idx_dependencias_academicas_transicao_aluno'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname='public'
+      AND indexname='idx_dependencias_academicas_transicao_disciplina'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname='public'
+      AND indexname='idx_dependencias_academicas_transicao_exame_sessao'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname='public'
+      AND indexname='idx_dependencias_academicas_transicao_turma_disciplina_origem'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname='public'
+      AND indexname='idx_dependencias_academicas_transicao_matricula_origem'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname='public'
+      AND indexname='idx_dependencias_academicas_eventos_escola'
+  ) THEN
+    RAISE EXCEPTION 'carryover regression: FK covering index missing';
+  END IF;
 END;
 $case2$;
 
