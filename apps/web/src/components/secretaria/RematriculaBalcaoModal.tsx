@@ -891,7 +891,7 @@ function StepFinanceiro({
         </div>
       )}
 
-      {service.valor_base <= 0 && (
+      {serviceValue <= 0 && (
         <div
           role="alert"
           className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
