@@ -6,6 +6,8 @@ import { resolveRematriculaSource } from "@/lib/alunoRematriculaSource";
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { canUseFinancialSuspension } from "@/lib/school-profile/finance-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,9 @@ export async function POST(request: Request) {
     if (!escolaId || escolaId !== ctx.escolaId) {
       return NextResponse.json({ ok: false, error: "Sem acesso à escola do aluno." }, { status: 403 });
     }
+
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId);
+    const financialSuspensionEnabled = canUseFinancialSuspension(operatingProfile);
 
     const activeAno = await resolveAnoLetivoScope(supabase, escolaId);
     if (!activeAno) {
@@ -87,18 +92,20 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    const { data: openBalances, error: openBalancesError } = await supabase
+    const { data: openBalances, error: openBalancesError } = financialSuspensionEnabled
+      ? await supabase
       .from("mensalidades")
       .select("status, valor_previsto, valor, valor_pago_total")
       .eq("escola_id", escolaId)
       .eq("aluno_id", ctx.alunoId)
-      .or(`matricula_id.eq.${matricula.id},ano_referencia.eq.${matricula.ano_letivo}`);
+      .or(`matricula_id.eq.${matricula.id},ano_referencia.eq.${matricula.ano_letivo}`)
+      : { data: [], error: null };
 
     if (openBalancesError) {
       throw new Error(`Falha ao verificar situação financeira: ${openBalancesError.message}`);
     }
 
-    const hasOpenBalance = (openBalances ?? []).some((mensalidade: any) => {
+    const hasOpenBalance = financialSuspensionEnabled && (openBalances ?? []).some((mensalidade: any) => {
       const status = String(mensalidade.status ?? "").toLowerCase();
       const saldo = Math.max(
         Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0)
