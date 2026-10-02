@@ -49,8 +49,17 @@ BEGIN
 
   IF has_table_privilege('authenticated', 'public.dependencias_academicas_transicao', 'INSERT')
      OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao', 'UPDATE')
-     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao', 'DELETE') THEN
-    RAISE EXCEPTION 'carryover regression: authenticated has write grant';
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao', 'DELETE')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao', 'TRUNCATE')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao', 'TRIGGER')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao', 'REFERENCES')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao_eventos', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao_eventos', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao_eventos', 'DELETE')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao_eventos', 'TRUNCATE')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao_eventos', 'TRIGGER')
+     OR has_table_privilege('authenticated', 'public.dependencias_academicas_transicao_eventos', 'REFERENCES') THEN
+    RAISE EXCEPTION 'carryover regression: authenticated has non-read lifecycle grant';
   END IF;
 
   IF has_function_privilege(
