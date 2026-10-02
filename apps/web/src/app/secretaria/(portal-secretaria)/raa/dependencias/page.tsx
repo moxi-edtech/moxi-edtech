@@ -82,12 +82,20 @@ export default function DependenciasAcademicasPage() {
 
   const visible = useMemo(() => {
     if (filter === "todas") return items;
-    if (filter === "abertas") return items.filter((item) => item.status === "pendente" || item.status === "em_recurso");
+    if (filter === "abertas") return items.filter((item) =>
+      item.status === "pendente"
+      || item.status === "em_recurso"
+      || item.status === "resolvida_reprovada"
+    );
     return items.filter((item) => item.status === filter);
   }, [filter, items]);
 
-  const abertas = items.filter((item) => item.status === "pendente" || item.status === "em_recurso").length;
-  const resolvidas = items.filter((item) => item.status.startsWith("resolvida_")).length;
+  const abertas = items.filter((item) =>
+    item.status === "pendente"
+    || item.status === "em_recurso"
+    || item.status === "resolvida_reprovada"
+  ).length;
+  const resolvidas = items.filter((item) => item.status === "resolvida_aprovada").length;
 
   return (
     <div className="space-y-5">
