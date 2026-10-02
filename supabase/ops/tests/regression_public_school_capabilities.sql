@@ -66,6 +66,26 @@ BEGIN
   INSERT INTO public.pagamentos(escola_id, aluno_id, valor_pago, status)
   VALUES (v_public_emoluments, v_student, 500, 'pendente');
 
+  -- A payment created under tuition must not be liquidated after the school
+  -- switches to a non-transactional budget profile.
+  INSERT INTO public.pagamentos(escola_id, aluno_id, valor_pago, status)
+  VALUES (v_private, v_student, 700, 'pendente');
+
+  UPDATE public.school_operating_profiles
+  SET school_sector = 'public', finance_model = 'budget'
+  WHERE school_id = v_private AND status = 'active';
+
+  BEGIN
+    UPDATE public.pagamentos
+    SET status = 'confirmado'
+    WHERE escola_id = v_private
+      AND aluno_id = v_student
+      AND valor_pago = 700;
+    RAISE EXCEPTION 'REGRESSION: pending payment settled after profile switched to budget';
+  EXCEPTION WHEN check_violation THEN
+    NULL;
+  END;
+
   SELECT pg_get_functiondef(p.oid) INTO v_def
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.proname = 'rematricula_em_massa';
