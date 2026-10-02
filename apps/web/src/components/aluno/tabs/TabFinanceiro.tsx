@@ -37,6 +37,16 @@ type DadosPagamento = {
 };
 type ApiResponse = {
   ok: boolean;
+  available?: boolean;
+  capabilities?: {
+    recurringTuition: boolean;
+    financialSuspension: boolean;
+    financeChargeMessages: boolean;
+    budgetModule: boolean;
+    emoluments: boolean;
+    studentFinancePortal: boolean;
+    oneOffStudentPayments: boolean;
+  };
   mensalidades: Array<Omit<Item, "status"> & { status: string }>;
   servicos?: AlunoServicoFinanceiro[];
   movimentos: Movimento[];
@@ -50,6 +60,8 @@ type ApiResponse = {
   dados_pagamento?: DadosPagamento | null;
 };
 type ParsedFinanceiroPayload = {
+  available: boolean;
+  capabilities: ApiResponse["capabilities"] | null;
   rows: Item[];
   movimentos: Movimento[];
   resumo: ApiResponse["resumo"];
@@ -79,6 +91,8 @@ export function TabFinanceiro() {
   const currentYear = new Date().getFullYear();
 
   const [loading, setLoading] = useState(true);
+  const [available, setAvailable] = useState(true);
+  const [capabilities, setCapabilities] = useState<ApiResponse["capabilities"] | null>(null);
   const [rows, setRows] = useState<Item[]>([]);
   const [movimentos, setMovimentos] = useState<Movimento[]>([]);
   const [resumo, setResumo] = useState<ApiResponse["resumo"] | null>(null);
@@ -113,6 +127,8 @@ export function TabFinanceiro() {
       const json = payload as ApiResponse;
       const mapped = (json.mensalidades ?? []).map((m) => ({ ...m, status: normalizeStatus(m.status) }));
       return {
+        available: json.available !== false,
+        capabilities: json.capabilities ?? null,
         rows: mapped,
         movimentos: json.movimentos ?? [],
         resumo: json.resumo,
@@ -122,6 +138,8 @@ export function TabFinanceiro() {
       } satisfies ParsedFinanceiroPayload;
     },
     onData: (data) => {
+      setAvailable(data.available);
+      setCapabilities(data.capabilities);
       setRows(data.rows);
       setMovimentos(data.movimentos);
       setResumo(data.resumo);
@@ -146,6 +164,19 @@ export function TabFinanceiro() {
     if (!reciboId) return;
     window.open(`/aluno/documentos/${reciboId}/recibo/print`, "_blank", "noopener,noreferrer");
   };
+
+  if (!available) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+        <p className="text-sm font-semibold text-slate-900">Financeiro do aluno não aplicável</p>
+        <p className="mt-2 text-sm text-slate-600">
+          Esta escola não utiliza cobranças financeiras transacionais no portal do aluno.
+        </p>
+      </div>
+    );
+  }
+
+  const showRecurringTuition = capabilities?.recurringTuition ?? true;
 
   return (
     <div className="space-y-4">
@@ -233,6 +264,7 @@ export function TabFinanceiro() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Lado Esquerdo: Mensalidades e Pagamento */}
+        {showRecurringTuition ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-slate-900">Mensalidades</h2>
@@ -292,6 +324,7 @@ export function TabFinanceiro() {
             </ul>
           )}
         </section>
+        ) : null}
 
         {/* Lado Direito: Histórico de Movimentos (Ledger) */}
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -373,6 +406,7 @@ export function TabFinanceiro() {
         )}
       </section>
 
+      {showRecurringTuition ? (
       <PaymentDrawer
         open={paymentOpen && selectedMensalidades.length > 0}
         mensalidades={selectedMensalidades}
@@ -381,6 +415,7 @@ export function TabFinanceiro() {
         onUploaded={(ids) => { setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds([]); }}
         studentId={studentId}
       />
+      ) : null}
     </div>
   );
 }

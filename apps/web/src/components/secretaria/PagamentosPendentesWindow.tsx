@@ -62,7 +62,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
   } = usePagamentosPendentes(15, queryFilters);
 
   useEffect(() => {
-    if (!openRematriculaAfterApproval || rematriculaAutoOpenHandled.current || !rematriculaTarget || rematricula.loading || !rematricula.service) return;
+    if (!openRematriculaAfterApproval || rematriculaAutoOpenHandled.current || !rematriculaTarget || rematricula.loading) return;
     if (["READY", "RECONFIRMATION_REQUIRED", "FINALIST_PENDING"].includes(rematricula.cardState ?? "")) {
       rematriculaAutoOpenHandled.current = true;
       rematricula.openModal();
@@ -390,7 +390,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
         </button>
       </footer>
 
-      {rematriculaTarget && rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && (
+      {rematriculaTarget && rematricula.modalOpen && rematricula.anoLetivo && (
         <RematriculaBalcaoModal
           open={rematricula.modalOpen}
           onClose={rematricula.closeModal}
@@ -402,6 +402,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
           service={rematricula.service}
+          paymentRequired={rematricula.paymentRequired}
           itensPagamento={rematriculaTarget.itens_pagamento}
           paymentAlreadyValidated
           skipTurmaSelection={rematricula.cardState === "RECONFIRMATION_REQUIRED"}

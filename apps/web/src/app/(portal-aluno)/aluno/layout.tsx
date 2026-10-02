@@ -3,6 +3,8 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import AlunoLayoutClient from "@/app/(portal-aluno)/aluno/AlunoLayoutClient";
 import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
 import type { Metadata } from "next";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { deriveSchoolFinanceCapabilities } from "@/lib/school-profile/finance-capabilities";
 
 export const metadata: Metadata = {
   manifest: "/manifest-aluno.json",
@@ -107,6 +109,8 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
     .eq("id", escolaId)
     .maybeSingle();
   const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : String(escolaId);
+  const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId);
+  const financeCapabilities = deriveSchoolFinanceCapabilities(operatingProfile);
 
   const { data: configuracoes } = await (supabase as any)
     .from("configuracoes_financeiro")
@@ -114,7 +118,7 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
     .eq("escola_id", escolaId)
     .maybeSingle();
 
-  if (configuracoes?.bloquear_inadimplentes) {
+  if (financeCapabilities.financialSuspension && configuracoes?.bloquear_inadimplentes) {
     const alunoIds = await resolveAlunoIds(supabase, escolaId, user.id, user.email);
     const bloqueado = await alunoTemInadimplencia(supabase, escolaId, alunoIds);
     if (bloqueado) {
@@ -122,5 +126,5 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
     }
   }
 
-  return <AlunoLayoutClient>{children}</AlunoLayoutClient>;
+  return <AlunoLayoutClient financeCapabilities={financeCapabilities}>{children}</AlunoLayoutClient>;
 }

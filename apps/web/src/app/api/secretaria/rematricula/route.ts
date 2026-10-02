@@ -12,6 +12,8 @@ import { PayloadLimitError, readJsonWithLimit } from "@/lib/http/readJsonWithLim
 import type { Database } from "~types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { canUseFinancialSuspension, canUseRecurringTuition } from "@/lib/school-profile/finance-capabilities";
 
 const REMATRICULA_MAX_JSON_BYTES = 128 * 1024; // 128KB
 const RematriculaBodySchema = z.object({
@@ -41,6 +43,10 @@ export async function POST(req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
     }
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId);
+    const financialSuspensionEnabled = canUseFinancialSuspension(operatingProfile);
+    const recurringTuitionEnabled = canUseRecurringTuition(operatingProfile);
+
     const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["criar_matricula", "configurar_escola"]);
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
@@ -114,7 +120,7 @@ export async function POST(req: Request) {
       recordAuditServer({ escolaId, portal: 'secretaria', acao: 'REMATRICULA_RPC', entity: 'matriculas', details: { origin_turma_id, destination_turma_id, inserted: row?.inserted ?? 0, skipped: row?.skipped ?? 0 } }).catch(()=>null)
       const insertedCount = insertedList.length;
       // Pós-processo: gerar mensalidades para os realmente inseridos
-      if (gerar_mensalidades && insertedCount > 0) {
+      if (recurringTuitionEnabled && gerar_mensalidades && insertedCount > 0) {
         const { data: nowActive } = await supabase
           .from('matriculas')
           .select('aluno_id')
@@ -188,7 +194,7 @@ export async function POST(req: Request) {
     const originRows = (originMatriculas ?? []) as Array<{ id: string; aluno_id: string | null }>;
     const originByAluno = new Map(originRows.filter((row) => row.aluno_id).map((row) => [row.aluno_id as string, row.id]));
     const originIds = Array.from(originByAluno.values());
-    const { data: openDebtRows } = originIds.length
+    const { data: openDebtRows } = financialSuspensionEnabled && originIds.length
       ? await supabase
           .from('mensalidades')
           .select('matricula_id, valor_previsto, valor, valor_pago_total, status')
@@ -252,7 +258,7 @@ export async function POST(req: Request) {
 
     const skipped = aluno_ids.length - inserted;
     // Pós-processo: gerar mensalidades no fallback
-    if (gerar_mensalidades && inserted > 0) {
+    if (recurringTuitionEnabled && gerar_mensalidades && inserted > 0) {
       const { data: dest } = await supabase.from('turmas').select('session_id, ano_letivo, classe_id').eq('id', destination_turma_id).maybeSingle();
       const sessionId = dest?.session_id ?? null;
       await generateMensalidadesForAlunos(
