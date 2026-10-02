@@ -1,5 +1,17 @@
 BEGIN;
 
+-- Normaliza privilégios porque ambientes Supabase podem ter default privileges
+-- mais amplos que um Postgres limpo. O lifecycle é read-only para utilizadores;
+-- apenas service_role/triggers internos podem materializar ou atualizar estado.
+REVOKE ALL ON TABLE public.dependencias_academicas_transicao
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.dependencias_academicas_transicao_eventos
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.dependencias_academicas_transicao TO authenticated;
+GRANT SELECT ON TABLE public.dependencias_academicas_transicao_eventos TO authenticated;
+GRANT ALL ON TABLE public.dependencias_academicas_transicao TO service_role;
+GRANT ALL ON TABLE public.dependencias_academicas_transicao_eventos TO service_role;
+
 -- Follow-up de 20270826124000 já aplicado em produção.
 -- Preserva o lifecycle original e endurece somente:
 -- 1) reconstrução por snapshot RAA do pedido de rematrícula;
