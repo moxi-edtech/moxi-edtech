@@ -683,8 +683,8 @@ BEGIN
 
   SELECT
     count(*)::integer,
-    count(*) FILTER (WHERE status IN ('pendente','em_recurso'))::integer,
-    count(*) FILTER (WHERE status IN ('resolvida_aprovada','resolvida_reprovada'))::integer
+    count(*) FILTER (WHERE status IN ('pendente','em_recurso','resolvida_reprovada'))::integer,
+    count(*) FILTER (WHERE status = 'resolvida_aprovada')::integer
   INTO v_total, v_abertas, v_resolvidas
   FROM public.dependencias_academicas_transicao d
   WHERE d.escola_id = p_escola_id
@@ -696,6 +696,7 @@ BEGIN
     'matricula_destino_id', v_destino_id,
     'total', v_total,
     'abertas', v_abertas,
+    'regularizadas', v_resolvidas,
     'resolvidas', v_resolvidas
   );
 END;
