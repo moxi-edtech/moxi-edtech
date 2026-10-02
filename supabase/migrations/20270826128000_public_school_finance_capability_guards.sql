@@ -165,7 +165,10 @@ BEGIN
   END IF;
 
   IF TG_OP = 'INSERT'
-     OR (v_old_status NOT IN ('settled', 'concluido') AND v_new_status IN ('settled', 'concluido')) THEN
+     OR (
+       v_old_status NOT IN ('settled', 'liquidado', 'paid', 'pago', 'confirmed', 'confirmado', 'succeeded', 'recebido', 'concluido', 'aprovado')
+       AND v_new_status IN ('settled', 'liquidado', 'paid', 'pago', 'confirmed', 'confirmado', 'succeeded', 'recebido', 'concluido', 'aprovado')
+     ) THEN
     PERFORM public.assert_school_finance_operation(v_school_id, v_operation);
   END IF;
   RETURN NEW;
