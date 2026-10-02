@@ -293,7 +293,9 @@ export function useRematriculaBalcao(opts: {
         setApiError(null);
         setCardState(data.status);
         setService(data.service);
-        setPaymentRequired(data.payment_required !== false);
+        const requiresPayment = data.payment_required !== false;
+        setPaymentRequired(requiresPayment);
+        if (!requiresPayment) setStep(1);
         setDebt(data.debt);
         setAcademic(data.academic ?? null);
         setPedido(data.pedido);
