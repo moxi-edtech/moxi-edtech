@@ -9,7 +9,7 @@ export const navLinks = [
 
 export const hero = {
   eyebrow: 'A escola inteira, numa única visão.',
-  titleLines: ['Assuma o controlo total da sua escola hoje.'],
+  titleLines: ['Assuma o controlo total', 'da sua escola hoje.'],
   subtitle:
     'Direção, secretaria, professores, alunos e famílias ligados pela mesma informação. Menos retrabalho. Mais controlo para decidir.',
   primaryCta: 'Falar no WhatsApp',
