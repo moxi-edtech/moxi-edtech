@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { recordAuditServer } from "@/lib/audit";
 import { postFiscalChaveSchema } from "@/lib/schemas/fiscal-setup.schema";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database, Json } from "~types/supabase";
 
@@ -103,21 +104,28 @@ export async function POST(req: Request) {
       }
     }
 
-    const payload: Database["public"]["Tables"]["fiscal_chaves"]["Insert"] = {
-      empresa_id: parsed.data.empresa_id,
-      key_version: parsed.data.key_version,
-      public_key_pem: parsed.data.public_key_pem,
-      private_key_ref: parsed.data.private_key_ref ?? null,
-      key_fingerprint: parsed.data.key_fingerprint,
-      status: parsed.data.status,
-      metadata: (parsed.data.metadata ?? null) as Json | null,
-    };
+    if (!parsed.data.private_key_ref) {
+      return jsonError(
+        400,
+        "FISCAL_KMS_REFERENCE_REQUIRED",
+        "A chave fiscal privada deve ser referenciada por KMS; material privado em claro não é aceite.",
+        { request_id: requestId }
+      );
+    }
 
-    const { data: chave, error: chaveError } = await supabase
-      .from("fiscal_chaves")
-      .insert(payload)
-      .select("id, empresa_id, key_version, status, created_at")
-      .single();
+    const admin = supabaseServerRole<Database>() as any;
+    const { data: chave, error: chaveError } = await admin.rpc(
+      "fiscal_register_key_ref",
+      {
+        p_empresa_id: parsed.data.empresa_id,
+        p_key_version: parsed.data.key_version,
+        p_public_key_pem: parsed.data.public_key_pem,
+        p_private_key_ref: parsed.data.private_key_ref,
+        p_key_fingerprint: parsed.data.key_fingerprint,
+        p_status: parsed.data.status,
+        p_metadata: (parsed.data.metadata ?? {}) as Json,
+      }
+    );
 
     if (chaveError || !chave) {
       const status = chaveError?.code === "23505" ? 409 : 500;

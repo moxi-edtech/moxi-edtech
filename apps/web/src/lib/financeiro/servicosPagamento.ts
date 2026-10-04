@@ -1,3 +1,8 @@
+import {
+  exactToJsonNumber,
+  parseExactDecimal,
+} from "@/lib/fiscal/decimal";
+
 export type AlunoServicoFinanceiro = {
   id: string;
   pagamento_id: string;
@@ -17,6 +22,15 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+function toMoney(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  try {
+    return exactToJsonNumber(parseExactDecimal(value, "valor_servico"), 2);
+  } catch {
+    return null;
+  }
 }
 
 type ServiceStatus = AlunoServicoFinanceiro["status"];
@@ -88,8 +102,8 @@ export function extractServicosFromPagamentos(
       if (item.tipo === "mensalidade") return [];
 
       const nome = item.nome ?? item.descricao ?? item.referencia ?? item.label;
-      const valor = Number(item.preco ?? item.valor ?? item.amount ?? 0);
-      if (typeof nome !== "string" || !nome.trim() || !Number.isFinite(valor)) return [];
+      const valor = toMoney(item.preco ?? item.valor ?? item.amount ?? "0");
+      if (typeof nome !== "string" || !nome.trim() || valor === null) return [];
 
       return [{
         id: `${pagamento.id}-${index}`,
@@ -124,7 +138,7 @@ export function extractServicosFromPedidos(
       pagamento_id: pedido.id,
       protocolo: pedido.id.slice(0, 8).toUpperCase(),
       nome,
-      valor: Number(pedido.valor_cobrado ?? 0),
+      valor: toMoney(pedido.valor_cobrado ?? "0") ?? 0,
       status,
       estado_label,
       mensagem_estado,

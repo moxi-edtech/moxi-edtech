@@ -1,6 +1,7 @@
 import "server-only";
 
 import { FiscalProvider } from "@/lib/fiscal/fiscalProvider";
+import { parseSafeInteger } from "@/lib/fiscal/decimal";
 
 export function buildFiscalProviderFromEnv() {
   const provider = (process.env.FISCAL_PROVIDER_NAME?.trim().toLowerCase() || "kuantu") as
@@ -16,8 +17,20 @@ export function buildFiscalProviderFromEnv() {
     provider,
     baseUrl,
     apiKey,
-    timeoutMs: Number(process.env.FISCAL_PROVIDER_TIMEOUT_MS ?? 8000),
-    maxRetries: Number(process.env.FISCAL_PROVIDER_MAX_RETRIES ?? 3),
-    backoffBaseMs: Number(process.env.FISCAL_PROVIDER_BACKOFF_MS ?? 300),
+    timeoutMs: parseSafeInteger(
+      process.env.FISCAL_PROVIDER_TIMEOUT_MS ?? "8000",
+      "FISCAL_PROVIDER_TIMEOUT_MS",
+      { min: 1000, fallback: 8000 }
+    ),
+    maxRetries: parseSafeInteger(
+      process.env.FISCAL_PROVIDER_MAX_RETRIES ?? "3",
+      "FISCAL_PROVIDER_MAX_RETRIES",
+      { min: 0, max: 20, fallback: 3 }
+    ),
+    backoffBaseMs: parseSafeInteger(
+      process.env.FISCAL_PROVIDER_BACKOFF_MS ?? "300",
+      "FISCAL_PROVIDER_BACKOFF_MS",
+      { min: 1, fallback: 300 }
+    ),
   });
 }

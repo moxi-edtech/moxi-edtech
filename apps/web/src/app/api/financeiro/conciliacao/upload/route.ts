@@ -7,11 +7,45 @@ import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from '@/lib/roles';
 import * as XLSX from 'xlsx';
 import crypto from 'crypto'; // Node.js crypto module
 import type { Database } from '~types/supabase';
+import {
+  cmpExact,
+  exactToJsonNumber,
+  parseExactDecimal,
+  roundExact,
+} from '@/lib/fiscal/decimal';
 
 type FinanceiroTransacaoInsert = Database["public"]["Tables"]["financeiro_transacoes_importadas"]["Insert"];
 type ParsedRow = Array<string | number | null | undefined>;
 type ParsedRecord = Record<string, unknown>;
 const MAX_UPLOAD_SIZE_BYTES = 12 * 1024 * 1024; // 12MB
+
+function parseImportedMoney(value: unknown) {
+  if (typeof value === 'number') {
+    return parseExactDecimal(value, 'valor_extrato');
+  }
+
+  let raw = String(value ?? '').trim().replace(/\s+/g, '');
+  if (!raw) raw = '0';
+  raw = raw.replace(/(?:AOA|KZ)/gi, '').trim();
+
+  const comma = raw.lastIndexOf(',');
+  const dot = raw.lastIndexOf('.');
+
+  if (comma >= 0 && dot >= 0) {
+    const decimalSeparator = comma > dot ? ',' : '.';
+    const thousandsSeparator = decimalSeparator === ',' ? /\./g : /,/g;
+    raw = raw.replace(thousandsSeparator, '');
+    if (decimalSeparator === ',') raw = raw.replace(',', '.');
+  } else if (comma >= 0) {
+    raw = raw.replace(/\./g, '').replace(',', '.');
+  } else if ((raw.match(/\./g) ?? []).length > 1) {
+    const parts = raw.split('.');
+    const decimal = parts.pop() ?? '0';
+    raw = `${parts.join('')}.${decimal}`;
+  }
+
+  return parseExactDecimal(raw, 'valor_extrato');
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -132,8 +166,9 @@ export async function POST(request: Request) {
 
         try {
           const valorRaw = transactionRaw.valor ?? transactionRaw.amount ?? transactionRaw.montante ?? 0;
-          const valor = parseFloat(String(valorRaw).replace(',', '.') || '0');
-          const tipo = valor >= 0 ? 'credito' : 'debito';
+          const valorExact = parseImportedMoney(valorRaw);
+          const valor = exactToJsonNumber(roundExact(valorExact, 2, 'half-up'), 2);
+          const tipo = cmpExact(valorExact, parseExactDecimal('0')) >= 0 ? 'credito' : 'debito';
 
           const rawDate =
             transactionRaw.data ??

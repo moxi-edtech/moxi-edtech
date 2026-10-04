@@ -9,6 +9,7 @@ export interface FiscalPdfItem {
   quantidade: number;
   taxaIva: number;
   motivoIsencaoCode?: string;
+  settlementAmount?: number;
   total: number;
 }
 
@@ -34,6 +35,10 @@ export interface FiscalPdfDocumentData {
     totalGeral: number;
   };
   moeda: string;
+  referencia?: {
+    numero: string;
+    motivo?: string | null;
+  } | null;
 }
 
 export interface FiscalDocumentV1Props {
@@ -82,11 +87,12 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f1f5f9",
   },
   colCodigo: { width: "15%" },
-  colDescricao: { width: "38%" },
-  colPreco: { width: "15%", textAlign: "right" },
-  colQtd: { width: "10%", textAlign: "right" },
-  colIva: { width: "10%", textAlign: "right" },
-  colTotal: { width: "12%", textAlign: "right" },
+  colDescricao: { width: "32%" },
+  colPreco: { width: "14%", textAlign: "right" },
+  colQtd: { width: "8%", textAlign: "right" },
+  colIva: { width: "9%", textAlign: "right" },
+  colDesconto: { width: "12%", textAlign: "right" },
+  colTotal: { width: "10%", textAlign: "right" },
   totalsBlock: { marginTop: 16, width: "44%", alignSelf: "flex-end" },
   totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
   totalTotal: {
@@ -117,6 +123,7 @@ const TITULOS_POR_TIPO: Record<string, string> = {
   NC: "Nota de Crédito",
   ND: "Nota de Débito",
   RC: "Recibo",
+  RE: "Recibo de Estorno",
   PP: "Fatura Pró-Forma",
   FG: "Fatura Global",
   GF: "Fatura Genérica",
@@ -138,6 +145,7 @@ const ISENCAO_LABELS: Record<string, string> = {
   M18: "Isento Artigo 12.º i) do CIVA",
   M19: "Isento Artigo 12.º j) do CIVA",
   M20: "Isento Artigo 12.º k) do CIVA",
+  M21: "Isento Artigo 12.º l) do CIVA",
   M30: "Isento Artigo 15.º 1 a) do CIVA",
   M31: "Isento Artigo 15.º 1 b) do CIVA",
   M32: "Isento Artigo 15.º 1 c) do CIVA",
@@ -172,6 +180,7 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
   const isDraft = documento.status === "DRAFT";
   const isAnulado = documento.status === "ANULADO";
   const isencoes = uniqueIsencoes(documento.itens);
+  const hasDiscount = documento.itens.some((item) => (item.settlementAmount ?? 0) > 0);
   const tituloDocumento = TITULOS_POR_TIPO[documento.tipoDocumento] ?? "Documento Fiscal";
 
   return (
@@ -206,6 +215,16 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
           </Text>
           <Text>Data de Emissão: {documento.dataEmissao}</Text>
           {!isDraft && !isAnulado ? <Text style={styles.bold}>Original</Text> : null}
+          {documento.referencia ? (
+            <View>
+              <Text>
+                Documento de origem: {documento.referencia.numero}
+              </Text>
+              {documento.referencia.motivo ? (
+                <Text>Motivo: {documento.referencia.motivo}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.table}>
@@ -215,6 +234,7 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
             <Text style={styles.colPreco}>Pr. Unitário</Text>
             <Text style={styles.colQtd}>Qtd.</Text>
             <Text style={styles.colIva}>IVA</Text>
+            {hasDiscount ? <Text style={styles.colDesconto}>Desconto</Text> : null}
             <Text style={styles.colTotal}>Total</Text>
           </View>
 
@@ -230,6 +250,14 @@ export function FiscalDocumentV1({ documento, assinaturaCurta, agtNumber }: Fisc
                 {item.taxaIva.toFixed(2)}%
                 {item.taxaIva === 0 && item.motivoIsencaoCode ? ` (${item.motivoIsencaoCode})` : ""}
               </Text>
+              {hasDiscount ? (
+                <Text style={{ ...styles.colDesconto, ...styles.mono }}>
+                  {formatCurrencyDeterministic(
+                    item.settlementAmount ?? 0,
+                    documento.moeda
+                  )}
+                </Text>
+              ) : null}
               <Text style={{ ...styles.colTotal, ...styles.mono }}>
                 {formatCurrencyDeterministic(item.total, documento.moeda)}
               </Text>

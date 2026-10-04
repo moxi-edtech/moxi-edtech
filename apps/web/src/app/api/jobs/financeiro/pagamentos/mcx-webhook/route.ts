@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { exactMoney, moneyToJson } from '@/lib/financeiro/exact';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,15 +45,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const idempotencyKey =
-    req.headers.get('Idempotency-Key') || req.headers.get('idempotency-key');
-  if (!idempotencyKey) {
-    return NextResponse.json(
-      { error: 'Idempotency-Key header é obrigatório' },
-      { status: 400 }
-    );
-  }
-
   try {
     const raw = await req.text();
     const secret = (process.env.MCX_WEBHOOK_SECRET || '').trim();
@@ -84,6 +76,10 @@ export async function POST(req: Request) {
     console.log(`🔔 MCX Webhook: tx=${transactionId} status=${status} ref=${customReference ?? '-'} `);
 
     const norm = String(status).toLowerCase();
+    const idempotencyKey = `mcx-webhook:${crypto
+      .createHash('sha256')
+      .update(`${transactionId}:${norm}`, 'utf8')
+      .digest('hex')}`;
 
     if (norm === 'success' || norm === 'paid' || norm === 'concluido') {
       const { data: pagamento, error: pagamentoErr } = await supabaseAdmin
@@ -114,9 +110,16 @@ export async function POST(req: Request) {
 
       const mensalidadeRow = mensalidade as MensalidadeRow | null;
       const escolaId = pagamentoRow?.escola_id || mensalidadeRow?.escola_id;
-      const amount = Number(pagamentoRow?.valor_pago ?? mensalidadeRow?.valor_previsto ?? mensalidadeRow?.valor ?? 0);
+      const amountExact = exactMoney(
+        pagamentoRow?.valor_pago ??
+          mensalidadeRow?.valor_previsto ??
+          mensalidadeRow?.valor ??
+          '0',
+        'mcx_webhook_amount'
+      );
+      const amount = moneyToJson(amountExact);
 
-      if (!escolaId || !amount) {
+      if (!escolaId || amount <= 0) {
         return NextResponse.json({ received: true, error: 'Dados insuficientes para confirmar' }, { status: 200 });
       }
 
@@ -237,11 +240,14 @@ export async function POST(req: Request) {
             .maybeSingle();
 
           if (!existing) {
-            const amount = Number(
-              pagamentoRow?.valor_pago ??
-                mensalidadeRow?.valor_previsto ??
-                mensalidadeRow?.valor ??
-                0
+            const amount = moneyToJson(
+              exactMoney(
+                pagamentoRow?.valor_pago ??
+                  mensalidadeRow?.valor_previsto ??
+                  mensalidadeRow?.valor ??
+                  '0',
+                'mcx_webhook_failed_amount'
+              )
             );
             await supabaseAdmin.from('finance_payment_intents').insert({
               escola_id: escolaId,
