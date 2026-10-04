@@ -38,3 +38,12 @@ export const PRIVATE_DEFAULT_PROFILE = (schoolId: string): SchoolOperatingProfil
 export function isPublicSchool(profile: SchoolOperatingProfile) {
   return profile.schoolSector === "public";
 }
+
+export function isValidSchoolFinanceCombination(
+  schoolSector: SchoolSector,
+  financeModel: FinanceModel,
+) {
+  // Public institutions must never acquire recurring tuition by configuration.
+  // "mixed" remains non-recurring unless an explicit future contract says otherwise.
+  return !(schoolSector === "public" && financeModel === "tuition");
+}

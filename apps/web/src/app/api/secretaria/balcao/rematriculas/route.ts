@@ -15,6 +15,8 @@ import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { canUseFinancialSuspension, canUseOneOffStudentPayments } from "@/lib/school-profile/finance-capabilities";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -134,6 +136,10 @@ export async function POST(request: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId);
+    const financialSuspensionEnabled = canUseFinancialSuspension(operatingProfile);
+    const studentPaymentEnabled = canUseOneOffStudentPayments(operatingProfile);
+
     const authz = await requireRoleInSchool({
       supabase,
       escolaId,
@@ -152,7 +158,7 @@ export async function POST(request: Request) {
     if (!body.destino_turma_id) {
       return NextResponse.json({ ok: false, error: "Seleccione a turma destino antes de concluir.", code: "REMATRICULA_DESTINATION_REQUIRED" }, { status: 400 });
     }
-    if (!body.metodo) {
+    if (studentPaymentEnabled && !body.metodo) {
       return NextResponse.json({ ok: false, error: "Seleccione o método de pagamento.", code: "PAYMENT_METHOD_REQUIRED" }, { status: 400 });
     }
 
@@ -274,7 +280,7 @@ export async function POST(request: Request) {
     // essa matrícula: o atendimento passa a ser apenas financeiro.
     if (matriculaDestino?.turma_id && !body.destino_turma_id) {
       body.destino_turma_id = matriculaDestino.turma_id;
-      if (!body.metodo) {
+      if (studentPaymentEnabled && !body.metodo) {
         return NextResponse.json({
           ok: false,
           error: "Esta matrícula já foi promovida. Actualize o atendimento e seleccione apenas o método de pagamento da taxa.",
@@ -355,6 +361,87 @@ export async function POST(request: Request) {
     }
     if (turmaOrigem?.curso_id && turmaDestino?.curso_id && turmaOrigem.curso_id !== turmaDestino.curso_id && !(numeroOrigem === 0 && numeroDestino === 1)) {
       return NextResponse.json({ ok: false, error: "A turma destino pertence a outro curso.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+    }
+
+    if (!studentPaymentEnabled) {
+      const result = await (supabase as any).rpc("finalizar_rematricula_balcao", {
+        p_escola_id: escolaId,
+        p_aluno_id: body.aluno_id,
+        p_matricula_origem_id: origemMatriculaId,
+        p_ano_letivo_id: academicContext.anoLetivoId,
+        p_destino_turma_id: body.destino_turma_id,
+        p_pedido_id: null,
+      });
+      const finalizacao = result.data;
+      if (result.error || !finalizacao?.ok) {
+        return NextResponse.json({
+          ok: false,
+          error: result.error?.message || finalizacao?.erro || "Falha ao concluir a rematrícula.",
+          code: "REMATRICULA_FINALIZATION_FAILED",
+        }, { status: 409 });
+      }
+
+      const matriculaDestinoId = String(finalizacao.matricula_id ?? "");
+      if (!matriculaDestinoId) {
+        return NextResponse.json({
+          ok: false,
+          error: "A rematrícula foi processada sem matrícula destino identificável.",
+          code: "REMATRICULA_RECONCILIATION_REQUIRED",
+        }, { status: 409 });
+      }
+
+      if (!reconfirmacaoApenas) {
+        const historico = await registrarHistoricoOrigem(supabase as any, {
+          escolaId,
+          matriculaOrigemId: origemMatriculaId,
+          conditional: academicEligibility.mode === "conditional",
+          disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+        });
+        if (!historico.ok) {
+          return NextResponse.json({
+            ok: false,
+            status: "pending",
+            error: "A rematrícula foi concluída, mas o histórico académico precisa de reconciliação.",
+            code: "ACADEMIC_HISTORY_PENDING",
+            rematricula: { matricula_id: matriculaDestinoId },
+            details: historico.error,
+          }, { status: 202 });
+        }
+      }
+
+      const comprovante = await emitirComprovanteMatricula({
+        supabase,
+        escolaId,
+        matriculaId: matriculaDestinoId,
+        dataHoraEfetivacao: new Date().toISOString(),
+        tipoOperacao: "rematricula",
+        createdBy: user.id,
+        audit: { portal: "secretaria", acao: "REMATRICULA_PUBLICA_CONFIRMADA" },
+      });
+
+      recordAuditServer({
+        escolaId,
+        portal: "secretaria",
+        acao: "REMATRICULA_SEM_PAGAMENTO_CONFIRMADA",
+        entity: "matriculas",
+        entityId: matriculaDestinoId,
+        details: {
+          origem_matricula_id: origemMatriculaId,
+          destino_turma_id: body.destino_turma_id,
+          finance_model: operatingProfile.financeModel,
+          raa_decision: raaAtual?.decision ?? null,
+        },
+      }).catch(() => undefined);
+
+      return NextResponse.json({
+        ok: true,
+        status: "completed",
+        payment_required: false,
+        payment: null,
+        pedido_id: null,
+        rematricula: finalizacao,
+        comprovante: comprovante.ok ? comprovante : null,
+      });
     }
 
     const { data: service, error: serviceError } = await (supabase as any)
@@ -599,12 +686,14 @@ export async function POST(request: Request) {
     // Regra financeira obrigatória: nenhuma rematrícula nova/reconfirmação
     // pode avançar enquanto existir saldo pendente na matrícula de origem.
     // A taxa de rematrícula é um serviço separado e não liquida mensalidades.
-    const { data: mensalidadesOrigem, error: mensalidadesError } = await supabase
-      .from("mensalidades")
-      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, mes_referencia, ano_referencia")
-      .eq("escola_id", escolaId)
-      .eq("aluno_id", body.aluno_id)
-      .eq("matricula_id", origemMatriculaId);
+    const { data: mensalidadesOrigem, error: mensalidadesError } = financialSuspensionEnabled
+      ? await supabase
+          .from("mensalidades")
+          .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, mes_referencia, ano_referencia")
+          .eq("escola_id", escolaId)
+          .eq("aluno_id", body.aluno_id)
+          .eq("matricula_id", origemMatriculaId)
+      : { data: [], error: null };
     if (mensalidadesError) throw mensalidadesError;
 
     // O gate financeiro é saldo aberto zero, em paridade com o trigger do
