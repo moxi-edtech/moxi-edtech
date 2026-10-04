@@ -24,10 +24,10 @@ export function LandingPage() {
   const scheduleUrl =
     process.env.NEXT_PUBLIC_SCHEDULE_URL ?? 'https://wa.me/244933349106?text=Quero%20saber%20mais%20sobre%20o%20KLASSE'
 
-  const primaryCta = { label: hero.primaryCta, href: '#onboarding' }
+  const heroPrimaryCta = { label: hero.primaryCta, href: scheduleUrl }
   const diagnosticCta = { label: hero.diagnosticCta, href: '/diagnostico' }
-  const navPrimaryCta = { label: 'Começar', href: primaryCta.href }
-  const mobilePrimaryCta = { label: 'Começar agora', href: primaryCta.href }
+  const navPrimaryCta = { label: 'Começar', href: '#onboarding' }
+  const mobilePrimaryCta = { label: 'Começar agora', href: '#onboarding' }
 
   return (
     <>
@@ -50,9 +50,7 @@ export function LandingPage() {
             titleLines={hero.titleLines}
             eyebrow={hero.eyebrow}
             subtitle={hero.subtitle}
-            primaryCta={primaryCta}
-            secondaryCta={diagnosticCta}
-            ebookCta={{ label: 'Receber Guia no WhatsApp', href: '/ebook' }}
+            primaryCta={heroPrimaryCta}
             note={hero.note}
           />
         </div>
