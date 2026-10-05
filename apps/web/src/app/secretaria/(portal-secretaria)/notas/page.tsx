@@ -78,6 +78,19 @@ function SecretariaNotasContent() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    setTurmaId(initialTurmaId)
+    setDisciplinaId(initialDisciplinaId)
+    setTurmaDisciplinaId(null)
+    setDisciplinaNome(null)
+    setPauta([])
+    setPautaPesoPorTipo({})
+    setPautaComponentes([])
+    setPautaNotaMaxima(20)
+    setPautaNotaCorte(10)
+    setPautaEscala(null)
+  }, [academicYearId, initialDisciplinaId, initialTurmaId])
+
+  useEffect(() => {
     let active = true
     setAcademicMode(null)
     setAcademicContextError(null)
