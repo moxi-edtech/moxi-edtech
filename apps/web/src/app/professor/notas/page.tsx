@@ -102,6 +102,20 @@ type ReopenRequest = {
   decidido_em?: string | null
 }
 
+function parseGradeWeightsHeader(value: string | null): Record<string, number> {
+  if (!value) return {}
+  try {
+    const parsed = JSON.parse(decodeURIComponent(value)) as Record<string, unknown>
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .map(([key, raw]) => [key, Number(raw)] as const)
+        .filter(([, weight]) => Number.isFinite(weight)),
+    )
+  } catch {
+    return {}
+  }
+}
+
 function friendlyGradeError(cause: unknown) {
   const raw = cause instanceof Error ? cause.message : String(cause)
   if (/ACADEMIC_YEAR_CLOSED|ano letivo.*(não permite|fechad)|ano letivo.*encerrad/i.test(raw)) return "Este ano letivo está fechado para lançamentos. Selecione o ano letivo ativo ou peça orientação à secretaria."
@@ -138,6 +152,11 @@ function ProfessorNotasContent() {
   const [turmaDisciplinaId, setTurmaDisciplinaId] = useState<string | null>(null)
   const [disciplinaNome, setDisciplinaNome] = useState<string | null>(null)
   const [pauta, setPauta] = useState<StudentGradeRow[]>([])
+  const [gradeMaxima, setGradeMaxima] = useState(20)
+  const [gradeCorte, setGradeCorte] = useState(10)
+  const [gradeComponentes, setGradeComponentes] = useState<string[]>([])
+  const [gradePesos, setGradePesos] = useState<Record<string, number>>({})
+  const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ">("CURRENT")
   const [loading, setLoading] = useState(false)
   const [periodosAtivos, setPeriodosAtivos] = useState<Array<1 | 2 | 3>>([])
   const [loadingPeriodos, setLoadingPeriodos] = useState(false)
@@ -276,8 +295,24 @@ function ProfessorNotasContent() {
           params.set("turmaDisciplinaId", turmaDisciplinaId)
         }
         const res = await fetch(`/api/professor/pauta?${params.toString()}`, { cache: "no-store" })
+        const maxHeader = Number(res.headers.get("x-klasse-grade-max"))
+        const cutoffHeader = Number(res.headers.get("x-klasse-grade-cutoff"))
+        const modeHeader = res.headers.get("x-klasse-academic-mode")
+        const componentsHeader = res.headers.get("x-klasse-grade-components")
+        const weightsHeader = res.headers.get("x-klasse-grade-weights")
         const json = await res.json().catch(() => null)
         if (!active) return
+
+        setGradeMaxima(Number.isFinite(maxHeader) && maxHeader > 0 ? maxHeader : 20)
+        setGradeCorte(Number.isFinite(cutoffHeader) && cutoffHeader > 0 ? cutoffHeader : 10)
+        setAcademicMode(modeHeader === "HISTORICAL_READ" ? "HISTORICAL_READ" : "CURRENT")
+        setGradeComponentes(
+          componentsHeader
+            ? componentsHeader.split(",").map((item) => item.trim().toUpperCase()).filter(Boolean)
+            : [],
+        )
+        setGradePesos(parseGradeWeightsHeader(weightsHeader))
+
         if (res.ok && Array.isArray(json)) {
           const detailedRows = json as PautaDetalhadaRow[]
           const nextMatriculaIds = detailedRows.reduce<Record<string, string>>((acc, row) => {
@@ -530,20 +565,27 @@ function ProfessorNotasContent() {
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return
     if (!anoLetivoId) throw new Error("Ano letivo ativo não identificado. Atualize a página e tente novamente.")
+    if (academicMode !== "CURRENT") {
+      throw new Error("Este ano letivo está disponível apenas para consulta.")
+    }
     if (turmaStatusFecho && turmaStatusFecho !== "ABERTO") {
       throw new Error("Turma fechada para lançamento de notas")
     }
     const trimestre = trimestreSelecionado
-    const payloads = [
+    const configured = new Set(gradeComponentes.map((tipo) => tipo.toUpperCase()))
+    const candidates = [
       { tipo: "MAC", campo: "mac1" as const },
+      { tipo: "NPP", campo: "npp1" as const },
       { tipo: "NPT", campo: "npt1" as const },
     ]
+    const payloads = configured.size === 0
+      ? candidates.filter((item) => item.tipo !== "NPP")
+      : candidates.filter(
+          (item) => configured.has(item.tipo) || (item.tipo === "NPT" && configured.has("PT")),
+        )
 
     for (const { tipo, campo } of payloads) {
-      const notas = rows
-        .map((row) => ({ aluno_id: row.id, valor: row[campo] }))
-        .filter((entry) => typeof entry.valor === "number")
-      if (notas.length === 0) continue
+      const notas = rows.map((row) => ({ aluno_id: row.id, valor: row[campo] }))
 
       const idempotencyKey = createIdempotencyKey(
         `nota-${turmaId}-${disciplinaId}-${trimestre}-${tipo}-${Date.now()}`
@@ -680,7 +722,9 @@ function ProfessorNotasContent() {
   const data = useMemo(() => pauta, [pauta])
   const turmaFechada = turmaStatusFecho && turmaStatusFecho !== "ABERTO"
   const reaberturaAtiva = reopenRequest?.status === "APROVADO" && Boolean(reopenRequest.expira_em) && new Date(reopenRequest.expira_em as string).getTime() > Date.now()
-  const notasBloqueadas = Boolean(turmaFechada && !reaberturaAtiva)
+  const notasBloqueadas = Boolean(
+    academicMode !== "CURRENT" || (turmaFechada && !reaberturaAtiva),
+  )
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -1057,12 +1101,22 @@ function ProfessorNotasContent() {
                     )}
                   </div>
                 )}
+                {academicMode === "HISTORICAL_READ" ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Ano letivo em consulta histórica. As notas estão disponíveis apenas para leitura.
+                  </div>
+                ) : null}
                 <GradeEntryGrid
                   initialData={data}
                   subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
                   onSave={handleSaveBatch}
                   onSaveError={(cause) => toastError("Não foi possível guardar", friendlyGradeError(cause))}
                   highlightId={highlightAlunoId}
+                  componentesAtivos={gradeComponentes}
+                  pesoPorTipo={gradePesos}
+                  notaMaxima={gradeMaxima}
+                  notaCorte={gradeCorte}
+                  readOnly={academicMode !== "CURRENT"}
                 />
               </div>
             )}
