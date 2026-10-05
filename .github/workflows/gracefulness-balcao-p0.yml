@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "apps/web/src/app/api/secretaria/balcao/rematriculas/route.ts"
+      - "apps/web/src/app/api/secretaria/admissoes/convert/route.ts"
+      - "apps/web/src/app/api/financeiro/orcamento/matricula/route.ts"
       - "apps/web/src/app/api/secretaria/balcao/rematriculas/status/route.ts"
       - "apps/web/src/app/api/secretaria/turmas-simples/route.ts"
       - "apps/web/src/app/api/aluno/rematricula/status/route.ts"
@@ -21,6 +23,7 @@ on:
       - "apps/web/src/hooks/useRematriculaBalcao.ts"
       - "apps/web/src/lib/documentos/emissaoClient.ts"
       - "apps/web/src/lib/financeiro/checkout-payment-state.ts"
+      - "apps/web/src/lib/financeiro/mensalidades-preview.ts"
       - "apps/web/src/lib/secretaria/rematricula-result.ts"
       - "apps/web/src/lib/rematricula/eligibility.ts"
       - "apps/web/src/lib/rematricula/debt.ts"
@@ -28,6 +31,7 @@ on:
       - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
       - "apps/web/tests/unit/rematricula-debt.spec.ts"
       - "apps/web/tests/unit/checkout-payment-state.spec.ts"
+      - "apps/web/tests/unit/mensalidades-preview.spec.ts"
       - "apps/web/tests/unit/rematricula-result.spec.ts"
       - "supabase/migrations/**"
       - "supabase/ops/tests/regression_balcao_*.sql"
@@ -65,6 +69,7 @@ jobs:
           cd apps/web
           node --test --import tsx \
             tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
             tests/unit/rematricula-debt.spec.ts
@@ -86,6 +91,8 @@ jobs:
         run: |
           pnpm -C apps/web exec eslint \
             src/app/api/secretaria/balcao/rematriculas/route.ts \
+            src/app/api/secretaria/admissoes/convert/route.ts \
+            src/app/api/financeiro/orcamento/matricula/route.ts \
             src/app/api/secretaria/balcao/rematriculas/status/route.ts \
             src/app/api/secretaria/turmas-simples/route.ts \
             src/app/api/aluno/rematricula/status/route.ts \
@@ -103,11 +110,13 @@ jobs:
             src/hooks/useRematriculaBalcao.ts \
             src/lib/documentos/emissaoClient.ts \
             src/lib/financeiro/checkout-payment-state.ts \
+            src/lib/financeiro/mensalidades-preview.ts \
             src/lib/secretaria/rematricula-result.ts \
             src/lib/rematricula/eligibility.ts \
             src/lib/rematricula/debt.ts \
             src/lib/academico/raa-progression-server.ts \
             tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
             tests/unit/rematricula-debt.spec.ts \
