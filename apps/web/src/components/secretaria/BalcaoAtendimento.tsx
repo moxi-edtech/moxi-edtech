@@ -50,6 +50,7 @@ export interface BalcaoAtendimentoProps {
   focusAction?: BalcaoFocusAction | null;
   view?: BalcaoView;
   onNavigateAction?: (actionId: BalcaoActionId) => void;
+  onAlunoSelected?: (aluno: AlunoDossier | null) => void;
   /** Chamado após um pagamento concluído com sucesso. A página usa-o para
    *  refrescar o resumo de caixa, que de outra forma ficava parado no valor
    *  carregado na montagem. */
@@ -2147,6 +2148,7 @@ export default function BalcaoAtendimento({
   focusAction = null,
   view = "all",
   onNavigateAction,
+  onAlunoSelected,
   onPagamentoConcluido,
 }: BalcaoAtendimentoProps) {
   const [showReturnPrompt, setShowReturnPrompt] = useState(false);
@@ -2302,6 +2304,10 @@ export default function BalcaoAtendimento({
     if (dossier.aluno?.id) void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
     else audit.setOpen(false);
   }, [dossier.aluno?.id]);
+
+  useEffect(() => {
+    onAlunoSelected?.(dossier.aluno ?? null);
+  }, [dossier.aluno, onAlunoSelected]);
 
   const handleSelectAluno = (alunoId: string) => {
     if (dossier.aluno?.id && dossier.aluno.id !== alunoId) {
