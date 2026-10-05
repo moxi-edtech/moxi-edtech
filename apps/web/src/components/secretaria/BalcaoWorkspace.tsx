@@ -1,27 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  BriefcaseBusiness,
-  CreditCard,
-  FileText,
-  RefreshCcw,
-  X,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { BriefcaseBusiness, X } from "lucide-react";
 
 import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
+import { BalcaoActionBar } from "@/components/secretaria/BalcaoActionBar";
 import {
   getBalcaoAction,
-  getBalcaoWorkspaceActions,
   type BalcaoActionId,
 } from "@/lib/balcao/action-registry";
-
-const ACTION_ICONS = {
-  desk: BriefcaseBusiness,
-  payment: CreditCard,
-  document: FileText,
-  reenrollment: RefreshCcw,
-} as const;
 
 type Props = {
   open: boolean;
@@ -51,7 +38,6 @@ export function BalcaoWorkspace({
   }, [actionId, aluno.id]);
 
   const action = getBalcaoAction(activeAction);
-  const workspaceActions = useMemo(() => getBalcaoWorkspaceActions(), []);
 
   if (!open) return null;
 
@@ -92,28 +78,7 @@ export function BalcaoWorkspace({
             </button>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {workspaceActions.map((item) => {
-              const Icon = ACTION_ICONS[item.id as keyof typeof ACTION_ICONS];
-              const selected = activeAction === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActiveAction(item.id)}
-                  className={[
-                    "inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition",
-                    selected
-                      ? "border-emerald/30 bg-emerald/10 text-emerald"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-emerald/20 hover:bg-emerald/5 hover:text-emerald",
-                  ].join(" ")}
-                >
-                  {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
-                  {item.shortLabel}
-                </button>
-              );
-            })}
-          </div>
+          <BalcaoActionBar value={activeAction} onChange={setActiveAction} />
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
