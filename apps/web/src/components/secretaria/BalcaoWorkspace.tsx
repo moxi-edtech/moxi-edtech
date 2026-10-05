@@ -5,6 +5,8 @@ import { BriefcaseBusiness, X } from "lucide-react";
 
 import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 import { BalcaoActionBar } from "@/components/secretaria/BalcaoActionBar";
+import { AlunoProfilePanel } from "@/components/secretaria/AlunoProfilePanel";
+import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
 import {
   getBalcaoAction,
   type BalcaoActionId,
@@ -30,11 +32,10 @@ export function BalcaoWorkspace({
   onClose,
   onSuccess,
 }: Props) {
-  const initialAction = getBalcaoAction(actionId).surface === "balcao" ? actionId : "desk";
-  const [activeAction, setActiveAction] = useState<BalcaoActionId>(initialAction);
+  const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);
 
   useEffect(() => {
-    setActiveAction(getBalcaoAction(actionId).surface === "balcao" ? actionId : "desk");
+    setActiveAction(actionId);
   }, [actionId, aluno.id]);
 
   const action = getBalcaoAction(activeAction);
@@ -82,15 +83,31 @@ export function BalcaoWorkspace({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
-          <div className="min-h-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-            <BalcaoAtendimento
-              escolaId={escolaId}
-              selectedAlunoId={aluno.id}
-              showSearch={false}
-              embedded
-              focusAction={action.focusAction ?? null}
-              onPagamentoConcluido={onSuccess}
-            />
+          <div className="min-h-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            {activeAction === "profile" ? (
+              <AlunoProfilePanel alunoId={aluno.id} onSuccess={onSuccess} />
+            ) : activeAction === "grade" ? (
+              <PautaRapidaModal hideNavigation />
+            ) : (
+              <BalcaoAtendimento
+                escolaId={escolaId}
+                selectedAlunoId={aluno.id}
+                showSearch={false}
+                embedded
+                view={
+                  activeAction === "payment"
+                    ? "payment"
+                    : activeAction === "document"
+                      ? "document"
+                      : activeAction === "reenrollment"
+                        ? "reenrollment"
+                        : "overview"
+                }
+                focusAction={action.focusAction ?? null}
+                onNavigateAction={setActiveAction}
+                onPagamentoConcluido={onSuccess}
+              />
+            )}
           </div>
         </div>
       </div>
