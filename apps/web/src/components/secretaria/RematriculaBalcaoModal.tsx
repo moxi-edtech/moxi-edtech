@@ -371,7 +371,6 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               alunoNome={alunoNome}
               anoLetivo={anoLetivo}
               selectedTurma={selectedTurma}
-              service={service}
               paymentTotal={paymentTotal}
               metodo={metodo}
               paymentAlreadyValidated={paymentAlreadyValidated}
@@ -1156,7 +1155,6 @@ function SuccessView({
   alunoNome,
   anoLetivo,
   selectedTurma,
-  service,
   paymentTotal,
   metodo,
   paymentAlreadyValidated,
@@ -1166,7 +1164,6 @@ function SuccessView({
   alunoNome: string;
   anoLetivo: { id: string; ano: number; label: string };
   selectedTurma: TurmaOption | undefined;
-  service: { id: string; nome: string; valor_base: number };
   paymentTotal: number;
   metodo: MetodoPagamento;
   paymentAlreadyValidated: boolean;
