@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BriefcaseBusiness, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 import { BalcaoActionBar } from "@/components/secretaria/BalcaoActionBar";
@@ -44,30 +44,30 @@ export function BalcaoWorkspace({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-2 backdrop-blur-sm sm:p-5"
       role="dialog"
       aria-modal="true"
-      aria-label={`Balcão de atendimento — ${aluno.label}`}
+      aria-label={`KLASSE Command Center — ${aluno.label}`}
     >
       <button
         type="button"
         className="absolute inset-0 cursor-default"
         onClick={onClose}
-        aria-label="Fechar balcão"
+        aria-label="Fechar Command Center"
       />
 
-      <div className="relative flex h-[92vh] w-[96vw] max-w-[1480px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl">
-        <header className="flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+      <div className="relative flex h-[94vh] w-[98vw] max-w-[1540px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <header className="flex shrink-0 flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <BriefcaseBusiness className="h-4 w-4 text-emerald" />
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">
-                  Balcão de Atendimento
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  KLASSE Command Center
                 </p>
               </div>
               <h2 className="mt-1 truncate text-lg font-black text-slate-900">{aluno.label}</h2>
-              <p className="text-xs text-slate-500">{action.description}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{action.description}</p>
             </div>
             <button
               type="button"
@@ -82,8 +82,8 @@ export function BalcaoWorkspace({
           <BalcaoActionBar value={activeAction} onChange={setActiveAction} />
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
-          <div className="min-h-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60">
+          <div className="mx-auto min-h-full w-full max-w-[1440px] p-4 sm:p-6">
             {activeAction === "profile" ? (
               <AlunoProfilePanel alunoId={aluno.id} onSuccess={onSuccess} />
             ) : activeAction === "grade" ? (
