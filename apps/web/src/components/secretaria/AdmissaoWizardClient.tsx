@@ -1796,6 +1796,20 @@ function Step3Pagamento(props: {
     .reduce((sum, item) => sum + Number(item.valor ?? 0), 0);
   const totalComExtras = (Number(priceHint ?? 0) || 0) + extrasTotal + mensalidadesTotal;
 
+  const amountValue = Number(payment.amount) || 0;
+  const checkoutBlockedReason =
+    !canFinalize
+      ? "Selecione uma turma válida antes de concluir."
+      : payment.metodo_pagamento === "TPA" && !payment.referencia.trim()
+        ? "Informe a referência do TPA."
+        : payment.metodo_pagamento === "TRANSFERENCIA" && !payment.comprovativo_url.trim()
+          ? "Adicione o comprovativo da transferência."
+          : payment.parcial && amountValue <= 0
+            ? "Informe o valor recebido."
+            : payment.parcial && priceHint && amountValue >= Number(priceHint)
+              ? "O pagamento parcial deve ser menor que o valor da matrícula."
+              : null;
+
   const toggleMensalidade = (competencia: string) => {
     const index = mensalidadesPreview.findIndex((item) => item.competencia === competencia);
     if (index < 0) return;
@@ -2250,8 +2264,9 @@ function Step3Pagamento(props: {
         </div>
       )}
       <div>
-        <h2 className="text-lg font-semibold text-emerald">Pagamento</h2>
-        <p className="text-sm text-slate-500">Confirme a matrícula diretamente pela secretaria.</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">3 de 3</p>
+        <h2 className="mt-1 text-base font-black text-slate-900">Cobrança</h2>
+        <p className="mt-1 text-sm text-slate-500">Reveja o total, escolha a forma de pagamento e confirme a matrícula.</p>
       </div>
 
       <div className="grid gap-3">
@@ -2265,7 +2280,7 @@ function Step3Pagamento(props: {
               {servicos.map((service) => {
                 const checked = servicosSelecionados.includes(service.id);
                 return (
-                  <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-amber bg-amber-50" : "border-slate-200"}`}>
+                  <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-emerald/30 bg-emerald/5" : "border-slate-200"}`}>
                     <input type="checkbox" checked={checked} onChange={() => { setServicosSelecionados((current) => checked ? current.filter((id) => id !== service.id) : [...current, service.id]); if (!checked) setPayment((current) => ({ ...current, parcial: false, amount: "" })); }} className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald" />
                     <span className="min-w-0 text-sm"><span className="block font-semibold text-slate-800">{service.nome}</span><span className="block text-xs text-slate-500">{service.descricao || service.codigo}</span><span className="mt-1 block font-semibold text-emerald">{service.preco.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span></span>
                   </label>
@@ -2289,7 +2304,7 @@ function Step3Pagamento(props: {
                 const label = new Intl.DateTimeFormat("pt-AO", { month: "long", year: "numeric", timeZone: "UTC" })
                   .format(new Date(Date.UTC(item.ano, item.mes - 1, 1)));
                 return (
-                  <label key={item.competencia} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-amber bg-amber-50" : "border-slate-200"}`}>
+                  <label key={item.competencia} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-emerald/30 bg-emerald/5" : "border-slate-200"}`}>
                     <input
                       type="checkbox"
                       checked={checked}
@@ -2311,16 +2326,38 @@ function Step3Pagamento(props: {
           </div>
         )}
 
-        <select
-          name="metodo_pagamento"
-          value={payment.metodo_pagamento}
-          onChange={onChange}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
-        >
-          <option value="CASH">Dinheiro</option>
-          <option value="TPA">TPA</option>
-          <option value="TRANSFERENCIA">Transferência</option>
-        </select>
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Forma de pagamento</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              ["CASH", "Numerário"],
+              ["TPA", "TPA"],
+              ["TRANSFERENCIA", "Transferência"],
+            ].map(([value, label]) => {
+              const active = payment.metodo_pagamento === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPayment((current) => ({
+                    ...current,
+                    metodo_pagamento: value,
+                    referencia: "",
+                    comprovativo_url: "",
+                  }))}
+                  className={[
+                    "rounded-xl border px-3 py-2.5 text-xs font-bold transition",
+                    active
+                      ? "border-slate-950 bg-slate-950 text-white"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <label className={`flex items-center gap-2 text-xs text-slate-600 ${servicosSelecionados.length > 0 || mensalidadesSelecionadas.length > 0 ? "opacity-50" : ""}`}>
           <input
@@ -2335,80 +2372,112 @@ function Step3Pagamento(props: {
         </label>
 
         {payment.parcial ? (
-          <input
-            type="number"
-            name="amount"
-            value={payment.amount}
-            onChange={onChange}
-            placeholder="Valor pago"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
-          />
-        ) : priceHint ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Total a pagar: <span className="font-semibold">{(totalComExtras || Number(priceHint)).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span>
-            {(extrasTotal > 0 || mensalidadesTotal > 0) ? (
-              <span className="mt-1 block text-xs text-slate-500">
-                Matrícula {Number(priceHint).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}
-                {extrasTotal > 0 ? ` + serviços ${extrasTotal.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}` : ""}
-                {mensalidadesTotal > 0 ? ` + mensalidades ${mensalidadesTotal.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}` : ""}
-              </span>
-            ) : null}
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              Valor recebido
+            </label>
+            <input
+              type="number"
+              name="amount"
+              value={payment.amount}
+              onChange={onChange}
+              placeholder="Valor pago"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+            />
           </div>
         ) : (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Valor da matrícula será confirmado pelo sistema ao finalizar.
+          <div className="flex items-end justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total a pagar</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {priceLoading
+                  ? "A calcular o valor da turma…"
+                  : extrasTotal > 0 || mensalidadesTotal > 0
+                    ? "Matrícula + itens selecionados"
+                    : "Valor da matrícula"}
+              </p>
+            </div>
+            <strong className="text-xl font-black text-slate-950">
+              {priceHint
+                ? (totalComExtras || Number(priceHint)).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })
+                : priceLoading
+                  ? "…"
+                  : "A confirmar"}
+            </strong>
           </div>
         )}
 
-        {(payment.metodo_pagamento === "TPA" || payment.metodo_pagamento === "TRANSFERENCIA") && (
-          <input
-            type="text"
-            name="referencia"
-            value={payment.referencia}
-            onChange={onChange}
-            placeholder="Referência do pagamento"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
-          />
-        )}
+        {payment.metodo_pagamento === "TPA" ? (
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              Referência TPA *
+            </label>
+            <input
+              type="text"
+              name="referencia"
+              value={payment.referencia}
+              onChange={onChange}
+              placeholder="Referência do talão"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+            />
+          </div>
+        ) : null}
 
-        <input
-          type="text"
-          name="comprovativo_url"
-          value={payment.comprovativo_url}
-          onChange={onChange}
-          placeholder="URL do comprovativo"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
-        />
+        {payment.metodo_pagamento === "TRANSFERENCIA" ? (
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              Comprovativo *
+            </label>
+            <input
+              type="text"
+              name="comprovativo_url"
+              value={payment.comprovativo_url}
+              onChange={onChange}
+              placeholder="URL do comprovativo"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+            />
+          </div>
+        ) : null}
       </div>
 
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={loading}
-          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60"
-        >
-          Voltar
-        </button>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={loading}
+            className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
+          >
+            Voltar
+          </button>
 
-        <button
-          type="button"
-          onClick={() => void handleFinalizarMatricula()}
-          disabled={loading || !canFinalize}
-          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
-        >
-          {loading ? "Processando…" : "Finalizar matrícula"}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => void handleSaveForLater()}
-          disabled={loading || !isUuid(candidaturaId)}
-          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60"
-        >
-          {loading ? "Processando…" : "Salvar pré-inscrição"}
-        </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleSaveForLater()}
+              disabled={loading || !isUuid(candidaturaId)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              Guardar para depois
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleFinalizarMatricula()}
+              disabled={loading || Boolean(checkoutBlockedReason)}
+              className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              {loading
+                ? "A processar…"
+                : priceHint
+                  ? `Confirmar matrícula · ${(totalComExtras || Number(priceHint)).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}`
+                  : "Confirmar matrícula"}
+            </button>
+          </div>
+        </div>
+        {!loading && checkoutBlockedReason ? (
+          <p className="text-right text-xs font-medium text-slate-500">{checkoutBlockedReason}</p>
+        ) : null}
       </div>
     </div>
   );
