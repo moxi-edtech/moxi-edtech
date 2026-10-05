@@ -133,14 +133,14 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const METODOS_UI = [
-  { id: "cash" as const, icon: Banknote, label: "Cash" },
+  { id: "cash" as const, icon: Banknote, label: "Numerário" },
   { id: "tpa" as const, icon: CreditCard, label: "TPA" },
-  { id: "transfer" as const, icon: Wallet, label: "Transf" },
-  { id: "mcx" as const, icon: Smartphone, label: "MCX" },
-  { id: "kiwk" as const, icon: Smartphone, label: "KIWK" },
+  { id: "transfer" as const, icon: Wallet, label: "Transfer." },
+  { id: "mcx" as const, icon: Smartphone, label: "Multicaixa" },
+  { id: "kiwk" as const, icon: Smartphone, label: "Kwik" },
 ] as const;
 
-const STEP_LABELS = ["Académico", "Financeiro", "Pagamento"];
+const STEP_LABELS = ["Destino", "Cobrança", "Confirmar"];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -275,6 +275,28 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       !(metodo === "transfer" && !detalhes.evidencia_url.trim())
     ));
 
+  const disabledReason =
+    submitting
+      ? "A operação está a ser processada."
+      : !academicReady
+        ? reconciliationOnly
+          ? "Conclua a decisão académica e selecione o destino quando aplicável."
+          : "Selecione uma turma de destino elegível."
+        : !academicOnly && !financialReady
+          ? "Regularize as mensalidades vencidas antes de continuar."
+          : !academicOnly && !paymentAlreadyValidated && metodo === "tpa" && !detalhes.referencia.trim()
+            ? "Informe a referência do TPA."
+            : !academicOnly && !paymentAlreadyValidated && metodo === "transfer" && !detalhes.evidencia_url.trim()
+              ? "Adicione o comprovativo da transferência."
+              : null;
+
+  const stepTitle =
+    step === 1
+      ? "Definir destino"
+      : step === 2
+        ? "Rever cobrança"
+        : "Confirmar rematrícula";
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div
@@ -291,45 +313,37 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       >
         {/* ── Header (hidden on success) ──────────────────────────────── */}
         {!result && (
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                Rematrícula · {anoLetivo.label}
+              </p>
               <h2
                 id="rematricula-modal-title"
-                className="font-bold text-slate-900"
+                className="mt-1 text-base font-black text-slate-900"
               >
-                {skipTurmaSelection
-                  ? `Regularizar taxa de rematrícula ${anoLetivo.label}`
-                  : `Confirmar rematrícula ${anoLetivo.label}`}
+                {skipTurmaSelection ? "Regularizar taxa" : stepTitle}
               </h2>
 
               {/* Step indicator */}
-              {!skipTurmaSelection && <div className="flex items-center gap-3 mt-2.5">
+              {!skipTurmaSelection && !reconciliationOnly && <div className="mt-3 flex items-center gap-2">
                 {STEP_LABELS.map((label, i) => {
                   const s = i + 1;
                   const isActive = s === step;
                   const isDone = s < step;
                   return (
-                    <div key={s} className="flex items-center gap-1.5">
-                      <div
-                        className={`h-2 w-2 rounded-full transition-colors ${
-                          isActive
-                            ? "bg-[#1F6B3B]"
-                            : isDone
-                            ? "bg-[#1F6B3B]/40"
-                            : "bg-slate-200"
-                        }`}
-                      />
-                      <span
-                        className={`text-[10px] font-semibold uppercase tracking-wide ${
-                          isActive
-                            ? "text-[#1F6B3B]"
-                            : isDone
-                            ? "text-[#1F6B3B]/50"
-                            : "text-slate-300"
-                        }`}
-                      >
-                        {label}
-                      </span>
+                    <div
+                      key={s}
+                      className={[
+                        "rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors",
+                        isActive
+                          ? "bg-slate-950 text-white"
+                          : isDone
+                            ? "bg-emerald-50 text-emerald"
+                            : "bg-slate-100 text-slate-400",
+                      ].join(" ")}
+                    >
+                      {label}
                     </div>
                   );
                 })}
@@ -390,6 +404,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               selectedTurmaId={selectedTurmaId}
               setSelectedTurmaId={setSelectedTurmaId}
               selectRef={firstFocusRef as React.RefObject<HTMLSelectElement>}
+              compact={embedded}
             />
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
@@ -451,6 +466,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               paymentAlreadyValidated={paymentAlreadyValidated}
               academicOnly={singleStep}
               reconciliationOnly={reconciliationOnly}
+              disabledReason={disabledReason}
               submit={submit}
             />
           )}
