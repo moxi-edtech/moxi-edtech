@@ -104,6 +104,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       )
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
+      .eq('ativo', true)
       .in('status', ACTIVE_MATRICULA_STATUSES)
       .order('numero_chamada', { ascending: true, nullsFirst: false })
 
