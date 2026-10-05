@@ -429,9 +429,13 @@ export function GradeEntryGrid({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  const savingIndicator = isSaving
+  const hasSaveError = data.some((row) => row._status === "error")
+  const hasPendingSave = data.some((row) => row._status === "pending")
+  const savingIndicator = isSaving || hasPendingSave
     ? { label: "A guardar…", icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, tone: "text-amber-600 bg-amber-50 border-amber-200" }
-    : { label: "Guardado", icon: <CheckCircle2 className="w-3.5 h-3.5" />, tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
+    : hasSaveError
+      ? { label: "Falha ao guardar", icon: <AlertCircle className="w-3.5 h-3.5" />, tone: "text-red-700 bg-red-50 border-red-200" }
+      : { label: "Guardado", icon: <CheckCircle2 className="w-3.5 h-3.5" />, tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
 
   if (studentMode && data[0]) {
     const row = data[0]
