@@ -128,7 +128,7 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
 
     setSaving(true);
     try {
-      const payload = Object.fromEntries(
+      const updatePayload = Object.fromEntries(
         changedEntries.map(([key, value]) => [
           key,
           value.trim() === "" ? null : value.trim(),
@@ -138,14 +138,14 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
       const response = await fetch(`/api/secretaria/alunos/${alunoId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(updatePayload),
       });
-      const payload = await response.json().catch(() => ({}));
+      const result = await response.json().catch(() => ({}));
 
-      if (!response.ok || !payload?.ok) {
+      if (!response.ok || !result?.ok) {
         toast({
           title: "Erro ao guardar",
-          message: payload?.error || "Não foi possível atualizar a ficha.",
+          message: result?.error || "Não foi possível atualizar a ficha.",
           variant: "error",
         });
         return;
