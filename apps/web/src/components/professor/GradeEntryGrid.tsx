@@ -16,6 +16,7 @@ export type StudentGradeRow = {
   nome: string
   foto?: string | null
   mac1: number | null
+  npp1: number | null
   npt1: number | null
   mt1: number | null
   is_isento?: boolean
@@ -34,9 +35,10 @@ type GradeEntryGridProps = {
   pesoPorTipo?: Record<string, number>
   componentesAtivos?: string[]
   showIsento?: boolean
+  studentMode?: boolean
 }
 
-const INPUT_COLUMNS = ["mac1", "npt1"] as const
+const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
 
 const clampNota = (value: string) => {
   const normalized = value.replace(",", ".").trim()
@@ -55,6 +57,7 @@ const clampNota = (value: string) => {
 const resolveTipoValue = (row: StudentGradeRow, tipo: string) => {
   const normalized = tipo.toUpperCase()
   if (normalized === "MAC") return row.mac1
+  if (normalized === "NPP") return row.npp1
   if (normalized === "NPT" || normalized === "PT") return row.npt1
   return null
 }
@@ -100,6 +103,7 @@ export function GradeEntryGrid({
   pesoPorTipo,
   componentesAtivos,
   showIsento = false,
+  studentMode = false,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
   const dataRef = useRef<StudentGradeRow[]>(initialData)
@@ -107,6 +111,19 @@ export function GradeEntryGrid({
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [pasteColumn, setPasteColumn] = useState<typeof INPUT_COLUMNS[number]>("mac1")
   const [pasteText, setPasteText] = useState("")
+
+  const gradeInputs = useMemo(() => {
+    const configured = new Set((componentesAtivos ?? []).map((tipo) => tipo.toUpperCase()))
+    const candidates: Array<{ label: string; key: typeof INPUT_COLUMNS[number]; tipo: string }> = [
+      { label: "MAC", key: "mac1", tipo: "MAC" },
+      { label: "NPP", key: "npp1", tipo: "NPP" },
+      { label: "NPT", key: "npt1", tipo: "NPT" },
+    ]
+    if (configured.size === 0) return candidates.filter((item) => item.tipo !== "NPP")
+    return candidates.filter((item) =>
+      configured.has(item.tipo) || (item.tipo === "NPT" && configured.has("PT"))
+    )
+  }, [componentesAtivos])
 
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const pendingIdsRef = useRef<Set<string>>(new Set())
@@ -139,7 +156,7 @@ export function GradeEntryGrid({
     let lancados = 0
 
     for (const row of data) {
-    const hasAny = row.mac1 !== null || row.npt1 !== null
+    const hasAny = row.mac1 !== null || row.npp1 !== null || row.npt1 !== null
       if (hasAny) lancados++
 
       if (row.mt1 !== null) {
@@ -329,7 +346,7 @@ export function GradeEntryGrid({
                 type="checkbox"
                 checked={!!info.getValue()}
                 onChange={(e) => updateIsento(info.row.index, e.target.checked)}
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                className="rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
                 title="Marcar como isento neste trimestre"
               />
             </div>
@@ -347,21 +364,21 @@ export function GradeEntryGrid({
       }),
       columnHelper.group({
         header: "Iº TRIMESTRE (Pauta Oficial)",
-        columns: [
-          columnHelper.accessor("mac1", {
-            header: "MAC",
+        columns: gradeInputs.map((input, columnIndex) =>
+          columnHelper.accessor(input.key, {
+            header: input.label,
             size: 80,
             cell: ({ row, getValue }) => (
               <GradeInput
                 inputRef={(el) => {
-                  inputRefs.current[`${row.index}-0`] = el
+                  inputRefs.current[`${row.index}-${columnIndex}`] = el
                 }}
                 disabled={!!row.original.is_isento}
                 value={getValue()}
-                onChange={(val) => updateGrade(row.index, "mac1", val)}
-                onBatchPaste={(pasteText) => handleBatchPaste(row.index, "mac1", pasteText)}
+                onChange={(val) => updateGrade(row.index, input.key, val)}
+                onBatchPaste={(pasteText) => handleBatchPaste(row.index, input.key, pasteText)}
                 onNavigate={(deltaRow, deltaCol) => {
-                  const next = inputRefs.current[`${row.index + deltaRow}-${0 + deltaCol}`]
+                  const next = inputRefs.current[`${row.index + deltaRow}-${columnIndex + deltaCol}`]
                   if (next) {
                     next.focus()
                     next.select()
@@ -369,36 +386,15 @@ export function GradeEntryGrid({
                 }}
               />
             ),
-          }),
-          columnHelper.accessor("npt1", {
-            header: "NPT",
-            size: 80,
-            cell: ({ row, getValue }) => (
-              <GradeInput
-                inputRef={(el) => {
-                  inputRefs.current[`${row.index}-1`] = el
-                }}
-                disabled={!!row.original.is_isento}
-                value={getValue()}
-                onChange={(val) => updateGrade(row.index, "npt1", val)}
-                onBatchPaste={(pasteText) => handleBatchPaste(row.index, "npt1", pasteText)}
-                onNavigate={(deltaRow, deltaCol) => {
-                  const next = inputRefs.current[`${row.index + deltaRow}-${1 + deltaCol}`]
-                  if (next) {
-                    next.focus()
-                    next.select()
-                  }
-                }}
-              />
-            ),
-          }),
+          })
+        ).concat([
           columnHelper.accessor("mt1", {
             header: "MT1",
             size: 80,
             cell: (info) => {
               const val = info.getValue()
               if (val === null) return <span className="text-slate-300 font-bold">—</span>
-              
+
               let style = "text-slate-700 bg-slate-100"
               if (val >= 14) style = "text-emerald-700 bg-emerald-50 border border-emerald-200/80"
               else if (val >= 10) style = "text-amber-800 bg-amber-50 border border-amber-200/80"
@@ -412,10 +408,10 @@ export function GradeEntryGrid({
               )
             },
           }),
-        ],
+        ]),
       }),
     ],
-    [updateGrade, handleBatchPaste, showIsento, updateIsento]
+    [gradeInputs, updateGrade, handleBatchPaste, showIsento, updateIsento]
   )
 
   const table = useReactTable({
@@ -431,7 +427,7 @@ export function GradeEntryGrid({
   return (
     <div className="space-y-4">
       {/* BARRA DE ESTATÍSTICAS EM TEMPO REAL DA TURMA */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {!studentMode ? <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-black uppercase tracking-wider">Média da Turma</span>
@@ -472,7 +468,7 @@ export function GradeEntryGrid({
             {stats.lancados} <span className="text-xs font-bold text-slate-400">/ {stats.total}</span>
           </p>
         </div>
-      </div>
+      </div> : null}
 
       {/* CONTAINER DA GRELHA PRINCIPAL */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -484,14 +480,14 @@ export function GradeEntryGrid({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            {!studentMode ? <button
               type="button"
               onClick={() => setShowPasteModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
             >
               <Clipboard size={14} className="text-emerald-600" />
               <span>Colar Coluna do Excel</span>
-            </button>
+            </button> : null}
 
             <div className={`text-xs inline-flex items-center gap-1.5 px-3 py-1 rounded-full border font-bold ${savingIndicator.tone}`}>
               {savingIndicator.icon}
@@ -525,8 +521,9 @@ export function GradeEntryGrid({
                     onChange={(e) => setPasteColumn(e.target.value as any)}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-800"
                   >
-                    <option value="mac1">MAC (Média de Avaliação Contínua)</option>
-                    <option value="npt1">NPT (Nota da Prova Trimestral)</option>
+                    {gradeInputs.map((item) => (
+                      <option key={item.key} value={item.key}>{item.label}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -537,7 +534,7 @@ export function GradeEntryGrid({
                     value={pasteText}
                     onChange={(e) => setPasteText(e.target.value)}
                     placeholder="Cole as notas copiadas do Excel (ex: 14.5, 12, 16.0)..."
-                    className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono text-slate-900 outline-none focus:border-emerald-600"
+                    className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                   <p className="text-[10px] text-slate-400 mt-1">
                     Valores como "145" serão corrigidos automaticamente para 14.5 (Escala 0 a 20).
@@ -593,24 +590,21 @@ export function GradeEntryGrid({
                         type="checkbox"
                         checked={!!row.original.is_isento}
                         onChange={(e) => updateIsento(row.index, e.target.checked)}
-                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        className="rounded border-slate-300 text-emerald-600 focus:ring-klasse-gold"
                       />
                       Isento neste trimestre
                     </label>
                   )}
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    {[
-                      { label: "MAC", key: "mac1" as const, value: row.original.mac1 },
-                      { label: "NPT", key: "npt1" as const, value: row.original.npt1 },
-                    ].map((item) => (
+                    {gradeInputs.map((item) => (
                       <div key={item.label} className="rounded-xl border border-slate-200/80 bg-slate-50 p-2.5">
                         <p className="text-[10px] font-black uppercase text-slate-400">{item.label}</p>
                         <div className="mt-1.5">
                           <GradeInput
                             inputRef={() => null}
                             disabled={!!row.original.is_isento}
-                            value={item.value}
+                            value={row.original[item.key]}
                             onChange={(val) => updateGrade(row.index, item.key, val)}
                             onBatchPaste={(pText) => handleBatchPaste(row.index, item.key, pText)}
                             onNavigate={() => null}
@@ -762,7 +756,7 @@ const GradeInput = ({
           onNavigate(0, 1)
         }
       }}
-      className={`w-full h-11 md:h-8 text-center rounded-xl border text-xs font-extrabold outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-2xs ${gradeStyle}`}
+      className={`w-full h-11 md:h-8 text-center rounded-xl border text-xs font-extrabold outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold transition-all shadow-2xs ${gradeStyle}`}
       placeholder={disabled ? "" : "-"}
     />
   )
