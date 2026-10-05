@@ -61,13 +61,8 @@ export default function Topbar({
             escolaId={escolaId}
             portal={portal}
             onAction={
-              portal === "operacoes"
+              portal === "secretaria" || portal === "operacoes"
                 ? (action, result) => {
-                    if (action.kind === "profile") {
-                      router.push(action.href);
-                      return;
-                    }
-
                     setActiveSearchAction({ action, result });
                   }
                 : undefined
