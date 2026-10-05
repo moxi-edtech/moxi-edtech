@@ -8,6 +8,8 @@ export type RematriculaCardState =
   | "ACADEMIC_PENDING"
   | "ACADEMIC_REVIEW_REQUIRED"
   | "ACADEMIC_CONDITIONAL_BLOCKED"
+  | "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+  | "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
   | "ACADEMIC_NOT_APPROVED"
   | "ACADEMIC_CYCLE_COMPLETED"
   | "DEBT_BLOCKED"
@@ -40,7 +42,7 @@ export interface TurmaOption {
 export interface ProgressaoBalcao {
   aplicada: boolean;
   modo: "promocao" | "retencao" | "indefinida";
-  estado: "aprovado" | "condicional" | "notas_pendentes" | "recurso" | "reprovado" | "concluido" | "classe_nao_identificada";
+  estado: "aprovado" | "condicional" | "notas_pendentes" | "recurso" | "reprovado" | "retencao_faltas" | "retencao_indisciplina" | "concluido" | "classe_nao_identificada";
   classe_origem: number | null;
   classe_destino: number | null;
   turma_origem_id: string | null;
@@ -87,6 +89,9 @@ export type RematriculaPaymentItem = {
   preco: number;
   quantidade?: number;
   origem_matricula_id?: string | null;
+  competencia?: string | null;
+  data_vencimento?: string | null;
+  previsto?: boolean;
 };
 
 type TurmaPayload = {
@@ -116,7 +121,7 @@ interface StatusResponse {
     decision: string | null;
     eligible: boolean;
     code: string;
-    mode?: "regular" | "conditional" | null;
+    mode?: "regular" | "conditional" | "repeat" | null;
     reason: string;
     disciplina_ids_pendentes?: string[];
     guidance?: {
@@ -166,13 +171,17 @@ const ERROR_MESSAGES: Record<string, string> = {
   REMATRICULA_SOURCE_INVALID:
     "A matrícula actual do aluno não foi encontrada.",
   REMATRICULA_DEBT_REQUIRED:
-    "Regularize todos os saldos em aberto antes de rematricular.",
+    "Regularize os saldos vencidos antes de rematricular.",
   REMATRICULA_ACADEMIC_PENDING:
     "Conclua as notas e os dados académicos antes de tentar novamente.",
   REMATRICULA_ACADEMIC_REVIEW_REQUIRED:
     "Conclua ou acompanhe o recurso académico antes de efetivar a rematrícula.",
   REMATRICULA_ACADEMIC_CONDITIONAL_BLOCKED:
     "A inscrição condicional foi reconhecida pelo RAA, mas ainda não pode ser efetivada.",
+  REMATRICULA_ACADEMIC_ATTENDANCE_REVIEW_REQUIRED:
+    "A retenção por faltas precisa de validação da regra escolar antes da nova matrícula.",
+  REMATRICULA_ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED:
+    "A retenção por indisciplina exige decisão administrativa antes da nova matrícula.",
   REMATRICULA_ACADEMIC_NOT_APPROVED:
     "A decisão RAA vigente não autoriza progressão para a etapa seguinte.",
   REMATRICULA_ACADEMIC_CYCLE_COMPLETED:
@@ -650,7 +659,12 @@ export function useRematriculaBalcao(opts: {
           contacto_encarregado: responsavelContato.trim() || undefined,
           // O fluxo normal não envia qualquer override académico. A decisão
           // é consumida exclusivamente do RAA no servidor.
-          itens: opts.itensPagamento?.map(({ id, tipo }) => ({ id, tipo })) ?? [],
+          itens: opts.itensPagamento
+            ?.filter((item) => !(item.tipo === "mensalidade" && item.competencia))
+            .map(({ id, tipo }) => ({ id, tipo })) ?? [],
+          mensalidades_competencias: opts.itensPagamento
+            ?.filter((item) => item.tipo === "mensalidade" && item.competencia)
+            .map((item) => item.competencia as string) ?? [],
         }),
       });
 

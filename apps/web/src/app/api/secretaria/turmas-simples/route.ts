@@ -4,6 +4,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
+import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 
 export const dynamic = 'force-dynamic';
 
@@ -145,7 +146,7 @@ export async function GET(req: Request) {
     let progressao: {
       aplicada: boolean;
       modo: 'promocao' | 'retencao' | 'indefinida';
-      estado: 'aprovado' | 'condicional' | 'notas_pendentes' | 'recurso' | 'reprovado' | 'concluido' | 'classe_nao_identificada';
+      estado: 'aprovado' | 'condicional' | 'notas_pendentes' | 'recurso' | 'reprovado' | 'retencao_faltas' | 'retencao_indisciplina' | 'concluido' | 'classe_nao_identificada';
       classe_origem: number | null;
       classe_destino: number | null;
       turma_origem_id: string | null;
@@ -206,13 +207,20 @@ export async function GET(req: Request) {
       const decisaoManual = decisaoResultado === 'aprovado' || decisaoResultado === 'reprovado' || decisaoResultado === 'concluido'
         ? decisaoResultado
         : null;
-      const reprovado = decisaoManual === 'reprovado' || (!decisaoManual && progressionDecision.startsWith('retido'));
+      const academicEligibility = classifyRematriculaAcademicEligibility({
+        decision: progressionDecision,
+        destino: progressionResult?.progression.destino ?? null,
+        efetivacaoMatriculaBloqueada: progressionResult?.efetivacaoMatriculaBloqueada ?? false,
+        disciplinaIdsPendentes: progressionResult?.progression.disciplinaIdsPendentes ?? [],
+      });
+      const reprovado = decisaoManual === 'reprovado'
+        || (!decisaoManual && academicEligibility.eligible && academicEligibility.mode === 'repeat');
       const concluido = decisaoManual === 'concluido' || (!decisaoManual && progressionDecision === 'concluiu');
       const condicionalAutorizada = !decisaoManual
-        && progressionDecision === 'inscricao_condicional'
-        && progressionResult?.progression.destino === 'proxima_etapa'
-        && progressionResult?.efetivacaoMatriculaBloqueada !== true;
-      const aprovado = decisaoManual === 'aprovado' || (!decisaoManual && progressionDecision === 'transitou');
+        && academicEligibility.eligible
+        && academicEligibility.mode === 'conditional';
+      const aprovado = decisaoManual === 'aprovado'
+        || (!decisaoManual && academicEligibility.eligible && academicEligibility.mode === 'regular');
       const podeProgredir = aprovado || condicionalAutorizada;
       const modo = reprovado ? 'retencao' : (podeProgredir ? 'promocao' : 'indefinida');
 
@@ -243,7 +251,11 @@ export async function GET(req: Request) {
           ? 'concluido'
           : reprovado
             ? 'reprovado'
-            : origemClasseNumero == null
+            : progressionDecision === 'retido_por_faltas'
+              ? 'retencao_faltas'
+              : progressionDecision === 'retido_por_indisciplina'
+                ? 'retencao_indisciplina'
+                : origemClasseNumero == null
               ? 'classe_nao_identificada'
               : condicionalAutorizada
                 ? 'condicional'
@@ -272,8 +284,12 @@ export async function GET(req: Request) {
             : progressionDecision === 'concluiu'
               ? 'Aluno concluinte: não existe uma etapa seguinte para rematrícula.'
               : reprovado
-                ? `Resultado global ${progressionDecision}: o aluno não está aprovado para rematrícula.`
-                : condicionalAutorizada
+                ? `Resultado global ${progressionDecision}: repetição autorizada na ${classeDestinoNumero ?? origemClasseNumero ?? 'mesma'}ª classe.`
+                : progressionDecision === 'retido_por_faltas'
+                  ? 'Retenção por faltas: valide a regra escolar antes de autorizar a repetição.'
+                  : progressionDecision === 'retido_por_indisciplina'
+                    ? 'Retenção por indisciplina: é necessária decisão administrativa antes de criar a nova matrícula.'
+                    : condicionalAutorizada
                   ? `Inscrição condicional autorizada pelo RAA: progressão para a ${classeDestinoNumero ?? 'próxima'}ª classe com ${progressionResult?.progression.disciplinaIdsPendentes.length ?? 0} disciplina(s) pendente(s) rastreada(s).`
                   : aprovado
                     ? `Resultado académico aprovado: progressão para a ${classeDestinoNumero ?? 'próxima'}ª classe.`

@@ -4,10 +4,13 @@ on:
   pull_request:
     paths:
       - "apps/web/src/app/api/secretaria/balcao/rematriculas/route.ts"
+      - "apps/web/src/app/api/secretaria/admissoes/convert/route.ts"
+      - "apps/web/src/app/api/financeiro/orcamento/matricula/route.ts"
       - "apps/web/src/app/api/secretaria/balcao/rematriculas/status/route.ts"
       - "apps/web/src/app/api/secretaria/turmas-simples/route.ts"
       - "apps/web/src/app/api/aluno/rematricula/status/route.ts"
       - "apps/web/src/app/api/aluno/rematricula/iniciar/route.ts"
+      - "apps/web/src/app/api/aluno/rematricula/confirmar/route.ts"
       - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
@@ -20,10 +23,15 @@ on:
       - "apps/web/src/hooks/useRematriculaBalcao.ts"
       - "apps/web/src/lib/documentos/emissaoClient.ts"
       - "apps/web/src/lib/financeiro/checkout-payment-state.ts"
+      - "apps/web/src/lib/financeiro/mensalidades-preview.ts"
       - "apps/web/src/lib/secretaria/rematricula-result.ts"
       - "apps/web/src/lib/rematricula/eligibility.ts"
+      - "apps/web/src/lib/rematricula/debt.ts"
+      - "apps/web/src/lib/academico/raa-progression-server.ts"
       - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
+      - "apps/web/tests/unit/rematricula-debt.spec.ts"
       - "apps/web/tests/unit/checkout-payment-state.spec.ts"
+      - "apps/web/tests/unit/mensalidades-preview.spec.ts"
       - "apps/web/tests/unit/rematricula-result.spec.ts"
       - "supabase/migrations/**"
       - "supabase/ops/tests/regression_balcao_*.sql"
@@ -61,8 +69,10 @@ jobs:
           cd apps/web
           node --test --import tsx \
             tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
-            tests/unit/rematricula-eligibility.spec.ts
+            tests/unit/rematricula-eligibility.spec.ts \
+            tests/unit/rematricula-debt.spec.ts
 
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
@@ -81,10 +91,13 @@ jobs:
         run: |
           pnpm -C apps/web exec eslint \
             src/app/api/secretaria/balcao/rematriculas/route.ts \
+            src/app/api/secretaria/admissoes/convert/route.ts \
+            src/app/api/financeiro/orcamento/matricula/route.ts \
             src/app/api/secretaria/balcao/rematriculas/status/route.ts \
             src/app/api/secretaria/turmas-simples/route.ts \
             src/app/api/aluno/rematricula/status/route.ts \
             src/app/api/aluno/rematricula/iniciar/route.ts \
+            src/app/api/aluno/rematricula/confirmar/route.ts \
             src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
@@ -97,11 +110,16 @@ jobs:
             src/hooks/useRematriculaBalcao.ts \
             src/lib/documentos/emissaoClient.ts \
             src/lib/financeiro/checkout-payment-state.ts \
+            src/lib/financeiro/mensalidades-preview.ts \
             src/lib/secretaria/rematricula-result.ts \
             src/lib/rematricula/eligibility.ts \
+            src/lib/rematricula/debt.ts \
+            src/lib/academico/raa-progression-server.ts \
             tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
+            tests/unit/rematricula-debt.spec.ts \
             --max-warnings 10000
 
 
@@ -154,6 +172,26 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_balcao_rematricula_strict_eligibility.sql
+
+      - name: Apply rematricula contract parity migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826128000_rematricula_contract_parity.sql
+
+      - name: Rematricula contract parity regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_rematricula_contract_parity.sql
+
+      - name: Apply retained repetition migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826129000_rematricula_retention_repeat.sql
+
+      - name: Retained repetition regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_rematricula_retention_repeat.sql
 
       - name: Apply BAL-GR-003 migration
         env:

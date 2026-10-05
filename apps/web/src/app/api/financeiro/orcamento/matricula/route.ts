@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { buildMensalidadesPreview } from "@/lib/financeiro/mensalidades-preview";
 import { type SupabaseClient, type User } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
@@ -89,6 +90,7 @@ export async function GET(req: NextRequest) {
   const classeId = (searchParams.get("classe_id") || "").trim() || undefined;
   // O ano letivo idealmente vem da sessão ativa, mas aceitamos parâmetro manual
   const anoParam = parseAnoLetivoStrict(searchParams.get("ano"));
+  const descontoParam = Math.min(100, Math.max(0, Number(searchParams.get("desconto") ?? 0) || 0));
 
   try {
     const supabase = await supabaseServer();
@@ -136,6 +138,7 @@ export async function GET(req: NextRequest) {
     let anoLetivo = anoParam || anoDerivadoDaSessao || null;
     let resolvedCursoId = cursoId ?? null;
     let resolvedClasseId = classeId ?? null;
+    let resolvedSessionId = session?.id ?? null;
 
     if (!anoLetivo && escolaId) {
       try {
@@ -155,7 +158,7 @@ export async function GET(req: NextRequest) {
     if (turmaId && isUUID(turmaId)) {
       const { data: turma, error: turmaError } = await supabase
         .from("turmas")
-        .select("curso_id, classe_id, ano_letivo")
+        .select("curso_id, classe_id, ano_letivo, session_id")
         .eq("id", turmaId)
         .eq("escola_id", escolaId)
         .maybeSingle();
@@ -167,6 +170,7 @@ export async function GET(req: NextRequest) {
 
       resolvedCursoId = turma.curso_id ?? resolvedCursoId;
       resolvedClasseId = turma.classe_id ?? resolvedClasseId;
+      resolvedSessionId = turma.session_id ?? resolvedSessionId;
       const turmaAno = parseAnoLetivoStrict(turma.ano_letivo);
       if (turmaAno) anoLetivo = turmaAno;
     }
@@ -192,6 +196,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    let mensalidades: ReturnType<typeof buildMensalidadesPreview> = [];
+    if (turmaId && isUUID(turmaId) && Number(tabela.valor_mensalidade ?? 0) > 0) {
+      if (!resolvedSessionId) {
+        const { data: anoRow } = await supabase
+          .from("anos_letivos")
+          .select("id")
+          .eq("escola_id", escolaId)
+          .eq("ano", anoLetivo)
+          .order("ativo", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        resolvedSessionId = anoRow?.id ?? null;
+      }
+
+      if (resolvedSessionId) {
+        const { data: janela, error: janelaError } = await (supabase as any)
+          .rpc("resolve_turma_janela_cobranca", {
+            p_turma_id: turmaId,
+            p_ano_letivo_id: resolvedSessionId,
+          })
+          .maybeSingle();
+
+        if (janelaError) throw janelaError;
+        if (janela?.data_inicio && janela?.data_fim) {
+          mensalidades = buildMensalidadesPreview({
+            dataInicio: String(janela.data_inicio),
+            dataFim: String(janela.data_fim),
+            isClasseExame: Boolean(janela.is_classe_exame),
+            valorMensalidade: Number(tabela.valor_mensalidade ?? 0),
+            diaVencimento: tabela.dia_vencimento,
+            descontoPercentual: descontoParam,
+          });
+        }
+      }
+    }
+
     // Sucesso
     return NextResponse.json({
       ok: true,
@@ -201,6 +241,7 @@ export async function GET(req: NextRequest) {
         dia_vencimento: tabela.dia_vencimento,
         multa: tabela.multa_atraso_percentual,
         origem_regra: origem,
+        mensalidades,
       },
     });
   } catch (error) {

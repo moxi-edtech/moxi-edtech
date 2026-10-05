@@ -744,6 +744,18 @@ function StepFinanceiro({
   );
   const mensalidadesDisponiveis = itensDisponiveis.filter((item) => item.tipo === "mensalidade");
   const servicosDisponiveis = itensDisponiveis.filter((item) => item.tipo === "servico");
+  const toggleMensalidade = (item: RematriculaPaymentItem, index: number) => {
+    const selected = itemEstaSeleccionado(item);
+    if (selected) {
+      mensalidadesDisponiveis.slice(index).forEach((candidate) => {
+        if (itemEstaSeleccionado(candidate)) onRemoverItem?.(candidate.id, candidate.tipo);
+      });
+      return;
+    }
+    mensalidadesDisponiveis.slice(0, index + 1).forEach((candidate) => {
+      if (!itemEstaSeleccionado(candidate)) onAdicionarItem?.(candidate);
+    });
+  };
   return (
     <div className="space-y-5">
       <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -805,17 +817,17 @@ function StepFinanceiro({
           <div className="mb-3">
             <p className="text-sm font-bold text-emerald-950">Adicionar a esta cobrança</p>
             <p className="mt-0.5 text-xs text-emerald-800">
-              Os itens seleccionados serão liquidados no mesmo pagamento e constarão no recibo da rematrícula.
+              Pode incluir as primeiras mensalidades do ano destino. Ao marcar um mês, os anteriores também entram no mesmo pagamento para respeitar a ordem das propinas.
             </p>
           </div>
           <div className="space-y-2">
-            {mensalidadesDisponiveis.map((item) => {
+            {mensalidadesDisponiveis.map((item, index) => {
               const seleccionado = itemEstaSeleccionado(item);
               return (
                 <button
                   key={`${item.tipo}-${item.id}`}
                   type="button"
-                  onClick={() => seleccionado ? onRemoverItem?.(item.id, item.tipo) : onAdicionarItem?.(item)}
+                  onClick={() => toggleMensalidade(item, index)}
                   className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
                     seleccionado
                       ? "border-emerald-500 bg-emerald-100 text-emerald-950"
@@ -824,7 +836,10 @@ function StepFinanceiro({
                 >
                   <span>
                     <span className="block text-xs font-bold">{item.nome || "Mensalidade"}</span>
-                    <span className="block text-[11px]">Mensalidade</span>
+                    <span className="block text-[11px]">
+                      Mensalidade do ano destino
+                      {item.data_vencimento ? ` · vence ${new Intl.DateTimeFormat("pt-AO").format(new Date(`${item.data_vencimento}T00:00:00Z`))}` : ""}
+                    </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2 text-xs font-black">
                     {kwanza.format(Number(item.preco ?? 0))}

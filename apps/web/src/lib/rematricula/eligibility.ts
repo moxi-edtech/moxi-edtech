@@ -6,13 +6,16 @@ import type {
 export type RematriculaAcademicEligibilityCode =
   | "ACADEMIC_READY"
   | "ACADEMIC_CONDITIONAL"
+  | "ACADEMIC_REPEAT"
   | "ACADEMIC_RESULT_PENDING"
   | "ACADEMIC_REVIEW_REQUIRED"
   | "ACADEMIC_CONDITIONAL_BLOCKED"
+  | "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+  | "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
   | "ACADEMIC_NOT_APPROVED"
   | "ACADEMIC_CYCLE_COMPLETED";
 
-export type RematriculaAcademicMode = "regular" | "conditional";
+export type RematriculaAcademicMode = "regular" | "conditional" | "repeat";
 
 export type RematriculaAcademicEligibility = {
   eligible: boolean;
@@ -77,6 +80,50 @@ export function classifyRematriculaAcademicEligibility(
     };
   }
 
+  if (decision === "retido") {
+    if (destino !== "mesma_etapa") {
+      return {
+        eligible: false,
+        code: "ACADEMIC_NOT_APPROVED",
+        mode: null,
+        reason:
+          "A retenção foi reconhecida, mas o destino académico não corresponde à mesma etapa.",
+        disciplinaIdsPendentes: pendingDisciplineIds,
+      };
+    }
+
+    return {
+      eligible: true,
+      code: "ACADEMIC_REPEAT",
+      mode: "repeat",
+      reason:
+        "O RAA determinou retenção académica; a rematrícula pode seguir para repetição na mesma classe.",
+      disciplinaIdsPendentes: pendingDisciplineIds,
+    };
+  }
+
+  if (decision === "retido_por_faltas") {
+    return {
+      eligible: false,
+      code: "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED",
+      mode: null,
+      reason:
+        "A retenção por faltas exige validação da regra escolar antes de uma nova matrícula na mesma classe.",
+      disciplinaIdsPendentes: pendingDisciplineIds,
+    };
+  }
+
+  if (decision === "retido_por_indisciplina") {
+    return {
+      eligible: false,
+      code: "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED",
+      mode: null,
+      reason:
+        "A retenção por indisciplina exige decisão administrativa antes de uma nova matrícula na mesma classe.",
+      disciplinaIdsPendentes: pendingDisciplineIds,
+    };
+  }
+
   if (!decision || decision === "pendente") {
     return {
       eligible: false,
@@ -133,7 +180,7 @@ export function canStartRematricula(input: {
       academic,
       financial: {
         code: "REMATRICULA_DEBT_REQUIRED" as const,
-        reason: "Regularize todos os saldos em aberto antes de rematricular.",
+        reason: "Regularize os saldos vencidos antes de rematricular.",
       },
     };
   }
