@@ -76,7 +76,8 @@ export default function BalcaoPageClient({
     else next.set("action", nextAction);
 
     const query = next.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    const targetPath = pathname || "/secretaria/balcao";
+    router.replace(query ? `${targetPath}?${query}` : targetPath, { scroll: false });
   }, [activeAction, pathname, router, searchParams, selectedAlunoId]);
 
   const handleActionChange = useCallback((actionId: BalcaoActionId) => {
