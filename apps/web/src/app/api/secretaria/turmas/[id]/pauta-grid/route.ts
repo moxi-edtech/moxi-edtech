@@ -173,9 +173,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (academicContext) {
       matriculasQuery = matriculasQuery.eq('session_id', academicContext.anoLetivoId)
       if (academicContext.mode === 'CURRENT') {
-        matriculasQuery = matriculasQuery
-          .eq('ativo', true)
-          .in('status', ACTIVE_MATRICULA_STATUSES)
+        matriculasQuery = matriculasQuery.eq('ativo', true)
       } else {
         matriculasQuery = matriculasQuery.in('status', [
           ...ACTIVE_MATRICULA_STATUSES,
