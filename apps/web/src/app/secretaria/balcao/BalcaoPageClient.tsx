@@ -15,6 +15,7 @@ import {
   BALCAO_ACTION_REGISTRY,
   type BalcaoActionId,
 } from "@/lib/balcao/action-registry";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 function parseAction(value: string | null): BalcaoActionId {
   return value && value in BALCAO_ACTION_REGISTRY
@@ -33,6 +34,7 @@ export default function BalcaoPageClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryAlunoId = searchParams?.get("alunoId") ?? null;
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
   const queryAction = parseAction(searchParams?.get("action") ?? null);
   const returnToParam = searchParams?.get("returnTo") ?? null;
   const returnTo = returnToParam?.startsWith("/") && !returnToParam.startsWith("//")
@@ -46,7 +48,7 @@ export default function BalcaoPageClient({
     student: commandCenterStudent,
     setStudent: setCommandCenterStudent,
     subtitle: commandCenterSubtitle,
-  } = useCommandCenterStudent(selectedAlunoId);
+  } = useCommandCenterStudent(selectedAlunoId, academicYearId);
 
   useEffect(() => {
     setSelectedAlunoId(queryAlunoId);
