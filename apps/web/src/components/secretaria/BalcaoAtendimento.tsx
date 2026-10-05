@@ -2442,63 +2442,80 @@ export default function BalcaoAtendimento({
           <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
         </div>
       ) : dossier.aluno ? (
-        /* A partir de `lg` o carrinho passa a ficar ao lado e o botão de pagar
-           deixa de exigir scroll. A ficha do aluno e o catálogo só se separam em
-           `xl`: a 1024px não há largura para três colunas. */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          <div className="lg:col-span-8">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-              <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} />
-              <Catalogo
-                mensalidades={dossier.mensalidades}
-                servicos={servicos}
-                onAdicionarMensalidade={handleAdicionarMensalidade}
-                onAdicionarServico={handleAdicionarServico}
-                emittingDocId={checkout.emittingDocId}
-                unlockedMensalidadeIds={unlockedMensalidadeIds}
-                rematriculaReady={
-                  rematricula.cardState === "READY" ||
-                  rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
-                  rematricula.cardState === "DOCUMENT_PENDING" ||
-                  rematricula.cardState === "ACADEMIC_HISTORY_PENDING" ||
-                  rematricula.cardState === "FINALIST_PENDING"
-                }
-                rematriculaState={
-                  servicos.some(isServicoRematricula)
-                    ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
-                    : null
-                }
-                rematriculaPrice={rematricula.service?.valor_base ?? null}
-                rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
-                rematriculaAcademic={rematricula.academic}
-                reconcilingPedido={rematricula.reconciling}
-                rematriculaError={rematricula.apiError}
-                onResolverPedido={rematricula.resolveLegacyPedido}
-                onResolverReconciliacao={rematricula.openReconciliationModal}
-                onCancelPendingPedido={rematricula.cancelPendingPedido}
-                onRefreshRematricula={rematricula.refreshStatus}
-                onRematricula={rematricula.openModal}
-                onRegularize={() => setDebtModalOpen(true)}
-              />
+        view === "overview" ? (
+          <CommandCenterOverview
+            aluno={dossier.aluno}
+            mensalidades={dossier.mensalidades}
+            servicos={servicos}
+            rematriculaState={
+              servicos.some(isServicoRematricula)
+                ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                : null
+            }
+            onNavigate={onNavigateAction}
+            onTrocarAluno={handleTrocarAluno}
+          />
+        ) : view === "reenrollment" && rematricula.modalOpen ? (
+          <div className="min-h-[1px]" aria-hidden="true" />
+        ) : (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            <div className={(view === "payment" || view === "document" || view === "all") ? "lg:col-span-8" : "lg:col-span-12"}>
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+                <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} />
+                <Catalogo
+                  view={view === "all" ? "all" : view}
+                  mensalidades={dossier.mensalidades}
+                  servicos={servicos}
+                  onAdicionarMensalidade={handleAdicionarMensalidade}
+                  onAdicionarServico={handleAdicionarServico}
+                  emittingDocId={checkout.emittingDocId}
+                  unlockedMensalidadeIds={unlockedMensalidadeIds}
+                  rematriculaReady={
+                    rematricula.cardState === "READY" ||
+                    rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
+                    rematricula.cardState === "DOCUMENT_PENDING" ||
+                    rematricula.cardState === "ACADEMIC_HISTORY_PENDING" ||
+                    rematricula.cardState === "FINALIST_PENDING"
+                  }
+                  rematriculaState={
+                    servicos.some(isServicoRematricula)
+                      ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                      : null
+                  }
+                  rematriculaPrice={rematricula.service?.valor_base ?? null}
+                  rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
+                  rematriculaAcademic={rematricula.academic}
+                  reconcilingPedido={rematricula.reconciling}
+                  rematriculaError={rematricula.apiError}
+                  onResolverPedido={rematricula.resolveLegacyPedido}
+                  onResolverReconciliacao={rematricula.openReconciliationModal}
+                  onCancelPendingPedido={rematricula.cancelPendingPedido}
+                  onRefreshRematricula={rematricula.refreshStatus}
+                  onRematricula={rematricula.openModal}
+                  onRegularize={() => setDebtModalOpen(true)}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="lg:col-span-4">
-            <CarrinhoPanel
-              carrinho={carrinho}
-              checkout={checkout}
-              audit={audit}
-              aluno={dossier.aluno}
-              embedded={embedded}
-              atalhoActivo={
-                !rematricula.modalOpen &&
-                !debtModalOpen &&
-                !postAction &&
-                !checkout.billingWindowIssue
-              }
-            />
+            {(view === "payment" || view === "document" || view === "all") && (
+              <div className="lg:col-span-4">
+                <CarrinhoPanel
+                  carrinho={carrinho}
+                  checkout={checkout}
+                  audit={audit}
+                  aluno={dossier.aluno}
+                  embedded={embedded}
+                  atalhoActivo={
+                    !rematricula.modalOpen &&
+                    !debtModalOpen &&
+                    !postAction &&
+                    !checkout.billingWindowIssue
+                  }
+                />
+              </div>
+            )}
           </div>
-        </div>
+        )
       ) : (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-16 text-center space-y-2">
           <User className="h-10 w-10 text-slate-300 mx-auto" />
@@ -2511,6 +2528,7 @@ export default function BalcaoAtendimento({
       {rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && dossier.aluno && (
         <RematriculaBalcaoModal
           open={rematricula.modalOpen}
+          embedded={view === "reenrollment"}
           onClose={() => {
             rematricula.closeModal();
             setItensRematricula([]);
