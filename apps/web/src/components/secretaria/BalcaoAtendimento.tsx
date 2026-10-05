@@ -1136,7 +1136,7 @@ function CommandCenterOverview({
       id: "document",
       title: "Documentos",
       description: "Emitir declarações e outros documentos do aluno",
-      value: documents.length > 0 ? `${documents.length} disponível${documents.length === 1 ? "" : "is"}` : "Nenhum",
+      value: documents.length > 0 ? `${documents.length} ${documents.length === 1 ? "disponível" : "disponíveis"}` : "Nenhum",
       tone: "neutral",
     },
   ];
