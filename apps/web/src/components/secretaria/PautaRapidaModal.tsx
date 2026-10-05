@@ -66,6 +66,7 @@ export function PautaRapidaModal({
   const searchParams = useSearchParams();
   const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
   const [academicYearId, setAcademicYearId] = useState<string | null>(requestedAcademicYearId);
+  const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ" | null>(null);
   const [academicContextError, setAcademicContextError] = useState<string | null>(null);
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
@@ -94,6 +95,7 @@ export function PautaRapidaModal({
   useEffect(() => {
     let active = true;
     setAcademicYearId(null);
+    setAcademicMode(null);
     setAcademicContextError(null);
 
     const query = requestedAcademicYearId
@@ -107,14 +109,17 @@ export function PautaRapidaModal({
         const resolvedId = payload?.context?.anoLetivoId;
         if (!response.ok || !payload?.ok || typeof resolvedId !== "string") {
           setAcademicYearId(null);
+          setAcademicMode(null);
           setAcademicContextError(payload?.error || "Não foi possível identificar o ano letivo.");
           return;
         }
         setAcademicYearId(resolvedId);
+        setAcademicMode(payload.context?.mode === "CURRENT" ? "CURRENT" : "HISTORICAL_READ");
       })
       .catch(() => {
         if (!active) return;
         setAcademicYearId(null);
+        setAcademicMode(null);
         setAcademicContextError("Não foi possível identificar o ano letivo.");
       });
 
@@ -316,6 +321,9 @@ export function PautaRapidaModal({
     if (!academicYearId) {
       throw new Error(academicContextError || "Ano letivo ativo não identificado.");
     }
+    if (academicMode !== "CURRENT") {
+      throw new Error("Este ano letivo está disponível apenas para consulta.");
+    }
     const turmaDisciplinaId = disciplinaSelecionada?.id ?? null;
     const disciplinaCanonicalId = disciplinaSelecionada?.disciplina?.id ?? disciplinaId;
     if (!turmaDisciplinaId) {
@@ -405,6 +413,12 @@ export function PautaRapidaModal({
       {academicContextError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           {academicContextError}
+        </div>
+      ) : null}
+
+      {academicMode === "HISTORICAL_READ" ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Ano letivo em consulta histórica. As notas podem ser consultadas, mas não alteradas.
         </div>
       ) : null}
 
@@ -565,6 +579,7 @@ export function PautaRapidaModal({
             componentesAtivos={pautaComponentes}
             showIsento={true}
             studentMode={Boolean(focusAlunoId)}
+            readOnly={academicMode !== "CURRENT"}
           />
           {saveError ? (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
