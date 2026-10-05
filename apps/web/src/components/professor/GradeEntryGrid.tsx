@@ -37,22 +37,25 @@ type GradeEntryGridProps = {
   showIsento?: boolean
   studentMode?: boolean
   readOnly?: boolean
+  notaMaxima?: number
+  notaCorte?: number
 }
 
 const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
 
-const clampNota = (value: string) => {
+const clampNota = (value: string, notaMaxima: number) => {
   const normalized = value.replace(",", ".").trim()
   if (normalized === "") return null
   let parsed = Number(normalized)
   if (!Number.isFinite(parsed)) return null
 
-  // Auto-correct common fast-typing decimal omission: e.g. "145" -> 14.5, "185" -> 18.5
-  if (parsed > 20 && parsed <= 200 && Number.isInteger(parsed)) {
+  // Auto-correct common fast-typing decimal omission:
+  // 145 -> 14.5 on a 0-20 scale; 85 -> 8.5 on a 0-10 scale.
+  if (parsed > notaMaxima && parsed <= notaMaxima * 10 && Number.isInteger(parsed)) {
     parsed = parsed / 10
   }
 
-  return Math.min(20, Math.max(0, Number(parsed.toFixed(1))))
+  return Math.min(notaMaxima, Math.max(0, Number(parsed.toFixed(1))))
 }
 
 const resolveTipoValue = (row: StudentGradeRow, tipo: string) => {
@@ -106,6 +109,8 @@ export function GradeEntryGrid({
   showIsento = false,
   studentMode = false,
   readOnly = false,
+  notaMaxima = 20,
+  notaCorte = 10,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
   const dataRef = useRef<StudentGradeRow[]>(initialData)
@@ -147,7 +152,7 @@ export function GradeEntryGrid({
 
   useEffect(() => {
     dataRef.current = data
-  }, [data])
+  }, [data, notaCorte])
 
   const onDataChangeRef = useRef(onDataChange)
 
@@ -174,7 +179,7 @@ export function GradeEntryGrid({
       if (row.mt1 !== null) {
         totalMT += row.mt1
         countMT++
-        if (row.mt1 >= 10) aprovados++
+        if (row.mt1 >= notaCorte) aprovados++
         else reprovados++
       }
     }
@@ -272,7 +277,7 @@ export function GradeEntryGrid({
 
   const updateGrade = useCallback(
     (rowIndex: number, columnId: typeof INPUT_COLUMNS[number], value: string) => {
-      const numericValue = clampNota(value)
+      const numericValue = clampNota(value, notaMaxima)
       const current = dataRef.current
       const target = current[rowIndex]
       if (!target) return
@@ -293,7 +298,7 @@ export function GradeEntryGrid({
       pendingIdsRef.current.add(target.id)
       scheduleSave()
     },
-    [scheduleSave, pesoPorTipo, componentesAtivos]
+    [scheduleSave, pesoPorTipo, componentesAtivos, notaMaxima]
   )
 
   // Manipulador para colar lote do Excel/Sheets
@@ -310,7 +315,7 @@ export function GradeEntryGrid({
       const next = current.map((row, index) => {
         if (index < startRowIndex || index >= startRowIndex + lines.length) return row
         const valString = lines[index - startRowIndex]
-        const numericValue = valString ? clampNota(valString) : null
+        const numericValue = valString ? clampNota(valString, notaMaxima) : null
         const updatedRow = {
           ...row,
           [columnId]: numericValue,
@@ -325,7 +330,7 @@ export function GradeEntryGrid({
       setData(next)
       scheduleSave()
     },
-    [pesoPorTipo, componentesAtivos, scheduleSave]
+    [pesoPorTipo, componentesAtivos, scheduleSave, notaMaxima]
   )
 
   const handleApplyPasteModal = () => {
@@ -426,6 +431,8 @@ export function GradeEntryGrid({
                   }}
                   disabled={!!row.original.is_isento}
                   readOnly={readOnly}
+                  notaMaxima={notaMaxima}
+                  notaCorte={notaCorte}
                   value={getValue()}
                   onChange={(val) => updateGrade(row.index, input.key, val)}
                   onBatchPaste={(pasteText) => handleBatchPaste(row.index, input.key, pasteText)}
@@ -449,9 +456,9 @@ export function GradeEntryGrid({
               if (val === null) return <span className="text-slate-300 font-bold">—</span>
 
               let style = "text-slate-700 bg-slate-100"
-              if (val >= 14) style = "text-emerald-700 bg-emerald-50 border border-emerald-200/80"
-              else if (val >= 10) style = "text-amber-800 bg-amber-50 border border-amber-200/80"
-              else if (val >= 8) style = "text-orange-800 bg-orange-50 border border-orange-200/80"
+              if (val >= notaMaxima * 0.7) style = "text-emerald-700 bg-emerald-50 border border-emerald-200/80"
+              else if (val >= notaCorte) style = "text-amber-800 bg-amber-50 border border-amber-200/80"
+              else if (val >= notaCorte * 0.8) style = "text-orange-800 bg-orange-50 border border-orange-200/80"
               else style = "text-rose-700 bg-rose-50 border border-rose-200/80"
 
               return (
@@ -464,7 +471,7 @@ export function GradeEntryGrid({
         ],
       }),
     ],
-    [flushNow, gradeInputs, handleBatchPaste, readOnly, showIsento, updateGrade, updateIsento]
+    [flushNow, gradeInputs, handleBatchPaste, notaCorte, notaMaxima, readOnly, showIsento, updateGrade, updateIsento]
   )
 
   const table = useReactTable({
@@ -526,6 +533,8 @@ export function GradeEntryGrid({
                     inputRef={() => null}
                     disabled={!!row.is_isento}
                     readOnly={readOnly}
+                    notaMaxima={notaMaxima}
+                    notaCorte={notaCorte}
                     value={row[item.key]}
                     onChange={(value) => updateGrade(0, item.key, value)}
                     onFlush={flushNow}
@@ -541,7 +550,7 @@ export function GradeEntryGrid({
               </p>
               <p className="mt-2 text-xl font-black text-slate-900">
                 {row.mt1 ?? "—"}
-                {row.mt1 !== null ? <span className="ml-1 text-xs font-bold text-slate-400">/ 20</span> : null}
+                {row.mt1 !== null ? <span className="ml-1 text-xs font-bold text-slate-400">/ {notaMaxima}</span> : null}
               </p>
             </div>
           </div>
@@ -566,13 +575,13 @@ export function GradeEntryGrid({
             <TrendingUp size={16} className="text-emerald-600" />
           </div>
           <p className="text-xl font-black text-slate-900 mt-1">
-            {stats.mediaTurma !== null ? `${stats.mediaTurma} / 20` : "—"}
+            {stats.mediaTurma !== null ? `${stats.mediaTurma} / ${notaMaxima}` : "—"}
           </p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-black uppercase tracking-wider">Aprovados (≥10)</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">Aprovados (≥{notaCorte})</span>
             <CheckCircle size={16} className="text-emerald-600" />
           </div>
           <div className="flex items-baseline gap-2 mt-1">
@@ -738,6 +747,8 @@ export function GradeEntryGrid({
                             inputRef={() => null}
                             disabled={!!row.original.is_isento}
                             readOnly={readOnly}
+                            notaMaxima={notaMaxima}
+                            notaCorte={notaCorte}
                             value={row.original[item.key]}
                             onChange={(val) => updateGrade(row.index, item.key, val)}
                             onBatchPaste={(pText) => handleBatchPaste(row.index, item.key, pText)}
@@ -811,6 +822,8 @@ const GradeInput = ({
   onFlush,
   disabled = false,
   readOnly = false,
+  notaMaxima = 20,
+  notaCorte = 10,
 }: {
   value: number | null
   onChange: (v: string) => void
@@ -820,6 +833,8 @@ const GradeInput = ({
   onFlush?: () => void
   disabled?: boolean
   readOnly?: boolean
+  notaMaxima?: number
+  notaCorte?: number
 }) => {
   const [draft, setDraft] = useState(value === null ? "" : String(value))
   const isFocusedRef = useRef(false)
@@ -831,7 +846,7 @@ const GradeInput = ({
   }, [value, draft])
 
   const commitValue = (rawValue?: string) => {
-    const normalized = clampNota(rawValue ?? draft)
+    const normalized = clampNota(rawValue ?? draft, notaMaxima)
     const nextDraft = normalized === null ? "" : String(normalized)
     setDraft(nextDraft)
     onChange(nextDraft)
@@ -844,9 +859,9 @@ const GradeInput = ({
   } else if (readOnly) {
     gradeStyle = "bg-slate-50 text-slate-700 border-slate-200"
   } else if (value !== null) {
-    if (value >= 14) gradeStyle = "bg-emerald-50 text-emerald-800 border-emerald-300 font-black"
-    else if (value >= 10) gradeStyle = "bg-amber-50 text-amber-800 border-amber-300 font-extrabold"
-    else if (value >= 8) gradeStyle = "bg-orange-50 text-orange-800 border-orange-300 font-extrabold"
+    if (value >= notaMaxima * 0.7) gradeStyle = "bg-emerald-50 text-emerald-800 border-emerald-300 font-black"
+    else if (value >= notaCorte) gradeStyle = "bg-amber-50 text-amber-800 border-amber-300 font-extrabold"
+    else if (value >= notaCorte * 0.8) gradeStyle = "bg-orange-50 text-orange-800 border-orange-300 font-extrabold"
     else gradeStyle = "bg-rose-50 text-rose-700 border-rose-300 font-extrabold"
   }
 
