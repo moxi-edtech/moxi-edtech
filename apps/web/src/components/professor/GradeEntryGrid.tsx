@@ -134,6 +134,7 @@ export function GradeEntryGrid({
 
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const pendingIdsRef = useRef<Set<string>>(new Set())
+  const savingRef = useRef(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -163,7 +164,7 @@ export function GradeEntryGrid({
     let lancados = 0
 
     for (const row of data) {
-    const hasAny = row.mac1 !== null || row.npp1 !== null || row.npt1 !== null
+      const hasAny = row.mac1 !== null || row.npp1 !== null || row.npt1 !== null
       if (hasAny) lancados++
 
       if (row.mt1 !== null) {
@@ -188,38 +189,47 @@ export function GradeEntryGrid({
   }, [data])
 
   const flushSave = useCallback(async () => {
-    if (!onSave || pendingIdsRef.current.size === 0) return
-    const ids = Array.from(pendingIdsRef.current)
-    pendingIdsRef.current.clear()
-    const payload = dataRef.current.filter((row) => ids.includes(row.id))
-    if (payload.length === 0) return
+    if (!onSave || savingRef.current || pendingIdsRef.current.size === 0) return
 
+    savingRef.current = true
     setIsSaving(true)
     try {
-      await onSave(payload)
-      setData((prev) =>
-        prev.map((row) =>
-          ids.includes(row.id)
-            ? {
-                ...row,
-                _status: "synced",
-              }
-            : row
-        )
-      )
-  } catch (error) {
-      setData((prev) =>
-        prev.map((row) =>
-          ids.includes(row.id)
-            ? {
-                ...row,
-                _status: "error",
-              }
-            : row
-        )
-      )
-      onSaveError?.(error)
+      // Serializar gravações evita que uma resposta antiga chegue depois de
+      // uma edição mais recente e sobrescreva a nota nova no writer canónico.
+      while (pendingIdsRef.current.size > 0) {
+        const ids = Array.from(pendingIdsRef.current)
+        pendingIdsRef.current.clear()
+        const payload = dataRef.current.filter((row) => ids.includes(row.id))
+        if (payload.length === 0) continue
+
+        try {
+          await onSave(payload)
+          setData((prev) =>
+            prev.map((row) =>
+              ids.includes(row.id) && !pendingIdsRef.current.has(row.id)
+                ? {
+                    ...row,
+                    _status: "synced",
+                  }
+                : row
+            )
+          )
+        } catch (error) {
+          setData((prev) =>
+            prev.map((row) =>
+              ids.includes(row.id) && !pendingIdsRef.current.has(row.id)
+                ? {
+                    ...row,
+                    _status: "error",
+                  }
+                : row
+            )
+          )
+          onSaveError?.(error)
+        }
+      }
     } finally {
+      savingRef.current = false
       setIsSaving(false)
     }
   }, [onSave, onSaveError])
