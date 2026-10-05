@@ -196,7 +196,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let mensalidades = [];
+    let mensalidades: ReturnType<typeof buildMensalidadesPreview> = [];
     if (turmaId && isUUID(turmaId) && Number(tabela.valor_mensalidade ?? 0) > 0) {
       if (!resolvedSessionId) {
         const { data: anoRow } = await supabase
