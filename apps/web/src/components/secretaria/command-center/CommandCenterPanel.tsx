@@ -1,5 +1,6 @@
 "use client";
 
+import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
 import { AlunoProfilePanel } from "@/components/secretaria/AlunoProfilePanel";
 import BalcaoAtendimento, {
   type AlunoDossier,
@@ -12,7 +13,7 @@ import {
 
 type Props = {
   escolaId: string;
-  alunoId: string;
+  alunoId?: string | null;
   actionId: BalcaoActionId;
   returnTo?: string | null;
   onActionChange: (actionId: BalcaoActionId) => void;
@@ -30,6 +31,24 @@ export function CommandCenterPanel({
   onSuccess,
 }: Props) {
   const action = getBalcaoAction(actionId);
+
+  if (action.panel === "enrollment") {
+    return (
+      <AdmissaoWizardClient
+        escolaId={escolaId}
+        embedded
+        onSuccess={() => onSuccess?.()}
+      />
+    );
+  }
+
+  if (!alunoId) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+        Selecione um aluno para continuar esta operação.
+      </div>
+    );
+  }
 
   if (action.panel === "profile") {
     return <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />;
