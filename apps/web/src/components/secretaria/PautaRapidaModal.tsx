@@ -82,6 +82,9 @@ export function PautaRapidaModal({
   const [pautaDraft, setPautaDraft] = useState<StudentGradeRow[]>([]);
   const [pautaPesoPorTipo, setPautaPesoPorTipo] = useState<Record<string, number> | null>(null);
   const [pautaComponentes, setPautaComponentes] = useState<string[]>([]);
+  const [pautaNotaMaxima, setPautaNotaMaxima] = useState<number | null>(20);
+  const [pautaNotaCorte, setPautaNotaCorte] = useState<number | null>(10);
+  const [pautaEscala, setPautaEscala] = useState<string | null>(null);
   const [loadingPauta, setLoadingPauta] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -227,6 +230,9 @@ export function PautaRapidaModal({
       setPautaDraft([]);
       setPautaPesoPorTipo(null);
       setPautaComponentes([]);
+      setPautaNotaMaxima(20);
+      setPautaNotaCorte(10);
+      setPautaEscala(null);
       return;
     }
 
@@ -268,6 +274,9 @@ export function PautaRapidaModal({
           setPautaDraft(scoped);
           setPautaPesoPorTipo((json.meta?.peso_por_tipo as Record<string, number>) ?? null);
           setPautaComponentes(Array.isArray(json.meta?.componentes_ativos) ? json.meta.componentes_ativos : []);
+          setPautaNotaMaxima(typeof json.meta?.nota_maxima === "number" ? json.meta.nota_maxima : null);
+          setPautaNotaCorte(typeof json.meta?.nota_corte === "number" ? json.meta.nota_corte : null);
+          setPautaEscala(typeof json.meta?.escala === "string" ? json.meta.escala : null);
         } else {
           setPautaInitial([]);
           setPautaDraft([]);
@@ -429,6 +438,12 @@ export function PautaRapidaModal({
         </div>
       ) : null}
 
+      {pautaEscala && pautaNotaMaxima === null ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Esta turma usa uma escala não numérica. O lançamento quantitativo está indisponível neste painel.
+        </div>
+      ) : null}
+
       {focusAlunoId ? (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm font-bold text-slate-900">Lançamento individual</p>
@@ -586,7 +601,9 @@ export function PautaRapidaModal({
             componentesAtivos={pautaComponentes}
             showIsento={true}
             studentMode={Boolean(focusAlunoId)}
-            readOnly={academicMode !== "CURRENT"}
+            readOnly={academicMode !== "CURRENT" || pautaNotaMaxima === null}
+            notaMaxima={pautaNotaMaxima ?? 20}
+            notaCorte={pautaNotaCorte ?? 10}
           />
           {saveError ? (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
