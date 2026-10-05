@@ -7,6 +7,7 @@ import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
+import { resolveAcademicYearContext, type AcademicWorkspaceMode } from '@/lib/academic-year/context'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
@@ -48,6 +49,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { data: userRes } = await s.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+
+    let requestedAcademicMode: AcademicWorkspaceMode | null = null
+    if (requestedAcademicYearId) {
+      const academicContext = await resolveAcademicYearContext(s as any, {
+        userId: user.id,
+        requestedAcademicYearId,
+        operation: 'READ',
+      })
+      requestedAcademicMode = academicContext.mode
+    }
 
     // perfil do requester para escopo da escola
     const { data: prof } = await s
@@ -109,10 +120,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .select('id, turma_id, session_id, ativo, created_at, status, turmas ( nome, turma_codigo, classes ( nome ), cursos ( nome ) )')
       .eq('aluno_id', alunoId)
       .eq('escola_id', alunoEscolaId)
-      .eq('ativo', true)
 
     if (requestedAcademicYearId) {
       matriculaQuery = matriculaQuery.eq('session_id', requestedAcademicYearId)
+      if (requestedAcademicMode === 'CURRENT') {
+        matriculaQuery = matriculaQuery.eq('ativo', true)
+      }
     }
 
     const { data: matricula } = await matriculaQuery
