@@ -120,13 +120,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       {
         tipoSum?: Record<string, number>
         tipoCount?: Record<string, number>
+        isIsento?: boolean
       }
     >()
 
     if (matriculaIds.length > 0) {
       let notasQuery = supabase
         .from('notas')
-        .select('valor, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
+        .select('valor, is_isento, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
         .eq('escola_id', escolaId)
         .eq('avaliacoes.turma_disciplina_id', turmaDisciplina.id)
         .in('matricula_id', matriculaIds)
@@ -143,6 +144,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
       for (const row of (notasRows || []) as Array<{
         valor: number | null
+        is_isento?: boolean | null
         matricula_id: string
         avaliacoes:
           | { tipo?: string | null; nome?: string | null; peso?: number | null }
@@ -154,6 +156,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           notasPorMatricula.set(row.matricula_id, { tipoSum: {}, tipoCount: {} })
         }
         const stats = notasPorMatricula.get(row.matricula_id)!
+        if (row.is_isento === true) stats.isIsento = true
         if (typeof row.valor === 'number') {
           const tipoRaw = avaliacao?.tipo ?? avaliacao?.nome
           const tipo = tipoRaw ? tipoRaw.toString().trim().toUpperCase() : 'OUTRO'
@@ -229,6 +232,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         npt,
         mt,
         componentes,
+        is_isento: Boolean(stats?.isIsento),
       }
     })
 
