@@ -64,7 +64,9 @@ export function PautaRapidaModal({
 }: PautaRapidaModalProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
+  const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
+  const [academicYearId, setAcademicYearId] = useState<string | null>(requestedAcademicYearId);
+  const [academicContextError, setAcademicContextError] = useState<string | null>(null);
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([]);
@@ -87,6 +89,37 @@ export function PautaRapidaModal({
       setAccessToken(data.session?.access_token ?? null);
     });
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setAcademicContextError(null);
+
+    const query = requestedAcademicYearId
+      ? `?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(requestedAcademicYearId)}`
+      : "";
+
+    void fetch(`/api/academic-context${query}`, { cache: "no-store" })
+      .then((response) => response.json().then((payload) => ({ response, payload })))
+      .then(({ response, payload }) => {
+        if (!active) return;
+        const resolvedId = payload?.context?.anoLetivoId;
+        if (!response.ok || !payload?.ok || typeof resolvedId !== "string") {
+          setAcademicYearId(null);
+          setAcademicContextError(payload?.error || "Não foi possível identificar o ano letivo.");
+          return;
+        }
+        setAcademicYearId(resolvedId);
+      })
+      .catch(() => {
+        if (!active) return;
+        setAcademicYearId(null);
+        setAcademicContextError("Não foi possível identificar o ano letivo.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [requestedAcademicYearId]);
 
   useEffect(() => {
     if (initialTurmaId && initialTurmaId !== turmaId) {
@@ -267,6 +300,9 @@ export function PautaRapidaModal({
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return;
+    if (!academicYearId) {
+      throw new Error(academicContextError || "Ano letivo ativo não identificado.");
+    }
     const turmaDisciplinaId = disciplinaSelecionada?.id ?? null;
     const disciplinaCanonicalId = disciplinaSelecionada?.disciplina?.id ?? disciplinaId;
     if (!turmaDisciplinaId) {
@@ -353,6 +389,12 @@ export function PautaRapidaModal({
 
   return (
     <div className="space-y-4">
+      {academicContextError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          {academicContextError}
+        </div>
+      ) : null}
+
       {focusAlunoId ? (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm font-bold text-slate-900">Lançamento individual</p>
