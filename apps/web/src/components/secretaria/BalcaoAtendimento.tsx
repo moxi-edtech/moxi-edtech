@@ -17,6 +17,7 @@ import {
   User,
   AlertTriangle,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -2077,7 +2078,11 @@ function CarrinhoPanel({
             </p>
             <div className="mt-1 flex items-center gap-2">
               <h3 className="text-base font-black text-slate-900">
-                {mode === "payment" ? "Rever e confirmar" : "Documento para emitir"}
+                {mode === "payment"
+                  ? "Rever e confirmar"
+                  : itens.length > 1
+                    ? "Documentos para emitir"
+                    : "Documento para emitir"}
               </h3>
               {itens.length > 0 ? (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
