@@ -480,13 +480,17 @@ function useCarrinho() {
   const valorNum = Number(valorRecebido) || 0;
   const troco = Math.max(0, valorNum - total);
 
-  const prontoParaPagar = useMemo(() => {
-    if (itens.length === 0) return false;
-    if (metodo === "tpa" && !detalhes.referencia.trim()) return false;
-    if (metodo === "transfer" && !detalhes.evidencia_url.trim()) return false;
-    if (metodo === "cash" && total > 0 && valorNum < total) return false;
-    return true;
-  }, [itens.length, metodo, detalhes, total, valorNum]);
+  const disabledReason = useMemo(() => {
+    if (itens.length === 0) return "Selecione pelo menos uma cobrança.";
+    if (metodo === "tpa" && !detalhes.referencia.trim()) return "Informe a referência do TPA.";
+    if (metodo === "transfer" && !detalhes.evidencia_url.trim()) return "Adicione o comprovativo da transferência.";
+    if (metodo === "cash" && total > 0 && valorNum < total) {
+      return `Informe o valor recebido. Faltam ${kwanza.format(total - valorNum)}.`;
+    }
+    return null;
+  }, [itens.length, metodo, detalhes.referencia, detalhes.evidencia_url, total, valorNum]);
+
+  const prontoParaPagar = disabledReason === null;
 
   return {
     itens,
@@ -500,6 +504,7 @@ function useCarrinho() {
     valorNum,
     troco,
     prontoParaPagar,
+    disabledReason,
     adicionar,
     remover,
     limpar,
