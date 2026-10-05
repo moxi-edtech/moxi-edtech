@@ -14,6 +14,12 @@ on:
       - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/BalcaoWorkspace.tsx"
+      - "apps/web/src/components/secretaria/BalcaoActionBar.tsx"
+      - "apps/web/src/components/secretaria/AlunoProfilePanel.tsx"
+      - "apps/web/src/components/secretaria/command-center/**"
+      - "apps/web/src/app/secretaria/balcao/BalcaoPageClient.tsx"
+      - "apps/web/src/lib/balcao/action-registry.ts"
       - "apps/web/src/components/secretaria/PagamentosPendentesWindow.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHub.tsx"
@@ -31,6 +37,7 @@ on:
       - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
       - "apps/web/tests/unit/rematricula-debt.spec.ts"
       - "apps/web/tests/unit/checkout-payment-state.spec.ts"
+      - "apps/web/tests/unit/command-center-registry.spec.ts"
       - "apps/web/tests/unit/mensalidades-preview.spec.ts"
       - "apps/web/tests/unit/rematricula-result.spec.ts"
       - "supabase/migrations/**"
@@ -69,6 +76,8 @@ jobs:
           cd apps/web
           node --test --import tsx \
             tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/command-center-registry.spec.ts \
+            tests/unit/command-center-registry.spec.ts \
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
@@ -101,6 +110,14 @@ jobs:
             src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
+            src/components/secretaria/BalcaoWorkspace.tsx \
+            src/components/secretaria/BalcaoActionBar.tsx \
+            src/components/secretaria/AlunoProfilePanel.tsx \
+            src/components/secretaria/command-center/CommandCenterShell.tsx \
+            src/components/secretaria/command-center/CommandCenterPanel.tsx \
+            src/components/secretaria/command-center/useCommandCenterStudent.ts \
+            src/app/secretaria/balcao/BalcaoPageClient.tsx \
+            src/lib/balcao/action-registry.ts \
             src/components/secretaria/PagamentosPendentesWindow.tsx \
             src/components/secretaria/DocumentosEmissaoHubClient.tsx \
             src/components/secretaria/DocumentosEmissaoHub.tsx \
