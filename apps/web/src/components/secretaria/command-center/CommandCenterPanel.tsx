@@ -38,6 +38,7 @@ export function CommandCenterPanel({
         escolaId={escolaId}
         embedded
         onSuccess={(newAlunoId) => onSuccess?.(newAlunoId)}
+        onActionChange={onActionChange}
       />
     );
   }
