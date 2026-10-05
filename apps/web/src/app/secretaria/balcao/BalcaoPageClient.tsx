@@ -120,6 +120,7 @@ export default function BalcaoPageClient({
       numeroProcesso: aluno.numero_processo,
       classe: aluno.classe ?? null,
       turma: aluno.turma_codigo ?? null,
+      turmaId: aluno.turma_id ?? null,
     });
     syncLocation({ alunoId: nextAlunoId });
   }, [setCommandCenterStudent, syncLocation]);
@@ -152,6 +153,8 @@ export default function BalcaoPageClient({
           <CommandCenterPanel
             escolaId={escolaId}
             alunoId={selectedAlunoId}
+            turmaId={commandCenterStudent?.turmaId ?? null}
+            turmaLabel={commandCenterStudent?.turma ?? null}
             actionId={activeAction}
             returnTo={returnTo}
             onActionChange={handleActionChange}
