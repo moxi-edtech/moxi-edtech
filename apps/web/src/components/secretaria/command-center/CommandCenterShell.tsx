@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
 
-import { BalcaoActionBar } from "@/components/secretaria/BalcaoActionBar";
+import { CommandCenterActionBar } from "@/components/secretaria/command-center/CommandCenterActionBar";
 import { getBalcaoAction, type BalcaoActionId } from "@/lib/balcao/action-registry";
 
 export type CommandCenterStudent = {
@@ -75,7 +75,7 @@ export function CommandCenterShell({
       {aboveActions}
 
       {student ? (
-        <BalcaoActionBar
+        <CommandCenterActionBar
           value={activeAction}
           onChange={onActionChange}
           label="Atendimento"
