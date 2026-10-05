@@ -1,13 +1,18 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
+import { BalcaoActionBar } from "@/components/secretaria/BalcaoActionBar";
 import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
 import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import type { BalcaoFocusAction } from "@/lib/balcao/action-registry";
+import {
+  getBalcaoAction,
+  type BalcaoActionId,
+  type BalcaoFocusAction,
+} from "@/lib/balcao/action-registry";
 
 export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: string, escolaParam: string }) {
   const searchParams = useSearchParams();
@@ -19,6 +24,13 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
       : null;
   const returnToParam = searchParams?.get("returnTo") ?? null;
   const returnTo = returnToParam?.startsWith("/") && !returnToParam.startsWith("//") ? returnToParam : null;
+  const [activeAction, setActiveAction] = useState<BalcaoActionId>(focusAction ?? "desk");
+
+  useEffect(() => {
+    setActiveAction(focusAction ?? "desk");
+  }, [focusAction]);
+
+  const activeFocusAction = getBalcaoAction(activeAction).focusAction ?? null;
 
   // O resumo de caixa é carregado uma vez na montagem; este contador obriga-o a
   // reler sempre que um pagamento é concluído no balcão.
@@ -47,12 +59,15 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
 
       <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={caixaRefreshKey} />
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <BalcaoActionBar value={activeAction} onChange={setActiveAction} />
+        </div>
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[700px]">
           <BalcaoAtendimento
             escolaId={escolaId}
             selectedAlunoId={alunoId}
             showSearch={true}
-            focusAction={focusAction}
+            focusAction={activeFocusAction}
             returnTo={returnTo}
             onPagamentoConcluido={aoConcluirPagamento}
           />
