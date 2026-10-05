@@ -20,6 +20,7 @@ const convertPayloadSchema = z.object({
   parcial: z.boolean().optional(),
   referencia: z.string().trim().optional(),
   servicos_ids: z.array(z.string().uuid()).max(20).optional().default([]),
+  mensalidades_competencias: z.array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)).max(12).optional().default([]),
   override_capacidade: z.boolean().optional().default(false),
   override_motivo: z.string().trim().optional(),
 })
@@ -201,6 +202,7 @@ export async function POST(request: Request) {
     override_capacidade,
     override_motivo,
     servicos_ids,
+    mensalidades_competencias,
   } = validation.data
   const overrideMotivo = override_motivo?.trim() || null
   if (override_capacidade && (!overrideMotivo || overrideMotivo.length < 10)) {
@@ -333,8 +335,15 @@ export async function POST(request: Request) {
     if (metodo_pagamento === "TRANSFERENCIA" && !comprovativo) {
       return NextResponse.json({ ok: false, error: "Anexe o comprovativo da transferência antes de finalizar.", code: "PAYMENT_EVIDENCE_REQUIRED" }, { status: 400 });
     }
-    if (servicos.length > 0 && parcial) {
-      return NextResponse.json({ ok: false, error: "Pagamento parcial não está disponível quando há serviços extras. Escolha os serviços e liquide o total, ou pague-os no balcão.", code: "EXTRAS_REQUIRE_FULL_PAYMENT" }, { status: 400 });
+    if ((servicos.length > 0 || mensalidades_competencias.length > 0) && parcial) {
+      return NextResponse.json({
+        ok: false,
+        error: "Pagamento parcial não está disponível quando há serviços ou mensalidades selecionadas. Para incluir estes itens, liquide o checkout completo.",
+        code: "EXTRAS_REQUIRE_FULL_PAYMENT",
+      }, { status: 400 });
+    }
+    if (new Set(mensalidades_competencias).size !== mensalidades_competencias.length) {
+      return NextResponse.json({ ok: false, error: "Existem mensalidades duplicadas na seleção.", code: "DUPLICATE_MONTHLY_SELECTION" }, { status: 400 });
     }
 
     // 3. Chamada canónica: valida turma/preço e faz rascunho -> submetida -> aprovada -> matriculado numa transação.
@@ -374,54 +383,174 @@ export async function POST(request: Request) {
     const alunoId = typeof result.aluno_id === 'string' ? result.aluno_id : null
 
     const valorMatricula = Number(result.valor_matricula ?? 0);
-    const valorServicos = servicos.reduce((sum, service) => sum + service.preco, 0);
-    const valorTotal = valorMatricula + valorServicos;
-    const valorPago = parcial && amount !== undefined ? Number(amount) : valorTotal;
-    if (!alunoId || valorPago <= 0) throw new Error("Não foi possível associar o pagamento ao aluno matriculado.");
+    if (!alunoId || !matriculaId) throw new Error("Não foi possível associar o pagamento ao aluno matriculado.");
 
-    const itensPagamento = [
-      { nome: "Matrícula", codigo: "SERV_MATRICULA", preco: valorMatricula, quantidade: 1, tipo: "matricula" },
-      ...servicos,
-    ];
-    const metodoFinanceiro = metodo_pagamento === "CASH" ? "cash" : metodo_pagamento === "TPA" ? "tpa" : "transfer";
-    const { data: pagamento, error: pagamentoError } = await (supabase as any).rpc("financeiro_registrar_pagamento_secretaria", {
-      p_escola_id: candidatura.escola_id,
-      p_aluno_id: alunoId,
-      p_mensalidade_id: null,
-      p_valor: valorPago,
-      p_metodo: metodoFinanceiro,
-      p_reference: referencia || undefined,
-      p_evidence_url: comprovativo || undefined,
-      p_gateway_ref: null,
-      p_meta: {
-        idempotency_key: `${idempotencyKey}:pagamento`,
-        origem: "admissao",
-        tipo_comprovativo: "matricula",
-        matricula_id: matriculaId,
-        itens_pagamento: itensPagamento,
-        valor_total: valorTotal,
-        valor_matricula: valorMatricula,
-        valor_servicos: valorServicos,
-      },
-    });
-    if (pagamentoError) throw pagamentoError;
+    // O desconto familiar precisa ser aplicado antes de resolver as propinas
+    // selecionadas; assim o checkout usa exatamente o saldo real das mensalidades.
     let familia: { ok: boolean; agregado_id?: string; error?: string } | null = null;
     const candidaturaDados = candidatura.dados_candidato && typeof candidatura.dados_candidato === "object" && !Array.isArray(candidatura.dados_candidato)
       ? candidatura.dados_candidato as Record<string, unknown>
       : {};
     const agregadoFamiliarId = typeof candidaturaDados.agregado_familiar_id === "string" ? candidaturaDados.agregado_familiar_id : null;
-    if (matriculaId && agregadoFamiliarId) {
-      const { data: matriculaContext } = await supabase.from("matriculas").select("aluno_id, session_id").eq("escola_id", candidatura.escola_id).eq("id", matriculaId).maybeSingle();
-      const { data: agregado } = await (supabase as any).from("financeiro_agregados_familiares").select("id").eq("id", agregadoFamiliarId).eq("escola_id", candidatura.escola_id).maybeSingle();
-      if (matriculaContext?.aluno_id && agregado) {
-        const { error: familyError } = await (supabase as any).from("financeiro_agregados_membros").insert({ agregado_id: agregado.id, aluno_id: matriculaContext.aluno_id });
+    const { data: matriculaContext } = await supabase
+      .from("matriculas")
+      .select("aluno_id, session_id")
+      .eq("escola_id", candidatura.escola_id)
+      .eq("id", matriculaId)
+      .maybeSingle();
+
+    if (agregadoFamiliarId && matriculaContext?.aluno_id) {
+      const { data: agregado } = await (supabase as any)
+        .from("financeiro_agregados_familiares")
+        .select("id")
+        .eq("id", agregadoFamiliarId)
+        .eq("escola_id", candidatura.escola_id)
+        .maybeSingle();
+      if (agregado) {
+        const { error: familyError } = await (supabase as any)
+          .from("financeiro_agregados_membros")
+          .insert({ agregado_id: agregado.id, aluno_id: matriculaContext.aluno_id });
         if (familyError && familyError.code !== "23505") {
           familia = { ok: false, agregado_id: agregado.id, error: familyError.message };
         } else {
-          if (matriculaContext.session_id) await (supabase as any).rpc("aplicar_desconto_familiar", { p_escola_id: candidatura.escola_id, p_ano_letivo_id: matriculaContext.session_id });
+          if (matriculaContext.session_id) {
+            const { error: familyDiscountError } = await (supabase as any).rpc("aplicar_desconto_familiar", {
+              p_escola_id: candidatura.escola_id,
+              p_ano_letivo_id: matriculaContext.session_id,
+            });
+            if (familyDiscountError) throw familyDiscountError;
+          }
           familia = { ok: true, agregado_id: agregado.id };
         }
       }
+    }
+
+    const { data: mensalidadesGeradas, error: mensalidadesError } = mensalidades_competencias.length > 0
+      ? await supabase
+          .from("mensalidades")
+          .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, status, data_vencimento")
+          .eq("escola_id", candidatura.escola_id)
+          .eq("aluno_id", alunoId)
+          .eq("matricula_id", matriculaId)
+          .order("ano_referencia", { ascending: true })
+          .order("mes_referencia", { ascending: true })
+      : { data: [], error: null };
+    if (mensalidadesError) throw mensalidadesError;
+
+    const mensalidadesAbertas = (mensalidadesGeradas ?? [])
+      .map((row: any) => ({
+        ...row,
+        competencia: `${row.ano_referencia}-${String(row.mes_referencia).padStart(2, "0")}`,
+        saldo: Math.max(Number(row.valor_previsto ?? row.valor ?? 0) - Number(row.valor_pago_total ?? 0), 0),
+      }))
+      .filter((row: any) => row.saldo > 0 && !["pago", "isento", "cancelado"].includes(String(row.status ?? "").toLowerCase()));
+
+    if (mensalidades_competencias.length > 0) {
+      const expectedPrefix = mensalidadesAbertas
+        .slice(0, mensalidades_competencias.length)
+        .map((row: any) => row.competencia);
+      if (
+        expectedPrefix.length !== mensalidades_competencias.length ||
+        expectedPrefix.some((competencia: string, index: number) => competencia !== mensalidades_competencias[index])
+      ) {
+        return NextResponse.json({
+          ok: false,
+          error: "As mensalidades devem ser selecionadas em ordem cronológica, começando pela primeira competência em aberto.",
+          code: "MENSALIDADES_SELECTION_ORDER_INVALID",
+        }, { status: 409 });
+      }
+    }
+
+    const mensalidadesSelecionadas = mensalidadesAbertas
+      .filter((row: any) => mensalidades_competencias.includes(row.competencia));
+    if (mensalidadesSelecionadas.length !== mensalidades_competencias.length) {
+      return NextResponse.json({
+        ok: false,
+        error: "Uma das mensalidades selecionadas não foi gerada para esta matrícula.",
+        code: "MENSALIDADES_NOT_GENERATED",
+      }, { status: 409 });
+    }
+
+    const valorServicos = servicos.reduce((sum, service) => sum + service.preco, 0);
+    const valorMensalidades = mensalidadesSelecionadas.reduce((sum: number, row: any) => sum + row.saldo, 0);
+    const valorTotal = valorMatricula + valorServicos + valorMensalidades;
+    const valorPago = parcial && amount !== undefined ? Number(amount) : valorTotal;
+    if (valorPago <= 0) throw new Error("Não foi possível associar o pagamento ao aluno matriculado.");
+
+    const itensPagamento = [
+      { id: matriculaId, nome: "Matrícula", codigo: "SERV_MATRICULA", preco: valorMatricula, quantidade: 1, tipo: "servico" },
+      ...servicos.map((service) => ({ ...service, tipo: "servico" })),
+      ...mensalidadesSelecionadas.map((row: any) => ({
+        id: row.id,
+        nome: `Propina ${String(row.mes_referencia).padStart(2, "0")}/${row.ano_referencia}`,
+        codigo: `MENSALIDADE_${row.competencia}`,
+        preco: row.saldo,
+        quantidade: 1,
+        tipo: "mensalidade",
+        competencia: row.competencia,
+      })),
+    ].filter((item) => Number(item.preco ?? 0) > 0);
+
+    const metodoFinanceiro = metodo_pagamento === "CASH" ? "cash" : metodo_pagamento === "TPA" ? "tpa" : "transfer";
+    let pagamento: any = null;
+
+    if (!parcial && itensPagamento.length > 1) {
+      const { data: batch, error: batchError } = await (supabase as any).rpc("financeiro_registrar_pagamentos_secretaria_batch", {
+        p_escola_id: candidatura.escola_id,
+        p_aluno_id: alunoId,
+        p_itens: itensPagamento.map((item) => ({
+          id: item.id,
+          tipo: item.tipo,
+          nome: item.nome,
+          preco: item.preco,
+        })),
+        p_metodo: metodoFinanceiro,
+        p_idempotency_key: `${idempotencyKey}:pagamento`,
+        p_reference: referencia || null,
+        p_evidence_url: comprovativo || null,
+        p_gateway_ref: null,
+        p_meta: {
+          origem: "admissao",
+          tipo_comprovativo: "matricula",
+          matricula_id: matriculaId,
+          itens_pagamento: itensPagamento,
+          valor_total: valorTotal,
+          valor_matricula: valorMatricula,
+          valor_servicos: valorServicos,
+          valor_mensalidades: valorMensalidades,
+          mensalidades_competencias,
+        },
+      });
+      if (batchError) throw batchError;
+      if (batch?.ok !== true || !batch?.data?.id) {
+        throw new Error(batch?.error || "Não foi possível registar o checkout financeiro.");
+      }
+      pagamento = batch.data;
+    } else {
+      const { data: pagamentoSingle, error: pagamentoError } = await (supabase as any).rpc("financeiro_registrar_pagamento_secretaria", {
+        p_escola_id: candidatura.escola_id,
+        p_aluno_id: alunoId,
+        p_mensalidade_id: null,
+        p_valor: valorPago,
+        p_metodo: metodoFinanceiro,
+        p_reference: referencia || undefined,
+        p_evidence_url: comprovativo || undefined,
+        p_gateway_ref: null,
+        p_meta: {
+          idempotency_key: `${idempotencyKey}:pagamento`,
+          origem: "admissao",
+          tipo_comprovativo: "matricula",
+          matricula_id: matriculaId,
+          itens_pagamento: itensPagamento,
+          valor_total: valorTotal,
+          valor_matricula: valorMatricula,
+          valor_servicos: valorServicos,
+          valor_mensalidades: valorMensalidades,
+          mensalidades_competencias,
+        },
+      });
+      if (pagamentoError) throw pagamentoError;
+      pagamento = pagamentoSingle;
     }
 
     recordAuditServer({
@@ -510,7 +639,19 @@ export async function POST(request: Request) {
       recibo = { ok: false, status: 'pending', error: 'O recibo financeiro será emitido após a liquidação integral.' }
     }
 
-    return NextResponse.json({ ok: true, ...result, matricula_id: matriculaId, pagamento_id: pagamento?.id ?? null, valor_total: valorTotal, itens_pagamento: itensPagamento, comprovante, recibo, familia })
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      matricula_id: matriculaId,
+      pagamento_id: pagamento?.id ?? null,
+      valor_total: valorTotal,
+      valor_mensalidades: valorMensalidades,
+      mensalidades_competencias,
+      itens_pagamento: itensPagamento,
+      comprovante,
+      recibo,
+      familia,
+    })
   } catch (error: unknown) {
     console.error('Error converting admission:', error)
     const isUniqueViolation =
