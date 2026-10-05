@@ -11,6 +11,7 @@ import {
 } from '@/lib/academico/avaliacao-utils'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
+import { resolveRegimeAcademico } from '@/lib/academico/regime-academico'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -150,6 +151,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const componentesAtivos = buildComponentesAtivos(modelo.componentes)
     const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
+    const regime = await resolveRegimeAcademico(supabase as any, turmaId)
+    const notaMaxima =
+      regime.escala === 'quantitativa_primario'
+        ? 10
+        : regime.escala === 'quantitativa_secundario'
+          ? 20
+          : null
+    const notaCorte =
+      regime.escala === 'quantitativa_primario'
+        ? 5
+        : regime.escala === 'quantitativa_secundario'
+          ? 10
+          : null
 
     let matriculasQuery = supabase
       .from('matriculas')
@@ -330,6 +344,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       meta: {
         componentes_ativos: componentesAtivos,
         peso_por_tipo: Object.fromEntries(pesoPorTipo),
+        escala: regime.escala,
+        nota_maxima: notaMaxima,
+        nota_corte: notaCorte,
+        entrada_numerica_permitida: notaMaxima !== null,
       },
     })
   } catch (e) {
