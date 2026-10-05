@@ -77,7 +77,6 @@ jobs:
           node --test --import tsx \
             tests/unit/checkout-payment-state.spec.ts \
             tests/unit/command-center-registry.spec.ts \
-            tests/unit/command-center-registry.spec.ts \
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
@@ -133,6 +132,7 @@ jobs:
             src/lib/rematricula/debt.ts \
             src/lib/academico/raa-progression-server.ts \
             tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/command-center-registry.spec.ts \
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
