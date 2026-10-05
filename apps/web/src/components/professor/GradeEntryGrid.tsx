@@ -259,10 +259,13 @@ export function GradeEntryGrid({
   }, [debounceMs, flushSave, onSave])
 
   useEffect(() => {
+    const timeoutRef = saveTimeoutRef
+    const pendingRef = pendingIdsRef
+    const flushRef = flushSaveRef
     return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      if (pendingIdsRef.current.size > 0) {
-        void flushSaveRef.current()
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (pendingRef.current.size > 0) {
+        void flushRef.current()
       }
     }
   }, [])
@@ -828,7 +831,10 @@ const GradeInput = ({
   }, [value, draft])
 
   const commitValue = (rawValue?: string) => {
-    onChange(rawValue ?? draft)
+    const normalized = clampNota(rawValue ?? draft)
+    const nextDraft = normalized === null ? "" : String(normalized)
+    setDraft(nextDraft)
+    onChange(nextDraft)
   }
 
   // Estilização por faixa de nota pedagógica (0 a 20)
@@ -858,7 +864,6 @@ const GradeInput = ({
         isFocusedRef.current = false
         if (disabled || readOnly) return
         const raw = e.currentTarget.value
-        setDraft(raw)
         commitValue(raw)
         onFlush?.()
       }}
