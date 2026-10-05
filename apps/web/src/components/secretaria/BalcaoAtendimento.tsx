@@ -1795,6 +1795,14 @@ function Catalogo({
                 <p className="mt-1 text-xs text-slate-500">
                   Documentos gratuitos são emitidos imediatamente. Os pagos seguem para cobrança antes da emissão.
                 </p>
+                {selectedCount > 0 ? (
+                  <a
+                    href="#document-checkout"
+                    className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-emerald lg:hidden"
+                  >
+                    Rever cobrança · {kwanza.format(selectedTotal)} →
+                  </a>
+                ) : null}
               </div>
             ) : (
               <SecaoLabel>Documentos ({documentos.length})</SecaoLabel>
@@ -2056,17 +2064,21 @@ function CarrinhoPanel({
 
   return (
     <div
-      id={mode === "payment" ? "payment-checkout" : undefined}
+      id={mode === "payment" ? "payment-checkout" : mode === "document" ? "document-checkout" : undefined}
       className={`scroll-mt-24 rounded-2xl border border-slate-200 bg-white overflow-hidden flex flex-col sticky top-6 ${
-        mode === "payment" ? "shadow-sm" : "shadow-lg"
+        mode === "payment" || mode === "document" ? "shadow-sm" : "shadow-lg"
       } ${embedded ? "h-full min-h-[580px]" : "h-[calc(100vh-140px)]"}`}
     >
-      {mode === "payment" ? (
+      {mode === "payment" || mode === "document" ? (
         <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Pagamento</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              {mode === "payment" ? "Pagamento" : "Emissão"}
+            </p>
             <div className="mt-1 flex items-center gap-2">
-              <h3 className="text-base font-black text-slate-900">Rever e confirmar</h3>
+              <h3 className="text-base font-black text-slate-900">
+                {mode === "payment" ? "Rever e confirmar" : "Documento para emitir"}
+              </h3>
               {itens.length > 0 ? (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
                   {itens.length} {itens.length === 1 ? "item" : "itens"}
@@ -2128,16 +2140,30 @@ function CarrinhoPanel({
 
       <AuditTrail audit={audit} aluno={aluno} onRefresh={() => void audit.fetch(aluno?.id, aluno?.matricula_id)} />
 
-      <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${mode === "payment" ? "bg-white" : "bg-slate-50/50"}`}>
+      <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${mode === "payment" || mode === "document" ? "bg-white" : "bg-slate-50/50"}`}>
         {itens.length === 0 && checkout.pagos.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center text-slate-300">
-            {mode === "payment" ? <CreditCard className="h-9 w-9 opacity-30" /> : <ShoppingCart className="h-10 w-10 opacity-30" />}
+            {mode === "payment" ? (
+              <CreditCard className="h-9 w-9 opacity-30" />
+            ) : mode === "document" ? (
+              <FileText className="h-9 w-9 opacity-30" />
+            ) : (
+              <ShoppingCart className="h-10 w-10 opacity-30" />
+            )}
             <div>
               <p className="text-sm font-bold text-slate-500">
-                {mode === "payment" ? "Nenhuma cobrança selecionada" : "Carrinho vazio"}
+                {mode === "payment"
+                  ? "Nenhuma cobrança selecionada"
+                  : mode === "document"
+                    ? "Nenhum documento pago selecionado"
+                    : "Carrinho vazio"}
               </p>
               {mode === "payment" ? (
                 <p className="mt-1 text-xs text-slate-400">Escolha mensalidades ou serviços na lista ao lado.</p>
+              ) : mode === "document" ? (
+                <p className="mt-1 text-xs leading-5 text-slate-400">
+                  Documentos gratuitos são emitidos diretamente. Se escolher um documento pago, a cobrança aparece aqui.
+                </p>
               ) : null}
             </div>
           </div>
@@ -2153,7 +2179,11 @@ function CarrinhoPanel({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
                   <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                    {mode === "payment" ? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço") : item.tipo}
+                    {mode === "payment"
+                      ? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço")
+                      : mode === "document" && item.tipo === "servico"
+                        ? "Documento"
+                        : item.tipo}
                   </p>
                   {podeImprimir && (
                     <button
@@ -2222,7 +2252,7 @@ function CarrinhoPanel({
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-emerald font-mono flex items-center gap-1.5">
                 <CheckCircle className="h-3.5 w-3.5" />
-                Pago — emitir documento
+                {mode === "document" ? "Pagamento confirmado — emitir" : "Pago — emitir documento"}
               </p>
               <button
                 type="button"
@@ -2298,19 +2328,26 @@ function CarrinhoPanel({
         )}
       </div>
 
+      {(mode !== "document" || itens.length > 0) ? (
       <div className="border-t border-slate-100 bg-white p-5 space-y-4 flex-shrink-0">
         <div className="flex items-end justify-between">
           <div>
             {mode === "payment" ? (
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total selecionado</p>
+            ) : mode === "document" ? (
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total a cobrar</p>
             ) : (
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Total a pagar</p>
             )}
-            {mode === "payment" && itens.length > 0 ? (
-              <p className="mt-1 text-xs text-slate-500">Escolha a forma de pagamento abaixo.</p>
+            {(mode === "payment" || mode === "document") && itens.length > 0 ? (
+              <p className="mt-1 text-xs text-slate-500">
+                {mode === "document"
+                  ? "O documento será liberado depois da confirmação do pagamento."
+                  : "Escolha a forma de pagamento abaixo."}
+              </p>
             ) : null}
           </div>
-          <p className={`${mode === "payment" ? "text-2xl" : "text-3xl"} font-black text-slate-900 font-sora`}>{kwanza.format(total)}</p>
+          <p className={`${mode === "payment" || mode === "document" ? "text-2xl" : "text-3xl"} font-black text-slate-900 font-sora`}>{kwanza.format(total)}</p>
         </div>
 
         <div className="grid grid-cols-5 gap-1.5">
@@ -2321,7 +2358,7 @@ function CarrinhoPanel({
                 key={id}
                 onClick={() => setMetodo(id)}
                 className={`flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 transition-all ${
-                  mode === "payment"
+                  (mode === "payment" || mode === "document")
                     ? active
                       ? "border-slate-950 bg-slate-950 font-bold text-white"
                       : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50"
@@ -2330,8 +2367,8 @@ function CarrinhoPanel({
                       : "border-slate-200 text-slate-400 hover:border-slate-300"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${mode === "payment" ? "text-current" : active ? "text-amber" : "text-current"}`} />
-                <span className={`${mode === "payment" ? "text-[10px]" : "text-[9px] uppercase font-mono"} font-bold`}>{label}</span>
+                <Icon className={`h-4 w-4 ${mode === "payment" || mode === "document" ? "text-current" : active ? "text-amber" : "text-current"}`} />
+                <span className={`${mode === "payment" || mode === "document" ? "text-[10px]" : "text-[9px] uppercase font-mono"} font-bold`}>{label}</span>
               </button>
             );
           })}
@@ -2393,7 +2430,7 @@ function CarrinhoPanel({
           title={prontoParaPagar ? "Finalizar (Ctrl/Cmd + Enter)" : undefined}
           className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all ${
             prontoParaPagar && !checkout.isSubmitting
-              ? mode === "payment"
+              ? mode === "payment" || mode === "document"
                 ? "bg-slate-950 text-white hover:bg-slate-800"
                 : "bg-amber text-slate-950 shadow-md shadow-amber/20 hover:brightness-105 font-sora"
               : "cursor-not-allowed bg-slate-100 text-slate-400"
@@ -2406,6 +2443,10 @@ function CarrinhoPanel({
           ) : mode === "payment" ? (
             <>
               <CheckCircle className="h-4 w-4" /> Confirmar pagamento · {kwanza.format(total)}
+            </>
+          ) : mode === "document" ? (
+            <>
+              <CheckCircle className="h-4 w-4" /> Confirmar cobrança · {kwanza.format(total)}
             </>
           ) : total === 0 ? (
             <>
@@ -2430,6 +2471,7 @@ function CarrinhoPanel({
           </p>
         )}
       </div>
+      ) : null}
     </div>
   );
 }
