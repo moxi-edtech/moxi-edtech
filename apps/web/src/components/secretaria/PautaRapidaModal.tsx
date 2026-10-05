@@ -216,8 +216,13 @@ export function PautaRapidaModal({
     if (target) setPeriodoNumero(target.numero);
   }, [initialPeriodoNumero, periodos]);
 
+  const selectedTurmaDisciplinaId = useMemo(
+    () => disciplinas.find((disciplina) => disciplina.disciplina?.id === disciplinaId)?.id ?? null,
+    [disciplinas, disciplinaId],
+  )
+
   useEffect(() => {
-    if (!academicYearId || !turmaId || !disciplinaId || !periodoNumero) {
+    if (!academicYearId || !turmaId || !disciplinaId || !periodoNumero || !selectedTurmaDisciplinaId) {
       setPautaInitial([]);
       setPautaDraft([]);
       setPautaPesoPorTipo(null);
@@ -233,6 +238,7 @@ export function PautaRapidaModal({
           disciplinaId,
           trimestre: String(periodoNumero),
           anoLetivoId: academicYearId,
+          turmaDisciplinaId: selectedTurmaDisciplinaId,
         });
         if (focusAlunoId) params.set("alunoId", focusAlunoId);
         const res = await fetch(`/api/secretaria/turmas/${turmaId}/pauta-grid?${params.toString()}`, {
@@ -277,7 +283,7 @@ export function PautaRapidaModal({
     return () => {
       active = false;
     };
-  }, [academicYearId, accessToken, turmaId, disciplinaId, periodoNumero, focusAlunoId]);
+  }, [academicYearId, accessToken, turmaId, disciplinaId, periodoNumero, focusAlunoId, selectedTurmaDisciplinaId]);
 
   const disciplinasFiltradas = useMemo(() => {
     return disciplinas.filter((disciplina) => {
