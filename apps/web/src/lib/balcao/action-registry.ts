@@ -10,7 +10,7 @@ export type BalcaoActionId =
 
 export type BalcaoFocusAction = Extract<BalcaoActionId, "payment" | "document" | "reenrollment">;
 
-export type BalcaoActionSurface = "balcao" | "profile" | "grade";
+export type BalcaoActionSurface = "command-center";
 
 export type BalcaoActionDefinition = {
   id: BalcaoActionId;
@@ -25,11 +25,11 @@ export type BalcaoActionDefinition = {
 export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefinition> = {
   desk: {
     id: "desk",
-    label: "Atender no balcão",
-    shortLabel: "Balcão",
-    description: "Abrir o atendimento completo do aluno.",
+    label: "Visão geral",
+    shortLabel: "Visão geral",
+    description: "Resumo operativo do aluno e próximos passos.",
     requiresStudent: true,
-    surface: "balcao",
+    surface: "command-center",
   },
   payment: {
     id: "payment",
@@ -37,7 +37,7 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     shortLabel: "Pagar",
     description: "Regularizar propinas e outros itens financeiros no mesmo atendimento.",
     requiresStudent: true,
-    surface: "balcao",
+    surface: "command-center",
     focusAction: "payment",
   },
   document: {
@@ -46,7 +46,7 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     shortLabel: "Documento",
     description: "Selecionar, cobrar quando aplicável e emitir documentos do aluno.",
     requiresStudent: true,
-    surface: "balcao",
+    surface: "command-center",
     focusAction: "document",
   },
   reenrollment: {
@@ -55,7 +55,7 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     shortLabel: "Rematrícula",
     description: "Verificar elegibilidade e concluir a rematrícula no mesmo atendimento.",
     requiresStudent: true,
-    surface: "balcao",
+    surface: "command-center",
     focusAction: "reenrollment",
   },
   profile: {
@@ -64,7 +64,7 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     shortLabel: "Perfil",
     description: "Abrir a ficha rápida do aluno.",
     requiresStudent: true,
-    surface: "profile",
+    surface: "command-center",
   },
   grade: {
     id: "grade",
@@ -72,7 +72,7 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     shortLabel: "Nota",
     description: "Abrir o fluxo académico de notas.",
     requiresStudent: true,
-    surface: "grade",
+    surface: "command-center",
   },
 };
 
@@ -90,6 +90,8 @@ export const BALCAO_WORKSPACE_ACTION_IDS: BalcaoActionId[] = [
   "payment",
   "document",
   "reenrollment",
+  "profile",
+  "grade",
 ];
 
 export function getBalcaoAction(actionId: BalcaoActionId) {
@@ -111,32 +113,10 @@ export function buildBalcaoActionHref(params: {
   alunoLabel?: string | null;
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
 }) {
-  const { escolaParam, actionId, alunoId, alunoLabel, portal } = params;
-  const encodedAlunoId = alunoId ? encodeURIComponent(alunoId) : "";
-  const encodedLabel = alunoLabel ? encodeURIComponent(alunoLabel) : "";
-
-  if (BALCAO_ACTION_REGISTRY[actionId].surface === "balcao") {
-    const search = new URLSearchParams();
-    if (alunoId) search.set("alunoId", alunoId);
-    if (actionId !== "desk") search.set("action", actionId);
-    const qs = search.toString();
-    return buildPortalHref(escolaParam, `/secretaria/balcao${qs ? `?${qs}` : ""}`);
-  }
-
-  if (actionId === "profile") {
-    return portal === "operacoes"
-      ? buildPortalHref(escolaParam, `/operacoes/alunos/${encodedAlunoId}`)
-      : buildPortalHref(escolaParam, `/secretaria/alunos/${encodedAlunoId}`);
-  }
-
-  if (actionId === "grade") {
-    return portal === "professor"
-      ? buildPortalHref(escolaParam, `/professor/notas?alunoId=${encodedAlunoId}`)
-      : buildPortalHref(escolaParam, `/secretaria/notas?alunoId=${encodedAlunoId}`);
-  }
-
-  return buildPortalHref(
-    escolaParam,
-    `/financeiro/pagamentos?alunoId=${encodedAlunoId}&q=${encodedLabel}`,
-  );
+  const { escolaParam, actionId, alunoId } = params;
+  const search = new URLSearchParams();
+  if (alunoId) search.set("alunoId", alunoId);
+  if (actionId !== "desk") search.set("action", actionId);
+  const qs = search.toString();
+  return buildPortalHref(escolaParam, `/secretaria/balcao${qs ? `?${qs}` : ""}`);
 }
