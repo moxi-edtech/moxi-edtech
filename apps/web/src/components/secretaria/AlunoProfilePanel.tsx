@@ -151,7 +151,14 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
         return;
       }
 
-      setSavedForm(form);
+      const normalizedForm = {
+        ...form,
+        ...Object.fromEntries(
+          changedEntries.map(([key, value]) => [key, value.trim()]),
+        ),
+      } as ProfileForm;
+      setForm(normalizedForm);
+      setSavedForm(normalizedForm);
       toast({
         title: "Ficha atualizada",
         message: "As alterações foram guardadas.",
