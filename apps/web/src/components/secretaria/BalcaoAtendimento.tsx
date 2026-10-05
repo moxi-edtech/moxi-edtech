@@ -1223,7 +1223,7 @@ function Catalogo({
   const operacaoCopy = rematriculaState ? ESTADO_OPERACAO[rematriculaState] : null;
 
   return (
-    <div className="xl:col-span-8 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} rounded-2xl border border-slate-200 bg-white shadow-sm p-6`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Plus className="h-4 w-4 text-amber" />
@@ -2448,7 +2448,9 @@ export default function BalcaoAtendimento({
           <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
         </div>
       ) : dossier.aluno ? (
-        view === "overview" ? (
+        view === "payment" && debtModalOpen ? (
+          <div className="min-h-[1px]" aria-hidden="true" />
+        ) : view === "overview" ? (
           <CommandCenterOverview
             aluno={dossier.aluno}
             mensalidades={dossier.mensalidades}
@@ -2467,7 +2469,7 @@ export default function BalcaoAtendimento({
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
             <div className={(view === "payment" || view === "document" || view === "all") ? "lg:col-span-8" : "lg:col-span-12"}>
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-                <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} />
+                {view === "all" ? <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} /> : null}
                 <Catalogo
                   view={view === "all" ? "all" : view}
                   mensalidades={dossier.mensalidades}
@@ -2618,6 +2620,7 @@ export default function BalcaoAtendimento({
       {dossier.aluno && (
         <PagamentoDividaModal
           open={debtModalOpen}
+          embedded={view === "payment"}
           onOpenChange={setDebtModalOpen}
           mensalidades={dossier.mensalidades.filter((item) => item.preco > 0 && item.atrasada)}
           alunoId={dossier.aluno.id}
