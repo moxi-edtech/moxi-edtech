@@ -34,6 +34,7 @@ import { isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 import { emitirDocumento as emitirDocumentoViaApi, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import { kwanza } from "@/lib/formatters";
 import { resolveCheckoutPaymentState } from "@/lib/financeiro/checkout-payment-state";
+import type { BalcaoFocusAction } from "@/lib/balcao/action-registry";
 import Link from "next/link";
 
 const ACADEMIC_YEAR_PARAM = "ano_letivo_id";
@@ -44,6 +45,7 @@ export interface BalcaoAtendimentoProps {
   showSearch?: boolean;
   embedded?: boolean;
   returnTo?: string | null;
+  focusAction?: BalcaoFocusAction | null;
   /** Chamado após um pagamento concluído com sucesso. A página usa-o para
    *  refrescar o resumo de caixa, que de outra forma ficava parado no valor
    *  carregado na montagem. */
@@ -1091,7 +1093,7 @@ function Catalogo({
           para esconder o botão de pagar. */}
       <div className="space-y-6 xl:max-h-[620px] xl:overflow-y-auto xl:pr-2">
         {dividaHistorica.total > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+          <div data-balcao-action="payment" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
             <strong className="block">Atenção financeira</strong>
             <span>
               {dividaHistorica.count} mensalidade(s) vencida(s) · {kwanza.format(dividaHistorica.total)}.
@@ -1107,7 +1109,7 @@ function Catalogo({
           </div>
         )}
         {rematriculaState && (
-          <div>
+          <div data-balcao-action="reenrollment">
             <div className="mb-2 flex items-center justify-between gap-3">
               <SecaoLabel>Operacoes escolares</SecaoLabel>
               {rematriculaAnoLabel && (
@@ -1352,7 +1354,7 @@ function Catalogo({
         )}
 
         {atrasadas.length > 0 && (
-          <div>
+          <div data-balcao-action="payment">
             <SecaoLabel>Em atraso ({atrasadas.length})</SecaoLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {atrasadas.map((m) => (
@@ -1379,7 +1381,7 @@ function Catalogo({
         )}
 
         {correntes.length > 0 && (
-          <div>
+          <div data-balcao-action="payment">
             <SecaoLabel>Mensalidades ({correntes.length})</SecaoLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {correntes.map((m) => (
@@ -1406,7 +1408,7 @@ function Catalogo({
         )}
 
         {documentos.length > 0 && (
-          <div>
+          <div data-balcao-action="document">
             <SecaoLabel>Documentos ({documentos.length})</SecaoLabel>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {documentos.map((s) => {
@@ -1985,7 +1987,15 @@ function BillingWindowRepairPanel({
   );
 }
 
-export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, showSearch = true, embedded = false, returnTo = null, onPagamentoConcluido }: BalcaoAtendimentoProps) {
+export default function BalcaoAtendimento({
+  escolaId,
+  selectedAlunoId = null,
+  showSearch = true,
+  embedded = false,
+  returnTo = null,
+  focusAction = null,
+  onPagamentoConcluido,
+}: BalcaoAtendimentoProps) {
   const [showReturnPrompt, setShowReturnPrompt] = useState(false);
   const { error } = useToast();
   const searchParams = useSearchParams();
@@ -1994,6 +2004,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const [searchOpen, setSearchOpen] = useState(showSearch);
   const [searchListOpen, setSearchListOpen] = useState(false);
   const [searchActiveIndex, setSearchActiveIndex] = useState(-1);
+  const workspaceRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (academicYearId) return;
@@ -2198,9 +2209,28 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     [dossier.aluno, carrinho, error]
   );
 
+  useEffect(() => {
+    if (!focusAction || !dossier.aluno?.id) return;
+
+    const timer = window.setTimeout(() => {
+      const target = workspaceRootRef.current?.querySelector<HTMLElement>(
+        `[data-balcao-action="${focusAction}"]`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 160);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    focusAction,
+    dossier.aluno?.id,
+    dossier.mensalidades.length,
+    servicos.length,
+    rematricula.cardState,
+  ]);
+
   return (
     <>
-      <div className="w-full">
+      <div ref={workspaceRootRef} className="w-full">
       {searchOpen && (
         <>
           <div
