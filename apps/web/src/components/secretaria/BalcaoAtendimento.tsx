@@ -34,10 +34,12 @@ import { isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 import { emitirDocumento as emitirDocumentoViaApi, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import { kwanza } from "@/lib/formatters";
 import { resolveCheckoutPaymentState } from "@/lib/financeiro/checkout-payment-state";
-import type { BalcaoFocusAction } from "@/lib/balcao/action-registry";
+import type { BalcaoActionId, BalcaoFocusAction } from "@/lib/balcao/action-registry";
 import Link from "next/link";
 
 const ACADEMIC_YEAR_PARAM = "ano_letivo_id";
+
+export type BalcaoView = "all" | "overview" | "payment" | "document" | "reenrollment";
 
 export interface BalcaoAtendimentoProps {
   escolaId: string;
@@ -46,6 +48,8 @@ export interface BalcaoAtendimentoProps {
   embedded?: boolean;
   returnTo?: string | null;
   focusAction?: BalcaoFocusAction | null;
+  view?: BalcaoView;
+  onNavigateAction?: (actionId: BalcaoActionId) => void;
   /** Chamado após um pagamento concluído com sucesso. A página usa-o para
    *  refrescar o resumo de caixa, que de outra forma ficava parado no valor
    *  carregado na montagem. */
@@ -1014,6 +1018,7 @@ function AlunoCard({ aluno, onTrocarAluno }: { aluno: AlunoDossier; onTrocarAlun
 function Catalogo({
   mensalidades,
   servicos,
+  view = "all",
   onAdicionarMensalidade,
   onAdicionarServico,
   emittingDocId,
@@ -1034,6 +1039,7 @@ function Catalogo({
 }: {
   mensalidades: Mensalidade[];
   servicos: Servico[];
+  view?: "all" | "payment" | "document" | "reenrollment";
   onAdicionarMensalidade: (m: Mensalidade) => void;
   onAdicionarServico: (s: Servico) => Promise<void>;
   emittingDocId: string | null;
@@ -1092,7 +1098,7 @@ function Catalogo({
           lado da ficha do aluno (`xl`). Empilhado, o scroll interno só servia
           para esconder o botão de pagar. */}
       <div className="space-y-6 xl:max-h-[620px] xl:overflow-y-auto xl:pr-2">
-        {dividaHistorica.total > 0 && (
+        {(view === "all" || view === "payment") && dividaHistorica.total > 0 && (
           <div data-balcao-action="payment" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
             <strong className="block">Atenção financeira</strong>
             <span>
@@ -1108,7 +1114,7 @@ function Catalogo({
             </button>
           </div>
         )}
-        {rematriculaState && (
+        {(view === "all" || view === "reenrollment") && rematriculaState && (
           <div data-balcao-action="reenrollment">
             <div className="mb-2 flex items-center justify-between gap-3">
               <SecaoLabel>Operacoes escolares</SecaoLabel>
@@ -1353,7 +1359,7 @@ function Catalogo({
           </div>
         )}
 
-        {atrasadas.length > 0 && (
+        {(view === "all" || view === "payment") && atrasadas.length > 0 && (
           <div data-balcao-action="payment">
             <SecaoLabel>Em atraso ({atrasadas.length})</SecaoLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1380,7 +1386,7 @@ function Catalogo({
           </div>
         )}
 
-        {correntes.length > 0 && (
+        {(view === "all" || view === "payment") && correntes.length > 0 && (
           <div data-balcao-action="payment">
             <SecaoLabel>Mensalidades ({correntes.length})</SecaoLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1407,7 +1413,7 @@ function Catalogo({
           </div>
         )}
 
-        {documentos.length > 0 && (
+        {(view === "all" || view === "document") && documentos.length > 0 && (
           <div data-balcao-action="document">
             <SecaoLabel>Documentos ({documentos.length})</SecaoLabel>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -1435,7 +1441,7 @@ function Catalogo({
           </div>
         )}
 
-        {extras.length > 0 && (
+        {(view === "all" || view === "payment") && extras.length > 0 && (
           <div>
             <SecaoLabel>Servicos extras ({extras.length})</SecaoLabel>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -1463,7 +1469,16 @@ function Catalogo({
           </div>
         )}
 
-        {mensalidades.length === 0 && servicos.length === 0 && (
+        {view === "payment" && mensalidades.length === 0 && extras.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-400">Nenhuma cobrança disponível para este aluno.</p>
+        ) : null}
+        {view === "document" && documentos.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-400">Nenhum documento configurado para este aluno.</p>
+        ) : null}
+        {view === "reenrollment" && !rematriculaState ? (
+          <p className="py-8 text-center text-sm text-slate-400">A rematrícula não está disponível neste contexto.</p>
+        ) : null}
+        {view === "all" && mensalidades.length === 0 && servicos.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">Nenhum item disponivel para este aluno.</p>
         )}
       </div>
@@ -1994,6 +2009,8 @@ export default function BalcaoAtendimento({
   embedded = false,
   returnTo = null,
   focusAction = null,
+  view = "all",
+  onNavigateAction,
   onPagamentoConcluido,
 }: BalcaoAtendimentoProps) {
   const [showReturnPrompt, setShowReturnPrompt] = useState(false);
