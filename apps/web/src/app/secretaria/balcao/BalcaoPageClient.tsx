@@ -90,8 +90,19 @@ export default function BalcaoPageClient({
 
   const handleActionChange = useCallback((actionId: BalcaoActionId) => {
     setActiveAction(actionId);
+
+    // Matrícula é uma nova operação, não uma ação sobre o aluno atualmente
+    // selecionado. Limpar o contexto evita que o cabeçalho sugira que estamos
+    // a matricular novamente aquele mesmo aluno.
+    if (actionId === "enrollment") {
+      setSelectedAlunoId(null);
+      setCommandCenterStudent(null);
+      syncLocation({ alunoId: null, actionId });
+      return;
+    }
+
     syncLocation({ actionId });
-  }, [syncLocation]);
+  }, [setCommandCenterStudent, syncLocation]);
 
   const handleAlunoSelected = useCallback((aluno: AlunoDossier | null) => {
     const nextAlunoId = aluno?.id ?? null;
