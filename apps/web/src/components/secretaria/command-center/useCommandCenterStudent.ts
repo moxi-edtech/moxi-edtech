@@ -13,6 +13,7 @@ export type CommandCenterStudentContext = {
 
 export function useCommandCenterStudent(
   alunoId: string | null,
+  academicYearId: string | null,
   fallbackLabel?: string | null,
 ) {
   const [student, setStudent] = useState<CommandCenterStudentContext | null>(
@@ -31,12 +32,21 @@ export function useCommandCenterStudent(
 
     setStudent((current) =>
       current?.id === alunoId
-        ? current
+        ? {
+            ...current,
+            classe: null,
+            turma: null,
+            turmaId: null,
+          }
         : { id: alunoId, label: fallbackLabel || "Aluno" },
     );
     setLoading(true);
 
-    fetch(`/api/secretaria/alunos/${alunoId}`, { cache: "no-store" })
+    const params = new URLSearchParams();
+    if (academicYearId) params.set("ano_letivo_id", academicYearId);
+    const query = params.toString();
+
+    fetch(`/api/secretaria/alunos/${alunoId}${query ? `?${query}` : ""}`, { cache: "no-store" })
       .then((response) => response.json())
       .then((payload) => {
         if (!active || !payload?.ok || !payload?.item) return;
@@ -61,7 +71,7 @@ export function useCommandCenterStudent(
     return () => {
       active = false;
     };
-  }, [alunoId, fallbackLabel]);
+  }, [academicYearId, alunoId, fallbackLabel]);
 
   const subtitle = useMemo(() => {
     if (!student) return null;
