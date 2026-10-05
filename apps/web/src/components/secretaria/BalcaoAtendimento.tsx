@@ -1326,12 +1326,22 @@ function Catalogo({
   onRematricula: () => void;
   onRegularize: () => void;
 }) {
-  const atrasadas = useMemo(() => mensalidades.filter((m) => m.atrasada), [mensalidades]);
+  const atrasadas = useMemo(
+    () => mensalidades
+      .filter((m) => m.atrasada)
+      .sort((a, b) => ((a.referencia_ano ?? 0) * 100 + (a.referencia_mes ?? 0)) - ((b.referencia_ano ?? 0) * 100 + (b.referencia_mes ?? 0))),
+    [mensalidades],
+  );
   const dividaHistorica = useMemo(() => ({
     count: atrasadas.length,
     total: atrasadas.reduce((total, mensalidade) => total + mensalidade.preco, 0),
   }), [atrasadas]);
-  const correntes = useMemo(() => mensalidades.filter((m) => !m.atrasada), [mensalidades]);
+  const correntes = useMemo(
+    () => mensalidades
+      .filter((m) => !m.atrasada)
+      .sort((a, b) => ((a.referencia_ano ?? 0) * 100 + (a.referencia_mes ?? 0)) - ((b.referencia_ano ?? 0) * 100 + (b.referencia_mes ?? 0))),
+    [mensalidades],
+  );
   const documentos = useMemo(
     () => servicos.filter((s) => !isServicoRematricula(s) && isDocServico(s)),
     [servicos],
@@ -1645,7 +1655,21 @@ function Catalogo({
 
         {(view === "all" || view === "payment") && atrasadas.length > 0 && (
           <div data-balcao-action="payment">
-            <SecaoLabel>Em atraso ({atrasadas.length})</SecaoLabel>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <SecaoLabel>Em atraso ({atrasadas.length})</SecaoLabel>
+              {view === "payment" ? (
+                <button
+                  type="button"
+                  onClick={() => atrasadas.forEach((mensalidade) => onAdicionarMensalidade(mensalidade))}
+                  disabled={atrasadas.every((mensalidade) => selectedItemKeys.has(`mensalidade:${mensalidade.id}`))}
+                  className="text-[11px] font-bold text-emerald transition hover:underline disabled:cursor-default disabled:text-slate-300 disabled:no-underline"
+                >
+                  {atrasadas.every((mensalidade) => selectedItemKeys.has(`mensalidade:${mensalidade.id}`))
+                    ? "Todas selecionadas"
+                    : "Selecionar todas"}
+                </button>
+              ) : null}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {atrasadas.map((m) => {
                 const selected = selectedItemKeys.has(`mensalidade:${m.id}`);
@@ -1687,7 +1711,7 @@ function Catalogo({
 
         {(view === "all" || view === "payment") && correntes.length > 0 && (
           <div data-balcao-action="payment">
-            <SecaoLabel>Mensalidades ({correntes.length})</SecaoLabel>
+            <SecaoLabel>{view === "payment" ? "Mensalidades disponíveis" : `Mensalidades (${correntes.length})`}</SecaoLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {correntes.map((m) => {
                 const selected = selectedItemKeys.has(`mensalidade:${m.id}`);
