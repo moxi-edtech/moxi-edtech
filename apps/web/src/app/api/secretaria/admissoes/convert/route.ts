@@ -478,8 +478,10 @@ export async function POST(request: Request) {
     if (valorPago <= 0) throw new Error("Não foi possível associar o pagamento ao aluno matriculado.");
 
     const itensPagamento = [
-      { id: matriculaId, nome: "Matrícula", codigo: "SERV_MATRICULA", preco: valorMatricula, quantidade: 1, tipo: "servico" },
-      ...servicos.map((service) => ({ ...service, tipo: "servico" })),
+      // O batch processa mensalidades em ordem cronológica, mas devolve como
+      // "data" o item de maior batch_index. Mantemos a matrícula por último
+      // para que a emissão do recibo use um pagamento de serviço
+      // (mensalidade_id IS NULL), conforme o contrato de emitir_recibo_servicos.
       ...mensalidadesSelecionadas.map((row: any) => ({
         id: row.id,
         nome: `Propina ${String(row.mes_referencia).padStart(2, "0")}/${row.ano_referencia}`,
@@ -489,6 +491,8 @@ export async function POST(request: Request) {
         tipo: "mensalidade",
         competencia: row.competencia,
       })),
+      ...servicos.map((service) => ({ ...service, tipo: "servico" })),
+      { id: matriculaId, nome: "Matrícula", codigo: "SERV_MATRICULA", preco: valorMatricula, quantidade: 1, tipo: "servico" },
     ].filter((item) => Number(item.preco ?? 0) > 0);
 
     const metodoFinanceiro = metodo_pagamento === "CASH" ? "cash" : metodo_pagamento === "TPA" ? "tpa" : "transfer";
