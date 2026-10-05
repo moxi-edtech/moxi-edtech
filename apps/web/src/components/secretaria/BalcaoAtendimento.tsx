@@ -338,7 +338,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
           foto_url: perfil.foto_url ? String(perfil.foto_url) : null,
           numero_processo: String(perfil.numero_processo ?? raw.aluno?.numero_processo ?? "-"),
           turma_codigo: turmaAtualCodigo,
-          turma_id: turmaAtualId ? String(turmaAtualId) : null,
+          turma_id: atual.turma_id ? String(atual.turma_id) : null,
           curso_codigo: atual.curso_codigo ? String(atual.curso_codigo) : null,
           classe: atual.classe ? String(atual.classe) : null,
           status_financeiro: divida > 0 ? "inadimplente" : "em_dia",
