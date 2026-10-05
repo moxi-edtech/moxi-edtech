@@ -144,6 +144,31 @@ function getDocTipo(s: Servico): string | null {
   return getTipoDocumentoFromCodigo(s.documento_tipo ?? s.codigo);
 }
 
+function getDocumentoResumo(servico: Servico): string {
+  if (servico.descricao?.trim()) return servico.descricao.trim();
+
+  switch (getDocTipo(servico)) {
+    case "declaracao_frequencia":
+      return "Comprova frequência e matrícula ativa do aluno.";
+    case "declaracao_notas":
+      return "Declaração oficial com notas e aproveitamento escolar.";
+    case "boletim_trimestral":
+      return "Notas organizadas por trimestre para acompanhamento escolar.";
+    case "cartao_estudante":
+      return "Identificação estudantil para uso escolar.";
+    case "ficha_inscricao":
+      return "Ficha com os dados de inscrição do aluno.";
+    case "comprovante_matricula":
+      return "Comprovativo oficial da matrícula atual.";
+    case "historico":
+      return "Histórico escolar oficial do percurso académico.";
+    case "certificado":
+      return "Certificado de habilitações após conclusão elegível.";
+    default:
+      return "Documento escolar disponível para emissão.";
+  }
+}
+
 // O mapa tipo-de-documento -> segmento de impressão vivia aqui e voltou a ser
 // copiado no hub de documentos. Passou para @/lib/documentos/printUrl, que é
 // agora a fonte única para os dois.
@@ -1288,6 +1313,7 @@ function Catalogo({
   view = "all",
   onAdicionarMensalidade,
   onAdicionarServico,
+  onEmitirDocumento,
   emittingDocId,
   unlockedMensalidadeIds,
   selectedItemKeys,
@@ -1311,6 +1337,7 @@ function Catalogo({
   view?: "all" | "payment" | "document" | "reenrollment";
   onAdicionarMensalidade: (m: Mensalidade) => void;
   onAdicionarServico: (s: Servico) => Promise<void>;
+  onEmitirDocumento: (s: Servico) => Promise<void>;
   emittingDocId: string | null;
   unlockedMensalidadeIds: Set<string>;
   selectedItemKeys: Set<string>;
@@ -1761,26 +1788,93 @@ function Catalogo({
 
         {(view === "all" || view === "document") && documentos.length > 0 && (
           <div data-balcao-action="document">
-            <SecaoLabel>Documentos ({documentos.length})</SecaoLabel>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              {documentos.map((s) => {
-                const busy = emittingDocId === s.id;
+            {view === "document" ? (
+              <div className="mb-5 border-b border-slate-100 pb-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Documentos</p>
+                <h2 className="mt-1 text-base font-black text-slate-900">O que precisa emitir?</h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Documentos gratuitos são emitidos imediatamente. Os pagos seguem para cobrança antes da emissão.
+                </p>
+              </div>
+            ) : (
+              <SecaoLabel>Documentos ({documentos.length})</SecaoLabel>
+            )}
+
+            <div className={view === "document" ? "space-y-2.5" : "grid grid-cols-2 sm:grid-cols-3 gap-2.5"}>
+              {documentos.map((servico) => {
+                const busy = emittingDocId === servico.id;
+                const paid = servico.preco > 0;
+                const selected = selectedItemKeys.has(`servico:${servico.id}`);
+
+                if (view !== "document") {
+                  return (
+                    <button
+                      key={servico.id}
+                      disabled={busy}
+                      onClick={() => void onAdicionarServico(servico)}
+                      className={servicoBtnCls(busy)}
+                    >
+                      <p className="truncate text-xs font-bold text-slate-800" title={servico.nome}>{servico.nome}</p>
+                      <div className="mt-2 flex items-center justify-between gap-1">
+                        <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(servico.preco)}</span>
+                        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${paid ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"}`}>
+                          {busy ? "..." : paid ? "Cobrar" : "Adicionar"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
+
                 return (
-                  <button key={s.id} disabled={busy} onClick={() => void onAdicionarServico(s)} className={servicoBtnCls(busy)}>
-                    <p className="text-xs font-bold text-slate-800 truncate" title={s.nome}>
-                      {s.nome}
-                    </p>
-                    <div className="mt-2 flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(s.preco)}</span>
-                      <span
-                        className={`text-[10px] font-bold rounded-md px-1.5 py-0.5 ${
-                          s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"
-                        }`}
-                      >
-                        {busy ? "..." : s.preco > 0 ? "Cobrar" : "Adicionar"}
-                      </span>
+                  <div
+                    key={servico.id}
+                    className={[
+                      "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between",
+                      selected ? "border-emerald/30 bg-emerald/5" : "border-slate-200 bg-white",
+                    ].join(" ")}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-black text-slate-900">{servico.nome}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${paid ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald"}`}>
+                          {paid ? kwanza.format(servico.preco) : "Gratuito"}
+                        </span>
+                        {selected ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
+                            <CheckCircle className="h-3 w-3" /> Para cobrar
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+                        {getDocumentoResumo(servico)}
+                      </p>
                     </div>
-                  </button>
+
+                    <button
+                      type="button"
+                      disabled={busy || (paid && selected)}
+                      onClick={() => {
+                        if (paid) void onAdicionarServico(servico);
+                        else void onEmitirDocumento(servico);
+                      }}
+                      className={[
+                        "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition disabled:cursor-not-allowed",
+                        paid
+                          ? selected
+                            ? "bg-slate-100 text-slate-400"
+                            : "bg-slate-950 text-white hover:bg-slate-800"
+                          : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
+                      ].join(" ")}
+                    >
+                      {busy ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> A emitir...</>
+                      ) : paid ? (
+                        selected ? "Adicionado" : "Adicionar para cobrança"
+                      ) : (
+                        <><Printer className="h-3.5 w-3.5" /> Emitir agora</>
+                      )}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -2688,6 +2782,22 @@ export default function BalcaoAtendimento({
     [dossier.aluno, carrinho, error]
   );
 
+  const handleEmitirDocumento = useCallback(
+    async (servico: Servico) => {
+      const url = await checkout.emitirDocumento(servico);
+      if (!url) return;
+
+      const impressao = abrirParaImpressao(url);
+      if (!impressao.ok) {
+        checkout.setPrintQueue((previous) => [
+          { label: servico.nome, url: impressao.url },
+          ...previous,
+        ]);
+      }
+    },
+    [checkout],
+  );
+
   useEffect(() => {
     if (!focusAction || !dossier.aluno?.id) return;
 
@@ -2803,6 +2913,7 @@ export default function BalcaoAtendimento({
                   servicos={servicos}
                   onAdicionarMensalidade={handleAdicionarMensalidade}
                   onAdicionarServico={handleAdicionarServico}
+                  onEmitirDocumento={handleEmitirDocumento}
                   emittingDocId={checkout.emittingDocId}
                   unlockedMensalidadeIds={unlockedMensalidadeIds}
                   selectedItemKeys={selectedItemKeys}
