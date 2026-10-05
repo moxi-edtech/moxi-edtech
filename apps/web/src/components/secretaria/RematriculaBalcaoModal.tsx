@@ -507,6 +507,7 @@ function StepAcademico({
   selectedTurmaId,
   setSelectedTurmaId,
   selectRef,
+  compact,
 }: {
   alunoNome: string;
   alunoProcesso: string;
@@ -532,17 +533,31 @@ function StepAcademico({
   selectedTurmaId: string | null;
   setSelectedTurmaId: (id: string | null) => void;
   selectRef: React.RefObject<HTMLSelectElement>;
+  compact: boolean;
 }) {
   return (
     <div className="space-y-5">
-      {/* Student info */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2.5 text-sm">
-        <InfoRow label="Aluno" value={alunoNome} />
-        <InfoRow label="Nº Processo" value={alunoProcesso} />
-        <InfoRow label="Matrícula" value={matriculaId.slice(0, 8) + "…"} />
-        <InfoRow label="Turma actual" value={turmaAtual || "—"} />
-        <InfoRow label="Ano lectivo" value={anoLetivo.label} />
-      </div>
+      {compact ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Origem</p>
+            <p className="mt-1 text-sm font-black text-slate-900">{turmaAtual || "Turma não identificada"}</p>
+            <p className="mt-0.5 text-xs text-slate-500">Processo {alunoProcesso}</p>
+          </div>
+          <div className="sm:text-right">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Ano destino</p>
+            <p className="mt-1 text-sm font-black text-slate-900">{anoLetivo.label}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2.5 text-sm">
+          <InfoRow label="Aluno" value={alunoNome} />
+          <InfoRow label="Nº Processo" value={alunoProcesso} />
+          <InfoRow label="Matrícula" value={matriculaId.slice(0, 8) + "…"} />
+          <InfoRow label="Turma actual" value={turmaAtual || "—"} />
+          <InfoRow label="Ano lectivo" value={anoLetivo.label} />
+        </div>
+      )}
 
       <div>
         <label htmlFor="rematricula-contacto-encarregado" className="mb-1.5 block text-xs font-bold text-slate-700">
@@ -557,7 +572,7 @@ function StepAcademico({
           placeholder="Ex.: +244 9XX XXX XXX"
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
         />
-        <p className="mt-1.5 text-[11px] text-slate-500">Confirme ou actualize o número que será usado nos contactos da escola.</p>
+        <p className="mt-1.5 text-[11px] text-slate-500">Use o número atual do encarregado para os contactos desta matrícula.</p>
       </div>
 
       {skipTurmaSelection ? (
@@ -633,35 +648,29 @@ function StepAcademico({
             />
           </div>
         </div>
-      ) : (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <strong className="block text-emerald-950">Decisão académica controlada pelo RAA</strong>
-          <span className="mt-1 block text-xs">
-            O Balcão não altera o resultado académico. A rematrícula avança somente quando o RAA autoriza a etapa seguinte — de forma regular ou condicional.
-          </span>
-        </div>
-      )}
+      ) : null}
 
       {/* Turma selector */}
       {progressao && (
-        <div className={`rounded-xl border p-3 text-sm ${
+        <div className={`rounded-xl border p-4 ${
           progressao.estado === "reprovado"
-            ? "border-amber-200 bg-amber-50 text-amber-800"
+            ? "border-amber-200 bg-amber-50/70"
             : progressao.estado === "condicional"
-              ? "border-violet-200 bg-violet-50 text-violet-900"
-              : "border-sky-200 bg-sky-50 text-sky-800"
+              ? "border-violet-200 bg-violet-50/70"
+              : "border-emerald-200 bg-emerald-50/60"
         }`}>
-          <strong>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Situação académica</p>
+          <p className="mt-1 text-sm font-black text-slate-900">
             {progressao.orientacao?.titulo
               ?? (progressao.estado === "reprovado"
                 ? "Retenção académica"
                 : progressao.estado === "condicional"
                   ? "Progressão condicional"
-                  : "Progressão académica")}
-          </strong>
-          <p className="mt-1 text-xs">{progressao.orientacao?.mensagem ?? progressao.mensagem}</p>
+                  : "Progressão autorizada")}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-600">{progressao.orientacao?.mensagem ?? progressao.mensagem}</p>
           {progressao.orientacao?.proximo_passo && (
-            <p className="mt-2 text-xs font-semibold">Próximo passo: {progressao.orientacao.proximo_passo}</p>
+            <p className="mt-2 text-xs font-bold text-slate-700">{progressao.orientacao.proximo_passo}</p>
           )}
         </div>
       )}
@@ -676,8 +685,7 @@ function StepAcademico({
           htmlFor="rematricula-turma-select"
           className="block text-sm font-semibold text-slate-700"
         >
-          Turma para {anoLetivo.label}{" "}
-          <span className="text-rose-500">*</span>
+          Turma de destino <span className="text-rose-500">*</span>
         </label>
         <select
           id="rematricula-turma-select"
@@ -718,8 +726,8 @@ function StepAcademico({
         )}
         {selectedTurmaId && turmas.find((turma) => turma.id === selectedTurmaId) && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-            <strong className="block">Destino seleccionado: {turmas.find((turma) => turma.id === selectedTurmaId)?.nome}</strong>
-            <span className="mt-1 block">Esta escolha fica em pré-visualização até clicar em “Concluir rematrícula”. Só então será gravada na matrícula do ano destino.</span>
+            <strong className="block">Destino: {turmas.find((turma) => turma.id === selectedTurmaId)?.nome}</strong>
+            <span className="mt-1 block">A turma só será gravada quando a operação for confirmada.</span>
           </div>
         )}
       </div>}
