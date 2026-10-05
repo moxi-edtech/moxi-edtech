@@ -5,13 +5,14 @@ export type BalcaoActionId =
   | "payment"
   | "document"
   | "reenrollment"
+  | "enrollment"
   | "profile"
   | "grade";
 
 export type BalcaoFocusAction = Extract<BalcaoActionId, "payment" | "document" | "reenrollment">;
 
 export type BalcaoActionSurface = "command-center";
-export type CommandCenterPanelKind = "balcao" | "profile" | "grade";
+export type CommandCenterPanelKind = "balcao" | "enrollment" | "profile" | "grade";
 export type CommandCenterBalcaoView = "overview" | "payment" | "document" | "reenrollment";
 
 export type BalcaoActionDefinition = {
@@ -70,6 +71,15 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     balcaoView: "reenrollment",
     focusAction: "reenrollment",
   },
+  enrollment: {
+    id: "enrollment",
+    label: "Matrícula",
+    shortLabel: "Matrícula",
+    description: "Criar uma nova matrícula sem sair do Command Center.",
+    requiresStudent: false,
+    surface: "command-center",
+    panel: "enrollment",
+  },
   profile: {
     id: "profile",
     label: "Consultar ficha",
@@ -95,6 +105,7 @@ export const STUDENT_BALCAO_ACTION_IDS: BalcaoActionId[] = [
   "payment",
   "document",
   "reenrollment",
+  "enrollment",
   "profile",
   "grade",
 ];
@@ -104,6 +115,7 @@ export const BALCAO_WORKSPACE_ACTION_IDS: BalcaoActionId[] = [
   "payment",
   "document",
   "reenrollment",
+  "enrollment",
   "profile",
   "grade",
 ];
@@ -140,6 +152,10 @@ export function buildBalcaoActionHref(params: {
 
   const encodedAlunoId = alunoId ? encodeURIComponent(alunoId) : "";
   const encodedLabel = alunoLabel ? encodeURIComponent(alunoLabel) : "";
+
+  if (actionId === "enrollment") {
+    return buildPortalHref(escolaParam, "/secretaria/admissoes/nova");
+  }
 
   if (actionId === "profile") {
     return buildPortalHref(escolaParam, `/secretaria/alunos/${encodedAlunoId}`);
