@@ -766,12 +766,13 @@ function StepFinanceiro({
     (sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1),
     0,
   );
-  const temMensalidade = itensAdicionais.some((item) => item.tipo === "mensalidade");
   const itemEstaSeleccionado = (item: RematriculaPaymentItem) => itensPagamento.some(
     (seleccionado) => seleccionado.id === item.id && seleccionado.tipo === item.tipo,
   );
   const mensalidadesDisponiveis = itensDisponiveis.filter((item) => item.tipo === "mensalidade");
   const servicosDisponiveis = itensDisponiveis.filter((item) => item.tipo === "servico");
+  const hasDebt = Boolean(debt && debt.total > 0);
+
   const toggleMensalidade = (item: RematriculaPaymentItem, index: number) => {
     const selected = itemEstaSeleccionado(item);
     if (selected) {
@@ -780,74 +781,115 @@ function StepFinanceiro({
       });
       return;
     }
+
     mensalidadesDisponiveis.slice(0, index + 1).forEach((candidate) => {
       if (!itemEstaSeleccionado(candidate)) onAdicionarItem?.(candidate);
     });
   };
+
   return (
     <div className="space-y-5">
-      <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-        Resumo Financeiro
-      </h3>
+      {hasDebt ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">Bloqueio financeiro</p>
+          <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-black text-rose-950">
+                {debt?.count ?? 0} mensalidade{debt?.count === 1 ? "" : "s"} em atraso
+              </p>
+              <p className="mt-1 text-xs leading-5 text-rose-700">
+                Regularize {kwanza.format(debt?.total ?? 0)} antes de confirmar a rematrícula.
+              </p>
+            </div>
+            {onRegularizeDebt ? (
+              <button
+                type="button"
+                onClick={onRegularizeDebt}
+                className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+              >
+                Regularizar dívida
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : paymentAlreadyValidated ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">Pagamento validado</p>
+          <p className="mt-1 text-sm font-black text-emerald-950">A cobrança já está confirmada.</p>
+          <p className="mt-1 text-xs text-emerald-800">Não será criado um novo pagamento.</p>
+        </div>
+      ) : null}
 
-      <div className="rounded-xl border border-slate-200 overflow-hidden text-sm">
-        <div className="flex justify-between border-b border-slate-100 p-3.5 bg-slate-50">
-          <span className="text-slate-600">Classe/turma destino</span>
-          <span className="text-right font-semibold text-slate-900">
-            {selectedTurma?.classe_nome || "Classe não identificada"}
-            {selectedTurma?.nome ? <span className="block text-xs font-normal text-slate-500">{selectedTurma.nome}</span> : null}
-          </span>
-        </div>
-        <div className="flex justify-between border-b border-slate-100 p-3.5 bg-white">
-          <span className="text-slate-600">Taxa de rematrícula</span>
-          <span className="font-semibold text-slate-900">
-            {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
-          </span>
-        </div>
-        {itensAdicionais.length > 0 && (
-          <div className="border-b border-slate-100 bg-white p-3.5">
-            <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Serviços e cobranças adicionais</p>
-            <div className="space-y-2">
-              {itensAdicionais.map((item) => {
-                const quantidade = Math.max(Number(item.quantidade ?? 1), 1);
-                return (
-                  <div key={`${item.tipo}-${item.id}`} className="flex justify-between gap-3 text-sm">
-                    <span className="text-slate-600">{item.nome || item.descricao || "Serviço escolar"}{quantidade > 1 ? ` × ${quantidade}` : ""}</span>
-                    <strong className="text-slate-900">{kwanza.format(Number(item.preco ?? 0) * quantidade)}</strong>
-                  </div>
-                );
-              })}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Resumo</p>
+        <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-start justify-between gap-4 px-4 py-3.5">
+            <div>
+              <p className="text-xs font-bold text-slate-900">Destino</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {selectedTurma?.classe_nome || "Classe não identificada"}
+                {selectedTurma?.nome ? ` · ${selectedTurma.nome}` : ""}
+              </p>
             </div>
           </div>
-        )}
-        <div className="flex justify-between border-b border-slate-100 p-3.5 bg-white">
-          <span className="text-slate-600">Mensalidade</span>
-          <span className={temMensalidade ? "font-semibold text-emerald-700" : "text-slate-400 italic"}>
-            {temMensalidade ? "Incluída acima" : "Não incluída"}
-          </span>
-        </div>
-        <div className="flex justify-between p-3.5 bg-slate-50">
-          <span className="font-bold text-slate-900">Total a pagar</span>
-          <span className="font-black text-[#1F6B3B] text-base">
-            {total > 0 ? kwanza.format(total) : "Sem taxa"}
-          </span>
+
+          <div className="flex items-center justify-between gap-4 border-t border-slate-100 px-4 py-3.5">
+            <div>
+              <p className="text-xs font-bold text-slate-900">Taxa de rematrícula</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                {service.pricing_origin === "classe" ? "Valor da classe destino" : "Valor padrão da escola"}
+              </p>
+            </div>
+            <strong className="text-sm text-slate-900">
+              {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
+            </strong>
+          </div>
+
+          {itensAdicionais.map((item) => {
+            const quantidade = Math.max(Number(item.quantidade ?? 1), 1);
+            return (
+              <div
+                key={`${item.tipo}-${item.id}`}
+                className="flex items-center justify-between gap-4 border-t border-slate-100 px-4 py-3.5"
+              >
+                <div>
+                  <p className="text-xs font-bold text-slate-900">{item.nome || item.descricao || "Cobrança adicional"}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    {item.tipo === "mensalidade" ? "Mensalidade do ano destino" : "Serviço adicional"}
+                    {quantidade > 1 ? ` · × ${quantidade}` : ""}
+                  </p>
+                </div>
+                <strong className="text-sm text-slate-900">
+                  {kwanza.format(Number(item.preco ?? 0) * quantidade)}
+                </strong>
+              </div>
+            );
+          })}
+
+          <div className="flex items-end justify-between gap-4 border-t border-slate-200 bg-slate-50 px-4 py-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total da operação</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {itensAdicionais.length > 0 ? "Taxa + itens selecionados" : "Taxa de rematrícula"}
+              </p>
+            </div>
+            <strong className="text-xl font-black text-slate-950">{kwanza.format(total)}</strong>
+          </div>
         </div>
       </div>
-      <p className="text-xs text-slate-500">
-        O valor acima foi resolvido para a turma destino. {service.pricing_origin === "classe" ? "Existe uma regra específica para esta classe." : "Não existe regra específica para esta classe; foi usado o valor de fallback."}
-      </p>
-      <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
-        A turma destino e o valor desta operação só serão gravados quando a secretaria concluir o atendimento. Fechar o modal preserva o rascunho, mas não altera a matrícula.
-      </p>
 
-      {!paymentAlreadyValidated && itensDisponiveis.length > 0 && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">
-          <div className="mb-3">
-            <p className="text-sm font-bold text-emerald-950">Adicionar a esta cobrança</p>
-            <p className="mt-0.5 text-xs text-emerald-800">
-              Pode incluir as primeiras mensalidades do ano destino. Ao marcar um mês, os anteriores também entram no mesmo pagamento para respeitar a ordem das propinas.
-            </p>
+      {!paymentAlreadyValidated && !hasDebt && itensDisponiveis.length > 0 ? (
+        <div>
+          <div className="mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Opcional</p>
+            <h3 className="mt-1 text-sm font-black text-slate-900">Adicionar ao mesmo pagamento</h3>
+            {mensalidadesDisponiveis.length > 0 ? (
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Pode incluir as primeiras mensalidades do novo ano. Ao escolher um mês, os anteriores entram automaticamente.
+              </p>
+            ) : null}
           </div>
+
           <div className="space-y-2">
             {mensalidadesDisponiveis.map((item, index) => {
               const seleccionado = itemEstaSeleccionado(item);
@@ -856,28 +898,33 @@ function StepFinanceiro({
                   key={`${item.tipo}-${item.id}`}
                   type="button"
                   onClick={() => toggleMensalidade(item, index)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                  className={[
+                    "flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition",
                     seleccionado
-                      ? "border-emerald-500 bg-emerald-100 text-emerald-950"
-                      : "border-emerald-200 bg-white text-slate-700 hover:border-emerald-400"
-                  }`}
+                      ? "border-emerald/30 bg-emerald/5"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                  ].join(" ")}
                 >
-                  <span>
-                    <span className="block text-xs font-bold">{item.nome || "Mensalidade"}</span>
-                    <span className="block text-[11px]">
-                      Mensalidade do ano destino
-                      {item.data_vencimento ? ` · vence ${new Intl.DateTimeFormat("pt-AO").format(new Date(`${item.data_vencimento}T00:00:00Z`))}` : ""}
-                    </span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2 text-xs font-black">
-                    {kwanza.format(Number(item.preco ?? 0))}
-                    <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">
-                      {seleccionado ? "Remover" : "Adicionar"}
-                    </span>
-                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-xs font-bold text-slate-900">{item.nome || "Mensalidade"}</p>
+                      {seleccionado ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
+                          <CheckCircle className="h-3 w-3" /> Incluída
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      {item.data_vencimento
+                        ? `Vence ${new Intl.DateTimeFormat("pt-AO").format(new Date(`${item.data_vencimento}T00:00:00Z`))}`
+                        : "Mensalidade do ano destino"}
+                    </p>
+                  </div>
+                  <strong className="shrink-0 text-xs text-slate-900">{kwanza.format(Number(item.preco ?? 0))}</strong>
                 </button>
               );
             })}
+
             {servicosDisponiveis.map((item) => {
               const seleccionado = itemEstaSeleccionado(item);
               return (
@@ -885,56 +932,37 @@ function StepFinanceiro({
                   key={`${item.tipo}-${item.id}`}
                   type="button"
                   onClick={() => seleccionado ? onRemoverItem?.(item.id, item.tipo) : onAdicionarItem?.(item)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                  className={[
+                    "flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition",
                     seleccionado
-                      ? "border-emerald-500 bg-emerald-100 text-emerald-950"
-                      : "border-emerald-200 bg-white text-slate-700 hover:border-emerald-400"
-                  }`}
+                      ? "border-emerald/30 bg-emerald/5"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                  ].join(" ")}
                 >
-                  <span>
-                    <span className="block text-xs font-bold">{item.nome || "Serviço escolar"}</span>
-                    <span className="block text-[11px]">Serviço adicional</span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2 text-xs font-black">
-                    {kwanza.format(Number(item.preco ?? 0))}
-                    <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">
-                      {seleccionado ? "Remover" : "Adicionar"}
-                    </span>
-                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-xs font-bold text-slate-900">{item.nome || "Serviço escolar"}</p>
+                      {seleccionado ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
+                          <CheckCircle className="h-3 w-3" /> Incluído
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-slate-400">Serviço adicional</p>
+                  </div>
+                  <strong className="shrink-0 text-xs text-slate-900">{kwanza.format(Number(item.preco ?? 0))}</strong>
                 </button>
               );
             })}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {debt && debt.total > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          <strong className="block text-amber-950">Mensalidades em aberto</strong>
-          <span>
-            Existem {debt.count} mensalidade(s) pendente(s), no total de {kwanza.format(debt.total)}.
-            Esta taxa não substitui a regularização da dívida.
-          </span>
-          {onRegularizeDebt && (
-            <button
-              type="button"
-              onClick={onRegularizeDebt}
-              className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-amber-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-amber-700"
-            >
-              Regularizar dívida neste atendimento
-            </button>
-          )}
+      {service.valor_base <= 0 && !paymentAlreadyValidated ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+          Esta classe não cobra taxa de rematrícula. A operação pode ser concluída sem pagamento.
         </div>
-      )}
-
-      {service.valor_base <= 0 && (
-        <div
-          role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
-        >
-          Esta classe não cobra rematrícula. A matrícula será concluída sem pagamento.
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
