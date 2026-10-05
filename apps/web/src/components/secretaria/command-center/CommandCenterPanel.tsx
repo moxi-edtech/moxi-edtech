@@ -18,7 +18,7 @@ type Props = {
   returnTo?: string | null;
   onActionChange: (actionId: BalcaoActionId) => void;
   onAlunoSelected?: (aluno: AlunoDossier | null) => void;
-  onSuccess?: () => void;
+  onSuccess?: (alunoId?: string) => void;
 };
 
 export function CommandCenterPanel({
@@ -37,7 +37,7 @@ export function CommandCenterPanel({
       <AdmissaoWizardClient
         escolaId={escolaId}
         embedded
-        onSuccess={() => onSuccess?.()}
+        onSuccess={(newAlunoId) => onSuccess?.(newAlunoId)}
       />
     );
   }
