@@ -626,9 +626,10 @@ function Step1Identificacao(props: {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-emerald">Identificação</h2>
-          <p className="text-sm text-slate-500">
-            Preencha o básico. O sistema salva automaticamente como rascunho.
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">1 de 3</p>
+          <h2 className="mt-1 text-base font-black text-slate-900">Identificação</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Informe os dados essenciais do aluno. O rascunho é guardado automaticamente.
           </p>
           {localRestored && !initialData && (
             <p className="mt-1 text-xs text-emerald-700">
@@ -752,8 +753,8 @@ function Step1Identificacao(props: {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-700">Dados para matrícula</p>
-            <p className="text-xs text-slate-500">Opcional. Ajuda a completar o processo.</p>
+            <p className="text-sm font-bold text-slate-800">Dados complementares</p>
+            <p className="text-xs text-slate-500">Opcional. Pode completar agora ou mais tarde.</p>
           </div>
           <button
             type="button"
@@ -930,22 +931,14 @@ function Step1Identificacao(props: {
         ) : null}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xs text-slate-500">
-          {candidaturaId ? (
-            <span className="font-mono">ID: {candidaturaId}</span>
-          ) : (
-            <span>Salve o rascunho para gerar o ID.</span>
-          )}
-        </div>
-
+      <div className="flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={handleNext}
           disabled={!isUuid(escolaId) || saving}
-          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+          className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
-          Avançar
+          Continuar para turma
         </button>
       </div>
     </div>
@@ -1254,8 +1247,9 @@ function Step2FitAcademico(props: {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-emerald">Fit Acadêmico</h2>
-          <p className="text-sm text-slate-500">Selecione a turma preferencial.</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">2 de 3</p>
+          <h2 className="mt-1 text-base font-black text-slate-900">Turma e condições</h2>
+          <p className="mt-1 text-sm text-slate-500">Escolha o curso, a classe e a turma de destino.</p>
         </div>
 
         <div className="flex items-center gap-2 text-sm">
@@ -1378,15 +1372,15 @@ function Step2FitAcademico(props: {
         </div>
       </div>
 
-      {/* ACORDO FINANCEIRO (Novo) */}
-      <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
-          <Save className="w-4 h-4" />
-          Acordo Financeiro Especial
-        </h3>
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Opcional</p>
+          <h3 className="mt-1 text-sm font-black text-slate-900">Desconto da matrícula</h3>
+          <p className="mt-1 text-xs text-slate-500">Use apenas quando existir uma condição financeira autorizada.</p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Desconto (%)
             </label>
             <input
@@ -1399,12 +1393,12 @@ function Step2FitAcademico(props: {
                 onUpdateFinanceiro({ percentagemDesconto: val });
               }}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
+              className="w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-slate-100 focus:border-slate-400 disabled:opacity-60"
               placeholder="Ex: 15"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Motivo do Desconto
             </label>
             <select
@@ -1413,7 +1407,7 @@ function Step2FitAcademico(props: {
                 onUpdateFinanceiro({ motivoDesconto: e.target.value });
               }}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
+              className="w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-slate-100 focus:border-slate-400 disabled:opacity-60"
             >
               <option value="">Sem desconto</option>
               <option value="Irmãos">Irmãos na Instituição</option>
@@ -1424,8 +1418,8 @@ function Step2FitAcademico(props: {
             </select>
           </div>
         </div>
-        <p className="text-[10px] text-amber-700 italic">
-          * Este desconto será aplicado automaticamente a todas as propinas geradas para esta matrícula.
+        <p className="text-[11px] text-slate-500">
+          O desconto será aplicado automaticamente às propinas geradas para esta matrícula.
         </p>
       </div>
 
@@ -1442,9 +1436,9 @@ function Step2FitAcademico(props: {
           type="button"
           onClick={onNext}
           disabled={!canAdvance}
-          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+          className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
-          Avançar
+          Rever cobrança
         </button>
       </div>
     </div>
