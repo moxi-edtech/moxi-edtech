@@ -1618,6 +1618,7 @@ function Step3Pagamento(props: {
   setBaseCanEditDraft: (value: boolean) => void;
   setEditOverride: (value: boolean) => void;
   setResumeMode: (value: boolean) => void;
+  onCompleted?: (alunoId?: string) => void;
 }) {
   const {
     onBack,
@@ -1636,6 +1637,7 @@ function Step3Pagamento(props: {
     setBaseCanEditDraft,
     setEditOverride,
     setResumeMode,
+    onCompleted,
   } = props;
 
   const [payment, setPayment] = useState({
@@ -1977,6 +1979,7 @@ function Step3Pagamento(props: {
       ...convertResp.data,
       message: convertResp.data.message ?? "Matrícula concluída pela secretaria.",
     });
+    onCompleted?.(convertResp.data.aluno_id);
   };
 
   const handleSaveForLater = async () => {
@@ -2425,10 +2428,14 @@ export default function AdmissaoWizardClient({
   escolaId,
   escolaSlug,
   initialCandidaturaId,
+  embedded = false,
+  onSuccess,
 }: {
   escolaId: string;
   escolaSlug?: string | null;
   initialCandidaturaId?: string | null;
+  embedded?: boolean;
+  onSuccess?: (alunoId?: string) => void;
 }) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -2570,6 +2577,16 @@ export default function AdmissaoWizardClient({
 
   const handleResume = (id: string) => {
     if (!isUuid(id)) return;
+
+    if (embedded) {
+      const next = new URLSearchParams(searchParams?.toString() ?? "");
+      next.set("action", "enrollment");
+      next.set("candidaturaId", id);
+      next.delete("alunoId");
+      router.replace(`${pathname || "/secretaria/balcao"}?${next.toString()}`, { scroll: false });
+      return;
+    }
+
     const next = withSlug(`/secretaria/admissoes/nova?candidaturaId=${id}`);
     router.push(next);
   };
@@ -2645,15 +2662,21 @@ export default function AdmissaoWizardClient({
     setDismissedResumePrompt(false);
     setWizardError(null);
     
-    // Clear URL query parameters without triggering a hard reload or RSC re-fetch
+    // Clear only the admission context. Embedded mode stays inside the
+    // Command Center; the legacy page keeps its historical clean URL.
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.delete("candidaturaId");
-      url.searchParams.delete("alunoId");
       url.searchParams.delete("alunoExistenteId");
-      window.history.replaceState(null, "", url.pathname);
+      if (embedded) {
+        url.searchParams.set("action", "enrollment");
+        window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}`);
+      } else {
+        url.searchParams.delete("alunoId");
+        window.history.replaceState(null, "", url.pathname);
+      }
     }
-  }, []);
+  }, [embedded]);
 
   if (!hydrated || hydratingLead) {
     return (
@@ -2728,7 +2751,14 @@ export default function AdmissaoWizardClient({
         </div>
       )}
       <div className="flex items-start justify-between gap-3">
-        <h1 className="text-xl font-semibold text-emerald">Nova Admissão</h1>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            {embedded ? "Matrícula" : "Admissão"}
+          </p>
+          <h1 className="mt-1 text-lg font-black text-slate-900">
+            {embedded ? "Nova matrícula" : "Nova Admissão"}
+          </h1>
+        </div>
         <div className="relative">
           <button
             type="button"
@@ -2797,11 +2827,38 @@ export default function AdmissaoWizardClient({
           )}
         </div>
       </div>
-      <p className="text-sm text-slate-500">
-        Fluxo rascunho → submetida → aprovada → matriculado.
-      </p>
+      {!embedded ? (
+        <p className="text-sm text-slate-500">
+          Fluxo rascunho → submetida → aprovada → matriculado.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {["Identificação", "Turma", "Cobrança"].map((label, index) => {
+            const value = index + 1;
+            const active = step === value;
+            const done = step > value;
+            return (
+              <span
+                key={label}
+                className={[
+                  "rounded-full px-2.5 py-1 text-[10px] font-bold",
+                  active
+                    ? "bg-slate-950 text-white"
+                    : done
+                      ? "bg-emerald-50 text-emerald"
+                      : "bg-slate-100 text-slate-400",
+                ].join(" ")}
+              >
+                {label}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
-      <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <div className={embedded
+        ? "rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+        : "rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200"}>
         {wizardError && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {wizardError}
@@ -2848,6 +2905,7 @@ export default function AdmissaoWizardClient({
             setBaseCanEditDraft={setBaseCanEditDraft}
             setEditOverride={setEditOverride}
             setResumeMode={setResumeMode}
+            onCompleted={onSuccess}
           />
         )}
       </div>
