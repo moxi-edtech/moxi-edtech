@@ -99,7 +99,16 @@ export async function POST(req: Request) {
     })
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+      const message = error.message || 'Não foi possível guardar as notas.'
+      const status =
+        /^AUTH:/i.test(message)
+          ? 403
+          : /^DATA:/i.test(message)
+            ? 400
+            : /ACADEMIC_YEAR_READ_ONLY|fechad|trav|reabert|bloquead/i.test(message)
+              ? 409
+              : 500
+      return NextResponse.json({ ok: false, error: message, code: error.code ?? null }, { status })
     }
 
     return NextResponse.json({ ok: true, data })
