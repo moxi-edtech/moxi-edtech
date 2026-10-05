@@ -18,6 +18,7 @@ export const fetchCache = 'force-no-store'
 const Query = z.object({
   disciplinaId: z.string().uuid(),
   trimestre: z.coerce.number().int().min(1).max(3),
+  alunoId: z.string().uuid().optional(),
 })
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -31,7 +32,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { searchParams } = new URL(req.url)
     const disciplinaId = searchParams.get('disciplinaId') ?? searchParams.get('disciplina_id')
     const trimestre = searchParams.get('trimestre') ?? searchParams.get('periodoNumero')
-    const parsed = Query.safeParse({ disciplinaId, trimestre })
+    const alunoId = searchParams.get('alunoId') ?? searchParams.get('aluno_id') ?? undefined
+    const parsed = Query.safeParse({ disciplinaId, trimestre, alunoId })
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos' }, { status: 400 })
     }
@@ -105,7 +107,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .in('status', ACTIVE_MATRICULA_STATUSES)
       .order('numero_chamada', { ascending: true, nullsFirst: false })
 
-    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 })
+    if (parsed.data.alunoId) {
+      matriculasQuery = matriculasQuery.eq('aluno_id', parsed.data.alunoId)
+    }
+
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, {
+      defaultLimit: parsed.data.alunoId ? 1 : 50,
+    })
 
     const { data: matriculas, error: matriculasError } = await matriculasQuery
     if (matriculasError) {
