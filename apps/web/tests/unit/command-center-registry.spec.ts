@@ -12,7 +12,7 @@ test("todas as ações do Command Center têm um painel canónico", () => {
 
   assert.deepEqual(
     actions.map((action) => action.id),
-    ["desk", "payment", "document", "reenrollment", "profile", "grade"],
+    ["desk", "enrollment", "payment", "document", "reenrollment", "profile", "grade"],
   );
 
   for (const action of actions) {
@@ -24,6 +24,9 @@ test("todas as ações do Command Center têm um painel canónico", () => {
 test("ações operacionais mapeiam para as views canónicas do balcão", () => {
   assert.equal(BALCAO_ACTION_REGISTRY.desk.panel, "balcao");
   assert.equal(BALCAO_ACTION_REGISTRY.desk.balcaoView, "overview");
+
+  assert.equal(BALCAO_ACTION_REGISTRY.enrollment.panel, "enrollment");
+  assert.equal(BALCAO_ACTION_REGISTRY.enrollment.requiresStudent, false);
 
   assert.equal(BALCAO_ACTION_REGISTRY.payment.panel, "balcao");
   assert.equal(BALCAO_ACTION_REGISTRY.payment.balcaoView, "payment");
@@ -70,4 +73,18 @@ test("portais fora do atendimento preservam os destinos próprios", () => {
     actionId: "grade",
   });
   assert.match(gradeHref, /\/professor\/notas\?/);
+});
+
+
+test("matrícula abre no mesmo Command Center sem exigir aluno pré-selecionado", () => {
+  const href = buildBalcaoActionHref({
+    escolaParam: "escola-demo",
+    portal: "secretaria",
+    actionId: "enrollment",
+  });
+
+  assert.match(href, /\/secretaria\/balcao\?/);
+  assert.match(href, /action=enrollment/);
+  assert.equal(BALCAO_ACTION_REGISTRY.desk.requiresStudent, false);
+  assert.equal(BALCAO_ACTION_REGISTRY.enrollment.requiresStudent, false);
 });
