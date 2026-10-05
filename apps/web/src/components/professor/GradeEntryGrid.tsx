@@ -125,6 +125,13 @@ export function GradeEntryGrid({
     )
   }, [componentesAtivos])
 
+  useEffect(() => {
+    const first = gradeInputs[0]?.key
+    if (first && !gradeInputs.some((item) => item.key === pasteColumn)) {
+      setPasteColumn(first)
+    }
+  }, [gradeInputs, pasteColumn])
+
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const pendingIdsRef = useRef<Set<string>>(new Set())
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -300,6 +307,7 @@ export function GradeEntryGrid({
             ...row,
             is_isento: checked,
             mac1: checked ? null : row.mac1,
+            npp1: checked ? null : row.npp1,
             npt1: checked ? null : row.npt1,
             mt1: checked ? null : row.mt1,
             _status: "pending" as const,
@@ -364,30 +372,31 @@ export function GradeEntryGrid({
       }),
       columnHelper.group({
         header: "Iº TRIMESTRE (Pauta Oficial)",
-        columns: gradeInputs.map((input, columnIndex) =>
-          columnHelper.accessor(input.key, {
-            header: input.label,
-            size: 80,
-            cell: ({ row, getValue }) => (
-              <GradeInput
-                inputRef={(el) => {
-                  inputRefs.current[`${row.index}-${columnIndex}`] = el
-                }}
-                disabled={!!row.original.is_isento}
-                value={getValue()}
-                onChange={(val) => updateGrade(row.index, input.key, val)}
-                onBatchPaste={(pasteText) => handleBatchPaste(row.index, input.key, pasteText)}
-                onNavigate={(deltaRow, deltaCol) => {
-                  const next = inputRefs.current[`${row.index + deltaRow}-${columnIndex + deltaCol}`]
-                  if (next) {
-                    next.focus()
-                    next.select()
-                  }
-                }}
-              />
-            ),
-          })
-        ).concat([
+        columns: [
+          ...gradeInputs.map((input, columnIndex) =>
+            columnHelper.accessor(input.key, {
+              header: input.label,
+              size: 80,
+              cell: ({ row, getValue }) => (
+                <GradeInput
+                  inputRef={(el) => {
+                    inputRefs.current[`${row.index}-${columnIndex}`] = el
+                  }}
+                  disabled={!!row.original.is_isento}
+                  value={getValue()}
+                  onChange={(val) => updateGrade(row.index, input.key, val)}
+                  onBatchPaste={(pasteText) => handleBatchPaste(row.index, input.key, pasteText)}
+                  onNavigate={(deltaRow, deltaCol) => {
+                    const next = inputRefs.current[`${row.index + deltaRow}-${columnIndex + deltaCol}`]
+                    if (next) {
+                      next.focus()
+                      next.select()
+                    }
+                  }}
+                />
+              ),
+            })
+          ),
           columnHelper.accessor("mt1", {
             header: "MT1",
             size: 80,
@@ -408,7 +417,7 @@ export function GradeEntryGrid({
               )
             },
           }),
-        ]),
+        ],
       }),
     ],
     [gradeInputs, updateGrade, handleBatchPaste, showIsento, updateIsento]
