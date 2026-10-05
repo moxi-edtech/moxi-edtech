@@ -10,6 +10,7 @@ import {
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
+import { assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -19,6 +20,7 @@ const Query = z.object({
   disciplinaId: z.string().uuid(),
   trimestre: z.coerce.number().int().min(1).max(3),
   alunoId: z.string().uuid().optional(),
+  anoLetivoId: z.string().uuid().optional(),
 })
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -33,7 +35,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const disciplinaId = searchParams.get('disciplinaId') ?? searchParams.get('disciplina_id')
     const trimestre = searchParams.get('trimestre') ?? searchParams.get('periodoNumero')
     const alunoId = searchParams.get('alunoId') ?? searchParams.get('aluno_id') ?? undefined
-    const parsed = Query.safeParse({ disciplinaId, trimestre, alunoId })
+    const anoLetivoId = searchParams.get('anoLetivoId') ?? searchParams.get('ano_letivo_id') ?? undefined
+    const parsed = Query.safeParse({ disciplinaId, trimestre, alunoId, anoLetivoId })
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos' }, { status: 400 })
     }
@@ -43,6 +46,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
+
+    const academicContext = parsed.data.anoLetivoId
+      ? await resolveAcademicYearContext(supabase as any, {
+          userId: user.id,
+          requestedAcademicYearId: parsed.data.anoLetivoId,
+          operation: 'READ',
+        })
+      : null
+
+    if (academicContext) {
+      await assertAcademicYearEntity(supabase as any, {
+        table: 'turmas',
+        entityId: turmaId,
+        escolaId,
+        anoLetivoId: academicContext.anoLetivoId,
+      })
+    }
 
     const { data: turma } = await supabase
       .from('turmas')
@@ -104,9 +124,26 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       )
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
-      .eq('ativo', true)
-      .in('status', ACTIVE_MATRICULA_STATUSES)
       .order('numero_chamada', { ascending: true, nullsFirst: false })
+
+    if (academicContext) {
+      matriculasQuery = matriculasQuery.eq('session_id', academicContext.anoLetivoId)
+      if (academicContext.mode === 'CURRENT') {
+        matriculasQuery = matriculasQuery
+          .eq('ativo', true)
+          .in('status', ACTIVE_MATRICULA_STATUSES)
+      } else {
+        matriculasQuery = matriculasQuery.in('status', [
+          ...ACTIVE_MATRICULA_STATUSES,
+          'concluido',
+          'reprovado',
+          'encerrada',
+          'transferido',
+        ])
+      }
+    } else {
+      matriculasQuery = matriculasQuery.in('status', ACTIVE_MATRICULA_STATUSES)
+    }
 
     if (parsed.data.alunoId) {
       matriculasQuery = matriculasQuery.eq('aluno_id', parsed.data.alunoId)
