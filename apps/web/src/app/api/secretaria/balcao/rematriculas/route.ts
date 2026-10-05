@@ -582,7 +582,8 @@ export async function POST(request: Request) {
     ].filter((item) => item.preco > 0);
 
     const totalPagamento = paymentItems.reduce((total, item) => total + item.preco, 0);
-    if (!confirmationExempt && totalPagamento <= 0) {
+    const paymentRequired = totalPagamento > 0;
+    if (!confirmationExempt && !paymentRequired) {
       return NextResponse.json({ ok: false, error: "O pagamento não possui itens com valor válido.", code: "PAYMENT_ITEMS_EMPTY" }, { status: 409 });
     }
 
@@ -787,7 +788,7 @@ export async function POST(request: Request) {
         aluno_id: body.aluno_id,
         matricula_id: origemMatriculaId,
         servico_escola_id: service.id,
-        status: confirmationExempt ? "granted" : "pending_payment",
+        status: paymentRequired ? "pending_payment" : "granted",
         servico_codigo: SERVICE_CODE,
         servico_nome: service.nome,
         valor_cobrado: totalPagamento,
@@ -805,6 +806,8 @@ export async function POST(request: Request) {
           raa_decision: raaAtual?.decision ?? null,
           raa_destino: raaAtual?.destino ?? null,
           raa_disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
+          mensalidades_competencias: body.mensalidades_competencias,
+          matricula_destino_preparada_id: matriculaDestinoPreparadaId,
           idempotency_key: idempotencyKey,
         },
         created_by: user.id,
@@ -814,7 +817,7 @@ export async function POST(request: Request) {
     if (pedidoError) throw pedidoError;
 
     let paymentJson: any = { data: null };
-    if (!confirmationExempt) {
+    if (paymentRequired) {
       const paymentUrl = new URL("/api/secretaria/pagamentos/processar", request.url);
       const paymentResponse = await fetch(paymentUrl, {
       method: "POST",
