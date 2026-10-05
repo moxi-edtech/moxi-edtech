@@ -222,3 +222,25 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_emissao_idempotency.sql
+
+      - name: Create isolated grade-writer database
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS klasse_grade_writer WITH (FORCE);"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE klasse_grade_writer;"
+
+      - name: Bootstrap grade writer contract
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_notas_writer_minimal.sql
+
+      - name: Apply grade writer hardening
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826131000_harden_lancar_notas_batch_authz_scale.sql
+
+      - name: Grade writer authz and scale regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_notas_writer_authz_scale.sql
