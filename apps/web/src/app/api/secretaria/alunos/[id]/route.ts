@@ -7,7 +7,7 @@ import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
-import { resolveAcademicYearContext, type AcademicWorkspaceMode } from '@/lib/academic-year/context'
+import { AcademicYearContextError, resolveAcademicYearContext, type AcademicWorkspaceMode } from '@/lib/academic-year/context'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
@@ -195,6 +195,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }
     })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
