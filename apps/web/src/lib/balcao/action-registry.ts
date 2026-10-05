@@ -11,6 +11,8 @@ export type BalcaoActionId =
 export type BalcaoFocusAction = Extract<BalcaoActionId, "payment" | "document" | "reenrollment">;
 
 export type BalcaoActionSurface = "command-center";
+export type CommandCenterPanelKind = "balcao" | "profile" | "grade";
+export type CommandCenterBalcaoView = "overview" | "payment" | "document" | "reenrollment";
 
 export type BalcaoActionDefinition = {
   id: BalcaoActionId;
@@ -19,6 +21,8 @@ export type BalcaoActionDefinition = {
   description: string;
   requiresStudent: boolean;
   surface: BalcaoActionSurface;
+  panel: CommandCenterPanelKind;
+  balcaoView?: CommandCenterBalcaoView;
   focusAction?: BalcaoFocusAction;
 };
 
@@ -30,6 +34,8 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     description: "Resumo operativo do aluno e próximos passos.",
     requiresStudent: true,
     surface: "command-center",
+    panel: "balcao",
+    balcaoView: "overview",
   },
   payment: {
     id: "payment",
@@ -38,6 +44,8 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     description: "Regularizar propinas e outros itens financeiros no mesmo atendimento.",
     requiresStudent: true,
     surface: "command-center",
+    panel: "balcao",
+    balcaoView: "payment",
     focusAction: "payment",
   },
   document: {
@@ -47,6 +55,8 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     description: "Selecionar, cobrar quando aplicável e emitir documentos do aluno.",
     requiresStudent: true,
     surface: "command-center",
+    panel: "balcao",
+    balcaoView: "document",
     focusAction: "document",
   },
   reenrollment: {
@@ -56,6 +66,8 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     description: "Verificar elegibilidade e concluir a rematrícula no mesmo atendimento.",
     requiresStudent: true,
     surface: "command-center",
+    panel: "balcao",
+    balcaoView: "reenrollment",
     focusAction: "reenrollment",
   },
   profile: {
@@ -65,6 +77,7 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     description: "Abrir a ficha rápida do aluno.",
     requiresStudent: true,
     surface: "command-center",
+    panel: "profile",
   },
   grade: {
     id: "grade",
@@ -73,6 +86,7 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     description: "Abrir o fluxo académico de notas.",
     requiresStudent: true,
     surface: "command-center",
+    panel: "grade",
   },
 };
 
