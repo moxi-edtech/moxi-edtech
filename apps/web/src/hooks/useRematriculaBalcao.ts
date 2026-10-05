@@ -89,6 +89,9 @@ export type RematriculaPaymentItem = {
   preco: number;
   quantidade?: number;
   origem_matricula_id?: string | null;
+  competencia?: string | null;
+  data_vencimento?: string | null;
+  previsto?: boolean;
 };
 
 type TurmaPayload = {
@@ -656,7 +659,12 @@ export function useRematriculaBalcao(opts: {
           contacto_encarregado: responsavelContato.trim() || undefined,
           // O fluxo normal não envia qualquer override académico. A decisão
           // é consumida exclusivamente do RAA no servidor.
-          itens: opts.itensPagamento?.map(({ id, tipo }) => ({ id, tipo })) ?? [],
+          itens: opts.itensPagamento
+            ?.filter((item) => !(item.tipo === "mensalidade" && item.competencia))
+            .map(({ id, tipo }) => ({ id, tipo })) ?? [],
+          mensalidades_competencias: opts.itensPagamento
+            ?.filter((item) => item.tipo === "mensalidade" && item.competencia)
+            .map((item) => item.competencia as string) ?? [],
         }),
       });
 
