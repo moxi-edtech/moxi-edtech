@@ -36,6 +36,7 @@ type GradeEntryGridProps = {
   componentesAtivos?: string[]
   showIsento?: boolean
   studentMode?: boolean
+  readOnly?: boolean
 }
 
 const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
@@ -104,6 +105,7 @@ export function GradeEntryGrid({
   componentesAtivos,
   showIsento = false,
   studentMode = false,
+  readOnly = false,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
   const dataRef = useRef<StudentGradeRow[]>(initialData)
@@ -363,8 +365,9 @@ export function GradeEntryGrid({
               <input
                 type="checkbox"
                 checked={!!info.getValue()}
+                disabled={readOnly}
                 onChange={(e) => updateIsento(info.row.index, e.target.checked)}
-                className="rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                className="rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
                 title="Marcar como isento neste trimestre"
               />
             </div>
@@ -381,7 +384,7 @@ export function GradeEntryGrid({
         },
       }),
       columnHelper.group({
-        header: "Iº TRIMESTRE (Pauta Oficial)",
+        header: "Avaliação",
         columns: [
           ...gradeInputs.map((input, columnIndex) =>
             columnHelper.accessor(input.key, {
@@ -393,6 +396,7 @@ export function GradeEntryGrid({
                     inputRefs.current[`${row.index}-${columnIndex}`] = el
                   }}
                   disabled={!!row.original.is_isento}
+                  readOnly={readOnly}
                   value={getValue()}
                   onChange={(val) => updateGrade(row.index, input.key, val)}
                   onBatchPaste={(pasteText) => handleBatchPaste(row.index, input.key, pasteText)}
@@ -430,7 +434,7 @@ export function GradeEntryGrid({
         ],
       }),
     ],
-    [gradeInputs, updateGrade, handleBatchPaste, showIsento, updateIsento]
+    [gradeInputs, handleBatchPaste, readOnly, showIsento, updateGrade, updateIsento]
   )
 
   const table = useReactTable({
@@ -474,8 +478,9 @@ export function GradeEntryGrid({
               <input
                 type="checkbox"
                 checked={!!row.is_isento}
+                disabled={readOnly}
                 onChange={(event) => updateIsento(0, event.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
           ) : null}
@@ -490,6 +495,7 @@ export function GradeEntryGrid({
                   <GradeInput
                     inputRef={() => null}
                     disabled={!!row.is_isento}
+                    readOnly={readOnly}
                     value={row[item.key]}
                     onChange={(value) => updateGrade(0, item.key, value)}
                     onNavigate={() => null}
@@ -510,7 +516,9 @@ export function GradeEntryGrid({
           </div>
 
           <p className="text-xs text-slate-500">
-            As alterações são guardadas automaticamente no fluxo académico canónico.
+            {readOnly
+              ? "Ano letivo em consulta histórica. O lançamento de notas está bloqueado."
+              : "As alterações são guardadas automaticamente no fluxo académico canónico."}
           </p>
         </div>
       </div>
@@ -573,7 +581,7 @@ export function GradeEntryGrid({
           </div>
 
           <div className="flex items-center gap-2">
-            {!studentMode ? <button
+            {!studentMode && !readOnly ? <button
               type="button"
               onClick={() => setShowPasteModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
@@ -682,8 +690,9 @@ export function GradeEntryGrid({
                       <input
                         type="checkbox"
                         checked={!!row.original.is_isento}
+                        disabled={readOnly}
                         onChange={(e) => updateIsento(row.index, e.target.checked)}
-                        className="rounded border-slate-300 text-emerald-600 focus:ring-klasse-gold"
+                        className="rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
                       />
                       Isento neste trimestre
                     </label>
@@ -697,6 +706,7 @@ export function GradeEntryGrid({
                           <GradeInput
                             inputRef={() => null}
                             disabled={!!row.original.is_isento}
+                            readOnly={readOnly}
                             value={row.original[item.key]}
                             onChange={(val) => updateGrade(row.index, item.key, val)}
                             onBatchPaste={(pText) => handleBatchPaste(row.index, item.key, pText)}
@@ -767,6 +777,7 @@ const GradeInput = ({
   inputRef,
   onNavigate,
   disabled = false,
+  readOnly = false,
 }: {
   value: number | null
   onChange: (v: string) => void
@@ -774,6 +785,7 @@ const GradeInput = ({
   inputRef: (el: HTMLInputElement | null) => void
   onNavigate: (deltaRow: number, deltaCol: number) => void
   disabled?: boolean
+  readOnly?: boolean
 }) => {
   const [draft, setDraft] = useState(value === null ? "" : String(value))
   const isFocusedRef = useRef(false)
@@ -792,6 +804,8 @@ const GradeInput = ({
   let gradeStyle = "bg-slate-50 text-slate-700 border-slate-200"
   if (disabled) {
     gradeStyle = "bg-slate-100 text-slate-400 border-dashed text-[10px]"
+  } else if (readOnly) {
+    gradeStyle = "bg-slate-50 text-slate-700 border-slate-200"
   } else if (value !== null) {
     if (value >= 14) gradeStyle = "bg-emerald-50 text-emerald-800 border-emerald-300 font-black"
     else if (value >= 10) gradeStyle = "bg-amber-50 text-amber-800 border-amber-300 font-extrabold"
@@ -805,23 +819,23 @@ const GradeInput = ({
       type="text"
       inputMode="decimal"
       value={disabled ? "ISENTO" : draft}
-      disabled={disabled}
+      disabled={disabled || readOnly}
       onFocus={() => {
         isFocusedRef.current = true
       }}
       onBlur={(e) => {
         isFocusedRef.current = false
-        if (disabled) return
+        if (disabled || readOnly) return
         const raw = e.currentTarget.value
         setDraft(raw)
         commitValue(raw)
       }}
       onChange={(e) => {
-        if (disabled) return
+        if (disabled || readOnly) return
         setDraft(e.target.value)
       }}
       onPaste={(e) => {
-        if (disabled || !onBatchPaste) return
+        if (disabled || readOnly || !onBatchPaste) return
         const pasteData = e.clipboardData.getData("text")
         if (pasteData && (pasteData.includes("\n") || pasteData.includes("\t"))) {
           e.preventDefault()
@@ -833,19 +847,19 @@ const GradeInput = ({
           e.preventDefault()
         }
         if (e.key === "ArrowDown" || e.key === "Enter") {
-          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled && !readOnly) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(1, 0)
         }
         if (e.key === "ArrowUp") {
-          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled && !readOnly) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(-1, 0)
         }
         if (e.key === "ArrowLeft") {
-          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled && !readOnly) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(0, -1)
         }
         if (e.key === "ArrowRight") {
-          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled && !readOnly) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(0, 1)
         }
       }}
