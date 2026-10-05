@@ -273,7 +273,13 @@ function resolveStudentActions(
 ): SearchAction[] {
   if (item.type !== "aluno") return [];
 
-  return getStudentBalcaoActions().map((action) => ({
+  const actions = getStudentBalcaoActions();
+  const visibleActions =
+    portal === "secretaria" || portal === "operacoes" || portal == null
+      ? actions
+      : actions.filter((action) => ["profile", "payment", "desk", "grade"].includes(action.id));
+
+  return visibleActions.map((action) => ({
     kind: action.id,
     label: action.shortLabel,
     href: buildBalcaoActionHref({
