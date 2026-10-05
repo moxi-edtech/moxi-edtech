@@ -21,7 +21,7 @@ type Props = {
 const methods: Array<{ id: Metodo; label: string; icon: typeof Banknote }> = [
   { id: "cash", label: "Numerário", icon: Banknote },
   { id: "tpa", label: "TPA", icon: CreditCard },
-  { id: "transfer", label: "Transferência", icon: ArrowRightLeft },
+  { id: "transfer", label: "Transfer.", icon: ArrowRightLeft },
   { id: "mcx", label: "Multicaixa", icon: QrCode },
   { id: "kiwk", label: "Kwik", icon: QrCode },
 ];
@@ -44,6 +44,18 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
   const [paymentHistory, setPaymentHistory] = useState<Array<{ amount: number; method: string }>>([]);
   const [recibos, setRecibos] = useState<Array<{ label: string; url: string }>>([]);
 
+  const numericAmount = Number(amount);
+  const disabledReason = useMemo(() => {
+    if (ordered.length === 0) return "Não há mensalidades em aberto.";
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return "Informe o valor que será pago agora.";
+    if (numericAmount > total) return `O valor não pode ultrapassar ${money.format(total)}.`;
+    if (method === "tpa" && !reference.trim()) return "Informe a referência do TPA.";
+    if (method === "transfer" && !evidenceUrl.trim()) return "Adicione o comprovativo da transferência.";
+    return null;
+  }, [ordered.length, numericAmount, total, method, reference, evidenceUrl]);
+
+  const canSubmit = disabledReason === null && !submitting;
+
   // O diálogo é reutilizado entre atendimentos; não deve transportar o estado
   // (em especial comprovativos) de um aluno para outro.
   useEffect(() => {
@@ -60,16 +72,8 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
 
   const pay = async () => {
     const value = Number(amount);
-    if (!Number.isFinite(value) || value <= 0 || value > total) {
-      setMessage({ type: "error", text: `Informe um valor entre 1 e ${money.format(total)}.` });
-      return;
-    }
-    if (method === "tpa" && !reference.trim()) {
-      setMessage({ type: "error", text: "Informe a referência do TPA." });
-      return;
-    }
-    if (method === "transfer" && !evidenceUrl.trim()) {
-      setMessage({ type: "error", text: "Informe o comprovativo da transferência." });
+    if (disabledReason) {
+      setMessage({ type: "error", text: disabledReason });
       return;
     }
 
@@ -167,83 +171,139 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
   if (!open) return null;
 
   const panel = (
-    <div className="space-y-4">
-      <div className="flex items-start gap-3 border-b border-slate-100 pb-4">
-        <div className="rounded-xl bg-amber-50 p-2 text-amber-700">
-          <AlertTriangle className="h-5 w-5" />
-        </div>
-        <div>
-          <h3 className="text-base font-black text-slate-900">Regularizar mensalidades</h3>
-          <p className="mt-0.5 text-xs leading-5 text-slate-500">
-            O valor é aplicado às mensalidades mais antigas primeiro. A rematrícula só é liberada quando o saldo chega a zero.
-          </p>
+    <div className="space-y-5">
+      <div className="border-b border-slate-100 pb-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Regularização</p>
+        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-base font-black text-slate-900">Mensalidades em atraso</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              O pagamento é distribuído da mensalidade mais antiga para a mais recente.
+            </p>
+          </div>
+          <strong className="shrink-0 text-xl font-black text-slate-900">{money.format(total)}</strong>
         </div>
       </div>
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-        <strong>{ordered.length} mensalidade(s)</strong> em aberto · <strong>{money.format(total)}</strong>
-      </div>
-
-      <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2">
+      <div className="overflow-hidden rounded-xl border border-slate-200">
         {ordered.map((item, index) => (
-          <div key={item.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
-            <span>{index + 1}. {item.nome}</span>
-            <strong>{money.format(item.preco)}</strong>
+          <div
+            key={item.id}
+            className={[
+              "flex items-center justify-between gap-4 px-4 py-3 text-xs",
+              index > 0 ? "border-t border-slate-100" : "",
+            ].join(" ")}
+          >
+            <div className="min-w-0">
+              <p className="truncate font-bold text-slate-800">{item.nome}</p>
+              <p className="mt-0.5 text-[10px] text-slate-400">
+                {index === 0 ? "Primeira a ser liquidada" : `Ordem ${index + 1}`}
+              </p>
+            </div>
+            <strong className="shrink-0 text-slate-900">{money.format(item.preco)}</strong>
           </div>
         ))}
       </div>
 
       <div>
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-          Quanto deseja pagar agora?
-        </label>
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            Valor a pagar agora
+          </label>
+          <button
+            type="button"
+            onClick={() => setAmount(String(total))}
+            disabled={submitting}
+            className="text-[11px] font-bold text-emerald hover:underline disabled:opacity-50"
+          >
+            Usar saldo total
+          </button>
+        </div>
         <input
           type="number"
           min="1"
           max={total}
           value={amount}
-          onChange={(event) => setAmount(event.target.value)}
+          onChange={(event) => {
+            setAmount(event.target.value);
+            setMessage(null);
+          }}
           placeholder={`Até ${money.format(total)}`}
-          className="w-full rounded-xl border border-slate-200 px-3 py-3 text-lg font-black outline-none focus:border-amber"
+          className="w-full rounded-xl border border-slate-200 px-3.5 py-3 text-lg font-black text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
           disabled={submitting}
         />
+        {numericAmount > 0 && numericAmount < total ? (
+          <p className="mt-1.5 text-xs text-slate-500">
+            Pagamento parcial · ficará {money.format(Math.max(0, total - numericAmount))} em aberto.
+          </p>
+        ) : null}
       </div>
 
-      <div className="grid grid-cols-5 gap-1.5">
-        {methods.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setMethod(id)}
-            disabled={submitting}
-            className={`flex flex-col items-center gap-1 rounded-xl border py-2 text-[10px] font-bold ${
-              method === id ? "border-amber bg-amber/10 text-slate-900" : "border-slate-200 text-slate-500"
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
+      <div>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+          Forma de pagamento
+        </p>
+        <div className="grid grid-cols-5 gap-1.5">
+          {methods.map(({ id, label, icon: Icon }) => {
+            const active = method === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setMethod(id);
+                  setMessage(null);
+                }}
+                disabled={submitting}
+                className={[
+                  "flex flex-col items-center gap-1 rounded-xl border py-2.5 text-[10px] font-bold transition",
+                  active
+                    ? "border-slate-950 bg-slate-950 text-white"
+                    : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50",
+                ].join(" ")}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {method === "tpa" || method === "mcx" || method === "kiwk" ? (
-        <input
-          value={reference}
-          onChange={(event) => setReference(event.target.value)}
-          placeholder="Referência do pagamento"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-          disabled={submitting}
-        />
+        <div>
+          <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            Referência {method === "tpa" ? "*" : ""}
+          </label>
+          <input
+            value={reference}
+            onChange={(event) => {
+              setReference(event.target.value);
+              setMessage(null);
+            }}
+            placeholder={method === "tpa" ? "Referência do TPA" : "Referência (opcional)"}
+            className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+            disabled={submitting}
+          />
+        </div>
       ) : null}
 
       {method === "transfer" ? (
-        <input
-          value={evidenceUrl}
-          onChange={(event) => setEvidenceUrl(event.target.value)}
-          placeholder="URL do comprovativo"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
-          disabled={submitting}
-        />
+        <div>
+          <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            Comprovativo *
+          </label>
+          <input
+            value={evidenceUrl}
+            onChange={(event) => {
+              setEvidenceUrl(event.target.value);
+              setMessage(null);
+            }}
+            placeholder="URL do comprovativo"
+            className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+            disabled={submitting}
+          />
+        </div>
       ) : null}
 
       {message ? (
@@ -288,25 +348,30 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => void pay()}
-        disabled={submitting || ordered.length === 0}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-3 text-sm font-bold text-slate-950 disabled:opacity-60"
-      >
-        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        {submitting
-          ? "A registar pagamento…"
-          : Number(amount) >= total
-            ? "Liquidar dívida e emitir recibo"
-            : "Registar pagamento parcial e emitir recibo"}
-      </button>
+      <div className="space-y-2 border-t border-slate-100 pt-4">
+        <button
+          type="button"
+          onClick={() => void pay()}
+          disabled={!canSubmit}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+        >
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          {submitting
+            ? "A registar pagamento…"
+            : numericAmount >= total
+              ? `Liquidar saldo · ${money.format(total)}`
+              : `Registar pagamento · ${money.format(Number.isFinite(numericAmount) ? numericAmount : 0)}`}
+        </button>
+        {!canSubmit && !submitting && disabledReason ? (
+          <p className="text-center text-xs font-medium text-slate-500">{disabledReason}</p>
+        ) : null}
+      </div>
     </div>
   );
 
   if (embedded) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
         {panel}
       </div>
     );
