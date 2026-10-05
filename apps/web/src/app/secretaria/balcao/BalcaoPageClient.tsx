@@ -7,10 +7,16 @@ import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecret
 import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import type { BalcaoFocusAction } from "@/lib/balcao/action-registry";
 
 export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: string, escolaParam: string }) {
   const searchParams = useSearchParams();
   const alunoId = searchParams?.get("alunoId") ?? null;
+  const actionParam = searchParams?.get("action") ?? null;
+  const focusAction: BalcaoFocusAction | null =
+    actionParam === "payment" || actionParam === "document" || actionParam === "reenrollment"
+      ? actionParam
+      : null;
   const returnToParam = searchParams?.get("returnTo") ?? null;
   const returnTo = returnToParam?.startsWith("/") && !returnToParam.startsWith("//") ? returnToParam : null;
 
@@ -46,6 +52,7 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
             escolaId={escolaId}
             selectedAlunoId={alunoId}
             showSearch={true}
+            focusAction={focusAction}
             returnTo={returnTo}
             onPagamentoConcluido={aoConcluirPagamento}
           />
