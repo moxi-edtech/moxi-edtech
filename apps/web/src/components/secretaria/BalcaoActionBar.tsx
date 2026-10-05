@@ -5,6 +5,8 @@ import {
   CreditCard,
   FileText,
   RefreshCcw,
+  UserRound,
+  GraduationCap,
 } from "lucide-react";
 
 import {
@@ -17,6 +19,8 @@ const ACTION_ICONS = {
   payment: CreditCard,
   document: FileText,
   reenrollment: RefreshCcw,
+  profile: UserRound,
+  grade: GraduationCap,
 } as const;
 
 export function BalcaoActionBar({
