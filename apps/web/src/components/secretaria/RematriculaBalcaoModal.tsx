@@ -995,16 +995,21 @@ function StepPagamento({
   const total = service.valor_base + itensPagamento
     .filter((item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA")
     .reduce((sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1), 0);
+
   if (paymentAlreadyValidated) {
     return (
       <div className="space-y-5">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pagamento</h3>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <strong className="block">Pagamento da rematrícula validado</strong>
-          <span className="mt-1 block text-xs">A secretaria confirmou o comprovativo. Falta apenas concluir a turma e a matrícula deste aluno.</span>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">Pagamento validado</p>
+          <p className="mt-1 text-sm font-black text-emerald-950">A cobrança já está confirmada.</p>
+          <p className="mt-1 text-xs text-emerald-800">Falta apenas concluir a rematrícula com o destino selecionado.</p>
         </div>
-        <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 text-center">
-          Valor recebido: <strong className="text-slate-900">{kwanza.format(total)}</strong>
+        <div className="flex items-end justify-between rounded-xl border border-slate-200 bg-white p-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Valor confirmado</p>
+            <p className="mt-1 text-xs text-slate-500">Não será criado um novo pagamento.</p>
+          </div>
+          <strong className="text-xl font-black text-slate-950">{kwanza.format(total)}</strong>
         </div>
       </div>
     );
@@ -1012,140 +1017,134 @@ function StepPagamento({
 
   return (
     <div className="space-y-5">
-      <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-        Método de Pagamento
-      </h3>
-
-      {/* Method grid */}
-      <div className="grid grid-cols-5 gap-2">
-        {METODOS_UI.map((m) => {
-          const Icon = m.icon;
-          const active = metodo === m.id;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setMetodo(m.id)}
-              disabled={submitting}
-              className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 transition-all ${
-                active
-                  ? "border-[#1F6B3B] bg-[#1F6B3B]/5 text-[#1F6B3B] ring-2 ring-[#1F6B3B]/20"
-                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <Icon className="h-5 w-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wide">
-                {m.label}
-              </span>
-            </button>
-          );
-        })}
+      <div className="flex items-end justify-between rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total a confirmar</p>
+          <p className="mt-1 text-xs text-slate-500">Taxa de rematrícula e itens adicionados.</p>
+        </div>
+        <strong className="text-xl font-black text-slate-950">{kwanza.format(total)}</strong>
       </div>
 
-      {/* Conditional fields */}
-      {metodo === "tpa" && (
-        <div className="space-y-1.5">
-          <label
-            htmlFor="rematricula-ref-tpa"
-            className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-          >
-            Referência TPA <span className="text-rose-500">*</span>
-          </label>
-          <input
-            id="rematricula-ref-tpa"
-            type="text"
-            value={detalhes.referencia}
-            onChange={(e) => setDetalhes({ referencia: e.target.value })}
-            disabled={submitting}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none
-              focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
-              disabled:bg-slate-50 disabled:text-slate-400"
-            placeholder="Ref. do talão"
-          />
-        </div>
-      )}
-
-      {metodo === "transfer" && (
-        <div className="space-y-1.5">
-          <label
-            htmlFor="rematricula-evidence"
-            className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-          >
-            Comprovativo (URL) <span className="text-rose-500">*</span>
-          </label>
-          <input
-            id="rematricula-evidence"
-            type="url"
-            value={detalhes.evidencia_url}
-            onChange={(e) => setDetalhes({ evidencia_url: e.target.value })}
-            disabled={submitting}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none
-              focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
-              disabled:bg-slate-50 disabled:text-slate-400"
-            placeholder="https://…"
-          />
-        </div>
-      )}
-
-      {(metodo === "mcx" || metodo === "kiwk") && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="rematricula-ref-mcx"
-              className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-            >
-              Referência
-            </label>
-            <input
-              id="rematricula-ref-mcx"
-              type="text"
-              value={detalhes.referencia}
-              onChange={(e) => setDetalhes({ referencia: e.target.value })}
-              disabled={submitting}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none
-                focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
-                disabled:bg-slate-50"
-            />
+      {total > 0 ? (
+        <>
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Forma de pagamento</p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {METODOS_UI.map((item) => {
+                const Icon = item.icon;
+                const active = metodo === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setMetodo(item.id)}
+                    disabled={submitting}
+                    className={[
+                      "flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 text-[10px] font-bold transition",
+                      active
+                        ? "border-slate-950 bg-slate-950 text-white"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="rematricula-gw-ref"
-              className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-            >
-              ID Gateway
-            </label>
-            <input
-              id="rematricula-gw-ref"
-              type="text"
-              value={detalhes.gateway_ref}
-              onChange={(e) => setDetalhes({ gateway_ref: e.target.value })}
-              disabled={submitting}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none
-                focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
-                disabled:bg-slate-50"
-            />
-          </div>
+
+          {metodo === "tpa" ? (
+            <div>
+              <label
+                htmlFor="rematricula-ref-tpa"
+                className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"
+              >
+                Referência TPA *
+              </label>
+              <input
+                id="rematricula-ref-tpa"
+                type="text"
+                value={detalhes.referencia}
+                onChange={(event) => setDetalhes({ referencia: event.target.value })}
+                disabled={submitting}
+                placeholder="Ref. do talão"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:bg-slate-50"
+              />
+            </div>
+          ) : null}
+
+          {metodo === "transfer" ? (
+            <div>
+              <label
+                htmlFor="rematricula-evidence"
+                className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"
+              >
+                Comprovativo *
+              </label>
+              <input
+                id="rematricula-evidence"
+                type="url"
+                value={detalhes.evidencia_url}
+                onChange={(event) => setDetalhes({ evidencia_url: event.target.value })}
+                disabled={submitting}
+                placeholder="URL do comprovativo"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:bg-slate-50"
+              />
+            </div>
+          ) : null}
+
+          {(metodo === "mcx" || metodo === "kiwk") ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="rematricula-ref-mcx"
+                  className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"
+                >
+                  Referência
+                </label>
+                <input
+                  id="rematricula-ref-mcx"
+                  type="text"
+                  value={detalhes.referencia}
+                  onChange={(event) => setDetalhes({ referencia: event.target.value })}
+                  disabled={submitting}
+                  placeholder="Opcional"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:bg-slate-50"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="rematricula-gw-ref"
+                  className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"
+                >
+                  ID gateway
+                </label>
+                <input
+                  id="rematricula-gw-ref"
+                  type="text"
+                  value={detalhes.gateway_ref}
+                  onChange={(event) => setDetalhes({ gateway_ref: event.target.value })}
+                  disabled={submitting}
+                  placeholder="Opcional"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:bg-slate-50"
+                />
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-900">
+          <strong className="block text-emerald-950">Sem pagamento</strong>
+          <span className="mt-1 block text-xs">Esta classe não cobra taxa de rematrícula. Pode confirmar a operação diretamente.</span>
         </div>
       )}
 
-      {/* Error */}
-      {apiError && (
-        <div
-          role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 font-medium"
-        >
+      {apiError ? (
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-700">
           {ERROR_MESSAGES[apiError] || apiError}
         </div>
-      )}
-
-      {/* Confirmation text */}
-      <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 text-sm text-slate-700 text-center font-medium">
-        Confirma que recebeu{" "}
-        <strong className="text-slate-900">
-          {kwanza.format(total)}
-        </strong>{" "}
-        e deseja concluir a rematrícula?
-      </div>
+      ) : null}
     </div>
   );
 }
@@ -1288,26 +1287,15 @@ function FooterSuccess({
         </button>
       )}
       {printUrl && (
-        <>
-          <button
-            onClick={() => window.open(printUrl, "_blank", "noopener,noreferrer")}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl
-              bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white
-              hover:brightness-110 transition-colors"
-          >
-            <Printer className="h-4 w-4" />
-            Abrir comprovante
-          </button>
-          <button
-            onClick={() => window.open(printUrl, "_blank", "noopener,noreferrer")}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl
-              bg-white border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700
-              hover:bg-slate-50 transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Abrir comprovante
-          </button>
-        </>
+        <button
+          onClick={() => window.open(printUrl, "_blank", "noopener,noreferrer")}
+          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl
+            bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white
+            hover:brightness-110 transition-colors"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Abrir comprovante
+        </button>
       )}
       <button
         onClick={onClose}
@@ -1337,6 +1325,7 @@ function FooterWizard({
   paymentAlreadyValidated,
   academicOnly,
   reconciliationOnly,
+  disabledReason,
   submit,
 }: {
   step: number;
@@ -1351,55 +1340,71 @@ function FooterWizard({
   paymentAlreadyValidated: boolean;
   academicOnly: boolean;
   reconciliationOnly: boolean;
+  disabledReason: string | null;
   submit: () => Promise<void>;
 }) {
   return (
-    <div className="flex justify-between">
-      <button
-        onClick={() => (step > 1 ? setStep(step - 1) : onClose())}
-        disabled={submitting}
-        className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600
-          hover:bg-slate-200 transition-colors disabled:opacity-50"
-      >
-        {step > 1 ? "Voltar" : "Cancelar"}
-      </button>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => (step > 1 ? setStep(step - 1) : onClose())}
+          disabled={submitting}
+          className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
+        >
+          {step > 1 ? "Voltar" : "Cancelar"}
+        </button>
 
-      {step < 3 && !academicOnly && !(step === 2 && paymentTotal <= 0 && financialReady) ? (
-        <button
-          onClick={() => {
-            if (step === 2 && !financialReady) {
-              onRegularizeDebt?.();
-              return;
+        {step < 3 && !academicOnly && !(step === 2 && paymentTotal <= 0 && financialReady) ? (
+          <button
+            onClick={() => {
+              if (step === 2 && !financialReady) {
+                onRegularizeDebt?.();
+                return;
+              }
+              setStep(step + 1);
+            }}
+            disabled={
+              submitting ||
+              (step === 1 && !academicReady) ||
+              (step === 2 && paymentTotal <= 0 && financialReady) ||
+              (step === 2 && !financialReady && !onRegularizeDebt)
             }
-            setStep(step + 1);
-          }}
-          disabled={submitting || (step === 1 && !academicReady) || (step === 2 && paymentTotal <= 0 && financialReady) || (step === 2 && !financialReady && !onRegularizeDebt)}
-          className="rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-slate-900
-            hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {step === 2 && !financialReady ? "Regularizar dívida" : "Próximo"}
-        </button>
-      ) : (
-        <button
-          onClick={submit}
-          disabled={!canSubmit}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-6 py-2.5
-            text-sm font-bold text-white hover:brightness-110 transition-colors
-            disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              A processar…
-            </>
-          ) : (
-            <>
-              <Check className="h-4 w-4" />
-              {reconciliationOnly ? "Registar decisão e concluir matrícula" : academicOnly ? "Registar conclusão" : paymentAlreadyValidated ? "Concluir rematrícula" : paymentTotal > 0 ? "Pagar e concluir rematrícula" : "Concluir matrícula"}
-            </>
-          )}
-        </button>
-      )}
+            className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            {step === 2 && !financialReady ? "Regularizar dívida" : step === 1 ? "Rever cobrança" : "Continuar"}
+          </button>
+        ) : (
+          <button
+            onClick={submit}
+            disabled={!canSubmit}
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                A processar…
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                {reconciliationOnly
+                  ? "Concluir reconciliação"
+                  : academicOnly
+                    ? "Registar conclusão"
+                    : paymentAlreadyValidated
+                      ? "Concluir rematrícula"
+                      : paymentTotal > 0
+                        ? `Confirmar rematrícula · ${kwanza.format(paymentTotal)}`
+                        : "Concluir rematrícula"}
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {!canSubmit && step >= 3 && !submitting && disabledReason ? (
+        <p className="text-right text-xs font-medium text-slate-500">{disabledReason}</p>
+      ) : null}
     </div>
   );
 }
