@@ -7,6 +7,7 @@ import { AlertCircle, Archive, Check, Edit3, ExternalLink, RefreshCw, Save } fro
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { toContextualPortalPath } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import type { BalcaoActionId } from "@/lib/balcao/action-registry";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
@@ -1613,6 +1614,9 @@ function Step3Pagamento(props: {
   setEditOverride: (value: boolean) => void;
   setResumeMode: (value: boolean) => void;
   onCompleted?: (alunoId?: string) => void;
+  embedded?: boolean;
+  onActionChange?: (actionId: BalcaoActionId) => void;
+  onResumeDraft?: (id: string) => void;
 }) {
   const {
     onBack,
@@ -1632,6 +1636,9 @@ function Step3Pagamento(props: {
     setEditOverride,
     setResumeMode,
     onCompleted,
+    embedded = false,
+    onActionChange,
+    onResumeDraft,
   } = props;
 
   const [payment, setPayment] = useState({
@@ -1832,16 +1839,31 @@ function Step3Pagamento(props: {
       Boolean(existingCandidaturaId && !isActiveMatriculaStatus(existingStatus));
 
     if (shouldResumeDraft && isUuid(existingCandidaturaId)) {
-      router.push(`${secretariaBase}/admissoes/nova?candidaturaId=${existingCandidaturaId}`);
+      if (embedded && onResumeDraft) {
+        setDuplicateConflict(null);
+        onResumeDraft(existingCandidaturaId);
+      } else {
+        router.push(`${secretariaBase}/admissoes/nova?candidaturaId=${existingCandidaturaId}`);
+      }
       return;
     }
 
     const alunoId = duplicateConflict?.existing_matricula?.aluno_id;
     if (isUuid(alunoId)) {
-      router.push(`${secretariaBase}/alunos/${alunoId}`);
+      if (embedded) {
+        setDuplicateConflict(null);
+        onCompleted?.(alunoId);
+      } else {
+        router.push(`${secretariaBase}/alunos/${alunoId}`);
+      }
       return;
     }
-    router.push(`${secretariaBase}/alunos`);
+
+    if (embedded) {
+      onActionChange?.("desk");
+    } else {
+      router.push(`${secretariaBase}/alunos`);
+    }
   };
 
   const correctDuplicateAdmission = () => {
@@ -2071,16 +2093,21 @@ function Step3Pagamento(props: {
                   router.push(`${secretariaBase}/documentos?tipo=comprovante_matricula`);
                 }
               } else if (passo.id === "registar_propina") {
-                setShowPaymentModal(true);
+                if (embedded && onActionChange) onActionChange("payment");
+                else setShowPaymentModal(true);
               } else if (passo.id === "liberar_portal") {
                 setPostAction("portal");
               } else if (passo.id === "lancar_notas") {
-                setPostAction("notas");
+                if (embedded && onActionChange) onActionChange("grade");
+                else setPostAction("notas");
               } else if (passo.id === "nova_matricula") {
                 onReset();
               }
             }}
-            onDismiss={() => router.push(`${secretariaBase}/matriculas`)}
+            onDismiss={() => {
+              if (embedded && onActionChange) onActionChange("desk");
+              else router.push(`${secretariaBase}/matriculas`);
+            }}
           />
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -2099,7 +2126,16 @@ function Step3Pagamento(props: {
             <div className="mt-4 flex flex-wrap gap-2">
               {result.comprovante?.printUrl && <a href={result.comprovante.printUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovante</a>}
               {result.recibo?.ok && result.recibo.print_url && <a href={result.recibo.print_url} target="_blank" rel="noreferrer" className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo</a>}
-              <button type="button" onClick={() => router.push(`${secretariaBase}/matriculas`)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-black text-slate-700">Fechar</button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (embedded && onActionChange) onActionChange("desk");
+                  else router.push(`${secretariaBase}/matriculas`);
+                }}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-black text-slate-700"
+              >
+                {embedded ? "Continuar atendimento" : "Fechar"}
+              </button>
             </div>
             {result.recibo?.status === 'pending' && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Pagamento registado. O recibo financeiro será disponibilizado após a liquidação.</p>}
             {result.recibo?.status === 'error' && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">Não foi possível emitir o recibo financeiro. Tente novamente pela área de documentos.</p>}
@@ -2177,10 +2213,13 @@ function Step3Pagamento(props: {
           )}
           <button
             type="button"
-            onClick={() => router.push(`${secretariaBase}/admissoes`)}
+            onClick={() => {
+              if (embedded && onActionChange) onActionChange("desk");
+              else router.push(`${secretariaBase}/admissoes`);
+            }}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-amber/40"
           >
-            Voltar ao radar
+            {embedded ? "Voltar à visão geral" : "Voltar ao radar"}
           </button>
         </div>
 
@@ -2493,12 +2532,14 @@ export default function AdmissaoWizardClient({
   initialCandidaturaId,
   embedded = false,
   onSuccess,
+  onActionChange,
 }: {
   escolaId: string;
   escolaSlug?: string | null;
   initialCandidaturaId?: string | null;
   embedded?: boolean;
   onSuccess?: (alunoId?: string) => void;
+  onActionChange?: (actionId: BalcaoActionId) => void;
 }) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -2969,6 +3010,9 @@ export default function AdmissaoWizardClient({
             setEditOverride={setEditOverride}
             setResumeMode={setResumeMode}
             onCompleted={onSuccess}
+            embedded={embedded}
+            onActionChange={onActionChange}
+            onResumeDraft={handleResume}
           />
         )}
       </div>
