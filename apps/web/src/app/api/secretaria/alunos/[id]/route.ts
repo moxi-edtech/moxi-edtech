@@ -73,7 +73,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     let alunoQuery = s
       .from('alunos')
-      .select('id, nome, email, telefone, data_nascimento, sexo, bi_numero, tipo_documento, numero_documento, naturalidade, provincia, pai_nome, mae_nome, nif, endereco, responsavel, responsavel_nome, responsavel_contato, encarregado_nome, encarregado_telefone, encarregado_email, encarregado_relacao, telefone_responsavel, responsavel_financeiro_nome, responsavel_financeiro_nif, mesmo_que_encarregado, documentos, campos_extras, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email_real, email_auth, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, nif, encarregado_relacao, numero_processo_login)')
+      .select('id, nome, numero_processo, email, telefone, data_nascimento, sexo, bi_numero, tipo_documento, numero_documento, naturalidade, provincia, pai_nome, mae_nome, nif, endereco, responsavel, responsavel_nome, responsavel_contato, encarregado_nome, encarregado_telefone, encarregado_email, encarregado_relacao, telefone_responsavel, responsavel_financeiro_nome, responsavel_financeiro_nif, mesmo_que_encarregado, documentos, campos_extras, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email_real, email_auth, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, nif, encarregado_relacao, numero_processo_login)')
       .eq('id', alunoId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -106,9 +106,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const profObj = Array.isArray((aluno as any).profiles) ? (aluno as any).profiles[0] : (aluno as any).profiles
     let matriculaQuery = s
       .from('matriculas')
-      .select('id, turma_id, session_id, created_at, status, turmas ( nome, turma_codigo, classes ( nome ), cursos ( nome ) )')
+      .select('id, turma_id, session_id, ativo, created_at, status, turmas ( nome, turma_codigo, classes ( nome ), cursos ( nome ) )')
       .eq('aluno_id', alunoId)
       .eq('escola_id', alunoEscolaId)
+      .eq('ativo', true)
 
     if (requestedAcademicYearId) {
       matriculaQuery = matriculaQuery.eq('session_id', requestedAcademicYearId)
@@ -153,7 +154,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         escola_id: alunoEscolaId,
         email: (aluno as any).email ?? profileEmail ?? dadosCandidato?.email ?? null,
         numero_processo_login: profObj?.numero_processo_login ?? null,
-        numero_processo: profObj?.numero_processo_login ?? null,
+        numero_processo: (aluno as any).numero_processo ?? profObj?.numero_processo_login ?? null,
         telefone: (aluno as any).telefone ?? profObj?.telefone ?? dadosCandidato?.telefone ?? null,
         data_nascimento: (aluno as any).data_nascimento ?? profObj?.data_nascimento ?? dadosCandidato?.data_nascimento ?? null,
         sexo: (aluno as any).sexo ?? profObj?.sexo ?? dadosCandidato?.sexo ?? null,
