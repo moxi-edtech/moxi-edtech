@@ -14,6 +14,7 @@ on:
       - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/PagamentoDividaModal.tsx"
       - "apps/web/src/components/secretaria/BalcaoWorkspace.tsx"
       - "apps/web/src/components/secretaria/BalcaoActionBar.tsx"
       - "apps/web/src/components/secretaria/AlunoProfilePanel.tsx"
@@ -109,6 +110,7 @@ jobs:
             src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
+            src/components/secretaria/PagamentoDividaModal.tsx \
             src/components/secretaria/BalcaoWorkspace.tsx \
             src/components/secretaria/BalcaoActionBar.tsx \
             src/components/secretaria/AlunoProfilePanel.tsx \
