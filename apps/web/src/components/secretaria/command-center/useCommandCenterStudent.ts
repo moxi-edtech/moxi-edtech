@@ -8,6 +8,7 @@ export type CommandCenterStudentContext = {
   numeroProcesso?: string | null;
   classe?: string | null;
   turma?: string | null;
+  turmaId?: string | null;
 };
 
 export function useCommandCenterStudent(
@@ -46,6 +47,7 @@ export function useCommandCenterStudent(
           numeroProcesso: item.numero_processo || item.processo || null,
           classe: item.classe_nome || item.classe || null,
           turma: item.turma_nome || item.turma_codigo || item.turma || null,
+          turmaId: item.turma_id || null,
         });
       })
       .catch(() => {
