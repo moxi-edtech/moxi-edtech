@@ -2013,6 +2013,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   // Itens escolhidos dentro da rematrícula pertencem ao pagamento dessa
   // operação, não ao carrinho genérico do balcão.
   const [itensRematricula, setItensRematricula] = useState<RematriculaPaymentItem[]>([]);
+  const [mensalidadesDestino, setMensalidadesDestino] = useState<RematriculaPaymentItem[]>([]);
 
   const rematricula = useRematriculaBalcao({
     escolaId,
@@ -2066,12 +2067,61 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     [dossier.mensalidades, selectedMensalidadeIds]
   );
 
+  useEffect(() => {
+    const turmaId = rematricula.selectedTurmaId;
+    if (!turmaId || !effectiveAcademicYearId) {
+      setMensalidadesDestino([]);
+      setItensRematricula((current) => current.filter((item) => !item.previsto));
+      return;
+    }
+
+    const controller = new AbortController();
+    setItensRematricula((current) => current.filter((item) => !item.previsto));
+
+    void (async () => {
+      try {
+        const params = new URLSearchParams({
+          escola_id: escolaId,
+          turma_id: turmaId,
+          session_id: effectiveAcademicYearId,
+        });
+        const response = await fetch(`/api/financeiro/orcamento/matricula?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.ok !== true) {
+          setMensalidadesDestino([]);
+          return;
+        }
+
+        const rows = Array.isArray(payload?.data?.mensalidades) ? payload.data.mensalidades : [];
+        setMensalidadesDestino(rows
+          .filter((item: any) => typeof item?.competencia === "string" && Number(item?.valor ?? 0) > 0)
+          .map((item: any) => ({
+            id: `destino:${item.competencia}`,
+            tipo: "mensalidade" as const,
+            nome: `Propina ${item.competencia}`,
+            preco: Number(item.valor),
+            quantidade: 1,
+            competencia: String(item.competencia),
+            data_vencimento: String(item.data_vencimento ?? ""),
+            previsto: true,
+          })));
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setMensalidadesDestino([]);
+        }
+      }
+    })();
+
+    return () => controller.abort();
+  }, [effectiveAcademicYearId, escolaId, rematricula.selectedTurmaId]);
+
   const itensDisponiveisNaRematricula = useMemo<RematriculaPaymentItem[]>(() => [
-    ...dossier.mensalidades.filter((mensalidade) =>
-      !mensalidade.atrasada && unlockedMensalidadeIds.has(mensalidade.id),
-    ),
+    ...mensalidadesDestino,
     ...servicos.filter((servico) => ["DOC_CARTAO_ESTUDANTE", "SERV_UNIFORME"].includes(servico.codigo.trim().toUpperCase())),
-  ], [dossier.mensalidades, servicos, unlockedMensalidadeIds]);
+  ], [mensalidadesDestino, servicos]);
 
   useEffect(() => {
     setItensRematricula([]);
