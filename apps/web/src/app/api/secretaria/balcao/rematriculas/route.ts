@@ -34,6 +34,9 @@ const Body = z.object({
     id: z.string().uuid(),
     tipo: z.enum(["mensalidade", "servico"]),
   })).max(50).optional(),
+  mensalidades_competencias: z.array(
+    z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  ).max(12).optional().default([]),
 });
 
 const SERVICE_CODE = "SERV_REMATRICULA";
@@ -147,6 +150,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || "Payload inválido" }, { status: 400 });
     }
     const body = parsed.data;
+    if (new Set(body.mensalidades_competencias).size !== body.mensalidades_competencias.length) {
+      return NextResponse.json({
+        ok: false,
+        error: "Existem mensalidades duplicadas na seleção.",
+        code: "DUPLICATE_MONTHLY_SELECTION",
+      }, { status: 400 });
+    }
 
     // A rematrícula normal não decide o resultado académico. O resultado vem
     // exclusivamente do RAA e precisa estar fechado como aprovado.
@@ -252,7 +262,7 @@ export async function POST(request: Request) {
       matricula = matriculaAnterior;
     }
     const origemMatriculaId = String(matricula.id);
-    const { data: matriculaDestino } = await supabase
+    let { data: matriculaDestino } = await supabase
       .from("matriculas")
       .select("id, turma_id")
       .eq("escola_id", escolaId)
@@ -350,12 +360,22 @@ export async function POST(request: Request) {
     }
 
     if (numeroOrigem !== null && numeroDestino !== null) {
-      if (numeroOrigem === 12) {
-        return NextResponse.json({ ok: false, error: "A 12ª classe não tem uma classe seguinte configurada.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
-      }
-      const esperado = numeroOrigem + 1;
-      if (numeroDestino !== esperado) {
-        return NextResponse.json({ ok: false, error: "Aluno aprovado deve seguir para a classe imediatamente seguinte.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+      if (academicEligibility.mode === "repeat") {
+        if (numeroDestino !== numeroOrigem) {
+          return NextResponse.json({
+            ok: false,
+            error: "Aluno retido deve repetir a mesma classe.",
+            code: "REMATRICULA_PROGRESSION_INVALID",
+          }, { status: 409 });
+        }
+      } else {
+        if (numeroOrigem === 12) {
+          return NextResponse.json({ ok: false, error: "A 12ª classe não tem uma classe seguinte configurada.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+        }
+        const esperado = numeroOrigem + 1;
+        if (numeroDestino !== esperado) {
+          return NextResponse.json({ ok: false, error: "Aluno aprovado deve seguir para a classe imediatamente seguinte.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+        }
       }
     }
     if (turmaOrigem?.curso_id && turmaDestino?.curso_id && turmaOrigem.curso_id !== turmaDestino.curso_id && !(numeroOrigem === 0 && numeroDestino === 1)) {
@@ -380,6 +400,112 @@ export async function POST(request: Request) {
     const confirmationExempt = Boolean(service?.ativo && targetPricing.origem === "classe" && valorConfirmacao === 0);
     if (!service || !service.ativo || (valorConfirmacao <= 0 && !confirmationExempt)) {
       return NextResponse.json({ ok: false, error: "O emolumento de rematrícula ainda não está configurado.", code: "REMATRICULA_PRICE_NOT_CONFIGURED" }, { status: 409 });
+    }
+
+    let mensalidadesDestinoSelecionadas: any[] = [];
+    let matriculaDestinoPreparadaId: string | null = matriculaDestino?.id ? String(matriculaDestino.id) : null;
+
+    if (body.mensalidades_competencias.length > 0) {
+      if (!matricula.session_id) {
+        return NextResponse.json({
+          ok: false,
+          error: "A matrícula de origem não possui sessão académica válida para preparar o ano destino.",
+          code: "REMATRICULA_SOURCE_SESSION_REQUIRED",
+        }, { status: 409 });
+      }
+
+      const { data: reserva, error: reservaError } = await (supabase as any).rpc(
+        "preparar_aluno_para_rematricula",
+        {
+          p_escola_id: escolaId,
+          p_aluno_id: body.aluno_id,
+          p_from_session_id: matricula.session_id,
+          p_to_session_id: academicContext.anoLetivoId,
+          p_turma_destino_id: body.destino_turma_id,
+        },
+      );
+      if (reservaError || reserva?.ok !== true || !reserva?.matricula_id) {
+        return NextResponse.json({
+          ok: false,
+          error: reservaError?.message ?? reserva?.erro ?? "Não foi possível preparar a matrícula destino.",
+          code: "REMATRICULA_RESERVATION_REQUIRED",
+        }, { status: 409 });
+      }
+
+      matriculaDestinoPreparadaId = String(reserva.matricula_id);
+      const garantia = await garantirVinculoFinanceiro(
+        supabase,
+        escolaId,
+        matriculaDestinoPreparadaId,
+        academicContext.anoLetivoId,
+      );
+      if (!garantia.ok) {
+        return NextResponse.json({
+          ok: false,
+          error: "A reserva foi preparada, mas o carnet do ano destino não pôde ser gerado.",
+          code: "FINANCIAL_LINK_REQUIRED",
+          details: garantia.error,
+        }, { status: 409 });
+      }
+
+      const { data: mensalidadesDestino, error: mensalidadesDestinoError } = await supabase
+        .from("mensalidades")
+        .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, status, data_vencimento")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", body.aluno_id)
+        .eq("matricula_id", matriculaDestinoPreparadaId)
+        .order("ano_referencia", { ascending: true })
+        .order("mes_referencia", { ascending: true });
+      if (mensalidadesDestinoError) throw mensalidadesDestinoError;
+
+      const abertas = (mensalidadesDestino ?? [])
+        .map((row: any) => ({
+          ...row,
+          competencia: `${row.ano_referencia}-${String(row.mes_referencia).padStart(2, "0")}`,
+          saldo: Math.max(
+            Number(row.valor_previsto ?? row.valor ?? 0) - Number(row.valor_pago_total ?? 0),
+            0,
+          ),
+        }))
+        .filter((row: any) =>
+          row.saldo > 0 &&
+          !["pago", "isento", "cancelado"].includes(String(row.status ?? "").toLowerCase()),
+        );
+
+      const expectedPrefix = abertas
+        .slice(0, body.mensalidades_competencias.length)
+        .map((row: any) => row.competencia);
+      if (
+        expectedPrefix.length !== body.mensalidades_competencias.length ||
+        expectedPrefix.some((competencia: string, index: number) =>
+          competencia !== body.mensalidades_competencias[index],
+        )
+      ) {
+        return NextResponse.json({
+          ok: false,
+          error: "As mensalidades do ano destino devem ser selecionadas em ordem cronológica, começando pela primeira competência em aberto.",
+          code: "MENSALIDADES_SELECTION_ORDER_INVALID",
+        }, { status: 409 });
+      }
+
+      mensalidadesDestinoSelecionadas = abertas.filter((row: any) =>
+        body.mensalidades_competencias.includes(row.competencia),
+      );
+      if (mensalidadesDestinoSelecionadas.length !== body.mensalidades_competencias.length) {
+        return NextResponse.json({
+          ok: false,
+          error: "Uma das mensalidades selecionadas não foi gerada na matrícula destino.",
+          code: "MENSALIDADES_NOT_GENERATED",
+        }, { status: 409 });
+      }
+
+      const { data: destinoAtualizado } = await supabase
+        .from("matriculas")
+        .select("id, turma_id")
+        .eq("escola_id", escolaId)
+        .eq("id", matriculaDestinoPreparadaId)
+        .maybeSingle();
+      matriculaDestino = destinoAtualizado ?? matriculaDestino;
     }
 
     const requestedItems = body.itens ?? [];
@@ -423,6 +549,14 @@ export async function POST(request: Request) {
     }
 
     const paymentItems = [
+      ...mensalidadesDestinoSelecionadas.map((item: any) => ({
+        id: String(item.id),
+        tipo: "mensalidade" as const,
+        nome: `Propina ${String(item.mes_referencia).padStart(2, "0")}/${item.ano_referencia}`,
+        preco: item.saldo,
+        matricula_destino_id: matriculaDestinoPreparadaId,
+        competencia: item.competencia,
+      })),
       ...(extraMensalidades ?? []).map((item: any) => ({
         id: String(item.id),
         tipo: "mensalidade" as const,
@@ -702,6 +836,7 @@ export async function POST(request: Request) {
           gateway_ref: body.gateway_ref ?? null,
         },
         itens: paymentItems,
+        mensalidades_competencias: body.mensalidades_competencias,
       }),
       });
       paymentJson = await paymentResponse.json().catch(() => null);
