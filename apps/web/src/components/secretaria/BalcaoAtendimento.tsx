@@ -119,9 +119,9 @@ export interface BillingWindowIssue {
 }
 
 const METODOS_UI: { id: MetodoPagamento; icon: React.ElementType; label: string }[] = [
-  { id: "cash", icon: Banknote, label: "Numerario" },
+  { id: "cash", icon: Banknote, label: "Numerário" },
   { id: "tpa", icon: CreditCard, label: "TPA" },
-  { id: "transfer", icon: ArrowRightLeft, label: "Transf." },
+  { id: "transfer", icon: ArrowRightLeft, label: "Transfer." },
   { id: "mcx", icon: QrCode, label: "Multicaixa" },
   { id: "kiwk", icon: QrCode, label: "Kwik" },
 ];
@@ -479,6 +479,14 @@ function useCarrinho() {
 
   const valorNum = Number(valorRecebido) || 0;
   const troco = Math.max(0, valorNum - total);
+
+  useEffect(() => {
+    if (metodo !== "cash" || total <= 0) return;
+    setValorRecebido((current) => {
+      const currentValue = Number(current) || 0;
+      return currentValue < total ? String(total) : current;
+    });
+  }, [metodo, total]);
 
   const disabledReason = useMemo(() => {
     if (itens.length === 0) return "Selecione pelo menos uma cobrança.";
@@ -2238,7 +2246,7 @@ function CarrinhoPanel({
         {(metodo === "tpa" || metodo === "mcx" || metodo === "kiwk") && (
           <div className="space-y-2">
             <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">
-              Referencia {metodo === "tpa" && <span className="text-rose-500">*</span>}
+              Referência {metodo === "tpa" && <span className="text-rose-500">*</span>}
             </label>
             <input
               value={detalhes.referencia}
