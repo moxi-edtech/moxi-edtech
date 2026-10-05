@@ -106,12 +106,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const profObj = Array.isArray((aluno as any).profiles) ? (aluno as any).profiles[0] : (aluno as any).profiles
     let matriculaQuery = s
       .from('matriculas')
-      .select('id, turma_id, ano_letivo_id, created_at, status, turmas ( nome, cursos ( nome ) )')
+      .select('id, turma_id, session_id, created_at, status, turmas ( nome, turma_codigo, classes ( nome ), cursos ( nome ) )')
       .eq('aluno_id', alunoId)
       .eq('escola_id', alunoEscolaId)
 
     if (requestedAcademicYearId) {
-      matriculaQuery = matriculaQuery.eq('ano_letivo_id', requestedAcademicYearId)
+      matriculaQuery = matriculaQuery.eq('session_id', requestedAcademicYearId)
     }
 
     const { data: matricula } = await matriculaQuery
@@ -130,6 +130,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const turma = Array.isArray((matricula as any)?.turmas) ? (matricula as any)?.turmas?.[0] : (matricula as any)?.turmas
     const curso = Array.isArray((turma as any)?.cursos) ? (turma as any)?.cursos?.[0] : (turma as any)?.cursos
+    const classe = Array.isArray((turma as any)?.classes) ? (turma as any)?.classes?.[0] : (turma as any)?.classes
     const dadosCandidato = (candidatura as any)?.dados_candidato ?? {}
     const profileEmail = profObj?.email ?? profObj?.email_real ?? profObj?.email_auth ?? null
     const responsavelNome =
@@ -152,6 +153,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         escola_id: alunoEscolaId,
         email: (aluno as any).email ?? profileEmail ?? dadosCandidato?.email ?? null,
         numero_processo_login: profObj?.numero_processo_login ?? null,
+        numero_processo: profObj?.numero_processo_login ?? null,
         telefone: (aluno as any).telefone ?? profObj?.telefone ?? dadosCandidato?.telefone ?? null,
         data_nascimento: (aluno as any).data_nascimento ?? profObj?.data_nascimento ?? dadosCandidato?.data_nascimento ?? null,
         sexo: (aluno as any).sexo ?? profObj?.sexo ?? dadosCandidato?.sexo ?? null,
@@ -173,6 +175,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         campos_extras: (aluno as any).campos_extras ?? dadosCandidato?.campos_extras ?? {},
         turma_id: (matricula as any)?.turma_id ?? null,
         turma_nome: (turma as any)?.nome ?? null,
+        turma_codigo: (turma as any)?.turma_codigo ?? null,
+        classe_nome: (classe as any)?.nome ?? null,
         turma_curso: (curso as any)?.nome ?? null,
       }
     })
