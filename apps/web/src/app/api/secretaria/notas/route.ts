@@ -18,10 +18,10 @@ const Body = z.object({
   trimestre: z.number().int().min(1).max(3),
   tipo_avaliacao: z.string().trim().min(2).max(40).optional(),
   is_isento: z.boolean().optional().default(false),
-  notas: z.array(z.object({ 
-    aluno_id: z.string().uuid(), 
-    valor: z.number().min(0).max(100).nullable() 
-  })),
+  notas: z.array(z.object({
+    aluno_id: z.string().uuid(),
+    valor: z.number().min(0).max(100).nullable(),
+  })).min(1).max(50),
 })
 
 export async function POST(req: Request) {
@@ -62,6 +62,30 @@ export async function POST(req: Request) {
       escolaId: academicContext.escolaId,
       anoLetivoId: academicContext.anoLetivoId,
     })
+
+    const alunoIds = Array.from(new Set(body.notas.map((nota) => nota.aluno_id)))
+    const { data: activeMatriculas, error: matriculasError } = await supabase
+      .from('matriculas')
+      .select('aluno_id')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', body.turma_id)
+      .eq('session_id', academicContext.anoLetivoId)
+      .eq('ativo', true)
+      .in('aluno_id', alunoIds)
+
+    if (matriculasError) {
+      return NextResponse.json({ ok: false, error: matriculasError.message }, { status: 400 })
+    }
+
+    const activeAlunoIds = new Set((activeMatriculas ?? []).map((row) => String(row.aluno_id)))
+    const invalidAlunoId = alunoIds.find((alunoId) => !activeAlunoIds.has(alunoId))
+    if (invalidAlunoId) {
+      return NextResponse.json({
+        ok: false,
+        error: 'Um ou mais alunos não possuem matrícula ativa nesta turma e ano letivo.',
+        code: 'ACTIVE_ENROLLMENT_REQUIRED',
+      }, { status: 409 })
+    }
 
     const { data, error } = await supabase.rpc('lancar_notas_batch', {
       p_escola_id: escolaId,
