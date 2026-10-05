@@ -47,6 +47,7 @@ type PautaRapidaModalProps = {
   lockTurma?: boolean;
   showPeriodoTabs?: boolean;
   pendingPeriodoNumeros?: number[];
+  focusAlunoId?: string;
   hideNavigation?: boolean;
 };
 
@@ -58,6 +59,7 @@ export function PautaRapidaModal({
   lockTurma = false,
   showPeriodoTabs = false,
   pendingPeriodoNumeros = [],
+  focusAlunoId,
   hideNavigation = false,
 }: PautaRapidaModalProps) {
   const router = useRouter();
@@ -189,7 +191,7 @@ export function PautaRapidaModal({
         const json = await res.json().catch(() => ({}));
         if (!active) return;
         if (res.ok && json.ok && Array.isArray(json.items)) {
-          const mapped =
+          const mapped: StudentGradeRow[] =
             json.items.map((row: any, index: number) => ({
               id: row.aluno_id,
               numero: row.numero_chamada ?? index + 1,
@@ -202,8 +204,11 @@ export function PautaRapidaModal({
               is_isento: !!row.is_isento,
               _status: "synced",
             }));
-          setPautaInitial(mapped);
-          setPautaDraft(mapped);
+          const scoped = focusAlunoId
+            ? mapped.filter((row) => row.id === focusAlunoId)
+            : mapped;
+          setPautaInitial(scoped);
+          setPautaDraft(scoped);
           setPautaPesoPorTipo((json.meta?.peso_por_tipo as Record<string, number>) ?? null);
           setPautaComponentes(Array.isArray(json.meta?.componentes_ativos) ? json.meta.componentes_ativos : []);
         } else {
@@ -221,7 +226,7 @@ export function PautaRapidaModal({
     return () => {
       active = false;
     };
-  }, [accessToken, turmaId, disciplinaId, periodoNumero]);
+  }, [accessToken, turmaId, disciplinaId, periodoNumero, focusAlunoId]);
 
   const disciplinasFiltradas = useMemo(() => {
     return disciplinas.filter((disciplina) => {
@@ -268,46 +273,33 @@ export function PautaRapidaModal({
       throw new Error("Disciplina inválida para lançamento.");
     }
 
-    // 1. Tratar Isenções (Prioridade)
-    const isentos = rows.filter(r => r.is_isento);
-    if (isentos.length > 0) {
-      const res = await fetch(`/api/secretaria/notas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          turma_id: turmaId,
-          ano_letivo_id: academicYearId,
-          disciplina_id: disciplinaCanonicalId,
-          turma_disciplina_id: turmaDisciplinaId,
-          trimestre: periodoNumero,
-          is_isento: true,
-          notas: isentos.map(r => ({ aluno_id: r.id, valor: null }))
-        }),
-      });
-      if (!res.ok) throw new Error("Falha ao salvar isenções");
-    }
-
-    // 2. Tratar Notas normais (apenas para quem NÃO é isento)
-    const activeRows = rows.filter(r => !r.is_isento);
-    const payloads = [
+    const configured = new Set(pautaComponentes.map((tipo) => tipo.toUpperCase()));
+    const allEntries = [
       { tipo: "MAC", campo: "mac1" as const },
       { tipo: "NPP", campo: "npp1" as const },
       { tipo: "NPT", campo: "npt1" as const },
     ];
+    const entries = configured.size === 0
+      ? allEntries.filter((entry) => entry.tipo !== "NPP")
+      : allEntries.filter(
+          (entry) =>
+            configured.has(entry.tipo) ||
+            (entry.tipo === "NPT" && configured.has("PT")),
+        );
 
-    for (const { tipo, campo } of payloads) {
-      const notas = activeRows
-        .map((row) => ({ aluno_id: row.id, valor: row[campo] }))
-        .filter((entry) => typeof entry.valor === "number");
-      
-      if (notas.length === 0) continue;
+    const postNotas = async (params: {
+      tipo: string;
+      isIsento: boolean;
+      notas: Array<{ aluno_id: string; valor: number | null }>;
+    }) => {
+      if (params.notas.length === 0) return;
 
       const idempotencyKey =
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-      const res = await fetch(`/api/secretaria/notas`, {
+      const response = await fetch("/api/secretaria/notas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -319,15 +311,36 @@ export function PautaRapidaModal({
           disciplina_id: disciplinaCanonicalId,
           turma_disciplina_id: turmaDisciplinaId,
           trimestre: periodoNumero,
-          tipo_avaliacao: tipo,
-          is_isento: false,
-          notas,
+          tipo_avaliacao: params.tipo,
+          is_isento: params.isIsento,
+          notas: params.notas,
         }),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Falha ao salvar notas");
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Falha ao guardar notas.");
       }
+    };
+
+    const isentos = rows.filter((row) => row.is_isento);
+    for (const { tipo } of entries) {
+      await postNotas({
+        tipo,
+        isIsento: true,
+        notas: isentos.map((row) => ({ aluno_id: row.id, valor: null })),
+      });
+    }
+
+    const activeRows = rows.filter((row) => !row.is_isento);
+    for (const { tipo, campo } of entries) {
+      await postNotas({
+        tipo,
+        isIsento: false,
+        notas: activeRows.map((row) => ({
+          aluno_id: row.id,
+          valor: row[campo] ?? null,
+        })),
+      });
     }
 
     setPautaDraft((prev) =>
@@ -340,6 +353,15 @@ export function PautaRapidaModal({
 
   return (
     <div className="space-y-4">
+      {focusAlunoId ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <p className="text-sm font-bold text-slate-900">Lançamento individual</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Escolha a disciplina e o período. Apenas o aluno atual será alterado.
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2">
         {!lockTurma && (
           <div>
@@ -348,14 +370,14 @@ export function PautaRapidaModal({
               type="number"
               value={anoLetivo}
               onChange={(event) => setAnoLetivo(Number(event.target.value))}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
             />
           </div>
         )}
         <div>
           <label className="text-xs font-semibold uppercase text-slate-500">Turma</label>
           {lockTurma ? (
-            <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               {turmaLabel}
             </div>
           ) : (
@@ -363,7 +385,7 @@ export function PautaRapidaModal({
               <select
                 value={turmaId}
                 onChange={(event) => setTurmaId(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               >
                 <option value="">Selecione a turma</option>
                 {turmas.map((turma) => {
@@ -388,7 +410,7 @@ export function PautaRapidaModal({
           <select
             value={disciplinaId}
             onChange={(event) => setDisciplinaId(event.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
             disabled={!turmaId}
           >
             <option value="">Selecione a disciplina</option>
@@ -436,7 +458,7 @@ export function PautaRapidaModal({
             <select
               value={periodoNumero}
               onChange={(event) => setPeriodoNumero(Number(event.target.value))}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               disabled={!turmaId || periodos.length === 0}
             >
               {periodos.length === 0 && (
@@ -459,23 +481,31 @@ export function PautaRapidaModal({
         </p>
       ) : null}
 
-      {loadingPauta ? (
+      {lockTurma && !turmaId ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Este aluno não tem uma turma disponível no contexto académico atual. Não é possível lançar nota.
+        </div>
+      ) : loadingPauta ? (
         <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
           Carregando pauta...
         </div>
       ) : pautaInitial.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          Selecione turma, disciplina e período para visualizar a pauta.
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          {focusAlunoId && turmaId && disciplinaId
+            ? "O aluno não aparece na pauta desta turma para a disciplina e período selecionados."
+            : "Selecione turma, disciplina e período para visualizar a pauta."}
         </div>
       ) : (
         <GradeEntryGrid
           initialData={pautaInitial}
+          title={focusAlunoId ? "Nota do aluno" : "Lançamento de Notas"}
           subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
           onSave={handleSaveBatch}
           onDataChange={setPautaDraft}
           pesoPorTipo={pautaPesoPorTipo ?? undefined}
           componentesAtivos={pautaComponentes}
           showIsento={true}
+          studentMode={Boolean(focusAlunoId)}
         />
       )}
     </div>
