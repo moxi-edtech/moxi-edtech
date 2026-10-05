@@ -1868,6 +1868,7 @@ function CarrinhoPanel({
   audit,
   aluno,
   embedded = false,
+  mode = "all",
   atalhoActivo = true,
 }: {
   carrinho: ReturnType<typeof useCarrinho>;
@@ -1875,10 +1876,26 @@ function CarrinhoPanel({
   audit: ReturnType<typeof useAuditTrail>;
   aluno: AlunoDossier | null;
   embedded?: boolean;
+  mode?: "all" | "payment" | "document";
   /** Desligado enquanto há um modal aberto — ver o efeito abaixo. */
   atalhoActivo?: boolean;
 }) {
-  const { itens, total, metodo, setMetodo, detalhes, setDetalhes, valorRecebido, setValorRecebido, valorNum, troco, prontoParaPagar, remover, limpar } = carrinho;
+  const {
+    itens,
+    total,
+    metodo,
+    setMetodo,
+    detalhes,
+    setDetalhes,
+    valorRecebido,
+    setValorRecebido,
+    valorNum,
+    troco,
+    prontoParaPagar,
+    disabledReason,
+    remover,
+    limpar,
+  } = carrinho;
 
   const inputCls = `w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-amber focus:ring-2 focus:ring-amber/20`;
 
@@ -1913,55 +1930,105 @@ function CarrinhoPanel({
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden flex flex-col sticky top-6 ${
-        embedded ? "h-full min-h-[580px]" : "h-[calc(100vh-140px)]"
-      }`}
+      id={mode === "payment" ? "payment-checkout" : undefined}
+      className={`scroll-mt-24 rounded-2xl border border-slate-200 bg-white overflow-hidden flex flex-col sticky top-6 ${
+        mode === "payment" ? "shadow-sm" : "shadow-lg"
+      } ${embedded ? "h-full min-h-[580px]" : "h-[calc(100vh-140px)]"}`}
     >
-      <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5 text-amber" />
-          <span className="text-sm font-bold text-white font-sora">Resumo da venda</span>
-          {itens.length > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber text-[10px] font-black text-slate-900 font-mono">
-              {itens.length}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              audit.setOpen((o) => !o);
-              if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
-            }}
-            className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono"
-          >
-            {audit.open ? "Fechar audit" : "Audit trail"}
-          </button>
-          {itens.length > 0 && (
-            <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono">
-              Limpar
+      {mode === "payment" ? (
+        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Pagamento</p>
+            <div className="mt-1 flex items-center gap-2">
+              <h3 className="text-base font-black text-slate-900">Rever e confirmar</h3>
+              {itens.length > 0 ? (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                  {itens.length} {itens.length === 1 ? "item" : "itens"}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                audit.setOpen((open) => !open);
+                if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
+              }}
+              className="text-xs font-bold text-slate-400 transition hover:text-slate-700"
+            >
+              {audit.open ? "Fechar histórico" : "Histórico"}
             </button>
-          )}
+            {itens.length > 0 ? (
+              <button
+                type="button"
+                onClick={limpar}
+                className="text-xs font-bold text-slate-400 transition hover:text-rose-600"
+              >
+                Limpar
+              </button>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-amber" />
+            <span className="text-sm font-bold text-white font-sora">Resumo da venda</span>
+            {itens.length > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber text-[10px] font-black text-slate-900 font-mono">
+                {itens.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                audit.setOpen((o) => !o);
+                if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
+              }}
+              className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono"
+            >
+              {audit.open ? "Fechar audit" : "Audit trail"}
+            </button>
+            {itens.length > 0 && (
+              <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono">
+                Limpar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <AuditTrail audit={audit} aluno={aluno} onRefresh={() => void audit.fetch(aluno?.id, aluno?.matricula_id)} />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50">
+      <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${mode === "payment" ? "bg-white" : "bg-slate-50/50"}`}>
         {itens.length === 0 && checkout.pagos.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-300">
-            <ShoppingCart className="h-10 w-10 opacity-30" />
-            <p className="text-xs font-medium">Carrinho vazio</p>
+          <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center text-slate-300">
+            {mode === "payment" ? <CreditCard className="h-9 w-9 opacity-30" /> : <ShoppingCart className="h-10 w-10 opacity-30" />}
+            <div>
+              <p className="text-sm font-bold text-slate-500">
+                {mode === "payment" ? "Nenhuma cobrança selecionada" : "Carrinho vazio"}
+              </p>
+              {mode === "payment" ? (
+                <p className="mt-1 text-xs text-slate-400">Escolha mensalidades ou serviços na lista ao lado.</p>
+              ) : null}
+            </div>
           </div>
         ) : (
           itens.map((item) => {
             const podeImprimir = item.tipo === "servico" && Number(item.preco ?? 0) <= 0 && getDocTipo(item as Servico) !== null;
 
             return (
-              <div key={`${item.id}-${item.tipo}`} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-start justify-between gap-3 group">
+              <div
+                key={`${item.id}-${item.tipo}`}
+                className={`flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 ${mode === "payment" ? "" : "shadow-xs"}`}
+              >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
-                  <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5 font-mono">{item.tipo}</p>
+                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    {mode === "payment" ? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço") : item.tipo}
+                  </p>
                   {podeImprimir && (
                     <button
                       type="button"
@@ -1980,7 +2047,12 @@ function CarrinhoPanel({
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <p className="text-sm font-black text-slate-900 font-sora">{kwanza.format(item.preco)}</p>
-                  <button onClick={() => remover(item.id, item.tipo)} className="p-1 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => remover(item.id, item.tipo)}
+                    className="rounded-lg p-1.5 text-slate-300 transition hover:bg-rose-50 hover:text-rose-500"
+                    aria-label={`Remover ${item.nome}`}
+                  >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -2102,8 +2174,17 @@ function CarrinhoPanel({
 
       <div className="border-t border-slate-100 bg-white p-5 space-y-4 flex-shrink-0">
         <div className="flex items-end justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Total a pagar</p>
-          <p className="text-3xl font-black text-slate-900 font-sora">{kwanza.format(total)}</p>
+          <div>
+            {mode === "payment" ? (
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total selecionado</p>
+            ) : (
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Total a pagar</p>
+            )}
+            {mode === "payment" && itens.length > 0 ? (
+              <p className="mt-1 text-xs text-slate-500">Escolha a forma de pagamento abaixo.</p>
+            ) : null}
+          </div>
+          <p className={`${mode === "payment" ? "text-2xl" : "text-3xl"} font-black text-slate-900 font-sora`}>{kwanza.format(total)}</p>
         </div>
 
         <div className="grid grid-cols-5 gap-1.5">
@@ -2113,12 +2194,18 @@ function CarrinhoPanel({
               <button
                 key={id}
                 onClick={() => setMetodo(id)}
-                className={`flex flex-col items-center justify-center py-2.5 rounded-xl border gap-1 transition-all ${
-                  active ? "border-amber bg-amber/10 text-slate-900 font-bold" : "border-slate-200 text-slate-400 hover:border-slate-300"
+                className={`flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 transition-all ${
+                  mode === "payment"
+                    ? active
+                      ? "border-slate-950 bg-slate-950 font-bold text-white"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                    : active
+                      ? "border-amber bg-amber/10 text-slate-900 font-bold"
+                      : "border-slate-200 text-slate-400 hover:border-slate-300"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${active ? "text-amber" : "text-current"}`} />
-                <span className="text-[9px] font-bold uppercase font-mono">{label}</span>
+                <Icon className={`h-4 w-4 ${mode === "payment" ? "text-current" : active ? "text-amber" : "text-current"}`} />
+                <span className={`${mode === "payment" ? "text-[10px]" : "text-[9px] uppercase font-mono"} font-bold`}>{label}</span>
               </button>
             );
           })}
@@ -2178,15 +2265,21 @@ function CarrinhoPanel({
           disabled={!prontoParaPagar || checkout.isSubmitting}
           onClick={() => void checkout.checkout()}
           title={prontoParaPagar ? "Finalizar (Ctrl/Cmd + Enter)" : undefined}
-          className={`w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+          className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all ${
             prontoParaPagar && !checkout.isSubmitting
-              ? "bg-amber text-slate-950 shadow-md shadow-amber/20 hover:brightness-105 font-sora"
-              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+              ? mode === "payment"
+                ? "bg-slate-950 text-white hover:bg-slate-800"
+                : "bg-amber text-slate-950 shadow-md shadow-amber/20 hover:brightness-105 font-sora"
+              : "cursor-not-allowed bg-slate-100 text-slate-400"
           }`}
         >
           {checkout.isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" /> A processar...
+            </>
+          ) : mode === "payment" ? (
+            <>
+              <CheckCircle className="h-4 w-4" /> Confirmar pagamento · {kwanza.format(total)}
             </>
           ) : total === 0 ? (
             <>
@@ -2198,6 +2291,11 @@ function CarrinhoPanel({
             </>
           )}
         </button>
+
+        {!prontoParaPagar && !checkout.isSubmitting && disabledReason ? (
+          <p className="text-center text-xs font-medium text-slate-500">{disabledReason}</p>
+        ) : null}
+
         {prontoParaPagar && !checkout.isSubmitting && (
           <p className="mt-1.5 text-center text-[10px] font-medium text-slate-400">
             ou <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl</kbd>
