@@ -35,6 +35,7 @@ DECLARE
   v_nota_max numeric(6,2);
   v_avaliacao_id uuid;
   v_matricula_id uuid;
+  v_aluno_id uuid;
   v_valor numeric;
   v_rows_to_upsert jsonb[] := '{}';
   nota_record jsonb;
@@ -52,10 +53,24 @@ BEGIN
     COALESCE(NULLIF(current_setting('request.jwt.claim.role', true), ''), '') = 'service_role'
     OR COALESCE(v_claims->>'role', '') = 'service_role';
 
-  IF jsonb_typeof(p_notas) IS DISTINCT FROM 'array'
-     OR jsonb_array_length(p_notas) < 1
-     OR jsonb_array_length(p_notas) > 50 THEN
+  IF p_notas IS NULL OR jsonb_typeof(p_notas) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'DATA: O lote de notas deve ser um array.';
+  END IF;
+
+  IF jsonb_array_length(p_notas) < 1 OR jsonb_array_length(p_notas) > 50 THEN
     RAISE EXCEPTION 'DATA: O lote de notas deve conter entre 1 e 50 alunos.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM (
+      SELECT item->>'aluno_id' AS aluno_id
+      FROM jsonb_array_elements(p_notas) AS item
+      GROUP BY item->>'aluno_id'
+      HAVING count(*) > 1
+    ) duplicated
+  ) THEN
+    RAISE EXCEPTION 'DATA: O lote contém aluno_id duplicado.';
   END IF;
 
   IF p_trimestre NOT BETWEEN 1 AND 3 THEN
@@ -78,7 +93,16 @@ BEGIN
 
     v_is_staff := public.user_has_role_in_school(
       p_escola_id,
-      ARRAY['secretaria','admin','admin_escola','staff_admin']
+      ARRAY[
+        'secretaria',
+        'secretaria_financeiro',
+        'admin_financeiro',
+        'admin_secretaria',
+        'admin',
+        'admin_escola',
+        'staff_admin',
+        'diretor'
+      ]
     );
 
     IF NOT v_is_staff THEN
@@ -222,9 +246,16 @@ BEGIN
 
   FOR nota_record IN SELECT value FROM jsonb_array_elements(p_notas)
   LOOP
-    IF NULLIF(nota_record->>'aluno_id', '') IS NULL THEN
+    IF jsonb_typeof(nota_record) IS DISTINCT FROM 'object'
+       OR NULLIF(nota_record->>'aluno_id', '') IS NULL THEN
       RAISE EXCEPTION 'DATA: aluno_id é obrigatório em todas as notas.';
     END IF;
+
+    BEGIN
+      v_aluno_id := (nota_record->>'aluno_id')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE EXCEPTION 'DATA: aluno_id inválido: %.', nota_record->>'aluno_id';
+    END;
 
     IF p_is_isento THEN
       v_valor := NULL;
@@ -247,7 +278,7 @@ BEGIN
     FROM public.matriculas m
     WHERE m.escola_id = p_escola_id
       AND m.turma_id = p_turma_id
-      AND m.aluno_id = (nota_record->>'aluno_id')::uuid
+      AND m.aluno_id = v_aluno_id
       AND m.session_id = v_turma.session_id
       AND m.ativo = true
     LIMIT 1;
