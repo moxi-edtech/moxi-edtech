@@ -35,6 +35,7 @@ type PautaDetalhadaRow = {
   npp?: number | null
   npt?: number | null
   mt?: number | null
+  is_isento?: boolean
 }
 
 export default function SecretariaNotasPage() {
@@ -170,11 +171,8 @@ function SecretariaNotasContent() {
         if (typeof firstNumero === "number") {
           setPeriodoNumero(firstNumero)
         }
-        if (disciplinaId) {
-          const selected = (json.items || []).find((disc: DisciplinaItem) => disc.disciplina?.id === disciplinaId)
-          setTurmaDisciplinaId(selected?.id ?? null)
-          setDisciplinaNome(selected?.disciplina?.nome ?? null)
-        }
+        // The selected assignment is derived in a separate effect so URL/deep-link
+        // discipline changes cannot retain a stale turma_disciplina_id.
       } else {
         setDisciplinas([])
         setPeriodos([])
@@ -195,9 +193,15 @@ function SecretariaNotasContent() {
   }, [disciplinas, periodoNumero])
 
   useEffect(() => {
-    if (!disciplinaId) return
-    const stillValid = disciplinasFiltradas.some((disc) => disc.disciplina?.id === disciplinaId)
-    if (!stillValid) setDisciplinaId("")
+    if (!disciplinaId) {
+      setTurmaDisciplinaId(null)
+      setDisciplinaNome(null)
+      return
+    }
+    const selected = disciplinasFiltradas.find((disc) => disc.disciplina?.id === disciplinaId)
+    setTurmaDisciplinaId(selected?.id ?? null)
+    setDisciplinaNome(selected?.disciplina?.nome ?? null)
+    if (!selected) setDisciplinaId("")
   }, [disciplinaId, disciplinasFiltradas])
 
   useEffect(() => {
@@ -227,7 +231,7 @@ function SecretariaNotasContent() {
         if (!active) return
         if (res.ok && json.ok && Array.isArray(json.items)) {
           setPauta(
-            (json.items as any[]).map((row, index) => ({
+            (json.items as PautaDetalhadaRow[]).map((row, index) => ({
               id: row.aluno_id,
               numero: row.numero_chamada ?? index + 1,
               nome: row.nome,
@@ -404,11 +408,7 @@ function SecretariaNotasContent() {
         <select
           value={disciplinaId}
           onChange={(event) => {
-            const nextId = event.target.value
-            setDisciplinaId(nextId)
-            const selected = disciplinasFiltradas.find((disc) => disc.disciplina?.id === nextId)
-            setTurmaDisciplinaId(selected?.id ?? null)
-            setDisciplinaNome(selected?.disciplina?.nome ?? null)
+            setDisciplinaId(event.target.value)
           }}
           className="border rounded p-2"
           disabled={!turmaId}
