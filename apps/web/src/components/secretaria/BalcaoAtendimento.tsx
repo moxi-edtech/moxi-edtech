@@ -1033,113 +1033,230 @@ function CommandCenterOverview({
 }) {
   const overdue = mensalidades.filter((item) => item.atrasada && item.preco > 0);
   const overdueTotal = overdue.reduce((sum, item) => sum + item.preco, 0);
-  const documents = servicos.filter((service) => !isServicoRematricula(service) && isDocServico(service));
+  const documents = servicos.filter(
+    (service) => !isServicoRematricula(service) && isDocServico(service),
+  );
+  const rematriculaCopy = rematriculaState ? ESTADO_OPERACAO[rematriculaState] : null;
 
-  const statusLabel =
+  const rematriculaActionable = new Set<RematriculaCardState | "CHECKING">([
+    "READY",
+    "RECONFIRMATION_REQUIRED",
+    "DOCUMENT_PENDING",
+    "ACADEMIC_HISTORY_PENDING",
+    "FINALIST_PENDING",
+    "DEBT_BLOCKED",
+    "RECONCILIATION_REQUIRED",
+    "PENDING_ORDER_REVIEW",
+    "LEGACY_REVIEW_REQUIRED",
+  ]);
+
+  const priority =
+    overdue.length > 0
+      ? {
+          eyebrow: "Precisa de atenção",
+          title: `${overdue.length} mensalidade${overdue.length === 1 ? "" : "s"} em atraso`,
+          description: "Regularize o saldo para evitar bloqueios em operações académicas.",
+          value: kwanza.format(overdueTotal),
+          actionId: "payment" as BalcaoActionId,
+          actionLabel: "Regularizar",
+          tone: "danger" as const,
+        }
+      : rematriculaState && rematriculaActionable.has(rematriculaState)
+        ? {
+            eyebrow: "Próxima ação",
+            title: rematriculaCopy?.titulo ?? "Rematrícula",
+            description: rematriculaCopy?.descricao ?? "Verifique o estado da rematrícula.",
+            value: null,
+            actionId: "reenrollment" as BalcaoActionId,
+            actionLabel: "Continuar",
+            tone: "attention" as const,
+          }
+        : {
+            eyebrow: "Situação atual",
+            title: "Nenhuma pendência crítica",
+            description: "O atendimento pode continuar normalmente.",
+            value: null,
+            actionId: null,
+            actionLabel: null,
+            tone: "success" as const,
+          };
+
+  const financeValue =
     aluno.status_financeiro === "inadimplente"
-      ? "Com pendência"
+      ? kwanza.format(overdueTotal || aluno.divida_total)
       : aluno.status_financeiro === "sem_matricula"
         ? "Sem matrícula"
-        : "Regular";
+        : "Em dia";
+
+  const financeTone =
+    aluno.status_financeiro === "inadimplente"
+      ? "danger"
+      : aluno.status_financeiro === "em_dia"
+        ? "success"
+        : "neutral";
+
+  const rematriculaValue = rematriculaState
+    ? (rematriculaCopy?.titulo ?? rematriculaState)
+    : "Indisponível";
+
+  const rematriculaTone =
+    rematriculaState === "READY" || rematriculaState === "ALREADY_COMPLETED"
+      ? "success"
+      : rematriculaState === "DEBT_BLOCKED" ||
+          rematriculaState === "ACADEMIC_NOT_APPROVED" ||
+          rematriculaState === "ACADEMIC_CONDITIONAL_BLOCKED"
+        ? "danger"
+        : "neutral";
 
   const rows: Array<{
     id: BalcaoActionId;
     title: string;
     description: string;
     value: string;
-    tone?: "danger" | "success" | "neutral";
+    tone: "danger" | "success" | "neutral";
   }> = [
     {
       id: "payment",
       title: "Financeiro",
-      description: overdue.length > 0 ? "Regularize as propinas vencidas." : "Sem propinas vencidas.",
-      value: overdue.length > 0 ? kwanza.format(overdueTotal) : "Em dia",
-      tone: overdue.length > 0 ? "danger" : "success",
-    },
-    {
-      id: "document",
-      title: "Documentos",
-      description: "Emitir documentos sem sair do atendimento.",
-      value: `${documents.length} disponíveis`,
-      tone: "neutral",
+      description:
+        overdue.length > 0
+          ? `${overdue.length} cobrança${overdue.length === 1 ? "" : "s"} vencida${overdue.length === 1 ? "" : "s"}`
+          : "Nenhuma cobrança vencida",
+      value: financeValue,
+      tone: financeTone,
     },
     {
       id: "reenrollment",
       title: "Rematrícula",
-      description: rematriculaState
-        ? (ESTADO_OPERACAO[rematriculaState]?.descricao ?? "Ver estado da rematrícula.")
-        : "Sem operação disponível neste momento.",
-      value: rematriculaState ? (ESTADO_OPERACAO[rematriculaState]?.titulo ?? rematriculaState) : "Indisponível",
-      tone: rematriculaState === "READY" || rematriculaState === "ALREADY_COMPLETED" ? "success" : "neutral",
+      description: rematriculaCopy?.descricao ?? "Sem operação disponível neste momento.",
+      value: rematriculaValue,
+      tone: rematriculaTone,
+    },
+    {
+      id: "document",
+      title: "Documentos",
+      description: "Emitir declarações e outros documentos do aluno",
+      value: documents.length > 0 ? `${documents.length} disponível${documents.length === 1 ? "" : "is"}` : "Nenhum",
+      tone: "neutral",
     },
   ];
 
+  const priorityClass =
+    priority.tone === "danger"
+      ? "border-rose-200 bg-rose-50/70"
+      : priority.tone === "attention"
+        ? "border-amber-200 bg-amber-50/70"
+        : "border-emerald-200 bg-emerald-50/60";
+
+  const priorityTitleClass =
+    priority.tone === "danger"
+      ? "text-rose-950"
+      : priority.tone === "attention"
+        ? "text-amber-950"
+        : "text-emerald-950";
+
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <Avatar url={aluno.foto_url} nome={aluno.nome} size="lg" />
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            Visão geral
+          </p>
+          <h2 className="mt-1 text-lg font-black text-slate-900">
+            O que precisa de atenção agora
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={onTrocarAluno}
+          className="shrink-0 text-xs font-bold text-slate-500 transition hover:text-slate-900"
+        >
+          Trocar aluno
+        </button>
+      </div>
+
+      <div className={`rounded-2xl border p-4 sm:p-5 ${priorityClass}`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Aluno</p>
-            <h2 className="truncate text-xl font-black text-slate-900">{aluno.nome}</h2>
-            <p className="mt-0.5 truncate text-xs text-slate-500">
-              {[aluno.numero_processo && `Proc. ${aluno.numero_processo}`, aluno.classe, aluno.turma_codigo && `Turma ${aluno.turma_codigo}`]
-                .filter(Boolean)
-                .join(" · ")}
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+              {priority.eyebrow}
+            </p>
+            <h3 className={`mt-1 text-base font-black ${priorityTitleClass}`}>
+              {priority.title}
+            </h3>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
+              {priority.description}
             </p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={[
-            "rounded-full px-2.5 py-1 text-[10px] font-bold",
-            aluno.status_financeiro === "inadimplente"
-              ? "bg-rose-50 text-rose-700"
-              : aluno.status_financeiro === "sem_matricula"
-                ? "bg-slate-100 text-slate-600"
-                : "bg-emerald-50 text-emerald",
-          ].join(" ")}>
-            {statusLabel}
-          </span>
-          <button
-            type="button"
-            onClick={onTrocarAluno}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
-          >
-            Trocar aluno
-          </button>
+
+          <div className="flex shrink-0 items-center gap-3">
+            {priority.value ? (
+              <strong className="text-base font-black text-slate-900">
+                {priority.value}
+              </strong>
+            ) : null}
+            {priority.actionId && priority.actionLabel ? (
+              <button
+                type="button"
+                onClick={() => onNavigate?.(priority.actionId!)}
+                className="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+              >
+                {priority.actionLabel}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
-        {rows.map((row) => (
-          <button
-            key={row.id}
-            type="button"
-            onClick={() => onNavigate?.(row.id)}
-            className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-slate-50 sm:px-5"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-slate-900">{row.title}</p>
-              <p className="mt-0.5 truncate text-xs text-slate-500">{row.description}</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <span className={[
-                "text-xs font-bold",
-                row.tone === "danger"
-                  ? "text-rose-700"
-                  : row.tone === "success"
-                    ? "text-emerald"
-                    : "text-slate-600",
-              ].join(" ")}>
-                {row.value}
-              </span>
-              <span className="text-slate-300">→</span>
-            </div>
-          </button>
-        ))}
+      <div>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+          Situação do aluno
+        </p>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          {rows.map((row, index) => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => onNavigate?.(row.id)}
+              className={[
+                "flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-slate-50 sm:px-5",
+                index > 0 ? "border-t border-slate-100" : "",
+              ].join(" ")}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-900">{row.title}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-500">
+                  {row.description}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <span
+                  className={[
+                    "text-xs font-bold",
+                    row.tone === "danger"
+                      ? "text-rose-700"
+                      : row.tone === "success"
+                        ? "text-emerald"
+                        : "text-slate-600",
+                  ].join(" ")}
+                >
+                  {row.value}
+                </span>
+                <span aria-hidden="true" className="text-slate-300">
+                  →
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        <p className="text-xs text-slate-400">
+          Proc. {aluno.numero_processo}
+          {aluno.classe ? ` · ${aluno.classe}` : ""}
+          {aluno.turma_codigo ? ` · Turma ${aluno.turma_codigo}` : ""}
+        </p>
         <button
           type="button"
           onClick={() => onNavigate?.("profile")}
