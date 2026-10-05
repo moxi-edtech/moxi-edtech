@@ -7,7 +7,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { CheckCircle2, Loader2, Clipboard, AlertCircle, TrendingUp, Users, CheckCircle, HelpCircle } from "lucide-react"
+import { CheckCircle2, Loader2, Clipboard, AlertCircle, TrendingUp, Users, CheckCircle } from "lucide-react"
 import { SyncIndicator } from "@/components/feedback/FeedbackSystem"
 
 export type StudentGradeRow = {
@@ -152,7 +152,7 @@ export function GradeEntryGrid({
 
   useEffect(() => {
     dataRef.current = data
-  }, [data, notaCorte])
+  }, [data])
 
   const onDataChangeRef = useRef(onDataChange)
 
@@ -195,7 +195,7 @@ export function GradeEntryGrid({
       reprovados,
       percAprovados,
     }
-  }, [data])
+  }, [data, notaCorte])
 
   const flushSave = useCallback(async () => {
     if (!onSave || savingRef.current || pendingIdsRef.current.size === 0) return
@@ -581,7 +581,7 @@ export function GradeEntryGrid({
 
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-black uppercase tracking-wider">Aprovados (≥{notaCorte})</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">{`Aprovados (≥${notaCorte})`}</span>
             <CheckCircle size={16} className="text-emerald-600" />
           </div>
           <div className="flex items-baseline gap-2 mt-1">
@@ -592,7 +592,7 @@ export function GradeEntryGrid({
 
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-black uppercase tracking-wider">Em Risco (&lt;10)</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">{`Em risco (<${notaCorte})`}</span>
             <AlertCircle size={16} className="text-rose-500" />
           </div>
           <p className="text-xl font-black text-rose-600 mt-1">
