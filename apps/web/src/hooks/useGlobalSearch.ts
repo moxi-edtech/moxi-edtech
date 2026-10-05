@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { useDebounce } from "./useDebounce";
 import { buildPortalHref } from "@/lib/navigation";
+import {
+  buildBalcaoActionHref,
+  getStudentBalcaoActions,
+  type BalcaoActionId,
+} from "@/lib/balcao/action-registry";
 
 type SearchResult = {
   id: string;
@@ -17,7 +22,7 @@ type SearchResult = {
 
 type SearchIntent = "financeiro" | "academico" | "perfil" | "documentos" | null;
 
-export type SearchActionKind = "profile" | "payment" | "desk" | "grade";
+export type SearchActionKind = BalcaoActionId;
 
 export type SearchAction = {
   kind: SearchActionKind;
@@ -268,36 +273,17 @@ function resolveStudentActions(
 ): SearchAction[] {
   if (item.type !== "aluno") return [];
 
-  const basePortal = portal || "secretaria";
-  const escolaParam = escolaId ?? null;
-  const encodedLabel = encodeURIComponent(item.label);
-
-  const profileHref =
-    basePortal === "operacoes"
-      ? buildPortalHref(escolaParam, `/operacoes/alunos/${item.id}`)
-      : buildPortalHref(escolaParam, `/secretaria/alunos/${item.id}`);
-
-  const paymentHref =
-    basePortal === "operacoes"
-      ? buildPortalHref(escolaParam, `/operacoes/recebimentos?alunoId=${item.id}&q=${encodedLabel}`)
-      : buildPortalHref(escolaParam, `/financeiro/pagamentos?alunoId=${item.id}&q=${encodedLabel}`);
-
-  const deskHref =
-    basePortal === "operacoes"
-      ? buildPortalHref(escolaParam, `/secretaria/balcao?alunoId=${item.id}`)
-      : buildPortalHref(escolaParam, `/secretaria/balcao?alunoId=${item.id}`);
-
-  const gradeHref =
-    basePortal === "professor"
-      ? buildPortalHref(escolaParam, `/professor/notas?alunoId=${item.id}`)
-      : buildPortalHref(escolaParam, `/secretaria/notas?alunoId=${item.id}`);
-
-  return [
-    { kind: "profile", label: "Perfil", href: profileHref },
-    { kind: "payment", label: "Pagar", href: paymentHref },
-    { kind: "desk", label: "Balcão", href: deskHref },
-    { kind: "grade", label: "Nota", href: gradeHref },
-  ];
+  return getStudentBalcaoActions().map((action) => ({
+    kind: action.id,
+    label: action.shortLabel,
+    href: buildBalcaoActionHref({
+      escolaParam: escolaId ?? null,
+      actionId: action.id,
+      alunoId: item.id,
+      alunoLabel: item.label,
+      portal,
+    }),
+  }));
 }
 
 type SecretariaAlunoFallbackRow = {
