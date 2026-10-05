@@ -430,8 +430,78 @@ export function GradeEntryGrid({
   })
 
   const savingIndicator = isSaving
-    ? { label: "A Guardar...", icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, tone: "text-amber-600 bg-amber-50 border-amber-200" }
-    : { label: "Salvo no Servidor", icon: <CheckCircle2 className="w-3.5 h-3.5" />, tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
+    ? { label: "A guardar…", icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, tone: "text-amber-600 bg-amber-50 border-amber-200" }
+    : { label: "Guardado", icon: <CheckCircle2 className="w-3.5 h-3.5" />, tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
+
+  if (studentMode && data[0]) {
+    const row = data[0]
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div>
+            <h3 className="text-sm font-black text-slate-900">{title}</h3>
+            {subtitle ? <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p> : null}
+          </div>
+          <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${savingIndicator.tone}`}>
+            {savingIndicator.icon}
+            <span>{savingIndicator.label}</span>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          {showIsento ? (
+            <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
+              <div>
+                <p className="text-sm font-bold text-slate-900">Isento neste trimestre</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Use apenas quando o aluno estiver formalmente isento da avaliação.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={!!row.is_isento}
+                onChange={(event) => updateIsento(0, event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+              />
+            </label>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {gradeInputs.map((item) => (
+              <div key={item.key} className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                  {item.label}
+                </p>
+                <div className="mt-2">
+                  <GradeInput
+                    inputRef={() => null}
+                    disabled={!!row.is_isento}
+                    value={row[item.key]}
+                    onChange={(value) => updateGrade(0, item.key, value)}
+                    onNavigate={() => null}
+                  />
+                </div>
+              </div>
+            ))}
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                Média
+              </p>
+              <p className="mt-2 text-xl font-black text-slate-900">
+                {row.mt1 ?? "—"}
+                {row.mt1 !== null ? <span className="ml-1 text-xs font-bold text-slate-400">/ 20</span> : null}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500">
+            As alterações são guardadas automaticamente no fluxo académico canónico.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
