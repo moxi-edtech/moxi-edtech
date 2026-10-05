@@ -112,6 +112,7 @@ jobs:
             src/components/secretaria/BalcaoWorkspace.tsx \
             src/components/secretaria/BalcaoActionBar.tsx \
             src/components/secretaria/AlunoProfilePanel.tsx \
+            src/components/secretaria/command-center/CommandCenterActionBar.tsx \
             src/components/secretaria/command-center/CommandCenterShell.tsx \
             src/components/secretaria/command-center/CommandCenterPanel.tsx \
             src/components/secretaria/command-center/useCommandCenterStudent.ts \
