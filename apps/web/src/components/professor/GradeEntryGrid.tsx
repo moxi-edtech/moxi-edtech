@@ -138,9 +138,11 @@ export function GradeEntryGrid({
   const pendingIdsRef = useRef<Set<string>>(new Set())
   const savingRef = useRef(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flushSaveRef = useRef<() => Promise<void>>(async () => undefined)
 
   useEffect(() => {
     setData(initialData)
+    dataRef.current = initialData
   }, [initialData])
 
   useEffect(() => {
@@ -236,6 +238,18 @@ export function GradeEntryGrid({
     }
   }, [onSave, onSaveError])
 
+  useEffect(() => {
+    flushSaveRef.current = flushSave
+  }, [flushSave])
+
+  const flushNow = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+    void flushSaveRef.current()
+  }, [])
+
   const scheduleSave = useCallback(() => {
     if (!onSave) return
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
@@ -247,30 +261,36 @@ export function GradeEntryGrid({
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      if (pendingIdsRef.current.size > 0) {
+        void flushSaveRef.current()
+      }
     }
   }, [])
 
   const updateGrade = useCallback(
     (rowIndex: number, columnId: typeof INPUT_COLUMNS[number], value: string) => {
       const numericValue = clampNota(value)
-      setData((old) =>
-        old.map((row, index) => {
-          if (index !== rowIndex) return row
-          const updatedRow = {
-            ...row,
-            [columnId]: numericValue,
-            _status: "pending" as const,
-          }
-          updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
-          return updatedRow
-        })
-      )
+      const current = dataRef.current
+      const target = current[rowIndex]
+      if (!target) return
 
-      const target = data[rowIndex]
-      if (target) pendingIdsRef.current.add(target.id)
+      const next = current.map((row, index) => {
+        if (index !== rowIndex) return row
+        const updatedRow = {
+          ...row,
+          [columnId]: numericValue,
+          _status: "pending" as const,
+        }
+        updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
+        return updatedRow
+      })
+
+      dataRef.current = next
+      setData(next)
+      pendingIdsRef.current.add(target.id)
       scheduleSave()
     },
-    [data, scheduleSave, pesoPorTipo, componentesAtivos]
+    [scheduleSave, pesoPorTipo, componentesAtivos]
   )
 
   // Manipulador para colar lote do Excel/Sheets
@@ -283,21 +303,23 @@ export function GradeEntryGrid({
 
       if (lines.length === 0) return
 
-      setData((old) =>
-        old.map((row, index) => {
-          if (index < startRowIndex || index >= startRowIndex + lines.length) return row
-          const valString = lines[index - startRowIndex]
-          const numericValue = valString ? clampNota(valString) : null
-          const updatedRow = {
-            ...row,
-            [columnId]: numericValue,
-            _status: "pending" as const,
-          }
-          updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
-          pendingIdsRef.current.add(row.id)
-          return updatedRow
-        })
-      )
+      const current = dataRef.current
+      const next = current.map((row, index) => {
+        if (index < startRowIndex || index >= startRowIndex + lines.length) return row
+        const valString = lines[index - startRowIndex]
+        const numericValue = valString ? clampNota(valString) : null
+        const updatedRow = {
+          ...row,
+          [columnId]: numericValue,
+          _status: "pending" as const,
+        }
+        updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
+        pendingIdsRef.current.add(row.id)
+        return updatedRow
+      })
+
+      dataRef.current = next
+      setData(next)
       scheduleSave()
     },
     [pesoPorTipo, componentesAtivos, scheduleSave]
@@ -312,25 +334,29 @@ export function GradeEntryGrid({
 
   const updateIsento = useCallback(
     (rowIndex: number, checked: boolean) => {
-      setData((old) =>
-        old.map((row, index) => {
-          if (index !== rowIndex) return row
-          return {
-            ...row,
-            is_isento: checked,
-            mac1: checked ? null : row.mac1,
-            npp1: checked ? null : row.npp1,
-            npt1: checked ? null : row.npt1,
-            mt1: checked ? null : row.mt1,
-            _status: "pending" as const,
-          }
-        })
-      )
-      const target = data[rowIndex]
-      if (target) pendingIdsRef.current.add(target.id)
+      const current = dataRef.current
+      const target = current[rowIndex]
+      if (!target) return
+
+      const next = current.map((row, index) => {
+        if (index !== rowIndex) return row
+        return {
+          ...row,
+          is_isento: checked,
+          mac1: checked ? null : row.mac1,
+          npp1: checked ? null : row.npp1,
+          npt1: checked ? null : row.npt1,
+          mt1: checked ? null : row.mt1,
+          _status: "pending" as const,
+        }
+      })
+
+      dataRef.current = next
+      setData(next)
+      pendingIdsRef.current.add(target.id)
       scheduleSave()
     },
-    [data, scheduleSave]
+    [scheduleSave]
   )
 
   const columnHelper = createColumnHelper<StudentGradeRow>()
@@ -400,6 +426,7 @@ export function GradeEntryGrid({
                   value={getValue()}
                   onChange={(val) => updateGrade(row.index, input.key, val)}
                   onBatchPaste={(pasteText) => handleBatchPaste(row.index, input.key, pasteText)}
+                  onFlush={flushNow}
                   onNavigate={(deltaRow, deltaCol) => {
                     const next = inputRefs.current[`${row.index + deltaRow}-${columnIndex + deltaCol}`]
                     if (next) {
@@ -498,6 +525,7 @@ export function GradeEntryGrid({
                     readOnly={readOnly}
                     value={row[item.key]}
                     onChange={(value) => updateGrade(0, item.key, value)}
+                    onFlush={flushNow}
                     onNavigate={() => null}
                   />
                 </div>
@@ -710,6 +738,7 @@ export function GradeEntryGrid({
                             value={row.original[item.key]}
                             onChange={(val) => updateGrade(row.index, item.key, val)}
                             onBatchPaste={(pText) => handleBatchPaste(row.index, item.key, pText)}
+                            onFlush={flushNow}
                             onNavigate={() => null}
                           />
                         </div>
@@ -776,6 +805,7 @@ const GradeInput = ({
   onBatchPaste,
   inputRef,
   onNavigate,
+  onFlush,
   disabled = false,
   readOnly = false,
 }: {
@@ -784,6 +814,7 @@ const GradeInput = ({
   onBatchPaste?: (pasteText: string) => void
   inputRef: (el: HTMLInputElement | null) => void
   onNavigate: (deltaRow: number, deltaCol: number) => void
+  onFlush?: () => void
   disabled?: boolean
   readOnly?: boolean
 }) => {
@@ -829,6 +860,7 @@ const GradeInput = ({
         const raw = e.currentTarget.value
         setDraft(raw)
         commitValue(raw)
+        onFlush?.()
       }}
       onChange={(e) => {
         if (disabled || readOnly) return
