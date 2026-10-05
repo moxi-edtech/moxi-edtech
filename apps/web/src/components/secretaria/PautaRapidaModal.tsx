@@ -82,6 +82,7 @@ export function PautaRapidaModal({
   const [pautaPesoPorTipo, setPautaPesoPorTipo] = useState<Record<string, number> | null>(null);
   const [pautaComponentes, setPautaComponentes] = useState<string[]>([]);
   const [loadingPauta, setLoadingPauta] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -299,6 +300,7 @@ export function PautaRapidaModal({
     (turmaSelecionada ? formatTurmaDisplayName(turmaSelecionada) : "Turma");
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
+    setSaveError(null);
     if (!turmaId || !disciplinaId) return;
     if (!academicYearId) {
       throw new Error(academicContextError || "Ano letivo ativo não identificado.");
@@ -538,17 +540,27 @@ export function PautaRapidaModal({
             : "Selecione turma, disciplina e período para visualizar a pauta."}
         </div>
       ) : (
-        <GradeEntryGrid
-          initialData={pautaInitial}
-          title={focusAlunoId ? "Nota do aluno" : "Lançamento de Notas"}
-          subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
-          onSave={handleSaveBatch}
-          onDataChange={setPautaDraft}
-          pesoPorTipo={pautaPesoPorTipo ?? undefined}
-          componentesAtivos={pautaComponentes}
-          showIsento={true}
-          studentMode={Boolean(focusAlunoId)}
-        />
+        <div className="space-y-3">
+          <GradeEntryGrid
+            initialData={pautaInitial}
+            title={focusAlunoId ? "Nota do aluno" : "Lançamento de Notas"}
+            subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
+            onSave={handleSaveBatch}
+            onSaveError={(error) => {
+              setSaveError(error instanceof Error ? error.message : "Não foi possível guardar a nota.");
+            }}
+            onDataChange={setPautaDraft}
+            pesoPorTipo={pautaPesoPorTipo ?? undefined}
+            componentesAtivos={pautaComponentes}
+            showIsento={true}
+            studentMode={Boolean(focusAlunoId)}
+          />
+          {saveError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              {saveError}
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
   );
