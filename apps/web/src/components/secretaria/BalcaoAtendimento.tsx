@@ -1447,13 +1447,54 @@ function Catalogo({
         {(view === "all" || view === "reenrollment") && rematriculaState && (
           <div data-balcao-action="reenrollment">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <SecaoLabel>Operacoes escolares</SecaoLabel>
+              <SecaoLabel>{view === "reenrollment" ? "Rematrícula" : "Operações escolares"}</SecaoLabel>
               {rematriculaAnoLabel && (
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
                   Ano: {rematriculaAnoLabel}
                 </span>
               )}
             </div>
+            {rematriculaState === "DEBT_BLOCKED" ? (
+              <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">Bloqueio financeiro</p>
+                <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-rose-950">Saldo vencido impede a rematrícula</p>
+                    <p className="mt-1 text-xs leading-5 text-rose-700">
+                      Regularize as mensalidades da matrícula de origem antes de escolher a turma destino.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onRegularize}
+                    className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+                  >
+                    Regularizar dívida
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {rematriculaState === "PRICE_NOT_CONFIGURED" ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">Configuração necessária</p>
+                <p className="mt-1 text-sm font-black text-amber-950">Taxa de rematrícula sem valor definido</p>
+                <p className="mt-1 text-xs leading-5 text-amber-800">
+                  Defina o valor da taxa para a classe destino antes de iniciar uma nova cobrança.
+                </p>
+              </div>
+            ) : null}
+
+            {rematriculaState === "ALREADY_COMPLETED" ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">Concluída</p>
+                <p className="mt-1 text-sm font-black text-emerald-950">Rematrícula já concluída</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-800">
+                  O aluno já está matriculado em {rematriculaAnoLabel ?? "este ano letivo"}. Não faça uma nova cobrança.
+                </p>
+              </div>
+            ) : null}
+
             {rematriculaState === "LEGACY_REVIEW_REQUIRED" ? (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
                 <strong className="block text-amber-950">Pedido antigo por resolver</strong>
@@ -1667,25 +1708,26 @@ function Catalogo({
                 {rematriculaError}
               </p>
             ) : null}
-            {rematriculaState && operacaoCopy &&
-              !(["LEGACY_REVIEW_REQUIRED", "PENDING_ORDER_REVIEW"] as string[]).includes(rematriculaState) && <button
-              type="button"
-              onClick={onRematricula}
-              disabled={!rematriculaReady}
-              className="w-full flex items-center justify-between p-3.5 rounded-xl border
-                border-emerald/25 bg-emerald/5 hover:bg-emerald/10
-                transition-all text-left disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              <div>
-                <p className="text-sm font-bold text-emerald">{operacaoCopy.titulo}</p>
-                <p className="text-xs text-slate-500">{operacaoCopy.descricao}</p>
-              </div>
-              <span className="text-sm font-black text-slate-900 font-sora">
-                {rematriculaPrice != null && rematriculaPrice > 0
-                  ? kwanza.format(rematriculaPrice)
-                  : "Valor pendente"}
-              </span>
-            </button>}
+            {rematriculaState && operacaoCopy && rematriculaReady ? (
+              <button
+                type="button"
+                onClick={onRematricula}
+                className="flex w-full items-center justify-between gap-4 rounded-xl border border-emerald/25 bg-emerald/5 p-4 text-left transition hover:bg-emerald/10"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900">{operacaoCopy.titulo}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-slate-500">{operacaoCopy.descricao}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className="block text-sm font-black text-slate-900 font-sora">
+                    {rematriculaPrice != null && rematriculaPrice > 0
+                      ? kwanza.format(rematriculaPrice)
+                      : "Sem taxa"}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-bold text-emerald">Continuar →</span>
+                </div>
+              </button>
+            ) : null}
           </div>
         )}
 
