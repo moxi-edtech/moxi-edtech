@@ -14,6 +14,8 @@ import {
 type Props = {
   escolaId: string;
   alunoId?: string | null;
+  turmaId?: string | null;
+  turmaLabel?: string | null;
   actionId: BalcaoActionId;
   returnTo?: string | null;
   onActionChange: (actionId: BalcaoActionId) => void;
@@ -24,6 +26,8 @@ type Props = {
 export function CommandCenterPanel({
   escolaId,
   alunoId,
+  turmaId = null,
+  turmaLabel = null,
   actionId,
   returnTo = null,
   onActionChange,
@@ -56,7 +60,15 @@ export function CommandCenterPanel({
   }
 
   if (action.panel === "grade") {
-    return <PautaRapidaModal hideNavigation />;
+    return (
+      <PautaRapidaModal
+        initialTurmaId={turmaId ?? undefined}
+        initialTurmaLabel={turmaLabel ?? undefined}
+        lockTurma
+        focusAlunoId={alunoId}
+        hideNavigation
+      />
+    );
   }
 
   return (
