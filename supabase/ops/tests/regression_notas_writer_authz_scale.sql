@@ -8,7 +8,9 @@ DECLARE
   v_prof_user uuid := '00000000-0000-0000-0000-000000001102';
   v_rogue_user uuid := '00000000-0000-0000-0000-000000001103';
   v_other_staff uuid := '00000000-0000-0000-0000-000000001104';
+  v_unassigned_prof_user uuid := '00000000-0000-0000-0000-000000001105';
   v_prof_id uuid := '00000000-0000-0000-0000-000000001201';
+  v_unassigned_prof_id uuid := '00000000-0000-0000-0000-000000001202';
   v_year uuid := '00000000-0000-0000-0000-000000001301';
   v_period uuid := '00000000-0000-0000-0000-000000001302';
   v_turma uuid := '00000000-0000-0000-0000-000000001401';
@@ -25,10 +27,12 @@ BEGIN
   INSERT INTO public.escola_users (escola_id, user_id, papel) VALUES
     (v_escola_a, v_secretaria, 'secretaria'),
     (v_escola_a, v_prof_user, 'professor'),
+    (v_escola_a, v_unassigned_prof_user, 'professor'),
     (v_escola_b, v_other_staff, 'secretaria');
 
-  INSERT INTO public.professores (id, escola_id, profile_id)
-  VALUES (v_prof_id, v_escola_a, v_prof_user);
+  INSERT INTO public.professores (id, escola_id, profile_id) VALUES
+    (v_prof_id, v_escola_a, v_prof_user),
+    (v_unassigned_prof_id, v_escola_a, v_unassigned_prof_user);
 
   INSERT INTO public.anos_letivos (id, escola_id, ano, ativo)
   VALUES (v_year, v_escola_a, 2026, true);
@@ -84,6 +88,20 @@ BEGIN
     IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'AUTH:%' THEN RAISE; END IF;
   END;
 
+  -- A professor linked to the school but not assigned to this turma/disciplina is denied.
+  PERFORM set_config('request.jwt.claims', jsonb_build_object(
+    'sub', v_unassigned_prof_user, 'escola_id', v_escola_a, 'role', 'authenticated'
+  )::text, true);
+  BEGIN
+    PERFORM public.lancar_notas_batch(
+      v_escola_a, v_turma, v_disc, v_td, 1, 'MAC',
+      jsonb_build_array(jsonb_build_object('aluno_id', v_aluno, 'valor', 8)), false
+    );
+    RAISE EXCEPTION 'TEST: professor não atribuído conseguiu lançar nota';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'AUTH:%não atribuído%' THEN RAISE; END IF;
+  END;
+
   -- Assigned professor can write inside the active tenant.
   PERFORM set_config('request.jwt.claims', jsonb_build_object(
     'sub', v_prof_user, 'escola_id', v_escola_a, 'role', 'authenticated'
@@ -123,6 +141,55 @@ BEGIN
   PERFORM set_config('request.jwt.claims', jsonb_build_object(
     'sub', v_secretaria, 'escola_id', v_escola_a, 'role', 'authenticated'
   )::text, true);
+  -- Duplicate student IDs are rejected before reaching the upsert.
+  BEGIN
+    PERFORM public.lancar_notas_batch(
+      v_escola_a, v_turma, v_disc, v_td, 1, 'NPT',
+      jsonb_build_array(
+        jsonb_build_object('aluno_id', v_aluno, 'valor', 8),
+        jsonb_build_object('aluno_id', v_aluno, 'valor', 9)
+      ), false
+    );
+    RAISE EXCEPTION 'TEST: lote duplicado foi aceite';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'DATA:%duplicado%' THEN RAISE; END IF;
+  END;
+
+  -- Malformed student IDs are converted to a stable DATA error.
+  BEGIN
+    PERFORM public.lancar_notas_batch(
+      v_escola_a, v_turma, v_disc, v_td, 1, 'NPT',
+      jsonb_build_array(jsonb_build_object('aluno_id', 'not-a-uuid', 'valor', 9)), false
+    );
+    RAISE EXCEPTION 'TEST: aluno_id inválido foi aceite';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'DATA:%aluno_id inválido%' THEN RAISE; END IF;
+  END;
+
+  -- Non-array payloads fail cleanly without invoking jsonb_array_length on an object.
+  BEGIN
+    PERFORM public.lancar_notas_batch(
+      v_escola_a, v_turma, v_disc, v_td, 1, 'NPT',
+      jsonb_build_object('aluno_id', v_aluno, 'valor', 9), false
+    );
+    RAISE EXCEPTION 'TEST: payload não-array foi aceite';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'DATA:%deve ser um array%' THEN RAISE; END IF;
+  END;
+
+  -- Closed/inactive academic years cannot receive new grades.
+  UPDATE public.anos_letivos SET ativo = false WHERE id = v_year;
+  BEGIN
+    PERFORM public.lancar_notas_batch(
+      v_escola_a, v_turma, v_disc, v_td, 1, 'NPT',
+      jsonb_build_array(jsonb_build_object('aluno_id', v_aluno, 'valor', 9)), false
+    );
+    RAISE EXCEPTION 'TEST: ano inativo recebeu nota';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'ACADEMIC_YEAR_READ_ONLY:%' THEN RAISE; END IF;
+  END;
+  UPDATE public.anos_letivos SET ativo = true WHERE id = v_year;
+
   SELECT public.lancar_notas_batch(
     v_escola_a, v_turma, v_disc, v_td, 1, 'NPT',
     jsonb_build_array(jsonb_build_object('aluno_id', v_aluno, 'valor', 9)), false
