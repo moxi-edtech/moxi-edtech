@@ -30,6 +30,21 @@ export function useCommandCenterStudent(
       return;
     }
 
+    if (!academicYearId) {
+      setStudent((current) =>
+        current?.id === alunoId
+          ? {
+              ...current,
+              classe: null,
+              turma: null,
+              turmaId: null,
+            }
+          : { id: alunoId, label: fallbackLabel || "Aluno" },
+      );
+      setLoading(true);
+      return;
+    }
+
     setStudent((current) =>
       current?.id === alunoId
         ? {
