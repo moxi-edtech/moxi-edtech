@@ -61,14 +61,6 @@ export default function BalcaoPageClient({
     [],
   );
 
-  const handleCommandCenterSuccess = useCallback((newAlunoId?: string) => {
-    setCaixaRefreshKey((current) => current + 1);
-    if (!newAlunoId) return;
-
-    setSelectedAlunoId(newAlunoId);
-    syncLocation({ alunoId: newAlunoId, actionId: "enrollment" });
-  }, [syncLocation]);
-
   const syncLocation = useCallback((params: {
     alunoId?: string | null;
     actionId?: BalcaoActionId;
@@ -87,6 +79,14 @@ export default function BalcaoPageClient({
     const targetPath = pathname || "/secretaria/balcao";
     router.replace(query ? `${targetPath}?${query}` : targetPath, { scroll: false });
   }, [activeAction, pathname, router, searchParams, selectedAlunoId]);
+
+  const handleCommandCenterSuccess = useCallback((newAlunoId?: string) => {
+    setCaixaRefreshKey((current) => current + 1);
+    if (!newAlunoId) return;
+
+    setSelectedAlunoId(newAlunoId);
+    syncLocation({ alunoId: newAlunoId, actionId: "enrollment" });
+  }, [syncLocation]);
 
   const handleActionChange = useCallback((actionId: BalcaoActionId) => {
     setActiveAction(actionId);
