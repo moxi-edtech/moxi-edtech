@@ -152,8 +152,9 @@ function ProfessorNotasContent() {
   const [turmaDisciplinaId, setTurmaDisciplinaId] = useState<string | null>(null)
   const [disciplinaNome, setDisciplinaNome] = useState<string | null>(null)
   const [pauta, setPauta] = useState<StudentGradeRow[]>([])
-  const [gradeMaxima, setGradeMaxima] = useState(20)
-  const [gradeCorte, setGradeCorte] = useState(10)
+  const [gradeMaxima, setGradeMaxima] = useState<number | null>(20)
+  const [gradeCorte, setGradeCorte] = useState<number | null>(10)
+  const [gradeEscala, setGradeEscala] = useState<string | null>(null)
   const [gradeComponentes, setGradeComponentes] = useState<string[]>([])
   const [gradePesos, setGradePesos] = useState<Record<string, number>>({})
   const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ">("CURRENT")
@@ -295,16 +296,20 @@ function ProfessorNotasContent() {
           params.set("turmaDisciplinaId", turmaDisciplinaId)
         }
         const res = await fetch(`/api/professor/pauta?${params.toString()}`, { cache: "no-store" })
-        const maxHeader = Number(res.headers.get("x-klasse-grade-max"))
-        const cutoffHeader = Number(res.headers.get("x-klasse-grade-cutoff"))
+        const maxRaw = res.headers.get("x-klasse-grade-max")
+        const cutoffRaw = res.headers.get("x-klasse-grade-cutoff")
+        const maxHeader = maxRaw === null || maxRaw === "" ? null : Number(maxRaw)
+        const cutoffHeader = cutoffRaw === null || cutoffRaw === "" ? null : Number(cutoffRaw)
         const modeHeader = res.headers.get("x-klasse-academic-mode")
+        const scaleHeader = res.headers.get("x-klasse-grade-scale")
         const componentsHeader = res.headers.get("x-klasse-grade-components")
         const weightsHeader = res.headers.get("x-klasse-grade-weights")
         const json = await res.json().catch(() => null)
         if (!active) return
 
-        setGradeMaxima(Number.isFinite(maxHeader) && maxHeader > 0 ? maxHeader : 20)
-        setGradeCorte(Number.isFinite(cutoffHeader) && cutoffHeader > 0 ? cutoffHeader : 10)
+        setGradeMaxima(typeof maxHeader === "number" && Number.isFinite(maxHeader) && maxHeader > 0 ? maxHeader : null)
+        setGradeCorte(typeof cutoffHeader === "number" && Number.isFinite(cutoffHeader) && cutoffHeader > 0 ? cutoffHeader : null)
+        setGradeEscala(scaleHeader)
         setAcademicMode(modeHeader === "HISTORICAL_READ" ? "HISTORICAL_READ" : "CURRENT")
         setGradeComponentes(
           componentsHeader
@@ -568,6 +573,9 @@ function ProfessorNotasContent() {
     if (academicMode !== "CURRENT") {
       throw new Error("Este ano letivo está disponível apenas para consulta.")
     }
+    if (gradeMaxima === null) {
+      throw new Error("Esta turma usa uma escala não numérica neste fluxo.")
+    }
     if (turmaStatusFecho && turmaStatusFecho !== "ABERTO") {
       throw new Error("Turma fechada para lançamento de notas")
     }
@@ -723,7 +731,7 @@ function ProfessorNotasContent() {
   const turmaFechada = turmaStatusFecho && turmaStatusFecho !== "ABERTO"
   const reaberturaAtiva = reopenRequest?.status === "APROVADO" && Boolean(reopenRequest.expira_em) && new Date(reopenRequest.expira_em as string).getTime() > Date.now()
   const notasBloqueadas = Boolean(
-    academicMode !== "CURRENT" || (turmaFechada && !reaberturaAtiva),
+    academicMode !== "CURRENT" || gradeMaxima === null || (turmaFechada && !reaberturaAtiva),
   )
 
   return (
@@ -1106,6 +1114,11 @@ function ProfessorNotasContent() {
                     Ano letivo em consulta histórica. As notas estão disponíveis apenas para leitura.
                   </div>
                 ) : null}
+                {gradeEscala && gradeMaxima === null ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Esta turma usa uma escala não numérica. O lançamento quantitativo está indisponível.
+                  </div>
+                ) : null}
                 <GradeEntryGrid
                   initialData={data}
                   subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
@@ -1114,9 +1127,9 @@ function ProfessorNotasContent() {
                   highlightId={highlightAlunoId}
                   componentesAtivos={gradeComponentes}
                   pesoPorTipo={gradePesos}
-                  notaMaxima={gradeMaxima}
-                  notaCorte={gradeCorte}
-                  readOnly={academicMode !== "CURRENT"}
+                  notaMaxima={gradeMaxima ?? 20}
+                  notaCorte={gradeCorte ?? 10}
+                  readOnly={academicMode !== "CURRENT" || gradeMaxima === null}
                 />
               </div>
             )}
