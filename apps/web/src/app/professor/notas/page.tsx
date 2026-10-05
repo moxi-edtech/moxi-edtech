@@ -291,6 +291,7 @@ function ProfessorNotasContent() {
               nome: row.nome,
               foto: row.foto ?? null,
               mac1: row.mac ?? null,
+              npp1: row.npp ?? null,
               npt1: row.npt ?? null,
               mt1: row.mt ?? null,
               _status: "synced",
