@@ -128,10 +128,17 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
 
     setSaving(true);
     try {
+      const payload = Object.fromEntries(
+        changedEntries.map(([key, value]) => [
+          key,
+          value.trim() === "" ? null : value.trim(),
+        ]),
+      );
+
       const response = await fetch(`/api/secretaria/alunos/${alunoId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(Object.fromEntries(changedEntries)),
+        body: JSON.stringify(payload),
       });
       const payload = await response.json().catch(() => ({}));
 
