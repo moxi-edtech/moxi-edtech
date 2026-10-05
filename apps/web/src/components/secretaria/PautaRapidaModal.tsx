@@ -218,6 +218,7 @@ export function PautaRapidaModal({
           disciplinaId,
           trimestre: String(periodoNumero),
         });
+        if (focusAlunoId) params.set("alunoId", focusAlunoId);
         const res = await fetch(`/api/secretaria/turmas/${turmaId}/pauta-grid?${params.toString()}`, {
           cache: "no-store",
           headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
