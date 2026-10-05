@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { BalcaoWorkspace } from "@/components/secretaria/BalcaoWorkspace";
 import { OmniSearchInput } from "@/components/secretaria/OmniSearchInput";
+import type { BalcaoActionId } from "@/lib/balcao/action-registry";
 
 type AlunoResult = {
   id: string;
@@ -16,7 +17,13 @@ type AlunoResult = {
   total_em_atraso?: number | null;
 };
 
-export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
+export function BuscaBalcaoRapido({
+  escolaId,
+  initialAction = "desk",
+}: {
+  escolaId: string | null;
+  initialAction?: BalcaoActionId;
+}) {
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<AlunoResult[]>([]);
   const [carregando, setCarregando] = useState(false);
@@ -119,7 +126,7 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
             id: alunoSelecionadoId,
             label: alunoSelecionado.nome || "Aluno",
           }}
-          actionId="desk"
+          actionId={initialAction}
           onClose={handleCloseWorkspace}
         />
       ) : null}
