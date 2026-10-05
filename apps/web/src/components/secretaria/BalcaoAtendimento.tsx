@@ -2413,6 +2413,11 @@ export default function BalcaoAtendimento({
     [carrinho.itens, itensRematricula]
   );
 
+  const selectedItemKeys = useMemo(
+    () => new Set(carrinho.itens.map((item) => `${item.tipo}:${item.id}`)),
+    [carrinho.itens],
+  );
+
   const unlockedMensalidadeIds = useMemo(
     () => getUnlockedMensalidadeIds(dossier.mensalidades, selectedMensalidadeIds),
     [dossier.mensalidades, selectedMensalidadeIds]
@@ -2651,7 +2656,15 @@ export default function BalcaoAtendimento({
           <div className="min-h-[1px]" aria-hidden="true" />
         ) : (
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-            <div className={(view === "payment" || view === "document" || view === "all") ? "lg:col-span-8" : "lg:col-span-12"}>
+            <div
+              className={
+                view === "payment"
+                  ? "lg:col-span-7"
+                  : view === "document" || view === "all"
+                    ? "lg:col-span-8"
+                    : "lg:col-span-12"
+              }
+            >
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
                 {view === "all" ? <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} /> : null}
                 <Catalogo
@@ -2662,6 +2675,8 @@ export default function BalcaoAtendimento({
                   onAdicionarServico={handleAdicionarServico}
                   emittingDocId={checkout.emittingDocId}
                   unlockedMensalidadeIds={unlockedMensalidadeIds}
+                  selectedItemKeys={selectedItemKeys}
+                  selectedTotal={carrinho.total}
                   rematriculaReady={
                     rematricula.cardState === "READY" ||
                     rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
@@ -2690,13 +2705,14 @@ export default function BalcaoAtendimento({
             </div>
 
             {(view === "payment" || view === "document" || view === "all") && (
-              <div className="lg:col-span-4">
+              <div className={view === "payment" ? "lg:col-span-5" : "lg:col-span-4"}>
                 <CarrinhoPanel
                   carrinho={carrinho}
                   checkout={checkout}
                   audit={audit}
                   aluno={dossier.aluno}
                   embedded={embedded}
+                  mode={view === "payment" ? "payment" : view === "document" ? "document" : "all"}
                   atalhoActivo={
                     !rematricula.modalOpen &&
                     !debtModalOpen &&
