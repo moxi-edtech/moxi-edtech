@@ -93,6 +93,7 @@ export function PautaRapidaModal({
 
   useEffect(() => {
     let active = true;
+    setAcademicYearId(null);
     setAcademicContextError(null);
 
     const query = requestedAcademicYearId
@@ -123,11 +124,20 @@ export function PautaRapidaModal({
   }, [requestedAcademicYearId]);
 
   useEffect(() => {
-    if (initialTurmaId && initialTurmaId !== turmaId) {
+    if (lockTurma) {
+      setTurmaId(initialTurmaId ?? "");
+      setDisciplinaId("");
+      setPautaInitial([]);
+      setPautaDraft([]);
+      setSaveError(null);
+      return;
+    }
+
+    if (initialTurmaId) {
       setTurmaId(initialTurmaId);
       setDisciplinaId("");
     }
-  }, [initialTurmaId, turmaId]);
+  }, [initialTurmaId, lockTurma]);
 
   useEffect(() => {
     let active = true;
