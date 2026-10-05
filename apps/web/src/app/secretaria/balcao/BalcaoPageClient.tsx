@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -29,6 +29,8 @@ export default function BalcaoPageClient({
   escolaId: string;
   escolaParam: string;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryAlunoId = searchParams?.get("alunoId") ?? null;
   const queryAction = parseAction(searchParams?.get("action") ?? null);
@@ -59,11 +61,36 @@ export default function BalcaoPageClient({
     [],
   );
 
+  const syncLocation = useCallback((params: {
+    alunoId?: string | null;
+    actionId?: BalcaoActionId;
+  }) => {
+    const next = new URLSearchParams(searchParams?.toString() ?? "");
+    const nextAlunoId = params.alunoId === undefined ? selectedAlunoId : params.alunoId;
+    const nextAction = params.actionId ?? activeAction;
+
+    if (nextAlunoId) next.set("alunoId", nextAlunoId);
+    else next.delete("alunoId");
+
+    if (nextAction === "desk") next.delete("action");
+    else next.set("action", nextAction);
+
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [activeAction, pathname, router, searchParams, selectedAlunoId]);
+
+  const handleActionChange = useCallback((actionId: BalcaoActionId) => {
+    setActiveAction(actionId);
+    syncLocation({ actionId });
+  }, [syncLocation]);
+
   const handleAlunoSelected = useCallback((aluno: AlunoDossier | null) => {
-    setSelectedAlunoId(aluno?.id ?? null);
+    const nextAlunoId = aluno?.id ?? null;
+    setSelectedAlunoId(nextAlunoId);
     if (!aluno) {
       setCommandCenterStudent(null);
       setActiveAction("desk");
+      syncLocation({ alunoId: null, actionId: "desk" });
       return;
     }
 
@@ -74,7 +101,8 @@ export default function BalcaoPageClient({
       classe: aluno.classe ?? null,
       turma: aluno.turma_codigo ?? null,
     });
-  }, [setCommandCenterStudent]);
+    syncLocation({ alunoId: nextAlunoId });
+  }, [setCommandCenterStudent, syncLocation]);
 
   return (
     <CommandCenterShell
@@ -85,7 +113,7 @@ export default function BalcaoPageClient({
         subtitle: commandCenterSubtitle,
       } : null}
       activeAction={activeAction}
-      onActionChange={setActiveAction}
+      onActionChange={handleActionChange}
       leading={
         <Link
           href={`/escola/${escolaParam}/secretaria`}
@@ -106,7 +134,7 @@ export default function BalcaoPageClient({
             alunoId={selectedAlunoId}
             actionId={activeAction}
             returnTo={returnTo}
-            onActionChange={setActiveAction}
+            onActionChange={handleActionChange}
             onAlunoSelected={handleAlunoSelected}
             onSuccess={aoConcluirPagamento}
           />
@@ -117,7 +145,7 @@ export default function BalcaoPageClient({
             showSearch
             embedded
             view="overview"
-            onNavigateAction={setActiveAction}
+            onNavigateAction={handleActionChange}
             onAlunoSelected={handleAlunoSelected}
             onPagamentoConcluido={aoConcluirPagamento}
           />
