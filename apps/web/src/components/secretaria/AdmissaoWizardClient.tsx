@@ -1656,6 +1656,15 @@ function Step3Pagamento(props: {
   const [priceHint, setPriceHint] = useState<string | null>(null);
   const [servicos, setServicos] = useState<Array<{ id: string; codigo: string; nome: string; descricao?: string | null; preco: number }>>([]);
   const [servicosSelecionados, setServicosSelecionados] = useState<string[]>([]);
+  const [mensalidadesPreview, setMensalidadesPreview] = useState<Array<{
+    competencia: string;
+    ano: number;
+    mes: number;
+    data_vencimento: string;
+    valor_base: number;
+    valor: number;
+  }>>([]);
+  const [mensalidadesSelecionadas, setMensalidadesSelecionadas] = useState<string[]>([]);
   const [priceLoading, setPriceLoading] = useState(false);
   const postActionDocumentRequestRef = useRef<Map<string, string>>(new Map());
   const router = useRouter();
@@ -1682,6 +1691,8 @@ function Step3Pagamento(props: {
       try {
         setPriceLoading(true);
         setPriceHint(null);
+        setMensalidadesPreview([]);
+        setMensalidadesSelecionadas([]);
         if (!payment.parcial) {
           setPayment((p) => ({ ...p, amount: "" }));
         }
@@ -1694,6 +1705,9 @@ function Step3Pagamento(props: {
 
         if (anoLetivo) {
           params.set("ano", String(anoLetivo));
+        }
+        if (Number(initialData?.percentagem_desconto ?? 0) > 0) {
+          params.set("desconto", String(initialData?.percentagem_desconto ?? 0));
         }
 
         const res = await fetch(`/api/financeiro/orcamento/matricula?${params.toString()}`, {
@@ -1708,6 +1722,12 @@ function Step3Pagamento(props: {
         }
 
         const valorMatricula = Number(json?.data?.valor_matricula ?? 0);
+        const mensalidades = Array.isArray(json?.data?.mensalidades)
+          ? json.data.mensalidades.filter((item: any) =>
+              typeof item?.competencia === "string" && Number(item?.valor ?? 0) > 0,
+            )
+          : [];
+        setMensalidadesPreview(mensalidades);
         if (valorMatricula > 0) {
           setPriceHint(String(valorMatricula));
           if (!payment.parcial) {
@@ -1775,7 +1795,24 @@ function Step3Pagamento(props: {
   const extrasTotal = servicos
     .filter((service) => servicosSelecionados.includes(service.id))
     .reduce((sum, service) => sum + service.preco, 0);
-  const totalComExtras = (Number(priceHint ?? 0) || 0) + extrasTotal;
+  const mensalidadesTotal = mensalidadesPreview
+    .filter((item) => mensalidadesSelecionadas.includes(item.competencia))
+    .reduce((sum, item) => sum + Number(item.valor ?? 0), 0);
+  const totalComExtras = (Number(priceHint ?? 0) || 0) + extrasTotal + mensalidadesTotal;
+
+  const toggleMensalidade = (competencia: string) => {
+    const index = mensalidadesPreview.findIndex((item) => item.competencia === competencia);
+    if (index < 0) return;
+    setMensalidadesSelecionadas((current) => {
+      const selected = current.includes(competencia);
+      // Propinas são sempre pagas em ordem: marcar um mês inclui os anteriores;
+      // desmarcar um mês remove também todos os meses posteriores.
+      return selected
+        ? mensalidadesPreview.slice(0, index).map((item) => item.competencia)
+        : mensalidadesPreview.slice(0, index + 1).map((item) => item.competencia);
+    });
+    setPayment((current) => ({ ...current, parcial: false, amount: "" }));
+  };
 
   const openExistingAluno = () => {
     const existingCandidaturaId = duplicateConflict?.existing_matricula?.candidatura_id;
@@ -1865,6 +1902,7 @@ function Step3Pagamento(props: {
       comprovativo_url: payment.comprovativo_url,
       referencia: payment.referencia,
       servicos_ids: servicosSelecionados,
+      mensalidades_competencias: mensalidadesSelecionadas,
       amount: payment.parcial && payment.amount ? Number(payment.amount) : undefined,
       parcial: payment.parcial || undefined,
     });
@@ -2240,6 +2278,42 @@ function Step3Pagamento(props: {
           </div>
         )}
 
+        {mensalidadesPreview.length > 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-slate-800">Mensalidades a pagar agora</p>
+              <p className="text-xs text-slate-500">
+                Opcional. Se marcar um mês, os meses anteriores também são incluídos para respeitar a ordem das propinas.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {mensalidadesPreview.map((item, index) => {
+                const checked = mensalidadesSelecionadas.includes(item.competencia);
+                const label = new Intl.DateTimeFormat("pt-AO", { month: "long", year: "numeric", timeZone: "UTC" })
+                  .format(new Date(Date.UTC(item.ano, item.mes - 1, 1)));
+                return (
+                  <label key={item.competencia} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-amber bg-amber-50" : "border-slate-200"}`}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleMensalidade(item.competencia)}
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald"
+                    />
+                    <span className="min-w-0 text-sm">
+                      <span className="block font-semibold capitalize text-slate-800">{label}</span>
+                      <span className="block text-xs text-slate-500">Vence em {new Intl.DateTimeFormat("pt-AO").format(new Date(`${item.data_vencimento}T00:00:00Z`))}</span>
+                      <span className="mt-1 block font-semibold text-emerald">
+                        {Number(item.valor).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}
+                      </span>
+                      {index === 0 ? <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-slate-400">Primeira competência</span> : null}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <select
           name="metodo_pagamento"
           value={payment.metodo_pagamento}
@@ -2251,13 +2325,13 @@ function Step3Pagamento(props: {
           <option value="TRANSFERENCIA">Transferência</option>
         </select>
 
-        <label className={`flex items-center gap-2 text-xs text-slate-600 ${servicosSelecionados.length > 0 ? "opacity-50" : ""}`}>
+        <label className={`flex items-center gap-2 text-xs text-slate-600 ${servicosSelecionados.length > 0 || mensalidadesSelecionadas.length > 0 ? "opacity-50" : ""}`}>
           <input
             type="checkbox"
             name="parcial"
             checked={payment.parcial}
             onChange={onChange}
-            disabled={servicosSelecionados.length > 0}
+            disabled={servicosSelecionados.length > 0 || mensalidadesSelecionadas.length > 0}
             className="h-4 w-4 rounded border-slate-300 text-emerald focus:ring-amber/40"
           />
           Pagamento parcial
@@ -2275,7 +2349,13 @@ function Step3Pagamento(props: {
         ) : priceHint ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
             Total a pagar: <span className="font-semibold">{(totalComExtras || Number(priceHint)).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span>
-            {extrasTotal > 0 ? <span className="mt-1 block text-xs text-slate-500">Matrícula {Number(priceHint).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })} + serviços {extrasTotal.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span> : null}
+            {(extrasTotal > 0 || mensalidadesTotal > 0) ? (
+              <span className="mt-1 block text-xs text-slate-500">
+                Matrícula {Number(priceHint).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}
+                {extrasTotal > 0 ? ` + serviços ${extrasTotal.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}` : ""}
+                {mensalidadesTotal > 0 ? ` + mensalidades ${mensalidadesTotal.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}` : ""}
+              </span>
+            ) : null}
           </div>
         ) : (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
