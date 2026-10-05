@@ -40,7 +40,11 @@ export default function BalcaoPageClient({
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(queryAlunoId);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(queryAction);
   const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
-  const commandStudent = useCommandCenterStudent(selectedAlunoId);
+  const {
+    student: commandCenterStudent,
+    setStudent: setCommandCenterStudent,
+    subtitle: commandCenterSubtitle,
+  } = useCommandCenterStudent(selectedAlunoId);
 
   useEffect(() => {
     setSelectedAlunoId(queryAlunoId);
@@ -58,27 +62,27 @@ export default function BalcaoPageClient({
   const handleAlunoSelected = useCallback((aluno: AlunoDossier | null) => {
     setSelectedAlunoId(aluno?.id ?? null);
     if (!aluno) {
-      commandStudent.setStudent(null);
+      setCommandCenterStudent(null);
       setActiveAction("desk");
       return;
     }
 
-    commandStudent.setStudent({
+    setCommandCenterStudent({
       id: aluno.id,
       label: aluno.nome,
       numeroProcesso: aluno.numero_processo,
       classe: aluno.classe ?? null,
       turma: aluno.turma_codigo ?? null,
     });
-  }, [commandStudent]);
+  }, [setCommandCenterStudent]);
 
   return (
     <CommandCenterShell
       variant="page"
-      student={commandStudent.student ? {
-        id: commandStudent.student.id,
-        label: commandStudent.student.label,
-        subtitle: commandStudent.subtitle,
+      student={commandCenterStudent ? {
+        id: commandCenterStudent.id,
+        label: commandCenterStudent.label,
+        subtitle: commandCenterSubtitle,
       } : null}
       activeAction={activeAction}
       onActionChange={setActiveAction}
