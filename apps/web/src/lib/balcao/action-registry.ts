@@ -102,20 +102,20 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
 
 export const STUDENT_BALCAO_ACTION_IDS: BalcaoActionId[] = [
   "desk",
+  "enrollment",
   "payment",
   "document",
   "reenrollment",
-  "enrollment",
   "profile",
   "grade",
 ];
 
 export const BALCAO_WORKSPACE_ACTION_IDS: BalcaoActionId[] = [
   "desk",
+  "enrollment",
   "payment",
   "document",
   "reenrollment",
-  "enrollment",
   "profile",
   "grade",
 ];
