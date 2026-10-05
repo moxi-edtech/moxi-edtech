@@ -1015,6 +1015,142 @@ function AlunoCard({ aluno, onTrocarAluno }: { aluno: AlunoDossier; onTrocarAlun
   );
 }
 
+function CommandCenterOverview({
+  aluno,
+  mensalidades,
+  servicos,
+  rematriculaState,
+  onNavigate,
+  onTrocarAluno,
+}: {
+  aluno: AlunoDossier;
+  mensalidades: Mensalidade[];
+  servicos: Servico[];
+  rematriculaState: RematriculaCardState | "CHECKING" | null;
+  onNavigate?: (actionId: BalcaoActionId) => void;
+  onTrocarAluno: () => void;
+}) {
+  const overdue = mensalidades.filter((item) => item.atrasada && item.preco > 0);
+  const overdueTotal = overdue.reduce((sum, item) => sum + item.preco, 0);
+  const documents = servicos.filter((service) => !isServicoRematricula(service) && isDocServico(service));
+
+  const statusLabel =
+    aluno.status_financeiro === "inadimplente"
+      ? "Com pendência"
+      : aluno.status_financeiro === "sem_matricula"
+        ? "Sem matrícula"
+        : "Regular";
+
+  const rows: Array<{
+    id: BalcaoActionId;
+    title: string;
+    description: string;
+    value: string;
+    tone?: "danger" | "success" | "neutral";
+  }> = [
+    {
+      id: "payment",
+      title: "Financeiro",
+      description: overdue.length > 0 ? "Regularize as propinas vencidas." : "Sem propinas vencidas.",
+      value: overdue.length > 0 ? kwanza.format(overdueTotal) : "Em dia",
+      tone: overdue.length > 0 ? "danger" : "success",
+    },
+    {
+      id: "document",
+      title: "Documentos",
+      description: "Emitir documentos sem sair do atendimento.",
+      value: `${documents.length} disponíveis`,
+      tone: "neutral",
+    },
+    {
+      id: "reenrollment",
+      title: "Rematrícula",
+      description: rematriculaState
+        ? (ESTADO_OPERACAO[rematriculaState]?.descricao ?? "Ver estado da rematrícula.")
+        : "Sem operação disponível neste momento.",
+      value: rematriculaState ? (ESTADO_OPERACAO[rematriculaState]?.titulo ?? rematriculaState) : "Indisponível",
+      tone: rematriculaState === "READY" || rematriculaState === "ALREADY_COMPLETED" ? "success" : "neutral",
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar url={aluno.foto_url} nome={aluno.nome} size="lg" />
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Aluno</p>
+            <h2 className="truncate text-xl font-black text-slate-900">{aluno.nome}</h2>
+            <p className="mt-0.5 truncate text-xs text-slate-500">
+              {[aluno.numero_processo && `Proc. ${aluno.numero_processo}`, aluno.classe, aluno.turma_codigo && `Turma ${aluno.turma_codigo}`]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={[
+            "rounded-full px-2.5 py-1 text-[10px] font-bold",
+            aluno.status_financeiro === "inadimplente"
+              ? "bg-rose-50 text-rose-700"
+              : aluno.status_financeiro === "sem_matricula"
+                ? "bg-slate-100 text-slate-600"
+                : "bg-emerald-50 text-emerald",
+          ].join(" ")}>
+            {statusLabel}
+          </span>
+          <button
+            type="button"
+            onClick={onTrocarAluno}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+          >
+            Trocar aluno
+          </button>
+        </div>
+      </div>
+
+      <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+        {rows.map((row) => (
+          <button
+            key={row.id}
+            type="button"
+            onClick={() => onNavigate?.(row.id)}
+            className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-slate-50 sm:px-5"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-900">{row.title}</p>
+              <p className="mt-0.5 truncate text-xs text-slate-500">{row.description}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className={[
+                "text-xs font-bold",
+                row.tone === "danger"
+                  ? "text-rose-700"
+                  : row.tone === "success"
+                    ? "text-emerald"
+                    : "text-slate-600",
+              ].join(" ")}>
+                {row.value}
+              </span>
+              <span className="text-slate-300">→</span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => onNavigate?.("profile")}
+          className="text-xs font-bold text-emerald transition hover:underline"
+        >
+          Ver perfil completo →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Catalogo({
   mensalidades,
   servicos,
@@ -2022,6 +2158,7 @@ export default function BalcaoAtendimento({
   const [searchListOpen, setSearchListOpen] = useState(false);
   const [searchActiveIndex, setSearchActiveIndex] = useState(-1);
   const workspaceRootRef = useRef<HTMLDivElement | null>(null);
+  const autoOpenedRematriculaRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (academicYearId) return;
@@ -2243,6 +2380,25 @@ export default function BalcaoAtendimento({
     dossier.mensalidades.length,
     servicos.length,
     rematricula.cardState,
+  ]);
+
+  useEffect(() => {
+    if (view !== "reenrollment" || !dossier.aluno?.id || rematricula.modalOpen) return;
+    if (!rematricula.service || !rematricula.anoLetivo) return;
+    if (!["READY", "RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING", "FINALIST_PENDING"].includes(rematricula.cardState ?? "")) return;
+
+    const key = `${dossier.aluno.id}:${rematricula.cardState}`;
+    if (autoOpenedRematriculaRef.current === key) return;
+    autoOpenedRematriculaRef.current = key;
+    rematricula.openModal();
+  }, [
+    view,
+    dossier.aluno?.id,
+    rematricula.modalOpen,
+    rematricula.service,
+    rematricula.anoLetivo,
+    rematricula.cardState,
+    rematricula.openModal,
   ]);
 
   return (
