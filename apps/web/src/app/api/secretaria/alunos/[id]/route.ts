@@ -36,10 +36,14 @@ const UpdateSchema = z.object({
 })
 
 // GET aluno details (alunos + profiles)
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const alunoId = id
+    const requestedAcademicYearId = new URL(req.url).searchParams.get('ano_letivo_id')
+    if (requestedAcademicYearId && !z.string().uuid().safeParse(requestedAcademicYearId).success) {
+      return NextResponse.json({ ok: false, error: 'Ano letivo inválido' }, { status: 400 })
+    }
     const s = await supabaseServerTyped<any>()
     const { data: userRes } = await s.auth.getUser()
     const user = userRes?.user
@@ -100,11 +104,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
 
     const profObj = Array.isArray((aluno as any).profiles) ? (aluno as any).profiles[0] : (aluno as any).profiles
-    const { data: matricula } = await s
+    let matriculaQuery = s
       .from('matriculas')
-      .select('id, turma_id, created_at, status, turmas ( nome, cursos ( nome ) )')
+      .select('id, turma_id, ano_letivo_id, created_at, status, turmas ( nome, cursos ( nome ) )')
       .eq('aluno_id', alunoId)
       .eq('escola_id', alunoEscolaId)
+
+    if (requestedAcademicYearId) {
+      matriculaQuery = matriculaQuery.eq('ano_letivo_id', requestedAcademicYearId)
+    }
+
+    const { data: matricula } = await matriculaQuery
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
