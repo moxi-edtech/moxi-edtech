@@ -61,6 +61,14 @@ export default function BalcaoPageClient({
     [],
   );
 
+  const handleCommandCenterSuccess = useCallback((newAlunoId?: string) => {
+    setCaixaRefreshKey((current) => current + 1);
+    if (!newAlunoId) return;
+
+    setSelectedAlunoId(newAlunoId);
+    syncLocation({ alunoId: newAlunoId, actionId: "enrollment" });
+  }, [syncLocation]);
+
   const syncLocation = useCallback((params: {
     alunoId?: string | null;
     actionId?: BalcaoActionId;
@@ -137,7 +145,7 @@ export default function BalcaoPageClient({
             returnTo={returnTo}
             onActionChange={handleActionChange}
             onAlunoSelected={handleAlunoSelected}
-            onSuccess={aoConcluirPagamento}
+            onSuccess={handleCommandCenterSuccess}
           />
         ) : (
           <BalcaoAtendimento
