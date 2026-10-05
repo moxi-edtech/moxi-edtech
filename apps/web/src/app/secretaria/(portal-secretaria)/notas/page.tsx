@@ -59,7 +59,8 @@ function SecretariaNotasContent() {
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM)
   const initialTurmaId = searchParams?.get("turmaId") ?? ""
   const initialDisciplinaId = searchParams?.get("disciplinaId") ?? ""
-  const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear())
+  const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ" | null>(null)
+  const [academicContextError, setAcademicContextError] = useState<string | null>(null)
   const [turmas, setTurmas] = useState<TurmaItem[]>([])
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([])
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([])
@@ -69,12 +70,57 @@ function SecretariaNotasContent() {
   const [turmaDisciplinaId, setTurmaDisciplinaId] = useState<string | null>(null)
   const [disciplinaNome, setDisciplinaNome] = useState<string | null>(null)
   const [pauta, setPauta] = useState<StudentGradeRow[]>([])
+  const [pautaPesoPorTipo, setPautaPesoPorTipo] = useState<Record<string, number>>({})
+  const [pautaComponentes, setPautaComponentes] = useState<string[]>([])
+  const [pautaNotaMaxima, setPautaNotaMaxima] = useState<number | null>(20)
+  const [pautaNotaCorte, setPautaNotaCorte] = useState<number | null>(10)
+  const [pautaEscala, setPautaEscala] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     let active = true
+    setAcademicMode(null)
+    setAcademicContextError(null)
+
+    if (!academicYearId) {
+      setTurmas([])
+      return () => {
+        active = false
+      }
+    }
+
+    void fetch(`/api/academic-context?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(academicYearId)}`, {
+      cache: "no-store",
+    })
+      .then((response) => response.json().then((payload) => ({ response, payload })))
+      .then(({ response, payload }) => {
+        if (!active) return
+        if (!response.ok || !payload?.ok) {
+          setAcademicContextError(payload?.error || "Não foi possível identificar o ano letivo.")
+          return
+        }
+        setAcademicMode(payload.context?.mode === "CURRENT" ? "CURRENT" : "HISTORICAL_READ")
+      })
+      .catch(() => {
+        if (active) setAcademicContextError("Não foi possível identificar o ano letivo.")
+      })
+
+    return () => {
+      active = false
+    }
+  }, [academicYearId])
+
+  useEffect(() => {
+    let active = true
+    if (!academicYearId) {
+      setTurmas([])
+      return () => {
+        active = false
+      }
+    }
+
     const load = async () => {
-      const params = new URLSearchParams({ ano: String(anoLetivo) })
+      const params = new URLSearchParams({ session_id: academicYearId })
       const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`, { cache: "no-store" })
       const json = await res.json().catch(() => ({}))
       if (!active) return
@@ -84,11 +130,11 @@ function SecretariaNotasContent() {
         setTurmas([])
       }
     }
-    load()
+    void load()
     return () => {
       active = false
     }
-  }, [anoLetivo])
+  }, [academicYearId])
 
   useEffect(() => {
     if (!turmaId) {
@@ -142,8 +188,13 @@ function SecretariaNotasContent() {
   }, [disciplinaId, disciplinasFiltradas])
 
   useEffect(() => {
-    if (!turmaId || !disciplinaId) {
+    if (!academicYearId || !turmaId || !disciplinaId || !turmaDisciplinaId) {
       setPauta([])
+      setPautaPesoPorTipo({})
+      setPautaComponentes([])
+      setPautaNotaMaxima(20)
+      setPautaNotaCorte(10)
+      setPautaEscala(null)
       return
     }
     let active = true
@@ -153,6 +204,8 @@ function SecretariaNotasContent() {
         const params = new URLSearchParams({
           disciplinaId,
           trimestre: String(periodoNumero),
+          anoLetivoId: academicYearId,
+          turmaDisciplinaId,
         })
         const res = await fetch(`/api/secretaria/turmas/${turmaId}/pauta-grid?${params.toString()}`, {
           cache: "no-store",
@@ -174,8 +227,18 @@ function SecretariaNotasContent() {
               _status: "synced",
             }))
           )
+          setPautaPesoPorTipo((json.meta?.peso_por_tipo as Record<string, number>) ?? {})
+          setPautaComponentes(Array.isArray(json.meta?.componentes_ativos) ? json.meta.componentes_ativos : [])
+          setPautaNotaMaxima(typeof json.meta?.nota_maxima === "number" ? json.meta.nota_maxima : null)
+          setPautaNotaCorte(typeof json.meta?.nota_corte === "number" ? json.meta.nota_corte : null)
+          setPautaEscala(typeof json.meta?.escala === "string" ? json.meta.escala : null)
         } else {
           setPauta([])
+          setPautaPesoPorTipo({})
+          setPautaComponentes([])
+          setPautaNotaMaxima(20)
+          setPautaNotaCorte(10)
+          setPautaEscala(null)
         }
       } finally {
         if (active) setLoading(false)
@@ -186,51 +249,41 @@ function SecretariaNotasContent() {
     return () => {
       active = false
     }
-  }, [turmaId, disciplinaId, periodoNumero])
+  }, [academicYearId, turmaId, disciplinaId, turmaDisciplinaId, periodoNumero])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
-    if (!turmaId || !disciplinaId) return
-
-    // 1. Tratar Isenções
-    const isentos = rows.filter(r => r.is_isento);
-    if (isentos.length > 0) {
-      const res = await fetch(`/api/secretaria/notas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "idempotency-key": `isento-${Date.now()}` },
-        body: JSON.stringify({
-          turma_id: turmaId,
-          ano_letivo_id: academicYearId,
-          disciplina_id: disciplinaId,
-          turma_disciplina_id: turmaDisciplinaId || undefined,
-          trimestre: periodoNumero,
-          is_isento: true,
-          notas: isentos.map(r => ({ aluno_id: r.id, valor: null }))
-        }),
-      });
-      if (!res.ok) throw new Error("Falha ao salvar isenções");
+    if (!academicYearId || !turmaId || !disciplinaId || !turmaDisciplinaId) return
+    if (academicMode !== "CURRENT") {
+      throw new Error("Este ano letivo está disponível apenas para consulta.")
+    }
+    if (pautaNotaMaxima === null) {
+      throw new Error("Esta turma usa uma escala não numérica.")
     }
 
-    // 2. Tratar Notas normais
-    const activeRows = rows.filter(r => !r.is_isento);
-    const payloads = [
+    const configured = new Set(pautaComponentes.map((tipo) => tipo.toUpperCase()))
+    const candidates = [
       { tipo: "MAC", campo: "mac1" as const },
       { tipo: "NPP", campo: "npp1" as const },
       { tipo: "NPT", campo: "npt1" as const },
     ]
+    const payloads = configured.size === 0
+      ? candidates.filter((item) => item.tipo !== "NPP")
+      : candidates.filter(
+          (item) => configured.has(item.tipo) || (item.tipo === "NPT" && configured.has("PT")),
+        )
 
-    for (const { tipo, campo } of payloads) {
-      const notas = activeRows
-        .map((row) => ({ aluno_id: row.id, valor: row[campo] }))
-        .filter((entry) => typeof entry.valor === "number")
-      
-      if (notas.length === 0) continue
-
+    const postNotas = async (params: {
+      tipo: string
+      isIsento: boolean
+      notas: Array<{ aluno_id: string; valor: number | null }>
+    }) => {
+      if (params.notas.length === 0) return
       const idempotencyKey =
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
-      const res = await fetch(`/api/secretaria/notas`, {
+      const response = await fetch("/api/secretaria/notas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -240,24 +293,45 @@ function SecretariaNotasContent() {
           turma_id: turmaId,
           ano_letivo_id: academicYearId,
           disciplina_id: disciplinaId,
-          turma_disciplina_id: turmaDisciplinaId || undefined,
+          turma_disciplina_id: turmaDisciplinaId,
           trimestre: periodoNumero,
-          tipo_avaliacao: tipo,
-          is_isento: false,
-          notas,
+          tipo_avaliacao: params.tipo,
+          is_isento: params.isIsento,
+          notas: params.notas,
         }),
       })
-      const json = await res.json().catch(() => null)
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Falha ao salvar notas")
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Falha ao guardar notas.")
       }
+    }
+
+    const isentos = rows.filter((row) => row.is_isento)
+    for (const { tipo } of payloads) {
+      await postNotas({
+        tipo,
+        isIsento: true,
+        notas: isentos.map((row) => ({ aluno_id: row.id, valor: null })),
+      })
+    }
+
+    const activeRows = rows.filter((row) => !row.is_isento)
+    for (const { tipo, campo } of payloads) {
+      await postNotas({
+        tipo,
+        isIsento: false,
+        notas: activeRows.map((row) => ({
+          aluno_id: row.id,
+          valor: row[campo] ?? null,
+        })),
+      })
     }
 
     setPauta((prev) =>
       prev.map((row) => {
         const updated = rows.find((candidate) => candidate.id === row.id)
         return updated ? { ...row, ...updated, _status: "synced" } : row
-      })
+      }),
     )
   }
 
@@ -275,13 +349,23 @@ function SecretariaNotasContent() {
         />
       </div>
 
-      <div className="grid md:grid-cols-[1fr_1fr_1fr] gap-3 items-center">
-        <input
-          type="number"
-          value={anoLetivo}
-          onChange={(event) => setAnoLetivo(Number(event.target.value))}
-          className="border rounded p-2"
-        />
+      {academicContextError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          {academicContextError}
+        </div>
+      ) : null}
+      {academicMode === "HISTORICAL_READ" ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Ano letivo em consulta histórica. As notas podem ser consultadas, mas não alteradas.
+        </div>
+      ) : null}
+      {pautaEscala && pautaNotaMaxima === null ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Esta turma usa uma escala não numérica. O lançamento quantitativo está indisponível.
+        </div>
+      ) : null}
+
+      <div className="grid md:grid-cols-2 gap-3 items-center">
         <select
           value={turmaId}
           onChange={(event) => {
@@ -353,6 +437,11 @@ function SecretariaNotasContent() {
           subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
           onSave={handleSaveBatch}
           showIsento={true}
+          componentesAtivos={pautaComponentes}
+          pesoPorTipo={pautaPesoPorTipo}
+          notaMaxima={pautaNotaMaxima ?? 20}
+          notaCorte={pautaNotaCorte ?? 10}
+          readOnly={academicMode !== "CURRENT" || pautaNotaMaxima === null}
         />
       )}
     </div>
