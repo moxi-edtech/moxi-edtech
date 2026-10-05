@@ -21,6 +21,7 @@ const Query = z.object({
   trimestre: z.coerce.number().int().min(1).max(3),
   alunoId: z.string().uuid().optional(),
   anoLetivoId: z.string().uuid().optional(),
+  turmaDisciplinaId: z.string().uuid().optional(),
 })
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -36,7 +37,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const trimestre = searchParams.get('trimestre') ?? searchParams.get('periodoNumero')
     const alunoId = searchParams.get('alunoId') ?? searchParams.get('aluno_id') ?? undefined
     const anoLetivoId = searchParams.get('anoLetivoId') ?? searchParams.get('ano_letivo_id') ?? undefined
-    const parsed = Query.safeParse({ disciplinaId, trimestre, alunoId, anoLetivoId })
+    const turmaDisciplinaId = searchParams.get('turmaDisciplinaId') ?? searchParams.get('turma_disciplina_id') ?? undefined
+    const parsed = Query.safeParse({ disciplinaId, trimestre, alunoId, anoLetivoId, turmaDisciplinaId })
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos' }, { status: 400 })
     }
@@ -72,28 +74,70 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .maybeSingle()
     if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
 
-    const { data: matriz } = await supabase
-      .from('curso_matriz')
-      .select('id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
-      .eq('escola_id', escolaId)
-      .eq('curso_id', turma.curso_id)
-      .eq('classe_id', turma.classe_id)
-      .eq('disciplina_id', parsed.data.disciplinaId)
-      .eq('ativo', true)
-      .maybeSingle()
-    if (!matriz) {
-      return NextResponse.json({ ok: false, error: 'Disciplina não vinculada à turma' }, { status: 400 })
-    }
+    let matriz: {
+      id: string
+      avaliacao_mode: string | null
+      avaliacao_modelo_id: string | null
+      avaliacao_disciplina_id: string | null
+    } | null = null
+    let turmaDisciplina: { id: string; curso_matriz_id?: string | null } | null = null
 
-    const { data: turmaDisciplina } = await supabase
-      .from('turma_disciplinas')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('turma_id', turmaId)
-      .eq('curso_matriz_id', matriz.id)
-      .maybeSingle()
-    if (!turmaDisciplina) {
-      return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
+    if (parsed.data.turmaDisciplinaId) {
+      const { data: assignment } = await supabase
+        .from('turma_disciplinas')
+        .select('id, curso_matriz_id')
+        .eq('id', parsed.data.turmaDisciplinaId)
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .maybeSingle()
+
+      if (!assignment?.curso_matriz_id) {
+        return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
+      }
+
+      const { data: exactMatriz } = await supabase
+        .from('curso_matriz')
+        .select('id, disciplina_id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
+        .eq('id', assignment.curso_matriz_id)
+        .eq('escola_id', escolaId)
+        .eq('disciplina_id', parsed.data.disciplinaId)
+        .maybeSingle()
+
+      if (!exactMatriz) {
+        return NextResponse.json({ ok: false, error: 'A disciplina selecionada não corresponde à matriz da turma.' }, { status: 409 })
+      }
+
+      turmaDisciplina = assignment
+      matriz = exactMatriz
+    } else {
+      const { data: fallbackMatriz } = await supabase
+        .from('curso_matriz')
+        .select('id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
+        .eq('escola_id', escolaId)
+        .eq('curso_id', turma.curso_id)
+        .eq('classe_id', turma.classe_id)
+        .eq('disciplina_id', parsed.data.disciplinaId)
+        .eq('ativo', true)
+        .maybeSingle()
+
+      if (!fallbackMatriz) {
+        return NextResponse.json({ ok: false, error: 'Disciplina não vinculada à turma' }, { status: 400 })
+      }
+
+      const { data: fallbackAssignment } = await supabase
+        .from('turma_disciplinas')
+        .select('id, curso_matriz_id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .eq('curso_matriz_id', fallbackMatriz.id)
+        .maybeSingle()
+
+      if (!fallbackAssignment) {
+        return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
+      }
+
+      turmaDisciplina = fallbackAssignment
+      matriz = fallbackMatriz
     }
 
     const modelo = await resolveModeloAvaliacao({
