@@ -7,6 +7,7 @@ import {
   RefreshCcw,
   UserRound,
   GraduationCap,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -19,6 +20,7 @@ const ACTION_ICONS = {
   payment: CreditCard,
   document: FileText,
   reenrollment: RefreshCcw,
+  enrollment: UserPlus,
   profile: UserRound,
   grade: GraduationCap,
 } as const;
@@ -27,10 +29,12 @@ export function CommandCenterActionBar({
   value,
   onChange,
   label = "O que deseja fazer?",
+  hasStudent = true,
 }: {
   value: BalcaoActionId;
   onChange: (actionId: BalcaoActionId) => void;
   label?: string;
+  hasStudent?: boolean;
 }) {
   return (
     <div>
@@ -38,7 +42,9 @@ export function CommandCenterActionBar({
         {label}
       </p>
       <div className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
-        {getBalcaoWorkspaceActions().map((action) => {
+        {getBalcaoWorkspaceActions()
+          .filter((action) => hasStudent || !action.requiresStudent)
+          .map((action) => {
           const Icon = ACTION_ICONS[action.id as keyof typeof ACTION_ICONS];
           const selected = value === action.id;
           return (
