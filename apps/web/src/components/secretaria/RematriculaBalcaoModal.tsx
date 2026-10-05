@@ -28,6 +28,7 @@ type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 interface RematriculaBalcaoModalProps {
   open: boolean;
   onClose: () => void;
+  embedded?: boolean;
   // Student data
   alunoNome: string;
   alunoProcesso: string;
@@ -147,6 +148,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   const {
     open,
     onClose,
+    embedded = false,
     alunoNome,
     alunoProcesso,
     onPostAction,
@@ -197,7 +199,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   const triggerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (open) {
+    if (open && !embedded) {
       // Save the element that opened the modal
       triggerRef.current = document.activeElement as HTMLElement;
       // Focus the first interactive element after render
@@ -208,19 +210,19 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       triggerRef.current.focus();
       triggerRef.current = null;
     }
-  }, [open]);
+  }, [embedded, open]);
 
   // Re-focus when step changes
   useEffect(() => {
-    if (open && !result) {
+    if (open && !result && !embedded) {
       const timer = setTimeout(() => firstFocusRef.current?.focus(), 60);
       return () => clearTimeout(timer);
     }
-  }, [open, step, result]);
+  }, [embedded, open, step, result]);
 
   // ── Keyboard handling ───────────────────────────────────────────────────
   useEffect(() => {
-    if (!open) return;
+    if (!open || embedded) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       // During submission, block Escape
@@ -234,7 +236,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, result, submitting, step, onClose]);
+  }, [embedded, open, result, submitting, step, onClose]);
 
   if (!open) return null;
 
@@ -276,13 +278,15 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
-      onClick={handleOverlayClick}
+      className={embedded ? "w-full" : "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"}
+      onClick={embedded ? undefined : handleOverlayClick}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-        role="dialog"
-        aria-modal="true"
+        className={embedded
+          ? "relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-white"
+          : "relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"}
+        role={embedded ? undefined : "dialog"}
+        aria-modal={embedded ? undefined : true}
         aria-labelledby="rematricula-modal-title"
       >
         {/* ── Header (hidden on success) ──────────────────────────────── */}
@@ -332,7 +336,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               </div>}
             </div>
 
-            {!submitting && (
+            {!submitting && !embedded && (
               <button
                 onClick={onClose}
                 className="rounded-xl p-2 hover:bg-slate-50 text-slate-400 transition-colors"
@@ -345,7 +349,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
         )}
 
         {/* ── Body ────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className={embedded ? "p-5" : "flex-1 overflow-y-auto p-5"}>
           {/* ── Success ────────────────────────────────────────────── */}
           {result ? (
             <SuccessView
