@@ -217,7 +217,7 @@ export function PautaRapidaModal({
   }, [initialPeriodoNumero, periodos]);
 
   useEffect(() => {
-    if (!turmaId || !disciplinaId || !periodoNumero) {
+    if (!academicYearId || !turmaId || !disciplinaId || !periodoNumero) {
       setPautaInitial([]);
       setPautaDraft([]);
       setPautaPesoPorTipo(null);
@@ -232,6 +232,7 @@ export function PautaRapidaModal({
         const params = new URLSearchParams({
           disciplinaId,
           trimestre: String(periodoNumero),
+          anoLetivoId: academicYearId,
         });
         if (focusAlunoId) params.set("alunoId", focusAlunoId);
         const res = await fetch(`/api/secretaria/turmas/${turmaId}/pauta-grid?${params.toString()}`, {
@@ -276,7 +277,7 @@ export function PautaRapidaModal({
     return () => {
       active = false;
     };
-  }, [accessToken, turmaId, disciplinaId, periodoNumero, focusAlunoId]);
+  }, [academicYearId, accessToken, turmaId, disciplinaId, periodoNumero, focusAlunoId]);
 
   const disciplinasFiltradas = useMemo(() => {
     return disciplinas.filter((disciplina) => {
