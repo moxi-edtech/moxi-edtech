@@ -461,7 +461,7 @@ export function GradeEntryGrid({
         ],
       }),
     ],
-    [gradeInputs, handleBatchPaste, readOnly, showIsento, updateGrade, updateIsento]
+    [flushNow, gradeInputs, handleBatchPaste, readOnly, showIsento, updateGrade, updateIsento]
   )
 
   const table = useReactTable({
