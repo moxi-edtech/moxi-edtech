@@ -113,10 +113,39 @@ export function buildBalcaoActionHref(params: {
   alunoLabel?: string | null;
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
 }) {
-  const { escolaParam, actionId, alunoId } = params;
+  const { escolaParam, actionId, alunoId, alunoLabel, portal } = params;
+  const commandCenterPortal = portal == null || portal === "secretaria" || portal === "operacoes";
+
+  if (commandCenterPortal) {
+    const search = new URLSearchParams();
+    if (alunoId) search.set("alunoId", alunoId);
+    if (actionId !== "desk") search.set("action", actionId);
+    const qs = search.toString();
+    return buildPortalHref(escolaParam, `/secretaria/balcao${qs ? `?${qs}` : ""}`);
+  }
+
+  const encodedAlunoId = alunoId ? encodeURIComponent(alunoId) : "";
+  const encodedLabel = alunoLabel ? encodeURIComponent(alunoLabel) : "";
+
+  if (actionId === "profile") {
+    return buildPortalHref(escolaParam, `/secretaria/alunos/${encodedAlunoId}`);
+  }
+
+  if (actionId === "payment") {
+    return buildPortalHref(
+      escolaParam,
+      `/financeiro/pagamentos?alunoId=${encodedAlunoId}&q=${encodedLabel}`,
+    );
+  }
+
+  if (actionId === "grade") {
+    return portal === "professor"
+      ? buildPortalHref(escolaParam, `/professor/notas?alunoId=${encodedAlunoId}`)
+      : buildPortalHref(escolaParam, `/secretaria/notas?alunoId=${encodedAlunoId}`);
+  }
+
   const search = new URLSearchParams();
   if (alunoId) search.set("alunoId", alunoId);
   if (actionId !== "desk") search.set("action", actionId);
-  const qs = search.toString();
-  return buildPortalHref(escolaParam, `/secretaria/balcao${qs ? `?${qs}` : ""}`);
+  return buildPortalHref(escolaParam, `/secretaria/balcao?${search.toString()}`);
 }
