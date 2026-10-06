@@ -66,7 +66,7 @@ export function CommandCenterShell({
               type="button"
               onClick={onClose}
               className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-              aria-label="Fechar Command Center"
+              aria-label="Fechar central de atendimento"
             >
               <X className="h-4 w-4" />
             </button>
@@ -91,13 +91,13 @@ export function CommandCenterShell({
         className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-2 backdrop-blur-sm sm:p-5"
         role="dialog"
         aria-modal="true"
-        aria-label={`KLASSE Command Center — ${student?.label || "Atendimento"}`}
+        aria-label={`KLASSE · Central de atendimento — ${student?.label || "Atendimento"}`}
       >
         <button
           type="button"
           className="absolute inset-0 cursor-default"
           onClick={onClose}
-          aria-label="Fechar Command Center"
+          aria-label="Fechar central de atendimento"
         />
         <div className="relative flex h-[94vh] w-[98vw] max-w-[1540px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
           <header className="flex shrink-0 flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
