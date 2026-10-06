@@ -49,8 +49,11 @@ export function CommandCenterPanel({
 
   if (!alunoId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-        Selecione um aluno para continuar esta operação.
+      <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+        <p className="text-sm font-black text-slate-900">Selecione um aluno</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          Pesquise um aluno no atendimento para continuar esta operação.
+        </p>
       </div>
     );
   }
