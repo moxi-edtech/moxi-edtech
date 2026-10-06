@@ -250,11 +250,19 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
   async function handleLogout() {
     setBusy(true);
     try {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } finally {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+        }).catch(() => null);
+      }
       try {
         localStorage.removeItem(LOCK_STORAGE_KEY);
       } catch {}
-      router.replace("/");
+      window.location.replace("/");
     } finally {
       setBusy(false);
     }
