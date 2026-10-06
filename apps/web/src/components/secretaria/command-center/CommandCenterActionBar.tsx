@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import {
   BriefcaseBusiness,
   CreditCard,
@@ -36,12 +37,31 @@ export function CommandCenterActionBar({
   label?: string;
   hasStudent?: boolean;
 }) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const active = scroller.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+    if (!active) return;
+
+    const targetLeft =
+      active.offsetLeft - (scroller.clientWidth - active.offsetWidth) / 2;
+    scroller.scrollTo({
+      left: Math.max(0, targetLeft),
+      behavior: "smooth",
+    });
+  }, [value]);
+
   return (
     <div>
       <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
         {label}
       </p>
-      <div className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
+      <div
+        ref={scrollerRef}
+        className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1"
+      >
         {getBalcaoWorkspaceActions()
           .filter((action) => hasStudent || !action.requiresStudent)
           .map((action) => {
