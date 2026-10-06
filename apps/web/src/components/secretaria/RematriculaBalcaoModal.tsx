@@ -28,6 +28,7 @@ type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 interface RematriculaBalcaoModalProps {
   open: boolean;
   onClose: () => void;
+  embedded?: boolean;
   // Student data
   alunoNome: string;
   alunoProcesso: string;
@@ -132,14 +133,14 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const METODOS_UI = [
-  { id: "cash" as const, icon: Banknote, label: "Cash" },
+  { id: "cash" as const, icon: Banknote, label: "Numerário" },
   { id: "tpa" as const, icon: CreditCard, label: "TPA" },
-  { id: "transfer" as const, icon: Wallet, label: "Transf" },
-  { id: "mcx" as const, icon: Smartphone, label: "MCX" },
-  { id: "kiwk" as const, icon: Smartphone, label: "KIWK" },
+  { id: "transfer" as const, icon: Wallet, label: "Transfer." },
+  { id: "mcx" as const, icon: Smartphone, label: "Multicaixa" },
+  { id: "kiwk" as const, icon: Smartphone, label: "Kwik" },
 ] as const;
 
-const STEP_LABELS = ["Académico", "Financeiro", "Pagamento"];
+const STEP_LABELS = ["Destino", "Cobrança", "Confirmar"];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -147,6 +148,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   const {
     open,
     onClose,
+    embedded = false,
     alunoNome,
     alunoProcesso,
     onPostAction,
@@ -197,7 +199,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   const triggerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (open) {
+    if (open && !embedded) {
       // Save the element that opened the modal
       triggerRef.current = document.activeElement as HTMLElement;
       // Focus the first interactive element after render
@@ -208,19 +210,19 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       triggerRef.current.focus();
       triggerRef.current = null;
     }
-  }, [open]);
+  }, [embedded, open]);
 
   // Re-focus when step changes
   useEffect(() => {
-    if (open && !result) {
+    if (open && !result && !embedded) {
       const timer = setTimeout(() => firstFocusRef.current?.focus(), 60);
       return () => clearTimeout(timer);
     }
-  }, [open, step, result]);
+  }, [embedded, open, step, result]);
 
   // ── Keyboard handling ───────────────────────────────────────────────────
   useEffect(() => {
-    if (!open) return;
+    if (!open || embedded) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       // During submission, block Escape
@@ -234,7 +236,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, result, submitting, step, onClose]);
+  }, [embedded, open, result, submitting, step, onClose]);
 
   if (!open) return null;
 
@@ -273,66 +275,82 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       !(metodo === "transfer" && !detalhes.evidencia_url.trim())
     ));
 
+  const disabledReason =
+    submitting
+      ? "A operação está a ser processada."
+      : !academicReady
+        ? reconciliationOnly
+          ? "Conclua a decisão académica e selecione o destino quando aplicável."
+          : "Selecione uma turma de destino elegível."
+        : !academicOnly && !financialReady
+          ? "Regularize as mensalidades vencidas antes de continuar."
+          : !academicOnly && !paymentAlreadyValidated && metodo === "tpa" && !detalhes.referencia.trim()
+            ? "Informe a referência do TPA."
+            : !academicOnly && !paymentAlreadyValidated && metodo === "transfer" && !detalhes.evidencia_url.trim()
+              ? "Adicione o comprovativo da transferência."
+              : null;
+
+  const stepTitle =
+    step === 1
+      ? "Definir destino"
+      : step === 2
+        ? "Rever cobrança"
+        : "Confirmar rematrícula";
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
-      onClick={handleOverlayClick}
+      className={embedded ? "w-full" : "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"}
+      onClick={embedded ? undefined : handleOverlayClick}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-        role="dialog"
-        aria-modal="true"
+        className={embedded
+          ? "relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white"
+          : "relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"}
+        role={embedded ? undefined : "dialog"}
+        aria-modal={embedded ? undefined : true}
         aria-labelledby="rematricula-modal-title"
       >
         {/* ── Header (hidden on success) ──────────────────────────────── */}
         {!result && (
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                Rematrícula · {anoLetivo.label}
+              </p>
               <h2
                 id="rematricula-modal-title"
-                className="font-bold text-slate-900"
+                className="mt-1 text-base font-black text-slate-900"
               >
-                {skipTurmaSelection
-                  ? `Regularizar taxa de rematrícula ${anoLetivo.label}`
-                  : `Confirmar rematrícula ${anoLetivo.label}`}
+                {skipTurmaSelection ? "Regularizar taxa" : stepTitle}
               </h2>
 
               {/* Step indicator */}
-              {!skipTurmaSelection && <div className="flex items-center gap-3 mt-2.5">
+              {!skipTurmaSelection && !reconciliationOnly && <div className="mt-3 flex items-center gap-2">
                 {STEP_LABELS.map((label, i) => {
                   const s = i + 1;
                   const isActive = s === step;
                   const isDone = s < step;
                   return (
-                    <div key={s} className="flex items-center gap-1.5">
-                      <div
-                        className={`h-2 w-2 rounded-full transition-colors ${
-                          isActive
-                            ? "bg-[#1F6B3B]"
-                            : isDone
-                            ? "bg-[#1F6B3B]/40"
-                            : "bg-slate-200"
-                        }`}
-                      />
-                      <span
-                        className={`text-[10px] font-semibold uppercase tracking-wide ${
-                          isActive
-                            ? "text-[#1F6B3B]"
-                            : isDone
-                            ? "text-[#1F6B3B]/50"
-                            : "text-slate-300"
-                        }`}
-                      >
-                        {label}
-                      </span>
+                    <div
+                      key={s}
+                      className={[
+                        "rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors",
+                        isActive
+                          ? "bg-amber text-white shadow-sm"
+                          : isDone
+                            ? "bg-emerald-50 text-emerald"
+                            : "bg-slate-100 text-slate-400",
+                      ].join(" ")}
+                    >
+                      {label}
                     </div>
                   );
                 })}
               </div>}
             </div>
 
-            {!submitting && (
+            {!submitting && !embedded && (
               <button
                 onClick={onClose}
                 className="rounded-xl p-2 hover:bg-slate-50 text-slate-400 transition-colors"
@@ -345,7 +363,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
         )}
 
         {/* ── Body ────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className={embedded ? "p-5" : "flex-1 overflow-y-auto p-5"}>
           {/* ── Success ────────────────────────────────────────────── */}
           {result ? (
             <SuccessView
@@ -353,7 +371,6 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               alunoNome={alunoNome}
               anoLetivo={anoLetivo}
               selectedTurma={selectedTurma}
-              service={service}
               paymentTotal={paymentTotal}
               metodo={metodo}
               paymentAlreadyValidated={paymentAlreadyValidated}
@@ -386,6 +403,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               selectedTurmaId={selectedTurmaId}
               setSelectedTurmaId={setSelectedTurmaId}
               selectRef={firstFocusRef as React.RefObject<HTMLSelectElement>}
+              compact={embedded}
             />
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
@@ -447,6 +465,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               paymentAlreadyValidated={paymentAlreadyValidated}
               academicOnly={singleStep}
               reconciliationOnly={reconciliationOnly}
+              disabledReason={disabledReason}
               submit={submit}
             />
           )}
@@ -487,6 +506,7 @@ function StepAcademico({
   selectedTurmaId,
   setSelectedTurmaId,
   selectRef,
+  compact,
 }: {
   alunoNome: string;
   alunoProcesso: string;
@@ -512,20 +532,34 @@ function StepAcademico({
   selectedTurmaId: string | null;
   setSelectedTurmaId: (id: string | null) => void;
   selectRef: React.RefObject<HTMLSelectElement>;
+  compact: boolean;
 }) {
   return (
     <div className="space-y-5">
-      {/* Student info */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2.5 text-sm">
-        <InfoRow label="Aluno" value={alunoNome} />
-        <InfoRow label="Nº Processo" value={alunoProcesso} />
-        <InfoRow label="Matrícula" value={matriculaId.slice(0, 8) + "…"} />
-        <InfoRow label="Turma actual" value={turmaAtual || "—"} />
-        <InfoRow label="Ano lectivo" value={anoLetivo.label} />
-      </div>
+      {compact ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Origem</p>
+            <p className="mt-1 text-sm font-black text-slate-900">{turmaAtual || "Turma não identificada"}</p>
+            <p className="mt-0.5 text-xs text-slate-500">Processo {alunoProcesso}</p>
+          </div>
+          <div className="sm:text-right">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Ano destino</p>
+            <p className="mt-1 text-sm font-black text-slate-900">{anoLetivo.label}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2.5 text-sm">
+          <InfoRow label="Aluno" value={alunoNome} />
+          <InfoRow label="Nº Processo" value={alunoProcesso} />
+          <InfoRow label="Matrícula" value={matriculaId.slice(0, 8) + "…"} />
+          <InfoRow label="Turma actual" value={turmaAtual || "—"} />
+          <InfoRow label="Ano lectivo" value={anoLetivo.label} />
+        </div>
+      )}
 
       <div>
-        <label htmlFor="rematricula-contacto-encarregado" className="mb-1.5 block text-xs font-bold text-slate-700">
+        <label htmlFor="rematricula-contacto-encarregado" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
           Contacto do encarregado
         </label>
         <input
@@ -537,7 +571,7 @@ function StepAcademico({
           placeholder="Ex.: +244 9XX XXX XXX"
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
         />
-        <p className="mt-1.5 text-[11px] text-slate-500">Confirme ou actualize o número que será usado nos contactos da escola.</p>
+        <p className="mt-1.5 text-[11px] text-slate-500">Use o número atual do encarregado para os contactos desta matrícula.</p>
       </div>
 
       {skipTurmaSelection ? (
@@ -613,35 +647,29 @@ function StepAcademico({
             />
           </div>
         </div>
-      ) : (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <strong className="block text-emerald-950">Decisão académica controlada pelo RAA</strong>
-          <span className="mt-1 block text-xs">
-            O Balcão não altera o resultado académico. A rematrícula avança somente quando o RAA autoriza a etapa seguinte — de forma regular ou condicional.
-          </span>
-        </div>
-      )}
+      ) : null}
 
       {/* Turma selector */}
       {progressao && (
-        <div className={`rounded-xl border p-3 text-sm ${
+        <div className={`rounded-xl border p-4 ${
           progressao.estado === "reprovado"
-            ? "border-amber-200 bg-amber-50 text-amber-800"
+            ? "border-amber-200 bg-amber-50/70"
             : progressao.estado === "condicional"
-              ? "border-violet-200 bg-violet-50 text-violet-900"
-              : "border-sky-200 bg-sky-50 text-sky-800"
+              ? "border-violet-200 bg-violet-50/70"
+              : "border-emerald-200 bg-emerald-50/60"
         }`}>
-          <strong>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Situação académica</p>
+          <p className="mt-1 text-sm font-black text-slate-900">
             {progressao.orientacao?.titulo
               ?? (progressao.estado === "reprovado"
                 ? "Retenção académica"
                 : progressao.estado === "condicional"
                   ? "Progressão condicional"
-                  : "Progressão académica")}
-          </strong>
-          <p className="mt-1 text-xs">{progressao.orientacao?.mensagem ?? progressao.mensagem}</p>
+                  : "Progressão autorizada")}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-600">{progressao.orientacao?.mensagem ?? progressao.mensagem}</p>
           {progressao.orientacao?.proximo_passo && (
-            <p className="mt-2 text-xs font-semibold">Próximo passo: {progressao.orientacao.proximo_passo}</p>
+            <p className="mt-2 text-xs font-bold text-slate-700">{progressao.orientacao.proximo_passo}</p>
           )}
         </div>
       )}
@@ -654,10 +682,9 @@ function StepAcademico({
       ) : <div className="space-y-2">
         <label
           htmlFor="rematricula-turma-select"
-          className="block text-sm font-semibold text-slate-700"
+          className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400"
         >
-          Turma para {anoLetivo.label}{" "}
-          <span className="text-rose-500">*</span>
+          Turma de destino <span className="text-rose-500">*</span>
         </label>
         <select
           id="rematricula-turma-select"
@@ -698,8 +725,8 @@ function StepAcademico({
         )}
         {selectedTurmaId && turmas.find((turma) => turma.id === selectedTurmaId) && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-            <strong className="block">Destino seleccionado: {turmas.find((turma) => turma.id === selectedTurmaId)?.nome}</strong>
-            <span className="mt-1 block">Esta escolha fica em pré-visualização até clicar em “Concluir rematrícula”. Só então será gravada na matrícula do ano destino.</span>
+            <strong className="block">Destino: {turmas.find((turma) => turma.id === selectedTurmaId)?.nome}</strong>
+            <span className="mt-1 block">A turma só será gravada quando a operação for confirmada.</span>
           </div>
         )}
       </div>}
@@ -738,12 +765,13 @@ function StepFinanceiro({
     (sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1),
     0,
   );
-  const temMensalidade = itensAdicionais.some((item) => item.tipo === "mensalidade");
   const itemEstaSeleccionado = (item: RematriculaPaymentItem) => itensPagamento.some(
     (seleccionado) => seleccionado.id === item.id && seleccionado.tipo === item.tipo,
   );
   const mensalidadesDisponiveis = itensDisponiveis.filter((item) => item.tipo === "mensalidade");
   const servicosDisponiveis = itensDisponiveis.filter((item) => item.tipo === "servico");
+  const hasDebt = Boolean(debt && debt.total > 0);
+
   const toggleMensalidade = (item: RematriculaPaymentItem, index: number) => {
     const selected = itemEstaSeleccionado(item);
     if (selected) {
@@ -752,74 +780,115 @@ function StepFinanceiro({
       });
       return;
     }
+
     mensalidadesDisponiveis.slice(0, index + 1).forEach((candidate) => {
       if (!itemEstaSeleccionado(candidate)) onAdicionarItem?.(candidate);
     });
   };
+
   return (
     <div className="space-y-5">
-      <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-        Resumo Financeiro
-      </h3>
+      {hasDebt ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">Bloqueio financeiro</p>
+          <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-black text-rose-950">
+                {debt?.count ?? 0} mensalidade{debt?.count === 1 ? "" : "s"} em atraso
+              </p>
+              <p className="mt-1 text-xs leading-5 text-rose-700">
+                Regularize {kwanza.format(debt?.total ?? 0)} antes de confirmar a rematrícula.
+              </p>
+            </div>
+            {onRegularizeDebt ? (
+              <button
+                type="button"
+                onClick={onRegularizeDebt}
+                className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+              >
+                Regularizar dívida
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : paymentAlreadyValidated ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">Pagamento validado</p>
+          <p className="mt-1 text-sm font-black text-emerald-950">A cobrança já está confirmada.</p>
+          <p className="mt-1 text-xs text-emerald-800">Não será criado um novo pagamento.</p>
+        </div>
+      ) : null}
 
-      <div className="rounded-xl border border-slate-200 overflow-hidden text-sm">
-        <div className="flex justify-between border-b border-slate-100 p-3.5 bg-slate-50">
-          <span className="text-slate-600">Classe/turma destino</span>
-          <span className="text-right font-semibold text-slate-900">
-            {selectedTurma?.classe_nome || "Classe não identificada"}
-            {selectedTurma?.nome ? <span className="block text-xs font-normal text-slate-500">{selectedTurma.nome}</span> : null}
-          </span>
-        </div>
-        <div className="flex justify-between border-b border-slate-100 p-3.5 bg-white">
-          <span className="text-slate-600">Taxa de rematrícula</span>
-          <span className="font-semibold text-slate-900">
-            {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
-          </span>
-        </div>
-        {itensAdicionais.length > 0 && (
-          <div className="border-b border-slate-100 bg-white p-3.5">
-            <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Serviços e cobranças adicionais</p>
-            <div className="space-y-2">
-              {itensAdicionais.map((item) => {
-                const quantidade = Math.max(Number(item.quantidade ?? 1), 1);
-                return (
-                  <div key={`${item.tipo}-${item.id}`} className="flex justify-between gap-3 text-sm">
-                    <span className="text-slate-600">{item.nome || item.descricao || "Serviço escolar"}{quantidade > 1 ? ` × ${quantidade}` : ""}</span>
-                    <strong className="text-slate-900">{kwanza.format(Number(item.preco ?? 0) * quantidade)}</strong>
-                  </div>
-                );
-              })}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Resumo</p>
+        <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-start justify-between gap-4 px-4 py-3.5">
+            <div>
+              <p className="text-xs font-bold text-slate-900">Destino</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {selectedTurma?.classe_nome || "Classe não identificada"}
+                {selectedTurma?.nome ? ` · ${selectedTurma.nome}` : ""}
+              </p>
             </div>
           </div>
-        )}
-        <div className="flex justify-between border-b border-slate-100 p-3.5 bg-white">
-          <span className="text-slate-600">Mensalidade</span>
-          <span className={temMensalidade ? "font-semibold text-emerald-700" : "text-slate-400 italic"}>
-            {temMensalidade ? "Incluída acima" : "Não incluída"}
-          </span>
-        </div>
-        <div className="flex justify-between p-3.5 bg-slate-50">
-          <span className="font-bold text-slate-900">Total a pagar</span>
-          <span className="font-black text-[#1F6B3B] text-base">
-            {total > 0 ? kwanza.format(total) : "Sem taxa"}
-          </span>
+
+          <div className="flex items-center justify-between gap-4 border-t border-slate-100 px-4 py-3.5">
+            <div>
+              <p className="text-xs font-bold text-slate-900">Taxa de rematrícula</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                {service.pricing_origin === "classe" ? "Valor da classe destino" : "Valor padrão da escola"}
+              </p>
+            </div>
+            <strong className="text-sm text-slate-900">
+              {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
+            </strong>
+          </div>
+
+          {itensAdicionais.map((item) => {
+            const quantidade = Math.max(Number(item.quantidade ?? 1), 1);
+            return (
+              <div
+                key={`${item.tipo}-${item.id}`}
+                className="flex items-center justify-between gap-4 border-t border-slate-100 px-4 py-3.5"
+              >
+                <div>
+                  <p className="text-xs font-bold text-slate-900">{item.nome || item.descricao || "Cobrança adicional"}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    {item.tipo === "mensalidade" ? "Mensalidade do ano destino" : "Serviço adicional"}
+                    {quantidade > 1 ? ` · × ${quantidade}` : ""}
+                  </p>
+                </div>
+                <strong className="text-sm text-slate-900">
+                  {kwanza.format(Number(item.preco ?? 0) * quantidade)}
+                </strong>
+              </div>
+            );
+          })}
+
+          <div className="flex items-end justify-between gap-4 border-t border-slate-200 bg-slate-50 px-4 py-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total da operação</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {itensAdicionais.length > 0 ? "Taxa + itens selecionados" : "Taxa de rematrícula"}
+              </p>
+            </div>
+            <strong className="text-xl font-black text-slate-950">{kwanza.format(total)}</strong>
+          </div>
         </div>
       </div>
-      <p className="text-xs text-slate-500">
-        O valor acima foi resolvido para a turma destino. {service.pricing_origin === "classe" ? "Existe uma regra específica para esta classe." : "Não existe regra específica para esta classe; foi usado o valor de fallback."}
-      </p>
-      <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
-        A turma destino e o valor desta operação só serão gravados quando a secretaria concluir o atendimento. Fechar o modal preserva o rascunho, mas não altera a matrícula.
-      </p>
 
-      {!paymentAlreadyValidated && itensDisponiveis.length > 0 && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">
-          <div className="mb-3">
-            <p className="text-sm font-bold text-emerald-950">Adicionar a esta cobrança</p>
-            <p className="mt-0.5 text-xs text-emerald-800">
-              Pode incluir as primeiras mensalidades do ano destino. Ao marcar um mês, os anteriores também entram no mesmo pagamento para respeitar a ordem das propinas.
-            </p>
+      {!paymentAlreadyValidated && !hasDebt && itensDisponiveis.length > 0 ? (
+        <div>
+          <div className="mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Opcional</p>
+            <h3 className="mt-1 text-sm font-black text-slate-900">Adicionar ao mesmo pagamento</h3>
+            {mensalidadesDisponiveis.length > 0 ? (
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Pode incluir as primeiras mensalidades do novo ano. Ao escolher um mês, os anteriores entram automaticamente.
+              </p>
+            ) : null}
           </div>
+
           <div className="space-y-2">
             {mensalidadesDisponiveis.map((item, index) => {
               const seleccionado = itemEstaSeleccionado(item);
@@ -828,28 +897,33 @@ function StepFinanceiro({
                   key={`${item.tipo}-${item.id}`}
                   type="button"
                   onClick={() => toggleMensalidade(item, index)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                  className={[
+                    "flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition",
                     seleccionado
-                      ? "border-emerald-500 bg-emerald-100 text-emerald-950"
-                      : "border-emerald-200 bg-white text-slate-700 hover:border-emerald-400"
-                  }`}
+                      ? "border-emerald/30 bg-emerald/5"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                  ].join(" ")}
                 >
-                  <span>
-                    <span className="block text-xs font-bold">{item.nome || "Mensalidade"}</span>
-                    <span className="block text-[11px]">
-                      Mensalidade do ano destino
-                      {item.data_vencimento ? ` · vence ${new Intl.DateTimeFormat("pt-AO").format(new Date(`${item.data_vencimento}T00:00:00Z`))}` : ""}
-                    </span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2 text-xs font-black">
-                    {kwanza.format(Number(item.preco ?? 0))}
-                    <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">
-                      {seleccionado ? "Remover" : "Adicionar"}
-                    </span>
-                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-xs font-bold text-slate-900">{item.nome || "Mensalidade"}</p>
+                      {seleccionado ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
+                          <CheckCircle className="h-3 w-3" /> Incluída
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      {item.data_vencimento
+                        ? `Vence ${new Intl.DateTimeFormat("pt-AO").format(new Date(`${item.data_vencimento}T00:00:00Z`))}`
+                        : "Mensalidade do ano destino"}
+                    </p>
+                  </div>
+                  <strong className="shrink-0 text-xs text-slate-900">{kwanza.format(Number(item.preco ?? 0))}</strong>
                 </button>
               );
             })}
+
             {servicosDisponiveis.map((item) => {
               const seleccionado = itemEstaSeleccionado(item);
               return (
@@ -857,56 +931,37 @@ function StepFinanceiro({
                   key={`${item.tipo}-${item.id}`}
                   type="button"
                   onClick={() => seleccionado ? onRemoverItem?.(item.id, item.tipo) : onAdicionarItem?.(item)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                  className={[
+                    "flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition",
                     seleccionado
-                      ? "border-emerald-500 bg-emerald-100 text-emerald-950"
-                      : "border-emerald-200 bg-white text-slate-700 hover:border-emerald-400"
-                  }`}
+                      ? "border-emerald/30 bg-emerald/5"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                  ].join(" ")}
                 >
-                  <span>
-                    <span className="block text-xs font-bold">{item.nome || "Serviço escolar"}</span>
-                    <span className="block text-[11px]">Serviço adicional</span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2 text-xs font-black">
-                    {kwanza.format(Number(item.preco ?? 0))}
-                    <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold">
-                      {seleccionado ? "Remover" : "Adicionar"}
-                    </span>
-                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-xs font-bold text-slate-900">{item.nome || "Serviço escolar"}</p>
+                      {seleccionado ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
+                          <CheckCircle className="h-3 w-3" /> Incluído
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-slate-400">Serviço adicional</p>
+                  </div>
+                  <strong className="shrink-0 text-xs text-slate-900">{kwanza.format(Number(item.preco ?? 0))}</strong>
                 </button>
               );
             })}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {debt && debt.total > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          <strong className="block text-amber-950">Mensalidades em aberto</strong>
-          <span>
-            Existem {debt.count} mensalidade(s) pendente(s), no total de {kwanza.format(debt.total)}.
-            Esta taxa não substitui a regularização da dívida.
-          </span>
-          {onRegularizeDebt && (
-            <button
-              type="button"
-              onClick={onRegularizeDebt}
-              className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-amber-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-amber-700"
-            >
-              Regularizar dívida neste atendimento
-            </button>
-          )}
+      {service.valor_base <= 0 && !paymentAlreadyValidated ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+          Esta classe não cobra taxa de rematrícula. A operação pode ser concluída sem pagamento.
         </div>
-      )}
-
-      {service.valor_base <= 0 && (
-        <div
-          role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
-        >
-          Esta classe não cobra rematrícula. A matrícula será concluída sem pagamento.
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -939,16 +994,21 @@ function StepPagamento({
   const total = service.valor_base + itensPagamento
     .filter((item) => item.id !== service.id && item.codigo !== "SERV_REMATRICULA")
     .reduce((sum, item) => sum + Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1), 0);
+
   if (paymentAlreadyValidated) {
     return (
       <div className="space-y-5">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pagamento</h3>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <strong className="block">Pagamento da rematrícula validado</strong>
-          <span className="mt-1 block text-xs">A secretaria confirmou o comprovativo. Falta apenas concluir a turma e a matrícula deste aluno.</span>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">Pagamento validado</p>
+          <p className="mt-1 text-sm font-black text-emerald-950">A cobrança já está confirmada.</p>
+          <p className="mt-1 text-xs text-emerald-800">Falta apenas concluir a rematrícula com o destino selecionado.</p>
         </div>
-        <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 text-center">
-          Valor recebido: <strong className="text-slate-900">{kwanza.format(total)}</strong>
+        <div className="flex items-end justify-between rounded-xl border border-slate-200 bg-white p-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Valor confirmado</p>
+            <p className="mt-1 text-xs text-slate-500">Não será criado um novo pagamento.</p>
+          </div>
+          <strong className="text-xl font-black text-slate-950">{kwanza.format(total)}</strong>
         </div>
       </div>
     );
@@ -956,140 +1016,134 @@ function StepPagamento({
 
   return (
     <div className="space-y-5">
-      <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-        Método de Pagamento
-      </h3>
-
-      {/* Method grid */}
-      <div className="grid grid-cols-5 gap-2">
-        {METODOS_UI.map((m) => {
-          const Icon = m.icon;
-          const active = metodo === m.id;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setMetodo(m.id)}
-              disabled={submitting}
-              className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 transition-all ${
-                active
-                  ? "border-[#1F6B3B] bg-[#1F6B3B]/5 text-[#1F6B3B] ring-2 ring-[#1F6B3B]/20"
-                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <Icon className="h-5 w-5" />
-              <span className="text-[10px] font-bold uppercase tracking-wide">
-                {m.label}
-              </span>
-            </button>
-          );
-        })}
+      <div className="flex items-end justify-between rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total a confirmar</p>
+          <p className="mt-1 text-xs text-slate-500">Taxa de rematrícula e itens adicionados.</p>
+        </div>
+        <strong className="text-xl font-black text-slate-950">{kwanza.format(total)}</strong>
       </div>
 
-      {/* Conditional fields */}
-      {metodo === "tpa" && (
-        <div className="space-y-1.5">
-          <label
-            htmlFor="rematricula-ref-tpa"
-            className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-          >
-            Referência TPA <span className="text-rose-500">*</span>
-          </label>
-          <input
-            id="rematricula-ref-tpa"
-            type="text"
-            value={detalhes.referencia}
-            onChange={(e) => setDetalhes({ referencia: e.target.value })}
-            disabled={submitting}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none
-              focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
-              disabled:bg-slate-50 disabled:text-slate-400"
-            placeholder="Ref. do talão"
-          />
-        </div>
-      )}
-
-      {metodo === "transfer" && (
-        <div className="space-y-1.5">
-          <label
-            htmlFor="rematricula-evidence"
-            className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-          >
-            Comprovativo (URL) <span className="text-rose-500">*</span>
-          </label>
-          <input
-            id="rematricula-evidence"
-            type="url"
-            value={detalhes.evidencia_url}
-            onChange={(e) => setDetalhes({ evidencia_url: e.target.value })}
-            disabled={submitting}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none
-              focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
-              disabled:bg-slate-50 disabled:text-slate-400"
-            placeholder="https://…"
-          />
-        </div>
-      )}
-
-      {(metodo === "mcx" || metodo === "kiwk") && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="rematricula-ref-mcx"
-              className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-            >
-              Referência
-            </label>
-            <input
-              id="rematricula-ref-mcx"
-              type="text"
-              value={detalhes.referencia}
-              onChange={(e) => setDetalhes({ referencia: e.target.value })}
-              disabled={submitting}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none
-                focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
-                disabled:bg-slate-50"
-            />
+      {total > 0 ? (
+        <>
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Forma de pagamento</p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {METODOS_UI.map((item) => {
+                const Icon = item.icon;
+                const active = metodo === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setMetodo(item.id)}
+                    disabled={submitting}
+                    className={[
+                      "flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 text-[10px] font-bold transition",
+                      active
+                        ? "border-amber bg-amber/10 text-slate-900"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-amber/40 hover:bg-amber/5",
+                    ].join(" ")}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="rematricula-gw-ref"
-              className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-            >
-              ID Gateway
-            </label>
-            <input
-              id="rematricula-gw-ref"
-              type="text"
-              value={detalhes.gateway_ref}
-              onChange={(e) => setDetalhes({ gateway_ref: e.target.value })}
-              disabled={submitting}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none
-                focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
-                disabled:bg-slate-50"
-            />
-          </div>
+
+          {metodo === "tpa" ? (
+            <div>
+              <label
+                htmlFor="rematricula-ref-tpa"
+                className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"
+              >
+                Referência TPA *
+              </label>
+              <input
+                id="rematricula-ref-tpa"
+                type="text"
+                value={detalhes.referencia}
+                onChange={(event) => setDetalhes({ referencia: event.target.value })}
+                disabled={submitting}
+                placeholder="Ref. do talão"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20 disabled:bg-slate-50"
+              />
+            </div>
+          ) : null}
+
+          {metodo === "transfer" ? (
+            <div>
+              <label
+                htmlFor="rematricula-evidence"
+                className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"
+              >
+                Comprovativo *
+              </label>
+              <input
+                id="rematricula-evidence"
+                type="url"
+                value={detalhes.evidencia_url}
+                onChange={(event) => setDetalhes({ evidencia_url: event.target.value })}
+                disabled={submitting}
+                placeholder="URL do comprovativo"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20 disabled:bg-slate-50"
+              />
+            </div>
+          ) : null}
+
+          {(metodo === "mcx" || metodo === "kiwk") ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="rematricula-ref-mcx"
+                  className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"
+                >
+                  Referência
+                </label>
+                <input
+                  id="rematricula-ref-mcx"
+                  type="text"
+                  value={detalhes.referencia}
+                  onChange={(event) => setDetalhes({ referencia: event.target.value })}
+                  disabled={submitting}
+                  placeholder="Opcional"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20 disabled:bg-slate-50"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="rematricula-gw-ref"
+                  className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"
+                >
+                  ID gateway
+                </label>
+                <input
+                  id="rematricula-gw-ref"
+                  type="text"
+                  value={detalhes.gateway_ref}
+                  onChange={(event) => setDetalhes({ gateway_ref: event.target.value })}
+                  disabled={submitting}
+                  placeholder="Opcional"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20 disabled:bg-slate-50"
+                />
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-900">
+          <strong className="block text-emerald-950">Sem pagamento</strong>
+          <span className="mt-1 block text-xs">Esta classe não cobra taxa de rematrícula. Pode confirmar a operação diretamente.</span>
         </div>
       )}
 
-      {/* Error */}
-      {apiError && (
-        <div
-          role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 font-medium"
-        >
+      {apiError ? (
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-700">
           {ERROR_MESSAGES[apiError] || apiError}
         </div>
-      )}
-
-      {/* Confirmation text */}
-      <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 text-sm text-slate-700 text-center font-medium">
-        Confirma que recebeu{" "}
-        <strong className="text-slate-900">
-          {kwanza.format(total)}
-        </strong>{" "}
-        e deseja concluir a rematrícula?
-      </div>
+      ) : null}
     </div>
   );
 }
@@ -1101,7 +1155,6 @@ function SuccessView({
   alunoNome,
   anoLetivo,
   selectedTurma,
-  service,
   paymentTotal,
   metodo,
   paymentAlreadyValidated,
@@ -1111,7 +1164,6 @@ function SuccessView({
   alunoNome: string;
   anoLetivo: { id: string; ano: number; label: string };
   selectedTurma: TurmaOption | undefined;
-  service: { id: string; nome: string; valor_base: number };
   paymentTotal: number;
   metodo: MetodoPagamento;
   paymentAlreadyValidated: boolean;
@@ -1232,26 +1284,15 @@ function FooterSuccess({
         </button>
       )}
       {printUrl && (
-        <>
-          <button
-            onClick={() => window.open(printUrl, "_blank", "noopener,noreferrer")}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl
-              bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white
-              hover:brightness-110 transition-colors"
-          >
-            <Printer className="h-4 w-4" />
-            Abrir comprovante
-          </button>
-          <button
-            onClick={() => window.open(printUrl, "_blank", "noopener,noreferrer")}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl
-              bg-white border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700
-              hover:bg-slate-50 transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Abrir comprovante
-          </button>
-        </>
+        <button
+          onClick={() => window.open(printUrl, "_blank", "noopener,noreferrer")}
+          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl
+            bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white
+            hover:brightness-110 transition-colors"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Abrir comprovante
+        </button>
       )}
       <button
         onClick={onClose}
@@ -1281,6 +1322,7 @@ function FooterWizard({
   paymentAlreadyValidated,
   academicOnly,
   reconciliationOnly,
+  disabledReason,
   submit,
 }: {
   step: number;
@@ -1295,55 +1337,71 @@ function FooterWizard({
   paymentAlreadyValidated: boolean;
   academicOnly: boolean;
   reconciliationOnly: boolean;
+  disabledReason: string | null;
   submit: () => Promise<void>;
 }) {
   return (
-    <div className="flex justify-between">
-      <button
-        onClick={() => (step > 1 ? setStep(step - 1) : onClose())}
-        disabled={submitting}
-        className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600
-          hover:bg-slate-200 transition-colors disabled:opacity-50"
-      >
-        {step > 1 ? "Voltar" : "Cancelar"}
-      </button>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => (step > 1 ? setStep(step - 1) : onClose())}
+          disabled={submitting}
+          className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
+        >
+          {step > 1 ? "Voltar" : "Cancelar"}
+        </button>
 
-      {step < 3 && !academicOnly && !(step === 2 && paymentTotal <= 0 && financialReady) ? (
-        <button
-          onClick={() => {
-            if (step === 2 && !financialReady) {
-              onRegularizeDebt?.();
-              return;
+        {step < 3 && !academicOnly && !(step === 2 && paymentTotal <= 0 && financialReady) ? (
+          <button
+            onClick={() => {
+              if (step === 2 && !financialReady) {
+                onRegularizeDebt?.();
+                return;
+              }
+              setStep(step + 1);
+            }}
+            disabled={
+              submitting ||
+              (step === 1 && !academicReady) ||
+              (step === 2 && paymentTotal <= 0 && financialReady) ||
+              (step === 2 && !financialReady && !onRegularizeDebt)
             }
-            setStep(step + 1);
-          }}
-          disabled={submitting || (step === 1 && !academicReady) || (step === 2 && paymentTotal <= 0 && financialReady) || (step === 2 && !financialReady && !onRegularizeDebt)}
-          className="rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-slate-900
-            hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {step === 2 && !financialReady ? "Regularizar dívida" : "Próximo"}
-        </button>
-      ) : (
-        <button
-          onClick={submit}
-          disabled={!canSubmit}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-6 py-2.5
-            text-sm font-bold text-white hover:brightness-110 transition-colors
-            disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              A processar…
-            </>
-          ) : (
-            <>
-              <Check className="h-4 w-4" />
-              {reconciliationOnly ? "Registar decisão e concluir matrícula" : academicOnly ? "Registar conclusão" : paymentAlreadyValidated ? "Concluir rematrícula" : paymentTotal > 0 ? "Pagar e concluir rematrícula" : "Concluir matrícula"}
-            </>
-          )}
-        </button>
-      )}
+            className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            {step === 2 && !financialReady ? "Regularizar dívida" : step === 1 ? "Rever cobrança" : "Continuar"}
+          </button>
+        ) : (
+          <button
+            onClick={submit}
+            disabled={!canSubmit}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                A processar…
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                {reconciliationOnly
+                  ? "Concluir reconciliação"
+                  : academicOnly
+                    ? "Registar conclusão"
+                    : paymentAlreadyValidated
+                      ? "Concluir rematrícula"
+                      : paymentTotal > 0
+                        ? `Confirmar rematrícula · ${kwanza.format(paymentTotal)}`
+                        : "Concluir rematrícula"}
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {!canSubmit && step >= 3 && !submitting && disabledReason ? (
+        <p className="text-right text-xs font-medium text-slate-500">{disabledReason}</p>
+      ) : null}
     </div>
   );
 }

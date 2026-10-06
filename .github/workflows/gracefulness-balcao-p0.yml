@@ -14,6 +14,13 @@ on:
       - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/PagamentoDividaModal.tsx"
+      - "apps/web/src/components/secretaria/BalcaoWorkspace.tsx"
+      - "apps/web/src/components/secretaria/BalcaoActionBar.tsx"
+      - "apps/web/src/components/secretaria/AlunoProfilePanel.tsx"
+      - "apps/web/src/components/secretaria/command-center/**"
+      - "apps/web/src/app/secretaria/balcao/BalcaoPageClient.tsx"
+      - "apps/web/src/lib/balcao/action-registry.ts"
       - "apps/web/src/components/secretaria/PagamentosPendentesWindow.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx"
       - "apps/web/src/components/secretaria/DocumentosEmissaoHub.tsx"
@@ -31,6 +38,7 @@ on:
       - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
       - "apps/web/tests/unit/rematricula-debt.spec.ts"
       - "apps/web/tests/unit/checkout-payment-state.spec.ts"
+      - "apps/web/tests/unit/command-center-registry.spec.ts"
       - "apps/web/tests/unit/mensalidades-preview.spec.ts"
       - "apps/web/tests/unit/rematricula-result.spec.ts"
       - "supabase/migrations/**"
@@ -69,6 +77,7 @@ jobs:
           cd apps/web
           node --test --import tsx \
             tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/command-center-registry.spec.ts \
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
@@ -101,6 +110,16 @@ jobs:
             src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
+            src/components/secretaria/PagamentoDividaModal.tsx \
+            src/components/secretaria/BalcaoWorkspace.tsx \
+            src/components/secretaria/BalcaoActionBar.tsx \
+            src/components/secretaria/AlunoProfilePanel.tsx \
+            src/components/secretaria/command-center/CommandCenterActionBar.tsx \
+            src/components/secretaria/command-center/CommandCenterShell.tsx \
+            src/components/secretaria/command-center/CommandCenterPanel.tsx \
+            src/components/secretaria/command-center/useCommandCenterStudent.ts \
+            src/app/secretaria/balcao/BalcaoPageClient.tsx \
+            src/lib/balcao/action-registry.ts \
             src/components/secretaria/PagamentosPendentesWindow.tsx \
             src/components/secretaria/DocumentosEmissaoHubClient.tsx \
             src/components/secretaria/DocumentosEmissaoHub.tsx \
@@ -116,6 +135,7 @@ jobs:
             src/lib/rematricula/debt.ts \
             src/lib/academico/raa-progression-server.ts \
             tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/command-center-registry.spec.ts \
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
@@ -202,3 +222,25 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_emissao_idempotency.sql
+
+      - name: Create isolated grade-writer database
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS klasse_grade_writer WITH (FORCE);"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE klasse_grade_writer;"
+
+      - name: Bootstrap grade writer contract
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_notas_writer_minimal.sql
+
+      - name: Apply grade writer hardening
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826131000_harden_lancar_notas_batch_authz_scale.sql
+
+      - name: Grade writer authz and scale regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_notas_writer_authz_scale.sql

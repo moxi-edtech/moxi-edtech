@@ -56,11 +56,6 @@ const FilaAtendimentoModal = dynamic(
   { ssr: false }
 );
 
-const DocumentosEmissaoHubClient = dynamic(
-  () => import("@/components/secretaria/DocumentosEmissaoHubClient"),
-  { ssr: false, loading: () => <ModalLoading /> }
-);
-
 const AdmissaoWizardClient = dynamic(
   () => import("@/components/secretaria/AdmissaoWizardClient"),
   { ssr: false, loading: () => <ModalLoading /> }
@@ -81,8 +76,8 @@ const QuickDocHub = dynamic(
   { ssr: false, loading: () => <ModalLoading /> }
 );
 
-const BalcaoAtendimento = dynamic(
-  () => import("@/components/secretaria/BalcaoAtendimento"),
+const BalcaoWorkspace = dynamic(
+  () => import("@/components/secretaria/BalcaoWorkspace").then((mod) => mod.BalcaoWorkspace),
   { ssr: false, loading: () => <ModalLoading /> }
 );
 
@@ -450,14 +445,14 @@ export function Dashboard({
                 />
                 <AcaoRapidaCard
                   icon={<Banknote className="h-5 w-5" />}
-                  label="Cobrar Propina"
-                  sublabel="Pagamento imediato"
+                  label="Pagar Propina"
+                  sublabel="No Balcão"
                   onClick={() => setBalcaoModal("cobranca")}
                 />
                 <AcaoRapidaCard
                   icon={<FileText className="h-5 w-5" />}
-                  label="Emitir Declaração"
-                  sublabel="Documento oficial"
+                  label="Emitir Documento"
+                  sublabel="No Balcão"
                   onClick={() => setBalcaoModal("documentos")}
                 />
                 <AcaoRapidaCard
@@ -593,57 +588,26 @@ export function Dashboard({
         )}
       </ModalShell>
 
-      <div className={balcaoModal === "atendimento_aluno" ? "block" : "hidden"}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="absolute inset-0" onClick={() => {
+      {balcaoModal === "atendimento_aluno" && escolaId && selectedAlunoIdForBalcao ? (
+        <BalcaoWorkspace
+          open
+          escolaId={escolaId}
+          aluno={{ id: selectedAlunoIdForBalcao, label: "Atendimento ao aluno" }}
+          actionId="desk"
+          onClose={() => {
             setBalcaoModal(null);
             setSelectedAlunoIdForBalcao(null);
-          }} />
-          <div className="relative flex w-full max-w-6xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-xl">
-             <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur flex items-center justify-between">
-                <div>
-                   <h2 className="text-lg font-bold text-slate-900">Atendimento ao Aluno</h2>
-                   <p className="text-xs text-slate-500">Gestão financeira e documental rápida.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBalcaoModal(null);
-                    setSelectedAlunoIdForBalcao(null);
-                  }}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Fechar
-                </button>
-             </header>
-             <div className="flex-1 overflow-y-auto p-6">
-                {escolaId && selectedAlunoIdForBalcao ? (
-                  <BalcaoAtendimento 
-                    escolaId={escolaId} 
-                    selectedAlunoId={selectedAlunoIdForBalcao}
-                    showSearch={false}
-                    embedded
-                  />
-                ) : (
-                  <div className="p-12 text-center text-slate-500">
-                    Nenhum aluno selecionado ou escola inválida.
-                  </div>
-                )}
-             </div>
-          </div>
-        </div>
-      </div>
+          }}
+          onSuccess={refreshProdutividade}
+        />
+      ) : null}
       <ModalShell
         open={balcaoModal === "documentos"}
-        title="Emitir declaração"
-        description="Selecione o aluno e o tipo de documento."
+        title="Emitir documento"
+        description="Selecione o aluno; o documento será tratado no mesmo Balcão."
         onClose={() => setBalcaoModal(null)}
       >
-        {escolaId ? (
-          <DocumentosEmissaoHubClient escolaId={escolaId} />
-        ) : (
-          <div className="text-sm text-slate-500">Escola não identificada.</div>
-        )}
+        <BuscaBalcaoRapido escolaId={escolaId} initialAction="document" />
       </ModalShell>
       <ModalShell
         open={balcaoModal === "cobranca"}
@@ -652,9 +616,9 @@ export function Dashboard({
         onClose={() => setBalcaoModal(null)}
       >
         <div className="space-y-3">
-          <BuscaBalcaoRapido escolaId={escolaId} />
+          <BuscaBalcaoRapido escolaId={escolaId} initialAction="payment" />
           <p className="text-xs text-slate-500">
-            Use a busca rápida para localizar o aluno e registrar o pagamento.
+            Localize o aluno; o pagamento será concluído no mesmo Balcão de Atendimento.
           </p>
         </div>
       </ModalShell>

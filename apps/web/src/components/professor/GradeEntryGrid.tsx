@@ -7,7 +7,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { CheckCircle2, Loader2, Clipboard, AlertCircle, TrendingUp, Users, CheckCircle, HelpCircle } from "lucide-react"
+import { CheckCircle2, Loader2, Clipboard, AlertCircle, TrendingUp, Users, CheckCircle } from "lucide-react"
 import { SyncIndicator } from "@/components/feedback/FeedbackSystem"
 
 export type StudentGradeRow = {
@@ -16,6 +16,7 @@ export type StudentGradeRow = {
   nome: string
   foto?: string | null
   mac1: number | null
+  npp1: number | null
   npt1: number | null
   mt1: number | null
   is_isento?: boolean
@@ -34,27 +35,33 @@ type GradeEntryGridProps = {
   pesoPorTipo?: Record<string, number>
   componentesAtivos?: string[]
   showIsento?: boolean
+  studentMode?: boolean
+  readOnly?: boolean
+  notaMaxima?: number
+  notaCorte?: number
 }
 
-const INPUT_COLUMNS = ["mac1", "npt1"] as const
+const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
 
-const clampNota = (value: string) => {
+const clampNota = (value: string, notaMaxima: number) => {
   const normalized = value.replace(",", ".").trim()
   if (normalized === "") return null
   let parsed = Number(normalized)
   if (!Number.isFinite(parsed)) return null
 
-  // Auto-correct common fast-typing decimal omission: e.g. "145" -> 14.5, "185" -> 18.5
-  if (parsed > 20 && parsed <= 200 && Number.isInteger(parsed)) {
+  // Auto-correct common fast-typing decimal omission:
+  // 145 -> 14.5 on a 0-20 scale; 85 -> 8.5 on a 0-10 scale.
+  if (parsed > notaMaxima && parsed <= notaMaxima * 10 && Number.isInteger(parsed)) {
     parsed = parsed / 10
   }
 
-  return Math.min(20, Math.max(0, Number(parsed.toFixed(1))))
+  return Math.min(notaMaxima, Math.max(0, Number(parsed.toFixed(1))))
 }
 
 const resolveTipoValue = (row: StudentGradeRow, tipo: string) => {
   const normalized = tipo.toUpperCase()
   if (normalized === "MAC") return row.mac1
+  if (normalized === "NPP") return row.npp1
   if (normalized === "NPT" || normalized === "PT") return row.npt1
   return null
 }
@@ -100,6 +107,10 @@ export function GradeEntryGrid({
   pesoPorTipo,
   componentesAtivos,
   showIsento = false,
+  studentMode = false,
+  readOnly = false,
+  notaMaxima = 20,
+  notaCorte = 10,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
   const dataRef = useRef<StudentGradeRow[]>(initialData)
@@ -108,12 +119,35 @@ export function GradeEntryGrid({
   const [pasteColumn, setPasteColumn] = useState<typeof INPUT_COLUMNS[number]>("mac1")
   const [pasteText, setPasteText] = useState("")
 
+  const gradeInputs = useMemo(() => {
+    const configured = new Set((componentesAtivos ?? []).map((tipo) => tipo.toUpperCase()))
+    const candidates: Array<{ label: string; key: typeof INPUT_COLUMNS[number]; tipo: string }> = [
+      { label: "MAC", key: "mac1", tipo: "MAC" },
+      { label: "NPP", key: "npp1", tipo: "NPP" },
+      { label: "NPT", key: "npt1", tipo: "NPT" },
+    ]
+    if (configured.size === 0) return candidates.filter((item) => item.tipo !== "NPP")
+    return candidates.filter((item) =>
+      configured.has(item.tipo) || (item.tipo === "NPT" && configured.has("PT"))
+    )
+  }, [componentesAtivos])
+
+  useEffect(() => {
+    const first = gradeInputs[0]?.key
+    if (first && !gradeInputs.some((item) => item.key === pasteColumn)) {
+      setPasteColumn(first)
+    }
+  }, [gradeInputs, pasteColumn])
+
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const pendingIdsRef = useRef<Set<string>>(new Set())
+  const savingRef = useRef(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flushSaveRef = useRef<() => Promise<void>>(async () => undefined)
 
   useEffect(() => {
     setData(initialData)
+    dataRef.current = initialData
   }, [initialData])
 
   useEffect(() => {
@@ -139,13 +173,13 @@ export function GradeEntryGrid({
     let lancados = 0
 
     for (const row of data) {
-    const hasAny = row.mac1 !== null || row.npt1 !== null
+      const hasAny = row.mac1 !== null || row.npp1 !== null || row.npt1 !== null
       if (hasAny) lancados++
 
       if (row.mt1 !== null) {
         totalMT += row.mt1
         countMT++
-        if (row.mt1 >= 10) aprovados++
+        if (row.mt1 >= notaCorte) aprovados++
         else reprovados++
       }
     }
@@ -161,44 +195,65 @@ export function GradeEntryGrid({
       reprovados,
       percAprovados,
     }
-  }, [data])
+  }, [data, notaCorte])
 
   const flushSave = useCallback(async () => {
-    if (!onSave || pendingIdsRef.current.size === 0) return
-    const ids = Array.from(pendingIdsRef.current)
-    pendingIdsRef.current.clear()
-    const payload = dataRef.current.filter((row) => ids.includes(row.id))
-    if (payload.length === 0) return
+    if (!onSave || savingRef.current || pendingIdsRef.current.size === 0) return
 
+    savingRef.current = true
     setIsSaving(true)
     try {
-      await onSave(payload)
-      setData((prev) =>
-        prev.map((row) =>
-          ids.includes(row.id)
-            ? {
-                ...row,
-                _status: "synced",
-              }
-            : row
-        )
-      )
-  } catch (error) {
-      setData((prev) =>
-        prev.map((row) =>
-          ids.includes(row.id)
-            ? {
-                ...row,
-                _status: "error",
-              }
-            : row
-        )
-      )
-      onSaveError?.(error)
+      // Serializar gravações evita que uma resposta antiga chegue depois de
+      // uma edição mais recente e sobrescreva a nota nova no writer canónico.
+      while (pendingIdsRef.current.size > 0) {
+        const ids = Array.from(pendingIdsRef.current)
+        pendingIdsRef.current.clear()
+        const payload = dataRef.current.filter((row) => ids.includes(row.id))
+        if (payload.length === 0) continue
+
+        try {
+          await onSave(payload)
+          setData((prev) =>
+            prev.map((row) =>
+              ids.includes(row.id) && !pendingIdsRef.current.has(row.id)
+                ? {
+                    ...row,
+                    _status: "synced",
+                  }
+                : row
+            )
+          )
+        } catch (error) {
+          setData((prev) =>
+            prev.map((row) =>
+              ids.includes(row.id) && !pendingIdsRef.current.has(row.id)
+                ? {
+                    ...row,
+                    _status: "error",
+                  }
+                : row
+            )
+          )
+          onSaveError?.(error)
+        }
+      }
     } finally {
+      savingRef.current = false
       setIsSaving(false)
     }
   }, [onSave, onSaveError])
+
+  useEffect(() => {
+    flushSaveRef.current = flushSave
+  }, [flushSave])
+
+  const flushNow = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+    void flushSaveRef.current()
+  }, [])
 
   const scheduleSave = useCallback(() => {
     if (!onSave) return
@@ -209,32 +264,41 @@ export function GradeEntryGrid({
   }, [debounceMs, flushSave, onSave])
 
   useEffect(() => {
+    const timeoutRef = saveTimeoutRef
+    const pendingRef = pendingIdsRef
+    const flushRef = flushSaveRef
     return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (pendingRef.current.size > 0) {
+        void flushRef.current()
+      }
     }
   }, [])
 
   const updateGrade = useCallback(
     (rowIndex: number, columnId: typeof INPUT_COLUMNS[number], value: string) => {
-      const numericValue = clampNota(value)
-      setData((old) =>
-        old.map((row, index) => {
-          if (index !== rowIndex) return row
-          const updatedRow = {
-            ...row,
-            [columnId]: numericValue,
-            _status: "pending" as const,
-          }
-          updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
-          return updatedRow
-        })
-      )
+      const numericValue = clampNota(value, notaMaxima)
+      const current = dataRef.current
+      const target = current[rowIndex]
+      if (!target) return
 
-      const target = data[rowIndex]
-      if (target) pendingIdsRef.current.add(target.id)
+      const next = current.map((row, index) => {
+        if (index !== rowIndex) return row
+        const updatedRow = {
+          ...row,
+          [columnId]: numericValue,
+          _status: "pending" as const,
+        }
+        updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
+        return updatedRow
+      })
+
+      dataRef.current = next
+      setData(next)
+      pendingIdsRef.current.add(target.id)
       scheduleSave()
     },
-    [data, scheduleSave, pesoPorTipo, componentesAtivos]
+    [scheduleSave, pesoPorTipo, componentesAtivos, notaMaxima]
   )
 
   // Manipulador para colar lote do Excel/Sheets
@@ -247,24 +311,26 @@ export function GradeEntryGrid({
 
       if (lines.length === 0) return
 
-      setData((old) =>
-        old.map((row, index) => {
-          if (index < startRowIndex || index >= startRowIndex + lines.length) return row
-          const valString = lines[index - startRowIndex]
-          const numericValue = valString ? clampNota(valString) : null
-          const updatedRow = {
-            ...row,
-            [columnId]: numericValue,
-            _status: "pending" as const,
-          }
-          updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
-          pendingIdsRef.current.add(row.id)
-          return updatedRow
-        })
-      )
+      const current = dataRef.current
+      const next = current.map((row, index) => {
+        if (index < startRowIndex || index >= startRowIndex + lines.length) return row
+        const valString = lines[index - startRowIndex]
+        const numericValue = valString ? clampNota(valString, notaMaxima) : null
+        const updatedRow = {
+          ...row,
+          [columnId]: numericValue,
+          _status: "pending" as const,
+        }
+        updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
+        pendingIdsRef.current.add(row.id)
+        return updatedRow
+      })
+
+      dataRef.current = next
+      setData(next)
       scheduleSave()
     },
-    [pesoPorTipo, componentesAtivos, scheduleSave]
+    [pesoPorTipo, componentesAtivos, scheduleSave, notaMaxima]
   )
 
   const handleApplyPasteModal = () => {
@@ -276,24 +342,29 @@ export function GradeEntryGrid({
 
   const updateIsento = useCallback(
     (rowIndex: number, checked: boolean) => {
-      setData((old) =>
-        old.map((row, index) => {
-          if (index !== rowIndex) return row
-          return {
-            ...row,
-            is_isento: checked,
-            mac1: checked ? null : row.mac1,
-            npt1: checked ? null : row.npt1,
-            mt1: checked ? null : row.mt1,
-            _status: "pending" as const,
-          }
-        })
-      )
-      const target = data[rowIndex]
-      if (target) pendingIdsRef.current.add(target.id)
+      const current = dataRef.current
+      const target = current[rowIndex]
+      if (!target) return
+
+      const next = current.map((row, index) => {
+        if (index !== rowIndex) return row
+        return {
+          ...row,
+          is_isento: checked,
+          mac1: checked ? null : row.mac1,
+          npp1: checked ? null : row.npp1,
+          npt1: checked ? null : row.npt1,
+          mt1: checked ? null : row.mt1,
+          _status: "pending" as const,
+        }
+      })
+
+      dataRef.current = next
+      setData(next)
+      pendingIdsRef.current.add(target.id)
       scheduleSave()
     },
-    [data, scheduleSave]
+    [scheduleSave]
   )
 
   const columnHelper = createColumnHelper<StudentGradeRow>()
@@ -328,8 +399,9 @@ export function GradeEntryGrid({
               <input
                 type="checkbox"
                 checked={!!info.getValue()}
+                disabled={readOnly}
                 onChange={(e) => updateIsento(info.row.index, e.target.checked)}
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                className="rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
                 title="Marcar como isento neste trimestre"
               />
             </div>
@@ -346,63 +418,47 @@ export function GradeEntryGrid({
         },
       }),
       columnHelper.group({
-        header: "Iº TRIMESTRE (Pauta Oficial)",
+        header: "Avaliação",
         columns: [
-          columnHelper.accessor("mac1", {
-            header: "MAC",
-            size: 80,
-            cell: ({ row, getValue }) => (
-              <GradeInput
-                inputRef={(el) => {
-                  inputRefs.current[`${row.index}-0`] = el
-                }}
-                disabled={!!row.original.is_isento}
-                value={getValue()}
-                onChange={(val) => updateGrade(row.index, "mac1", val)}
-                onBatchPaste={(pasteText) => handleBatchPaste(row.index, "mac1", pasteText)}
-                onNavigate={(deltaRow, deltaCol) => {
-                  const next = inputRefs.current[`${row.index + deltaRow}-${0 + deltaCol}`]
-                  if (next) {
-                    next.focus()
-                    next.select()
-                  }
-                }}
-              />
-            ),
-          }),
-          columnHelper.accessor("npt1", {
-            header: "NPT",
-            size: 80,
-            cell: ({ row, getValue }) => (
-              <GradeInput
-                inputRef={(el) => {
-                  inputRefs.current[`${row.index}-1`] = el
-                }}
-                disabled={!!row.original.is_isento}
-                value={getValue()}
-                onChange={(val) => updateGrade(row.index, "npt1", val)}
-                onBatchPaste={(pasteText) => handleBatchPaste(row.index, "npt1", pasteText)}
-                onNavigate={(deltaRow, deltaCol) => {
-                  const next = inputRefs.current[`${row.index + deltaRow}-${1 + deltaCol}`]
-                  if (next) {
-                    next.focus()
-                    next.select()
-                  }
-                }}
-              />
-            ),
-          }),
+          ...gradeInputs.map((input, columnIndex) =>
+            columnHelper.accessor(input.key, {
+              header: input.label,
+              size: 80,
+              cell: ({ row, getValue }) => (
+                <GradeInput
+                  inputRef={(el) => {
+                    inputRefs.current[`${row.index}-${columnIndex}`] = el
+                  }}
+                  disabled={!!row.original.is_isento}
+                  readOnly={readOnly}
+                  notaMaxima={notaMaxima}
+                  notaCorte={notaCorte}
+                  value={getValue()}
+                  onChange={(val) => updateGrade(row.index, input.key, val)}
+                  onBatchPaste={(pasteText) => handleBatchPaste(row.index, input.key, pasteText)}
+                  onFlush={flushNow}
+                  onNavigate={(deltaRow, deltaCol) => {
+                    const next = inputRefs.current[`${row.index + deltaRow}-${columnIndex + deltaCol}`]
+                    if (next) {
+                      next.focus()
+                      next.select()
+                    }
+                  }}
+                />
+              ),
+            })
+          ),
           columnHelper.accessor("mt1", {
             header: "MT1",
             size: 80,
             cell: (info) => {
               const val = info.getValue()
               if (val === null) return <span className="text-slate-300 font-bold">—</span>
-              
+
               let style = "text-slate-700 bg-slate-100"
-              if (val >= 14) style = "text-emerald-700 bg-emerald-50 border border-emerald-200/80"
-              else if (val >= 10) style = "text-amber-800 bg-amber-50 border border-amber-200/80"
-              else if (val >= 8) style = "text-orange-800 bg-orange-50 border border-orange-200/80"
+              if (val >= notaMaxima * 0.7) style = "text-emerald-700 bg-emerald-50 border border-emerald-200/80"
+              else if (val >= notaCorte) style = "text-amber-800 bg-amber-50 border border-amber-200/80"
+              else if (val >= notaCorte * 0.8) style = "text-orange-800 bg-orange-50 border border-orange-200/80"
               else style = "text-rose-700 bg-rose-50 border border-rose-200/80"
 
               return (
@@ -415,7 +471,7 @@ export function GradeEntryGrid({
         ],
       }),
     ],
-    [updateGrade, handleBatchPaste, showIsento, updateIsento]
+    [flushNow, gradeInputs, handleBatchPaste, notaCorte, notaMaxima, readOnly, showIsento, updateGrade, updateIsento]
   )
 
   const table = useReactTable({
@@ -424,27 +480,108 @@ export function GradeEntryGrid({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  const savingIndicator = isSaving
-    ? { label: "A Guardar...", icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, tone: "text-amber-600 bg-amber-50 border-amber-200" }
-    : { label: "Salvo no Servidor", icon: <CheckCircle2 className="w-3.5 h-3.5" />, tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
+  const hasSaveError = data.some((row) => row._status === "error")
+  const hasPendingSave = data.some((row) => row._status === "pending")
+  const savingIndicator = isSaving || hasPendingSave
+    ? { label: "A guardar…", icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, tone: "text-amber-600 bg-amber-50 border-amber-200" }
+    : hasSaveError
+      ? { label: "Falha ao guardar", icon: <AlertCircle className="w-3.5 h-3.5" />, tone: "text-red-700 bg-red-50 border-red-200" }
+      : { label: "Guardado", icon: <CheckCircle2 className="w-3.5 h-3.5" />, tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
+
+  if (studentMode && data[0]) {
+    const row = data[0]
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div>
+            <h3 className="text-sm font-black text-slate-900">{title}</h3>
+            {subtitle ? <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p> : null}
+          </div>
+          <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${savingIndicator.tone}`}>
+            {savingIndicator.icon}
+            <span>{savingIndicator.label}</span>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          {showIsento ? (
+            <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
+              <div>
+                <p className="text-sm font-bold text-slate-900">Isento neste trimestre</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Use apenas quando o aluno estiver formalmente isento da avaliação.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={!!row.is_isento}
+                disabled={readOnly}
+                onChange={(event) => updateIsento(0, event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </label>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {gradeInputs.map((item) => (
+              <div key={item.key} className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                  {item.label}
+                </p>
+                <div className="mt-2">
+                  <GradeInput
+                    inputRef={() => null}
+                    disabled={!!row.is_isento}
+                    readOnly={readOnly}
+                    notaMaxima={notaMaxima}
+                    notaCorte={notaCorte}
+                    value={row[item.key]}
+                    onChange={(value) => updateGrade(0, item.key, value)}
+                    onFlush={flushNow}
+                    onNavigate={() => null}
+                  />
+                </div>
+              </div>
+            ))}
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                Média
+              </p>
+              <p className="mt-2 text-xl font-black text-slate-900">
+                {row.mt1 ?? "—"}
+                {row.mt1 !== null ? <span className="ml-1 text-xs font-bold text-slate-400">/ {notaMaxima}</span> : null}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500">
+            {readOnly
+              ? "Ano letivo em consulta histórica. O lançamento de notas está bloqueado."
+              : "As alterações são guardadas automaticamente no fluxo académico canónico."}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
       {/* BARRA DE ESTATÍSTICAS EM TEMPO REAL DA TURMA */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {!studentMode ? <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-black uppercase tracking-wider">Média da Turma</span>
             <TrendingUp size={16} className="text-emerald-600" />
           </div>
           <p className="text-xl font-black text-slate-900 mt-1">
-            {stats.mediaTurma !== null ? `${stats.mediaTurma} / 20` : "—"}
+            {stats.mediaTurma !== null ? `${stats.mediaTurma} / ${notaMaxima}` : "—"}
           </p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-black uppercase tracking-wider">Aprovados (≥10)</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">{`Aprovados (≥${notaCorte})`}</span>
             <CheckCircle size={16} className="text-emerald-600" />
           </div>
           <div className="flex items-baseline gap-2 mt-1">
@@ -455,7 +592,7 @@ export function GradeEntryGrid({
 
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-black uppercase tracking-wider">Em Risco (&lt;10)</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">{`Em risco (<${notaCorte})`}</span>
             <AlertCircle size={16} className="text-rose-500" />
           </div>
           <p className="text-xl font-black text-rose-600 mt-1">
@@ -472,7 +609,7 @@ export function GradeEntryGrid({
             {stats.lancados} <span className="text-xs font-bold text-slate-400">/ {stats.total}</span>
           </p>
         </div>
-      </div>
+      </div> : null}
 
       {/* CONTAINER DA GRELHA PRINCIPAL */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -484,14 +621,14 @@ export function GradeEntryGrid({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            {!studentMode && !readOnly ? <button
               type="button"
               onClick={() => setShowPasteModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
             >
               <Clipboard size={14} className="text-emerald-600" />
               <span>Colar Coluna do Excel</span>
-            </button>
+            </button> : null}
 
             <div className={`text-xs inline-flex items-center gap-1.5 px-3 py-1 rounded-full border font-bold ${savingIndicator.tone}`}>
               {savingIndicator.icon}
@@ -525,8 +662,9 @@ export function GradeEntryGrid({
                     onChange={(e) => setPasteColumn(e.target.value as any)}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-800"
                   >
-                    <option value="mac1">MAC (Média de Avaliação Contínua)</option>
-                    <option value="npt1">NPT (Nota da Prova Trimestral)</option>
+                    {gradeInputs.map((item) => (
+                      <option key={item.key} value={item.key}>{item.label}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -537,7 +675,7 @@ export function GradeEntryGrid({
                     value={pasteText}
                     onChange={(e) => setPasteText(e.target.value)}
                     placeholder="Cole as notas copiadas do Excel (ex: 14.5, 12, 16.0)..."
-                    className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono text-slate-900 outline-none focus:border-emerald-600"
+                    className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                   <p className="text-[10px] text-slate-400 mt-1">
                     Valores como "145" serão corrigidos automaticamente para 14.5 (Escala 0 a 20).
@@ -592,27 +730,29 @@ export function GradeEntryGrid({
                       <input
                         type="checkbox"
                         checked={!!row.original.is_isento}
+                        disabled={readOnly}
                         onChange={(e) => updateIsento(row.index, e.target.checked)}
-                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        className="rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
                       />
                       Isento neste trimestre
                     </label>
                   )}
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    {[
-                      { label: "MAC", key: "mac1" as const, value: row.original.mac1 },
-                      { label: "NPT", key: "npt1" as const, value: row.original.npt1 },
-                    ].map((item) => (
+                    {gradeInputs.map((item) => (
                       <div key={item.label} className="rounded-xl border border-slate-200/80 bg-slate-50 p-2.5">
                         <p className="text-[10px] font-black uppercase text-slate-400">{item.label}</p>
                         <div className="mt-1.5">
                           <GradeInput
                             inputRef={() => null}
                             disabled={!!row.original.is_isento}
-                            value={item.value}
+                            readOnly={readOnly}
+                            notaMaxima={notaMaxima}
+                            notaCorte={notaCorte}
+                            value={row.original[item.key]}
                             onChange={(val) => updateGrade(row.index, item.key, val)}
                             onBatchPaste={(pText) => handleBatchPaste(row.index, item.key, pText)}
+                            onFlush={flushNow}
                             onNavigate={() => null}
                           />
                         </div>
@@ -679,14 +819,22 @@ const GradeInput = ({
   onBatchPaste,
   inputRef,
   onNavigate,
+  onFlush,
   disabled = false,
+  readOnly = false,
+  notaMaxima = 20,
+  notaCorte = 10,
 }: {
   value: number | null
   onChange: (v: string) => void
   onBatchPaste?: (pasteText: string) => void
   inputRef: (el: HTMLInputElement | null) => void
   onNavigate: (deltaRow: number, deltaCol: number) => void
+  onFlush?: () => void
   disabled?: boolean
+  readOnly?: boolean
+  notaMaxima?: number
+  notaCorte?: number
 }) => {
   const [draft, setDraft] = useState(value === null ? "" : String(value))
   const isFocusedRef = useRef(false)
@@ -698,17 +846,22 @@ const GradeInput = ({
   }, [value, draft])
 
   const commitValue = (rawValue?: string) => {
-    onChange(rawValue ?? draft)
+    const normalized = clampNota(rawValue ?? draft, notaMaxima)
+    const nextDraft = normalized === null ? "" : String(normalized)
+    setDraft(nextDraft)
+    onChange(nextDraft)
   }
 
   // Estilização por faixa de nota pedagógica (0 a 20)
   let gradeStyle = "bg-slate-50 text-slate-700 border-slate-200"
   if (disabled) {
     gradeStyle = "bg-slate-100 text-slate-400 border-dashed text-[10px]"
+  } else if (readOnly) {
+    gradeStyle = "bg-slate-50 text-slate-700 border-slate-200"
   } else if (value !== null) {
-    if (value >= 14) gradeStyle = "bg-emerald-50 text-emerald-800 border-emerald-300 font-black"
-    else if (value >= 10) gradeStyle = "bg-amber-50 text-amber-800 border-amber-300 font-extrabold"
-    else if (value >= 8) gradeStyle = "bg-orange-50 text-orange-800 border-orange-300 font-extrabold"
+    if (value >= notaMaxima * 0.7) gradeStyle = "bg-emerald-50 text-emerald-800 border-emerald-300 font-black"
+    else if (value >= notaCorte) gradeStyle = "bg-amber-50 text-amber-800 border-amber-300 font-extrabold"
+    else if (value >= notaCorte * 0.8) gradeStyle = "bg-orange-50 text-orange-800 border-orange-300 font-extrabold"
     else gradeStyle = "bg-rose-50 text-rose-700 border-rose-300 font-extrabold"
   }
 
@@ -718,23 +871,23 @@ const GradeInput = ({
       type="text"
       inputMode="decimal"
       value={disabled ? "ISENTO" : draft}
-      disabled={disabled}
+      disabled={disabled || readOnly}
       onFocus={() => {
         isFocusedRef.current = true
       }}
       onBlur={(e) => {
         isFocusedRef.current = false
-        if (disabled) return
+        if (disabled || readOnly) return
         const raw = e.currentTarget.value
-        setDraft(raw)
         commitValue(raw)
+        onFlush?.()
       }}
       onChange={(e) => {
-        if (disabled) return
+        if (disabled || readOnly) return
         setDraft(e.target.value)
       }}
       onPaste={(e) => {
-        if (disabled || !onBatchPaste) return
+        if (disabled || readOnly || !onBatchPaste) return
         const pasteData = e.clipboardData.getData("text")
         if (pasteData && (pasteData.includes("\n") || pasteData.includes("\t"))) {
           e.preventDefault()
@@ -746,23 +899,23 @@ const GradeInput = ({
           e.preventDefault()
         }
         if (e.key === "ArrowDown" || e.key === "Enter") {
-          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled && !readOnly) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(1, 0)
         }
         if (e.key === "ArrowUp") {
-          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled && !readOnly) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(-1, 0)
         }
         if (e.key === "ArrowLeft") {
-          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled && !readOnly) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(0, -1)
         }
         if (e.key === "ArrowRight") {
-          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled && !readOnly) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(0, 1)
         }
       }}
-      className={`w-full h-11 md:h-8 text-center rounded-xl border text-xs font-extrabold outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-2xs ${gradeStyle}`}
+      className={`w-full h-11 md:h-8 text-center rounded-xl border text-xs font-extrabold outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold transition-all shadow-2xs ${gradeStyle}`}
       placeholder={disabled ? "" : "-"}
     />
   )

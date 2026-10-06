@@ -7,6 +7,7 @@ import { AlertCircle, Archive, Check, Edit3, ExternalLink, RefreshCw, Save } fro
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { toContextualPortalPath } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import type { BalcaoActionId } from "@/lib/balcao/action-registry";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
@@ -626,9 +627,10 @@ function Step1Identificacao(props: {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-emerald">Identificação</h2>
-          <p className="text-sm text-slate-500">
-            Preencha o básico. O sistema salva automaticamente como rascunho.
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">1 de 3</p>
+          <h2 className="mt-1 text-base font-black text-slate-900">Identificação</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Informe os dados essenciais do aluno. O rascunho é guardado automaticamente.
           </p>
           {localRestored && !initialData && (
             <p className="mt-1 text-xs text-emerald-700">
@@ -646,7 +648,7 @@ function Step1Identificacao(props: {
           {saving ? (
             <span className="inline-flex items-center gap-2 text-slate-500">
               <RefreshCw className="h-4 w-4 animate-spin" />
-              Salvando…
+              A guardar…
             </span>
           ) : lastSavedAt ? (
             <span className="inline-flex items-center gap-2 text-slate-500">
@@ -752,8 +754,8 @@ function Step1Identificacao(props: {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-700">Dados para matrícula</p>
-            <p className="text-xs text-slate-500">Opcional. Ajuda a completar o processo.</p>
+            <p className="text-sm font-bold text-slate-800">Dados complementares</p>
+            <p className="text-xs text-slate-500">Opcional. Pode completar agora ou mais tarde.</p>
           </div>
           <button
             type="button"
@@ -930,22 +932,14 @@ function Step1Identificacao(props: {
         ) : null}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xs text-slate-500">
-          {candidaturaId ? (
-            <span className="font-mono">ID: {candidaturaId}</span>
-          ) : (
-            <span>Salve o rascunho para gerar o ID.</span>
-          )}
-        </div>
-
+      <div className="flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={handleNext}
           disabled={!isUuid(escolaId) || saving}
-          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+          className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
-          Avançar
+          Continuar para turma
         </button>
       </div>
     </div>
@@ -1254,15 +1248,16 @@ function Step2FitAcademico(props: {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-emerald">Fit Acadêmico</h2>
-          <p className="text-sm text-slate-500">Selecione a turma preferencial.</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">2 de 3</p>
+          <h2 className="mt-1 text-base font-black text-slate-900">Turma e condições</h2>
+          <p className="mt-1 text-sm text-slate-500">Escolha o curso, a classe e a turma de destino.</p>
         </div>
 
         <div className="flex items-center gap-2 text-sm">
           {saving ? (
             <span className="inline-flex items-center gap-2 text-slate-500">
               <RefreshCw className="h-4 w-4 animate-spin" />
-              Salvando…
+              A guardar…
             </span>
           ) : null}
         </div>
@@ -1324,7 +1319,7 @@ function Step2FitAcademico(props: {
           {loadingVagas ? (
             <span className="inline-flex items-center gap-2 text-xs text-slate-500">
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              Carregando…
+              A carregar…
             </span>
           ) : null}
         </div>
@@ -1368,9 +1363,9 @@ function Step2FitAcademico(props: {
         <p className="text-sm text-slate-500">
           {sel.cursoId
             ? sel.classeId
-              ? "Preço de matrícula não configurado — peça ao admin."
+              ? "Preço de matrícula não configurado — peça ao administrador."
               : classesComPreco.length === 0
-                ? "Preço de matrícula não configurado para este curso — peça ao admin."
+                ? "Preço de matrícula não configurado para este curso — peça ao administrador."
                 : "Selecione a classe para ver turmas disponíveis."
             : "Selecione um curso para ver turmas disponíveis."}
         </p>
@@ -1378,15 +1373,15 @@ function Step2FitAcademico(props: {
         </div>
       </div>
 
-      {/* ACORDO FINANCEIRO (Novo) */}
-      <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
-          <Save className="w-4 h-4" />
-          Acordo Financeiro Especial
-        </h3>
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-5">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Opcional</p>
+          <h3 className="mt-1 text-sm font-black text-slate-900">Desconto da matrícula</h3>
+          <p className="mt-1 text-xs text-slate-500">Use apenas quando existir uma condição financeira autorizada.</p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Desconto (%)
             </label>
             <input
@@ -1399,12 +1394,12 @@ function Step2FitAcademico(props: {
                 onUpdateFinanceiro({ percentagemDesconto: val });
               }}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
+              className="w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-slate-100 focus:border-slate-400 disabled:opacity-60"
               placeholder="Ex: 15"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Motivo do Desconto
             </label>
             <select
@@ -1413,7 +1408,7 @@ function Step2FitAcademico(props: {
                 onUpdateFinanceiro({ motivoDesconto: e.target.value });
               }}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
+              className="w-full rounded-xl border-slate-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-slate-100 focus:border-slate-400 disabled:opacity-60"
             >
               <option value="">Sem desconto</option>
               <option value="Irmãos">Irmãos na Instituição</option>
@@ -1424,8 +1419,8 @@ function Step2FitAcademico(props: {
             </select>
           </div>
         </div>
-        <p className="text-[10px] text-amber-700 italic">
-          * Este desconto será aplicado automaticamente a todas as propinas geradas para esta matrícula.
+        <p className="text-[11px] text-slate-500">
+          O desconto será aplicado automaticamente às propinas geradas para esta matrícula.
         </p>
       </div>
 
@@ -1442,9 +1437,9 @@ function Step2FitAcademico(props: {
           type="button"
           onClick={onNext}
           disabled={!canAdvance}
-          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+          className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
-          Avançar
+          Rever cobrança
         </button>
       </div>
     </div>
@@ -1618,6 +1613,10 @@ function Step3Pagamento(props: {
   setBaseCanEditDraft: (value: boolean) => void;
   setEditOverride: (value: boolean) => void;
   setResumeMode: (value: boolean) => void;
+  onCompleted?: (alunoId?: string) => void;
+  embedded?: boolean;
+  onActionChange?: (actionId: BalcaoActionId) => void;
+  onResumeDraft?: (id: string) => void;
 }) {
   const {
     onBack,
@@ -1636,6 +1635,10 @@ function Step3Pagamento(props: {
     setBaseCanEditDraft,
     setEditOverride,
     setResumeMode,
+    onCompleted,
+    embedded = false,
+    onActionChange,
+    onResumeDraft,
   } = props;
 
   const [payment, setPayment] = useState({
@@ -1800,6 +1803,20 @@ function Step3Pagamento(props: {
     .reduce((sum, item) => sum + Number(item.valor ?? 0), 0);
   const totalComExtras = (Number(priceHint ?? 0) || 0) + extrasTotal + mensalidadesTotal;
 
+  const amountValue = Number(payment.amount) || 0;
+  const checkoutBlockedReason =
+    !canFinalize
+      ? "Selecione uma turma válida antes de concluir."
+      : payment.metodo_pagamento === "TPA" && !payment.referencia.trim()
+        ? "Informe a referência do TPA."
+        : payment.metodo_pagamento === "TRANSFERENCIA" && !payment.comprovativo_url.trim()
+          ? "Adicione o comprovativo da transferência."
+          : payment.parcial && amountValue <= 0
+            ? "Informe o valor recebido."
+            : payment.parcial && priceHint && amountValue >= Number(priceHint)
+              ? "O pagamento parcial deve ser menor que o valor da matrícula."
+              : null;
+
   const toggleMensalidade = (competencia: string) => {
     const index = mensalidadesPreview.findIndex((item) => item.competencia === competencia);
     if (index < 0) return;
@@ -1822,16 +1839,31 @@ function Step3Pagamento(props: {
       Boolean(existingCandidaturaId && !isActiveMatriculaStatus(existingStatus));
 
     if (shouldResumeDraft && isUuid(existingCandidaturaId)) {
-      router.push(`${secretariaBase}/admissoes/nova?candidaturaId=${existingCandidaturaId}`);
+      if (embedded && onResumeDraft) {
+        setDuplicateConflict(null);
+        onResumeDraft(existingCandidaturaId);
+      } else {
+        router.push(`${secretariaBase}/admissoes/nova?candidaturaId=${existingCandidaturaId}`);
+      }
       return;
     }
 
     const alunoId = duplicateConflict?.existing_matricula?.aluno_id;
     if (isUuid(alunoId)) {
-      router.push(`${secretariaBase}/alunos/${alunoId}`);
+      if (embedded) {
+        setDuplicateConflict(null);
+        onCompleted?.(alunoId);
+      } else {
+        router.push(`${secretariaBase}/alunos/${alunoId}`);
+      }
       return;
     }
-    router.push(`${secretariaBase}/alunos`);
+
+    if (embedded) {
+      onActionChange?.("desk");
+    } else {
+      router.push(`${secretariaBase}/alunos`);
+    }
   };
 
   const correctDuplicateAdmission = () => {
@@ -1977,6 +2009,7 @@ function Step3Pagamento(props: {
       ...convertResp.data,
       message: convertResp.data.message ?? "Matrícula concluída pela secretaria.",
     });
+    onCompleted?.(convertResp.data.aluno_id);
   };
 
   const handleSaveForLater = async () => {
@@ -2060,19 +2093,24 @@ function Step3Pagamento(props: {
                   router.push(`${secretariaBase}/documentos?tipo=comprovante_matricula`);
                 }
               } else if (passo.id === "registar_propina") {
-                setShowPaymentModal(true);
+                if (embedded && onActionChange) onActionChange("payment");
+                else setShowPaymentModal(true);
               } else if (passo.id === "liberar_portal") {
                 setPostAction("portal");
               } else if (passo.id === "lancar_notas") {
-                setPostAction("notas");
+                if (embedded && onActionChange) onActionChange("grade");
+                else setPostAction("notas");
               } else if (passo.id === "nova_matricula") {
                 onReset();
               }
             }}
-            onDismiss={() => router.push(`${secretariaBase}/matriculas`)}
+            onDismiss={() => {
+              if (embedded && onActionChange) onActionChange("desk");
+              else router.push(`${secretariaBase}/matriculas`);
+            }}
           />
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Resumo dos itens pagos</p>
             <div className="mt-3 divide-y divide-slate-200">
               {(result.itens_pagamento ?? []).map((item, index) => (
@@ -2088,7 +2126,16 @@ function Step3Pagamento(props: {
             <div className="mt-4 flex flex-wrap gap-2">
               {result.comprovante?.printUrl && <a href={result.comprovante.printUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovante</a>}
               {result.recibo?.ok && result.recibo.print_url && <a href={result.recibo.print_url} target="_blank" rel="noreferrer" className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo</a>}
-              <button type="button" onClick={() => router.push(`${secretariaBase}/matriculas`)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-black text-slate-700">Fechar</button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (embedded && onActionChange) onActionChange("desk");
+                  else router.push(`${secretariaBase}/matriculas`);
+                }}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-black text-slate-700"
+              >
+                {embedded ? "Continuar atendimento" : "Fechar"}
+              </button>
             </div>
             {result.recibo?.status === 'pending' && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Pagamento registado. O recibo financeiro será disponibilizado após a liquidação.</p>}
             {result.recibo?.status === 'error' && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">Não foi possível emitir o recibo financeiro. Tente novamente pela área de documentos.</p>}
@@ -2166,10 +2213,13 @@ function Step3Pagamento(props: {
           )}
           <button
             type="button"
-            onClick={() => router.push(`${secretariaBase}/admissoes`)}
+            onClick={() => {
+              if (embedded && onActionChange) onActionChange("desk");
+              else router.push(`${secretariaBase}/admissoes`);
+            }}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-amber/40"
           >
-            Voltar ao radar
+            {embedded ? "Voltar à visão geral" : "Voltar ao radar"}
           </button>
         </div>
 
@@ -2253,8 +2303,9 @@ function Step3Pagamento(props: {
         </div>
       )}
       <div>
-        <h2 className="text-lg font-semibold text-emerald">Pagamento</h2>
-        <p className="text-sm text-slate-500">Confirme a matrícula diretamente pela secretaria.</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">3 de 3</p>
+        <h2 className="mt-1 text-base font-black text-slate-900">Cobrança</h2>
+        <p className="mt-1 text-sm text-slate-500">Reveja o total, escolha a forma de pagamento e confirme a matrícula.</p>
       </div>
 
       <div className="grid gap-3">
@@ -2268,7 +2319,7 @@ function Step3Pagamento(props: {
               {servicos.map((service) => {
                 const checked = servicosSelecionados.includes(service.id);
                 return (
-                  <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-amber bg-amber-50" : "border-slate-200"}`}>
+                  <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-emerald/30 bg-emerald/5" : "border-slate-200"}`}>
                     <input type="checkbox" checked={checked} onChange={() => { setServicosSelecionados((current) => checked ? current.filter((id) => id !== service.id) : [...current, service.id]); if (!checked) setPayment((current) => ({ ...current, parcial: false, amount: "" })); }} className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald" />
                     <span className="min-w-0 text-sm"><span className="block font-semibold text-slate-800">{service.nome}</span><span className="block text-xs text-slate-500">{service.descricao || service.codigo}</span><span className="mt-1 block font-semibold text-emerald">{service.preco.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span></span>
                   </label>
@@ -2292,7 +2343,7 @@ function Step3Pagamento(props: {
                 const label = new Intl.DateTimeFormat("pt-AO", { month: "long", year: "numeric", timeZone: "UTC" })
                   .format(new Date(Date.UTC(item.ano, item.mes - 1, 1)));
                 return (
-                  <label key={item.competencia} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-amber bg-amber-50" : "border-slate-200"}`}>
+                  <label key={item.competencia} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-emerald/30 bg-emerald/5" : "border-slate-200"}`}>
                     <input
                       type="checkbox"
                       checked={checked}
@@ -2314,16 +2365,38 @@ function Step3Pagamento(props: {
           </div>
         )}
 
-        <select
-          name="metodo_pagamento"
-          value={payment.metodo_pagamento}
-          onChange={onChange}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
-        >
-          <option value="CASH">Dinheiro</option>
-          <option value="TPA">TPA</option>
-          <option value="TRANSFERENCIA">Transferência</option>
-        </select>
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Forma de pagamento</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              ["CASH", "Numerário"],
+              ["TPA", "TPA"],
+              ["TRANSFERENCIA", "Transferência"],
+            ].map(([value, label]) => {
+              const active = payment.metodo_pagamento === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPayment((current) => ({
+                    ...current,
+                    metodo_pagamento: value,
+                    referencia: "",
+                    comprovativo_url: "",
+                  }))}
+                  className={[
+                    "rounded-xl border px-3 py-2.5 text-xs font-bold transition",
+                    active
+                      ? "border-amber bg-amber/10 text-slate-900"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-amber/40 hover:bg-amber/5",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <label className={`flex items-center gap-2 text-xs text-slate-600 ${servicosSelecionados.length > 0 || mensalidadesSelecionadas.length > 0 ? "opacity-50" : ""}`}>
           <input
@@ -2338,80 +2411,112 @@ function Step3Pagamento(props: {
         </label>
 
         {payment.parcial ? (
-          <input
-            type="number"
-            name="amount"
-            value={payment.amount}
-            onChange={onChange}
-            placeholder="Valor pago"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
-          />
-        ) : priceHint ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Total a pagar: <span className="font-semibold">{(totalComExtras || Number(priceHint)).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span>
-            {(extrasTotal > 0 || mensalidadesTotal > 0) ? (
-              <span className="mt-1 block text-xs text-slate-500">
-                Matrícula {Number(priceHint).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}
-                {extrasTotal > 0 ? ` + serviços ${extrasTotal.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}` : ""}
-                {mensalidadesTotal > 0 ? ` + mensalidades ${mensalidadesTotal.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}` : ""}
-              </span>
-            ) : null}
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              Valor recebido
+            </label>
+            <input
+              type="number"
+              name="amount"
+              value={payment.amount}
+              onChange={onChange}
+              placeholder="Valor pago"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+            />
           </div>
         ) : (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Valor da matrícula será confirmado pelo sistema ao finalizar.
+          <div className="flex items-end justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total a pagar</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {priceLoading
+                  ? "A calcular o valor da turma…"
+                  : extrasTotal > 0 || mensalidadesTotal > 0
+                    ? "Matrícula + itens selecionados"
+                    : "Valor da matrícula"}
+              </p>
+            </div>
+            <strong className="text-xl font-black text-slate-950">
+              {priceHint
+                ? (totalComExtras || Number(priceHint)).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })
+                : priceLoading
+                  ? "…"
+                  : "A confirmar"}
+            </strong>
           </div>
         )}
 
-        {(payment.metodo_pagamento === "TPA" || payment.metodo_pagamento === "TRANSFERENCIA") && (
-          <input
-            type="text"
-            name="referencia"
-            value={payment.referencia}
-            onChange={onChange}
-            placeholder="Referência do pagamento"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
-          />
-        )}
+        {payment.metodo_pagamento === "TPA" ? (
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              Referência TPA *
+            </label>
+            <input
+              type="text"
+              name="referencia"
+              value={payment.referencia}
+              onChange={onChange}
+              placeholder="Referência do talão"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+            />
+          </div>
+        ) : null}
 
-        <input
-          type="text"
-          name="comprovativo_url"
-          value={payment.comprovativo_url}
-          onChange={onChange}
-          placeholder="URL do comprovativo"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
-        />
+        {payment.metodo_pagamento === "TRANSFERENCIA" ? (
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              Comprovativo *
+            </label>
+            <input
+              type="text"
+              name="comprovativo_url"
+              value={payment.comprovativo_url}
+              onChange={onChange}
+              placeholder="URL do comprovativo"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+            />
+          </div>
+        ) : null}
       </div>
 
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={loading}
-          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60"
-        >
-          Voltar
-        </button>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={loading}
+            className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
+          >
+            Voltar
+          </button>
 
-        <button
-          type="button"
-          onClick={() => void handleFinalizarMatricula()}
-          disabled={loading || !canFinalize}
-          className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
-        >
-          {loading ? "Processando…" : "Finalizar matrícula"}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => void handleSaveForLater()}
-          disabled={loading || !isUuid(candidaturaId)}
-          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60"
-        >
-          {loading ? "Processando…" : "Salvar pré-inscrição"}
-        </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleSaveForLater()}
+              disabled={loading || !isUuid(candidaturaId)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              Guardar para depois
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleFinalizarMatricula()}
+              disabled={loading || Boolean(checkoutBlockedReason)}
+              className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              {loading
+                ? "A processar…"
+                : priceHint
+                  ? `Confirmar matrícula · ${(totalComExtras || Number(priceHint)).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}`
+                  : "Confirmar matrícula"}
+            </button>
+          </div>
+        </div>
+        {!loading && checkoutBlockedReason ? (
+          <p className="text-right text-xs font-medium text-slate-500">{checkoutBlockedReason}</p>
+        ) : null}
       </div>
     </div>
   );
@@ -2425,10 +2530,16 @@ export default function AdmissaoWizardClient({
   escolaId,
   escolaSlug,
   initialCandidaturaId,
+  embedded = false,
+  onSuccess,
+  onActionChange,
 }: {
   escolaId: string;
   escolaSlug?: string | null;
   initialCandidaturaId?: string | null;
+  embedded?: boolean;
+  onSuccess?: (alunoId?: string) => void;
+  onActionChange?: (actionId: BalcaoActionId) => void;
 }) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -2570,6 +2681,16 @@ export default function AdmissaoWizardClient({
 
   const handleResume = (id: string) => {
     if (!isUuid(id)) return;
+
+    if (embedded) {
+      const next = new URLSearchParams(searchParams?.toString() ?? "");
+      next.set("action", "enrollment");
+      next.set("candidaturaId", id);
+      next.delete("alunoId");
+      router.replace(`${pathname || "/secretaria/balcao"}?${next.toString()}`, { scroll: false });
+      return;
+    }
+
     const next = withSlug(`/secretaria/admissoes/nova?candidaturaId=${id}`);
     router.push(next);
   };
@@ -2645,15 +2766,21 @@ export default function AdmissaoWizardClient({
     setDismissedResumePrompt(false);
     setWizardError(null);
     
-    // Clear URL query parameters without triggering a hard reload or RSC re-fetch
+    // Clear only the admission context. Embedded mode stays inside the
+    // Command Center; the legacy page keeps its historical clean URL.
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.delete("candidaturaId");
-      url.searchParams.delete("alunoId");
       url.searchParams.delete("alunoExistenteId");
-      window.history.replaceState(null, "", url.pathname);
+      if (embedded) {
+        url.searchParams.set("action", "enrollment");
+        window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}`);
+      } else {
+        url.searchParams.delete("alunoId");
+        window.history.replaceState(null, "", url.pathname);
+      }
     }
-  }, []);
+  }, [embedded]);
 
   if (!hydrated || hydratingLead) {
     return (
@@ -2663,7 +2790,7 @@ export default function AdmissaoWizardClient({
           <div className="h-9 w-32 animate-pulse rounded-xl bg-slate-200" />
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 h-4 w-40 animate-pulse rounded bg-slate-200" />
           <div className="grid gap-3 md:grid-cols-2">
             <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
@@ -2683,7 +2810,7 @@ export default function AdmissaoWizardClient({
   return (
     <div className="space-y-4">
       {!candidaturaId && !dismissedResumePrompt && draftItems.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber/40 bg-amber/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-amber/40 bg-amber/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-emerald">
               Tem uma candidatura em andamento
@@ -2727,8 +2854,17 @@ export default function AdmissaoWizardClient({
           Não foi possível verificar candidaturas em andamento agora. Tente novamente em “Retomar rascunho”.
         </div>
       )}
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="text-xl font-semibold text-emerald">Nova Admissão</h1>
+      <div className={["flex items-start gap-3", embedded ? "justify-end" : "justify-between"].join(" ")}>
+        {!embedded ? (
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              Admissão
+            </p>
+            <h1 className="mt-1 text-lg font-black text-slate-900">
+              Nova admissão
+            </h1>
+          </div>
+        ) : null}
         <div className="relative">
           <button
             type="button"
@@ -2755,7 +2891,7 @@ export default function AdmissaoWizardClient({
                 )}
               </div>
               {draftsLoading && (
-                <p className="text-xs text-slate-500">Carregando rascunhos…</p>
+                <p className="text-xs text-slate-500">A carregar rascunhos…</p>
               )}
               {draftsError && (
                 <p className="text-xs text-rose-600">{draftsError}</p>
@@ -2797,11 +2933,38 @@ export default function AdmissaoWizardClient({
           )}
         </div>
       </div>
-      <p className="text-sm text-slate-500">
-        Fluxo rascunho → submetida → aprovada → matriculado.
-      </p>
+      {!embedded ? (
+        <p className="text-sm text-slate-500">
+          Fluxo rascunho → submetida → aprovada → matriculado.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {["Identificação", "Turma", "Cobrança"].map((label, index) => {
+            const value = index + 1;
+            const active = step === value;
+            const done = step > value;
+            return (
+              <span
+                key={label}
+                className={[
+                  "rounded-full px-2.5 py-1 text-[10px] font-bold",
+                  active
+                    ? "bg-amber text-white shadow-sm"
+                    : done
+                      ? "bg-emerald-50 text-emerald"
+                      : "bg-slate-100 text-slate-400",
+                ].join(" ")}
+              >
+                {label}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
-      <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <div className={embedded
+        ? "rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
+        : "rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200"}>
         {wizardError && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {wizardError}
@@ -2848,6 +3011,10 @@ export default function AdmissaoWizardClient({
             setBaseCanEditDraft={setBaseCanEditDraft}
             setEditOverride={setEditOverride}
             setResumeMode={setResumeMode}
+            onCompleted={onSuccess}
+            embedded={embedded}
+            onActionChange={onActionChange}
+            onResumeDraft={handleResume}
           />
         )}
       </div>

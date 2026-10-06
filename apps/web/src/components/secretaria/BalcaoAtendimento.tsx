@@ -17,6 +17,7 @@ import {
   User,
   AlertTriangle,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -34,9 +35,12 @@ import { isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 import { emitirDocumento as emitirDocumentoViaApi, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import { kwanza } from "@/lib/formatters";
 import { resolveCheckoutPaymentState } from "@/lib/financeiro/checkout-payment-state";
+import type { BalcaoActionId, BalcaoFocusAction } from "@/lib/balcao/action-registry";
 import Link from "next/link";
 
 const ACADEMIC_YEAR_PARAM = "ano_letivo_id";
+
+export type BalcaoView = "all" | "overview" | "payment" | "document" | "reenrollment";
 
 export interface BalcaoAtendimentoProps {
   escolaId: string;
@@ -44,6 +48,10 @@ export interface BalcaoAtendimentoProps {
   showSearch?: boolean;
   embedded?: boolean;
   returnTo?: string | null;
+  focusAction?: BalcaoFocusAction | null;
+  view?: BalcaoView;
+  onNavigateAction?: (actionId: BalcaoActionId) => void;
+  onAlunoSelected?: (aluno: AlunoDossier | null) => void;
   /** Chamado após um pagamento concluído com sucesso. A página usa-o para
    *  refrescar o resumo de caixa, que de outra forma ficava parado no valor
    *  carregado na montagem. */
@@ -56,6 +64,7 @@ export interface AlunoDossier {
   foto_url?: string | null;
   numero_processo: string;
   turma_codigo?: string | null;
+  turma_id?: string | null;
   curso_codigo?: string | null;
   classe?: string | null;
   status_financeiro: "em_dia" | "inadimplente" | "sem_matricula";
@@ -112,9 +121,9 @@ export interface BillingWindowIssue {
 }
 
 const METODOS_UI: { id: MetodoPagamento; icon: React.ElementType; label: string }[] = [
-  { id: "cash", icon: Banknote, label: "Numerario" },
+  { id: "cash", icon: Banknote, label: "Numerário" },
   { id: "tpa", icon: CreditCard, label: "TPA" },
-  { id: "transfer", icon: ArrowRightLeft, label: "Transf." },
+  { id: "transfer", icon: ArrowRightLeft, label: "Transfer." },
   { id: "mcx", icon: QrCode, label: "Multicaixa" },
   { id: "kiwk", icon: QrCode, label: "Kwik" },
 ];
@@ -135,6 +144,31 @@ function isServicoRematricula(s: Servico): boolean {
 // prefixo DOC_.
 function getDocTipo(s: Servico): string | null {
   return getTipoDocumentoFromCodigo(s.documento_tipo ?? s.codigo);
+}
+
+function getDocumentoResumo(servico: Servico): string {
+  if (servico.descricao?.trim()) return servico.descricao.trim();
+
+  switch (getDocTipo(servico)) {
+    case "declaracao_frequencia":
+      return "Comprova frequência e matrícula ativa do aluno.";
+    case "declaracao_notas":
+      return "Declaração oficial com notas e aproveitamento escolar.";
+    case "boletim_trimestral":
+      return "Notas organizadas por trimestre para acompanhamento escolar.";
+    case "cartao_estudante":
+      return "Identificação estudantil para uso escolar.";
+    case "ficha_inscricao":
+      return "Ficha com os dados de inscrição do aluno.";
+    case "comprovante_matricula":
+      return "Comprovativo oficial da matrícula atual.";
+    case "historico":
+      return "Histórico escolar oficial do percurso académico.";
+    case "certificado":
+      return "Certificado de habilitações após conclusão elegível.";
+    default:
+      return "Documento escolar disponível para emissão.";
+  }
 }
 
 // O mapa tipo-de-documento -> segmento de impressão vivia aqui e voltou a ser
@@ -304,6 +338,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
           foto_url: perfil.foto_url ? String(perfil.foto_url) : null,
           numero_processo: String(perfil.numero_processo ?? raw.aluno?.numero_processo ?? "-"),
           turma_codigo: turmaAtualCodigo,
+          turma_id: atual.turma_id ? String(atual.turma_id) : null,
           curso_codigo: atual.curso_codigo ? String(atual.curso_codigo) : null,
           classe: atual.classe ? String(atual.classe) : null,
           status_financeiro: divida > 0 ? "inadimplente" : "em_dia",
@@ -473,13 +508,25 @@ function useCarrinho() {
   const valorNum = Number(valorRecebido) || 0;
   const troco = Math.max(0, valorNum - total);
 
-  const prontoParaPagar = useMemo(() => {
-    if (itens.length === 0) return false;
-    if (metodo === "tpa" && !detalhes.referencia.trim()) return false;
-    if (metodo === "transfer" && !detalhes.evidencia_url.trim()) return false;
-    if (metodo === "cash" && total > 0 && valorNum < total) return false;
-    return true;
-  }, [itens.length, metodo, detalhes, total, valorNum]);
+  useEffect(() => {
+    if (metodo !== "cash" || total <= 0) return;
+    setValorRecebido((current) => {
+      const currentValue = Number(current) || 0;
+      return currentValue < total ? String(total) : current;
+    });
+  }, [metodo, total]);
+
+  const disabledReason = useMemo(() => {
+    if (itens.length === 0) return "Selecione pelo menos uma cobrança.";
+    if (metodo === "tpa" && !detalhes.referencia.trim()) return "Informe a referência do TPA.";
+    if (metodo === "transfer" && !detalhes.evidencia_url.trim()) return "Adicione o comprovativo da transferência.";
+    if (metodo === "cash" && total > 0 && valorNum < total) {
+      return `Informe o valor recebido. Faltam ${kwanza.format(total - valorNum)}.`;
+    }
+    return null;
+  }, [itens.length, metodo, detalhes.referencia, detalhes.evidencia_url, total, valorNum]);
+
+  const prontoParaPagar = disabledReason === null;
 
   return {
     itens,
@@ -493,6 +540,7 @@ function useCarrinho() {
     valorNum,
     troco,
     prontoParaPagar,
+    disabledReason,
     adicionar,
     remover,
     limpar,
@@ -1009,13 +1057,270 @@ function AlunoCard({ aluno, onTrocarAluno }: { aluno: AlunoDossier; onTrocarAlun
   );
 }
 
+function CommandCenterOverview({
+  aluno,
+  mensalidades,
+  servicos,
+  rematriculaState,
+  onNavigate,
+  onTrocarAluno,
+}: {
+  aluno: AlunoDossier;
+  mensalidades: Mensalidade[];
+  servicos: Servico[];
+  rematriculaState: RematriculaCardState | "CHECKING" | null;
+  onNavigate?: (actionId: BalcaoActionId) => void;
+  onTrocarAluno: () => void;
+}) {
+  const overdue = mensalidades.filter((item) => item.atrasada && item.preco > 0);
+  const overdueTotal = overdue.reduce((sum, item) => sum + item.preco, 0);
+  const documents = servicos.filter(
+    (service) => !isServicoRematricula(service) && isDocServico(service),
+  );
+  const rematriculaCopy = rematriculaState ? ESTADO_OPERACAO[rematriculaState] : null;
+
+  const rematriculaActionable = new Set<RematriculaCardState | "CHECKING">([
+    "READY",
+    "RECONFIRMATION_REQUIRED",
+    "DOCUMENT_PENDING",
+    "ACADEMIC_HISTORY_PENDING",
+    "FINALIST_PENDING",
+    "DEBT_BLOCKED",
+    "RECONCILIATION_REQUIRED",
+    "PENDING_ORDER_REVIEW",
+    "LEGACY_REVIEW_REQUIRED",
+  ]);
+
+  const priority =
+    overdue.length > 0
+      ? {
+          eyebrow: "Precisa de atenção",
+          title: `${overdue.length} mensalidade${overdue.length === 1 ? "" : "s"} em atraso`,
+          description: "Regularize o saldo para evitar bloqueios em operações académicas.",
+          value: kwanza.format(overdueTotal),
+          actionId: "payment" as BalcaoActionId,
+          actionLabel: "Regularizar",
+          tone: "danger" as const,
+        }
+      : rematriculaState && rematriculaActionable.has(rematriculaState)
+        ? {
+            eyebrow: "Próxima ação",
+            title: rematriculaCopy?.titulo ?? "Rematrícula",
+            description: rematriculaCopy?.descricao ?? "Verifique o estado da rematrícula.",
+            value: null,
+            actionId: "reenrollment" as BalcaoActionId,
+            actionLabel: "Continuar",
+            tone: "attention" as const,
+          }
+        : {
+            eyebrow: "Situação atual",
+            title: "Nenhuma pendência crítica",
+            description: "O atendimento pode continuar normalmente.",
+            value: null,
+            actionId: null,
+            actionLabel: null,
+            tone: "success" as const,
+          };
+
+  const financeValue =
+    aluno.status_financeiro === "inadimplente"
+      ? kwanza.format(overdueTotal || aluno.divida_total)
+      : aluno.status_financeiro === "sem_matricula"
+        ? "Sem matrícula"
+        : "Em dia";
+
+  const financeTone =
+    aluno.status_financeiro === "inadimplente"
+      ? "danger"
+      : aluno.status_financeiro === "em_dia"
+        ? "success"
+        : "neutral";
+
+  const rematriculaValue = rematriculaState
+    ? (rematriculaCopy?.titulo ?? rematriculaState)
+    : "Indisponível";
+
+  const rematriculaTone =
+    rematriculaState === "READY" || rematriculaState === "ALREADY_COMPLETED"
+      ? "success"
+      : rematriculaState === "DEBT_BLOCKED" ||
+          rematriculaState === "ACADEMIC_NOT_APPROVED" ||
+          rematriculaState === "ACADEMIC_CONDITIONAL_BLOCKED"
+        ? "danger"
+        : "neutral";
+
+  const rows: Array<{
+    id: BalcaoActionId;
+    title: string;
+    description: string;
+    value: string;
+    tone: "danger" | "success" | "neutral";
+  }> = [
+    {
+      id: "payment",
+      title: "Financeiro",
+      description:
+        overdue.length > 0
+          ? `${overdue.length} cobrança${overdue.length === 1 ? "" : "s"} vencida${overdue.length === 1 ? "" : "s"}`
+          : "Nenhuma cobrança vencida",
+      value: financeValue,
+      tone: financeTone,
+    },
+    {
+      id: "reenrollment",
+      title: "Rematrícula",
+      description: rematriculaCopy?.descricao ?? "Sem operação disponível neste momento.",
+      value: rematriculaValue,
+      tone: rematriculaTone,
+    },
+    {
+      id: "document",
+      title: "Documentos",
+      description: "Emitir declarações e outros documentos do aluno",
+      value: documents.length > 0 ? `${documents.length} ${documents.length === 1 ? "disponível" : "disponíveis"}` : "Nenhum",
+      tone: "neutral",
+    },
+  ];
+
+  const priorityClass =
+    priority.tone === "danger"
+      ? "border-rose-200 bg-rose-50/70"
+      : priority.tone === "attention"
+        ? "border-amber-200 bg-amber-50/70"
+        : "border-emerald-200 bg-emerald-50/60";
+
+  const priorityTitleClass =
+    priority.tone === "danger"
+      ? "text-rose-950"
+      : priority.tone === "attention"
+        ? "text-amber-950"
+        : "text-emerald-950";
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            Visão geral
+          </p>
+          <h2 className="mt-1 text-lg font-black text-slate-900">
+            O que precisa de atenção agora
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={onTrocarAluno}
+          className="shrink-0 text-xs font-bold text-slate-500 transition hover:text-slate-900"
+        >
+          Trocar aluno
+        </button>
+      </div>
+
+      <div className={`rounded-xl border p-4 sm:p-5 ${priorityClass}`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+              {priority.eyebrow}
+            </p>
+            <h3 className={`mt-1 text-base font-black ${priorityTitleClass}`}>
+              {priority.title}
+            </h3>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
+              {priority.description}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            {priority.value ? (
+              <strong className="text-base font-black text-slate-900">
+                {priority.value}
+              </strong>
+            ) : null}
+            {priority.actionId && priority.actionLabel ? (
+              <button
+                type="button"
+                onClick={() => onNavigate?.(priority.actionId!)}
+                className="rounded-xl bg-amber px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:brightness-95"
+              >
+                {priority.actionLabel}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+          Situação do aluno
+        </p>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          {rows.map((row, index) => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => onNavigate?.(row.id)}
+              className={[
+                "flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-slate-50 sm:px-5",
+                index > 0 ? "border-t border-slate-100" : "",
+              ].join(" ")}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-900">{row.title}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-500">
+                  {row.description}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <span
+                  className={[
+                    "text-xs font-bold",
+                    row.tone === "danger"
+                      ? "text-rose-700"
+                      : row.tone === "success"
+                        ? "text-emerald"
+                        : "text-slate-600",
+                  ].join(" ")}
+                >
+                  {row.value}
+                </span>
+                <span aria-hidden="true" className="text-slate-300">
+                  →
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        <p className="text-xs text-slate-400">
+          Proc. {aluno.numero_processo}
+          {aluno.classe ? ` · ${aluno.classe}` : ""}
+          {aluno.turma_codigo ? ` · Turma ${aluno.turma_codigo}` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={() => onNavigate?.("profile")}
+          className="text-xs font-bold text-emerald transition hover:underline"
+        >
+          Ver perfil completo →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Catalogo({
   mensalidades,
   servicos,
+  view = "all",
   onAdicionarMensalidade,
   onAdicionarServico,
+  onEmitirDocumento,
   emittingDocId,
   unlockedMensalidadeIds,
+  selectedItemKeys,
+  selectedTotal,
   rematriculaReady,
   rematriculaState,
   rematriculaPrice,
@@ -1032,10 +1337,14 @@ function Catalogo({
 }: {
   mensalidades: Mensalidade[];
   servicos: Servico[];
+  view?: "all" | "payment" | "document" | "reenrollment";
   onAdicionarMensalidade: (m: Mensalidade) => void;
   onAdicionarServico: (s: Servico) => Promise<void>;
+  onEmitirDocumento: (s: Servico) => Promise<void>;
   emittingDocId: string | null;
   unlockedMensalidadeIds: Set<string>;
+  selectedItemKeys: Set<string>;
+  selectedTotal: number;
   rematriculaReady: boolean;
   /** `CHECKING` é rótulo sintético do cliente, para o intervalo antes de a
    *  primeira leitura da elegibilidade responder. */
@@ -1055,12 +1364,22 @@ function Catalogo({
   onRematricula: () => void;
   onRegularize: () => void;
 }) {
-  const atrasadas = useMemo(() => mensalidades.filter((m) => m.atrasada), [mensalidades]);
+  const atrasadas = useMemo(
+    () => mensalidades
+      .filter((m) => m.atrasada)
+      .sort((a, b) => ((a.referencia_ano ?? 0) * 100 + (a.referencia_mes ?? 0)) - ((b.referencia_ano ?? 0) * 100 + (b.referencia_mes ?? 0))),
+    [mensalidades],
+  );
   const dividaHistorica = useMemo(() => ({
     count: atrasadas.length,
     total: atrasadas.reduce((total, mensalidade) => total + mensalidade.preco, 0),
   }), [atrasadas]);
-  const correntes = useMemo(() => mensalidades.filter((m) => !m.atrasada), [mensalidades]);
+  const correntes = useMemo(
+    () => mensalidades
+      .filter((m) => !m.atrasada)
+      .sort((a, b) => ((a.referencia_ano ?? 0) * 100 + (a.referencia_mes ?? 0)) - ((b.referencia_ano ?? 0) * 100 + (b.referencia_mes ?? 0))),
+    [mensalidades],
+  );
   const documentos = useMemo(
     () => servicos.filter((s) => !isServicoRematricula(s) && isDocServico(s)),
     [servicos],
@@ -1076,46 +1395,116 @@ function Catalogo({
     }`;
 
   const operacaoCopy = rematriculaState ? ESTADO_OPERACAO[rematriculaState] : null;
+  const selectedCount = selectedItemKeys.size;
 
   return (
-    <div className="xl:col-span-8 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} rounded-xl border border-slate-200 bg-white p-5 sm:p-6`}>
+      {view === "payment" ? (
+        <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Pagamento</p>
+            <h2 className="mt-1 text-base font-black text-slate-900">O que será pago agora?</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Selecione mensalidades ou serviços. O total é calculado automaticamente.</p>
+          </div>
+          {selectedCount > 0 ? (
+            <a
+              href="#payment-checkout"
+              className="inline-flex items-center gap-2 text-xs font-bold text-emerald lg:hidden"
+            >
+              Rever pagamento · {kwanza.format(selectedTotal)} →
+            </a>
+          ) : null}
+        </div>
+      ) : view === "reenrollment" ? (
+        <div className="mb-5 border-b border-slate-100 pb-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Rematrícula</p>
+          <h2 className="mt-1 text-base font-black text-slate-900">O que precisa concluir?</h2>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Confirme a situação académica, resolva bloqueios e avance para a cobrança quando estiver elegível.
+          </p>
+        </div>
+      ) : view === "all" ? (
+        <div className="mb-4 flex items-center gap-2">
           <Plus className="h-4 w-4 text-amber" />
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Adicionar item</p>
         </div>
-      </div>
+      ) : null}
 
-      {/* O limite de altura só faz sentido quando o catálogo é uma coluna ao
-          lado da ficha do aluno (`xl`). Empilhado, o scroll interno só servia
-          para esconder o botão de pagar. */}
-      <div className="space-y-6 xl:max-h-[620px] xl:overflow-y-auto xl:pr-2">
-        {dividaHistorica.total > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-            <strong className="block">Atenção financeira</strong>
-            <span>
-              {dividaHistorica.count} mensalidade(s) vencida(s) · {kwanza.format(dividaHistorica.total)}.
-              A regularização segue da mensalidade mais antiga para a mais recente.
-            </span>
+      {/* No painel de pagamentos o próprio Command Center já controla o scroll.
+          Nos fluxos legados, preserva-se o limite interno anterior. */}
+      <div className={view === "payment" ? "space-y-5" : "space-y-6 xl:max-h-[620px] xl:overflow-y-auto xl:pr-2"}>
+        {(view === "all" || view === "payment") && dividaHistorica.total > 0 && (
+          <div
+            data-balcao-action="payment"
+            className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50/60 p-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="text-sm font-black text-rose-950">Saldo vencido</p>
+              <p className="mt-0.5 text-xs text-rose-700">
+                {dividaHistorica.count} mensalidade{dividaHistorica.count === 1 ? "" : "s"} em atraso · {kwanza.format(dividaHistorica.total)}
+              </p>
+              <p className="mt-1 text-[11px] text-rose-600/80">A regularização segue da cobrança mais antiga para a mais recente.</p>
+            </div>
             <button
               type="button"
               onClick={onRegularize}
-              className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700"
+              className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
             >
-              Regularizar agora
+              Regularizar dívida
             </button>
           </div>
         )}
-        {rematriculaState && (
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <SecaoLabel>Operacoes escolares</SecaoLabel>
+        {(view === "all" || view === "reenrollment") && rematriculaState && (
+          <div data-balcao-action="reenrollment">
+            <div className={["mb-2 flex items-center gap-3", view === "reenrollment" ? "justify-end" : "justify-between"].join(" ")}>
+              {view === "all" ? <SecaoLabel>Operações escolares</SecaoLabel> : null}
               {rematriculaAnoLabel && (
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
                   Ano: {rematriculaAnoLabel}
                 </span>
               )}
             </div>
+            {rematriculaState === "DEBT_BLOCKED" ? (
+              <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">Bloqueio financeiro</p>
+                <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-rose-950">Saldo vencido impede a rematrícula</p>
+                    <p className="mt-1 text-xs leading-5 text-rose-700">
+                      Regularize as mensalidades da matrícula de origem antes de escolher a turma destino.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onRegularize}
+                    className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+                  >
+                    Regularizar dívida
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {rematriculaState === "PRICE_NOT_CONFIGURED" ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">Configuração necessária</p>
+                <p className="mt-1 text-sm font-black text-amber-950">Taxa de rematrícula sem valor definido</p>
+                <p className="mt-1 text-xs leading-5 text-amber-800">
+                  Defina o valor da taxa para a classe destino antes de iniciar uma nova cobrança.
+                </p>
+              </div>
+            ) : null}
+
+            {rematriculaState === "ALREADY_COMPLETED" ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">Concluída</p>
+                <p className="mt-1 text-sm font-black text-emerald-950">Rematrícula já concluída</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-800">
+                  O aluno já está matriculado em {rematriculaAnoLabel ?? "este ano letivo"}. Não faça uma nova cobrança.
+                </p>
+              </div>
+            ) : null}
+
             {rematriculaState === "LEGACY_REVIEW_REQUIRED" ? (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
                 <strong className="block text-amber-950">Pedido antigo por resolver</strong>
@@ -1329,101 +1718,256 @@ function Catalogo({
                 {rematriculaError}
               </p>
             ) : null}
-            {rematriculaState && operacaoCopy &&
-              !(["LEGACY_REVIEW_REQUIRED", "PENDING_ORDER_REVIEW"] as string[]).includes(rematriculaState) && <button
-              type="button"
-              onClick={onRematricula}
-              disabled={!rematriculaReady}
-              className="w-full flex items-center justify-between p-3.5 rounded-xl border
-                border-emerald/25 bg-emerald/5 hover:bg-emerald/10
-                transition-all text-left disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              <div>
-                <p className="text-sm font-bold text-emerald">{operacaoCopy.titulo}</p>
-                <p className="text-xs text-slate-500">{operacaoCopy.descricao}</p>
-              </div>
-              <span className="text-sm font-black text-slate-900 font-sora">
-                {rematriculaPrice != null && rematriculaPrice > 0
-                  ? kwanza.format(rematriculaPrice)
-                  : "Valor pendente"}
-              </span>
-            </button>}
+            {rematriculaState && operacaoCopy && rematriculaReady ? (
+              <button
+                type="button"
+                onClick={onRematricula}
+                className="flex w-full items-center justify-between gap-4 rounded-xl border border-emerald/25 bg-emerald/5 p-4 text-left transition hover:bg-emerald/10"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900">{operacaoCopy.titulo}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-slate-500">{operacaoCopy.descricao}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className="block text-sm font-black text-slate-900 font-sora">
+                    {rematriculaPrice != null && rematriculaPrice > 0
+                      ? kwanza.format(rematriculaPrice)
+                      : "Sem taxa"}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-bold text-emerald">Continuar →</span>
+                </div>
+              </button>
+            ) : null}
           </div>
         )}
 
-        {atrasadas.length > 0 && (
-          <div>
-            <SecaoLabel>Em atraso ({atrasadas.length})</SecaoLabel>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {atrasadas.map((m) => (
+        {(view === "all" || view === "payment") && atrasadas.length > 0 && (
+          <div data-balcao-action="payment">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <SecaoLabel>Em atraso ({atrasadas.length})</SecaoLabel>
+              {view === "payment" ? (
                 <button
-                  key={m.id}
-                  onClick={() => onAdicionarMensalidade(m)}
-                  disabled={!unlockedMensalidadeIds.has(m.id)}
-                  title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
-                  className="flex items-center justify-between p-3.5 rounded-xl border
-                    border-rose-200 bg-rose-50/70 hover:bg-rose-50 hover:border-rose-300 transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60"
+                  type="button"
+                  onClick={() => atrasadas.forEach((mensalidade) => onAdicionarMensalidade(mensalidade))}
+                  disabled={atrasadas.every((mensalidade) => selectedItemKeys.has(`mensalidade:${mensalidade.id}`))}
+                  className="text-[11px] font-bold text-emerald transition hover:underline disabled:cursor-default disabled:text-slate-300 disabled:no-underline"
                 >
-                  <div className="min-w-0 pr-2">
-                    <p className="text-xs font-bold text-rose-900 truncate">{m.nome}</p>
-                    <p className="text-[10px] font-medium text-rose-500 truncate mt-0.5">
-                      {[m.origem_ano && `Ano ${m.origem_ano}`, m.origem_turma].filter(Boolean).join(" · ") ||
-                        (!unlockedMensalidadeIds.has(m.id) ? "Bloqueada (regularizar anterior)" : "Vencida")}
-                    </p>
-                  </div>
-                  <span className="text-xs font-black text-rose-800 font-sora flex-shrink-0">{kwanza.format(m.preco)}</span>
+                  {atrasadas.every((mensalidade) => selectedItemKeys.has(`mensalidade:${mensalidade.id}`))
+                    ? "Todas selecionadas"
+                    : "Selecionar todas"}
                 </button>
-              ))}
+              ) : null}
             </div>
-          </div>
-        )}
-
-        {correntes.length > 0 && (
-          <div>
-            <SecaoLabel>Mensalidades ({correntes.length})</SecaoLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {correntes.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => onAdicionarMensalidade(m)}
-                  disabled={!unlockedMensalidadeIds.has(m.id)}
-                  title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
-                  className="flex items-center justify-between p-3.5 rounded-xl border
-                    border-slate-200 bg-white hover:border-amber hover:shadow-xs transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <div className="min-w-0 pr-2">
-                    <p className="text-xs font-bold text-slate-700 group-hover:text-slate-900 truncate">{m.nome}</p>
-                    <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                      {[m.origem_ano && `Ano ${m.origem_ano}`, m.origem_turma].filter(Boolean).join(" · ") ||
-                        (!unlockedMensalidadeIds.has(m.id) ? "Bloqueada (regularizar anterior)" : "Corrente")}
-                    </p>
-                  </div>
-                  <span className="text-xs font-bold text-slate-900 font-sora flex-shrink-0">{kwanza.format(m.preco)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {documentos.length > 0 && (
-          <div>
-            <SecaoLabel>Documentos ({documentos.length})</SecaoLabel>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              {documentos.map((s) => {
-                const busy = emittingDocId === s.id;
+              {atrasadas.map((m) => {
+                const selected = selectedItemKeys.has(`mensalidade:${m.id}`);
+                const unlocked = unlockedMensalidadeIds.has(m.id);
                 return (
-                  <button key={s.id} disabled={busy} onClick={() => void onAdicionarServico(s)} className={servicoBtnCls(busy)}>
-                    <p className="text-xs font-bold text-slate-800 truncate" title={s.nome}>
-                      {s.nome}
-                    </p>
+                  <button
+                    key={m.id}
+                    onClick={() => onAdicionarMensalidade(m)}
+                    disabled={!unlocked}
+                    title={!unlocked ? "Regularize primeiro as mensalidades mais antigas." : selected ? "Já incluída no pagamento." : undefined}
+                    className={[
+                      "flex items-center justify-between rounded-xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50",
+                      selected
+                        ? "border-emerald/30 bg-emerald/5"
+                        : "border-rose-200 bg-rose-50/60 hover:border-rose-300 hover:bg-rose-50",
+                    ].join(" ")}
+                  >
+                    <div className="min-w-0 pr-3">
+                      <div className="flex items-center gap-2">
+                        <p className={`truncate text-xs font-bold ${selected ? "text-slate-900" : "text-rose-900"}`}>{m.nome}</p>
+                        {selected ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
+                            <CheckCircle className="h-3 w-3" /> Selecionada
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className={`mt-0.5 truncate text-[10px] font-medium ${selected ? "text-slate-400" : "text-rose-500"}`}>
+                        {[m.origem_ano && `Ano ${m.origem_ano}`, m.origem_turma].filter(Boolean).join(" · ") ||
+                          (!unlocked ? "Bloqueada até regularizar a anterior" : "Vencida")}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs font-black text-slate-900 font-sora">{kwanza.format(m.preco)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {(view === "all" || view === "payment") && correntes.length > 0 && (
+          <div data-balcao-action="payment">
+            <SecaoLabel>{view === "payment" ? "Mensalidades disponíveis" : `Mensalidades (${correntes.length})`}</SecaoLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {correntes.map((m) => {
+                const selected = selectedItemKeys.has(`mensalidade:${m.id}`);
+                const unlocked = unlockedMensalidadeIds.has(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => onAdicionarMensalidade(m)}
+                    disabled={!unlocked}
+                    title={!unlocked ? "Regularize primeiro as mensalidades mais antigas." : selected ? "Já incluída no pagamento." : undefined}
+                    className={[
+                      "flex items-center justify-between rounded-xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50",
+                      selected
+                        ? "border-emerald/30 bg-emerald/5"
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <div className="min-w-0 pr-3">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-xs font-bold text-slate-800">{m.nome}</p>
+                        {selected ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
+                            <CheckCircle className="h-3 w-3" /> Selecionada
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-0.5 truncate text-[10px] text-slate-400">
+                        {[m.origem_ano && `Ano ${m.origem_ano}`, m.origem_turma].filter(Boolean).join(" · ") ||
+                          (!unlocked ? "Bloqueada até regularizar a anterior" : "Disponível")}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs font-bold text-slate-900 font-sora">{kwanza.format(m.preco)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {(view === "all" || view === "document") && documentos.length > 0 && (
+          <div data-balcao-action="document">
+            {view === "document" ? (
+              <div className="mb-5 border-b border-slate-100 pb-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Documentos</p>
+                <h2 className="mt-1 text-base font-black text-slate-900">O que precisa emitir?</h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Documentos gratuitos são emitidos imediatamente. Os pagos seguem para cobrança antes da emissão.
+                </p>
+                {selectedCount > 0 ? (
+                  <a
+                    href="#document-checkout"
+                    className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-emerald lg:hidden"
+                  >
+                    Rever cobrança · {kwanza.format(selectedTotal)} →
+                  </a>
+                ) : null}
+              </div>
+            ) : (
+              <SecaoLabel>Documentos ({documentos.length})</SecaoLabel>
+            )}
+
+            <div className={view === "document" ? "space-y-2.5" : "grid grid-cols-2 sm:grid-cols-3 gap-2.5"}>
+              {documentos.map((servico) => {
+                const busy = emittingDocId === servico.id;
+                const paid = servico.preco > 0;
+                const selected = selectedItemKeys.has(`servico:${servico.id}`);
+
+                if (view !== "document") {
+                  return (
+                    <button
+                      key={servico.id}
+                      disabled={busy}
+                      onClick={() => void onAdicionarServico(servico)}
+                      className={servicoBtnCls(busy)}
+                    >
+                      <p className="truncate text-xs font-bold text-slate-800" title={servico.nome}>{servico.nome}</p>
+                      <div className="mt-2 flex items-center justify-between gap-1">
+                        <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(servico.preco)}</span>
+                        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${paid ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"}`}>
+                          {busy ? "..." : paid ? "Cobrar" : "Adicionar"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
+
+                return (
+                  <div
+                    key={servico.id}
+                    className={[
+                      "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between",
+                      selected ? "border-emerald/30 bg-emerald/5" : "border-slate-200 bg-white",
+                    ].join(" ")}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-black text-slate-900">{servico.nome}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${paid ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald"}`}>
+                          {paid ? kwanza.format(servico.preco) : "Gratuito"}
+                        </span>
+                        {selected ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
+                            <CheckCircle className="h-3 w-3" /> Para cobrar
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+                        {getDocumentoResumo(servico)}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={busy || (paid && selected)}
+                      onClick={() => {
+                        if (paid) void onAdicionarServico(servico);
+                        else void onEmitirDocumento(servico);
+                      }}
+                      className={[
+                        "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition disabled:cursor-not-allowed",
+                        paid
+                          ? selected
+                            ? "bg-slate-100 text-slate-400"
+                            : "bg-slate-950 text-white hover:bg-slate-800"
+                          : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
+                      ].join(" ")}
+                    >
+                      {busy ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> A emitir...</>
+                      ) : paid ? (
+                        selected ? "Adicionado" : "Adicionar para cobrança"
+                      ) : (
+                        <><Printer className="h-3.5 w-3.5" /> Emitir agora</>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {(view === "all" || view === "payment") && extras.length > 0 && (
+          <div>
+            <SecaoLabel>Servicos extras ({extras.length})</SecaoLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {extras.map((s) => {
+                const selected = selectedItemKeys.has(`servico:${s.id}`);
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => void onAdicionarServico(s)}
+                    className={[
+                      "rounded-xl border p-3 text-left transition",
+                      selected
+                        ? "border-emerald/30 bg-emerald/5"
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                    ].join(" ")}
+                    title={selected ? "Já incluído no pagamento." : s.nome}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-xs font-bold text-slate-800">{s.nome}</p>
+                      {selected ? <CheckCircle className="h-3.5 w-3.5 shrink-0 text-emerald" /> : null}
+                    </div>
                     <div className="mt-2 flex items-center justify-between gap-1">
                       <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(s.preco)}</span>
-                      <span
-                        className={`text-[10px] font-bold rounded-md px-1.5 py-0.5 ${
-                          s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"
-                        }`}
-                      >
-                        {busy ? "..." : s.preco > 0 ? "Cobrar" : "Adicionar"}
+                      <span className={`text-[10px] font-bold ${selected ? "text-emerald" : "text-slate-400"}`}>
+                        {selected ? "Selecionado" : "Adicionar"}
                       </span>
                     </div>
                   </button>
@@ -1433,35 +1977,16 @@ function Catalogo({
           </div>
         )}
 
-        {extras.length > 0 && (
-          <div>
-            <SecaoLabel>Servicos extras ({extras.length})</SecaoLabel>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              {extras.map((s) => (
-                // Os mesmos dois casos diziam "Pago"/"Gratis" aqui e
-                // "Cobrar"/"Adicionar" nos Documentos — "Pago" sugeria um
-                // pagamento já feito, quando o serviço ainda não foi cobrado.
-                <button key={s.id} onClick={() => void onAdicionarServico(s)} className={servicoBtnCls(false)}>
-                  <p className="text-xs font-bold text-slate-800 truncate" title={s.nome}>
-                    {s.nome}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between gap-1">
-                    <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(s.preco)}</span>
-                    <span
-                      className={`text-[10px] font-bold rounded-md px-1.5 py-0.5 ${
-                        s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"
-                      }`}
-                    >
-                      {s.preco > 0 ? "Cobrar" : "Adicionar"}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {mensalidades.length === 0 && servicos.length === 0 && (
+        {view === "payment" && mensalidades.length === 0 && extras.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-400">Nenhuma cobrança disponível para este aluno.</p>
+        ) : null}
+        {view === "document" && documentos.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-400">Nenhum documento configurado para este aluno.</p>
+        ) : null}
+        {view === "reenrollment" && !rematriculaState ? (
+          <p className="py-8 text-center text-sm text-slate-400">A rematrícula não está disponível neste contexto.</p>
+        ) : null}
+        {view === "all" && mensalidades.length === 0 && servicos.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">Nenhum item disponivel para este aluno.</p>
         )}
       </div>
@@ -1530,6 +2055,7 @@ function CarrinhoPanel({
   audit,
   aluno,
   embedded = false,
+  mode = "all",
   atalhoActivo = true,
 }: {
   carrinho: ReturnType<typeof useCarrinho>;
@@ -1537,10 +2063,26 @@ function CarrinhoPanel({
   audit: ReturnType<typeof useAuditTrail>;
   aluno: AlunoDossier | null;
   embedded?: boolean;
+  mode?: "all" | "payment" | "document";
   /** Desligado enquanto há um modal aberto — ver o efeito abaixo. */
   atalhoActivo?: boolean;
 }) {
-  const { itens, total, metodo, setMetodo, detalhes, setDetalhes, valorRecebido, setValorRecebido, valorNum, troco, prontoParaPagar, remover, limpar } = carrinho;
+  const {
+    itens,
+    total,
+    metodo,
+    setMetodo,
+    detalhes,
+    setDetalhes,
+    valorRecebido,
+    setValorRecebido,
+    valorNum,
+    troco,
+    prontoParaPagar,
+    disabledReason,
+    remover,
+    limpar,
+  } = carrinho;
 
   const inputCls = `w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-amber focus:ring-2 focus:ring-amber/20`;
 
@@ -1575,55 +2117,131 @@ function CarrinhoPanel({
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden flex flex-col sticky top-6 ${
-        embedded ? "h-full min-h-[580px]" : "h-[calc(100vh-140px)]"
-      }`}
+      id={mode === "payment" ? "payment-checkout" : mode === "document" ? "document-checkout" : undefined}
+      className={`scroll-mt-24 rounded-xl border border-slate-200 bg-white overflow-hidden flex flex-col sticky top-6 ${
+        mode === "payment" || mode === "document" ? "shadow-sm" : "shadow-lg"
+      } ${embedded ? "h-full min-h-[580px]" : "h-[calc(100vh-140px)]"}`}
     >
-      <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5 text-amber" />
-          <span className="text-sm font-bold text-white font-sora">Resumo da venda</span>
-          {itens.length > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber text-[10px] font-black text-slate-900 font-mono">
-              {itens.length}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              audit.setOpen((o) => !o);
-              if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
-            }}
-            className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono"
-          >
-            {audit.open ? "Fechar audit" : "Audit trail"}
-          </button>
-          {itens.length > 0 && (
-            <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono">
-              Limpar
+      {mode === "payment" || mode === "document" ? (
+        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              {mode === "payment" ? "Pagamento" : "Emissão"}
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <h3 className="text-base font-black text-slate-900">
+                {mode === "payment"
+                  ? "Rever e confirmar"
+                  : itens.length > 1
+                    ? "Documentos para emitir"
+                    : "Documento para emitir"}
+              </h3>
+              {itens.length > 0 ? (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                  {itens.length} {itens.length === 1 ? "item" : "itens"}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                audit.setOpen((open) => !open);
+                if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
+              }}
+              className="text-xs font-bold text-slate-400 transition hover:text-slate-700"
+            >
+              {audit.open ? "Fechar histórico" : "Histórico"}
             </button>
-          )}
+            {itens.length > 0 ? (
+              <button
+                type="button"
+                onClick={limpar}
+                className="text-xs font-bold text-slate-400 transition hover:text-rose-600"
+              >
+                Limpar
+              </button>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-amber" />
+            <span className="text-sm font-bold text-white font-sora">Resumo da venda</span>
+            {itens.length > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber text-[10px] font-black text-slate-900 font-mono">
+                {itens.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                audit.setOpen((o) => !o);
+                if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
+              }}
+              className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono"
+            >
+              {audit.open ? "Fechar audit" : "Audit trail"}
+            </button>
+            {itens.length > 0 && (
+              <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono">
+                Limpar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <AuditTrail audit={audit} aluno={aluno} onRefresh={() => void audit.fetch(aluno?.id, aluno?.matricula_id)} />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50">
+      <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${mode === "payment" || mode === "document" ? "bg-white" : "bg-slate-50/50"}`}>
         {itens.length === 0 && checkout.pagos.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-300">
-            <ShoppingCart className="h-10 w-10 opacity-30" />
-            <p className="text-xs font-medium">Carrinho vazio</p>
+          <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center text-slate-300">
+            {mode === "payment" ? (
+              <CreditCard className="h-9 w-9 opacity-30" />
+            ) : mode === "document" ? (
+              <FileText className="h-9 w-9 opacity-30" />
+            ) : (
+              <ShoppingCart className="h-10 w-10 opacity-30" />
+            )}
+            <div>
+              <p className="text-sm font-bold text-slate-500">
+                {mode === "payment"
+                  ? "Nenhuma cobrança selecionada"
+                  : mode === "document"
+                    ? "Nenhum documento pago selecionado"
+                    : "Carrinho vazio"}
+              </p>
+              {mode === "payment" ? (
+                <p className="mt-1 text-xs text-slate-400">Escolha mensalidades ou serviços na lista ao lado.</p>
+              ) : mode === "document" ? (
+                <p className="mt-1 text-xs leading-5 text-slate-400">
+                  Documentos gratuitos são emitidos diretamente. Se escolher um documento pago, a cobrança aparece aqui.
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : (
           itens.map((item) => {
             const podeImprimir = item.tipo === "servico" && Number(item.preco ?? 0) <= 0 && getDocTipo(item as Servico) !== null;
 
             return (
-              <div key={`${item.id}-${item.tipo}`} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-start justify-between gap-3 group">
+              <div
+                key={`${item.id}-${item.tipo}`}
+                className={`flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 ${mode === "payment" ? "" : "shadow-xs"}`}
+              >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
-                  <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5 font-mono">{item.tipo}</p>
+                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    {mode === "payment"
+                      ? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço")
+                      : mode === "document" && item.tipo === "servico"
+                        ? "Documento"
+                        : item.tipo}
+                  </p>
                   {podeImprimir && (
                     <button
                       type="button"
@@ -1642,7 +2260,12 @@ function CarrinhoPanel({
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <p className="text-sm font-black text-slate-900 font-sora">{kwanza.format(item.preco)}</p>
-                  <button onClick={() => remover(item.id, item.tipo)} className="p-1 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => remover(item.id, item.tipo)}
+                    className="rounded-lg p-1.5 text-slate-300 transition hover:bg-rose-50 hover:text-rose-500"
+                    aria-label={`Remover ${item.nome}`}
+                  >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -1686,7 +2309,7 @@ function CarrinhoPanel({
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-emerald font-mono flex items-center gap-1.5">
                 <CheckCircle className="h-3.5 w-3.5" />
-                Pago — emitir documento
+                {mode === "document" ? "Pagamento confirmado — emitir" : "Pago — emitir documento"}
               </p>
               <button
                 type="button"
@@ -1762,10 +2385,26 @@ function CarrinhoPanel({
         )}
       </div>
 
+      {(mode !== "document" || itens.length > 0) ? (
       <div className="border-t border-slate-100 bg-white p-5 space-y-4 flex-shrink-0">
         <div className="flex items-end justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Total a pagar</p>
-          <p className="text-3xl font-black text-slate-900 font-sora">{kwanza.format(total)}</p>
+          <div>
+            {mode === "payment" ? (
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total selecionado</p>
+            ) : mode === "document" ? (
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total a cobrar</p>
+            ) : (
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Total a pagar</p>
+            )}
+            {(mode === "payment" || mode === "document") && itens.length > 0 ? (
+              <p className="mt-1 text-xs text-slate-500">
+                {mode === "document"
+                  ? "O documento será liberado depois da confirmação do pagamento."
+                  : "Escolha a forma de pagamento abaixo."}
+              </p>
+            ) : null}
+          </div>
+          <p className={`${mode === "payment" || mode === "document" ? "text-2xl" : "text-3xl"} font-black text-slate-900 font-sora`}>{kwanza.format(total)}</p>
         </div>
 
         <div className="grid grid-cols-5 gap-1.5">
@@ -1775,12 +2414,18 @@ function CarrinhoPanel({
               <button
                 key={id}
                 onClick={() => setMetodo(id)}
-                className={`flex flex-col items-center justify-center py-2.5 rounded-xl border gap-1 transition-all ${
-                  active ? "border-amber bg-amber/10 text-slate-900 font-bold" : "border-slate-200 text-slate-400 hover:border-slate-300"
+                className={`flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 transition-all ${
+                  (mode === "payment" || mode === "document")
+                    ? active
+                      ? "border-amber bg-amber/10 font-bold text-slate-900"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-amber/40 hover:bg-amber/5"
+                    : active
+                      ? "border-amber bg-amber/10 text-slate-900 font-bold"
+                      : "border-slate-200 text-slate-400 hover:border-slate-300"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${active ? "text-amber" : "text-current"}`} />
-                <span className="text-[9px] font-bold uppercase font-mono">{label}</span>
+                <Icon className={`h-4 w-4 ${mode === "payment" || mode === "document" ? "text-current" : active ? "text-amber" : "text-current"}`} />
+                <span className={`${mode === "payment" || mode === "document" ? "text-[10px]" : "text-[9px] uppercase font-mono"} font-bold`}>{label}</span>
               </button>
             );
           })}
@@ -1789,7 +2434,7 @@ function CarrinhoPanel({
         {(metodo === "tpa" || metodo === "mcx" || metodo === "kiwk") && (
           <div className="space-y-2">
             <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">
-              Referencia {metodo === "tpa" && <span className="text-rose-500">*</span>}
+              Referência {metodo === "tpa" && <span className="text-rose-500">*</span>}
             </label>
             <input
               value={detalhes.referencia}
@@ -1840,15 +2485,23 @@ function CarrinhoPanel({
           disabled={!prontoParaPagar || checkout.isSubmitting}
           onClick={() => void checkout.checkout()}
           title={prontoParaPagar ? "Finalizar (Ctrl/Cmd + Enter)" : undefined}
-          className={`w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+          className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all ${
             prontoParaPagar && !checkout.isSubmitting
-              ? "bg-amber text-slate-950 shadow-md shadow-amber/20 hover:brightness-105 font-sora"
-              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+              ? "bg-amber text-white shadow-sm hover:brightness-95"
+              : "cursor-not-allowed bg-slate-100 text-slate-400"
           }`}
         >
           {checkout.isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" /> A processar...
+            </>
+          ) : mode === "payment" ? (
+            <>
+              <CheckCircle className="h-4 w-4" /> Confirmar pagamento · {kwanza.format(total)}
+            </>
+          ) : mode === "document" ? (
+            <>
+              <CheckCircle className="h-4 w-4" /> Confirmar cobrança · {kwanza.format(total)}
             </>
           ) : total === 0 ? (
             <>
@@ -1860,6 +2513,11 @@ function CarrinhoPanel({
             </>
           )}
         </button>
+
+        {!prontoParaPagar && !checkout.isSubmitting && disabledReason ? (
+          <p className="text-center text-xs font-medium text-slate-500">{disabledReason}</p>
+        ) : null}
+
         {prontoParaPagar && !checkout.isSubmitting && (
           <p className="mt-1.5 text-center text-[10px] font-medium text-slate-400">
             ou <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl</kbd>
@@ -1868,6 +2526,7 @@ function CarrinhoPanel({
           </p>
         )}
       </div>
+      ) : null}
     </div>
   );
 }
@@ -1985,7 +2644,18 @@ function BillingWindowRepairPanel({
   );
 }
 
-export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, showSearch = true, embedded = false, returnTo = null, onPagamentoConcluido }: BalcaoAtendimentoProps) {
+export default function BalcaoAtendimento({
+  escolaId,
+  selectedAlunoId = null,
+  showSearch = true,
+  embedded = false,
+  returnTo = null,
+  focusAction = null,
+  view = "all",
+  onNavigateAction,
+  onAlunoSelected,
+  onPagamentoConcluido,
+}: BalcaoAtendimentoProps) {
   const [showReturnPrompt, setShowReturnPrompt] = useState(false);
   const { error } = useToast();
   const searchParams = useSearchParams();
@@ -1994,6 +2664,8 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const [searchOpen, setSearchOpen] = useState(showSearch);
   const [searchListOpen, setSearchListOpen] = useState(false);
   const [searchActiveIndex, setSearchActiveIndex] = useState(-1);
+  const workspaceRootRef = useRef<HTMLDivElement | null>(null);
+  const autoOpenedRematriculaRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (academicYearId) return;
@@ -2055,11 +2727,39 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     onSuccess: onCheckoutSuccess,
   });
 
+  // Cada ação do Command Center tem um contexto transitório próprio. Sem este
+  // reset, um item deixado em "Pagar" podia reaparecer no checkout de
+  // "Documento" (ou vice-versa) quando apenas a prop `view` mudava.
+  const previousWorkspaceViewRef = useRef<BalcaoView>(view);
+  useEffect(() => {
+    const previousView = previousWorkspaceViewRef.current;
+    previousWorkspaceViewRef.current = view;
+    if (!embedded || previousView === view) return;
+
+    carrinho.limpar();
+    checkout.setPagos([]);
+    checkout.setPendentes([]);
+    checkout.setPrintQueue([]);
+    setItensRematricula([]);
+    setMensalidadesDestino([]);
+    setDebtModalOpen(false);
+    setPostAction(null);
+    // Intencionalmente depende só da fronteira da ação. Os setters e callbacks
+    // acima são estáveis; adicionar o objeto `carrinho` recriado por render
+    // faria o reset disparar durante a própria seleção de itens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, view]);
+
   const selectedMensalidadeIds = useMemo(
     () => [...carrinho.itens, ...itensRematricula]
       .filter((item): item is Mensalidade => item.tipo === "mensalidade")
       .map((item) => item.id),
     [carrinho.itens, itensRematricula]
+  );
+
+  const selectedItemKeys = useMemo(
+    () => new Set(carrinho.itens.map((item) => `${item.tipo}:${item.id}`)),
+    [carrinho.itens],
   );
 
   const unlockedMensalidadeIds = useMemo(
@@ -2138,6 +2838,10 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     else audit.setOpen(false);
   }, [dossier.aluno?.id]);
 
+  useEffect(() => {
+    onAlunoSelected?.(dossier.aluno ?? null);
+  }, [dossier.aluno, onAlunoSelected]);
+
   const handleSelectAluno = (alunoId: string) => {
     if (dossier.aluno?.id && dossier.aluno.id !== alunoId) {
       carrinho.limpar();
@@ -2198,9 +2902,63 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     [dossier.aluno, carrinho, error]
   );
 
+  const handleEmitirDocumento = useCallback(
+    async (servico: Servico) => {
+      const url = await checkout.emitirDocumento(servico);
+      if (!url) return;
+
+      const impressao = abrirParaImpressao(url);
+      if (!impressao.ok) {
+        checkout.setPrintQueue((previous) => [
+          { label: servico.nome, url: impressao.url },
+          ...previous,
+        ]);
+      }
+    },
+    [checkout],
+  );
+
+  useEffect(() => {
+    if (!focusAction || !dossier.aluno?.id) return;
+
+    const timer = window.setTimeout(() => {
+      const target = workspaceRootRef.current?.querySelector<HTMLElement>(
+        `[data-balcao-action="${focusAction}"]`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 160);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    focusAction,
+    dossier.aluno?.id,
+    dossier.mensalidades.length,
+    servicos.length,
+    rematricula.cardState,
+  ]);
+
+  useEffect(() => {
+    if (view !== "reenrollment" || !dossier.aluno?.id || rematricula.modalOpen) return;
+    if (!rematricula.service || !rematricula.anoLetivo) return;
+    if (!["READY", "RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING", "FINALIST_PENDING"].includes(rematricula.cardState ?? "")) return;
+
+    const key = `${dossier.aluno.id}:${rematricula.cardState}`;
+    if (autoOpenedRematriculaRef.current === key) return;
+    autoOpenedRematriculaRef.current = key;
+    rematricula.openModal();
+  }, [
+    view,
+    dossier.aluno?.id,
+    rematricula.modalOpen,
+    rematricula.service,
+    rematricula.anoLetivo,
+    rematricula.cardState,
+    rematricula.openModal,
+  ]);
+
   return (
     <>
-      <div className="w-full">
+      <div ref={workspaceRootRef} className="w-full">
       {searchOpen && (
         <>
           <div
@@ -2234,70 +2992,101 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
       )}
 
       {dossier.loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
+        <div className="rounded-xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
           <Loader2 className="h-8 w-8 animate-spin text-amber" />
           <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
         </div>
       ) : dossier.aluno ? (
-        /* A partir de `lg` o carrinho passa a ficar ao lado e o botão de pagar
-           deixa de exigir scroll. A ficha do aluno e o catálogo só se separam em
-           `xl`: a 1024px não há largura para três colunas. */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          <div className="lg:col-span-8">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-              <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} />
-              <Catalogo
-                mensalidades={dossier.mensalidades}
-                servicos={servicos}
-                onAdicionarMensalidade={handleAdicionarMensalidade}
-                onAdicionarServico={handleAdicionarServico}
-                emittingDocId={checkout.emittingDocId}
-                unlockedMensalidadeIds={unlockedMensalidadeIds}
-                rematriculaReady={
-                  rematricula.cardState === "READY" ||
-                  rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
-                  rematricula.cardState === "DOCUMENT_PENDING" ||
-                  rematricula.cardState === "ACADEMIC_HISTORY_PENDING" ||
-                  rematricula.cardState === "FINALIST_PENDING"
-                }
-                rematriculaState={
-                  servicos.some(isServicoRematricula)
-                    ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
-                    : null
-                }
-                rematriculaPrice={rematricula.service?.valor_base ?? null}
-                rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
-                rematriculaAcademic={rematricula.academic}
-                reconcilingPedido={rematricula.reconciling}
-                rematriculaError={rematricula.apiError}
-                onResolverPedido={rematricula.resolveLegacyPedido}
-                onResolverReconciliacao={rematricula.openReconciliationModal}
-                onCancelPendingPedido={rematricula.cancelPendingPedido}
-                onRefreshRematricula={rematricula.refreshStatus}
-                onRematricula={rematricula.openModal}
-                onRegularize={() => setDebtModalOpen(true)}
-              />
-            </div>
-          </div>
-
-          <div className="lg:col-span-4">
-            <CarrinhoPanel
-              carrinho={carrinho}
-              checkout={checkout}
-              audit={audit}
-              aluno={dossier.aluno}
-              embedded={embedded}
-              atalhoActivo={
-                !rematricula.modalOpen &&
-                !debtModalOpen &&
-                !postAction &&
-                !checkout.billingWindowIssue
+        view === "payment" && debtModalOpen ? (
+          <div className="min-h-[1px]" aria-hidden="true" />
+        ) : view === "overview" ? (
+          <CommandCenterOverview
+            aluno={dossier.aluno}
+            mensalidades={dossier.mensalidades}
+            servicos={servicos}
+            rematriculaState={
+              servicos.some(isServicoRematricula)
+                ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                : null
+            }
+            onNavigate={onNavigateAction}
+            onTrocarAluno={handleTrocarAluno}
+          />
+        ) : view === "reenrollment" && rematricula.modalOpen ? (
+          <div className="min-h-[1px]" aria-hidden="true" />
+        ) : (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            <div
+              className={
+                view === "payment"
+                  ? "lg:col-span-7"
+                  : view === "document" || view === "all"
+                    ? "lg:col-span-8"
+                    : "lg:col-span-12"
               }
-            />
+            >
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+                {view === "all" ? <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} /> : null}
+                <Catalogo
+                  view={view === "all" ? "all" : view}
+                  mensalidades={dossier.mensalidades}
+                  servicos={servicos}
+                  onAdicionarMensalidade={handleAdicionarMensalidade}
+                  onAdicionarServico={handleAdicionarServico}
+                  onEmitirDocumento={handleEmitirDocumento}
+                  emittingDocId={checkout.emittingDocId}
+                  unlockedMensalidadeIds={unlockedMensalidadeIds}
+                  selectedItemKeys={selectedItemKeys}
+                  selectedTotal={carrinho.total}
+                  rematriculaReady={
+                    rematricula.cardState === "READY" ||
+                    rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
+                    rematricula.cardState === "DOCUMENT_PENDING" ||
+                    rematricula.cardState === "ACADEMIC_HISTORY_PENDING" ||
+                    rematricula.cardState === "FINALIST_PENDING"
+                  }
+                  rematriculaState={
+                    servicos.some(isServicoRematricula)
+                      ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                      : null
+                  }
+                  rematriculaPrice={rematricula.service?.valor_base ?? null}
+                  rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
+                  rematriculaAcademic={rematricula.academic}
+                  reconcilingPedido={rematricula.reconciling}
+                  rematriculaError={rematricula.apiError}
+                  onResolverPedido={rematricula.resolveLegacyPedido}
+                  onResolverReconciliacao={rematricula.openReconciliationModal}
+                  onCancelPendingPedido={rematricula.cancelPendingPedido}
+                  onRefreshRematricula={rematricula.refreshStatus}
+                  onRematricula={rematricula.openModal}
+                  onRegularize={() => setDebtModalOpen(true)}
+                />
+              </div>
+            </div>
+
+            {(view === "payment" || view === "document" || view === "all") && (
+              <div className={view === "payment" ? "lg:col-span-5" : "lg:col-span-4"}>
+                <CarrinhoPanel
+                  carrinho={carrinho}
+                  checkout={checkout}
+                  audit={audit}
+                  aluno={dossier.aluno}
+                  embedded={embedded}
+                  mode={view === "payment" ? "payment" : view === "document" ? "document" : "all"}
+                  atalhoActivo={
+                    !rematricula.modalOpen &&
+                    !debtModalOpen &&
+                    !postAction &&
+                    !checkout.billingWindowIssue
+                  }
+                />
+              </div>
+            )}
           </div>
-        </div>
+        )
       ) : (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-16 text-center space-y-2">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center space-y-2">
           <User className="h-10 w-10 text-slate-300 mx-auto" />
           <p className="text-sm font-bold text-slate-700 font-sora">Nenhum aluno seleccionado</p>
           <p className="text-xs text-slate-400">Utilize a barra de pesquisa acima para abrir a ficha de atendimento do aluno.</p>
@@ -2308,6 +3097,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
       {rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && dossier.aluno && (
         <RematriculaBalcaoModal
           open={rematricula.modalOpen}
+          embedded={view === "reenrollment"}
           onClose={() => {
             rematricula.closeModal();
             setItensRematricula([]);
@@ -2391,6 +3181,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
       {dossier.aluno && (
         <PagamentoDividaModal
           open={debtModalOpen}
+          embedded={view === "payment"}
           onOpenChange={setDebtModalOpen}
           mensalidades={dossier.mensalidades.filter((item) => item.preco > 0 && item.atrasada)}
           alunoId={dossier.aluno.id}
