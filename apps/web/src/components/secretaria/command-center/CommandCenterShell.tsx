@@ -45,7 +45,7 @@ export function CommandCenterShell({
             <div className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald" />
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                KLASSE Command Center
+                KLASSE · Central de atendimento
               </p>
             </div>
             <h1 className="mt-1 truncate text-lg font-black text-slate-900">
@@ -99,7 +99,7 @@ export function CommandCenterShell({
           onClick={onClose}
           aria-label="Fechar Command Center"
         />
-        <div className="relative flex h-[94vh] w-[98vw] max-w-[1540px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="relative flex h-[94vh] w-[98vw] max-w-[1540px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
           <header className="flex shrink-0 flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
             {header}
           </header>
