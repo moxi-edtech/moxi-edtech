@@ -8,6 +8,7 @@ PROJECT_FILE="$APP_DIR/.vercel/project.json"
 EXPECTED_PROJECT_ID="prj_YjDBpI3emmjWUB5cF7K7IsV7oNFg"
 EXPECTED_ORG_ID="team_GkXi2qX0WmXpWQCLtnCWEcfN"
 VERCEL_SCOPE="${VERCEL_SCOPE:-moxinexas-projects}"
+GIT_REMOTE_URL="${KLASSE_GIT_REMOTE_URL:-https://github.com/moxi-edtech/moxi-edtech.git}"
 PRODUCTION_DOMAIN="${KLASSE_PRODUCTION_DOMAIN:-app.klasse.ao}"
 DRY_RUN="${KLASSE_DEPLOY_DRY_RUN:-0}"
 FORCE_REDEPLOY="${KLASSE_FORCE_REDEPLOY:-0}"
@@ -74,9 +75,10 @@ export VERCEL_ORG_ID
 
 log "alvo Vercel validado: moxi-edtech -> $PRODUCTION_DOMAIN"
 
-git -C "$ROOT_DIR" fetch origin main --quiet
+DEPLOY_MAIN_REF="refs/remotes/klasse-deploy/main"
+git -C "$ROOT_DIR" fetch "$GIT_REMOTE_URL" "main:$DEPLOY_MAIN_REF" --force --quiet
 
-TARGET_REF="origin/main"
+TARGET_REF="$DEPLOY_MAIN_REF"
 if [[ "$DRY_RUN" == "1" && -n "${KLASSE_TARGET_REF:-}" ]]; then
   TARGET_REF="$KLASSE_TARGET_REF"
 elif [[ -n "${KLASSE_TARGET_REF:-}" ]]; then
@@ -142,7 +144,7 @@ fi
 [[ -n "$PRODUCTION_SHA" ]] ||   die "deployment atual não informa SHA; abortando para não arriscar regressão"
 
 if ! git -C "$ROOT_DIR" cat-file -e "$PRODUCTION_SHA^{commit}" 2>/dev/null; then
-  git -C "$ROOT_DIR" fetch origin "$PRODUCTION_SHA" --quiet || true
+  git -C "$ROOT_DIR" fetch "$GIT_REMOTE_URL" "$PRODUCTION_SHA" --quiet || true
 fi
 
 git -C "$ROOT_DIR" cat-file -e "$PRODUCTION_SHA^{commit}" 2>/dev/null ||   die "SHA atualmente em produção não existe no repositório local: $PRODUCTION_SHA"
