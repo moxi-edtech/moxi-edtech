@@ -444,6 +444,7 @@ export function PautaRapidaModal({
         </div>
       ) : null}
 
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
       <div className="grid gap-3 sm:grid-cols-2">
         {!lockTurma && (
           <div>
@@ -520,14 +521,14 @@ export function PautaRapidaModal({
                   onClick={() => setPeriodoNumero(periodo.numero)}
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                     active
-                      ? "bg-emerald text-white"
-                      : "border border-slate-200 bg-white text-slate-600"
+                      ? "border border-amber bg-amber/10 text-slate-900"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-amber/40"
                   }`}
                 >
                   <span className="flex items-center gap-2">
                     {`Trimestre ${periodo.numero}`}
                     {hasPendencia ? (
-                      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-white" : "bg-rose-500"}`} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                     ) : null}
                   </span>
                 </button>
@@ -556,8 +557,9 @@ export function PautaRapidaModal({
           </div>
         )}
       </div>
+      </div>
 
-      {disciplinaSelecionada ? (
+      {!focusAlunoId && disciplinaSelecionada ? (
         <p className="text-xs text-slate-500">
           Disciplina selecionada: {disciplinaSelecionada.disciplina?.nome ?? "—"}
         </p>
@@ -568,8 +570,9 @@ export function PautaRapidaModal({
           Este aluno não tem uma turma disponível no contexto académico atual. Não é possível lançar nota.
         </div>
       ) : loadingPauta ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          Carregando pauta...
+        <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+          A carregar avaliação…
         </div>
       ) : pautaInitial.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
