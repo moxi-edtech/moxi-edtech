@@ -648,7 +648,7 @@ function Step1Identificacao(props: {
           {saving ? (
             <span className="inline-flex items-center gap-2 text-slate-500">
               <RefreshCw className="h-4 w-4 animate-spin" />
-              Salvando…
+              A guardar…
             </span>
           ) : lastSavedAt ? (
             <span className="inline-flex items-center gap-2 text-slate-500">
@@ -937,7 +937,7 @@ function Step1Identificacao(props: {
           type="button"
           onClick={handleNext}
           disabled={!isUuid(escolaId) || saving}
-          className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
           Continuar para turma
         </button>
@@ -1257,7 +1257,7 @@ function Step2FitAcademico(props: {
           {saving ? (
             <span className="inline-flex items-center gap-2 text-slate-500">
               <RefreshCw className="h-4 w-4 animate-spin" />
-              Salvando…
+              A guardar…
             </span>
           ) : null}
         </div>
@@ -1319,7 +1319,7 @@ function Step2FitAcademico(props: {
           {loadingVagas ? (
             <span className="inline-flex items-center gap-2 text-xs text-slate-500">
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              Carregando…
+              A carregar…
             </span>
           ) : null}
         </div>
@@ -1363,9 +1363,9 @@ function Step2FitAcademico(props: {
         <p className="text-sm text-slate-500">
           {sel.cursoId
             ? sel.classeId
-              ? "Preço de matrícula não configurado — peça ao admin."
+              ? "Preço de matrícula não configurado — peça ao administrador."
               : classesComPreco.length === 0
-                ? "Preço de matrícula não configurado para este curso — peça ao admin."
+                ? "Preço de matrícula não configurado para este curso — peça ao administrador."
                 : "Selecione a classe para ver turmas disponíveis."
             : "Selecione um curso para ver turmas disponíveis."}
         </p>
@@ -1373,7 +1373,7 @@ function Step2FitAcademico(props: {
         </div>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-5">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Opcional</p>
           <h3 className="mt-1 text-sm font-black text-slate-900">Desconto da matrícula</h3>
@@ -1437,7 +1437,7 @@ function Step2FitAcademico(props: {
           type="button"
           onClick={onNext}
           disabled={!canAdvance}
-          className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
           Rever cobrança
         </button>
@@ -2387,8 +2387,8 @@ function Step3Pagamento(props: {
                   className={[
                     "rounded-xl border px-3 py-2.5 text-xs font-bold transition",
                     active
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50",
+                      ? "border-amber bg-amber/10 text-slate-900"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-amber/40 hover:bg-amber/5",
                   ].join(" ")}
                 >
                   {label}
@@ -2421,7 +2421,7 @@ function Step3Pagamento(props: {
               value={payment.amount}
               onChange={onChange}
               placeholder="Valor pago"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
             />
           </div>
         ) : (
@@ -2457,7 +2457,7 @@ function Step3Pagamento(props: {
               value={payment.referencia}
               onChange={onChange}
               placeholder="Referência do talão"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
             />
           </div>
         ) : null}
@@ -2473,7 +2473,7 @@ function Step3Pagamento(props: {
               value={payment.comprovativo_url}
               onChange={onChange}
               placeholder="URL do comprovativo"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
             />
           </div>
         ) : null}
@@ -2504,7 +2504,7 @@ function Step3Pagamento(props: {
               type="button"
               onClick={() => void handleFinalizarMatricula()}
               disabled={loading || Boolean(checkoutBlockedReason)}
-              className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+              className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
             >
               {loading
                 ? "A processar…"
@@ -2889,7 +2889,7 @@ export default function AdmissaoWizardClient({
                 )}
               </div>
               {draftsLoading && (
-                <p className="text-xs text-slate-500">Carregando rascunhos…</p>
+                <p className="text-xs text-slate-500">A carregar rascunhos…</p>
               )}
               {draftsError && (
                 <p className="text-xs text-rose-600">{draftsError}</p>
@@ -2947,7 +2947,7 @@ export default function AdmissaoWizardClient({
                 className={[
                   "rounded-full px-2.5 py-1 text-[10px] font-bold",
                   active
-                    ? "bg-slate-950 text-white"
+                    ? "bg-amber text-white shadow-sm"
                     : done
                       ? "bg-emerald-50 text-emerald"
                       : "bg-slate-100 text-slate-400",
@@ -2961,7 +2961,7 @@ export default function AdmissaoWizardClient({
       )}
 
       <div className={embedded
-        ? "rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+        ? "rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
         : "rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200"}>
         {wizardError && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
