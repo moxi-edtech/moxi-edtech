@@ -1240,7 +1240,7 @@ function CommandCenterOverview({
               <button
                 type="button"
                 onClick={() => onNavigate?.(priority.actionId!)}
-                className="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+                className="rounded-xl bg-amber px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:brightness-95"
               >
                 {priority.actionLabel}
               </button>
@@ -1398,13 +1398,13 @@ function Catalogo({
   const selectedCount = selectedItemKeys.size;
 
   return (
-    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} rounded-2xl border border-slate-200 bg-white p-5 sm:p-6`}>
+    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} rounded-xl border border-slate-200 bg-white p-5 sm:p-6`}>
       {view === "payment" ? (
         <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Cobranças</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Pagamento</p>
             <h2 className="mt-1 text-base font-black text-slate-900">O que será pago agora?</h2>
-            <p className="mt-1 text-xs text-slate-500">Selecione mensalidades ou serviços. O total é calculado automaticamente.</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Selecione mensalidades ou serviços. O total é calculado automaticamente.</p>
           </div>
           {selectedCount > 0 ? (
             <a
@@ -1415,12 +1415,20 @@ function Catalogo({
             </a>
           ) : null}
         </div>
-      ) : (
+      ) : view === "reenrollment" ? (
+        <div className="mb-5 border-b border-slate-100 pb-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Rematrícula</p>
+          <h2 className="mt-1 text-base font-black text-slate-900">O que precisa concluir?</h2>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Confirme a situação académica, resolva bloqueios e avance para a cobrança quando estiver elegível.
+          </p>
+        </div>
+      ) : view === "all" ? (
         <div className="mb-4 flex items-center gap-2">
           <Plus className="h-4 w-4 text-amber" />
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Adicionar item</p>
         </div>
-      )}
+      ) : null}
 
       {/* No painel de pagamentos o próprio Command Center já controla o scroll.
           Nos fluxos legados, preserva-se o limite interno anterior. */}
@@ -1448,8 +1456,8 @@ function Catalogo({
         )}
         {(view === "all" || view === "reenrollment") && rematriculaState && (
           <div data-balcao-action="reenrollment">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <SecaoLabel>{view === "reenrollment" ? "Rematrícula" : "Operações escolares"}</SecaoLabel>
+            <div className={["mb-2 flex items-center gap-3", view === "reenrollment" ? "justify-end" : "justify-between"].join(" ")}>
+              {view === "all" ? <SecaoLabel>Operações escolares</SecaoLabel> : null}
               {rematriculaAnoLabel && (
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
                   Ano: {rematriculaAnoLabel}
@@ -2110,7 +2118,7 @@ function CarrinhoPanel({
   return (
     <div
       id={mode === "payment" ? "payment-checkout" : mode === "document" ? "document-checkout" : undefined}
-      className={`scroll-mt-24 rounded-2xl border border-slate-200 bg-white overflow-hidden flex flex-col sticky top-6 ${
+      className={`scroll-mt-24 rounded-xl border border-slate-200 bg-white overflow-hidden flex flex-col sticky top-6 ${
         mode === "payment" || mode === "document" ? "shadow-sm" : "shadow-lg"
       } ${embedded ? "h-full min-h-[580px]" : "h-[calc(100vh-140px)]"}`}
     >
@@ -2409,8 +2417,8 @@ function CarrinhoPanel({
                 className={`flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 transition-all ${
                   (mode === "payment" || mode === "document")
                     ? active
-                      ? "border-slate-950 bg-slate-950 font-bold text-white"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                      ? "border-amber bg-amber/10 font-bold text-slate-900"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-amber/40 hover:bg-amber/5"
                     : active
                       ? "border-amber bg-amber/10 text-slate-900 font-bold"
                       : "border-slate-200 text-slate-400 hover:border-slate-300"
@@ -2479,9 +2487,7 @@ function CarrinhoPanel({
           title={prontoParaPagar ? "Finalizar (Ctrl/Cmd + Enter)" : undefined}
           className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all ${
             prontoParaPagar && !checkout.isSubmitting
-              ? mode === "payment" || mode === "document"
-                ? "bg-slate-950 text-white hover:bg-slate-800"
-                : "bg-amber text-slate-950 shadow-md shadow-amber/20 hover:brightness-105 font-sora"
+              ? "bg-amber text-white shadow-sm hover:brightness-95"
               : "cursor-not-allowed bg-slate-100 text-slate-400"
           }`}
         >
