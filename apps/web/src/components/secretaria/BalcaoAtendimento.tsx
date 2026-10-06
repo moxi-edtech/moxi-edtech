@@ -2727,6 +2727,29 @@ export default function BalcaoAtendimento({
     onSuccess: onCheckoutSuccess,
   });
 
+  // Cada ação do Command Center tem um contexto transitório próprio. Sem este
+  // reset, um item deixado em "Pagar" podia reaparecer no checkout de
+  // "Documento" (ou vice-versa) quando apenas a prop `view` mudava.
+  const previousWorkspaceViewRef = useRef<BalcaoView>(view);
+  useEffect(() => {
+    const previousView = previousWorkspaceViewRef.current;
+    previousWorkspaceViewRef.current = view;
+    if (!embedded || previousView === view) return;
+
+    carrinho.limpar();
+    checkout.setPagos([]);
+    checkout.setPendentes([]);
+    checkout.setPrintQueue([]);
+    setItensRematricula([]);
+    setMensalidadesDestino([]);
+    setDebtModalOpen(false);
+    setPostAction(null);
+    // Intencionalmente depende só da fronteira da ação. Os setters e callbacks
+    // acima são estáveis; adicionar o objeto `carrinho` recriado por render
+    // faria o reset disparar durante a própria seleção de itens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, view]);
+
   const selectedMensalidadeIds = useMemo(
     () => [...carrinho.itens, ...itensRematricula]
       .filter((item): item is Mensalidade => item.tipo === "mensalidade")
