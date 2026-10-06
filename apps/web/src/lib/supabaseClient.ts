@@ -36,18 +36,5 @@ export const createClient = () => {
 
   return createBrowserClient<DBWithRPC>(url, anonKey, {
     cookieOptions: resolveCookieOptions(),
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storage: typeof window !== "undefined" ? {
-        getItem: (key: string) => {
-          // No-op for localStorage to avoid conflicts with middleware cookies
-          return null;
-        },
-        setItem: (key: string, value: string) => {},
-        removeItem: (key: string) => {},
-      } : undefined,
-    },
   });
 };
