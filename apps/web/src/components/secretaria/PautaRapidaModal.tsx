@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
@@ -36,8 +36,6 @@ type PeriodoItem = {
   dt_fim?: string | null;
 };
 
-const cx = (...classes: Array<string | false | null | undefined>) =>
-  classes.filter(Boolean).join(" ");
 
 type PautaRapidaModalProps = {
   initialTurmaId?: string;
@@ -60,9 +58,8 @@ export function PautaRapidaModal({
   showPeriodoTabs = false,
   pendingPeriodoNumeros = [],
   focusAlunoId,
-  hideNavigation = false,
+  hideNavigation: _hideNavigation = false,
 }: PautaRapidaModalProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
   const [academicYearId, setAcademicYearId] = useState<string | null>(requestedAcademicYearId);
@@ -79,7 +76,6 @@ export function PautaRapidaModal({
   const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
   const [pautaInitial, setPautaInitial] = useState<StudentGradeRow[]>([]);
-  const [pautaDraft, setPautaDraft] = useState<StudentGradeRow[]>([]);
   const [pautaPesoPorTipo, setPautaPesoPorTipo] = useState<Record<string, number> | null>(null);
   const [pautaComponentes, setPautaComponentes] = useState<string[]>([]);
   const [pautaNotaMaxima, setPautaNotaMaxima] = useState<number | null>(20);
@@ -136,7 +132,6 @@ export function PautaRapidaModal({
       setTurmaId(initialTurmaId ?? "");
       setDisciplinaId("");
       setPautaInitial([]);
-      setPautaDraft([]);
       setSaveError(null);
       return;
     }
@@ -227,7 +222,6 @@ export function PautaRapidaModal({
   useEffect(() => {
     if (!academicYearId || !turmaId || !disciplinaId || !periodoNumero || !selectedTurmaDisciplinaId) {
       setPautaInitial([]);
-      setPautaDraft([]);
       setPautaPesoPorTipo(null);
       setPautaComponentes([]);
       setPautaNotaMaxima(20);
@@ -271,7 +265,6 @@ export function PautaRapidaModal({
             ? mapped.filter((row) => row.id === focusAlunoId)
             : mapped;
           setPautaInitial(scoped);
-          setPautaDraft(scoped);
           setPautaPesoPorTipo((json.meta?.peso_por_tipo as Record<string, number>) ?? null);
           setPautaComponentes(Array.isArray(json.meta?.componentes_ativos) ? json.meta.componentes_ativos : []);
           setPautaNotaMaxima(typeof json.meta?.nota_maxima === "number" ? json.meta.nota_maxima : null);
@@ -279,8 +272,7 @@ export function PautaRapidaModal({
           setPautaEscala(typeof json.meta?.escala === "string" ? json.meta.escala : null);
         } else {
           setPautaInitial([]);
-          setPautaDraft([]);
-          setPautaPesoPorTipo(null);
+              setPautaPesoPorTipo(null);
           setPautaComponentes([]);
         }
       } finally {
@@ -416,12 +408,6 @@ export function PautaRapidaModal({
       });
     }
 
-    setPautaDraft((prev) =>
-      prev.map((row) => {
-        const updated = rows.find((candidate) => candidate.id === row.id);
-        return updated ? { ...row, ...updated, _status: "synced" } : row;
-      })
-    );
   };
 
   return (
@@ -445,9 +431,14 @@ export function PautaRapidaModal({
       ) : null}
 
       {focusAlunoId ? (
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-          <p className="text-sm font-bold text-slate-900">Lançamento individual</p>
-          <p className="mt-0.5 text-xs text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            Nota
+          </p>
+          <h2 className="mt-1 text-base font-black text-slate-900">
+            O que precisa lançar?
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
             Escolha a disciplina e o período. Apenas o aluno atual será alterado.
           </p>
         </div>
@@ -456,7 +447,7 @@ export function PautaRapidaModal({
       <div className="grid gap-3 sm:grid-cols-2">
         {!lockTurma && (
           <div>
-            <label className="text-xs font-semibold uppercase text-slate-500">Ano letivo</label>
+            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Ano letivo</label>
             <input
               type="number"
               value={anoLetivo}
@@ -466,9 +457,9 @@ export function PautaRapidaModal({
           </div>
         )}
         <div>
-          <label className="text-xs font-semibold uppercase text-slate-500">Turma</label>
+          <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Turma</label>
           {lockTurma ? (
-            <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-700">
               {turmaLabel}
             </div>
           ) : (
@@ -496,7 +487,7 @@ export function PautaRapidaModal({
       </div>
 
       <div>
-        <label className="text-xs font-semibold uppercase text-slate-500">Disciplina</label>
+        <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Disciplina</label>
         <div className="mt-1 flex items-center gap-2">
           <select
             value={disciplinaId}
@@ -516,7 +507,7 @@ export function PautaRapidaModal({
       </div>
 
       <div>
-        <label className="text-xs font-semibold uppercase text-slate-500">Período</label>
+        <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Período</label>
         {showPeriodoTabs && periodos.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {periodos.map((periodo) => {
@@ -590,13 +581,12 @@ export function PautaRapidaModal({
         <div className="space-y-3">
           <GradeEntryGrid
             initialData={pautaInitial}
-            title={focusAlunoId ? "Nota do aluno" : "Lançamento de Notas"}
+            title={focusAlunoId ? "Avaliação" : "Lançamento de notas"}
             subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
             onSave={handleSaveBatch}
             onSaveError={(error) => {
               setSaveError(error instanceof Error ? error.message : "Não foi possível guardar a nota.");
             }}
-            onDataChange={setPautaDraft}
             pesoPorTipo={pautaPesoPorTipo ?? undefined}
             componentesAtivos={pautaComponentes}
             showIsento={true}
