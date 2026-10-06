@@ -2854,15 +2854,17 @@ export default function AdmissaoWizardClient({
           Não foi possível verificar candidaturas em andamento agora. Tente novamente em “Retomar rascunho”.
         </div>
       )}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-            {embedded ? "Matrícula" : "Admissão"}
-          </p>
-          <h1 className="mt-1 text-lg font-black text-slate-900">
-            {embedded ? "Nova matrícula" : "Nova Admissão"}
-          </h1>
-        </div>
+      <div className={["flex items-start gap-3", embedded ? "justify-end" : "justify-between"].join(" ")}>
+        {!embedded ? (
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              Admissão
+            </p>
+            <h1 className="mt-1 text-lg font-black text-slate-900">
+              Nova admissão
+            </h1>
+          </div>
+        ) : null}
         <div className="relative">
           <button
             type="button"
