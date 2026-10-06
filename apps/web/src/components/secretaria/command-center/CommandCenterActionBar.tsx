@@ -52,15 +52,16 @@ export function CommandCenterActionBar({
               key={action.id}
               type="button"
               onClick={() => onChange(action.id)}
+              aria-pressed={selected}
               className={[
                 "inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition",
                 selected
-                  ? "bg-white text-slate-950 shadow-sm"
+                  ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
                   : "text-slate-500 hover:bg-white/70 hover:text-slate-900",
               ].join(" ")}
               title={action.description}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className={["h-3.5 w-3.5", selected ? "text-amber" : ""].join(" ")} />
               {action.shortLabel}
             </button>
           );
