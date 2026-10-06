@@ -8,29 +8,38 @@ const fileExtensions = new Set([".js", ".jsx", ".ts", ".tsx", ".css"]);
 
 const rules = [
   {
-    id: "KLASSE-CARD-001",
-    message: "Use klasseSurface.card/cardCompact/cardInteractive instead of rounded-lg with shadow-none.",
-    test: (line) => /rounded-lg[^"'`]*shadow-none|shadow-none[^"'`]*rounded-lg/.test(line),
-  },
-  {
-    id: "KLASSE-CARD-002",
-    message: "Do not combine shadow-none with hover:shadow-none on operational surfaces.",
-    test: (line) => /shadow-none[^"'`]*hover:shadow-none|hover:shadow-none[^"'`]*shadow-none/.test(line),
-  },
-  {
-    id: "KLASSE-TOKEN-001",
-    message: "Use Tailwind tokens or @moxi/design-tokens instead of direct KLASSE brand hex.",
+    id: "MOXI-TOKEN-001",
+    message: "Use product theme tokens instead of direct KLASSE brand hex values.",
     test: (line) => /#(?:1F6B3B|E3B23C)\b/i.test(line),
   },
   {
-    id: "KLASSE-CARD-003",
-    message: "Operational cards must use rounded-xl unless an exception applies.",
-    test: (line, file) => isOperationalFile(file) && /\brounded-2xl\b/.test(line),
+    id: "MOXI-RADIUS-001",
+    message: "Use a semantic Moxi radius instead of an arbitrary radius.",
+    test: (line) => /\brounded-\[[^\]]+\]/.test(line) || /\bborder-radius\s*:/.test(line),
+  },
+  {
+    id: "MOXI-RADIUS-002",
+    message: "rounded-md/rounded-3xl are outside the operational Moxi radius scale.",
+    test: (line) => /\brounded-(?:md|3xl)\b/.test(line),
+  },
+  {
+    id: "MOXI-ELEVATION-001",
+    message: "Use a semantic Moxi elevation instead of an arbitrary shadow.",
+    test: (line) => /\bshadow-\[[^\]]+\]/.test(line) || /\bbox-shadow\s*:/.test(line),
+  },
+  {
+    id: "MOXI-ELEVATION-002",
+    message: "Large shadows belong to overlays, not ordinary operational surfaces.",
+    test: (line) => /\bshadow-(?:xl|2xl)\b/.test(line),
   },
 ];
 
 function git(args) {
-  return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+  return execFileSync("git", args, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  })
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
@@ -39,7 +48,7 @@ function git(args) {
 const explicitFiles = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
 
 function comparisonRange() {
-  const overrideBase = process.env.KLASSE_UI_BASE_REF?.trim();
+  const overrideBase = process.env.KLASSE_UI_BASE_REF?.trim() || process.env.MOXI_UI_BASE_REF?.trim();
   if (overrideBase) return `${overrideBase}...HEAD`;
   if (process.env.GITHUB_BASE_REF) return `origin/${process.env.GITHUB_BASE_REF}...HEAD`;
   if (process.env.CI) return "HEAD~1..HEAD";
@@ -72,9 +81,7 @@ function parseAddedLineNumbers(diff) {
 
     const start = Number(match[1]);
     const count = match[2] === undefined ? 1 : Number(match[2]);
-    for (let offset = 0; offset < count; offset += 1) {
-      added.add(start + offset);
-    }
+    for (let offset = 0; offset < count; offset += 1) added.add(start + offset);
   }
 
   return added;
@@ -86,7 +93,9 @@ function addedLineNumbers(file) {
   const primaryRange = comparisonRange();
   if (!primaryRange) return null;
 
-  const ranges = primaryRange === "HEAD~1..HEAD" ? [primaryRange] : [primaryRange, "HEAD~1..HEAD"];
+  const ranges = primaryRange === "HEAD~1..HEAD"
+    ? [primaryRange]
+    : [primaryRange, "HEAD~1..HEAD"];
 
   for (const range of ranges) {
     try {
@@ -97,7 +106,7 @@ function addedLineNumbers(file) {
       );
       return parseAddedLineNumbers(diff);
     } catch {
-      // Try the fallback range; if all ranges fail, scan the whole file rather than bypass the gate.
+      // Fall through. If no diff can be resolved, scan the full file rather than bypass the gate.
     }
   }
 
@@ -114,11 +123,13 @@ function isException(file) {
     normalized.includes("/modelo_portal_do_aluno/") ||
     normalized.includes("/android/") ||
     normalized.includes("/ios/") ||
-    /modal|drawer|sheet|dialog|slideover/.test(basename) ||
+    normalized.includes("/print/") ||
+    normalized.startsWith("packages/design-tokens/") ||
+    /modal|drawer|sheet|dialog|slideover|popover/.test(basename) ||
     normalized.includes("/components/ui/dialog") ||
     normalized.includes("/components/ui/drawer") ||
     normalized.includes("/components/ui/sheet") ||
-    normalized.includes("/print/")
+    normalized.includes("/components/ui/popover")
   );
 }
 
@@ -130,8 +141,10 @@ function isOperationalFile(file) {
     normalized.includes("apps/web/src/components/dashboard/") ||
     normalized.includes("apps/web/src/components/feedback/") ||
     normalized.includes("apps/web/src/components/financeiro/") ||
+    normalized.includes("apps/web/src/components/secretaria/") ||
     normalized.includes("apps/web/src/app/secretaria/(portal-secretaria)/") ||
     normalized.includes("apps/web/src/app/escola/[id]/(portal)/financeiro/") ||
+    normalized.includes("apps/web/src/app/escola/[id]/(portal)/secretaria/") ||
     normalized.includes("apps/formacao/components/") ||
     normalized.includes("apps/formacao/app/(portal)/")
   );
@@ -141,7 +154,6 @@ function shouldScan(file) {
   const normalized = file.replaceAll(path.sep, "/");
   if (!existsSync(path.join(repoRoot, file))) return false;
   if (!fileExtensions.has(path.extname(file))) return false;
-  if (normalized.startsWith("packages/design-tokens/")) return false;
   if (normalized.includes("/node_modules/") || normalized.includes("/.next/")) return false;
   if (isException(normalized)) return false;
   return isOperationalFile(normalized);
@@ -163,7 +175,7 @@ for (const file of changedFiles().filter(shouldScan)) {
         findings.push({
           rule: rule.id,
           file,
-          line: index + 1,
+          line: lineNumber,
           message: rule.message,
           evidence: line.trim(),
         });
@@ -173,7 +185,7 @@ for (const file of changedFiles().filter(shouldScan)) {
 }
 
 if (findings.length > 0) {
-  console.error("KLASSE UI standards check failed:\n");
+  console.error("Moxi UI standards check failed:\n");
   for (const finding of findings) {
     console.error(`${finding.rule} ${finding.file}:${finding.line}`);
     console.error(`  ${finding.message}`);
@@ -182,4 +194,4 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log("KLASSE UI standards check passed.");
+console.log("Moxi UI standards check passed.");
