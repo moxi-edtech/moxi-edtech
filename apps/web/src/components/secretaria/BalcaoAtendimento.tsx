@@ -2969,7 +2969,7 @@ export default function BalcaoAtendimento({
       )}
 
       {dossier.loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
+        <div className="rounded-xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
           <Loader2 className="h-8 w-8 animate-spin text-amber" />
           <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
         </div>
@@ -3063,7 +3063,7 @@ export default function BalcaoAtendimento({
           </div>
         )
       ) : (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-16 text-center space-y-2">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center space-y-2">
           <User className="h-10 w-10 text-slate-300 mx-auto" />
           <p className="text-sm font-bold text-slate-700 font-sora">Nenhum aluno seleccionado</p>
           <p className="text-xs text-slate-400">Utilize a barra de pesquisa acima para abrir a ficha de atendimento do aluno.</p>
