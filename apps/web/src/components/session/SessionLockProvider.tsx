@@ -2,7 +2,7 @@
 
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, LogOut, ShieldCheck } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 
 const LOCK_EVENT = "klasse:lock-screen";
@@ -47,7 +47,6 @@ export function requestSessionConfig() {
 
 export default function SessionLockProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [locked, setLocked] = useState(false);
