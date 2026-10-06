@@ -37,11 +37,15 @@ cleanup() {
   fi
 }
 
-rollback_if_needed() {
+on_exit() {
   local status=$?
   if [[ "$status" -ne 0 && "$PROMOTED" -eq 1 && -n "$PREVIOUS_DEPLOYMENT_URL" ]]; then
     printf '[klasse-prebuilt] Falha após promoção; restaurando %s\n' "$PREVIOUS_DEPLOYMENT_URL" >&2
-    vercel promote "$PREVIOUS_DEPLOYMENT_URL"       --yes       --timeout 5m       --scope "$VERCEL_SCOPE" >/dev/null 2>&1 ||       printf '[klasse-prebuilt] ATENÇÃO: rollback automático falhou; restaure %s manualmente.\n' "$PREVIOUS_DEPLOYMENT_URL" >&2
+    vercel promote "$PREVIOUS_DEPLOYMENT_URL" \
+      --yes \
+      --timeout 5m \
+      --scope "$VERCEL_SCOPE" >/dev/null 2>&1 || \
+      printf '[klasse-prebuilt] ATENÇÃO: rollback automático falhou; restaure %s manualmente.\n' "$PREVIOUS_DEPLOYMENT_URL" >&2
   fi
   cleanup
   if [[ "$SUCCESS" -ne 1 ]]; then
@@ -49,28 +53,17 @@ rollback_if_needed() {
   fi
 }
 
-trap rollback_if_needed EXIT
+trap on_exit EXIT
 
 for cmd in git node pnpm vercel curl mktemp; do
   need_cmd "$cmd"
 done
 
-[[ -f "$PROJECT_FILE" ]] || die "arquivo ausente: $PROJECT_FILE. Execute 'vercel link' em apps/web."
+[[ -f "$PROJECT_FILE" ]] ||   die "arquivo ausente: $PROJECT_FILE. Execute 'vercel link' em apps/web."
 
-PROJECT_INFO="$(
-  node - "$PROJECT_FILE" <<'NODE'
-const fs = require("fs");
-const file = process.argv[2];
-const data = JSON.parse(fs.readFileSync(file, "utf8"));
-process.stdout.write([
-  data.projectId || "",
-  data.orgId || "",
-  data.projectName || "",
-].join("\t"));
-NODE
-)"
-
-IFS=
+VERCEL_PROJECT_ID="$(node -e 'const p=require(process.argv[1]); process.stdout.write(p.projectId || "")' "$PROJECT_FILE")"
+VERCEL_ORG_ID="$(node -e 'const p=require(process.argv[1]); process.stdout.write(p.orgId || "")' "$PROJECT_FILE")"
+VERCEL_PROJECT_NAME="$(node -e 'const p=require(process.argv[1]); process.stdout.write(p.projectName || "")' "$PROJECT_FILE")"
 
 [[ "$VERCEL_PROJECT_ID" == "$EXPECTED_PROJECT_ID" ]] ||   die "projectId inesperado ($VERCEL_PROJECT_ID). Recusando tocar produção."
 [[ "$VERCEL_ORG_ID" == "$EXPECTED_ORG_ID" ]] ||   die "orgId inesperado ($VERCEL_ORG_ID). Recusando tocar produção."
@@ -100,7 +93,7 @@ if [[ "$DRY_RUN" == "1" && -n "${KLASSE_PRODUCTION_SHA_OVERRIDE:-}" ]]; then
   PRODUCTION_SHA="$KLASSE_PRODUCTION_SHA_OVERRIDE"
   PREVIOUS_DEPLOYMENT_ID="dry-run"
   PREVIOUS_DEPLOYMENT_URL="https://dry-run.invalid"
-  log "dry-run: usando SHA de produção fornecido para teste: $PRODUCTION_SHA"
+  log "dry-run: SHA de produção fornecido para teste: $PRODUCTION_SHA"
 else
   [[ -z "${KLASSE_PRODUCTION_SHA_OVERRIDE:-}" ]] ||     die "KLASSE_PRODUCTION_SHA_OVERRIDE é proibido fora de dry-run"
 
@@ -108,27 +101,45 @@ else
     vercel api "/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=1&teamId=$VERCEL_ORG_ID"       --scope "$VERCEL_SCOPE"
   )" || die "não foi possível consultar o deployment READY atual da produção"
 
-  PROD_LINE="$(
-    printf '%s' "$PROD_JSON" | node <<'NODE'
-let input = "";
-process.stdin.on("data", chunk => input += chunk);
-process.stdin.on("end", () => {
-  const payload = JSON.parse(input);
-  const deployment = payload.deployments?.[0];
-  if (!deployment) process.exit(2);
-  const meta = deployment.meta || {};
-  const sha = meta.klasseSourceSha || meta.githubCommitSha || "";
-  const id = deployment.uid || deployment.id || "";
-  const url = deployment.url ? `https://${deployment.url}` : "";
-  process.stdout.write([sha, id, url].join("\t"));
-});
-NODE
-  )" || die "produção READY não encontrada"
+  PRODUCTION_SHA="$(
+    printf '%s' "$PROD_JSON" | node -e '
+      let input="";
+      process.stdin.on("data", c => input += c);
+      process.stdin.on("end", () => {
+        const d = JSON.parse(input).deployments?.[0];
+        if (!d) process.exit(2);
+        const meta = d.meta || {};
+        process.stdout.write(meta.klasseSourceSha || meta.githubCommitSha || "");
+      });
+    '
+  )" || die "não foi possível obter o SHA atualmente em produção"
 
-  IFS=$'\t' read -r PRODUCTION_SHA PREVIOUS_DEPLOYMENT_ID PREVIOUS_DEPLOYMENT_URL <<< "$PROD_LINE"
+  PREVIOUS_DEPLOYMENT_ID="$(
+    printf '%s' "$PROD_JSON" | node -e '
+      let input="";
+      process.stdin.on("data", c => input += c);
+      process.stdin.on("end", () => {
+        const d = JSON.parse(input).deployments?.[0];
+        if (!d) process.exit(2);
+        process.stdout.write(d.uid || d.id || "");
+      });
+    '
+  )" || die "não foi possível obter o deployment atual"
+
+  PREVIOUS_DEPLOYMENT_URL="$(
+    printf '%s' "$PROD_JSON" | node -e '
+      let input="";
+      process.stdin.on("data", c => input += c);
+      process.stdin.on("end", () => {
+        const d = JSON.parse(input).deployments?.[0];
+        if (!d?.url) process.exit(2);
+        process.stdout.write("https://" + d.url);
+      });
+    '
+  )" || die "não foi possível obter a URL do deployment atual"
 fi
 
-[[ -n "$PRODUCTION_SHA" ]] ||   die "deployment atual não informa o SHA de origem; abortando para não arriscar regressão"
+[[ -n "$PRODUCTION_SHA" ]] ||   die "deployment atual não informa SHA; abortando para não arriscar regressão"
 
 if ! git -C "$ROOT_DIR" cat-file -e "$PRODUCTION_SHA^{commit}" 2>/dev/null; then
   git -C "$ROOT_DIR" fetch origin "$PRODUCTION_SHA" --quiet || true
@@ -178,6 +189,7 @@ log "worktree isolado criado em $WORKTREE"
 )
 
 log "gates locais aprovados; iniciando build Vercel local"
+
 vercel build   --prod   --yes   --scope "$VERCEL_SCOPE"   --cwd "$WORKTREE"
 
 [[ -f "$WORKTREE/.vercel/output/config.json" ]] ||   die "vercel build terminou sem gerar .vercel/output/config.json"
@@ -195,18 +207,20 @@ PREVIEW_URL="$(
   grep -Eo 'https://[A-Za-z0-9._-]+\.vercel\.app' "$DEPLOY_LOG" | tail -n 1
 )"
 
-[[ -n "$PREVIEW_URL" ]] || die "não foi possível identificar a URL do deployment prebuilt"
+[[ -n "$PREVIEW_URL" ]] ||   die "não foi possível identificar a URL do deployment prebuilt"
 
 log "deployment prebuilt criado: $PREVIEW_URL"
 
 vercel inspect "$PREVIEW_URL"   --wait   --scope "$VERCEL_SCOPE" >/dev/null
 
 log "smoke do artefato antes da promoção"
+
 vercel curl /   --deployment "$PREVIEW_URL"   --scope "$VERCEL_SCOPE" >/dev/null
 
 vercel curl /secretaria/balcao   --deployment "$PREVIEW_URL"   --scope "$VERCEL_SCOPE" >/dev/null
 
 log "artefato READY e smoke aprovado; promovendo para $PRODUCTION_DOMAIN"
+
 vercel promote "$PREVIEW_URL"   --yes   --timeout 5m   --scope "$VERCEL_SCOPE" >/dev/null
 
 PROMOTED=1
@@ -229,194 +243,20 @@ ACTIVE_JSON="$(
 )" || die "não foi possível verificar o deployment ativo após promoção"
 
 ACTIVE_SHA="$(
-  printf '%s' "$ACTIVE_JSON" | node <<'NODE'
-let input = "";
-process.stdin.on("data", chunk => input += chunk);
-process.stdin.on("end", () => {
-  const deployment = JSON.parse(input);
-  const meta = deployment.meta || {};
-  process.stdout.write(meta.klasseSourceSha || meta.githubCommitSha || "");
-});
-NODE
+  printf '%s' "$ACTIVE_JSON" | node -e '
+    let input="";
+    process.stdin.on("data", c => input += c);
+    process.stdin.on("end", () => {
+      const d = JSON.parse(input);
+      const meta = d.meta || {};
+      process.stdout.write(meta.klasseSourceSha || meta.githubCommitSha || "");
+    });
+  '
 )"
 
 [[ "$ACTIVE_SHA" == "$TARGET_SHA" ]] ||   die "verificação final falhou: ativo=$ACTIVE_SHA esperado=$TARGET_SHA"
 
 log "produção confirmada em $TARGET_SHA; deployment anterior preservado para rollback: $PREVIOUS_DEPLOYMENT_ID"
-PROMOTED=0
-SUCCESS=1
-\t' read -r VERCEL_PROJECT_ID VERCEL_ORG_ID VERCEL_PROJECT_NAME <<< "$PROJECT_INFO"
 
-[[ "$VERCEL_PROJECT_ID" == "$EXPECTED_PROJECT_ID" ]] ||   die "projectId inesperado ($VERCEL_PROJECT_ID). Recusando tocar produção."
-[[ "$VERCEL_ORG_ID" == "$EXPECTED_ORG_ID" ]] ||   die "orgId inesperado ($VERCEL_ORG_ID). Recusando tocar produção."
-[[ "$VERCEL_PROJECT_NAME" == "moxi-edtech" ]] ||   die "projeto inesperado ($VERCEL_PROJECT_NAME). Esperado: moxi-edtech."
-
-export VERCEL_PROJECT_ID
-export VERCEL_ORG_ID
-
-log "alvo Vercel validado: moxi-edtech -> $PRODUCTION_DOMAIN"
-
-git -C "$ROOT_DIR" fetch origin main --quiet
-
-TARGET_REF="origin/main"
-if [[ "$DRY_RUN" == "1" && -n "${KLASSE_TARGET_REF:-}" ]]; then
-  TARGET_REF="$KLASSE_TARGET_REF"
-elif [[ -n "${KLASSE_TARGET_REF:-}" ]]; then
-  die "KLASSE_TARGET_REF só é permitido com KLASSE_DEPLOY_DRY_RUN=1"
-fi
-
-TARGET_SHA="$(git -C "$ROOT_DIR" rev-parse "$TARGET_REF^{commit}")"
-log "commit alvo: $TARGET_SHA ($TARGET_REF)"
-
-PRODUCTION_SHA=""
-PREVIOUS_DEPLOYMENT_ID=""
-
-if [[ "$DRY_RUN" == "1" && -n "${KLASSE_PRODUCTION_SHA_OVERRIDE:-}" ]]; then
-  PRODUCTION_SHA="$KLASSE_PRODUCTION_SHA_OVERRIDE"
-  PREVIOUS_DEPLOYMENT_ID="dry-run"
-  PREVIOUS_DEPLOYMENT_URL="https://dry-run.invalid"
-  log "dry-run: usando SHA de produção fornecido para teste: $PRODUCTION_SHA"
-else
-  [[ -z "${KLASSE_PRODUCTION_SHA_OVERRIDE:-}" ]] ||     die "KLASSE_PRODUCTION_SHA_OVERRIDE é proibido fora de dry-run"
-
-  PROD_JSON="$(
-    vercel api "/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=1&teamId=$VERCEL_ORG_ID"       --scope "$VERCEL_SCOPE"
-  )" || die "não foi possível consultar o deployment READY atual da produção"
-
-  PROD_LINE="$(
-    printf '%s' "$PROD_JSON" | node <<'NODE'
-let input = "";
-process.stdin.on("data", chunk => input += chunk);
-process.stdin.on("end", () => {
-  const payload = JSON.parse(input);
-  const deployment = payload.deployments?.[0];
-  if (!deployment) process.exit(2);
-  const meta = deployment.meta || {};
-  const sha = meta.klasseSourceSha || meta.githubCommitSha || "";
-  const id = deployment.uid || deployment.id || "";
-  const url = deployment.url ? `https://${deployment.url}` : "";
-  process.stdout.write([sha, id, url].join("\t"));
-});
-NODE
-  )" || die "produção READY não encontrada"
-
-  IFS=$'\t' read -r PRODUCTION_SHA PREVIOUS_DEPLOYMENT_ID PREVIOUS_DEPLOYMENT_URL <<< "$PROD_LINE"
-fi
-
-[[ -n "$PRODUCTION_SHA" ]] ||   die "deployment atual não informa o SHA de origem; abortando para não arriscar regressão"
-
-if ! git -C "$ROOT_DIR" cat-file -e "$PRODUCTION_SHA^{commit}" 2>/dev/null; then
-  git -C "$ROOT_DIR" fetch origin "$PRODUCTION_SHA" --quiet || true
-fi
-
-git -C "$ROOT_DIR" cat-file -e "$PRODUCTION_SHA^{commit}" 2>/dev/null ||   die "SHA atualmente em produção não existe no repositório local: $PRODUCTION_SHA"
-
-if ! git -C "$ROOT_DIR" merge-base --is-ancestor "$PRODUCTION_SHA" "$TARGET_SHA"; then
-  die "REGRESSÃO BLOQUEADA: produção $PRODUCTION_SHA não é ancestral do alvo $TARGET_SHA"
-fi
-
-log "guarda anti-regressão OK: produção $PRODUCTION_SHA está contida no alvo $TARGET_SHA"
-
-if [[ "$TARGET_SHA" == "$PRODUCTION_SHA" && "$FORCE_REDEPLOY" != "1" ]]; then
-  log "produção já corresponde ao alvo. Nada a publicar."
-  SUCCESS=1
-  exit 0
-fi
-
-if [[ "$DRY_RUN" == "1" ]]; then
-  log "dry-run concluído antes de qualquer build/upload."
-  SUCCESS=1
-  exit 0
-fi
-
-WORKTREE="$(mktemp -d "${TMPDIR:-/tmp}/klasse-prebuilt-prod.XXXXXX")"
-rm -rf "$WORKTREE"
-git -C "$ROOT_DIR" worktree add --detach "$WORKTREE" "$TARGET_SHA" >/dev/null
-
-mkdir -p "$WORKTREE/apps/web/.vercel"
-cp "$PROJECT_FILE" "$WORKTREE/apps/web/.vercel/project.json"
-
-for env_file in .env.local .env.production.local; do
-  if [[ -f "$APP_DIR/$env_file" ]]; then
-    cp "$APP_DIR/$env_file" "$WORKTREE/apps/web/$env_file"
-  fi
-done
-
-log "worktree isolado criado em $WORKTREE"
-
-(
-  cd "$WORKTREE"
-  pnpm install --frozen-lockfile
-  pnpm -C apps/web typecheck
-  pnpm check:ui-standards
-  pnpm test:security
-)
-
-log "gates locais aprovados; iniciando build Vercel local"
-vercel build   --prod   --yes   --scope "$VERCEL_SCOPE"   --cwd "$WORKTREE"
-
-[[ -f "$WORKTREE/.vercel/output/config.json" ]] ||   die "vercel build terminou sem gerar .vercel/output/config.json"
-
-DEPLOY_LOG="$WORKTREE/.klasse-prebuilt-deploy.log"
-
-set +e
-vercel deploy   --prebuilt   --archive=tgz   --yes   --scope "$VERCEL_SCOPE"   --cwd "$WORKTREE"   --meta "klasseSourceSha=$TARGET_SHA"   --meta "githubCommitSha=$TARGET_SHA"   --meta "githubCommitRef=main"   2>&1 | tee "$DEPLOY_LOG"
-DEPLOY_RC=${PIPESTATUS[0]}
-set -e
-
-[[ "$DEPLOY_RC" -eq 0 ]] || die "upload prebuilt falhou"
-
-PREVIEW_URL="$(
-  grep -Eo 'https://[A-Za-z0-9._-]+\.vercel\.app' "$DEPLOY_LOG" | tail -n 1
-)"
-
-[[ -n "$PREVIEW_URL" ]] || die "não foi possível identificar a URL do deployment prebuilt"
-
-log "deployment prebuilt criado: $PREVIEW_URL"
-
-vercel inspect "$PREVIEW_URL"   --wait   --scope "$VERCEL_SCOPE" >/dev/null
-
-log "smoke do artefato antes da promoção"
-vercel curl /   --deployment "$PREVIEW_URL"   --scope "$VERCEL_SCOPE" >/dev/null
-
-vercel curl /secretaria/balcao   --deployment "$PREVIEW_URL"   --scope "$VERCEL_SCOPE" >/dev/null
-
-log "artefato READY e smoke aprovado; promovendo para $PRODUCTION_DOMAIN"
-vercel promote "$PREVIEW_URL"   --yes   --timeout 5m   --scope "$VERCEL_SCOPE" >/dev/null
-
-PROMOTED=1
-
-check_http() {
-  local path="$1"
-  local status
-  status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "https://$PRODUCTION_DOMAIN$path")"
-  if [[ ! "$status" =~ ^(2|3)[0-9][0-9]$ ]]; then
-    die "smoke de produção falhou em $path (HTTP $status)"
-  fi
-  log "smoke produção $path -> HTTP $status"
-}
-
-check_http "/"
-check_http "/secretaria/balcao"
-
-ACTIVE_JSON="$(
-  vercel api "/v13/deployments/$PRODUCTION_DOMAIN?withGitRepoInfo=true&teamId=$VERCEL_ORG_ID"     --scope "$VERCEL_SCOPE"
-)" || die "não foi possível verificar o deployment ativo após promoção"
-
-ACTIVE_SHA="$(
-  printf '%s' "$ACTIVE_JSON" | node <<'NODE'
-let input = "";
-process.stdin.on("data", chunk => input += chunk);
-process.stdin.on("end", () => {
-  const deployment = JSON.parse(input);
-  const meta = deployment.meta || {};
-  process.stdout.write(meta.klasseSourceSha || meta.githubCommitSha || "");
-});
-NODE
-)"
-
-[[ "$ACTIVE_SHA" == "$TARGET_SHA" ]] ||   die "verificação final falhou: ativo=$ACTIVE_SHA esperado=$TARGET_SHA"
-
-log "produção confirmada em $TARGET_SHA; deployment anterior preservado para rollback: $PREVIOUS_DEPLOYMENT_ID"
 PROMOTED=0
 SUCCESS=1
