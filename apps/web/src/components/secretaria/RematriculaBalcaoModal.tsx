@@ -305,7 +305,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     >
       <div
         className={embedded
-          ? "relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-white"
+          ? "relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white"
           : "relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"}
         role={embedded ? undefined : "dialog"}
         aria-modal={embedded ? undefined : true}
@@ -337,7 +337,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
                       className={[
                         "rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors",
                         isActive
-                          ? "bg-slate-950 text-white"
+                          ? "bg-amber text-white shadow-sm"
                           : isDone
                             ? "bg-emerald-50 text-emerald"
                             : "bg-slate-100 text-slate-400",
@@ -559,7 +559,7 @@ function StepAcademico({
       )}
 
       <div>
-        <label htmlFor="rematricula-contacto-encarregado" className="mb-1.5 block text-xs font-bold text-slate-700">
+        <label htmlFor="rematricula-contacto-encarregado" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
           Contacto do encarregado
         </label>
         <input
@@ -682,7 +682,7 @@ function StepAcademico({
       ) : <div className="space-y-2">
         <label
           htmlFor="rematricula-turma-select"
-          className="block text-sm font-semibold text-slate-700"
+          className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400"
         >
           Turma de destino <span className="text-rose-500">*</span>
         </label>
@@ -1041,8 +1041,8 @@ function StepPagamento({
                     className={[
                       "flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 text-[10px] font-bold transition",
                       active
-                        ? "border-slate-950 bg-slate-950 text-white"
-                        : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50",
+                        ? "border-amber bg-amber/10 text-slate-900"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-amber/40 hover:bg-amber/5",
                     ].join(" ")}
                   >
                     <Icon className="h-4 w-4" />
@@ -1068,7 +1068,7 @@ function StepPagamento({
                 onChange={(event) => setDetalhes({ referencia: event.target.value })}
                 disabled={submitting}
                 placeholder="Ref. do talão"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:bg-slate-50"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20 disabled:bg-slate-50"
               />
             </div>
           ) : null}
@@ -1088,7 +1088,7 @@ function StepPagamento({
                 onChange={(event) => setDetalhes({ evidencia_url: event.target.value })}
                 disabled={submitting}
                 placeholder="URL do comprovativo"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:bg-slate-50"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20 disabled:bg-slate-50"
               />
             </div>
           ) : null}
@@ -1109,7 +1109,7 @@ function StepPagamento({
                   onChange={(event) => setDetalhes({ referencia: event.target.value })}
                   disabled={submitting}
                   placeholder="Opcional"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:bg-slate-50"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20 disabled:bg-slate-50"
                 />
               </div>
               <div>
@@ -1126,7 +1126,7 @@ function StepPagamento({
                   onChange={(event) => setDetalhes({ gateway_ref: event.target.value })}
                   disabled={submitting}
                   placeholder="Opcional"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:bg-slate-50"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/20 disabled:bg-slate-50"
                 />
               </div>
             </div>
@@ -1366,7 +1366,7 @@ function FooterWizard({
               (step === 2 && paymentTotal <= 0 && financialReady) ||
               (step === 2 && !financialReady && !onRegularizeDebt)
             }
-            className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             {step === 2 && !financialReady ? "Regularizar dívida" : step === 1 ? "Rever cobrança" : "Continuar"}
           </button>
@@ -1374,7 +1374,7 @@ function FooterWizard({
           <button
             onClick={submit}
             disabled={!canSubmit}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             {submitting ? (
               <>
