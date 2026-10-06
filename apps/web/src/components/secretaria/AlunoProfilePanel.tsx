@@ -198,6 +198,20 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+        <div className="border-b border-slate-100 pb-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            Perfil
+          </p>
+          <h2 className="mt-1 text-base font-black text-slate-900">
+            O que precisa atualizar?
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Altere apenas os dados que mudaram. O restante da ficha permanece intacto.
+          </p>
+        </div>
+
+        <div className="mt-4">
+
         <div className="mb-4 flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50">
             <Fingerprint className="h-4 w-4 text-slate-400" />
@@ -261,6 +275,7 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
               />
             </Field>
           </div>
+        </div>
         </div>
       </div>
 
@@ -340,7 +355,7 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
         </div>
       </div>
 
-      <div className="sticky bottom-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur">
+      <div className="sticky bottom-3 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-500">
           {hasChanges ? `${changedEntries.length} alteração(ões) por guardar` : "Sem alterações pendentes"}
         </p>
@@ -348,7 +363,7 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
           type="button"
           onClick={() => void handleSave()}
           disabled={saving || !hasChanges}
-          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saving ? "A guardar…" : "Guardar alterações"}
