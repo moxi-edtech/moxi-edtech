@@ -1216,7 +1216,7 @@ function CommandCenterOverview({
         </button>
       </div>
 
-      <div className={`rounded-2xl border p-4 sm:p-5 ${priorityClass}`}>
+      <div className={`rounded-xl border p-4 sm:p-5 ${priorityClass}`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
@@ -1253,7 +1253,7 @@ function CommandCenterOverview({
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
           Situação do aluno
         </p>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           {rows.map((row, index) => (
             <button
               key={row.id}
