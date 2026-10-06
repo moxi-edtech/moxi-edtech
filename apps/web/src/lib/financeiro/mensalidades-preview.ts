@@ -35,7 +35,15 @@ export function buildMensalidadesPreview(input: {
   const inicio = monthStart(parseDateOnly(input.dataInicio));
   const fim = monthStart(parseDateOnly(input.dataFim));
   const hoje = monthStart(input.today ?? new Date());
-  const primeiro = inicio > hoje ? inicio : hoje;
+
+  // Deve espelhar public.set_matricula_financial_start()/financeiro.gerar_carnet_anual:
+  // a matrícula nova começa financeiramente no mês anterior à entrada, sem nunca
+  // retroceder para antes da janela académica da turma.
+  if (hoje > fim) return [];
+  const mesAnteriorEntrada = new Date(hoje);
+  mesAnteriorEntrada.setUTCMonth(mesAnteriorEntrada.getUTCMonth() - 1);
+  const primeiro = inicio > mesAnteriorEntrada ? inicio : mesAnteriorEntrada;
+
   const desconto = Math.min(100, Math.max(0, Number(input.descontoPercentual ?? 0)));
   const valor = Math.round((valorBase * (1 - desconto / 100) + Number.EPSILON) * 100) / 100;
   const dia = Math.min(28, Math.max(1, Number(input.diaVencimento ?? 10)));
