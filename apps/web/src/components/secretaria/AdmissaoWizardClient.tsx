@@ -2110,7 +2110,7 @@ function Step3Pagamento(props: {
             }}
           />
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Resumo dos itens pagos</p>
             <div className="mt-3 divide-y divide-slate-200">
               {(result.itens_pagamento ?? []).map((item, index) => (
@@ -2790,7 +2790,7 @@ export default function AdmissaoWizardClient({
           <div className="h-9 w-32 animate-pulse rounded-xl bg-slate-200" />
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 h-4 w-40 animate-pulse rounded bg-slate-200" />
           <div className="grid gap-3 md:grid-cols-2">
             <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
@@ -2810,7 +2810,7 @@ export default function AdmissaoWizardClient({
   return (
     <div className="space-y-4">
       {!candidaturaId && !dismissedResumePrompt && draftItems.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber/40 bg-amber/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-amber/40 bg-amber/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-emerald">
               Tem uma candidatura em andamento
