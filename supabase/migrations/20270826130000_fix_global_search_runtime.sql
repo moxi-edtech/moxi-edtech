@@ -22,6 +22,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public, extensions
 AS $function$
+#variable_conflict use_column
 declare
   v_query text := coalesce(trim(p_query), '');
   v_clean_query text;
@@ -102,7 +103,7 @@ begin
         end,
         similarity(public.unaccent(coalesce(b.label, '')), v_clean_query),
         similarity(public.unaccent(coalesce(b.highlight, '')), v_clean_query)
-      )::double precision as search_score
+      )::double precision as score
     from base b
     where b.escola_id = p_escola_id
       and (v_types is null or b.type = any(v_types))
@@ -119,13 +120,13 @@ begin
     select r.*
     from ranked r
     where not v_has_cursor
-       or (r.search_score, r.updated_at, r.created_at, r.id)
+       or (score, updated_at, created_at, id)
           < (p_cursor_score, p_cursor_updated_at, p_cursor_created_at, p_cursor_id)
   ),
   candidates as (
     select f.*
     from filtered f
-    order by f.search_score desc, f.updated_at desc, f.created_at desc, f.id desc
+    order by score desc, updated_at desc, created_at desc, id desc
     limit v_limit
   )
   select
@@ -133,11 +134,11 @@ begin
     c.type,
     c.label,
     c.highlight,
-    c.search_score,
+    c.score,
     c.updated_at,
     c.created_at
   from candidates c
-  order by c.search_score desc, c.updated_at desc, c.created_at desc, c.id desc;
+  order by c.score desc, c.updated_at desc, c.created_at desc, c.id desc;
 end;
 $function$;
 
