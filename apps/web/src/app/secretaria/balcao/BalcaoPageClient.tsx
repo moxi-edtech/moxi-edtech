@@ -150,7 +150,7 @@ export default function BalcaoPageClient({
     >
       <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={caixaRefreshKey} />
 
-      <section className="mt-4 min-h-[620px]">
+      <section className="mt-4 min-w-0 pb-2">
         {selectedAlunoId || activeAction === "enrollment" ? (
           <CommandCenterPanel
             escolaId={escolaId}
