@@ -26,9 +26,8 @@ export default function RequireSecretaria({
   useEffect(() => {
     let active = true;
     (async () => {
-      // 1. Get Session first (very fast)
-      const { data: { session }, error: userErr } = await supabase.auth.getSession();
-      const user = session?.user;
+      // Validate against Supabase Auth instead of trusting transient browser session hydration.
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
       
       if (userErr || !user) { 
         if (active) router.replace("/redirect"); 
