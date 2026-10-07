@@ -49,3 +49,10 @@ test("portal guards keep one browser Supabase client across renders", () => {
     assert.doesNotMatch(source, /const supabase = createClient\(\);/);
   }
 });
+
+
+test("secretaria guard validates auth server instead of transient local session", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "apps/web/src/app/(guards)/RequireSecretaria.tsx"), "utf8");
+  assert.match(source, /supabase\.auth\.getUser\(\)/);
+  assert.doesNotMatch(source, /supabase\.auth\.getSession\(\)/);
+});
