@@ -88,7 +88,7 @@ export function CommandCenterShell({
   if (variant === "modal") {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-2 backdrop-blur-sm sm:p-5"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:p-5"
         role="dialog"
         aria-modal="true"
         aria-label={`KLASSE · Central de atendimento — ${student?.label || "Atendimento"}`}
@@ -99,12 +99,12 @@ export function CommandCenterShell({
           onClick={onClose}
           aria-label="Fechar central de atendimento"
         />
-        <div className="relative flex h-[94vh] w-[98vw] max-w-[1540px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+        <div className="relative flex h-[min(94dvh,calc(100dvh-1rem))] w-full max-w-[1540px] min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
           <header className="flex shrink-0 flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
             {header}
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60">
-            <div className="mx-auto min-h-full w-full max-w-[1440px] p-4 sm:p-6">
+            <div className="mx-auto min-h-full w-full max-w-[1440px] px-3 py-4 sm:px-5 sm:py-6 xl:px-8">
               {children}
             </div>
           </div>
@@ -114,13 +114,13 @@ export function CommandCenterShell({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-10">
-      <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/90 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-3">
+    <div className="min-w-0 bg-slate-50 pb-6 sm:pb-8">
+      <header className="relative z-20 border-b border-slate-200/70 bg-white/90 px-3 py-3 backdrop-blur sm:px-5 lg:px-6 2xl:px-8">
+        <div className="mx-auto flex w-full max-w-[1440px] min-w-0 flex-col gap-3">
           {header}
         </div>
       </header>
-      <main className="mx-auto mt-5 w-full max-w-[1600px] px-4 sm:px-6 lg:px-8">
+      <main className="mx-auto mt-4 w-full max-w-[1440px] min-w-0 px-3 sm:mt-5 sm:px-5 lg:px-6 2xl:px-8">
         {children}
       </main>
     </div>
