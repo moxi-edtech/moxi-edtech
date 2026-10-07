@@ -60,7 +60,7 @@ export function CommandCenterActionBar({
       </p>
       <div
         ref={scrollerRef}
-        className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1"
+        className="flex min-w-0 flex-wrap gap-1 rounded-xl bg-slate-100 p-1 max-lg:flex-nowrap max-lg:overflow-x-auto"
       >
         {getBalcaoWorkspaceActions()
           .filter((action) => hasStudent || !action.requiresStudent)
@@ -74,7 +74,7 @@ export function CommandCenterActionBar({
               onClick={() => onChange(action.id)}
               aria-pressed={selected}
               className={[
-                "inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition",
+                "inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C]",
                 selected
                   ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
                   : "text-slate-500 hover:bg-white/70 hover:text-slate-900",
