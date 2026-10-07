@@ -1,5 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { buildContextualPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
+
 import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
 import { AlunoProfilePanel } from "@/components/secretaria/AlunoProfilePanel";
 import BalcaoAtendimento, {
@@ -35,6 +40,8 @@ export function CommandCenterPanel({
   onSuccess,
 }: Props) {
   const action = getBalcaoAction(actionId);
+  const pathname = usePathname();
+  const escolaParam = getEscolaParamFromPath(pathname);
 
   if (action.panel === "enrollment") {
     return (
@@ -59,7 +66,28 @@ export function CommandCenterPanel({
   }
 
   if (action.panel === "profile") {
-    return <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />;
+    const href = buildContextualPortalHref(
+      escolaParam,
+      `/secretaria/alunos/${encodeURIComponent(alunoId)}`,
+      pathname,
+    );
+    return (
+      <div className="min-w-0 space-y-4">
+        <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold text-slate-900">Ficha integral do aluno</h2>
+            <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
+              Consulte histórico, dados académicos, financeiro e documentos na ficha completa.
+              Utilize os campos abaixo para atualização rápida.
+            </p>
+          </div>
+          <Link href={href} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-800 hover:border-[#E3B23C] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E3B23C]/20">
+            Abrir ficha completa <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />
+      </div>
+    );
   }
 
   if (action.panel === "grade") {
