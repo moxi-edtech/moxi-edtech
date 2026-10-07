@@ -35,13 +35,15 @@ async function fetchDashboardSummary() {
   return summaryRequest;
 }
 
-export default function SecretariaDashboardPage() {
-  const [counts, setCounts] = useState<DashboardCounts | null>(null);
-  const [recentes, setRecentes] = useState<DashboardRecentes | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function SecretariaDashboardPage({ initialCounts = null, initialRecentes = null }: { initialCounts?: DashboardCounts | null; initialRecentes?: DashboardRecentes | null }) {
+  const [counts, setCounts] = useState<DashboardCounts | null>(initialCounts);
+  const [recentes, setRecentes] = useState<DashboardRecentes | null>(initialRecentes);
+  const hasInitialData = initialCounts !== null || initialRecentes !== null;
+  const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
+    if (hasInitialData) return;
     let mounted = true;
     (async () => {
       try {
@@ -61,7 +63,7 @@ export default function SecretariaDashboardPage() {
       }
     })();
     return () => { mounted = false };
-  }, []);
+  }, [hasInitialData]);
 
   if (loading) {
     return <DashboardSkeleton />;
