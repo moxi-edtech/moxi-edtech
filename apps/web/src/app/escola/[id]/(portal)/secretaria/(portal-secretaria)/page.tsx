@@ -4,6 +4,7 @@ import { K12_OPERACOES_PRIMARY_ROLE } from "@/lib/roles";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { redirect } from "next/navigation";
+import type { DashboardCounts, DashboardRecentes } from "@/app/secretaria/(portal-secretaria)/types";
 
 export default async function SecretariaLandingPage({
   params,
@@ -55,5 +56,30 @@ export default async function SecretariaLandingPage({
     redirect(`${dest}${query ? `?${query}` : ""}`);
   }
 
-  return <SecretariaDashboardPage />;
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setDate(endOfDay.getDate() + 1);
+
+  const [countsRes, recentesRes, matriculasHojeRes] = await Promise.all([
+    supabase.from("vw_secretaria_dashboard_counts").select("alunos_ativos, turmas_total").eq("escola_id", resolvedEscolaId).maybeSingle(),
+    supabase.from("vw_secretaria_dashboard_kpis").select("pendencias_importacao, novas_matriculas, avisos_recentes").eq("escola_id", resolvedEscolaId).maybeSingle(),
+    supabase.from("matriculas").select("id", { count: "exact", head: true }).eq("escola_id", resolvedEscolaId).gte("created_at", startOfDay.toISOString()).lt("created_at", endOfDay.toISOString()),
+  ]);
+
+  const dashboardCounts: DashboardCounts | null = countsRes.error ? null : {
+    alunos: countsRes.data?.alunos_ativos ?? 0,
+    matriculas: matriculasHojeRes.error ? 0 : (matriculasHojeRes.count ?? 0),
+    turmas: countsRes.data?.turmas_total ?? 0,
+    pendencias: recentesRes.error ? 0 : Number(recentesRes.data?.pendencias_importacao ?? 0),
+  };
+
+  const dashboardRecentes: DashboardRecentes | null = recentesRes.error ? null : {
+    pendencias: Number(recentesRes.data?.pendencias_importacao ?? 0),
+    novas_matriculas: Array.isArray(recentesRes.data?.novas_matriculas) ? recentesRes.data.novas_matriculas : [],
+    avisos_recentes: Array.isArray(recentesRes.data?.avisos_recentes) ? recentesRes.data.avisos_recentes : [],
+    fecho_trimestre: null,
+  };
+
+  return <SecretariaDashboardPage initialCounts={dashboardCounts} initialRecentes={dashboardRecentes} />;
 }
