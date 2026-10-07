@@ -36,3 +36,16 @@ test("topbar logout uses the server cookie cleanup route", () => {
   assert.match(source, /signOut\(\{ scope: ['"]local['"] \}\)/);
   assert.match(source, /\/api\/auth\/logout/);
 });
+
+
+test("portal guards keep one browser Supabase client across renders", () => {
+  for (const guard of ["RequireSecretaria.tsx", "RequireAdmin.tsx", "RequireFinanceiro.tsx"]) {
+    const source = fs.readFileSync(
+      path.join(repoRoot, "apps/web/src/app/(guards)", guard),
+      "utf8"
+    );
+
+    assert.match(source, /useMemo\(\(\) => createClient\(\), \[\]\)/);
+    assert.doesNotMatch(source, /const supabase = createClient\(\);/);
+  }
+});

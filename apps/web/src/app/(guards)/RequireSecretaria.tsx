@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { roleMatchesAllowedRoles } from "@/lib/permissions";
@@ -20,7 +20,7 @@ export default function RequireSecretaria({
   escolaId?: string | null;
 }) {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
