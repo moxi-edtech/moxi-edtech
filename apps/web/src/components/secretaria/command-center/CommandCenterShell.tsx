@@ -49,10 +49,10 @@ export function CommandCenterShell({
               </p>
             </div>
             <h1 className="mt-1 truncate text-lg font-black text-slate-900">
-              {student?.label || (activeAction === "enrollment" ? "Nova matrícula" : "Atendimento")}
+              {activeAction === "enrollment" ? "Nova matrícula" : (student?.label || "Atendimento")}
             </h1>
             <p className="mt-0.5 truncate text-xs text-slate-500">
-              {student?.subtitle || (student || activeAction === "enrollment"
+              {(activeAction === "enrollment" ? action.description : student?.subtitle) || (student || activeAction === "enrollment"
                 ? action.description
                 : "Pesquise um aluno para iniciar um atendimento.")}
             </p>
@@ -79,8 +79,8 @@ export function CommandCenterShell({
       <CommandCenterActionBar
         value={activeAction}
         onChange={onActionChange}
-        label={student ? "Atendimento" : "Iniciar"}
-        hasStudent={Boolean(student)}
+        label={activeAction === "enrollment" ? "Novo atendimento" : student ? "Atendimento" : "Iniciar"}
+        hasStudent={Boolean(student) && activeAction !== "enrollment"}
       />
     </>
   );
