@@ -6,6 +6,29 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { redirect } from "next/navigation";
 import type { DashboardCounts, DashboardRecentes } from "@/app/secretaria/(portal-secretaria)/types";
 
+type RecentEnrollment = DashboardRecentes["novas_matriculas"][number];
+type RecentNotice = DashboardRecentes["avisos_recentes"][number];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isRecentEnrollment(value: unknown): value is RecentEnrollment {
+  if (!isRecord(value) || !isRecord(value.aluno) || !isRecord(value.turma)) return false;
+  return typeof value.id === "string" &&
+    typeof value.created_at === "string" &&
+    typeof value.aluno.nome === "string" &&
+    typeof value.turma.nome === "string";
+}
+
+function isRecentNotice(value: unknown): value is RecentNotice {
+  return isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.titulo === "string" &&
+    typeof value.resumo === "string" &&
+    typeof value.data === "string";
+}
+
 export default async function SecretariaLandingPage({
   params,
   searchParams,
@@ -76,8 +99,8 @@ export default async function SecretariaLandingPage({
 
   const dashboardRecentes: DashboardRecentes | null = recentesRes.error ? null : {
     pendencias: Number(recentesRes.data?.pendencias_importacao ?? 0),
-    novas_matriculas: Array.isArray(recentesRes.data?.novas_matriculas) ? recentesRes.data.novas_matriculas : [],
-    avisos_recentes: Array.isArray(recentesRes.data?.avisos_recentes) ? recentesRes.data.avisos_recentes : [],
+    novas_matriculas: Array.isArray(recentesRes.data?.novas_matriculas) ? recentesRes.data.novas_matriculas.filter(isRecentEnrollment) : [],
+    avisos_recentes: Array.isArray(recentesRes.data?.avisos_recentes) ? recentesRes.data.avisos_recentes.filter(isRecentNotice) : [],
     fecho_trimestre: null,
   };
 
