@@ -47,7 +47,7 @@ export default async function SecretariaLandingPage({
 
   const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
   const resolvedEscolaId = await resolveEscolaIdForUser(
-    supabase as any,
+    supabase,
     user.id,
     escolaParam,
     metaEscolaId ? String(metaEscolaId) : null
