@@ -144,7 +144,7 @@ export function buildBalcaoActionHref(params: {
 
   if (commandCenterPortal) {
     const search = new URLSearchParams();
-    if (alunoId) search.set("alunoId", alunoId);
+    if (alunoId && actionId !== "enrollment") search.set("alunoId", alunoId);
     if (actionId !== "desk") search.set("action", actionId);
     const qs = search.toString();
     return buildPortalHref(escolaParam, `/secretaria/balcao${qs ? `?${qs}` : ""}`);
