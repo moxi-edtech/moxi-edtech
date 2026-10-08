@@ -7,6 +7,7 @@ import { Printer, Loader2, Check } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { ReciboPagamentoDuasVias } from "@/components/financeiro/ReciboPagamentoCompacto";
 import { usePlanFeature } from "@/hooks/usePlanFeature";
+import { formatReceiptDate } from "@/lib/financeiro/receiptDate";
 
 type ReciboImprimivelProps = {
   escolaNome: string;
@@ -65,12 +66,7 @@ export function ReciboImprimivel({
   const [mounted, setMounted] = useState(false);
   const readyNotifiedRef = useRef(false);
 
-  const dataFormatada = useMemo(() => {
-    if (!data) return "—";
-    const parsed = new Date(data);
-    if (Number.isNaN(parsed.getTime())) return data;
-    return parsed.toLocaleDateString("pt-PT");
-  }, [data]);
+  const dataFormatada = useMemo(() => formatReceiptDate(data), [data]);
 
   const effectiveLogoUrl = useMemo(() => {
     const clean = logoUrl?.trim();

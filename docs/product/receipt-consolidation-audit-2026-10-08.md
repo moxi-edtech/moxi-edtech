@@ -21,3 +21,9 @@
 - Validar permissões multi-tenant, plano, execução em produção, abertura e impressão reais antes de deploy.
 - O caso histórico de Kz 4.000 **não é remediado por um commit**: acção de recuperação autenticada da escola é exigida. A rota não deve ser invocada por SQL com privilégios de administrador ou através de impersonação.
 - Testes unitários de distribuição por mensalidade (pagamento parcial e integral), tipagem/linters e CI documentados no PR.
+
+## Validação de impressão
+
+O teste isolado do `agent-browser` gerou PDF A4 de 1 página e duas vias com Setembro, Outubro e Novembro (Kz 4.000, 5.000 e 6.000), total Kz 15.000. A mesma estrutura foi renderizada no Financeiro após `onPrintReady`. O teste identificou e corrigiu uma falha de data civil: `2026-10-08` aparecia como 07/10 por deslocamento de fuso; os dois modelos utilizam agora `formatReceiptDate` e o ensaio confirmou 08/10. Evidências em `evidence/receipts-2026-10-08`.
+
+Não se considera aceite o E2E autenticado; os testes de abertura e impressão ainda precisam de ser executados com conta autorizada num ambiente de homologação.
