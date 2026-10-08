@@ -37,3 +37,18 @@ Não se considera aceite o E2E autenticado; os testes de abertura e impressão a
 - **Integridade fiscal**: confirmação do pagamento e emissão/impres­são do documento são operações separadas. O erro do recibo não pode levar a uma segunda cobrança.
 
 A revisão do código não substitui a homologação autenticada, especialmente de parcelas, replays e isolamento entre escolas.
+
+## Homologação de acesso HTTP — 2026-10-08
+
+Foi iniciada uma instância local da branch PR #176 com variáveis fictícias de Supabase e **sem sessões autenticadas**. Quatro testes HTTP executados via `node --test --import tsx` (ficheiro `apps/web/tests/unit/receipt-access-http.spec.ts`) passaram:
+
+1. `POST /api/secretaria/recibos/recuperar` com `mensalidade_id` inválido respondeu 400.
+2. Mesmo endpoint com UUID sintaticamente válido, mas sem sessão, respondeu 401.
+3. `GET /secretaria/documentos/{uuid}/recibo/print` sem sessão redireccionou para login.
+4. `GET /aluno/documentos/{uuid}/recibo/print` sem sessão redireccionou para login.
+
+**Limites:** não há `TEST_LOGIN_EMAIL`, `TEST_LOGIN_PASSWORD`, `TEST_ESCOLA_SLUG` configurados; não foi identificado deployment de homologação da branch na Vercel; a automação Playwright não está instalada no worktree. Nenhuma operação de pagamento real, emissão, autorização multi-tenant com dois utilizadores, recuperação real de Kz 4.000 ou validação de impressão autenticada foi executada. A aprovação de produção permanece bloqueada nesses gates.
+
+Comando de reprodução quando existir uma instância de teste, sem credenciais reais no repositório:
+
+`RECEIPT_TEST_BASE_URL=http://localhost:3192 node --test --import tsx apps/web/tests/unit/receipt-access-http.spec.ts`
