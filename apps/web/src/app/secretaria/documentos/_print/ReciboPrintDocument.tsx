@@ -2,6 +2,7 @@ import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { ReciboPagamentoDuasVias } from "@/components/financeiro/ReciboPagamentoCompacto";
+import { formatReceiptDate } from "@/lib/financeiro/receiptDate";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 
@@ -96,12 +97,12 @@ export async function ReciboPrintDocument({
     : [{ referencia, valor: Number(snapshot.valor_pago ?? 0) }];
   const totalItensDetalhados = itensDetalhados.reduce((total, item) => total + item.valor, 0);
   const valorPago = totalItensDetalhados > 0 ? totalItensDetalhados : Number(snapshot.valor_pago ?? 0);
-  const dataPagamento = snapshot.data_pagamento
-    ? new Date(String(snapshot.data_pagamento)).toLocaleDateString("pt-PT")
-    : "—";
+  const dataPagamento = formatReceiptDate(
+    typeof snapshot.data_pagamento === "string" ? snapshot.data_pagamento : null
+  );
   const metodo = getSnapshotString(snapshot.metodo);
   const numero = snapshot.numero_sequencial ? String(snapshot.numero_sequencial).padStart(6, "0") : null;
-  const emitidoEm = new Date(String(doc.created_at)).toLocaleString("pt-PT");
+  const emitidoEm = new Date(String(doc.created_at)).toLocaleString("pt-PT", { timeZone: "Africa/Luanda" });
 
   const alunoNome = getSnapshotString(snapshot.aluno_nome, fallbackAlunoNome ?? "—");
   const alunoBi = getSnapshotString(snapshot.aluno_bi, fallbackAlunoBi ?? "—");
