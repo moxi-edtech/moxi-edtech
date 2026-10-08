@@ -44,6 +44,7 @@ export default function BalcaoPageClient({
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(queryAlunoId);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(queryAction);
   const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
+  const [atendimentoKey, setAtendimentoKey] = useState(0);
   const {
     student: commandCenterStudent,
     setStudent: setCommandCenterStudent,
@@ -106,6 +107,20 @@ export default function BalcaoPageClient({
     syncLocation({ actionId });
   }, [setCommandCenterStudent, syncLocation]);
 
+  const handleSwitchStudent = useCallback(() => {
+    // Este aviso protege a transição entre módulos. Ações já submetidas
+    // continuam sob a autoridade do backend; não declarar sucesso localmente.
+    if (activeAction !== "desk" && !window.confirm(
+      "Quer trocar de aluno? Dados ainda não guardados neste atendimento poderão perder-se."
+    )) return;
+
+    setAtendimentoKey((key) => key + 1);
+    setSelectedAlunoId(null);
+    setCommandCenterStudent(null);
+    setActiveAction("desk");
+    syncLocation({ alunoId: null, actionId: "desk" });
+  }, [activeAction, setCommandCenterStudent, syncLocation]);
+
   const handleAlunoSelected = useCallback((aluno: AlunoDossier | null) => {
     const nextAlunoId = aluno?.id ?? null;
     setSelectedAlunoId(nextAlunoId);
@@ -137,6 +152,7 @@ export default function BalcaoPageClient({
       } : null}
       activeAction={activeAction}
       onActionChange={handleActionChange}
+      onSwitchStudent={handleSwitchStudent}
       leading={
         <Link
           href={`/escola/${escolaParam}/secretaria`}
@@ -153,6 +169,7 @@ export default function BalcaoPageClient({
       <section className="mt-4 min-w-0 pb-2">
         {selectedAlunoId || activeAction === "enrollment" ? (
           <CommandCenterPanel
+            key={`student-${selectedAlunoId ?? "new"}-${atendimentoKey}`}
             escolaId={escolaId}
             alunoId={selectedAlunoId}
             turmaId={commandCenterStudent?.turmaId ?? null}
@@ -165,6 +182,7 @@ export default function BalcaoPageClient({
           />
         ) : (
           <BalcaoAtendimento
+            key={`search-${atendimentoKey}`}
             escolaId={escolaId}
             selectedAlunoId={null}
             showSearch

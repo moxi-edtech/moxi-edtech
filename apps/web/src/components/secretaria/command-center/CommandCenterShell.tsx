@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
+import { ArrowLeftRight, X } from "lucide-react";
 
 import { CommandCenterActionBar } from "@/components/secretaria/command-center/CommandCenterActionBar";
 import { getBalcaoAction, type BalcaoActionId } from "@/lib/balcao/action-registry";
@@ -17,6 +17,7 @@ type Props = {
   student: CommandCenterStudent | null;
   activeAction: BalcaoActionId;
   onActionChange: (actionId: BalcaoActionId) => void;
+  onSwitchStudent?: () => void;
   onClose?: () => void;
   leading?: ReactNode;
   trailing?: ReactNode;
@@ -29,6 +30,7 @@ export function CommandCenterShell({
   student,
   activeAction,
   onActionChange,
+  onSwitchStudent,
   onClose,
   leading,
   trailing,
@@ -59,7 +61,19 @@ export function CommandCenterShell({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {student && activeAction !== "enrollment" && onSwitchStudent ? (
+            <button
+              type="button"
+              onClick={onSwitchStudent}
+              className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:border-amber hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C]"
+              aria-label={`Trocar aluno em atendimento: ${student.label}`}
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Trocar aluno</span>
+              <span className="sm:hidden">Trocar</span>
+            </button>
+          ) : null}
           {trailing}
           {variant === "modal" && onClose ? (
             <button
