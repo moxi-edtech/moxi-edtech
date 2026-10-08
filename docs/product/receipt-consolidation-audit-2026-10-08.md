@@ -27,3 +27,13 @@
 O teste isolado do `agent-browser` gerou PDF A4 de 1 página e duas vias com Setembro, Outubro e Novembro (Kz 4.000, 5.000 e 6.000), total Kz 15.000. A mesma estrutura foi renderizada no Financeiro após `onPrintReady`. O teste identificou e corrigiu uma falha de data civil: `2026-10-08` aparecia como 07/10 por deslocamento de fuso; os dois modelos utilizam agora `formatReceiptDate` e o ensaio confirmou 08/10. Evidências em `evidence/receipts-2026-10-08`.
 
 Não se considera aceite o E2E autenticado; os testes de abertura e impressão ainda precisam de ser executados com conta autorizada num ambiente de homologação.
+
+## Reconciliação de incongruências — 08/10, segunda passagem
+
+- **Replay singular**: endpoint Balcão devolvia apenas o pagamento existente ao repetir a chave de idempotência, sem recuperar/emitir o recibo. Agora, após confirmar que aluno, mensalidade, valor e método são idênticos, a execução prossegue **sem nova inserção de pagamento**, mas retoma o RPC de emissão idempotente. Reutilização divergente: 409.
+- **Replay de lote**: o Balcão mantém a chave de idempotência por tentativa até receber confirmação e bloqueia novas cobranças após o retorno de pagamento confirmado. Erro de rede instrui a verificar o histórico antes de qualquer nova tentativa; recuperação permanece ação distinta.
+- **Documento histórico incompleto**: um recibo antigo sem `itens_pagamento` não pode receber silenciosamente conteúdo de um checkout de hoje. A função de enriquecimento devolve erro explícito para documento antigo incompleto; não declara sucesso falso nem reescreve prova histórica.
+- **Pagamento parcial**: `emitir_recibo` exige que a mensalidade esteja paga. Logo, o fluxo de comprovativos de parcelas ainda exige decisão contábil e teste E2E específico; não emitir recibo fiscal por uma função de serviços por analogia. Esta questão permanece como **gate funcional**.
+- **Integridade fiscal**: confirmação do pagamento e emissão/impres­são do documento são operações separadas. O erro do recibo não pode levar a uma segunda cobrança.
+
+A revisão do código não substitui a homologação autenticada, especialmente de parcelas, replays e isolamento entre escolas.

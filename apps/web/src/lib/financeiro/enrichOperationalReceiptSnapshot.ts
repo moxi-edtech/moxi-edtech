@@ -40,14 +40,18 @@ export async function enrichOperationalReceiptSnapshot({
   // Historic receipts are evidence. Replays must not silently recompose them
   // from new client input; deliberate historic repair is a separate audit action.
   const createdAt = Date.parse(doc.created_at);
-  if (!Number.isFinite(createdAt) || Date.now() - createdAt > 60 * 60 * 1000) return;
+  if (!Number.isFinite(createdAt)) throw new Error("RECIBO_ENRICHMENT_INVALID_CREATED_AT");
 
   const existing = doc.dados_snapshot && typeof doc.dados_snapshot === "object" && !Array.isArray(doc.dados_snapshot)
     ? doc.dados_snapshot as Snapshot
     : {};
 
-  // Preserve an already enriched document on idempotent replays.
+  // Preserve an already enriched document on idempotent replays, but
+  // never misreport an incomplete historic receipt as successfully enriched.
   if (Array.isArray(existing.itens_pagamento) && existing.itens_pagamento.length > 0) return;
+  if (Date.now() - createdAt > 60 * 60 * 1000) {
+    throw new Error("RECIBO_HISTORICO_SEM_ITENS_REQUER_REVISAO");
+  }
 
   const allowedKeys = ["tipo_comprovativo", "itens_pagamento", "referencia", "valor_pago", "metodo", "data_pagamento"] as const;
   const additions: Snapshot = {};

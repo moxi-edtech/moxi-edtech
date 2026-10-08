@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, CheckCircle2, CreditCard, Loader2, Printer, QrCode, ArrowRightLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Mensalidade } from "./BalcaoAtendimento";
@@ -45,6 +45,8 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
   const [paymentHistory, setPaymentHistory] = useState<Array<{ amount: number; method: string }>>([]);
   const [recibos, setRecibos] = useState<Array<{ label: string; url: string }>>([]);
   const [recoverableMensalidadeId, setRecoverableMensalidadeId] = useState<string | null>(null);
+  const pendingCheckoutKey = useRef<string | null>(null);
+  const [paymentCommitted, setPaymentCommitted] = useState(false);
 
   const numericAmount = Number(amount);
   const disabledReason = useMemo(() => {
@@ -56,7 +58,7 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
     return null;
   }, [ordered.length, numericAmount, total, method, reference, evidenceUrl]);
 
-  const canSubmit = disabledReason === null && !submitting;
+  const canSubmit = disabledReason === null && !submitting && !paymentCommitted;
 
   // O diálogo é reutilizado entre atendimentos; não deve transportar o estado
   // (em especial comprovativos) de um aluno para outro.
@@ -67,6 +69,8 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
     setPaymentHistory([]);
     setRecibos([]);
     setRecoverableMensalidadeId(null);
+    setPaymentCommitted(false);
+    pendingCheckoutKey.current = null;
   }, [open, alunoId]);
 
   useEffect(() => {
@@ -83,6 +87,10 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
     setSubmitting(true);
     setMessage(null);
     setRecoverableMensalidadeId(null);
+    // A mesma tentativa mantém a chave após perda de resposta da rede.
+    // Não criar uma segunda cobrança ao clicar novamente.
+    const checkoutKey = pendingCheckoutKey.current ?? crypto.randomUUID();
+    pendingCheckoutKey.current = checkoutKey;
     const receiptWindow = window.open("about:blank", "_blank");
     if (receiptWindow) {
       receiptWindow.opener = null;
@@ -98,7 +106,7 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
       // consolidado, referenciando todas as competências no snapshot.
       const response = await fetch("/api/secretaria/pagamentos/processar", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": checkoutKey },
         body: JSON.stringify({
           aluno_id: alunoId,
           ano_letivo_id: anoLetivoId || null,
@@ -116,6 +124,7 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
         throw new Error(json?.error || "Não foi possível registar o lote de pagamentos.");
       }
 
+      setPaymentCommitted(true);
       const paidNow = allocations.reduce((sum, item) => sum + item.amount, 0);
       const reciboUrl = json.recibo?.ok && typeof json.recibo.print_url === "string"
         ? json.recibo.print_url
@@ -126,8 +135,12 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
           : allocations[0].item.nome,
         url: reciboUrl,
       }] : [];
-      if (!reciboUrl) setRecoverableMensalidadeId(allocations[allocations.length - 1]?.item.id ?? null);
-      const recibosPendentes = reciboUrl ? [] : [
+      // A mensalidade parcialmente liquidada não é elegível para o RPC
+      // emitir_recibo. Não oferecer recuperação impossível neste caso.
+      if (!reciboUrl && fullyPaid) {
+        setRecoverableMensalidadeId(allocations[allocations.length - 1]?.item.id ?? null);
+      }
+      const recibosPendentes = reciboUrl || !fullyPaid ? [] : [
         typeof json.recibo?.error === "string"
           ? json.recibo.error
           : "O pagamento foi registado, mas não foi possível emitir o recibo.",
@@ -146,7 +159,9 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
         text: recibosPendentes.length > 0
           ? `Pagamento registado, mas o recibo de ${recibosPendentes.join(", ")} está pendente de emissão.`
           : !fullyPaid
-            ? "Pagamento registado parcialmente. O comprovativo está disponível abaixo."
+            ? reciboUrl
+              ? "Pagamento parcial registado. O comprovativo está disponível abaixo."
+              : "Pagamento parcial registado. O recibo da mensalidade ainda não está disponível; confirme a liquidação antes de tentar recuperá-lo."
             : "Pagamento registado com sucesso. O comprovativo está disponível abaixo.",
       });
       setAmount("");
@@ -154,8 +169,10 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
       if (fullyPaid) onFullyPaid?.();
     } catch (error) {
       receiptWindow?.close();
-      setMessage({ type: "error", text: error instanceof Error ? error.message : "Pagamento não concluído." });
-      onSuccess();
+      setMessage({
+        type: "error",
+        text: `${error instanceof Error ? error.message : "Não foi possível confirmar o pagamento."} Não repita a cobrança sem verificar o histórico financeiro.`,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -396,7 +413,9 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
           {submitting
             ? "A registar pagamento…"
-            : numericAmount >= total
+            : paymentCommitted
+              ? "Pagamento registado — não repetir"
+              : numericAmount >= total
               ? `Liquidar saldo · ${money.format(total)}`
               : `Registar pagamento · ${money.format(Number.isFinite(numericAmount) ? numericAmount : 0)}`}
         </button>
