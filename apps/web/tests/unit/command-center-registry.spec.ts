@@ -88,3 +88,30 @@ test("matrícula abre no mesmo Command Center sem exigir aluno pré-selecionado"
   assert.equal(BALCAO_ACTION_REGISTRY.desk.requiresStudent, false);
   assert.equal(BALCAO_ACTION_REGISTRY.enrollment.requiresStudent, false);
 });
+
+
+test("nova matrícula nunca carrega alunoId anterior no deep link", () => {
+  const href = buildBalcaoActionHref({
+    escolaParam: "escola-demo",
+    portal: "secretaria",
+    alunoId: "aluno-anterior",
+    actionId: "enrollment",
+  });
+  const url = new URL(href, "https://klasse.test");
+  assert.equal(url.searchParams.get("action"), "enrollment");
+  assert.equal(url.searchParams.has("alunoId"), false);
+});
+
+test("pagamentos e rematrícula preservam o aluno selecionado", () => {
+  for (const actionId of ["payment", "reenrollment"] as const) {
+    const href = buildBalcaoActionHref({
+      escolaParam: "escola-demo",
+      portal: "secretaria",
+      alunoId: "aluno-123",
+      actionId,
+    });
+    const url = new URL(href, "https://klasse.test");
+    assert.equal(url.searchParams.get("alunoId"), "aluno-123");
+    assert.equal(url.searchParams.get("action"), actionId);
+  }
+});
