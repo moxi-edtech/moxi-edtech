@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -26,9 +26,13 @@ function parseAction(value: string | null): BalcaoActionId {
 export default function BalcaoPageClient({
   escolaId,
   escolaParam,
+  profileAlunoId,
+  profileDossier,
 }: {
   escolaId: string;
   escolaParam: string;
+  profileAlunoId: string | null;
+  profileDossier: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -175,6 +179,7 @@ export default function BalcaoPageClient({
             turmaId={commandCenterStudent?.turmaId ?? null}
             turmaLabel={commandCenterStudent?.turma ?? null}
             actionId={activeAction}
+            profileDossier={activeAction === "profile" && selectedAlunoId === profileAlunoId ? profileDossier : null}
             returnTo={returnTo}
             onActionChange={handleActionChange}
             onAlunoSelected={handleAlunoSelected}

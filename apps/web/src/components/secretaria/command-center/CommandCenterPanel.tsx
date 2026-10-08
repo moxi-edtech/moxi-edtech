@@ -1,12 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { buildContextualPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
+import type { ReactNode } from "react";
 
-import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
 import { AlunoProfilePanel } from "@/components/secretaria/AlunoProfilePanel";
+import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
 import BalcaoAtendimento, {
   type AlunoDossier,
 } from "@/components/secretaria/BalcaoAtendimento";
@@ -22,6 +19,7 @@ type Props = {
   turmaId?: string | null;
   turmaLabel?: string | null;
   actionId: BalcaoActionId;
+  profileDossier?: ReactNode;
   returnTo?: string | null;
   onActionChange: (actionId: BalcaoActionId) => void;
   onAlunoSelected?: (aluno: AlunoDossier | null) => void;
@@ -34,14 +32,13 @@ export function CommandCenterPanel({
   turmaId = null,
   turmaLabel = null,
   actionId,
+  profileDossier,
   returnTo = null,
   onActionChange,
   onAlunoSelected,
   onSuccess,
 }: Props) {
   const action = getBalcaoAction(actionId);
-  const pathname = usePathname();
-  const escolaParam = getEscolaParamFromPath(pathname);
 
   if (action.panel === "enrollment") {
     return (
@@ -66,27 +63,28 @@ export function CommandCenterPanel({
   }
 
   if (action.panel === "profile") {
-    const href = buildContextualPortalHref(
-      escolaParam,
-      `/secretaria/alunos/${encodeURIComponent(alunoId)}`,
-      pathname,
-    );
     return (
-      <div className="min-w-0 space-y-4">
-        <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-          <div className="min-w-0">
-            <h2 className="text-sm font-bold text-slate-900">Ficha integral do aluno</h2>
-            <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
-              Consulte histórico, dados académicos, financeiro e documentos na ficha completa.
-              Utilize os campos abaixo para atualização rápida.
-            </p>
-          </div>
-          <Link href={href} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-800 hover:border-[#E3B23C] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E3B23C]/20">
-            Abrir ficha completa <ArrowUpRight className="h-4 w-4" />
-          </Link>
+      <section className="min-w-0 space-y-3" aria-label="Perfil integral do aluno">
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold text-slate-900">Perfil integral</h2>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Consulte dados pessoais, financeiro, histórico académico e documentos sem sair do atendimento.
+          </p>
         </div>
-        <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />
-      </div>
+        {profileDossier ?? (
+          <div role="status" className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+            A preparar a ficha integral do aluno...
+          </div>
+        )}
+        <details className="group min-w-0 rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-700 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C] sm:px-5">
+            Atualizar dados pessoais
+          </summary>
+          <div className="min-w-0 border-t border-slate-100 p-3 sm:p-5">
+            <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />
+          </div>
+        </details>
+      </section>
     );
   }
 

@@ -40,3 +40,10 @@ Ver `workspace-product-design-audit-2026-10-07.md`. O Shell exibia altura excess
 - [ ] 6. Perfil integral no Workspace com papéis/polo comprovados (pendente)
 - [ ] 7. Ações principais acessíveis nos fluxos compactos (Shell apenas)
 - [ ] 8. Sem regressões em matrícula/rematrícula/pagamentos E2E (unitários passam; E2E pendente)
+
+## Fase 3 — dossier integral dentro do Workspace (2026-10-08)
+- O servidor da rota `secretaria/balcao` fornece `AlunoPerfilPage` somente quando `action=profile` e `alunoId` está definido, preservando `supabaseServer`, `resolveEscolaIdForUser`, RPC canónico e políticas do domínio. O conteúdo é passado como slot React ao cliente, não via novo endpoint ou dados serializados à mão.
+- `AlunoPerfilPage workspace` omite `DossierHeader` e `AcoesRapidasBalcao`, evitando duplicar identidade e atalhos já presentes no Command Center. `DossierTabs` reutiliza as cinco secções originais e altera apenas espaçamento e rótulo da primeira secção para "Dados pessoais".
+- `CommandCenterPanel` mostra o dossier embutido e a ação secundária expansível "Atualizar dados pessoais", que reutiliza o editor existente. Não foi criado um segundo modelo de Perfil.
+- O slot é mostrado exclusivamente se `selectedAlunoId === profileAlunoId` e a ação ativa for `profile`, impedindo que a ficha do aluno anterior apareça enquanto navegação assíncrona atualiza os parâmetros da rota.
+- **Limite ainda aberto:** faltam testes autenticados ponta a ponta com fixtures multi-papel/polo e capturas dentro do portal completo. Não marcar o gate de Perfil como concluído antes disso.
