@@ -73,6 +73,12 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   let user: any;
   try {
     const sessionResult = await supabase.auth.getSession();
+    if (isRefreshTokenNotFoundError(sessionResult.error)) {
+      redirect("/auth-recover?next=/redirect");
+    }
+    if (sessionResult.error) {
+      throw sessionResult.error;
+    }
     user = sessionResult.data.session?.user ?? null;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {

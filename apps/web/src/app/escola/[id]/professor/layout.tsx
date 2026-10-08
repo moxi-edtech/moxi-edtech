@@ -34,6 +34,12 @@ export default async function ProfessorEscolaLayout({
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
   try {
     const userResult = await supabase.auth.getUser();
+    if (isRefreshTokenNotFoundError(userResult.error)) {
+      redirect("/auth-recover?next=/redirect");
+    }
+    if (userResult.error) {
+      throw userResult.error;
+    }
     user = userResult.data.user;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
