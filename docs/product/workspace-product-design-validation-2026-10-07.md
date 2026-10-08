@@ -47,3 +47,6 @@ Ver `workspace-product-design-audit-2026-10-07.md`. O Shell exibia altura excess
 - `CommandCenterPanel` mostra o dossier embutido e a ação secundária expansível "Atualizar dados pessoais", que reutiliza o editor existente. Não foi criado um segundo modelo de Perfil.
 - O slot é mostrado exclusivamente se `selectedAlunoId === profileAlunoId` e a ação ativa for `profile`, impedindo que a ficha do aluno anterior apareça enquanto navegação assíncrona atualiza os parâmetros da rota.
 - **Limite ainda aberto:** faltam testes autenticados ponta a ponta com fixtures multi-papel/polo e capturas dentro do portal completo. Não marcar o gate de Perfil como concluído antes disso.
+
+### Evidência visual da integração Perfil (2026-10-08)
+Capturas da composição isolada com dados fictícios em [`evidence/workspace-profile-2026-10-08`](evidence/workspace-profile-2026-10-08/README.md). A 911×512 CSS, equivalente à área de 1366×768 a 150%, não houve overflow horizontal do documento; as cinco tabs canónicas apareceram no interior do Shell com cabeçalho único. **Ainda não é prova de autorização, integridade do dossier real ou zoom nativo.**
