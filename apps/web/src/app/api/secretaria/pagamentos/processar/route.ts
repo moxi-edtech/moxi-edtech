@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { enrichOperationalReceiptSnapshot } from "@/lib/financeiro/enrichOperationalReceiptSnapshot";
 import { z } from "zod";
 import { POST as processarPagamentoBalcao } from "../../balcao/pagamentos/route";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -6,7 +7,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import type { Database, Json } from "~types/supabase";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -74,32 +75,6 @@ function normalizeReceiptType(origin: string | undefined, items: PaymentItem[]):
   return hasConfirmation ? "confirmacao" : "pagamento";
 }
 
-async function enrichReceiptSnapshot({
-  supabase,
-  escolaId,
-  docId,
-  extraSnapshot,
-}: {
-  supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>;
-  escolaId: string;
-  docId: string;
-  extraSnapshot: Record<string, unknown>;
-}) {
-  const { data: doc } = await supabase
-    .from("documentos_emitidos")
-    .select("dados_snapshot")
-    .eq("id", docId)
-    .eq("escola_id", escolaId)
-    .maybeSingle();
-
-  const existingSnapshot = asRecord(doc?.dados_snapshot);
-  await supabase
-    .from("documentos_emitidos")
-    .update({ dados_snapshot: { ...existingSnapshot, ...extraSnapshot } as Json })
-    .eq("id", docId)
-    .eq("escola_id", escolaId);
-}
-
 async function emitBatchReceipt({
   supabase,
   escolaId,
@@ -107,6 +82,7 @@ async function emitBatchReceipt({
   metodo,
   origin,
   lastPayment,
+  alunoId,
 }: {
   supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>;
   escolaId: string;
@@ -114,6 +90,7 @@ async function emitBatchReceipt({
   metodo: string;
   origin: string | undefined;
   lastPayment: Record<string, unknown>;
+  alunoId: string;
 }): Promise<BatchReceiptResult> {
   const lastItem = items[items.length - 1];
   if (!lastItem) {
@@ -173,19 +150,28 @@ async function emitBatchReceipt({
 
   if (receipt.ok && receipt.doc_id) {
     const receiptItems = normalizeReceiptItems(items);
-    await enrichReceiptSnapshot({
-      supabase,
-      escolaId,
-      docId: receipt.doc_id,
-      extraSnapshot: {
-        tipo_comprovativo: normalizeReceiptType(origin, items),
-        itens_pagamento: receiptItems,
-        referencia: receiptItems.map((item) => item.descricao).join(", "),
-        valor_pago: receiptItems.reduce((total, item) => total + item.valor, 0),
-        metodo,
-        data_pagamento: new Date().toISOString(),
-      },
-    });
+    try {
+      await enrichOperationalReceiptSnapshot({
+        escolaId,
+        docId: receipt.doc_id,
+        alunoId,
+        extraSnapshot: {
+          tipo_comprovativo: normalizeReceiptType(origin, items),
+          itens_pagamento: receiptItems,
+          referencia: receiptItems.map((item) => item.descricao).join(", "),
+          valor_pago: receiptItems.reduce((total, item) => total + item.valor, 0),
+          metodo,
+          data_pagamento: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      // The payment batch is already committed. Never turn an enrichment
+      // error into an ambiguous HTTP 500 that tempts staff to pay again.
+      console.error("[RECIBO-BATCH][SNAPSHOT]", {
+        message: error instanceof Error ? error.message : "RECIBO_ENRICHMENT_FAILED",
+      });
+      return { ok: false, error: "Pagamento registado, mas o recibo precisa de recuperação." };
+    }
   }
 
   return receipt;
@@ -359,6 +345,7 @@ export async function POST(request: Request) {
     metodo,
     origin: parsed.data.origem,
     lastPayment: ultimoPagamento,
+    alunoId: parsed.data.aluno_id,
   });
 
   if (!idempotent) {

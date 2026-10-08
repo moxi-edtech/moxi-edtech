@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { enrichOperationalReceiptSnapshot } from "@/lib/financeiro/enrichOperationalReceiptSnapshot";
 import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
@@ -77,32 +78,6 @@ function normalizeReceiptType(meta: Record<string, unknown>): "pagamento" | "mat
     return `${row.codigo ?? ""} ${row.nome ?? ""}`.toLowerCase().includes("rematric");
   });
   return hasConfirmation ? "confirmacao" : "pagamento";
-}
-
-async function enrichReceiptSnapshot({
-  supabase,
-  escolaId,
-  docId,
-  extraSnapshot,
-}: {
-  supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>;
-  escolaId: string;
-  docId: string;
-  extraSnapshot: Record<string, unknown>;
-}) {
-  const { data: doc } = await supabase
-    .from("documentos_emitidos")
-    .select("dados_snapshot")
-    .eq("id", docId)
-    .eq("escola_id", escolaId)
-    .maybeSingle();
-  const existingSnapshot = asRecord(doc?.dados_snapshot);
-
-  await supabase
-    .from("documentos_emitidos")
-    .update({ dados_snapshot: { ...existingSnapshot, ...extraSnapshot } as Json })
-    .eq("id", docId)
-    .eq("escola_id", escolaId);
 }
 
 export async function POST(request: Request) {
@@ -375,10 +350,10 @@ export async function POST(request: Request) {
             : { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
         }
         if (recibo.ok && recibo.doc_id) {
-          await enrichReceiptSnapshot({
-            supabase,
+          await enrichOperationalReceiptSnapshot({
             escolaId,
             docId: recibo.doc_id,
+            alunoId: payload.aluno_id,
             extraSnapshot: {
               tipo_comprovativo: receiptType,
               itens_pagamento: receiptItems,
@@ -411,10 +386,10 @@ export async function POST(request: Request) {
             print_url: docId ? `/secretaria/documentos/${docId}/recibo/print` : null,
           };
           if (docId) {
-            await enrichReceiptSnapshot({
-              supabase,
+            await enrichOperationalReceiptSnapshot({
               escolaId,
               docId,
+              alunoId: payload.aluno_id,
               extraSnapshot: {
                 tipo_comprovativo: receiptType,
                 itens_pagamento: receiptItems,

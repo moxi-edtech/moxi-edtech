@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Banknote, CheckCircle2, CreditCard, Loader2, Printer, QrCode, ArrowRightLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Mensalidade } from "./BalcaoAtendimento";
+import { allocateDebtPayment, toDebtReceiptItems } from "@/lib/financeiro/debtBatch";
 
 type Metodo = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
@@ -43,6 +44,7 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<Array<{ amount: number; method: string }>>([]);
   const [recibos, setRecibos] = useState<Array<{ label: string; url: string }>>([]);
+  const [recoverableMensalidadeId, setRecoverableMensalidadeId] = useState<string | null>(null);
 
   const numericAmount = Number(amount);
   const disabledReason = useMemo(() => {
@@ -64,6 +66,7 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
     setMessage(null);
     setPaymentHistory([]);
     setRecibos([]);
+    setRecoverableMensalidadeId(null);
   }, [open, alunoId]);
 
   useEffect(() => {
@@ -79,6 +82,7 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
 
     setSubmitting(true);
     setMessage(null);
+    setRecoverableMensalidadeId(null);
     const receiptWindow = window.open("about:blank", "_blank");
     if (receiptWindow) {
       receiptWindow.opener = null;
@@ -87,58 +91,47 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
     }
     try {
       const fullyPaid = value >= total;
-      let amountToAllocate = value;
-      const allocations: Array<{ item: Mensalidade; amount: number }> = [];
-      for (const item of ordered) {
-        if (amountToAllocate <= 0) break;
-        const allocated = Math.min(amountToAllocate, item.preco);
-        allocations.push({ item, amount: allocated });
-        amountToAllocate -= allocated;
+      const allocations = allocateDebtPayment(ordered, value);
+
+      // Registar o conjunto numa única operação atómica evita liquidar parte
+      // das mensalidades caso outra falhe. O backend cria um único recibo
+      // consolidado, referenciando todas as competências no snapshot.
+      const response = await fetch("/api/secretaria/pagamentos/processar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({
+          aluno_id: alunoId,
+          ano_letivo_id: anoLetivoId || null,
+          origem: "pos_virada",
+          metodo_pagamento: method,
+          detalhes: {
+            referencia: reference.trim() || null,
+            evidencia_url: evidenceUrl.trim() || null,
+          },
+          itens: toDebtReceiptItems(allocations),
+        }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Não foi possível registar o lote de pagamentos.");
       }
 
-      let paidNow = 0;
-      const recibosEmitidos: Array<{ label: string; url: string }> = [];
-      const recibosPendentes: string[] = [];
-      for (const [index, allocation] of allocations.entries()) {
-        const { item, amount: allocated } = allocation;
-        const shouldEmitReceipt = index === allocations.length - 1;
-        const response = await fetch("/api/secretaria/balcao/pagamentos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-          body: JSON.stringify({
-            aluno_id: alunoId,
-            mensalidade_id: item.id,
-            valor: allocated,
-            metodo: method,
-            reference: reference.trim() || null,
-            evidence_url: evidenceUrl.trim() || null,
-            ano_letivo_id: anoLetivoId || undefined,
-            meta: {
-              origem: "pos_virada",
-              matricula_origem_id: item.origem_matricula_id,
-              origem_pagamento: "regularizacao_divida_balcao",
-              emitir_recibo: shouldEmitReceipt,
-              itens: allocations.map(({ item: receiptItem, amount }) => ({
-                id: receiptItem.id,
-                tipo: "mensalidade",
-                nome: receiptItem.nome,
-                preco: amount,
-              })),
-            },
-          }),
-        });
-        const json = await response.json().catch(() => ({}));
-        if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível registar o pagamento.");
-        if (shouldEmitReceipt && json.recibo?.ok && typeof json.recibo.print_url === "string") {
-          recibosEmitidos.push({
-            label: allocations.length > 1 ? `Recibo consolidado (${allocations.length} mensalidades)` : item.nome,
-            url: json.recibo.print_url,
-          });
-        } else if (shouldEmitReceipt) {
-          recibosPendentes.push(item.nome);
-        }
-        paidNow += allocated;
-      }
+      const paidNow = allocations.reduce((sum, item) => sum + item.amount, 0);
+      const reciboUrl = json.recibo?.ok && typeof json.recibo.print_url === "string"
+        ? json.recibo.print_url
+        : null;
+      const recibosEmitidos = reciboUrl ? [{
+        label: allocations.length > 1
+          ? `Recibo consolidado (${allocations.length} mensalidades)`
+          : allocations[0].item.nome,
+        url: reciboUrl,
+      }] : [];
+      if (!reciboUrl) setRecoverableMensalidadeId(allocations[allocations.length - 1]?.item.id ?? null);
+      const recibosPendentes = reciboUrl ? [] : [
+        typeof json.recibo?.error === "string"
+          ? json.recibo.error
+          : "O pagamento foi registado, mas não foi possível emitir o recibo.",
+      ];
       setPaymentHistory((history) => [...history, { amount: paidNow, method: methods.find((item) => item.id === method)?.label ?? method }]);
       setRecibos((previous) => [...previous, ...recibosEmitidos]);
       const reciboPrincipal = recibosEmitidos[recibosEmitidos.length - 1];
@@ -163,6 +156,39 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
       receiptWindow?.close();
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Pagamento não concluído." });
       onSuccess();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const recoverReceipt = async () => {
+    if (!recoverableMensalidadeId || submitting) return;
+    setSubmitting(true);
+    // Open synchronously in the click handler so browser popup blockers do not
+    // discard the recovered document after the authenticated network request.
+    const receiptWindow = window.open("about:blank", "_blank");
+    if (receiptWindow) receiptWindow.opener = null;
+    try {
+      const response = await fetch("/api/secretaria/recibos/recuperar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensalidade_id: recoverableMensalidadeId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.ok || typeof result.print_url !== "string") {
+        throw new Error(result?.error || "Não foi possível recuperar o recibo.");
+      }
+      setRecibos((previous) => [...previous, {
+        label: "Recibo recuperado",
+        url: result.print_url,
+      }]);
+      setRecoverableMensalidadeId(null);
+      setMessage({ type: "success", text: "Recibo disponível para impressão. Não foi registado um novo pagamento." });
+      if (receiptWindow) receiptWindow.location.replace(result.print_url);
+      else window.open(result.print_url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      receiptWindow?.close();
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "Falha ao recuperar recibo." });
     } finally {
       setSubmitting(false);
     }
@@ -313,6 +339,18 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
           {message.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : null}
           {message.text}
         </p>
+      ) : null}
+
+      {recoverableMensalidadeId ? (
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => void recoverReceipt()}
+          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-amber px-3 text-xs font-bold text-slate-800 hover:bg-amber/10 disabled:opacity-50"
+        >
+          <Printer className="h-4 w-4" />
+          Recuperar recibo sem repetir o pagamento
+        </button>
       ) : null}
 
       {paymentHistory.length > 0 ? (

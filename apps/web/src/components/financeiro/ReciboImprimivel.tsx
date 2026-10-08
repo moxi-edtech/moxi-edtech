@@ -212,20 +212,19 @@ export function ReciboPrintButton({
   const { isEnabled: canPrintReceipt } = usePlanFeature("fin_recibo_pdf");
   const [status, setStatus] = useState<"idle" | "loading" | "preparing" | "success">("idle");
   const [recibo, setRecibo] = useState<ReciboPayload | null>(null);
+  const [canRecover, setCanRecover] = useState(false);
 
-  useEffect(() => {
-    if (status !== "preparing" || !recibo) return;
-
-    const id = window.setTimeout(() => {
-      window.print();
-      setStatus("success");
-      window.setTimeout(() => setStatus("idle"), 2000);
-    }, 800);
-
-    return () => window.clearTimeout(id);
-  }, [status, recibo]);
+  // A janela de impressão só pode abrir depois de o documento, incluindo
+  // a imagem da escola, ter sido montado e renderizado.
+  const handleReceiptReady = () => {
+    if (status !== "preparing") return;
+    window.print();
+    setStatus("success");
+    window.setTimeout(() => setStatus("idle"), 2000);
+  };
 
   async function handlePrint() {
+    setCanRecover(false);
     setStatus("loading");
     try {
       const res = await fetch("/api/financeiro/recibos/emitir", {
@@ -245,12 +244,48 @@ export function ReciboPrintButton({
       setStatus("preparing");
     } catch (_err) {
       setStatus("idle");
+      setCanRecover(true);
       error("Erro na emissão", "Não conseguimos gerar o recibo para impressão no momento.");
     }
   }
 
+  async function handleRecover() {
+    const receiptWindow = window.open("about:blank", "_blank");
+    if (receiptWindow) receiptWindow.opener = null;
+    setStatus("loading");
+    try {
+      const response = await fetch("/api/secretaria/recibos/recuperar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensalidade_id: mensalidadeId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.ok || typeof result.print_url !== "string") {
+        throw new Error(result?.error || "Recibo indisponível.");
+      }
+      if (receiptWindow) receiptWindow.location.replace(result.print_url);
+      else window.open(result.print_url, "_blank", "noopener,noreferrer");
+      setCanRecover(false);
+    } catch (err) {
+      receiptWindow?.close();
+      error("Recuperação do recibo", err instanceof Error ? err.message : "Não foi possível recuperar o recibo.");
+    } finally {
+      setStatus("idle");
+    }
+  }
+
   return (
-    <div className="flex items-center justify-end">
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {canRecover && canPrintReceipt ? (
+        <button
+          type="button"
+          onClick={() => void handleRecover()}
+          disabled={status !== "idle"}
+          className="rounded-xl border border-amber px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-amber/10 disabled:opacity-50"
+        >
+          Recuperar comprovativo operacional
+        </button>
+      ) : null}
       <motion.button
         type="button"
         onClick={handlePrint}
@@ -346,6 +381,7 @@ export function ReciboPrintButton({
           titularConta={titularConta}
           iban={iban}
           kwikChave={kwikChave}
+          onPrintReady={handleReceiptReady}
         />
       ) : null}
     </div>
