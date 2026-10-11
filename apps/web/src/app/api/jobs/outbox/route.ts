@@ -13,6 +13,7 @@ import {
 } from "@/lib/server/whatsappUtility";
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
+import { buildOutboxTransition, paymentReceiptKey } from "@/lib/server/outbox-transition";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -114,23 +115,15 @@ async function markEvent(
   lastError?: string | null
 ) {
   if (!admin) return;
-  const attempts = event.attempts ?? 0;
-  const maxAttempts = event.max_attempts ?? 5;
-  const shouldDead = status === "failed" && attempts >= maxAttempts;
-  const backoffMinutes = Math.min(60, Math.pow(2, Math.max(0, attempts))) * 5;
   const { error } = await admin
     .from("outbox_events")
-    .update({
-      status: shouldDead ? "dead" : status,
-      processed_at: status === "sent" ? new Date().toISOString() : null,
-      last_error: lastError ?? null,
-      next_attempt_at:
-        status === "failed" && !shouldDead
-          ? new Date(Date.now() + backoffMinutes * 60 * 1000).toISOString()
-          : null,
-      locked_at: null,
-      locked_by: null,
-    })
+    .update(buildOutboxTransition({
+      status,
+      attempts: event.attempts ?? 0,
+      maxAttempts: event.max_attempts,
+      now: new Date(),
+      lastError,
+    }))
     .eq("id", event.id);
 
   if (error) throw error;
@@ -819,6 +812,10 @@ async function emitirReciboPagamento(
       }
       throw rpcError;
     }
+    if (res && typeof res === "object" && "ok" in res && res.ok === false) {
+      // A stored-function application error is not a successfully sent receipt.
+      throw new Error("emissão de recibo não concluída pela RPC");
+    }
     return;
   }
 
@@ -835,26 +832,38 @@ async function emitirReciboPagamento(
   const row = pagamento as PagamentoRow;
   if (!row.aluno_id) throw new Error("pagamento sem aluno_id");
 
-  if (row.mensalidade_id) {
-    const { data: existingMensalidadeDoc } = await admin
+  const receiptKey = paymentReceiptKey(row.id);
+  const findExisting = async () => {
+    const byKey = await admin
       .from("documentos_emitidos")
       .select("id")
-      .eq("tipo", "recibo")
-      .eq("mensalidade_id", row.mensalidade_id)
+      .eq("escola_id", row.escola_id)
+      .eq("idempotency_key", receiptKey)
       .maybeSingle();
-
-    if (existingMensalidadeDoc?.id) return;
-  } else {
-    const { data: existingByPagamento } = await admin
+    if (byKey.error) throw byKey.error;
+    if (byKey.data?.id) return true;
+    if (row.mensalidade_id) {
+      const byMonthly = await admin
+        .from("documentos_emitidos")
+        .select("id")
+        .eq("tipo", "recibo")
+        .eq("mensalidade_id", row.mensalidade_id)
+        .maybeSingle();
+      if (byMonthly.error) throw byMonthly.error;
+      return Boolean(byMonthly.data?.id);
+    }
+    // Historical documents may predate deterministic idempotency_key.
+    const legacy = await admin
       .from("documentos_emitidos")
       .select("id")
       .eq("tipo", "recibo")
       .eq("escola_id", row.escola_id)
       .contains("dados_snapshot", { pagamento_id: row.id })
       .limit(1);
-
-    if ((existingByPagamento ?? []).length > 0) return;
-  }
+    if (legacy.error) throw legacy.error;
+    return (legacy.data ?? []).length > 0;
+  };
+  if (await findExisting()) return;
 
   const valor = Number(row.valor_pago ?? 0);
   if (!Number.isFinite(valor) || valor <= 0) throw new Error("pagamento com valor inválido");
@@ -865,6 +874,7 @@ async function emitirReciboPagamento(
     aluno_id: row.aluno_id,
     mensalidade_id: row.mensalidade_id,
     tipo: "recibo",
+    idempotency_key: receiptKey,
     dados_snapshot: {
       origem: "pagamento_auto",
       pagamento_id: row.id,
@@ -879,7 +889,10 @@ async function emitirReciboPagamento(
     hash_validacao: hash,
   });
 
-  if (insertDocError && insertDocError.code !== "23505") {
+  if (insertDocError) {
+    // A generic 23505 may refer to a different unique constraint: verify
+    // the same receipt exists before classifying the replay as idempotent.
+    if (insertDocError.code === "23505" && await findExisting()) return;
     throw insertDocError;
   }
 }
