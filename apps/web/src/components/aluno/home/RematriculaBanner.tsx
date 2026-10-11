@@ -23,6 +23,7 @@ type RematriculaStatus = {
     dadosPagamento?: { iban?: string; banco?: string; titular?: string; kwik_chave?: string }
     paymentIntent?: { id: string; status: string; amount: number; reference?: string | null; has_evidence?: boolean; submitted_at?: string | null; mensagem_aluno?: string | null; itens_pagamento?: Array<{ nome?: string; descricao?: string; valor?: number; quantidade?: number }>; rejection_reason?: string | null; receipt_pending?: boolean; receipt_url?: string | null } | null
     destination?: { curso_id: string; classe_id: string; classe_nome: string; classe_numero: number } | null
+    reservation?: { matricula_id: string; status?: string | null; ativo: boolean; turma_id?: string | null } | null
   }
 }
 
@@ -193,6 +194,8 @@ export function RematriculaBanner() {
     'ACADEMIC_PROMOTION_PENDING',
     'ACADEMIC_REVIEW_REQUIRED',
     'ACADEMIC_CONDITIONAL_BLOCKED',
+    'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED',
+    'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED',
     'ACADEMIC_NOT_APPROVED',
     'ACADEMIC_CYCLE_COMPLETED',
     'REMATRICULA_DEBT_REQUIRED',
@@ -229,6 +232,24 @@ export function RematriculaBanner() {
       </div>
     }
 
+    if (status.code === 'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED') {
+      return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+        <p className="font-black">Retenção por faltas em validação</p>
+        <p className="mt-1">{status.reason || 'A regra escolar precisa ser validada antes da nova matrícula na mesma classe.'}</p>
+        <p className="mt-2 text-xs font-semibold">Próximo passo: contacte a secretaria para rever frequência e a regra aplicável.</p>
+        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-amber-800 shadow-sm">Atualizar estado</button>
+      </div>
+    }
+
+    if (status.code === 'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED') {
+      return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900">
+        <p className="font-black">Decisão administrativa necessária</p>
+        <p className="mt-1">{status.reason || 'A retenção por indisciplina não permite rematrícula automática.'}</p>
+        <p className="mt-2 text-xs font-semibold">Próximo passo: a secretaria/direção deve concluir a decisão disciplinar aplicável.</p>
+        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button>
+      </div>
+    }
+
     if (status.code === 'ACADEMIC_NOT_APPROVED') {
       return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900">
         <p className="font-black">Resultado académico não autoriza rematrícula</p>
@@ -249,8 +270,8 @@ export function RematriculaBanner() {
     if (status.code === 'REMATRICULA_DEBT_REQUIRED') {
       return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
         <p className="font-black">Regularização financeira necessária</p>
-        <p className="mt-1">{status.reason || 'Regularize todos os saldos em aberto antes de rematricular.'}</p>
-        <p className="mt-2 text-xs font-semibold">O RAA autoriza a progressão, mas a rematrícula permanece bloqueada enquanto houver saldo em aberto.</p>
+        <p className="mt-1">{status.reason || 'Regularize os saldos vencidos antes de rematricular.'}</p>
+        <p className="mt-2 text-xs font-semibold">O RAA autoriza a progressão, mas a rematrícula permanece bloqueada enquanto houver saldo vencido.</p>
         <button type="button" onClick={() => window.location.assign('/aluno/financeiro')} className="mt-3 rounded-xl bg-amber-700 px-4 py-2 text-xs font-black text-white">Abrir financeiro</button>
       </div>
     }
@@ -300,8 +321,12 @@ export function RematriculaBanner() {
               : status.alreadyDone
                 ? 'Seu pedido de rematrícula já foi iniciado!'
                 : status.hasDebt
-                  ? 'A sua vaga está reservada; falta regularizar as mensalidades.'
-                : 'Sua vaga está pré-reservada!'}
+                  ? status.rematricula?.reservation
+                    ? 'A sua vaga está reservada; falta regularizar as mensalidades vencidas.'
+                    : 'Regularize as mensalidades vencidas para continuar'
+                : status.rematricula?.reservation
+                  ? 'Sua vaga está pré-reservada!'
+                  : 'Você está elegível para continuar a rematrícula'}
           </h3>
           <p className="text-sm text-slate-600 mt-1 max-w-md">
             {status.alreadyDone 
@@ -320,6 +345,14 @@ export function RematriculaBanner() {
                     ? `Confirme a continuidade no Ano Letivo ${status.nextAno} com o valor calculado para a sua classe destino.`
                     : `Confirme a continuidade no Ano Letivo ${status.nextAno}. Esta rematrícula não exige pagamento.`)}
           </p>
+          {status.academic?.decision === 'retido' ? (
+            <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
+              <p className="font-black">Repetição da mesma classe autorizada pelo RAA</p>
+              <p className="mt-1">
+                O resultado académico foi retido. A rematrícula continua no próximo ano letivo, mas a classe destino deve ser a mesma da matrícula de origem.
+              </p>
+            </div>
+          ) : null}
           {status.academic?.decision === 'inscricao_condicional' ? (
             <div className="mt-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-900">
               <p className="font-black">Progressão condicional autorizada pelo RAA</p>

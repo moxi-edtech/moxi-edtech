@@ -7,6 +7,7 @@ import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
+import { AcademicYearContextError, resolveAcademicYearContext, type AcademicWorkspaceMode } from '@/lib/academic-year/context'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
@@ -36,14 +37,28 @@ const UpdateSchema = z.object({
 })
 
 // GET aluno details (alunos + profiles)
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const alunoId = id
+    const requestedAcademicYearId = new URL(req.url).searchParams.get('ano_letivo_id')
+    if (requestedAcademicYearId && !z.string().uuid().safeParse(requestedAcademicYearId).success) {
+      return NextResponse.json({ ok: false, error: 'Ano letivo inválido' }, { status: 400 })
+    }
     const s = await supabaseServerTyped<any>()
     const { data: userRes } = await s.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+
+    let requestedAcademicMode: AcademicWorkspaceMode | null = null
+    if (requestedAcademicYearId) {
+      const academicContext = await resolveAcademicYearContext(s as any, {
+        userId: user.id,
+        requestedAcademicYearId,
+        operation: 'READ',
+      })
+      requestedAcademicMode = academicContext.mode
+    }
 
     // perfil do requester para escopo da escola
     const { data: prof } = await s
@@ -69,7 +84,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     let alunoQuery = s
       .from('alunos')
-      .select('id, nome, email, telefone, data_nascimento, sexo, bi_numero, tipo_documento, numero_documento, naturalidade, provincia, pai_nome, mae_nome, nif, endereco, responsavel, responsavel_nome, responsavel_contato, encarregado_nome, encarregado_telefone, encarregado_email, encarregado_relacao, telefone_responsavel, responsavel_financeiro_nome, responsavel_financeiro_nif, mesmo_que_encarregado, documentos, campos_extras, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email_real, email_auth, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, nif, encarregado_relacao, numero_processo_login)')
+      .select('id, nome, numero_processo, email, telefone, data_nascimento, sexo, bi_numero, tipo_documento, numero_documento, naturalidade, provincia, pai_nome, mae_nome, nif, endereco, responsavel, responsavel_nome, responsavel_contato, encarregado_nome, encarregado_telefone, encarregado_email, encarregado_relacao, telefone_responsavel, responsavel_financeiro_nome, responsavel_financeiro_nif, mesmo_que_encarregado, documentos, campos_extras, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email_real, email_auth, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, nif, encarregado_relacao, numero_processo_login)')
       .eq('id', alunoId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -100,11 +115,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
 
     const profObj = Array.isArray((aluno as any).profiles) ? (aluno as any).profiles[0] : (aluno as any).profiles
-    const { data: matricula } = await s
+    let matriculaQuery = s
       .from('matriculas')
-      .select('id, turma_id, created_at, status, turmas ( nome, cursos ( nome ) )')
+      .select('id, turma_id, session_id, ativo, created_at, status, turmas ( nome, turma_codigo, classes ( nome ), cursos ( nome ) )')
       .eq('aluno_id', alunoId)
       .eq('escola_id', alunoEscolaId)
+
+    if (requestedAcademicYearId) {
+      matriculaQuery = matriculaQuery.eq('session_id', requestedAcademicYearId)
+      if (requestedAcademicMode === 'CURRENT') {
+        matriculaQuery = matriculaQuery.eq('ativo', true)
+      }
+    }
+
+    const { data: matricula } = await matriculaQuery
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -120,6 +144,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     const turma = Array.isArray((matricula as any)?.turmas) ? (matricula as any)?.turmas?.[0] : (matricula as any)?.turmas
     const curso = Array.isArray((turma as any)?.cursos) ? (turma as any)?.cursos?.[0] : (turma as any)?.cursos
+    const classe = Array.isArray((turma as any)?.classes) ? (turma as any)?.classes?.[0] : (turma as any)?.classes
     const dadosCandidato = (candidatura as any)?.dados_candidato ?? {}
     const profileEmail = profObj?.email ?? profObj?.email_real ?? profObj?.email_auth ?? null
     const responsavelNome =
@@ -142,6 +167,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         escola_id: alunoEscolaId,
         email: (aluno as any).email ?? profileEmail ?? dadosCandidato?.email ?? null,
         numero_processo_login: profObj?.numero_processo_login ?? null,
+        numero_processo: (aluno as any).numero_processo ?? profObj?.numero_processo_login ?? null,
         telefone: (aluno as any).telefone ?? profObj?.telefone ?? dadosCandidato?.telefone ?? null,
         data_nascimento: (aluno as any).data_nascimento ?? profObj?.data_nascimento ?? dadosCandidato?.data_nascimento ?? null,
         sexo: (aluno as any).sexo ?? profObj?.sexo ?? dadosCandidato?.sexo ?? null,
@@ -163,10 +189,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         campos_extras: (aluno as any).campos_extras ?? dadosCandidato?.campos_extras ?? {},
         turma_id: (matricula as any)?.turma_id ?? null,
         turma_nome: (turma as any)?.nome ?? null,
+        turma_codigo: (turma as any)?.turma_codigo ?? null,
+        classe_nome: (classe as any)?.nome ?? null,
         turma_curso: (curso as any)?.nome ?? null,
       }
     })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

@@ -1,8 +1,8 @@
 # Contrato de estados — Matrícula, resultado académico e rematrícula
 
-**Versão:** 1.2
+**Versão:** 1.3
 
-**Data:** 2026-08-23
+**Data:** 2026-10-02
 
 **Âmbito:** KLASSE — Secretaria, Portal do Aluno, Académico e Financeiro
 
@@ -331,12 +331,79 @@ No portal, a jornada financeira deve preservar o mesmo contexto:
 | Snapshot de preço no pedido/intenção | Preparado em migration não aplicada |
 | Recuperação do modal para origem histórica | Implementada no working tree |
 | Atualização do banner ao regressar ao portal | Implementada no working tree |
-| Guards RAA/financeiro nas RPCs de portal, balcão e lote | Preparados em migrations não aplicadas |
+| Guards RAA/financeiro nas RPCs de portal, balcão e lote | Aplicados e validados no remoto em 2026-10-02 |
+| Rematrícula de `retido` para repetição da mesma classe | Implementada e aplicada no remoto em 2026-10-02 |
+| Retenção por faltas | Bloqueada para validação escolar explícita |
+| Retenção por indisciplina | Bloqueada até decisão administrativa explícita |
 | Separação estrutural entre `status` e `resultado_final` | Não implementada |
-| Filtro estrito de dívida vencida versus valores futuros | Pendente |
+| Filtro estrito de dívida vencida versus valores futuros | Implementado e aplicado no remoto em 2026-10-02 |
 | Acordo aprovado como desbloqueio financeiro | Pendente de política e implementação |
 | Correcção inline de notas/frequência no cockpit | Pendente |
-| Aplicação e validação no banco remoto | Pendente de aprovação |
+| Aplicação e validação REM-GR-003 no banco remoto | Concluída em 2026-10-02 |
+
+## Auditoria de paridade — 2026-10-02
+
+A auditoria cruzada de Secretaria, Portal do Aluno, modal de rematrícula e
+entrypoints transacionais confirmou o lifecycle de dependências e introduziu
+dois endurecimentos adicionais:
+
+- **REM-GR-001 — dívida vencida canónica:** somente saldo positivo com
+  `data_vencimento < CURRENT_DATE` bloqueia a confirmação da rematrícula.
+  Cobranças futuras e cobranças que vencem no próprio dia não são
+  inadimplência. Portal, Balcão, RPC do aluno, trigger de concessão e lote devem
+  aplicar a mesma definição.
+- **REM-GR-002 — inscrição condicional estrita no lote:**
+  `inscricao_condicional` só pode avançar quando
+  `destino = 'proxima_etapa'` e
+  `efetivacao_matricula_bloqueada = false`. `recurso`, decisão pendente,
+  conclusão de ciclo, decisão desconhecida ou inscrição condicional bloqueada
+  permanecem fora da efetivação.
+- A progressão anual em massa preserva a matrícula de origem como
+  `concluido` ou `reprovado`; `transferido` não é usado como sinónimo de
+  progressão normal.
+- O Portal só apresenta linguagem de “vaga reservada” quando existe uma
+  matrícula destino real ligada por `origem_transicao_matricula_id`.
+- A cobertura automatizada inclui cobrança futura, vencimento no próprio dia,
+  pagamento parcial vencido e introspecção SQL dos guards de portal/lote.
+
+A paridade REM-GR-001/002 foi aplicada no ambiente remoto em 2026-10-02.
+O Supabase registou a execução como
+`20261002115520 rematricula_contract_parity`; o repositório mantém
+`20270826128000_rematricula_contract_parity.sql` como migration canónica e
+um marker local para reconciliar o histórico.
+
+## REM-GR-003 — repetição da mesma classe após retenção
+
+A decisão `retido` não significa “não elegível para rematrícula”. Significa
+que o aluno não progride para a etapa seguinte e deve, quando a janela e o gate
+financeiro permitirem, criar/ativar uma matrícula no ano letivo destino
+**na mesma classe**.
+
+Contrato:
+
+- `retido + destino=mesma_etapa` → elegível em modo `repeat`;
+- o flag `efetivacao_matricula_bloqueada` usado para impedir progressão
+  jurídica não transforma a retenção por aproveitamento em proibição de repetir;
+- `retido_por_faltas` não é automatizado: exige validação da regra escolar;
+- `retido_por_indisciplina` não é automatizado: exige decisão administrativa;
+- Portal, Balcão, preparação de reserva e lote não podem oferecer turma da classe
+  seguinte a um aluno retido;
+- a matrícula de origem permanece historicamente `reprovado`, nunca
+  `concluido`, depois da confirmação da repetição;
+- `preparar_aluno_para_rematricula` cria/reutiliza a reserva sem bloquear por
+  dívida; a dívida vencida continua sendo gate apenas da confirmação/ativação;
+- a rota HTTP legacy `/api/aluno/rematricula/confirmar` delega ao RPC canónico
+  `aluno_iniciar_rematricula`, e o RPC legacy homónimo deixa de ficar exposto
+  a `authenticated`.
+
+Migration preparada:
+`20270826129000_rematricula_retention_repeat.sql`.
+
+Estado em 2026-10-02: implementação e regressões verdes no branch e migration
+REM-GR-003 aplicada ao Supabase live. O ledger remoto registou
+`20261002125251 rematricula_retention_repeat`; o repositório mantém
+`20270826129000_rematricula_retention_repeat.sql` como migration canónica e
+`20261002125251_rematricula_retention_repeat.sql` como marker de reconciliação.
 
 ## Aplicação ao caso de Enfermagem
 

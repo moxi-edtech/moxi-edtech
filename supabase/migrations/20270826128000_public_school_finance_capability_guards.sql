@@ -93,15 +93,9 @@ GRANT EXECUTE ON FUNCTION public.school_finance_model(uuid) TO authenticated, se
 GRANT EXECUTE ON FUNCTION public.school_finance_allows_operation(uuid, text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.assert_school_finance_operation(uuid, text) TO authenticated, service_role;
 
--- Enforce the institutional invariant at the table boundary. NOT VALID avoids
--- turning a historical bad row into a deployment outage, while still enforcing
--- the rule for every new/updated row.
-ALTER TABLE public.school_operating_profiles
-  DROP CONSTRAINT IF EXISTS school_operating_profiles_public_no_tuition_check;
-ALTER TABLE public.school_operating_profiles
-  ADD CONSTRAINT school_operating_profiles_public_no_tuition_check
-  CHECK (NOT (school_sector = 'public' AND finance_model = 'tuition'))
-  NOT VALID;
+-- Do not hardcode legal eligibility by school_sector. Finance permissions
+-- derive from the reviewed finance_model and can be configured independently.
+-- No sector-based constraint is introduced by this migration.
 
 -- New recurring charges cannot be created for a model that does not support
 -- tuition. Historical rows may still be cancelled/waived after a profile

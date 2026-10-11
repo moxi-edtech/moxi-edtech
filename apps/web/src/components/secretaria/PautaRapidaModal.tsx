@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
@@ -36,8 +36,6 @@ type PeriodoItem = {
   dt_fim?: string | null;
 };
 
-const cx = (...classes: Array<string | false | null | undefined>) =>
-  classes.filter(Boolean).join(" ");
 
 type PautaRapidaModalProps = {
   initialTurmaId?: string;
@@ -47,6 +45,7 @@ type PautaRapidaModalProps = {
   lockTurma?: boolean;
   showPeriodoTabs?: boolean;
   pendingPeriodoNumeros?: number[];
+  focusAlunoId?: string;
   hideNavigation?: boolean;
 };
 
@@ -58,11 +57,14 @@ export function PautaRapidaModal({
   lockTurma = false,
   showPeriodoTabs = false,
   pendingPeriodoNumeros = [],
-  hideNavigation = false,
+  focusAlunoId,
+  hideNavigation: _hideNavigation = false,
 }: PautaRapidaModalProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
+  const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
+  const [academicYearId, setAcademicYearId] = useState<string | null>(requestedAcademicYearId);
+  const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ" | null>(null);
+  const [academicContextError, setAcademicContextError] = useState<string | null>(null);
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([]);
@@ -74,10 +76,13 @@ export function PautaRapidaModal({
   const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
   const [pautaInitial, setPautaInitial] = useState<StudentGradeRow[]>([]);
-  const [pautaDraft, setPautaDraft] = useState<StudentGradeRow[]>([]);
   const [pautaPesoPorTipo, setPautaPesoPorTipo] = useState<Record<string, number> | null>(null);
   const [pautaComponentes, setPautaComponentes] = useState<string[]>([]);
+  const [pautaNotaMaxima, setPautaNotaMaxima] = useState<number | null>(20);
+  const [pautaNotaCorte, setPautaNotaCorte] = useState<number | null>(10);
+  const [pautaEscala, setPautaEscala] = useState<string | null>(null);
   const [loadingPauta, setLoadingPauta] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -87,11 +92,55 @@ export function PautaRapidaModal({
   }, []);
 
   useEffect(() => {
-    if (initialTurmaId && initialTurmaId !== turmaId) {
+    let active = true;
+    setAcademicYearId(null);
+    setAcademicMode(null);
+    setAcademicContextError(null);
+
+    const query = requestedAcademicYearId
+      ? `?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(requestedAcademicYearId)}`
+      : "";
+
+    void fetch(`/api/academic-context${query}`, { cache: "no-store" })
+      .then((response) => response.json().then((payload) => ({ response, payload })))
+      .then(({ response, payload }) => {
+        if (!active) return;
+        const resolvedId = payload?.context?.anoLetivoId;
+        if (!response.ok || !payload?.ok || typeof resolvedId !== "string") {
+          setAcademicYearId(null);
+          setAcademicMode(null);
+          setAcademicContextError(payload?.error || "Não foi possível identificar o ano letivo.");
+          return;
+        }
+        setAcademicYearId(resolvedId);
+        setAcademicMode(payload.context?.mode === "CURRENT" ? "CURRENT" : "HISTORICAL_READ");
+      })
+      .catch(() => {
+        if (!active) return;
+        setAcademicYearId(null);
+        setAcademicMode(null);
+        setAcademicContextError("Não foi possível identificar o ano letivo.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [requestedAcademicYearId]);
+
+  useEffect(() => {
+    if (lockTurma) {
+      setTurmaId(initialTurmaId ?? "");
+      setDisciplinaId("");
+      setPautaInitial([]);
+      setSaveError(null);
+      return;
+    }
+
+    if (initialTurmaId) {
       setTurmaId(initialTurmaId);
       setDisciplinaId("");
     }
-  }, [initialTurmaId, turmaId]);
+  }, [initialTurmaId, lockTurma]);
 
   useEffect(() => {
     let active = true;
@@ -165,12 +214,19 @@ export function PautaRapidaModal({
     if (target) setPeriodoNumero(target.numero);
   }, [initialPeriodoNumero, periodos]);
 
+  const selectedTurmaDisciplinaId = useMemo(
+    () => disciplinas.find((disciplina) => disciplina.disciplina?.id === disciplinaId)?.id ?? null,
+    [disciplinas, disciplinaId],
+  )
+
   useEffect(() => {
-    if (!turmaId || !disciplinaId || !periodoNumero) {
+    if (!academicYearId || !turmaId || !disciplinaId || !periodoNumero || !selectedTurmaDisciplinaId) {
       setPautaInitial([]);
-      setPautaDraft([]);
       setPautaPesoPorTipo(null);
       setPautaComponentes([]);
+      setPautaNotaMaxima(20);
+      setPautaNotaCorte(10);
+      setPautaEscala(null);
       return;
     }
 
@@ -181,7 +237,10 @@ export function PautaRapidaModal({
         const params = new URLSearchParams({
           disciplinaId,
           trimestre: String(periodoNumero),
+          anoLetivoId: academicYearId,
+          turmaDisciplinaId: selectedTurmaDisciplinaId,
         });
+        if (focusAlunoId) params.set("alunoId", focusAlunoId);
         const res = await fetch(`/api/secretaria/turmas/${turmaId}/pauta-grid?${params.toString()}`, {
           cache: "no-store",
           headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
@@ -189,7 +248,7 @@ export function PautaRapidaModal({
         const json = await res.json().catch(() => ({}));
         if (!active) return;
         if (res.ok && json.ok && Array.isArray(json.items)) {
-          const mapped =
+          const mapped: StudentGradeRow[] =
             json.items.map((row: any, index: number) => ({
               id: row.aluno_id,
               numero: row.numero_chamada ?? index + 1,
@@ -202,14 +261,18 @@ export function PautaRapidaModal({
               is_isento: !!row.is_isento,
               _status: "synced",
             }));
-          setPautaInitial(mapped);
-          setPautaDraft(mapped);
+          const scoped = focusAlunoId
+            ? mapped.filter((row) => row.id === focusAlunoId)
+            : mapped;
+          setPautaInitial(scoped);
           setPautaPesoPorTipo((json.meta?.peso_por_tipo as Record<string, number>) ?? null);
           setPautaComponentes(Array.isArray(json.meta?.componentes_ativos) ? json.meta.componentes_ativos : []);
+          setPautaNotaMaxima(typeof json.meta?.nota_maxima === "number" ? json.meta.nota_maxima : null);
+          setPautaNotaCorte(typeof json.meta?.nota_corte === "number" ? json.meta.nota_corte : null);
+          setPautaEscala(typeof json.meta?.escala === "string" ? json.meta.escala : null);
         } else {
           setPautaInitial([]);
-          setPautaDraft([]);
-          setPautaPesoPorTipo(null);
+              setPautaPesoPorTipo(null);
           setPautaComponentes([]);
         }
       } finally {
@@ -221,7 +284,7 @@ export function PautaRapidaModal({
     return () => {
       active = false;
     };
-  }, [accessToken, turmaId, disciplinaId, periodoNumero]);
+  }, [academicYearId, accessToken, turmaId, disciplinaId, periodoNumero, focusAlunoId, selectedTurmaDisciplinaId]);
 
   const disciplinasFiltradas = useMemo(() => {
     return disciplinas.filter((disciplina) => {
@@ -261,53 +324,47 @@ export function PautaRapidaModal({
     (turmaSelecionada ? formatTurmaDisplayName(turmaSelecionada) : "Turma");
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
+    setSaveError(null);
     if (!turmaId || !disciplinaId) return;
+    if (!academicYearId) {
+      throw new Error(academicContextError || "Ano letivo ativo não identificado.");
+    }
+    if (academicMode !== "CURRENT") {
+      throw new Error("Este ano letivo está disponível apenas para consulta.");
+    }
     const turmaDisciplinaId = disciplinaSelecionada?.id ?? null;
     const disciplinaCanonicalId = disciplinaSelecionada?.disciplina?.id ?? disciplinaId;
     if (!turmaDisciplinaId) {
       throw new Error("Disciplina inválida para lançamento.");
     }
 
-    // 1. Tratar Isenções (Prioridade)
-    const isentos = rows.filter(r => r.is_isento);
-    if (isentos.length > 0) {
-      const res = await fetch(`/api/secretaria/notas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          turma_id: turmaId,
-          ano_letivo_id: academicYearId,
-          disciplina_id: disciplinaCanonicalId,
-          turma_disciplina_id: turmaDisciplinaId,
-          trimestre: periodoNumero,
-          is_isento: true,
-          notas: isentos.map(r => ({ aluno_id: r.id, valor: null }))
-        }),
-      });
-      if (!res.ok) throw new Error("Falha ao salvar isenções");
-    }
-
-    // 2. Tratar Notas normais (apenas para quem NÃO é isento)
-    const activeRows = rows.filter(r => !r.is_isento);
-    const payloads = [
+    const configured = new Set(pautaComponentes.map((tipo) => tipo.toUpperCase()));
+    const allEntries = [
       { tipo: "MAC", campo: "mac1" as const },
       { tipo: "NPP", campo: "npp1" as const },
       { tipo: "NPT", campo: "npt1" as const },
     ];
+    const entries = configured.size === 0
+      ? allEntries.filter((entry) => entry.tipo !== "NPP")
+      : allEntries.filter(
+          (entry) =>
+            configured.has(entry.tipo) ||
+            (entry.tipo === "NPT" && configured.has("PT")),
+        );
 
-    for (const { tipo, campo } of payloads) {
-      const notas = activeRows
-        .map((row) => ({ aluno_id: row.id, valor: row[campo] }))
-        .filter((entry) => typeof entry.valor === "number");
-      
-      if (notas.length === 0) continue;
+    const postNotas = async (params: {
+      tipo: string;
+      isIsento: boolean;
+      notas: Array<{ aluno_id: string; valor: number | null }>;
+    }) => {
+      if (params.notas.length === 0) return;
 
       const idempotencyKey =
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-      const res = await fetch(`/api/secretaria/notas`, {
+      const response = await fetch("/api/secretaria/notas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -319,43 +376,91 @@ export function PautaRapidaModal({
           disciplina_id: disciplinaCanonicalId,
           turma_disciplina_id: turmaDisciplinaId,
           trimestre: periodoNumero,
-          tipo_avaliacao: tipo,
-          is_isento: false,
-          notas,
+          tipo_avaliacao: params.tipo,
+          is_isento: params.isIsento,
+          notas: params.notas,
         }),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Falha ao salvar notas");
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Falha ao guardar notas.");
       }
+    };
+
+    const isentos = rows.filter((row) => row.is_isento);
+    for (const { tipo } of entries) {
+      await postNotas({
+        tipo,
+        isIsento: true,
+        notas: isentos.map((row) => ({ aluno_id: row.id, valor: null })),
+      });
     }
 
-    setPautaDraft((prev) =>
-      prev.map((row) => {
-        const updated = rows.find((candidate) => candidate.id === row.id);
-        return updated ? { ...row, ...updated, _status: "synced" } : row;
-      })
-    );
+    const activeRows = rows.filter((row) => !row.is_isento);
+    for (const { tipo, campo } of entries) {
+      await postNotas({
+        tipo,
+        isIsento: false,
+        notas: activeRows.map((row) => ({
+          aluno_id: row.id,
+          valor: row[campo] ?? null,
+        })),
+      });
+    }
+
   };
 
   return (
     <div className="space-y-4">
+      {academicContextError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          {academicContextError}
+        </div>
+      ) : null}
+
+      {academicMode === "HISTORICAL_READ" ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Ano letivo em consulta histórica. As notas podem ser consultadas, mas não alteradas.
+        </div>
+      ) : null}
+
+      {pautaEscala && pautaNotaMaxima === null ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Esta turma usa uma escala não numérica. O lançamento quantitativo está indisponível neste painel.
+        </div>
+      ) : null}
+
+      {focusAlunoId ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            Nota
+          </p>
+          <h2 className="mt-1 text-base font-black text-slate-900">
+            O que precisa lançar?
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Escolha a disciplina e o período. Apenas o aluno atual será alterado.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
       <div className="grid gap-3 sm:grid-cols-2">
         {!lockTurma && (
           <div>
-            <label className="text-xs font-semibold uppercase text-slate-500">Ano letivo</label>
+            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Ano letivo</label>
             <input
               type="number"
               value={anoLetivo}
               onChange={(event) => setAnoLetivo(Number(event.target.value))}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
             />
           </div>
         )}
         <div>
-          <label className="text-xs font-semibold uppercase text-slate-500">Turma</label>
+          <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Turma</label>
           {lockTurma ? (
-            <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-700">
               {turmaLabel}
             </div>
           ) : (
@@ -363,7 +468,7 @@ export function PautaRapidaModal({
               <select
                 value={turmaId}
                 onChange={(event) => setTurmaId(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               >
                 <option value="">Selecione a turma</option>
                 {turmas.map((turma) => {
@@ -383,12 +488,12 @@ export function PautaRapidaModal({
       </div>
 
       <div>
-        <label className="text-xs font-semibold uppercase text-slate-500">Disciplina</label>
+        <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Disciplina</label>
         <div className="mt-1 flex items-center gap-2">
           <select
             value={disciplinaId}
             onChange={(event) => setDisciplinaId(event.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
             disabled={!turmaId}
           >
             <option value="">Selecione a disciplina</option>
@@ -403,7 +508,7 @@ export function PautaRapidaModal({
       </div>
 
       <div>
-        <label className="text-xs font-semibold uppercase text-slate-500">Período</label>
+        <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Período</label>
         {showPeriodoTabs && periodos.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {periodos.map((periodo) => {
@@ -416,14 +521,14 @@ export function PautaRapidaModal({
                   onClick={() => setPeriodoNumero(periodo.numero)}
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                     active
-                      ? "bg-emerald text-white"
-                      : "border border-slate-200 bg-white text-slate-600"
+                      ? "border border-amber bg-amber/10 text-slate-900"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-amber/40"
                   }`}
                 >
                   <span className="flex items-center gap-2">
                     {`Trimestre ${periodo.numero}`}
                     {hasPendencia ? (
-                      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-white" : "bg-rose-500"}`} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                     ) : null}
                   </span>
                 </button>
@@ -436,7 +541,7 @@ export function PautaRapidaModal({
             <select
               value={periodoNumero}
               onChange={(event) => setPeriodoNumero(Number(event.target.value))}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               disabled={!turmaId || periodos.length === 0}
             >
               {periodos.length === 0 && (
@@ -452,31 +557,53 @@ export function PautaRapidaModal({
           </div>
         )}
       </div>
+      </div>
 
-      {disciplinaSelecionada ? (
+      {!focusAlunoId && disciplinaSelecionada ? (
         <p className="text-xs text-slate-500">
           Disciplina selecionada: {disciplinaSelecionada.disciplina?.nome ?? "—"}
         </p>
       ) : null}
 
-      {loadingPauta ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          Carregando pauta...
+      {lockTurma && !turmaId ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Este aluno não tem uma turma disponível no contexto académico atual. Não é possível lançar nota.
+        </div>
+      ) : loadingPauta ? (
+        <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+          A carregar avaliação…
         </div>
       ) : pautaInitial.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          Selecione turma, disciplina e período para visualizar a pauta.
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          {focusAlunoId && turmaId && disciplinaId
+            ? "O aluno não aparece na pauta desta turma para a disciplina e período selecionados."
+            : "Selecione turma, disciplina e período para visualizar a pauta."}
         </div>
       ) : (
-        <GradeEntryGrid
-          initialData={pautaInitial}
-          subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
-          onSave={handleSaveBatch}
-          onDataChange={setPautaDraft}
-          pesoPorTipo={pautaPesoPorTipo ?? undefined}
-          componentesAtivos={pautaComponentes}
-          showIsento={true}
-        />
+        <div className="space-y-3">
+          <GradeEntryGrid
+            initialData={pautaInitial}
+            title={focusAlunoId ? "Avaliação" : "Lançamento de notas"}
+            subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
+            onSave={handleSaveBatch}
+            onSaveError={(error) => {
+              setSaveError(error instanceof Error ? error.message : "Não foi possível guardar a nota.");
+            }}
+            pesoPorTipo={pautaPesoPorTipo ?? undefined}
+            componentesAtivos={pautaComponentes}
+            showIsento={true}
+            studentMode={Boolean(focusAlunoId)}
+            readOnly={academicMode !== "CURRENT" || pautaNotaMaxima === null}
+            notaMaxima={pautaNotaMaxima ?? 20}
+            notaCorte={pautaNotaCorte ?? 10}
+          />
+          {saveError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              {saveError}
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
   );

@@ -4,6 +4,30 @@ import { K12_OPERACOES_PRIMARY_ROLE } from "@/lib/roles";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { redirect } from "next/navigation";
+import type { DashboardCounts, DashboardRecentes } from "@/app/secretaria/(portal-secretaria)/types";
+
+type RecentEnrollment = DashboardRecentes["novas_matriculas"][number];
+type RecentNotice = DashboardRecentes["avisos_recentes"][number];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isRecentEnrollment(value: unknown): value is RecentEnrollment {
+  if (!isRecord(value) || !isRecord(value.aluno) || !isRecord(value.turma)) return false;
+  return typeof value.id === "string" &&
+    typeof value.created_at === "string" &&
+    typeof value.aluno.nome === "string" &&
+    typeof value.turma.nome === "string";
+}
+
+function isRecentNotice(value: unknown): value is RecentNotice {
+  return isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.titulo === "string" &&
+    typeof value.resumo === "string" &&
+    typeof value.data === "string";
+}
 
 export default async function SecretariaLandingPage({
   params,
@@ -23,7 +47,7 @@ export default async function SecretariaLandingPage({
 
   const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
   const resolvedEscolaId = await resolveEscolaIdForUser(
-    supabase as any,
+    supabase,
     user.id,
     escolaParam,
     metaEscolaId ? String(metaEscolaId) : null
@@ -55,5 +79,30 @@ export default async function SecretariaLandingPage({
     redirect(`${dest}${query ? `?${query}` : ""}`);
   }
 
-  return <SecretariaDashboardPage />;
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setDate(endOfDay.getDate() + 1);
+
+  const [countsRes, recentesRes, matriculasHojeRes] = await Promise.all([
+    supabase.from("vw_secretaria_dashboard_counts").select("alunos_ativos, turmas_total").eq("escola_id", resolvedEscolaId).maybeSingle(),
+    supabase.from("vw_secretaria_dashboard_kpis").select("pendencias_importacao, novas_matriculas, avisos_recentes").eq("escola_id", resolvedEscolaId).maybeSingle(),
+    supabase.from("matriculas").select("id", { count: "exact", head: true }).eq("escola_id", resolvedEscolaId).gte("created_at", startOfDay.toISOString()).lt("created_at", endOfDay.toISOString()),
+  ]);
+
+  const dashboardCounts: DashboardCounts | null = countsRes.error ? null : {
+    alunos: countsRes.data?.alunos_ativos ?? 0,
+    matriculas: matriculasHojeRes.error ? 0 : (matriculasHojeRes.count ?? 0),
+    turmas: countsRes.data?.turmas_total ?? 0,
+    pendencias: recentesRes.error ? 0 : Number(recentesRes.data?.pendencias_importacao ?? 0),
+  };
+
+  const dashboardRecentes: DashboardRecentes | null = recentesRes.error ? null : {
+    pendencias: Number(recentesRes.data?.pendencias_importacao ?? 0),
+    novas_matriculas: Array.isArray(recentesRes.data?.novas_matriculas) ? recentesRes.data.novas_matriculas.filter(isRecentEnrollment) : [],
+    avisos_recentes: Array.isArray(recentesRes.data?.avisos_recentes) ? recentesRes.data.avisos_recentes.filter(isRecentNotice) : [],
+    fecho_trimestre: null,
+  };
+
+  return <SecretariaDashboardPage initialCounts={dashboardCounts} initialRecentes={dashboardRecentes} />;
 }

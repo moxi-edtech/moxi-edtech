@@ -1,0 +1,8 @@
+-- Live migration history marker.
+--
+-- The Supabase connector applied REM-GR-003 to production as migration
+-- version 20261002125251 with name rematricula_retention_repeat.
+-- The canonical dependency-ordered migration remains
+-- 20270826129000_rematricula_retention_repeat.sql.
+--
+-- This marker reconciles repository history with the live migration ledger.

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { roleMatchesAllowedRoles } from "@/lib/permissions";
+import { isAuthSessionMissingError, isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 function isUuid(value: string) {
@@ -20,19 +21,33 @@ export default function RequireSecretaria({
   escolaId?: string | null;
 }) {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [ready, setReady] = useState(false);
+  const [authUnavailable, setAuthUnavailable] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      // 1. Get Session first (very fast)
-      const { data: { session }, error: userErr } = await supabase.auth.getSession();
-      const user = session?.user;
+      // Validate against Supabase Auth instead of trusting transient browser session hydration.
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
       
-      if (userErr || !user) { 
-        if (active) router.replace("/redirect"); 
-        return; 
+      if (isRefreshTokenNotFoundError(userErr) || isAuthSessionMissingError(userErr) || (!user && !userErr)) {
+        // Avoid the /redirect -> portal -> /redirect cycle on stale auth
+        // cookies. The recovery route expires shared auth cookies once.
+        if (active) window.location.replace("/auth-recover?next=/redirect");
+        return;
+      }
+      if (userErr) {
+        // A transient network/Auth outage must not clear a valid session or
+        // trigger navigation loops. Leave the shell stable for an explicit retry.
+        if (active) setAuthUnavailable(true);
+        return;
+      }
+
+      // Type guard after the error branch: Supabase can return a null user.
+      if (!user) {
+        if (active) window.location.replace("/auth-recover?next=/redirect");
+        return;
       }
 
       // 2. Identify target school
@@ -84,6 +99,13 @@ export default function RequireSecretaria({
   }, [router, supabase, propsEscolaId]);
 
   // Use a softer loading state or none if we want instant feel (children will handle their own loading)
+  if (authUnavailable) {
+    return (
+      <div role="alert" className="mx-auto max-w-lg rounded-lg border p-5 text-sm">
+        Não foi possível validar a sessão. Verifique a ligação e atualize a página.
+      </div>
+    );
+  }
   if (!ready) return null; 
   return <>{children}</>;
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpenCheck, BriefcaseBusiness, Loader2, Search, User, WalletCards } from "lucide-react";
+import { BookOpenCheck, BriefcaseBusiness, FileText, Loader2, RefreshCcw, Search, User, WalletCards } from "lucide-react";
 import { useGlobalSearch, type MinimalSearchResult, type SearchAction } from "@/hooks/useGlobalSearch";
 
 type Props = {
@@ -24,6 +24,8 @@ export function GlobalSearch({ escolaId, placeholder, disabledText, portal, onAc
     payment: WalletCards,
     desk: BriefcaseBusiness,
     grade: BookOpenCheck,
+    document: FileText,
+    reenrollment: RefreshCcw,
   };
 
   return (

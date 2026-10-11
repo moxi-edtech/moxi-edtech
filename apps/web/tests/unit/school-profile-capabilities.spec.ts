@@ -22,8 +22,8 @@ const profile = (financeModel: FinanceModel): SchoolOperatingProfile => ({
   financeModel,
 });
 
-test("public schools cannot be configured with recurring tuition", () => {
-  assert.equal(isValidSchoolFinanceCombination("public", "tuition"), false);
+test("school_sector is descriptive; financial model governs capabilities", () => {
+  assert.equal(isValidSchoolFinanceCombination("public", "tuition"), true);
   assert.equal(isValidSchoolFinanceCombination("public", "budget"), true);
   assert.equal(isValidSchoolFinanceCombination("public", "emoluments_only"), true);
   assert.equal(isValidSchoolFinanceCombination("public", "mixed"), true);

@@ -10,6 +10,8 @@ import {
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
+import { resolveRegimeAcademico } from '@/lib/academico/regime-academico'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -18,6 +20,9 @@ export const fetchCache = 'force-no-store'
 const Query = z.object({
   disciplinaId: z.string().uuid(),
   trimestre: z.coerce.number().int().min(1).max(3),
+  alunoId: z.string().uuid().optional(),
+  anoLetivoId: z.string().uuid().optional(),
+  turmaDisciplinaId: z.string().uuid().optional(),
 })
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -31,7 +36,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { searchParams } = new URL(req.url)
     const disciplinaId = searchParams.get('disciplinaId') ?? searchParams.get('disciplina_id')
     const trimestre = searchParams.get('trimestre') ?? searchParams.get('periodoNumero')
-    const parsed = Query.safeParse({ disciplinaId, trimestre })
+    const alunoId = searchParams.get('alunoId') ?? searchParams.get('aluno_id') ?? undefined
+    const anoLetivoId = searchParams.get('anoLetivoId') ?? searchParams.get('ano_letivo_id') ?? undefined
+    const turmaDisciplinaId = searchParams.get('turmaDisciplinaId') ?? searchParams.get('turma_disciplina_id') ?? undefined
+    const parsed = Query.safeParse({ disciplinaId, trimestre, alunoId, anoLetivoId, turmaDisciplinaId })
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos' }, { status: 400 })
     }
@@ -42,6 +50,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
+    const academicContext = parsed.data.anoLetivoId
+      ? await resolveAcademicYearContext(supabase as any, {
+          userId: user.id,
+          requestedAcademicYearId: parsed.data.anoLetivoId,
+          operation: 'READ',
+        })
+      : null
+
+    if (academicContext) {
+      await assertAcademicYearEntity(supabase as any, {
+        table: 'turmas',
+        entityId: turmaId,
+        escolaId,
+        anoLetivoId: academicContext.anoLetivoId,
+      })
+    }
+
     const { data: turma } = await supabase
       .from('turmas')
       .select('id, curso_id, classe_id')
@@ -50,28 +75,70 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .maybeSingle()
     if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
 
-    const { data: matriz } = await supabase
-      .from('curso_matriz')
-      .select('id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
-      .eq('escola_id', escolaId)
-      .eq('curso_id', turma.curso_id)
-      .eq('classe_id', turma.classe_id)
-      .eq('disciplina_id', parsed.data.disciplinaId)
-      .eq('ativo', true)
-      .maybeSingle()
-    if (!matriz) {
-      return NextResponse.json({ ok: false, error: 'Disciplina não vinculada à turma' }, { status: 400 })
-    }
+    let matriz: {
+      id: string
+      avaliacao_mode: string | null
+      avaliacao_modelo_id: string | null
+      avaliacao_disciplina_id: string | null
+    } | null = null
+    let turmaDisciplina: { id: string; curso_matriz_id?: string | null } | null = null
 
-    const { data: turmaDisciplina } = await supabase
-      .from('turma_disciplinas')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('turma_id', turmaId)
-      .eq('curso_matriz_id', matriz.id)
-      .maybeSingle()
-    if (!turmaDisciplina) {
-      return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
+    if (parsed.data.turmaDisciplinaId) {
+      const { data: assignment } = await supabase
+        .from('turma_disciplinas')
+        .select('id, curso_matriz_id')
+        .eq('id', parsed.data.turmaDisciplinaId)
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .maybeSingle()
+
+      if (!assignment?.curso_matriz_id) {
+        return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
+      }
+
+      const { data: exactMatriz } = await supabase
+        .from('curso_matriz')
+        .select('id, disciplina_id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
+        .eq('id', assignment.curso_matriz_id)
+        .eq('escola_id', escolaId)
+        .eq('disciplina_id', parsed.data.disciplinaId)
+        .maybeSingle()
+
+      if (!exactMatriz) {
+        return NextResponse.json({ ok: false, error: 'A disciplina selecionada não corresponde à matriz da turma.' }, { status: 409 })
+      }
+
+      turmaDisciplina = assignment
+      matriz = exactMatriz
+    } else {
+      const { data: fallbackMatriz } = await supabase
+        .from('curso_matriz')
+        .select('id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
+        .eq('escola_id', escolaId)
+        .eq('curso_id', turma.curso_id)
+        .eq('classe_id', turma.classe_id)
+        .eq('disciplina_id', parsed.data.disciplinaId)
+        .eq('ativo', true)
+        .maybeSingle()
+
+      if (!fallbackMatriz) {
+        return NextResponse.json({ ok: false, error: 'Disciplina não vinculada à turma' }, { status: 400 })
+      }
+
+      const { data: fallbackAssignment } = await supabase
+        .from('turma_disciplinas')
+        .select('id, curso_matriz_id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .eq('curso_matriz_id', fallbackMatriz.id)
+        .maybeSingle()
+
+      if (!fallbackAssignment) {
+        return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
+      }
+
+      turmaDisciplina = fallbackAssignment
+      matriz = fallbackMatriz
     }
 
     const modelo = await resolveModeloAvaliacao({
@@ -84,6 +151,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const componentesAtivos = buildComponentesAtivos(modelo.componentes)
     const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
+    const regime = await resolveRegimeAcademico(supabase as any, turmaId)
+    const notaMaxima =
+      regime.escala === 'quantitativa_primario'
+        ? 10
+        : regime.escala === 'quantitativa_secundario'
+          ? 20
+          : null
+    const notaCorte =
+      regime.escala === 'quantitativa_primario'
+        ? 5
+        : regime.escala === 'quantitativa_secundario'
+          ? 10
+          : null
 
     let matriculasQuery = supabase
       .from('matriculas')
@@ -102,10 +182,32 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       )
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
-      .in('status', ACTIVE_MATRICULA_STATUSES)
       .order('numero_chamada', { ascending: true, nullsFirst: false })
 
-    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 })
+    if (academicContext) {
+      matriculasQuery = matriculasQuery.eq('session_id', academicContext.anoLetivoId)
+      if (academicContext.mode === 'CURRENT') {
+        matriculasQuery = matriculasQuery.eq('ativo', true)
+      } else {
+        matriculasQuery = matriculasQuery.in('status', [
+          ...ACTIVE_MATRICULA_STATUSES,
+          'concluido',
+          'reprovado',
+          'encerrada',
+          'transferido',
+        ])
+      }
+    } else {
+      matriculasQuery = matriculasQuery.in('status', ACTIVE_MATRICULA_STATUSES)
+    }
+
+    if (parsed.data.alunoId) {
+      matriculasQuery = matriculasQuery.eq('aluno_id', parsed.data.alunoId)
+    }
+
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, {
+      defaultLimit: parsed.data.alunoId ? 1 : 50,
+    })
 
     const { data: matriculas, error: matriculasError } = await matriculasQuery
     if (matriculasError) {
@@ -120,13 +222,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       {
         tipoSum?: Record<string, number>
         tipoCount?: Record<string, number>
+        isIsento?: boolean
       }
     >()
 
     if (matriculaIds.length > 0) {
       let notasQuery = supabase
         .from('notas')
-        .select('valor, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
+        .select('valor, is_isento, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
         .eq('escola_id', escolaId)
         .eq('avaliacoes.turma_disciplina_id', turmaDisciplina.id)
         .in('matricula_id', matriculaIds)
@@ -143,6 +246,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
       for (const row of (notasRows || []) as Array<{
         valor: number | null
+        is_isento?: boolean | null
         matricula_id: string
         avaliacoes:
           | { tipo?: string | null; nome?: string | null; peso?: number | null }
@@ -154,6 +258,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           notasPorMatricula.set(row.matricula_id, { tipoSum: {}, tipoCount: {} })
         }
         const stats = notasPorMatricula.get(row.matricula_id)!
+        if (row.is_isento === true) stats.isIsento = true
         if (typeof row.valor === 'number') {
           const tipoRaw = avaliacao?.tipo ?? avaliacao?.nome
           const tipo = tipoRaw ? tipoRaw.toString().trim().toUpperCase() : 'OUTRO'
@@ -229,6 +334,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         npt,
         mt,
         componentes,
+        is_isento: Boolean(stats?.isIsento),
       }
     })
 
@@ -238,9 +344,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       meta: {
         componentes_ativos: componentesAtivos,
         peso_por_tipo: Object.fromEntries(pesoPorTipo),
+        escala: regime.escala,
+        nota_maxima: notaMaxima,
+        nota_corte: notaCorte,
+        entrada_numerica_permitida: notaMaxima !== null,
       },
     })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

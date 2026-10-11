@@ -76,20 +76,42 @@ export async function GET(request: Request) {
     const start = toMonthStart(normalizeDate(parsed.data.range_start));
     const end = toMonthStart(normalizeDate(parsed.data.range_end));
 
-    let kpisQuery = (supabase as any)
+    // Previsto/realizado respeitam o intervalo pedido (o dashboard usa o mês atual).
+    // Inadimplência é estoque vencido: deve carregar competências anteriores do mesmo
+    // ano letivo até o fim do intervalo, senão no início de um mês novo a dívida do
+    // mês anterior desaparece do KPI "Em atraso".
+    let periodKpisQuery = (supabase as any)
       .from("vw_financeiro_kpis_mes_ano")
-      .select("escola_id, mes_ref, previsto_total, realizado_total, inadimplencia_total")
+      .select("escola_id, mes_ref, previsto_total, realizado_total")
       .eq("escola_id", escolaId)
       .eq("ano_letivo_id", academicContext?.anoLetivoId ?? "");
 
-    if (start) kpisQuery = kpisQuery.gte("mes_ref", start);
-    if (end) kpisQuery = kpisQuery.lte("mes_ref", end);
-    if (academicStart) kpisQuery = kpisQuery.gte("mes_ref", academicStart);
-    if (academicEnd) kpisQuery = kpisQuery.lte("mes_ref", academicEnd);
+    if (start) periodKpisQuery = periodKpisQuery.gte("mes_ref", start);
+    if (end) periodKpisQuery = periodKpisQuery.lte("mes_ref", end);
+    if (academicStart) periodKpisQuery = periodKpisQuery.gte("mes_ref", academicStart);
+    if (academicEnd) periodKpisQuery = periodKpisQuery.lte("mes_ref", academicEnd);
 
-    const { data: kpis, error: kpisError } = await kpisQuery;
-    if (kpisError) {
-      return NextResponse.json({ ok: false, error: kpisError.message }, { status: 500 });
+    const overdueEnd = end ?? toMonthStart(new Date().toISOString().slice(0, 10));
+    let overdueKpisQuery = (supabase as any)
+      .from("vw_financeiro_kpis_mes_ano")
+      .select("mes_ref, inadimplencia_total")
+      .eq("escola_id", escolaId)
+      .eq("ano_letivo_id", academicContext?.anoLetivoId ?? "");
+
+    if (academicStart) overdueKpisQuery = overdueKpisQuery.gte("mes_ref", academicStart);
+    if (overdueEnd) overdueKpisQuery = overdueKpisQuery.lte("mes_ref", overdueEnd);
+    if (academicEnd) overdueKpisQuery = overdueKpisQuery.lte("mes_ref", academicEnd);
+
+    const [
+      { data: kpis, error: kpisError },
+      { data: overdueKpis, error: overdueKpisError },
+    ] = await Promise.all([periodKpisQuery, overdueKpisQuery]);
+
+    if (kpisError || overdueKpisError) {
+      return NextResponse.json(
+        { ok: false, error: kpisError?.message ?? overdueKpisError?.message ?? "Falha ao carregar resumo financeiro" },
+        { status: 500 }
+      );
     }
 
     const previsto = (kpis ?? []).reduce(
@@ -100,7 +122,7 @@ export async function GET(request: Request) {
       (acc: number, row: { realizado_total: number | null }) => acc + Number(row.realizado_total ?? 0),
       0
     );
-    const inadimplencia = (kpis ?? []).reduce(
+    const inadimplencia = (overdueKpis ?? []).reduce(
       (acc: number, row: { inadimplencia_total: number | null }) => acc + Number(row.inadimplencia_total ?? 0),
       0
     );

@@ -15,13 +15,10 @@ BEGIN
     (v_public_budget, 'public', 'budget'),
     (v_public_emoluments, 'public', 'emoluments_only');
 
-  BEGIN
-    INSERT INTO public.school_operating_profiles(school_id, school_sector, finance_model)
-    VALUES (gen_random_uuid(), 'public', 'tuition');
-    RAISE EXCEPTION 'REGRESSION: public + tuition was accepted';
-  EXCEPTION WHEN check_violation THEN
-    NULL;
-  END;
+  -- Never infer legal prohibitions from the sector. A public school can be
+  -- explicitly configured to the tuition model after institutional review.
+  INSERT INTO public.school_operating_profiles(school_id, school_sector, finance_model)
+  VALUES (gen_random_uuid(), 'public', 'tuition');
 
   IF NOT public.school_finance_allows_operation(v_private, 'recurring_tuition') THEN
     RAISE EXCEPTION 'REGRESSION: private tuition lost recurring tuition';

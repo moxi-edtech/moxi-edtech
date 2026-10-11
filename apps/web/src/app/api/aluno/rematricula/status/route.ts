@@ -9,6 +9,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { classifyRematriculaAcademicEligibility } from '@/lib/rematricula/eligibility'
 import { resolveSchoolOperatingProfile } from '@/lib/school-profile/resolve-school-profile'
 import { canUseFinancialSuspension, canUseOneOffStudentPayments } from '@/lib/school-profile/finance-capabilities'
+import { summarizeOverdueRematriculaDebt } from '@/lib/rematricula/debt'
 
 export const dynamic = 'force-dynamic'
 
@@ -111,7 +112,11 @@ export async function GET() {
           ? 'ACADEMIC_REVIEW_REQUIRED'
           : academicEligibility.code === 'ACADEMIC_CONDITIONAL_BLOCKED'
             ? 'ACADEMIC_CONDITIONAL_BLOCKED'
-            : academicEligibility.code === 'ACADEMIC_CYCLE_COMPLETED'
+            : academicEligibility.code === 'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED'
+              ? 'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED'
+              : academicEligibility.code === 'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED'
+                ? 'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED'
+                : academicEligibility.code === 'ACADEMIC_CYCLE_COMPLETED'
               ? 'ACADEMIC_CYCLE_COMPLETED'
               : 'ACADEMIC_NOT_APPROVED'
       return NextResponse.json({
@@ -175,6 +180,22 @@ export async function GET() {
         reason: `A ${targetClassNumber}.ª classe ainda não está configurada no curso de destino.`,
       })
     }
+
+    // Uma matrícula do ano destino pode ter sido criada pela virada/promoção.
+    // Expomos essa existência separadamente do pagamento para a UI nunca
+    // afirmar "vaga reservada" sem um registo real.
+    const { data: destinationReservation, error: destinationReservationError } = await supabase
+      .from('matriculas')
+      .select('id, status, ativo, turma_id, ano_letivo')
+      .eq('escola_id', escolaId)
+      .eq('aluno_id', alunoId)
+      .eq('origem_transicao_matricula_id', sourceMatricula.id)
+      .eq('ano_letivo', nextAno)
+      .in('status', ['pendente', 'ativo', 'ativa', 'active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (destinationReservationError) throw new Error(`Falha ao verificar reserva de destino: ${destinationReservationError.message}`)
 
     // Uma matrícula do ano destino pode ter sido criada pela virada/promoção
     // em lote. Ela não representa, por si só, uma rematrícula paga pelo portal.
@@ -325,6 +346,12 @@ export async function GET() {
         classe_nome: targetClass.nome ?? `${targetClassNumber}.ª classe`,
         classe_numero: targetClassNumber,
       },
+      reservation: destinationReservation ? {
+        matricula_id: destinationReservation.id,
+        status: destinationReservation.status,
+        ativo: Boolean(destinationReservation.ativo),
+        turma_id: destinationReservation.turma_id ?? null,
+      } : null,
     }
 
     if (studentPaymentEnabled && (!rematriculaService || !targetPricing || targetPricing.valor <= 0)) {
@@ -342,7 +369,7 @@ export async function GET() {
     const { data: mens, error: mensalidadesError } = financialSuspensionEnabled
       ? await supabase
           .from('mensalidades')
-          .select('status, valor_previsto, valor, valor_pago_total')
+          .select('status, valor_previsto, valor, valor_pago_total, data_vencimento')
           .eq('escola_id', escolaId)
           .eq('aluno_id', alunoId)
           .or(`matricula_id.eq.${sourceMatricula.id},ano_referencia.eq.${sourceMatricula.ano_letivo}`)
@@ -352,15 +379,8 @@ export async function GET() {
       throw new Error(`Falha ao verificar situação financeira: ${mensalidadesError.message}`)
     }
 
-    const hasDebt = financialSuspensionEnabled && (mens ?? []).some((mensalidade: any) => {
-      const status = String(mensalidade.status ?? '').toLowerCase()
-      const saldo = Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0)
-          - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      )
-      return saldo > 0 && !['pago', 'isento', 'cancelado'].includes(status)
-    })
+    const overdueDebt = summarizeOverdueRematriculaDebt(mens ?? [])
+    const hasDebt = overdueDebt.count > 0
 
     // A reserva criada pela virada, isoladamente, não conclui a rematrícula.
     // Já um pedido concedido que aponta para uma matrícula destino activa é
@@ -398,7 +418,7 @@ export async function GET() {
           disciplinaIdsPendentes: academic.progression.disciplinaIdsPendentes,
         } : null,
         rematricula: rematriculaData,
-        reason: 'Regularize todos os saldos em aberto antes de rematricular.',
+        reason: 'Regularize os saldos vencidos antes de rematricular.',
       })
     }
 
@@ -415,11 +435,11 @@ export async function GET() {
       rematricula: rematriculaData,
       reason: academicEligibility.mode === 'conditional'
         ? (financialSuspensionEnabled
-            ? 'O RAA autorizou a progressão condicional e não existem saldos em aberto.'
-            : 'O RAA autorizou a progressão condicional; esta escola não aplica bloqueio por propina.')
+            ? 'O RAA autorizou a progressão condicional e não existem saldos vencidos.'
+            : 'O RAA autorizou a progressão condicional; não há bloqueio por propina.')
         : (financialSuspensionEnabled
-            ? 'O RAA autorizou a progressão e não existem saldos em aberto.'
-            : 'O RAA autorizou a progressão; esta escola não aplica bloqueio por propina.')
+            ? 'O RAA autorizou a progressão e não existem saldos vencidos.'
+            : 'O RAA autorizou a progressão; não há bloqueio por propina.')
     })
 
   } catch (err: any) {

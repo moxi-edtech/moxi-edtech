@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AlunoLayoutClient from "@/app/(portal-aluno)/aluno/AlunoLayoutClient";
-import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
+import { isAuthSessionMissingError, isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
 import type { Metadata } from "next";
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { deriveSchoolFinanceCapabilities } from "@/lib/school-profile/finance-capabilities";
@@ -75,10 +75,19 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   let user: any;
   try {
     const sessionResult = await supabase.auth.getSession();
+    if (isRefreshTokenNotFoundError(sessionResult.error)) {
+      redirect("/auth-recover?next=/redirect");
+    }
+    if (sessionResult.error && !isAuthSessionMissingError(sessionResult.error)) {
+      throw sessionResult.error;
+    }
     user = sessionResult.data.session?.user ?? null;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
       redirect("/auth-recover?next=/redirect");
+    }
+    if (isAuthSessionMissingError(error)) {
+      redirect("/redirect");
     }
     throw error;
   }

@@ -43,7 +43,7 @@ export function isValidSchoolFinanceCombination(
   schoolSector: SchoolSector,
   financeModel: FinanceModel,
 ) {
-  // Public institutions must never acquire recurring tuition by configuration.
-  // "mixed" remains non-recurring unless an explicit future contract says otherwise.
-  return !(schoolSector === "public" && financeModel === "tuition");
+  // Sector is an institution attribute, not an unverified legal rule.
+  // Capabilities are controlled by the finance model selected after review.
+  return SCHOOL_SECTORS.includes(schoolSector) && FINANCE_MODELS.includes(financeModel);
 }

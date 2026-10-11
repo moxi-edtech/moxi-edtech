@@ -8,6 +8,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { canUseFinancialSuspension } from "@/lib/school-profile/finance-capabilities";
+import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 
 export const dynamic = "force-dynamic";
 
@@ -72,9 +73,13 @@ export async function POST(request: Request) {
             ? "ACADEMIC_REVIEW_REQUIRED"
             : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
               ? "ACADEMIC_CONDITIONAL_BLOCKED"
-              : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-                ? "ACADEMIC_CYCLE_COMPLETED"
-                : "ACADEMIC_NOT_APPROVED";
+              : academicEligibility.code === "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+                ? "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+                : academicEligibility.code === "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                  ? "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                  : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+                    ? "ACADEMIC_CYCLE_COMPLETED"
+                    : "ACADEMIC_NOT_APPROVED";
         return NextResponse.json({
           ok: false,
           error: academicEligibility.reason,
@@ -95,7 +100,7 @@ export async function POST(request: Request) {
     const { data: openBalances, error: openBalancesError } = financialSuspensionEnabled
       ? await supabase
       .from("mensalidades")
-      .select("status, valor_previsto, valor, valor_pago_total")
+      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento")
       .eq("escola_id", escolaId)
       .eq("aluno_id", ctx.alunoId)
       .or(`matricula_id.eq.${matricula.id},ano_referencia.eq.${matricula.ano_letivo}`)
@@ -105,20 +110,12 @@ export async function POST(request: Request) {
       throw new Error(`Falha ao verificar situação financeira: ${openBalancesError.message}`);
     }
 
-    const hasOpenBalance = financialSuspensionEnabled && (openBalances ?? []).some((mensalidade: any) => {
-      const status = String(mensalidade.status ?? "").toLowerCase();
-      const saldo = Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0)
-          - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      );
-      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
-    });
+    const overdueDebt = summarizeOverdueRematriculaDebt(openBalances ?? []);
 
-    if (hasOpenBalance) {
+    if (overdueDebt.count > 0) {
       return NextResponse.json({
         ok: false,
-        error: "Regularize todos os saldos em aberto antes de rematricular.",
+        error: "Regularize os saldos vencidos antes de rematricular.",
         code: "REMATRICULA_DEBT_REQUIRED",
       }, { status: 409 });
     }
