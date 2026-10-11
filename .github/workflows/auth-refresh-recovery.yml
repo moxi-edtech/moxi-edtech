@@ -1,0 +1,55 @@
+name: Auth Refresh Recovery
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/(guards)/RequireSecretaria.tsx"
+      - "apps/web/src/app/(portal-aluno)/aluno/layout.tsx"
+      - "apps/web/src/app/escola/**/professor/layout.tsx"
+      - "apps/web/src/app/page.tsx"
+      - "apps/web/src/app/auth-recover/route.ts"
+      - "apps/web/src/lib/auth/**"
+      - "apps/web/tests/unit/auth-*.spec.ts"
+      - ".github/workflows/auth-refresh-recovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth-full:
+    name: Auth regression, typecheck and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Revoked and expired session, cookie recovery, authorization and login regressions
+        run: |
+          cd apps/web
+          node --test --import tsx \
+            tests/unit/auth-refresh-recovery.spec.ts \
+            tests/unit/auth-revoked-session-integration.spec.ts \
+            tests/unit/auth-cookie-session-contract.spec.ts \
+            tests/unit/fuzz-auth-login.spec.ts
+      - name: Typecheck
+        run: pnpm -C apps/web typecheck
+      - name: Focused ESLint
+        run: |
+          pnpm -C apps/web exec eslint \
+            'src/app/(guards)/RequireSecretaria.tsx' \
+            'src/app/(portal-aluno)/aluno/layout.tsx' \
+            'src/app/escola/[id]/professor/layout.tsx' \
+            src/app/page.tsx \
+            src/app/auth-recover/route.ts \
+            src/lib/auth/isRefreshTokenNotFoundError.ts \
+            tests/unit/auth-refresh-recovery.spec.ts \
+            tests/unit/auth-revoked-session-integration.spec.ts \
+            --max-warnings 10000
