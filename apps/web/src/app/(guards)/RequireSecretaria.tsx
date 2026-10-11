@@ -44,6 +44,12 @@ export default function RequireSecretaria({
         return;
       }
 
+      // Type guard after the error branch: Supabase can return a null user.
+      if (!user) {
+        if (active) window.location.replace("/auth-recover?next=/redirect");
+        return;
+      }
+
       // 2. Identify target school
       let targetEscolaId = propsEscolaId;
       if (targetEscolaId && !isUuid(targetEscolaId)) {
