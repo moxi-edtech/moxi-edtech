@@ -32,7 +32,32 @@ CREATE UNIQUE INDEX ux_synthetic_receipt_idempotency
 CREATE FUNCTION public.can_manage_school(uuid) RETURNS boolean
   LANGUAGE sql AS $$ SELECT true $$;
 
+-- Include one synthetic row at each retry stage before applying migration;
+-- the DDL must not alter historical events.
+INSERT INTO public.outbox_events(escola_id,event_type,status,attempts)
+VALUES
+('00000000-0000-4000-8000-000000000001','financeiro_recibo_pagamento','failed',1),
+('00000000-0000-4000-8000-000000000001','financeiro_recibo_pagamento','failed',5);
+CREATE TEMP TABLE receipt_outbox_before_migration ON COMMIT PRESERVE ROWS AS
+SELECT id,status,attempts,max_attempts,next_attempt_at,processed_at
+  FROM public.outbox_events;
+
 \ir ../../migrations/20261011133652_outbox_receipt_retry_gate.sql
+
+DO $$
+BEGIN
+  IF EXISTS (
+    (SELECT * FROM receipt_outbox_before_migration
+      EXCEPT SELECT id,status,attempts,max_attempts,next_attempt_at,processed_at
+               FROM public.outbox_events)
+    UNION ALL
+    (SELECT id,status,attempts,max_attempts,next_attempt_at,processed_at
+       FROM public.outbox_events
+      EXCEPT SELECT * FROM receipt_outbox_before_migration)
+  ) THEN
+    RAISE EXCEPTION 'migration unexpectedly mutated existing outbox rows';
+  END IF;
+END $$;
 
 DO $$
 DECLARE
@@ -117,4 +142,32 @@ BEGIN
       WHERE idempotency_key='pagamento_recibo:synthetic-already-sent') <> 1 THEN
    RAISE EXCEPTION 'duplicate receipt was created';
  END IF;
+END $$;
+
+
+-- Prove restoration of the pre-migration function body and reapplication
+-- on the disposable database. This is a DDL rollback test, not a suggestion
+-- that reverting to the legacy broken RPC is acceptable operationally.
+\ir ../scripts/rollback_outbox_receipt_retry_gate.sql
+
+DO $$
+BEGIN
+  IF pg_get_functiondef('public.retry_outbox_event(uuid)'::regprocedure)
+      NOT LIKE '%next_run_at = now()%' THEN
+    RAISE EXCEPTION 'rollback failed to restore legacy function';
+  END IF;
+  IF (SELECT column_default FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='outbox_events'
+        AND column_name='next_attempt_at') <> 'now()' THEN
+    RAISE EXCEPTION 'rollback changed outbox insert default';
+  END IF;
+END $$;
+
+\ir ../../migrations/20261011133652_outbox_receipt_retry_gate.sql
+DO $$
+BEGIN
+  IF pg_get_functiondef('public.retry_outbox_event(uuid)'::regprocedure)
+      NOT LIKE '%next_attempt_at = now()%' THEN
+    RAISE EXCEPTION 'reapplication after rollback failed';
+  END IF;
 END $$;

@@ -5,10 +5,13 @@ on:
     paths:
       - "apps/web/src/app/api/jobs/outbox/**"
       - "apps/web/src/lib/server/outbox-transition.ts"
+      - "apps/web/src/lib/server/receipt-idempotency.ts"
       - "apps/web/tests/unit/outbox-receipts.spec.ts"
+      - "apps/web/tests/unit/outbox-receipt-idempotency.spec.ts"
       - "supabase/migrations/*outbox_receipt_retry_gate.sql"
       - "supabase/ops/tests/regression_receipt_outbox_20261011.sql"
       - "supabase/ops/scripts/replay_receipt_outbox_GATED.sql"
+      - "supabase/ops/scripts/rollback_outbox_receipt_retry_gate.sql"
       - ".github/workflows/outbox-receipt-integrity.yml"
   workflow_dispatch:
 
@@ -32,11 +35,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Receipt worker lifecycle and replay tests
-        run: node --test --import tsx apps/web/tests/unit/outbox-receipts.spec.ts
+        run: node --test --import tsx apps/web/tests/unit/outbox-receipts.spec.ts apps/web/tests/unit/outbox-receipt-idempotency.spec.ts
       - name: Full web typecheck
         run: pnpm -C apps/web typecheck
       - name: Focused ESLint
-        run: pnpm -C apps/web exec eslint src/app/api/jobs/outbox/route.ts src/lib/server/outbox-transition.ts tests/unit/outbox-receipts.spec.ts --max-warnings 10000
+        run: pnpm -C apps/web exec eslint src/app/api/jobs/outbox/route.ts src/lib/server/outbox-transition.ts src/lib/server/receipt-idempotency.ts tests/unit/outbox-receipts.spec.ts tests/unit/outbox-receipt-idempotency.spec.ts --max-warnings 10000
       - name: No accidental fiscal guard or authorization drift
         run: |
           git diff --check
