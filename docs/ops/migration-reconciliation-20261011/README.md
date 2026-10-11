@@ -214,3 +214,15 @@ sem diminuir qualquer privilégio ou trigger existente.
 O reforço contra TRUNCATE por proprietário privilegiado da branch
 #137 **não foi tratado como já aplicado**; depende de avaliação
 fiscal em PR própria, sem aplicar agora.
+
+
+### Instrumentação de comparação futura
+
+O script `scripts/compare-schema-only-gated.sh` executa dois
+`pg_dump --schema-only --no-owner --no-privileges --schema=public`
+e produz comparação normalizada **somente se** o replay integral tiver
+gravado `/tmp/klasse-full-replay-green` e se houver uma credencial
+`KLASSE_PROD_READONLY_DB_URL` com privilégios estritamente read-only.
+O CI não imprime URL nem SQL do diff; os nomes de objetos divergentes
+são registrados separadamente. Enquanto os pré-requisitos estiverem
+ausentes, o CI marca **BLOCKED** e não simula equivalência.

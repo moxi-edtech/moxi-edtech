@@ -33,6 +33,7 @@ if failure:
     line += f" BLOCKED at {failure[0]} ({failure[1]}). Schema parity NOT established."
     print(f"::warning::{line}")
 else:
+    Path("/tmp/klasse-full-replay-green").touch()
     line += " All migrations ran; a normalized schema dump comparison is still required."
     print(line)
 if summary:

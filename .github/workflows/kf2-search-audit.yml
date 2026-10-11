@@ -127,3 +127,13 @@ jobs:
           createdb migration_replay_probe
           PGDATABASE=migration_replay_probe python3 scripts/probe-clean-migration-replay.py
           echo "::notice::Schema parity remains gated on the full Supabase PG17 extension runtime and read-only schema dump access."
+      - name: Schema-only pg_dump parity (gated; never writes production)
+        env:
+          KLASSE_PROD_READONLY_DB_URL: ${{ secrets.KLASSE_PROD_READONLY_DB_URL }}
+          KLASSE_DISPOSABLE_DB_URL: postgresql://postgres:synthetic-ci-only@localhost:5432/migration_replay_probe
+        run: |
+          if [ -f /tmp/klasse-full-replay-green ] && [ -n "$KLASSE_PROD_READONLY_DB_URL" ]; then
+            bash scripts/compare-schema-only-gated.sh
+          else
+            echo "::warning::BLOCKED: full main replay / read-only production pg_dump prerequisites missing; no parity claimed"
+          fi
