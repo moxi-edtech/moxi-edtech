@@ -14,7 +14,7 @@ test("server entrypoints inspect returned refresh errors as well as thrown error
     const source = fs.readFileSync(path.join(root, file), "utf8");
     assert.match(source, /isRefreshTokenNotFoundError\((?:userResult|sessionResult)\.error\)/, file);
     assert.match(source, /auth-recover\?next=\/redirect/, file);
-    assert.match(source, /if \((?:userResult|sessionResult)\.error\)/, file);
+    assert.match(source, /if \((?:userResult|sessionResult)\.error && !isAuthSessionMissingError\((?:userResult|sessionResult)\.error\)\)/, file);
   }
 });
 
