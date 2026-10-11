@@ -1,3 +1,4 @@
+import { resolveTargetAcademicYear } from "@/lib/academico/target-academic-year";
 // @kf2 allow-scan
 // apps/web/src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts
 import { NextResponse } from "next/server";
@@ -185,11 +186,15 @@ export async function POST(request: Request) {
       .eq("escola_id", escolaId)));
 
     const primaryTemplate = templateList[0];
+    const targetAcademicYear = resolveTargetAcademicYear(
+      primaryTemplate.ano_base,
+      activeYear?.ano ?? null,
+    );
     const { data: existingTarget } = await supabase
       .from("anos_letivos")
       .select("id,ano,ativo")
       .eq("escola_id", escolaId)
-      .eq("ano", primaryTemplate.ano_base)
+      .eq("ano", targetAcademicYear)
       .maybeSingle();
 
     let targetId = existingTarget?.id ?? null;
@@ -197,7 +202,7 @@ export async function POST(request: Request) {
       const { data: created, error: createError } = await supabase.rpc("setup_active_ano_letivo", {
         p_escola_id: escolaId,
         p_ano_data: {
-          ano: primaryTemplate.ano_base,
+          ano: targetAcademicYear,
           data_inicio: primaryTemplate.data_inicio,
           data_fim: primaryTemplate.data_fim,
           ativo: false,
@@ -214,7 +219,7 @@ export async function POST(request: Request) {
         .from("anos_letivos")
         .select("id")
         .eq("escola_id", escolaId)
-        .eq("ano", primaryTemplate.ano_base)
+        .eq("ano", targetAcademicYear)
         .single();
       targetId = target?.id ?? null;
     }
@@ -308,7 +313,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       reused: Boolean(existingTarget),
-      target_session: { id: targetId, ano: primaryTemplate.ano_base, ativo: false, has_data: false },
+      target_session: { id: targetId, ano: targetAcademicYear, ativo: false, has_data: false },
       templates: templateList.map((template) => ({
         id: template.id,
         nome: template.nome,
