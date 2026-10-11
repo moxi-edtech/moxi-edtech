@@ -14,6 +14,7 @@ import {
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
 import { buildOutboxTransition, paymentReceiptKey } from "@/lib/server/outbox-transition";
+import { persistReceiptOnce } from "@/lib/server/receipt-idempotency";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -838,6 +839,7 @@ async function emitirReciboPagamento(
       .from("documentos_emitidos")
       .select("id")
       .eq("escola_id", row.escola_id)
+      .eq("tipo", "recibo")
       .eq("idempotency_key", receiptKey)
       .maybeSingle();
     if (byKey.error) throw byKey.error;
@@ -863,38 +865,39 @@ async function emitirReciboPagamento(
     if (legacy.error) throw legacy.error;
     return (legacy.data ?? []).length > 0;
   };
+  // Retain the fast replay check; persistReceiptOnce adds atomic conflict
+  // handling for two workers racing on the same payment id.
   if (await findExisting()) return;
 
   const valor = Number(row.valor_pago ?? 0);
   if (!Number.isFinite(valor) || valor <= 0) throw new Error("pagamento com valor inválido");
 
   const hash = crypto.randomUUID().replace(/-/g, "");
-  const { error: insertDocError } = await admin.from("documentos_emitidos").insert({
-    escola_id: row.escola_id,
-    aluno_id: row.aluno_id,
-    mensalidade_id: row.mensalidade_id,
-    tipo: "recibo",
-    idempotency_key: receiptKey,
-    dados_snapshot: {
-      origem: "pagamento_auto",
-      pagamento_id: row.id,
-      mensalidade_id: row.mensalidade_id,
-      valor_pago: valor,
-      data_pagamento: row.data_pagamento,
-      metodo: row.metodo,
-      reference: row.reference,
-      hash_validacao: hash,
+  await persistReceiptOnce({
+    exists: findExisting,
+    insert: async () => {
+      const { error } = await admin.from("documentos_emitidos").insert({
+        escola_id: row.escola_id,
+        aluno_id: row.aluno_id,
+        mensalidade_id: row.mensalidade_id,
+        tipo: "recibo",
+        idempotency_key: receiptKey,
+        dados_snapshot: {
+          origem: "pagamento_auto",
+          pagamento_id: row.id,
+          mensalidade_id: row.mensalidade_id,
+          valor_pago: valor,
+          data_pagamento: row.data_pagamento,
+          metodo: row.metodo,
+          reference: row.reference,
+          hash_validacao: hash,
+        },
+        created_by: null,
+        hash_validacao: hash,
+      });
+      return { error };
     },
-    created_by: null,
-    hash_validacao: hash,
   });
-
-  if (insertDocError) {
-    // A generic 23505 may refer to a different unique constraint: verify
-    // the same receipt exists before classifying the replay as idempotent.
-    if (insertDocError.code === "23505" && await findExisting()) return;
-    throw insertDocError;
-  }
 }
 
 async function runOutboxWorker(req: Request) {
