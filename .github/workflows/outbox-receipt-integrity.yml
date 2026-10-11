@@ -1,0 +1,68 @@
+name: Outbox Receipt Integrity
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/api/jobs/outbox/**"
+      - "apps/web/src/lib/server/outbox-transition.ts"
+      - "apps/web/tests/unit/outbox-receipts.spec.ts"
+      - "supabase/migrations/*outbox_receipt_retry_gate.sql"
+      - "supabase/ops/tests/regression_receipt_outbox_20261011.sql"
+      - "supabase/ops/scripts/replay_receipt_outbox_GATED.sql"
+      - ".github/workflows/outbox-receipt-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Receipt worker lifecycle and replay tests
+        run: node --test --import tsx apps/web/tests/unit/outbox-receipts.spec.ts
+      - name: Full web typecheck
+        run: pnpm -C apps/web typecheck
+      - name: Focused ESLint
+        run: pnpm -C apps/web exec eslint src/app/api/jobs/outbox/route.ts src/lib/server/outbox-transition.ts tests/unit/outbox-receipts.spec.ts --max-warnings 10000
+      - name: No accidental fiscal guard or authorization drift
+        run: |
+          git diff --check
+          ! git diff origin/${{ github.base_ref }}...HEAD --name-only | grep -E '^(apps/web/src/lib/fiscal/|supabase/migrations/.*bill[-_](001|002|003|009)|supabase/.*rls)' || {
+            echo 'Fiscal guard or permission scope detected' >&2
+            exit 1
+          }
+
+  postgres-disposable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify insert/default, retry, dead and gated replay
+        env:
+          PGPASSWORD: postgres
+        run: psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f supabase/ops/tests/regression_receipt_outbox_20261011.sql
