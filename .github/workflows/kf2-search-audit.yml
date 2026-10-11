@@ -76,3 +76,54 @@ jobs:
       - name: Performance Gate
         if: steps.changes.outputs.run == 'true'
         run: pnpm agents:gate
+
+
+  # Permanent read-only fiscal/migration gates (introduced by PR #182).
+  fiscal-negative:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Permanent BILL-001/002/003/009, SAF-T and ledger negative tests
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/fiscal-immutability-guards.spec.ts
+      - name: Verify no gap in the captured production migration versions
+        run: python3 scripts/check-migration-inventory.py
+
+  fiscal-guard-disposable:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: synthetic-ci-only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fiscal guard migration on clean PostgreSQL 17, twice (idempotency)
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/fiscal_guard_convergence_pg17.sql
+      - name: Attempt ordered whole-main replay on separate disposable database
+        run: |
+          createdb migration_replay_probe
+          PGDATABASE=migration_replay_probe python3 scripts/probe-clean-migration-replay.py
+          echo "::notice::Schema parity remains gated on the full Supabase PG17 extension runtime and read-only schema dump access."
