@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createClient } from "@supabase/supabase-js";
-import { isRefreshTokenNotFoundError } from "../../src/lib/auth/isRefreshTokenNotFoundError";
+import { isAuthSessionMissingError, isRefreshTokenNotFoundError } from "../../src/lib/auth/isRefreshTokenNotFoundError";
 import { GET as recoverSession } from "../../src/app/auth-recover/route";
 
 const jwtPart = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -57,4 +57,12 @@ test("recovery endpoint clears only auth cookies and redirects once to login", a
   assert.match(cookies, /Max-Age=0/i);
   assert.match(cookies, /Domain=\.?klasse\.ao/i);
   assert.doesNotMatch(cookies, /analytics_opt=/);
+});
+
+
+test("missing unauthenticated session is different from infrastructure outage", () => {
+  assert.ok(isAuthSessionMissingError({ name: "AuthSessionMissingError", message: "Auth session missing!" }));
+  assert.ok(isAuthSessionMissingError({ message: "Auth session missing!" }));
+  assert.equal(isAuthSessionMissingError({ message: "temporary Auth outage" }), false);
+  assert.equal(isAuthSessionMissingError({ name: "AuthApiError", message: "Invalid credentials" }), false);
 });

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { roleMatchesAllowedRoles } from "@/lib/permissions";
-import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
+import { isAuthSessionMissingError, isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 function isUuid(value: string) {
@@ -31,7 +31,7 @@ export default function RequireSecretaria({
       // Validate against Supabase Auth instead of trusting transient browser session hydration.
       const { data: { user }, error: userErr } = await supabase.auth.getUser();
       
-      if (isRefreshTokenNotFoundError(userErr) || (!user && !userErr)) {
+      if (isRefreshTokenNotFoundError(userErr) || isAuthSessionMissingError(userErr) || (!user && !userErr)) {
         // Avoid the /redirect -> portal -> /redirect cycle on stale auth
         // cookies. The recovery route expires shared auth cookies once.
         if (active) window.location.replace("/auth-recover?next=/redirect");
