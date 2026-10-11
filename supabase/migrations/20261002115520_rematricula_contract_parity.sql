@@ -1,0 +1,10 @@
+-- Live migration history marker.
+--
+-- The Supabase connector applied the REM-GR-001/002 DDL to production as
+-- migration version 20261002115520 with name rematricula_contract_parity.
+-- The canonical, dependency-ordered migration remains
+-- 20270826128000_rematricula_contract_parity.sql and is intentionally
+-- idempotent (CREATE OR REPLACE / REVOKE / GRANT).
+--
+-- This marker keeps local/remote migration histories reconcilable without
+-- replaying the 2027 migration early on fresh databases.

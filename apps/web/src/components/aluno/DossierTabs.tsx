@@ -10,6 +10,7 @@ type TabItem = { id: DossierTab; label: string; icon: React.ReactNode; badge?: n
 
 export function DossierTabs({
   aluno,
+  workspace = false,
   slotPerfil,
   slotFinanceiro,
   slotHistorico,
@@ -17,6 +18,7 @@ export function DossierTabs({
   slotDocumentos,
 }: {
   aluno: AlunoNormalizado;
+  workspace?: boolean;
   slotPerfil: React.ReactNode;
   slotFinanceiro: React.ReactNode;
   slotHistorico: React.ReactNode;
@@ -37,7 +39,7 @@ export function DossierTabs({
     documentos: slotDocumentos,
   };
   const tabs: TabItem[] = [
-    { id: "perfil", label: "Perfil", icon: <Users size={13} /> },
+    { id: "perfil", label: workspace ? "Dados pessoais" : "Perfil", icon: <Users size={13} /> },
     { id: "financeiro", label: "Financeiro", icon: <Wallet size={13} />, badge: aluno.financeiro.mensalidades_atrasadas.length || null },
     { id: "historico", label: "Histórico", icon: <BookOpen size={13} /> },
     { id: "historico_transitado", label: "Histórico Transitado", icon: <BookOpen size={13} /> },
@@ -45,8 +47,8 @@ export function DossierTabs({
   ] as const;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto border-b border-slate-200 bg-slate-50/50 px-5 pt-4 -mb-px">
+    <div className={workspace ? "min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white" : "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"}>
+      <div className="overflow-x-auto border-b border-slate-200 bg-slate-50/50 px-3 pt-2 sm:px-5 sm:pt-4 -mb-px">
         <div className="flex min-w-max gap-1">
         {tabs.map((tab) => {
           const isActive = active === tab.id;
@@ -72,7 +74,7 @@ export function DossierTabs({
         })}
         </div>
       </div>
-      <div className="p-6">{slots[active]}</div>
+      <div className={workspace ? "min-w-0 p-3 sm:p-5" : "p-6"}>{slots[active]}</div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
 import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
 
-export default async function AlunoPerfilPage({ escolaId, alunoId, role, selectedYear, embedded = false }: { escolaId?: string | null; alunoId: string; role: DossierRole; selectedYear?: number | null; embedded?: boolean }) {
+export default async function AlunoPerfilPage({ escolaId, alunoId, role, selectedYear, embedded = false, workspace = false }: { escolaId?: string | null; alunoId: string; role: DossierRole; selectedYear?: number | null; embedded?: boolean; workspace?: boolean }) {
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return notFound();
@@ -117,10 +117,11 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
 
   return (
-    <div className={embedded ? "bg-slate-50" : "min-h-screen bg-slate-50"}>
-      <div className={`max-w-6xl mx-auto space-y-5 ${embedded ? "p-4 sm:p-6" : "px-6 py-8"}`}>
-        <DossierHeader aluno={aluno} role={role} escolaId={resolvedEscolaId} />
+    <div className={workspace ? "min-w-0" : embedded ? "bg-slate-50" : "min-h-screen bg-slate-50"}>
+      <div className={workspace ? "min-w-0 space-y-4" : `max-w-6xl mx-auto space-y-5 ${embedded ? "p-4 sm:p-6" : "px-6 py-8"}`}>
+        {!workspace && <DossierHeader aluno={aluno} role={role} escolaId={resolvedEscolaId} />}
         <DossierTabs
+          workspace={workspace}
           aluno={aluno}
           slotPerfil={<DossierPerfilSection aluno={aluno} />}
           slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} servicos={servicos} />}
@@ -128,7 +129,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}
           slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
         />
-        {role === "secretaria" && (
+        {role === "secretaria" && !workspace && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <AcoesRapidasBalcao
               alunoId={alunoId}

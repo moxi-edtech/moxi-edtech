@@ -94,13 +94,31 @@ function buildGuidance(
       acoes: [{ id: "abrir_recursos", label: "Abrir recursos e reapreciações", href: `/secretaria/raa/reapreciacoes${query}`, prioridade: "principal" }],
     }
   }
-  if (progression.decision.startsWith("retido")) {
+  if (progression.decision === "retido") {
+    return {
+      estado: "pronto",
+      titulo: "Repetição da mesma classe",
+      mensagem: "O RAA determinou retenção por aproveitamento. O aluno pode ser rematriculado na mesma classe.",
+      proximo_passo: "Continuar a rematrícula escolhendo uma turma da mesma classe no ano letivo destino.",
+      acoes: [{ id: "continuar_matricula", label: "Continuar rematrícula", href: `/secretaria/rematricula${query}`, prioridade: "principal" }],
+    }
+  }
+  if (progression.decision === "retido_por_faltas") {
     return {
       estado: "bloqueado",
-      titulo: "Matrícula bloqueada",
-      mensagem: progression.motivo === "faltas" ? "A retenção decorre de faltas segundo a regra legal." : "A retenção decorre da decisão académica vigente.",
-      proximo_passo: "Rever o detalhe da decisão e corrigir apenas dados comprovadamente incorretos, com rastreabilidade.",
-      acoes: [{ id: "rever_decisao", label: "Rever decisão académica", href: `/secretaria/operacoes-academicas/fechamento-academico${query}`, prioridade: "principal" }],
+      titulo: "Retenção por faltas",
+      mensagem: "A retenção decorre de faltas e exige validação da regra escolar antes da nova matrícula.",
+      proximo_passo: "Rever a frequência e a regra aplicável antes de autorizar a repetição.",
+      acoes: [{ id: "rever_decisao", label: "Rever frequência e decisão", href: `/secretaria/operacoes-academicas/fechamento-academico${query}`, prioridade: "principal" }],
+    }
+  }
+  if (progression.decision === "retido_por_indisciplina") {
+    return {
+      estado: "bloqueado",
+      titulo: "Retenção por indisciplina",
+      mensagem: "A retenção decorre de decisão disciplinar e não autoriza rematrícula automática.",
+      proximo_passo: "Registar ou confirmar a decisão administrativa aplicável antes de criar uma nova matrícula.",
+      acoes: [{ id: "rever_indisciplina", label: "Abrir decisão disciplinar", href: `/secretaria/raa/indisciplina${query}`, prioridade: "principal" }],
     }
   }
   if (progression.decision === "transitou" || progression.decision === "concluiu") {

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAlunoContext } from '@/lib/alunoContext'
-import type { DBWithRPC } from '@/types/supabase-augment'
 import { resolveAnoLetivoScope } from '@/lib/financeiro/resolveAnoLetivoScope'
 import { resolveOpenRematriculaWindow } from '@/lib/secretaria/rematricula-window'
 import { resolveRematriculaSource } from '@/lib/alunoRematriculaSource'
@@ -10,8 +8,11 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 export const dynamic = 'force-dynamic'
 
 const errorResponse = (message: string) => {
-  if (message.includes('FINANCEIRO:')) {
-    return NextResponse.json({ ok: false, error: 'Possui pendências financeiras.' }, { status: 403 })
+  if (message.includes('REMATRICULA_DEBT_REQUIRED') || message.includes('FINANCEIRO:')) {
+    return NextResponse.json({ ok: false, error: 'Existem mensalidades vencidas por regularizar.', code: 'REMATRICULA_DEBT_REQUIRED' }, { status: 409 })
+  }
+  if (message.includes('REMATRICULA_ACADEMIC_BLOCKED') || message.includes('ACADEMICO:')) {
+    return NextResponse.json({ ok: false, error: 'A situação académica ainda não autoriza esta rematrícula.', code: 'REMATRICULA_ACADEMIC_BLOCKED' }, { status: 409 })
   }
   if (message.includes('CONFLICT:')) {
     return NextResponse.json({ ok: false, error: 'A rematrícula já foi efetivada.' }, { status: 409 })
@@ -21,9 +22,6 @@ const errorResponse = (message: string) => {
   }
   if (message.includes('AUTH:')) {
     return NextResponse.json({ ok: false, error: 'Sem permissão para solicitar rematrícula.' }, { status: 403 })
-  }
-  if (message.includes('ACADEMICO:')) {
-    return NextResponse.json({ ok: false, error: 'A situação académica ainda não autoriza a rematrícula.' }, { status: 409 })
   }
   return NextResponse.json({ ok: false, error: 'Erro ao processar rematrícula' }, { status: 500 })
 }
@@ -53,9 +51,11 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: 'Não foi encontrada uma matrícula histórica elegível.', code: 'REMATRICULA_SOURCE_INVALID' }, { status: 409 })
     }
 
-    const rpcClient = supabase as unknown as SupabaseClient<DBWithRPC>
-    const { data, error } = await rpcClient.rpc('aluno_confirmar_rematricula', {
+    // Compatibilidade mobile/legacy: esta rota não mantém contrato próprio.
+    // Ela delega no mesmo RPC canónico usado pelo fluxo atual do Portal.
+    const { data, error } = await (supabase as any).rpc('aluno_iniciar_rematricula', {
       p_matricula_id: source.id,
+      p_servicos_ids: [],
     })
 
     if (error) {
@@ -63,19 +63,16 @@ export async function POST() {
       return errorResponse(error.message)
     }
 
-    const result = data?.[0]
-    if (!result) {
+    if (!data?.ok || !data?.candidatura_id) {
       return NextResponse.json({ ok: false, error: 'Resposta inválida ao processar rematrícula' }, { status: 500 })
     }
 
     return NextResponse.json({
       ok: true,
-      candidaturaId: result.candidatura_id,
-      nextAno: result.next_ano,
-      reused: result.reused,
-      message: result.reused
-        ? 'O seu pedido de rematrícula já estava registado.'
-        : 'Rematrícula solicitada com sucesso!',
+      candidaturaId: data.candidatura_id,
+      nextAno: data.next_ano,
+      paymentIntentId: data.pagamento_intent_id ?? null,
+      message: 'Rematrícula iniciada com sucesso.',
     })
   } catch (err: unknown) {
     console.error('Confirm Rematricula Error:', err)

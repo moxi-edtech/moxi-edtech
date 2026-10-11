@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabaseClient'
 import { clsx } from 'clsx'
 import { useState } from 'react'
@@ -25,7 +24,6 @@ export default function SignOutButton({
   variant = 'ghost',
   size = 'sm',
 }: Props) {
-  const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
 
@@ -59,8 +57,17 @@ export default function SignOutButton({
         console.error('Non-blocking clearOfflineData finished or failed:', err)
       }
 
-      await supabase.auth.signOut()
-      router.replace(redirectTo)
+      try {
+        await supabase.auth.signOut({ scope: 'local' })
+      } finally {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+        }).catch(() => null)
+      }
+
+      window.location.replace(redirectTo)
     } finally {
       setLoading(false)
     }

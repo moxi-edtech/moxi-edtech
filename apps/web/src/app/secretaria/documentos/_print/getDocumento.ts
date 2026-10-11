@@ -1,4 +1,5 @@
 import "server-only";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAuthorizedStudentIds } from "@/lib/portalAlunoAuth";
@@ -85,6 +86,18 @@ export async function getDocumentoEmitido(
   const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, doc.escola_id as string);
   if (!escolaId || escolaId !== doc.escola_id) {
     return { error: "Sem permissão" } as const;
+  }
+
+  // Os recibos administrativos contêm dados financeiros pessoais: pertencer
+  // à escola não equivale a ter permissão para consultar os recibos de todos.
+  // O portal do aluno mantém a verificação de titularidade própria abaixo.
+  if (doc.tipo === "recibo" && !opts?.requireStudentOwnership) {
+    const guard = await requireRoleInSchool({
+      supabase,
+      escolaId: doc.escola_id,
+      roles: ["secretaria", "financeiro", "secretaria_financeiro", "admin_financeiro", "admin_secretaria", "admin", "admin_escola", "staff_admin", "diretor"],
+    });
+    if (guard.error) return { error: "Sem permissão" } as const;
   }
 
   if (opts?.requireStudentOwnership) {

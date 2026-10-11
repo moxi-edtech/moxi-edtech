@@ -15,6 +15,7 @@ import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,6 +34,9 @@ const Body = z.object({
     id: z.string().uuid(),
     tipo: z.enum(["mensalidade", "servico"]),
   })).max(50).optional(),
+  mensalidades_competencias: z.array(
+    z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  ).max(12).optional().default([]),
 });
 
 const SERVICE_CODE = "SERV_REMATRICULA";
@@ -68,6 +72,36 @@ function errorMessage(error: unknown): string {
     }
   }
   return String(error);
+}
+
+async function registrarHistoricoOrigem(
+  supabase: any,
+  input: {
+    escolaId: string;
+    matriculaOrigemId: string;
+    conditional: boolean;
+    disciplinaIdsPendentes: string[];
+  },
+) {
+  const { error } = await supabase.rpc("finalizar_origem_academica", {
+    p_escola_id: input.escolaId,
+    p_matricula_id: input.matriculaOrigemId,
+    // historico_anos mantém o contrato físico legado; a nuance condicional
+    // vive no snapshot RAA + lifecycle das dependências académicas.
+    p_resultado_final: "aprovado",
+    p_fonte: "raa",
+    p_motivo: input.conditional
+      ? "Progressão condicional autorizada pelo RAA"
+      : null,
+    p_observacao: input.conditional
+      ? `Disciplinas pendentes: ${input.disciplinaIdsPendentes.join(", ")}`
+      : null,
+  });
+
+  if (error) {
+    return { ok: false as const, error: error.message };
+  }
+  return { ok: true as const };
 }
 
 async function garantirVinculoFinanceiro(
@@ -116,6 +150,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || "Payload inválido" }, { status: 400 });
     }
     const body = parsed.data;
+    if (new Set(body.mensalidades_competencias).size !== body.mensalidades_competencias.length) {
+      return NextResponse.json({
+        ok: false,
+        error: "Existem mensalidades duplicadas na seleção.",
+        code: "DUPLICATE_MONTHLY_SELECTION",
+      }, { status: 400 });
+    }
 
     // A rematrícula normal não decide o resultado académico. O resultado vem
     // exclusivamente do RAA e precisa estar fechado como aprovado.
@@ -221,7 +262,7 @@ export async function POST(request: Request) {
       matricula = matriculaAnterior;
     }
     const origemMatriculaId = String(matricula.id);
-    const { data: matriculaDestino } = await supabase
+    let { data: matriculaDestino } = await supabase
       .from("matriculas")
       .select("id, turma_id")
       .eq("escola_id", escolaId)
@@ -299,9 +340,13 @@ export async function POST(request: Request) {
           ? "REMATRICULA_ACADEMIC_REVIEW_REQUIRED"
           : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
             ? "REMATRICULA_ACADEMIC_CONDITIONAL_BLOCKED"
-            : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-              ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
-              : "REMATRICULA_ACADEMIC_NOT_APPROVED";
+            : academicEligibility.code === "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+              ? "REMATRICULA_ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+              : academicEligibility.code === "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                ? "REMATRICULA_ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+                  ? "REMATRICULA_ACADEMIC_CYCLE_COMPLETED"
+                  : "REMATRICULA_ACADEMIC_NOT_APPROVED";
       return NextResponse.json({
         ok: false,
         error: academicEligibility.reason,
@@ -315,38 +360,26 @@ export async function POST(request: Request) {
     }
 
     if (numeroOrigem !== null && numeroDestino !== null) {
-      if (numeroOrigem === 12) {
-        return NextResponse.json({ ok: false, error: "A 12ª classe não tem uma classe seguinte configurada.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
-      }
-      const esperado = numeroOrigem + 1;
-      if (numeroDestino !== esperado) {
-        return NextResponse.json({ ok: false, error: "Aluno aprovado deve seguir para a classe imediatamente seguinte.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+      if (academicEligibility.mode === "repeat") {
+        if (numeroDestino !== numeroOrigem) {
+          return NextResponse.json({
+            ok: false,
+            error: "Aluno retido deve repetir a mesma classe.",
+            code: "REMATRICULA_PROGRESSION_INVALID",
+          }, { status: 409 });
+        }
+      } else {
+        if (numeroOrigem === 12) {
+          return NextResponse.json({ ok: false, error: "A 12ª classe não tem uma classe seguinte configurada.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+        }
+        const esperado = numeroOrigem + 1;
+        if (numeroDestino !== esperado) {
+          return NextResponse.json({ ok: false, error: "Aluno aprovado deve seguir para a classe imediatamente seguinte.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+        }
       }
     }
     if (turmaOrigem?.curso_id && turmaDestino?.curso_id && turmaOrigem.curso_id !== turmaDestino.curso_id && !(numeroOrigem === 0 && numeroDestino === 1)) {
       return NextResponse.json({ ok: false, error: "A turma destino pertence a outro curso.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
-    }
-
-    // Reconfirmações preservam a matrícula destino já criada, mas não escapam
-    // ao gate académico. Só evitamos regravar o resultado histórico quando a
-    // operação já o materializou anteriormente.
-    if (!reconfirmacaoApenas) {
-      const { error: origemResultadoError } = await (supabase as any).rpc("finalizar_origem_academica", {
-        p_escola_id: escolaId,
-        p_matricula_id: origemMatriculaId,
-        p_resultado_final: academicEligibility.mode === "conditional" ? "inscricao_condicional" : "aprovado",
-        p_fonte: "raa",
-        p_motivo: null,
-        p_observacao: null,
-      });
-      if (origemResultadoError) {
-        return NextResponse.json({
-          ok: false,
-          error: "Não foi possível registar o resultado académico aprovado da matrícula de origem.",
-          code: "ACADEMIC_RESULT_RECONCILIATION_REQUIRED",
-          details: origemResultadoError.message,
-        }, { status: 409 });
-      }
     }
 
     const { data: service, error: serviceError } = await (supabase as any)
@@ -367,6 +400,112 @@ export async function POST(request: Request) {
     const confirmationExempt = Boolean(service?.ativo && targetPricing.origem === "classe" && valorConfirmacao === 0);
     if (!service || !service.ativo || (valorConfirmacao <= 0 && !confirmationExempt)) {
       return NextResponse.json({ ok: false, error: "O emolumento de rematrícula ainda não está configurado.", code: "REMATRICULA_PRICE_NOT_CONFIGURED" }, { status: 409 });
+    }
+
+    let mensalidadesDestinoSelecionadas: any[] = [];
+    let matriculaDestinoPreparadaId: string | null = matriculaDestino?.id ? String(matriculaDestino.id) : null;
+
+    if (body.mensalidades_competencias.length > 0) {
+      if (!matricula.session_id) {
+        return NextResponse.json({
+          ok: false,
+          error: "A matrícula de origem não possui sessão académica válida para preparar o ano destino.",
+          code: "REMATRICULA_SOURCE_SESSION_REQUIRED",
+        }, { status: 409 });
+      }
+
+      const { data: reserva, error: reservaError } = await (supabase as any).rpc(
+        "preparar_aluno_para_rematricula",
+        {
+          p_escola_id: escolaId,
+          p_aluno_id: body.aluno_id,
+          p_from_session_id: matricula.session_id,
+          p_to_session_id: academicContext.anoLetivoId,
+          p_turma_destino_id: body.destino_turma_id,
+        },
+      );
+      if (reservaError || reserva?.ok !== true || !reserva?.matricula_id) {
+        return NextResponse.json({
+          ok: false,
+          error: reservaError?.message ?? reserva?.erro ?? "Não foi possível preparar a matrícula destino.",
+          code: "REMATRICULA_RESERVATION_REQUIRED",
+        }, { status: 409 });
+      }
+
+      matriculaDestinoPreparadaId = String(reserva.matricula_id);
+      const garantia = await garantirVinculoFinanceiro(
+        supabase,
+        escolaId,
+        matriculaDestinoPreparadaId,
+        academicContext.anoLetivoId,
+      );
+      if (!garantia.ok) {
+        return NextResponse.json({
+          ok: false,
+          error: "A reserva foi preparada, mas o carnet do ano destino não pôde ser gerado.",
+          code: "FINANCIAL_LINK_REQUIRED",
+          details: garantia.error,
+        }, { status: 409 });
+      }
+
+      const { data: mensalidadesDestino, error: mensalidadesDestinoError } = await supabase
+        .from("mensalidades")
+        .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, status, data_vencimento")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", body.aluno_id)
+        .eq("matricula_id", matriculaDestinoPreparadaId)
+        .order("ano_referencia", { ascending: true })
+        .order("mes_referencia", { ascending: true });
+      if (mensalidadesDestinoError) throw mensalidadesDestinoError;
+
+      const abertas = (mensalidadesDestino ?? [])
+        .map((row: any) => ({
+          ...row,
+          competencia: `${row.ano_referencia}-${String(row.mes_referencia).padStart(2, "0")}`,
+          saldo: Math.max(
+            Number(row.valor_previsto ?? row.valor ?? 0) - Number(row.valor_pago_total ?? 0),
+            0,
+          ),
+        }))
+        .filter((row: any) =>
+          row.saldo > 0 &&
+          !["pago", "isento", "cancelado"].includes(String(row.status ?? "").toLowerCase()),
+        );
+
+      const expectedPrefix = abertas
+        .slice(0, body.mensalidades_competencias.length)
+        .map((row: any) => row.competencia);
+      if (
+        expectedPrefix.length !== body.mensalidades_competencias.length ||
+        expectedPrefix.some((competencia: string, index: number) =>
+          competencia !== body.mensalidades_competencias[index],
+        )
+      ) {
+        return NextResponse.json({
+          ok: false,
+          error: "As mensalidades do ano destino devem ser selecionadas em ordem cronológica, começando pela primeira competência em aberto.",
+          code: "MENSALIDADES_SELECTION_ORDER_INVALID",
+        }, { status: 409 });
+      }
+
+      mensalidadesDestinoSelecionadas = abertas.filter((row: any) =>
+        body.mensalidades_competencias.includes(row.competencia),
+      );
+      if (mensalidadesDestinoSelecionadas.length !== body.mensalidades_competencias.length) {
+        return NextResponse.json({
+          ok: false,
+          error: "Uma das mensalidades selecionadas não foi gerada na matrícula destino.",
+          code: "MENSALIDADES_NOT_GENERATED",
+        }, { status: 409 });
+      }
+
+      const { data: destinoAtualizado } = await supabase
+        .from("matriculas")
+        .select("id, turma_id")
+        .eq("escola_id", escolaId)
+        .eq("id", matriculaDestinoPreparadaId)
+        .maybeSingle();
+      matriculaDestino = destinoAtualizado ?? matriculaDestino;
     }
 
     const requestedItems = body.itens ?? [];
@@ -410,6 +549,14 @@ export async function POST(request: Request) {
     }
 
     const paymentItems = [
+      ...mensalidadesDestinoSelecionadas.map((item: any) => ({
+        id: String(item.id),
+        tipo: "mensalidade" as const,
+        nome: `Propina ${String(item.mes_referencia).padStart(2, "0")}/${item.ano_referencia}`,
+        preco: item.saldo,
+        matricula_destino_id: matriculaDestinoPreparadaId,
+        competencia: item.competencia,
+      })),
       ...(extraMensalidades ?? []).map((item: any) => ({
         id: String(item.id),
         tipo: "mensalidade" as const,
@@ -435,13 +582,14 @@ export async function POST(request: Request) {
     ].filter((item) => item.preco > 0);
 
     const totalPagamento = paymentItems.reduce((total, item) => total + item.preco, 0);
-    if (!confirmationExempt && totalPagamento <= 0) {
+    const paymentRequired = totalPagamento > 0;
+    if (!confirmationExempt && !paymentRequired) {
       return NextResponse.json({ ok: false, error: "O pagamento não possui itens com valor válido.", code: "PAYMENT_ITEMS_EMPTY" }, { status: 409 });
     }
 
     const { data: pedidosExistentes } = await (supabase as any)
       .from("servico_pedidos")
-      .select("id, status, contexto")
+      .select("id, status, reason_code, reason_detail, contexto")
       .eq("escola_id", escolaId)
       .eq("aluno_id", body.aluno_id)
       .eq("servico_codigo", SERVICE_CODE)
@@ -475,6 +623,39 @@ export async function POST(request: Request) {
           pedido_id: pedidoExistente.id,
         }, { status: 409 });
       }
+      if ((pedidoExistente.contexto as any)?.academic_history_pending === true) {
+        const historico = await registrarHistoricoOrigem(supabase as any, {
+          escolaId,
+          matriculaOrigemId: origemMatriculaId,
+          conditional: academicEligibility.mode === "conditional",
+          disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+        });
+        if (!historico.ok) {
+          return NextResponse.json({
+            ok: false,
+            status: "pending",
+            error: "A rematrícula já foi concluída, mas o histórico académico da matrícula de origem ainda precisa ser reconciliado.",
+            code: "ACADEMIC_HISTORY_PENDING",
+            pedido_id: pedidoExistente.id,
+            rematricula: { matricula_id: matriculaDestinoId },
+            details: historico.error,
+          }, { status: 202 });
+        }
+        await (supabase as any)
+          .from("servico_pedidos")
+          .update({
+            reason_code: null,
+            reason_detail: null,
+            contexto: {
+              ...(pedidoExistente.contexto ?? {}),
+              academic_history_pending: false,
+              academic_history_recorded_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", pedidoExistente.id)
+          .eq("escola_id", escolaId);
+      }
+
       const garantia = await garantirVinculoFinanceiro(supabase, escolaId, matriculaDestinoId, academicContext.anoLetivoId);
       if (!garantia.ok) {
         return NextResponse.json({
@@ -566,25 +747,15 @@ export async function POST(request: Request) {
       .eq("matricula_id", origemMatriculaId);
     if (mensalidadesError) throw mensalidadesError;
 
-    // O gate financeiro é saldo aberto zero, em paridade com o trigger do
-    // banco. Bloqueamos antes de criar/cobrar o pedido para não receber dinheiro
-    // e descobrir a dívida apenas na finalização.
-    const mensalidadesPendentes = (mensalidadesOrigem ?? []).filter((mensalidade: any) => {
-      const status = String(mensalidade.status ?? "").toLowerCase();
-      const saldo = Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      );
-      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
-    });
+    // O gate financeiro bloqueia apenas dívida vencida da matrícula de origem.
+    // Cobranças futuras podem coexistir com a rematrícula sem virar inadimplência.
+    const overdueDebt = summarizeOverdueRematriculaDebt(mensalidadesOrigem ?? []);
+    const mensalidadesPendentes = overdueDebt.rows;
     if (mensalidadesPendentes.length > 0) {
-      const total = mensalidadesPendentes.reduce((sum, mensalidade: any) => sum + Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      ), 0);
+      const total = overdueDebt.total;
       return NextResponse.json({
         ok: false,
-        error: "Regularize todos os saldos em aberto da matrícula de origem antes de rematricular.",
+        error: "Regularize os saldos vencidos da matrícula de origem antes de rematricular.",
         code: "REMATRICULA_DEBT_REQUIRED",
         debt: { count: mensalidadesPendentes.length, total },
       }, { status: 409 });
@@ -617,7 +788,7 @@ export async function POST(request: Request) {
         aluno_id: body.aluno_id,
         matricula_id: origemMatriculaId,
         servico_escola_id: service.id,
-        status: confirmationExempt ? "granted" : "pending_payment",
+        status: paymentRequired ? "pending_payment" : "granted",
         servico_codigo: SERVICE_CODE,
         servico_nome: service.nome,
         valor_cobrado: totalPagamento,
@@ -635,16 +806,18 @@ export async function POST(request: Request) {
           raa_decision: raaAtual?.decision ?? null,
           raa_destino: raaAtual?.destino ?? null,
           raa_disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
+          mensalidades_competencias: body.mensalidades_competencias,
+          matricula_destino_preparada_id: matriculaDestinoPreparadaId,
           idempotency_key: idempotencyKey,
         },
         created_by: user.id,
       })
-      .select("id")
+      .select("id, contexto")
       .single();
     if (pedidoError) throw pedidoError;
 
     let paymentJson: any = { data: null };
-    if (!confirmationExempt) {
+    if (paymentRequired) {
       const paymentUrl = new URL("/api/secretaria/pagamentos/processar", request.url);
       const paymentResponse = await fetch(paymentUrl, {
       method: "POST",
@@ -666,6 +839,7 @@ export async function POST(request: Request) {
           gateway_ref: body.gateway_ref ?? null,
         },
         itens: paymentItems,
+        mensalidades_competencias: body.mensalidades_competencias,
       }),
       });
       paymentJson = await paymentResponse.json().catch(() => null);
@@ -856,6 +1030,57 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
     matriculaDestinoId = String(finalizacao.matricula_id ?? matriculaDestinoId);
+
+    if (!reconfirmacaoApenas) {
+      const historico = await registrarHistoricoOrigem(supabase as any, {
+        escolaId,
+        matriculaOrigemId: origemMatriculaId,
+        conditional: academicEligibility.mode === "conditional",
+        disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+      });
+      if (!historico.ok) {
+        const contextoAtual = {
+          ...(pedido.contexto ?? {}),
+          matricula_destino_id: matriculaDestinoId,
+          academic_history_pending: true,
+        };
+        await (supabase as any)
+          .from("servico_pedidos")
+          .update({
+            reason_code: "ACADEMIC_HISTORY_PENDING",
+            reason_detail: historico.error,
+            contexto: contextoAtual,
+          })
+          .eq("id", pedido.id)
+          .eq("escola_id", escolaId);
+
+        return NextResponse.json({
+          ok: false,
+          status: "pending",
+          error: "Pagamento e matrícula confirmados, mas o histórico académico da matrícula de origem precisa de reconciliação.",
+          code: "ACADEMIC_HISTORY_PENDING",
+          pedido_id: pedido.id,
+          payment: paymentJson.data ?? null,
+          rematricula: { matricula_id: matriculaDestinoId },
+          details: historico.error,
+        }, { status: 202 });
+      }
+
+      await (supabase as any)
+        .from("servico_pedidos")
+        .update({
+          reason_code: null,
+          reason_detail: null,
+          contexto: {
+            ...(pedido.contexto ?? {}),
+            matricula_destino_id: matriculaDestinoId,
+            academic_history_pending: false,
+            academic_history_recorded_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", pedido.id)
+        .eq("escola_id", escolaId);
+    }
 
     // Para uma matrícula criada agora, a mesma garantia é executada depois
     // da finalização, antes de qualquer comprovativo. Se houver falha, o

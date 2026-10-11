@@ -12,6 +12,7 @@ import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 import type { Database } from '~types/supabase'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 import { resolveProfessorAcademicContext } from '@/lib/professor/resolveProfessorAcademicContext'
+import { resolveRegimeAcademico } from '@/lib/academico/regime-academico'
 
 type TurmaRow = { id: string; curso_id: string | null; classe_id: string | null }
 type TurmaDisciplinaRow = { id: string; curso_matriz_id: string | null; professor_id: string | null }
@@ -162,7 +163,6 @@ export async function GET(req: Request) {
       .select('id, disciplina_id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
       .eq('escola_id', escolaId)
       .eq('id', turmaDisciplina.curso_matriz_id)
-      .eq('ativo', true)
       .maybeSingle()
     const matriz = (matrizData as CursoMatrizRow | null) ?? matrizFallback
 
@@ -187,6 +187,27 @@ export async function GET(req: Request) {
     const componentesAtivos = buildComponentesAtivos(modelo.componentes)
     const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
     const usarTrimestres = modelo.tipo === 'trimestral'
+    const regime = await resolveRegimeAcademico(admin as any, turmaIdValue)
+    const notaMaxima =
+      regime.escala === 'quantitativa_primario'
+        ? 10
+        : regime.escala === 'quantitativa_secundario'
+          ? 20
+          : null
+    const notaCorte =
+      regime.escala === 'quantitativa_primario'
+        ? 5
+        : regime.escala === 'quantitativa_secundario'
+          ? 10
+          : null
+    const responseHeaders = {
+      'x-klasse-academic-mode': academicContext.mode,
+      'x-klasse-grade-scale': regime.escala,
+      'x-klasse-grade-max': notaMaxima === null ? '' : String(notaMaxima),
+      'x-klasse-grade-cutoff': notaCorte === null ? '' : String(notaCorte),
+      'x-klasse-grade-components': componentesAtivos.join(','),
+      'x-klasse-grade-weights': encodeURIComponent(JSON.stringify(Object.fromEntries(pesoPorTipo))),
+    }
 
     let matriculasQuery = admin
       .from('matriculas')
@@ -205,8 +226,20 @@ export async function GET(req: Request) {
       )
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaIdValue)
-      .in('status', ACTIVE_MATRICULA_STATUSES)
+      .eq('session_id', academicContext.anoLetivoId)
       .order('numero_chamada', { ascending: true, nullsFirst: false })
+
+    if (academicContext.mode === 'CURRENT') {
+      matriculasQuery = matriculasQuery.eq('ativo', true)
+    } else {
+      matriculasQuery = matriculasQuery.in('status', [
+        ...ACTIVE_MATRICULA_STATUSES,
+        'concluido',
+        'reprovado',
+        'encerrada',
+        'transferido',
+      ])
+    }
 
     matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 })
 
@@ -353,7 +386,7 @@ export async function GET(req: Request) {
         }
       })
 
-      return NextResponse.json(payload)
+      return NextResponse.json(payload, { headers: responseHeaders })
     }
 
     const calcularNota = (stats: {
@@ -392,7 +425,7 @@ export async function GET(req: Request) {
       }
     })
 
-    return NextResponse.json(payload)
+    return NextResponse.json(payload, { headers: responseHeaders })
   } catch (e) {
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ error: e.code, message: e.message }, { status: e.status })

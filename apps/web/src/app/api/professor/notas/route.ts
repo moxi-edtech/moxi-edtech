@@ -16,7 +16,10 @@ const Body = z.object({
   trimestre: z.number().int().min(1).max(3).optional(),
   tipo_avaliacao: z.string().trim().min(2).max(40).optional(),
   disciplina_nome: z.string().optional(),
-  notas: z.array(z.object({ aluno_id: z.string().uuid(), valor: z.number().min(0).max(100) })),
+  notas: z.array(z.object({
+    aluno_id: z.string().uuid(),
+    valor: z.number().min(0).max(100).nullable(),
+  })).min(1).max(50),
 })
 
 export async function POST(req: Request) {
@@ -123,7 +126,14 @@ export async function POST(req: Request) {
         .eq('scope', 'professor_notas')
         .eq('key', idempotencyKey)
       const message = error.message || 'Não foi possível guardar as notas.'
-      const status = /fechad|trav|reabert|bloquead/i.test(message) ? 409 : /permission|não autorizado|unauthorized|forbidden/i.test(message) ? 403 : 500
+      const status =
+        /^AUTH:|permission|não autorizado|unauthorized|forbidden/i.test(message)
+          ? 403
+          : /^DATA:/i.test(message)
+            ? 400
+            : /ACADEMIC_YEAR_READ_ONLY|fechad|trav|reabert|bloquead/i.test(message)
+              ? 409
+              : 500
       return NextResponse.json({ ok: false, error: message, code: error.code ?? null }, { status });
     }
     mutationCommitted = true
@@ -158,19 +168,25 @@ export async function POST(req: Request) {
       { onConflict: 'escola_id,scope,key' }
     )
 
-    const alunoIds = body.notas.map((n) => n.aluno_id)
-    await dispatchAlunoNotificacao({
-      escolaId,
-      key: 'NOTA_LANCADA',
-      alunoIds,
-      params: { disciplinaNome, actionUrl: '/aluno' },
-      actorId: user.id,
-      actorRole: 'professor',
-      agrupamentoTTLHoras: 12,
-    })
+    const numericNotas = body.notas.filter(
+      (nota): nota is { aluno_id: string; valor: number } => typeof nota.valor === 'number',
+    )
+    const alunoIds = numericNotas.map((n) => n.aluno_id)
+    if (alunoIds.length > 0) {
+      await dispatchAlunoNotificacao({
+        escolaId,
+        key: 'NOTA_LANCADA',
+        alunoIds,
+        params: { disciplinaNome, actionUrl: '/aluno' },
+        actorId: user.id,
+        actorRole: 'professor',
+        agrupamentoTTLHoras: 12,
+      })
+    }
 
-    const NOTA_MEDIA_MINIMA = 10
-    const abaixoMedia = body.notas.filter((n) => n.valor < NOTA_MEDIA_MINIMA)
+    const notaMaxima = Number((data as { nota_max?: number | string | null } | null)?.nota_max ?? 20)
+    const notaCorte = Number.isFinite(notaMaxima) && notaMaxima > 0 ? notaMaxima / 2 : 10
+    const abaixoMedia = numericNotas.filter((n) => n.valor < notaCorte)
     if (abaixoMedia.length > 0) {
       await dispatchAlunoNotificacao({
         escolaId,

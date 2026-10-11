@@ -9,12 +9,10 @@ interface HeroSectionProps {
   eyebrow: string
   subtitle: string
   primaryCta: { label: string; href: string }
-  secondaryCta: { label: string; href: string }
-  ebookCta: { label: string; href: string }
   note: string
 }
 
-export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, secondaryCta, ebookCta, note }: HeroSectionProps) {
+export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, note }: HeroSectionProps) {
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
@@ -68,26 +66,13 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
               <a
                 href={primaryCta.href}
                 className="btn-p"
+                target="_blank"
+                rel="noreferrer"
                 onClick={() => track('conversion_click', { section: 'hero', label: primaryCta.label })}
               >
                 {primaryCta.label}
               </a>
-              <a
-                href={secondaryCta.href}
-                className="btn-s"
-                onClick={() => track('conversion_click', { section: 'hero', label: secondaryCta.label })}
-              >
-                {secondaryCta.label}
-              </a>
             </motion.div>
-            <motion.a
-              variants={itemVariants}
-              href={ebookCta.href}
-              className="hero-ebook-link"
-              onClick={() => track('conversion_click', { section: 'hero', label: ebookCta.label })}
-            >
-              {ebookCta.label} <span aria-hidden="true">→</span>
-            </motion.a>
             <motion.div variants={itemVariants} className="hero-proof">
               <div className="proof-text"><strong>{note}</strong><span>Configuração e formação acompanhadas</span></div>
             </motion.div>

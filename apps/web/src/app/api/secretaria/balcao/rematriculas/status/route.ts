@@ -11,6 +11,11 @@ import { resolveOpenRematriculaWindow, resolveRematriculaWindow } from "@/lib/se
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progression-server";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
+import {
+  resolveBalcaoRematriculaTargetYear,
+  shouldBlockClosedRematriculaWindow,
+} from "@/lib/rematricula/balcao-target-year";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -84,6 +89,24 @@ export async function GET(request: Request) {
       operation: "READ",
     });
     const sourceAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
+
+    // Operações já existentes do ano académico seleccionado têm precedência
+    // sobre a sugestão do próximo ano. A janela controla novas operações;
+    // não deve esconder uma rematrícula já paga/pendente que precisa de
+    // leitura, retomada ou reconciliação.
+    const { data: rematriculaPedidosAtivos } = await supabase
+      .from("servico_pedidos")
+      .select("id, status, created_at, reason_code, reason_detail, valor_cobrado, contexto")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", aluno_id)
+      .eq("servico_codigo", "SERV_REMATRICULA")
+      .in("status", ["pending_payment", "granted"])
+      .order("created_at", { ascending: false });
+    const pedidoDoAnoAcademicoAtual = (rematriculaPedidosAtivos ?? []).find(
+      (pedido: any) => pedido.contexto?.ano_letivo_id === academicContext.anoLetivoId
+        || Number(pedido.contexto?.ano_letivo) === sourceAnoLetivoAno,
+    );
+
     const openTargetWindow = await resolveOpenRematriculaWindow(supabase, escolaId, sourceAnoLetivoAno);
 
     // O ano-alvo é o ano seguinte ao da matrícula do aluno, não o ano activo da
@@ -105,16 +128,27 @@ export async function GET(request: Request) {
       .maybeSingle();
     const anoLetivoDoAluno = Number(ultimaMatriculaDoAluno?.ano_letivo ?? 0);
 
-    const targetAnoLetivoAno = openTargetWindow?.ano_letivo
-      ?? (anoLetivoDoAluno > 0 ? anoLetivoDoAluno + 1 : sourceAnoLetivoAno + 1);
+    const targetAnoLetivoAno = resolveBalcaoRematriculaTargetYear({
+      sourceAcademicYear: sourceAnoLetivoAno,
+      latestStudentAcademicYear: anoLetivoDoAluno,
+      openWindowAcademicYear: openTargetWindow?.ano_letivo ?? null,
+      hasCurrentAcademicYearOperation: Boolean(pedidoDoAnoAcademicoAtual),
+    });
     const targetScope = await resolveAnoLetivoScope(supabase, escolaId, { ano: targetAnoLetivoAno });
     const targetAnoLetivoId = targetScope?.id ?? academicContext.anoLetivoId;
     const targetAnoLetivoLabel = `${targetAnoLetivoAno}/${targetAnoLetivoAno + 1}`;
+    const pedidosDoAno = (rematriculaPedidosAtivos ?? []).filter(
+      (pedido: any) => pedido.contexto?.ano_letivo_id === targetAnoLetivoId
+        || Number(pedido.contexto?.ano_letivo) === Number(targetAnoLetivoAno),
+    );
     const rematriculaWindow = openTargetWindow
       ? { configured: true, open: true, window: openTargetWindow }
       : await resolveRematriculaWindow(supabase, escolaId, targetAnoLetivoAno);
 
-    if (!rematriculaWindow.open) {
+    if (shouldBlockClosedRematriculaWindow({
+      windowOpen: rematriculaWindow.open,
+      hasExistingOperationForTarget: pedidosDoAno.length > 0,
+    })) {
       return NextResponse.json({
         ok: true,
         status: "WINDOW_CLOSED",
@@ -292,24 +326,11 @@ export async function GET(request: Request) {
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("matricula_id", matriculaOrigem.id);
-    // "Sem dívida" significa saldo aberto zero na matrícula de origem.
-    // Não esperamos o vencimento para descobrir o bloqueio: esta leitura
-    // precisa antecipar o mesmo guard que o banco aplica ao conceder o pedido.
-    const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter((mensalidade: any) => {
-      const status = String(mensalidade.status ?? "").toLowerCase();
-      const saldo = Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      );
-      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
-    });
-    const dividaTotal = mensalidadesEmAberto.reduce(
-      (total: number, mensalidade: any) => total + Math.max(
-        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
-        0,
-      ),
-      0,
-    );
+    // O bloqueio financeiro considera somente mensalidades vencidas da origem.
+    // Valores futuros não impedem a confirmação da rematrícula.
+    const overdueDebt = summarizeOverdueRematriculaDebt(mensalidadesFinanceiras ?? []);
+    const mensalidadesEmAberto = overdueDebt.rows;
+    const dividaTotal = overdueDebt.total;
 
     // ── Check service config ──────────────────────────────────────────────
     const { data: service } = await supabase
@@ -339,18 +360,7 @@ export async function GET(request: Request) {
     });
 
     // ── Check existing pedido ─────────────────────────────────────────────
-    const { data: pedidosExistentes } = await supabase
-      .from("servico_pedidos")
-      .select("id, status, created_at, reason_code, reason_detail, valor_cobrado, contexto")
-      .eq("escola_id", escolaId)
-      .eq("aluno_id", aluno_id)
-      .eq("servico_codigo", "SERV_REMATRICULA")
-      .in("status", ["pending_payment", "granted"])
-      .order("created_at", { ascending: false });
-    const pedidosDoAno = (pedidosExistentes ?? []).filter(
-      (pedido: any) => pedido.contexto?.ano_letivo_id === targetAnoLetivoId
-        || Number(pedido.contexto?.ano_letivo) === Number(targetAnoLetivoAno),
-    );
+    const pedidosExistentes = rematriculaPedidosAtivos ?? [];
     const pedidoExistente = pedidosDoAno.find(
       (pedido: any) => pedido.contexto?.origem === "portal_rematricula",
     ) ?? pedidosDoAno[0] ?? (pedidosExistentes ?? []).find(
@@ -420,14 +430,24 @@ export async function GET(request: Request) {
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
     const pedidoTemMatriculaDestino = Boolean(pedidoExistente?.contexto?.matricula_destino_id);
-    const comprovantePendente = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino && !comprovanteData;
+    const historicoAcademicoPendente =
+      pedidoExistente?.status === "granted" &&
+      pedidoTemMatriculaDestino &&
+      pedidoExistente?.contexto?.academic_history_pending === true;
+    const comprovantePendente =
+      pedidoExistente?.status === "granted" &&
+      pedidoTemMatriculaDestino &&
+      !historicoAcademicoPendente &&
+      !comprovanteData;
     // Pagamento concedido sem matrícula destino é uma operação interrompida:
     // não pode voltar a READY nem desaparecer da operação da secretaria.
     // Mantê-la na fila de reconciliação permite escolher a turma e completar
     // a progressão sem cobrar novamente.
     const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino && !comprovanteData;
     const pedidoConcluido = pedidoExistente?.status === "granted" && (pedidoTemMatriculaDestino || Boolean(comprovanteData));
-    if (comprovantePendente) {
+    if (historicoAcademicoPendente) {
+      status = "ACADEMIC_HISTORY_PENDING";
+    } else if (comprovantePendente) {
       status = "DOCUMENT_PENDING";
     } else if (pagamentoSemProgressao) {
       status = "RECONCILIATION_REQUIRED";
@@ -436,7 +456,7 @@ export async function GET(request: Request) {
     } else if (pedidoExistente?.status === "pending_payment") {
       status = pedidoLegado
         ? "LEGACY_REVIEW_REQUIRED"
-        : pedidoExistente.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED"
+        : pedidoExistente.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED" && pedidoTemPagamentoAssociado
           ? "RECONCILIATION_REQUIRED"
         : !pedidoTemPagamentoAssociado
           ? "PENDING_ORDER_REVIEW"
@@ -448,9 +468,13 @@ export async function GET(request: Request) {
           ? "ACADEMIC_REVIEW_REQUIRED"
           : academicEligibility.code === "ACADEMIC_CONDITIONAL_BLOCKED"
             ? "ACADEMIC_CONDITIONAL_BLOCKED"
-            : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
-              ? "ACADEMIC_CYCLE_COMPLETED"
-              : "ACADEMIC_NOT_APPROVED";
+            : academicEligibility.code === "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+              ? "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED"
+              : academicEligibility.code === "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                ? "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED"
+                : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
+                  ? "ACADEMIC_CYCLE_COMPLETED"
+                  : "ACADEMIC_NOT_APPROVED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {

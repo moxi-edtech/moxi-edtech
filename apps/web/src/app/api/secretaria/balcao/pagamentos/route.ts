@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { enrichOperationalReceiptSnapshot } from "@/lib/financeiro/enrichOperationalReceiptSnapshot";
 import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
@@ -79,32 +80,6 @@ function normalizeReceiptType(meta: Record<string, unknown>): "pagamento" | "mat
   return hasConfirmation ? "confirmacao" : "pagamento";
 }
 
-async function enrichReceiptSnapshot({
-  supabase,
-  escolaId,
-  docId,
-  extraSnapshot,
-}: {
-  supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>;
-  escolaId: string;
-  docId: string;
-  extraSnapshot: Record<string, unknown>;
-}) {
-  const { data: doc } = await supabase
-    .from("documentos_emitidos")
-    .select("dados_snapshot")
-    .eq("id", docId)
-    .eq("escola_id", escolaId)
-    .maybeSingle();
-  const existingSnapshot = asRecord(doc?.dados_snapshot);
-
-  await supabase
-    .from("documentos_emitidos")
-    .update({ dados_snapshot: { ...existingSnapshot, ...extraSnapshot } as Json })
-    .eq("id", docId)
-    .eq("escola_id", escolaId);
-}
-
 export async function POST(request: Request) {
   try {
     const idempotencyKey =
@@ -160,15 +135,24 @@ export async function POST(request: Request) {
 
     const { data: existingPagamento } = await supabase
       .from("pagamentos")
-      .select("id, status, meta")
+      .select("id, status, meta, aluno_id, mensalidade_id, valor_pago, metodo")
       .eq("escola_id", escolaId)
       .contains("meta", { idempotency_key: idempotencyKey })
       .maybeSingle();
-    if (existingPagamento) {
-      return NextResponse.json({ ok: true, data: existingPagamento, idempotent: true });
-    }
-
     const payload = parsed.data;
+    // Repetir a mesma chave deve retomar também a emissão do recibo, não apenas
+    // devolver o pagamento antigo. Reutilização com payload diferente é conflito.
+    if (existingPagamento && (
+      existingPagamento.aluno_id !== payload.aluno_id ||
+      (existingPagamento.mensalidade_id ?? null) !== (payload.mensalidade_id ?? null) ||
+      Number(existingPagamento.valor_pago) !== payload.valor ||
+      existingPagamento.metodo !== (payload.metodo === "kiwk" ? "kwik" : payload.metodo)
+    )) {
+      return NextResponse.json({
+        ok: false, code: "IDEMPOTENCY_KEY_CONFLICT",
+        error: "Esta chave pertence a outro pagamento.",
+      }, { status: 409 });
+    }
     const meta = asRecord(payload.meta);
     const mensalidadeItem = (meta.itens as unknown[] | undefined)?.find((item) => asRecord(item).tipo === "mensalidade");
     const receiptItems = normalizeReceiptItems(meta, {
@@ -311,7 +295,9 @@ export async function POST(request: Request) {
     const metodo = payload.metodo === "kiwk" ? "kwik" : payload.metodo;
     
     // 1. Registro Financeiro
-    const { data: pagamento, error: pgError } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
+    const { data: pagamento, error: pgError } = existingPagamento
+      ? { data: existingPagamento, error: null }
+      : await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
       p_escola_id: escolaId,
       p_aluno_id: payload.aluno_id,
       p_mensalidade_id: (payload.mensalidade_id ?? null) as any,
@@ -375,10 +361,10 @@ export async function POST(request: Request) {
             : { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
         }
         if (recibo.ok && recibo.doc_id) {
-          await enrichReceiptSnapshot({
-            supabase,
+          await enrichOperationalReceiptSnapshot({
             escolaId,
             docId: recibo.doc_id,
+            alunoId: payload.aluno_id,
             extraSnapshot: {
               tipo_comprovativo: receiptType,
               itens_pagamento: receiptItems,
@@ -411,10 +397,10 @@ export async function POST(request: Request) {
             print_url: docId ? `/secretaria/documentos/${docId}/recibo/print` : null,
           };
           if (docId) {
-            await enrichReceiptSnapshot({
-              supabase,
+            await enrichOperationalReceiptSnapshot({
               escolaId,
               docId,
+              alunoId: payload.aluno_id,
               extraSnapshot: {
                 tipo_comprovativo: receiptType,
                 itens_pagamento: receiptItems,
@@ -462,6 +448,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       ok: true, 
       data: pagamento,
+      idempotent: Boolean(existingPagamento),
       recibo,
       fiscal: fiscalResult
     });

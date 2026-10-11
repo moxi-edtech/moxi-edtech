@@ -1,4 +1,4 @@
-export type RematriculaOutcome = "completed" | "document_pending" | "error";
+export type RematriculaOutcome = "completed" | "document_pending" | "academic_history_pending" | "error";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -9,6 +9,11 @@ function asRecord(value: unknown): Record<string, unknown> {
 export function isDocumentPendingResult(payload: unknown): boolean {
   const record = asRecord(payload);
   return record.code === "DOCUMENT_PENDING";
+}
+
+export function isAcademicHistoryPendingResult(payload: unknown): boolean {
+  const record = asRecord(payload);
+  return record.code === "ACADEMIC_HISTORY_PENDING";
 }
 
 /**
@@ -26,6 +31,10 @@ export function classifyRematriculaResponse(
 
   if (isDocumentPendingResult(record)) {
     return "document_pending";
+  }
+
+  if (isAcademicHistoryPendingResult(record)) {
+    return "academic_history_pending";
   }
 
   if (httpStatus >= 200 && httpStatus < 300 && record.ok === true) {

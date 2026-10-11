@@ -8,6 +8,7 @@ import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
 import { Lock as LockIcon, FileText, ChevronRight, AlertCircle, Loader2, Calculator } from "lucide-react";
 import Link from "next/link";
 import { SimuladorNotasModal } from "@/components/aluno/academico/SimuladorNotasModal";
+import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
 
 type Disciplina = {
   id: string;
@@ -157,6 +158,8 @@ export function TabNotas() {
 
   return (
     <div className="space-y-6 pb-8">
+      <AcademicCarryoversCard studentId={studentId} />
+
       <div className="space-y-4">
         <header className="flex flex-wrap items-center justify-between gap-2 px-1">
             <SectionTitle>Meu Boletim</SectionTitle>

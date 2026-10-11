@@ -1,0 +1,182 @@
+[
+  {
+    "resolution": "1366x768",
+    "zoom_equivalent": 100,
+    "cssViewport": "1366x768",
+    "measurement": {
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "scrollHeight": 768,
+      "clientHeight": 768,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1366x768-zoom-100.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1366x768",
+    "zoom_equivalent": 125,
+    "cssViewport": "1093x614",
+    "measurement": {
+      "scrollWidth": 1093,
+      "clientWidth": 1093,
+      "scrollHeight": 614,
+      "clientHeight": 614,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1366x768-zoom-125.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1366x768",
+    "zoom_equivalent": 150,
+    "cssViewport": "911x512",
+    "measurement": {
+      "scrollWidth": 911,
+      "clientWidth": 911,
+      "scrollHeight": 512,
+      "clientHeight": 512,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1366x768-zoom-150.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1440x900",
+    "zoom_equivalent": 100,
+    "cssViewport": "1440x900",
+    "measurement": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1440x900-zoom-100.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1440x900",
+    "zoom_equivalent": 125,
+    "cssViewport": "1152x720",
+    "measurement": {
+      "scrollWidth": 1152,
+      "clientWidth": 1152,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1440x900-zoom-125.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1440x900",
+    "zoom_equivalent": 150,
+    "cssViewport": "960x600",
+    "measurement": {
+      "scrollWidth": 960,
+      "clientWidth": 960,
+      "scrollHeight": 600,
+      "clientHeight": 600,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1440x900-zoom-150.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1536x864",
+    "zoom_equivalent": 100,
+    "cssViewport": "1536x864",
+    "measurement": {
+      "scrollWidth": 1536,
+      "clientWidth": 1536,
+      "scrollHeight": 864,
+      "clientHeight": 864,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1536x864-zoom-100.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1536x864",
+    "zoom_equivalent": 125,
+    "cssViewport": "1229x691",
+    "measurement": {
+      "scrollWidth": 1229,
+      "clientWidth": 1229,
+      "scrollHeight": 691,
+      "clientHeight": 691,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1536x864-zoom-125.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1536x864",
+    "zoom_equivalent": 150,
+    "cssViewport": "1024x576",
+    "measurement": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "scrollHeight": 576,
+      "clientHeight": 576,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1536x864-zoom-150.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1920x1080",
+    "zoom_equivalent": 100,
+    "cssViewport": "1920x1080",
+    "measurement": {
+      "scrollWidth": 1920,
+      "clientWidth": 1920,
+      "scrollHeight": 1080,
+      "clientHeight": 1080,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1920x1080-zoom-100.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1920x1080",
+    "zoom_equivalent": 125,
+    "cssViewport": "1536x864",
+    "measurement": {
+      "scrollWidth": 1536,
+      "clientWidth": 1536,
+      "scrollHeight": 864,
+      "clientHeight": 864,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1920x1080-zoom-125.png",
+    "horizontalOverflow": false
+  },
+  {
+    "resolution": "1920x1080",
+    "zoom_equivalent": 150,
+    "cssViewport": "1280x720",
+    "measurement": {
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "scrollHeight": 720,
+      "clientHeight": 720,
+      "buttons": 7,
+      "heading": "Aluno de Demonstração"
+    },
+    "screenshot": "shell-1920x1080-zoom-150.png",
+    "horizontalOverflow": false
+  }
+]

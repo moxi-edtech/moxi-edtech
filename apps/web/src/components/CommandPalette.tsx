@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Zap,
   Bookmark,
+  RefreshCcw,
 } from "lucide-react";
 import { Command } from "cmdk";
 import { DialogTitle } from "@/components/ui/dialog";
@@ -73,6 +74,8 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
     payment: CreditCard,
     desk: BriefcaseBusiness,
     grade: GraduationCap,
+    document: FileText,
+    reenrollment: RefreshCcw,
   };
 
   const getPrimaryAction = React.useCallback((item: MinimalSearchResult) => {
@@ -83,7 +86,9 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
           ? "grade"
           : item.intent === "perfil"
             ? "profile"
-            : item.actions.length > 0
+            : item.intent === "documentos"
+              ? "document"
+              : item.actions.length > 0
               ? "profile"
               : null;
 

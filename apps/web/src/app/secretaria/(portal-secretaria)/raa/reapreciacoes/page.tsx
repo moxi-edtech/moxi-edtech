@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Clock3, RefreshCw, XCircle } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import Link from "next/link";
 
 type Estado = "pendente" | "em_analise" | "deferido" | "indeferido" | "expirado" | "cancelado";
 
@@ -103,6 +104,15 @@ export default function ReapreciacoesPage() {
         description="Uma fila única para analisar pedidos, decidir e manter o protocolo rastreável."
         breadcrumbs={[{ label: "Início", href: "/" }, { label: "Secretaria", href: "/secretaria" }, { label: "Reapreciações" }]}
       />
+
+      <div className="flex justify-end">
+        <Link
+          href="/secretaria/raa/dependencias"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Ver dependências académicas
+        </Link>
+      </div>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

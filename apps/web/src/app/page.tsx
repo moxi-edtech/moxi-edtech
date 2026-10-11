@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
+import { isAuthSessionMissingError, isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
@@ -33,12 +33,18 @@ export default async function Page() {
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
   try {
     const userResult = await supabase.auth.getUser();
+    if (isRefreshTokenNotFoundError(userResult.error)) {
+      redirect("/auth-recover?next=/redirect");
+    }
+    if (userResult.error && !isAuthSessionMissingError(userResult.error)) {
+      throw userResult.error;
+    }
     user = userResult.data.user;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
       return redirect("/auth-recover?next=/redirect");
     }
-    throw error;
+    if (!isAuthSessionMissingError(error)) throw error;
   }
 
   if (user) {
