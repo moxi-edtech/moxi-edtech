@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -38,7 +38,11 @@ export default function Topbar({
   portal,
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [selectedSearchStudent, setSelectedSearchStudent] = useState<{ id: string; label: string } | null>(null);
+  const [selectedSearchStudent, setSelectedSearchStudent] = useState<{ id: string; label: string; schoolId: string } | null>(null);
+  // Nunca manter um aluno em contexto quando a escola/tenant é alterada.
+  useEffect(() => {
+    setSelectedSearchStudent(null);
+  }, [escolaId]);
   const userInitial =
     (userName || portalSubtitle || "U")
       .trim()
@@ -54,7 +58,9 @@ export default function Topbar({
           <CommandPalette
             escolaId={escolaId}
             portal={portal}
-            onStudentSelect={setSelectedSearchStudent}
+            onStudentSelect={(student) => {
+              if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
+            }}
           />
         </div>
 
@@ -113,7 +119,7 @@ export default function Topbar({
         </div>
       </div>
     </header>
-    {escolaId && selectedSearchStudent && (portal === "operacoes" || portal === "secretaria") ? (
+    {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
       <BalcaoWorkspace
         key={`${escolaId}:${selectedSearchStudent.id}`}
         open
