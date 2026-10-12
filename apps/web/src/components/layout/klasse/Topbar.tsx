@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
+import { BalcaoWorkspace } from "@/components/secretaria/BalcaoWorkspace";
 import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
 import { ModuleSwitcherInner } from "@/components/layout/klasse/ModuleSwitcher";
 import LockScreenButton from "@/components/session/LockScreenButton";
@@ -37,6 +38,7 @@ export default function Topbar({
   portal,
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedSearchStudent, setSelectedSearchStudent] = useState<{ id: string; label: string } | null>(null);
   const userInitial =
     (userName || portalSubtitle || "U")
       .trim()
@@ -49,7 +51,11 @@ export default function Topbar({
       <div className="h-16 flex items-center gap-4 px-4">
         {/* Search */}
         <div className="hidden md:flex w-[420px]">
-          <CommandPalette escolaId={escolaId} portal={portal} />
+          <CommandPalette
+            escolaId={escolaId}
+            portal={portal}
+            onStudentSelect={setSelectedSearchStudent}
+          />
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -107,6 +113,15 @@ export default function Topbar({
         </div>
       </div>
     </header>
+    {escolaId && selectedSearchStudent && (portal === "operacoes" || portal === "secretaria") ? (
+      <BalcaoWorkspace
+        key={`${escolaId}:${selectedSearchStudent.id}`}
+        open
+        escolaId={escolaId}
+        aluno={selectedSearchStudent}
+        onClose={() => setSelectedSearchStudent(null)}
+      />
+    ) : null}
     </>
   );
 }
