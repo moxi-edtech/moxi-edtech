@@ -1,4 +1,4 @@
-import { resolveTargetAcademicYear } from "@/lib/academico/target-academic-year";
+import { resolvePublishedAcademicCalendar } from "@/lib/academico/target-academic-year";
 // @kf2 allow-scan
 // apps/web/src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts
 import { NextResponse } from "next/server";
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     const db = supabase as any;
     const { data: activeYear } = await supabase
       .from("anos_letivos")
-      .select("id,ano")
+      .select("id,ano,data_fim")
       .eq("escola_id", escolaId)
       .eq("ativo", true)
       .maybeSingle();
@@ -179,23 +179,48 @@ export async function POST(request: Request) {
       }
     }
 
+    let targetCalendar: ReturnType<typeof resolvePublishedAcademicCalendar>;
+    try {
+      targetCalendar = resolvePublishedAcademicCalendar({
+        templates: templateList,
+        activeYear: activeYear
+          ? { ano: activeYear.ano, data_fim: activeYear.data_fim }
+          : null,
+      });
+    } catch (error) {
+      return NextResponse.json({
+        ok: false,
+        code: "ACADEMIC_CALENDAR_DATES_INVALID",
+        error: error instanceof Error ? error.message : "Datas do calendário inválidas",
+      }, { status: 409 });
+    }
+
+    const primaryTemplate = templateList[0];
+    const targetAcademicYear = targetCalendar.year;
+    const { data: existingTarget } = await supabase
+      .from("anos_letivos")
+      .select("id,ano,ativo,data_inicio,data_fim")
+      .eq("escola_id", escolaId)
+      .eq("ano", targetAcademicYear)
+      .maybeSingle();
+
+    if (existingTarget && (
+      existingTarget.data_inicio !== targetCalendar.dataInicio
+      || existingTarget.data_fim !== targetCalendar.dataFim
+    )) {
+      return NextResponse.json({
+        ok: false,
+        code: "ACADEMIC_CALENDAR_TARGET_MISMATCH",
+        error: "As datas do ano letivo existente diferem do calendário oficial publicado.",
+      }, { status: 409 });
+    }
+
+    // Only change offer-to-calendar bindings after validating dates and target.
     await Promise.all(scopedMappings.map((mapping) => db
       .from("school_education_offerings")
       .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
       .eq("id", mapping.offering_id)
       .eq("escola_id", escolaId)));
-
-    const primaryTemplate = templateList[0];
-    const targetAcademicYear = resolveTargetAcademicYear(
-      primaryTemplate.ano_base,
-      activeYear?.ano ?? null,
-    );
-    const { data: existingTarget } = await supabase
-      .from("anos_letivos")
-      .select("id,ano,ativo")
-      .eq("escola_id", escolaId)
-      .eq("ano", targetAcademicYear)
-      .maybeSingle();
 
     let targetId = existingTarget?.id ?? null;
     if (!targetId) {
@@ -203,8 +228,8 @@ export async function POST(request: Request) {
         p_escola_id: escolaId,
         p_ano_data: {
           ano: targetAcademicYear,
-          data_inicio: primaryTemplate.data_inicio,
-          data_fim: primaryTemplate.data_fim,
+          data_inicio: targetCalendar.dataInicio,
+          data_fim: targetCalendar.dataFim,
           ativo: false,
         },
       });
