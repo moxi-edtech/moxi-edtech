@@ -134,7 +134,9 @@ test("student selection opens the existing modal workspace instead of navigating
   assert.match(palette, /onStudentSelect\(\{ id: item\.id, label: item\.label \}\)/);
   assert.match(palette, /portal === "operacoes" \|\| portal === "secretaria"/);
   assert.match(topbar, /<BalcaoWorkspace/);
-  assert.match(topbar, /onStudentSelect=\{setSelectedSearchStudent\}/);
+  assert.match(topbar, /onStudentSelect=\{\(student\) =>/);
+  assert.match(topbar, /schoolId: escolaId/);
+  assert.match(topbar, /selectedSearchStudent\?\.schoolId === escolaId/);
   assert.match(modal, /variant="modal"/);
   assert.match(modal, /alunoId=\{activeAction === "enrollment" \? null : selectedStudent\.id\}/);
   assert.match(modal, /setSelectedStudent\(\{ id: newAlunoId, label: "Aluno matriculado" \}\)/);
