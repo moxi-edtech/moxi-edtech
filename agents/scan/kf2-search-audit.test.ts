@@ -193,6 +193,13 @@ test("embedded admissions inside modal never rewrite the underlying dashboard UR
   assert.match(wizard, /if \(modalContext\) \{[\s\S]*?setModalResumeId\(null\);[\s\S]*?return;/);
 });
 
+test("modal profile renders usable content while page keeps the full dossier", () => {
+  const panel = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterPanel.tsx", "utf8");
+  assert.match(panel, /profileDossier \?\? \([\s\S]*?<AlunoProfilePanel alunoId=\{alunoId\}/);
+  assert.match(panel, /profileDossier \? \([\s\S]*?<details/);
+  assert.doesNotMatch(panel, /A preparar a ficha integral do aluno\.\.\./);
+});
+
 test("topbar command palette uses a single cmdk root and accessible dialog description", () => {
   const palette = readFileSync(commandPaletteFile, "utf8");
   assert.match(palette, /<Command\.Dialog[\s\S]*?shouldFilter=\{false\}/);
