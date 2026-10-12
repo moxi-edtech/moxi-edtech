@@ -182,6 +182,17 @@ test("Balcão page uses persistent return context and switches to new student on
   assert.doesNotMatch(page, /if \(actionId === "enrollment"\)[\s\S]{0,150}setSelectedAlunoId\(null\)/);
 });
 
+test("embedded admissions inside modal never rewrite the underlying dashboard URL", () => {
+  const wizard = readFileSync("apps/web/src/components/secretaria/AdmissaoWizardClient.tsx", "utf8");
+  const panel = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterPanel.tsx", "utf8");
+  const modal = readFileSync("apps/web/src/components/secretaria/BalcaoWorkspace.tsx", "utf8");
+
+  assert.match(modal, /<CommandCenterPanel[\s\S]*?\binModal\b/);
+  assert.match(panel, /modalContext=\{inModal\}/);
+  assert.match(wizard, /if \(modalContext\) \{[\s\S]*?setModalResumeId\(id\);[\s\S]*?return;/);
+  assert.match(wizard, /if \(modalContext\) \{[\s\S]*?setModalResumeId\(null\);[\s\S]*?return;/);
+});
+
 test("topbar command palette uses a single cmdk root and accessible dialog description", () => {
   const palette = readFileSync(commandPaletteFile, "utf8");
   assert.match(palette, /<Command\.Dialog[\s\S]*?shouldFilter=\{false\}/);
