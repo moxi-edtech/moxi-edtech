@@ -20,6 +20,7 @@ type Props = {
   turmaLabel?: string | null;
   actionId: BalcaoActionId;
   profileDossier?: ReactNode;
+  inModal?: boolean;
   returnTo?: string | null;
   onActionChange: (actionId: BalcaoActionId) => void;
   onAlunoSelected?: (aluno: AlunoDossier | null) => void;
@@ -33,6 +34,7 @@ export function CommandCenterPanel({
   turmaLabel = null,
   actionId,
   profileDossier,
+  inModal = false,
   returnTo = null,
   onActionChange,
   onAlunoSelected,
@@ -45,6 +47,7 @@ export function CommandCenterPanel({
       <AdmissaoWizardClient
         escolaId={escolaId}
         embedded
+        modalContext={inModal}
         onSuccess={(newAlunoId) => onSuccess?.(newAlunoId)}
         onActionChange={onActionChange}
       />
