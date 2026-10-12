@@ -27,6 +27,7 @@ import { buildPortalHref } from "@/lib/navigation";
 type Props = {
   escolaId?: string | null;
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
+  onStudentSelect?: (student: { id: string; label: string }) => void;
 };
 
 // Cada item é uma única opção de teclado/clique, sem botões de ação aninhados.
@@ -69,7 +70,7 @@ function SearchResultRow({ item, onSelect }: { item: MinimalSearchResult; onSele
   );
 }
 
-export function CommandPalette({ escolaId, portal }: Props) {
+export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
   const router = useRouter();
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -133,9 +134,14 @@ export function CommandPalette({ escolaId, portal }: Props) {
     rememberResult(item);
     runCommand(() => {
       setQuery("");
+      if (item.type === "aluno" && escolaId && onStudentSelect && (portal === "operacoes" || portal === "secretaria")) {
+        // O aluno abre o Balcão em modal; a página atual mantém o seu estado.
+        onStudentSelect({ id: item.id, label: item.label });
+        return;
+      }
       router.push(href);
     });
-  }, [escolaParam, portal, rememberResult, router, runCommand, setQuery]);
+  }, [escolaId, escolaParam, onStudentSelect, portal, rememberResult, router, runCommand, setQuery]);
 
   const staticActions = React.useMemo(() => {
     const actions = [

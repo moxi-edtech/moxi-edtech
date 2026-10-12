@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { checkGlobalSearchContract } from "./kf2-search-audit-core";
+import { readBalcaoStudentId, setBalcaoLocationContext } from "../../apps/web/src/lib/balcao/return-context";
 
 const hookFile = "apps/web/src/hooks/useGlobalSearch.ts";
 const sqlFile = "supabase/migrations/20990101000000_search_global.sql";
@@ -124,19 +125,79 @@ test("topbar results keep name and identifier visible without nested action butt
   assert.doesNotMatch(palette, /item\.actions\.map|actionIcon/, "action toolbar belongs in the Balcão");
 });
 
-test("student search navigates directly to the existing Balcão, not an action modal", () => {
+test("student selection opens the existing modal workspace instead of navigating", () => {
   const palette = readFileSync(commandPaletteFile, "utf8");
   const topbar = readFileSync("apps/web/src/components/layout/klasse/Topbar.tsx", "utf8");
+  const modal = readFileSync("apps/web/src/components/secretaria/BalcaoWorkspace.tsx", "utf8");
+  const shell = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterShell.tsx", "utf8");
 
-  assert.match(palette, /item\.type === "aluno"[\s\S]*portal === "secretaria" \|\| portal === "operacoes"/);
-  assert.match(palette, /href = buildBalcaoActionHref\(\{/);
-  assert.match(palette, /actionId: "desk"/);
-  assert.match(palette, /alunoId: item\.id/);
-  assert.match(palette, /let href = item\.href/);
-  assert.match(palette, /window\.confirm\(/, "switching an active student must warn about unsaved work");
-  assert.match(palette, /ACADEMIC_YEAR_PARAM/, "preserve academic year when navigating");
-  assert.match(topbar, /<CommandPalette escolaId=\{escolaId\} portal=\{portal\} \/>/);
-  assert.doesNotMatch(topbar, /GlobalSearchActionSheet|onAction=/);
+  assert.match(palette, /onStudentSelect\(\{ id: item\.id, label: item\.label \}\)/);
+  assert.match(palette, /portal === "operacoes" \|\| portal === "secretaria"/);
+  assert.match(topbar, /<BalcaoWorkspace/);
+  assert.match(topbar, /onStudentSelect=\{\(student\) =>/);
+  assert.match(topbar, /schoolId: escolaId/);
+  assert.match(topbar, /selectedSearchStudent\?\.schoolId === escolaId/);
+  assert.match(modal, /variant="modal"/);
+  assert.match(modal, /alunoId=\{activeAction === "enrollment" \? null : selectedStudent\.id\}/);
+  assert.match(modal, /setSelectedStudent\(\{ id: newAlunoId, label: "Aluno matriculado" \}\)/);
+  assert.match(modal, /confirmLeavingEnrollment/);
+  assert.match(shell, /hasStudent=\{Boolean\(student\)\}/, "other actions remain available during new enrollment");
+});
+
+test("Balcão return context survives enrollment, reload and accidental switches", () => {
+  const id = "00000000-0000-4000-8000-000000000003";
+  const current = new URLSearchParams({ alunoId: id, ano_letivo_id: "2026" });
+  const during = setBalcaoLocationContext(current, id, "enrollment");
+  assert.equal(during.get("alunoId"), null, "never associate the old student as enrollment target");
+  assert.equal(during.get("atendimentoAlunoId"), id);
+  assert.equal(during.get("action"), "enrollment");
+  assert.equal(during.get("ano_letivo_id"), "2026");
+  assert.equal(current.get("alunoId"), id, "input URL must not be mutated");
+  assert.equal(readBalcaoStudentId(new URLSearchParams(during.toString()), "enrollment"), id);
+
+  const back = setBalcaoLocationContext(during, readBalcaoStudentId(during, "enrollment"), "desk");
+  assert.equal(back.get("alunoId"), id);
+  assert.equal(back.has("atendimentoAlunoId"), false);
+  assert.equal(back.has("action"), false);
+
+  const switchToPayment = setBalcaoLocationContext(back, id, "payment");
+  assert.equal(switchToPayment.get("alunoId"), id);
+  assert.equal(switchToPayment.get("action"), "payment");
+
+  const emptyEnrollment = setBalcaoLocationContext(new URLSearchParams(), null, "enrollment");
+  assert.equal(readBalcaoStudentId(emptyEnrollment, "enrollment"), null);
+
+  const newlyCreated = "00000000-0000-4000-8000-000000000004";
+  const afterCompletion = setBalcaoLocationContext(during, newlyCreated, "desk");
+  assert.equal(readBalcaoStudentId(afterCompletion, "desk"), newlyCreated);
+  assert.equal(afterCompletion.has("atendimentoAlunoId"), false);
+});
+
+test("Balcão page uses persistent return context and switches to new student only on success", () => {
+  const page = readFileSync("apps/web/src/app/secretaria/balcao/BalcaoPageClient.tsx", "utf8");
+  assert.match(page, /readBalcaoStudentId\(/);
+  assert.match(page, /setBalcaoLocationContext\(/);
+  assert.match(page, /alunoId=\{activeAction === "enrollment" \? null : selectedAlunoId\}/);
+  assert.match(page, /syncLocation\(\{ alunoId: newAlunoId, actionId: "desk" \}\)/);
+  assert.doesNotMatch(page, /if \(actionId === "enrollment"\)[\s\S]{0,150}setSelectedAlunoId\(null\)/);
+});
+
+test("embedded admissions inside modal never rewrite the underlying dashboard URL", () => {
+  const wizard = readFileSync("apps/web/src/components/secretaria/AdmissaoWizardClient.tsx", "utf8");
+  const panel = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterPanel.tsx", "utf8");
+  const modal = readFileSync("apps/web/src/components/secretaria/BalcaoWorkspace.tsx", "utf8");
+
+  assert.match(modal, /<CommandCenterPanel[\s\S]*?\binModal\b/);
+  assert.match(panel, /modalContext=\{inModal\}/);
+  assert.match(wizard, /if \(modalContext\) \{[\s\S]*?setModalResumeId\(id\);[\s\S]*?return;/);
+  assert.match(wizard, /if \(modalContext\) \{[\s\S]*?setModalResumeId\(null\);[\s\S]*?return;/);
+});
+
+test("modal profile renders usable content while page keeps the full dossier", () => {
+  const panel = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterPanel.tsx", "utf8");
+  assert.match(panel, /profileDossier \?\? \([\s\S]*?<AlunoProfilePanel alunoId=\{alunoId\}/);
+  assert.match(panel, /profileDossier \? \([\s\S]*?<details/);
+  assert.doesNotMatch(panel, /A preparar a ficha integral do aluno\.\.\./);
 });
 
 test("topbar command palette uses a single cmdk root and accessible dialog description", () => {

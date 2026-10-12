@@ -2531,6 +2531,7 @@ export default function AdmissaoWizardClient({
   escolaSlug,
   initialCandidaturaId,
   embedded = false,
+  modalContext = false,
   onSuccess,
   onActionChange,
 }: {
@@ -2538,6 +2539,7 @@ export default function AdmissaoWizardClient({
   escolaSlug?: string | null;
   initialCandidaturaId?: string | null;
   embedded?: boolean;
+  modalContext?: boolean;
   onSuccess?: (alunoId?: string) => void;
   onActionChange?: (actionId: BalcaoActionId) => void;
 }) {
@@ -2585,10 +2587,11 @@ export default function AdmissaoWizardClient({
     [resolvedSlug, pathname]
   );
 
+  const [modalResumeId, setModalResumeId] = useState<string | null>(null);
   const lastCandidaturaIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    const candId = initialCandidaturaId || (searchParams ? searchParams.get("candidaturaId") : null);
+    const candId = modalContext ? (modalResumeId || initialCandidaturaId) : (initialCandidaturaId || (searchParams ? searchParams.get("candidaturaId") : null));
     
     if (candId === lastCandidaturaIdRef.current) return;
     lastCandidaturaIdRef.current = candId;
@@ -2634,7 +2637,7 @@ export default function AdmissaoWizardClient({
       setHydrated(true);
       setHydratingLead(false);
     }
-  }, [searchParams]);
+  }, [initialCandidaturaId, modalContext, modalResumeId, searchParams]);
 
   const handleEditDados = async () => {
     setWizardError(null);
@@ -2681,6 +2684,12 @@ export default function AdmissaoWizardClient({
 
   const handleResume = (id: string) => {
     if (!isUuid(id)) return;
+
+    if (modalContext) {
+      // Dentro do modal, retomar o rascunho sem navegar a página de origem.
+      setModalResumeId(id);
+      return;
+    }
 
     if (embedded) {
       const next = new URLSearchParams(searchParams?.toString() ?? "");
@@ -2766,6 +2775,12 @@ export default function AdmissaoWizardClient({
     setDismissedResumePrompt(false);
     setWizardError(null);
     
+    // O modal não deve mutar a URL da página sob o atendimento.
+    if (modalContext) {
+      setModalResumeId(null);
+      return;
+    }
+
     // Clear only the admission context. Embedded mode stays inside the
     // Command Center; the legacy page keeps its historical clean URL.
     if (typeof window !== "undefined") {
@@ -2780,7 +2795,7 @@ export default function AdmissaoWizardClient({
         window.history.replaceState(null, "", url.pathname);
       }
     }
-  }, [embedded]);
+  }, [embedded, modalContext]);
 
   if (!hydrated || hydratingLead) {
     return (
