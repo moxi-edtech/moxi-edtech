@@ -17,6 +17,9 @@ import {
 } from "@/lib/balcao/action-registry";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
+// O contexto de retorno não é o aluno-alvo da nova matrícula.
+const RETURN_STUDENT_PARAM = "atendimentoAlunoId";
+
 function parseAction(value: string | null): BalcaoActionId {
   return value && value in BALCAO_ACTION_REGISTRY
     ? value as BalcaoActionId
@@ -38,6 +41,7 @@ export default function BalcaoPageClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryAlunoId = searchParams?.get("alunoId") ?? null;
+  const retainedAlunoId = searchParams?.get(RETURN_STUDENT_PARAM) ?? null;
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
   const queryAction = parseAction(searchParams?.get("action") ?? null);
   const returnToParam = searchParams?.get("returnTo") ?? null;
@@ -45,7 +49,9 @@ export default function BalcaoPageClient({
     ? returnToParam
     : null;
 
-  const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(queryAlunoId);
+  const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(
+    queryAction === "enrollment" ? retainedAlunoId : queryAlunoId,
+  );
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(queryAction);
   const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
   const [atendimentoKey, setAtendimentoKey] = useState(0);
@@ -56,8 +62,10 @@ export default function BalcaoPageClient({
   } = useCommandCenterStudent(selectedAlunoId, academicYearId);
 
   useEffect(() => {
-    setSelectedAlunoId(queryAlunoId);
-  }, [queryAlunoId]);
+    // Deep links e refresh devem restaurar o aluno anterior, mas nunca
+    // passá-lo como alvo da nova matrícula.
+    setSelectedAlunoId(queryAction === "enrollment" ? retainedAlunoId : queryAlunoId);
+  }, [queryAlunoId, queryAction, retainedAlunoId]);
 
   useEffect(() => {
     setActiveAction(queryAction);
@@ -76,8 +84,15 @@ export default function BalcaoPageClient({
     const nextAlunoId = params.alunoId === undefined ? selectedAlunoId : params.alunoId;
     const nextAction = params.actionId ?? activeAction;
 
-    if (nextAlunoId) next.set("alunoId", nextAlunoId);
-    else next.delete("alunoId");
+    if (nextAction === "enrollment") {
+      next.delete("alunoId");
+      if (nextAlunoId) next.set(RETURN_STUDENT_PARAM, nextAlunoId);
+      else next.delete(RETURN_STUDENT_PARAM);
+    } else {
+      next.delete(RETURN_STUDENT_PARAM);
+      if (nextAlunoId) next.set("alunoId", nextAlunoId);
+      else next.delete("alunoId");
+    }
 
     if (nextAction === "desk") next.delete("action");
     else next.set("action", nextAction);
@@ -91,25 +106,24 @@ export default function BalcaoPageClient({
     setCaixaRefreshKey((current) => current + 1);
     if (!newAlunoId) return;
 
+    // Matrícula confirmada: o aluno recém-criado passa a ser o atendimento.
     setSelectedAlunoId(newAlunoId);
-    syncLocation({ alunoId: newAlunoId, actionId: "enrollment" });
+    setActiveAction("desk");
+    syncLocation({ alunoId: newAlunoId, actionId: "desk" });
   }, [syncLocation]);
 
   const handleActionChange = useCallback((actionId: BalcaoActionId) => {
+    if (actionId === activeAction) return;
+    if (
+      activeAction === "enrollment" &&
+      !window.confirm("Sair da nova matrícula? Alterações ainda não guardadas poderão perder-se. O aluno anterior continuará selecionado.")
+    ) return;
+
+    // Ao entrar na Matrícula, preservamos o atendimento para regressar,
+    // sem apresentar esse aluno como o destinatário da nova inscrição.
     setActiveAction(actionId);
-
-    // Matrícula é uma nova operação, não uma ação sobre o aluno atualmente
-    // selecionado. Limpar o contexto evita que o cabeçalho sugira que estamos
-    // a matricular novamente aquele mesmo aluno.
-    if (actionId === "enrollment") {
-      setSelectedAlunoId(null);
-      setCommandCenterStudent(null);
-      syncLocation({ alunoId: null, actionId });
-      return;
-    }
-
-    syncLocation({ actionId });
-  }, [setCommandCenterStudent, syncLocation]);
+    syncLocation({ alunoId: selectedAlunoId, actionId });
+  }, [activeAction, selectedAlunoId, syncLocation]);
 
   const handleSwitchStudent = useCallback(() => {
     // Este aviso protege a transição entre módulos. Ações já submetidas
@@ -173,9 +187,9 @@ export default function BalcaoPageClient({
       <section className="mt-4 min-w-0 pb-2">
         {selectedAlunoId || activeAction === "enrollment" ? (
           <CommandCenterPanel
-            key={`student-${selectedAlunoId ?? "new"}-${atendimentoKey}`}
+            key={`student-${activeAction === "enrollment" ? "new" : selectedAlunoId ?? "new"}-${atendimentoKey}`}
             escolaId={escolaId}
-            alunoId={selectedAlunoId}
+            alunoId={activeAction === "enrollment" ? null : selectedAlunoId}
             turmaId={commandCenterStudent?.turmaId ?? null}
             turmaLabel={commandCenterStudent?.turma ?? null}
             actionId={activeAction}
