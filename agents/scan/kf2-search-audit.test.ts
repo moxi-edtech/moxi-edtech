@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { checkGlobalSearchContract } from "./kf2-search-audit-core";
@@ -108,4 +109,23 @@ test("fails when tenant isolation is removed", () => {
     sqlContent: goodSql.replace("where b.escola_id = p_escola_id", "where true"),
   });
   assert.ok(findings.some((item) => item.error.includes("tenant")));
+});
+
+test("topbar command palette has an icon for every registered Balcão action", () => {
+  const registry = readFileSync("apps/web/src/lib/balcao/action-registry.ts", "utf8");
+  const palette = readFileSync(commandPaletteFile, "utf8");
+
+  const registered = [...registry.matchAll(/^  ([a-z]+): \\{/gm)].map((match) => match[1]).sort();
+  const iconMap = palette.match(/const actionIcon: Record<SearchActionKind, typeof User> = \\{([\\s\\S]*?)\\n  \\};/)?.[1];
+  assert.ok(iconMap, "actionIcon must be an exhaustive, typed map");
+  const mapped = [...iconMap.matchAll(/^    ([a-z]+): [A-Z]\\w+,?$/gm)].map((match) => match[1]).sort();
+
+  assert.deepEqual(mapped, registered, "an undefined action icon crashes the search results (React #130)");
+});
+
+test("topbar command palette uses a single cmdk root and accessible dialog description", () => {
+  const palette = readFileSync(commandPaletteFile, "utf8");
+  assert.match(palette, /<Command\\.Dialog[\\s\\S]*?shouldFilter=\\{false\\}/);
+  assert.doesNotMatch(palette, /<Command(?:\\s|>)/, "Command.Dialog already owns the cmdk root");
+  assert.match(palette, /<DialogDescription className="sr-only">/);
 });
