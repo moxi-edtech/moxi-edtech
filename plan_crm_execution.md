@@ -31,7 +31,7 @@ Pendências principais para aderir ao plano completo:
 - criar cockpit administrativo de comissão (aprovação, bloqueio, pagamento e recibo)
 - explicitar trial comercial K12 dentro do funil principal
 - criar fila/tarefas persistidas de follow-up comercial
-- criar variante “escola pública” sem financeiro transacional
+- concluir a variante “escola pública” sem financeiro transacional: a fundação de perfil institucional e os guards principais já existem; faltam hard gates em todos os writers, operação `budget`/`emoluments_only` e E2E público (ver `docs/STATUS_ESCOLAS_PUBLICAS_2026-10-01.md`)
 - integrar canal WhatsApp rastreável no CRM comercial do parceiro
 
 ---

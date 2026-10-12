@@ -4,6 +4,12 @@
 **Fase Actual:** Fase 1 (Preparação Silenciosa)  
 **Meta de Acção:** 20 escolas activas em pelo menos 2 províncias.
 
+> **Separação de escopo técnico — revisão 2026-10-01**
+>
+> Este documento descreve a estratégia de relacionamento e dados para o MED. Ele **não** é o SSOT de prontidão do produto para operar escolas públicas.
+> O estado técnico da variante pública está em `docs/STATUS_ESCOLAS_PUBLICAS_2026-10-01.md`.
+> Actualmente, a fundação institucional `private/public` e parte dos guards financeiros estão implementadas, mas a variante pública ainda não é considerada pilot-ready até fechar todos os writers financeiros incompatíveis, os fluxos `budget/emoluments_only` e o E2E autenticado.
+
 ---
 
 ## O que estamos realmente a fazer
