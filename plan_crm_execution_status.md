@@ -94,12 +94,12 @@ Referência técnica detalhada: [docs/STATUS_ESCOLAS_PUBLICAS_2026-10-01.md](doc
 | RLS do perfil institucional | `feito` | leitura por tenant ou Super Admin; escrita administrativa controlada |
 | Bloqueio de mensalidades/cobranças | `feito` | guards de `finance_model` em geração de mensalidades, cobranças, mensagens financeiras, IA e WhatsApp |
 | Suspensão por inadimplência | `feito` para modelos sem propina | `canUseFinancialSuspension()` condiciona o bloqueio |
-| Writers de pagamento/balcão | `implementado no sprint` | triggers em mensalidades/pagamentos + guards antes de MCX/upload; aguarda CI/homologação |
+| Writers de pagamento/balcão | `parcial` | ainda é necessário fechar o hard gate no writer canónico/SQL e nos caminhos alternativos |
 | `budget` | `parcial` | capability existe; fluxo E2E ainda não está fechado |
 | `emoluments_only` | `parcial` | capability existe; fluxo E2E ainda não está fechado |
 | Política académica MED | `falta` operacional | chaves existem como `*_pending`; decisão legal automática permanece desativada |
 | Perfil documental MED | `falta` operacional | scaffold existe, mas ainda não governa todas as emissões |
-| Portal do aluno | `implementado no sprint` | navegação, finance-alert, financeiro, inadimplência e rematrícula agora derivam das capabilities; aguarda CI/merge |
+| Portal do aluno | `não alinhado` | financeiro é fixo na navegação; layout, finance-alert e API financeira ainda ignoram `finance_model` |
 | Portal do professor | `parcialmente alinhado` | navegação é académica/neutra, mas `assessment_policy` ainda não governa o runtime de notas/pauta |
 | E2E escola pública | `falta` | falta fixture pública e prova de rejeição dos writers incompatíveis |
 

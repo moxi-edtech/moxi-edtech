@@ -3,7 +3,7 @@
 **Data da revisão:** 2026-10-01  
 **Repositório:** `moxi-edtech/moxi-edtech`  
 **Branch de referência:** `main`  
-**Status consolidado:** **Sprint de hardening implementado em branch — aguardando CI/merge; operação pública E2E completa ainda depende dos módulos budget/emolumentos e homologação.**
+**Status consolidado:** **Parcial — fundação concluída, enforcement financeiro incompleto, ainda não pilot-ready**
 
 ---
 
@@ -105,7 +105,7 @@ Já existem guards em fluxos relevantes de:
 
 ## 2.4 Estado dos portais do aluno e do professor
 
-### Portal do aluno — ALINHADO NO SPRINT (aguarda CI/merge)
+### Portal do aluno — NÃO ALINHADO ainda
 
 A revisão de 2026-10-01 encontrou dependências financeiras privadas que ainda ignoram o perfil operacional da escola.
 
@@ -135,7 +135,7 @@ Risco concreto:
 
 > Uma escola `public + budget` pode continuar mostrando “Financeiro”, consultar mensalidades e até bloquear o portal por inadimplência histórica/configurada, apesar de o modelo institucional não suportar propina recorrente.
 
-No sprint `feat/public-schools-readiness-sprint`, esses pontos foram corrigidos por capability: navegação, alertas, bloqueio por inadimplência, financeiro e rematrícula passam a respeitar o perfil institucional. A liberação permanece condicionada ao CI e à aplicação das migrations.
+Portanto, o portal do aluno **não está pronto para escola pública**.
 
 Comportamento alvo:
 
@@ -186,7 +186,7 @@ Comportamento alvo:
 
 ## 3. Blockers antes de um piloto público
 
-### PUB-001 — Invariantes institucionais — IMPLEMENTADO NO SPRINT
+### PUB-001 — Invariantes institucionais
 
 Hoje o domínio permite representar:
 
@@ -210,7 +210,7 @@ Matriz a formalizar:
 
 Também é necessário formalizar `mixed`: actualmente ele habilita emolumentos, mas `canUseRecurringTuition()` só aceita `tuition`.
 
-### PUB-002 — Hard gate em todos os writers financeiros — IMPLEMENTADO NO SPRINT
+### PUB-002 — Hard gate em todos os writers financeiros
 
 O enforcement não pode depender apenas de:
 
@@ -292,7 +292,7 @@ Para ativação é necessário:
 
 Falta ligar o perfil aos emissores/documentos apropriados e impedir a emissão de um template incompatível com a instituição.
 
-### PUB-007 — Navegação e UX dos portais — IMPLEMENTADO PARA FINANCEIRO/REMATRÍCULA
+### PUB-007 — Navegação e UX dos portais
 
 A UI deve derivar capacidades do perfil, sem duplicar regras de negócio.
 
@@ -328,7 +328,7 @@ Antes de declarar suporte MED automático:
 
 O backend continua sendo a autoridade; a UI é apenas a representação.
 
-### PUB-008 — E2E público — PARCIAL (CI dedicado adicionado)
+### PUB-008 — E2E público
 
 Criar fixture de teste:
 
@@ -365,7 +365,7 @@ Provar:
 - Super Admin;
 - resolver central.
 
-### Nível 2 — Enforcement financeiro — IMPLEMENTADO NO SPRINT / AGUARDA HOMOLOGAÇÃO
+### Nível 2 — Enforcement financeiro — PARCIAL
 
 Feito:
 
@@ -377,13 +377,9 @@ Feito:
 - parte do KLASSE IA;
 - suspensão por inadimplência.
 
-Implementado no sprint:
+Falta:
 
-- hard gate de `mensalidades` e `pagamentos` no Postgres;
-- resolução de `escola_id` para writers legados de mensalidade;
-- MCX bloqueado antes do side effect externo;
-- comprovativo do aluno bloqueado antes do upload;
-- rematrícula condicionada às capabilities financeiras.
+- hard gate completo no writer canónico e nos caminhos alternativos.
 
 ### Nível 3 — Operação pública E2E — FALTA
 
@@ -443,37 +439,3 @@ A estratégia de agregação de dados e relacionamento institucional continua do
 A existência dessa estratégia **não implica** que o produto esteja tecnicamente liberado para operar uma escola pública.
 
 O gate técnico é este documento.
-
-
----
-
-## 8. Sprint de hardening — 2026-10-02
-
-Branch: `feat/public-schools-readiness-sprint`
-
-Implementado:
-
-- matriz central de capabilities financeiras;
-- `public + tuition` recusado na API, UI e banco;
-- `mixed` não infere propina recorrente;
-- triggers canónicos em `mensalidades` e `pagamentos`;
-- proteção de writers legados que omitem `escola_id`;
-- portal do aluno deriva Financeiro e alertas do perfil;
-- `budget` não expõe mensalidades nem bloqueio por inadimplência;
-- `emoluments_only/mixed` mantêm pagamentos pontuais sem propina recorrente;
-- MCX é bloqueado antes de chamar o gateway quando a operação não é suportada;
-- comprovativo de propina é bloqueado antes do upload;
-- rematrícula do aluno, balcão e lote deixa de exigir dívida zero quando `financial_suspension=false`;
-- `budget` pode iniciar/concluir rematrícula académica sem intent de pagamento;
-- geração pós-rematrícula de mensalidades só ocorre quando `recurring_tuition=true`;
-- workflow `Gracefulness Public Schools` executa unit test, typecheck, ESLint e regressão em PostgreSQL 17.
-
-Ainda fora deste hardening:
-
-- módulo orçamental público completo (dotações/rubricas/execução);
-- contrato E2E completo de emolumentos;
-- policy registry MED aprovado para automação legal;
-- perfil documental oficial MED;
-- homologação com fixture pública real e aplicação da migration no ambiente alvo.
-
-**Gate:** não marcar `pilot-ready` antes dos checks do PR e da homologação do banco.

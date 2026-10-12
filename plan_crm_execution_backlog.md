@@ -405,7 +405,7 @@ Fazer o parceiro atuar sobre atrasos e gargalos.
 
 **Status**
 
-`em_homologacao`
+`parcial`
 
 **Objetivo**
 
@@ -618,7 +618,7 @@ Permitir que o KLASSE opere escolas públicas sem assumir o modelo financeiro da
 
 **Lacunas / blockers**
 
-1. **Hard gate financeiro — implementado no sprint 2026-10-02; aguarda CI/homologação**
+1. **Hard gate financeiro incompleto**
    - Os writers canónicos de pagamento ainda precisam validar o perfil no boundary servidor/SQL.
    - Caminhos a fechar incluem balcão, batch de pagamentos, registo financeiro, conciliação e conversão de admissão.
    - Esconder UI ou bloquear geração de mensalidades não é suficiente: nenhum writer pode aceitar uma operação incompatível com o perfil.
