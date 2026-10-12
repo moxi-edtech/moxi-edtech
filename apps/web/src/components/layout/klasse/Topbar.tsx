@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronDown, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -9,8 +8,6 @@ import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
 import { ModuleSwitcherInner } from "@/components/layout/klasse/ModuleSwitcher";
 import LockScreenButton from "@/components/session/LockScreenButton";
 import { requestSessionConfig } from "@/components/session/SessionLockProvider";
-import { GlobalSearchActionSheet } from "@/components/GlobalSearchActionSheet";
-import type { MinimalSearchResult, SearchAction } from "@/hooks/useGlobalSearch";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -39,12 +36,7 @@ export default function Topbar({
   escolaParam,
   portal,
 }: TopbarProps) {
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSearchAction, setActiveSearchAction] = useState<{
-    action: SearchAction;
-    result: MinimalSearchResult;
-  } | null>(null);
   const userInitial =
     (userName || portalSubtitle || "U")
       .trim()
@@ -57,17 +49,7 @@ export default function Topbar({
       <div className="h-16 flex items-center gap-4 px-4">
         {/* Search */}
         <div className="hidden md:flex w-[420px]">
-          <CommandPalette
-            escolaId={escolaId}
-            portal={portal}
-            onAction={
-              portal === "secretaria" || portal === "operacoes"
-                ? (action, result) => {
-                    setActiveSearchAction({ action, result });
-                  }
-                : undefined
-            }
-          />
+          <CommandPalette escolaId={escolaId} portal={portal} />
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -125,14 +107,6 @@ export default function Topbar({
         </div>
       </div>
     </header>
-    {escolaId ? (
-      <GlobalSearchActionSheet
-        active={activeSearchAction}
-        escolaId={escolaId}
-        onClose={() => setActiveSearchAction(null)}
-        onSuccess={() => router.refresh()}
-      />
-    ) : null}
     </>
   );
 }

@@ -6,9 +6,7 @@ import {
   Search,
   Loader2,
   ArrowRight,
-  BriefcaseBusiness,
   User,
-  UserPlus,
   Users,
   CreditCard,
   FileText,
@@ -17,23 +15,61 @@ import {
   LayoutDashboard,
   Zap,
   Bookmark,
-  RefreshCcw,
 } from "lucide-react";
 import { Command } from "cmdk";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { prefetchGlobalSearchAction } from "@/components/GlobalSearchActionSheet";
-import { useGlobalSearch, type MinimalSearchResult, type SearchAction, type SearchActionKind } from "@/hooks/useGlobalSearch";
-import { cn } from "@/lib/utils";
+import { useGlobalSearch, type MinimalSearchResult } from "@/hooks/useGlobalSearch";
+import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 
 type Props = {
   escolaId?: string | null;
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
-  onAction?: (action: SearchAction, result: MinimalSearchResult) => void;
 };
 
-export function CommandPalette({ escolaId, portal, onAction }: Props) {
+// Cada item é uma única opção de teclado/clique, sem botões de ação aninhados.
+// A RPC já devolve o nome em label e o número de processo/BI em highlight.
+function SearchResultRow({ item, onSelect }: { item: MinimalSearchResult; onSelect: () => void }) {
+  const student = item.type === "aluno";
+  const secondary = item.highlight?.trim();
+  const showSecondary = Boolean(secondary && secondary !== item.label?.trim());
+
+  return (
+    <Command.Item
+      value={`${item.type}:${item.id}`}
+      onSelect={onSelect}
+      className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-700 transition-colors aria-selected:bg-slate-100 aria-selected:text-slate-900"
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 group-aria-selected:bg-white">
+        {student ? <User className="h-5 w-5" /> : item.type === "turma" ? (
+          <GraduationCap className="h-5 w-5" />
+        ) : item.type === "candidatura" ? (
+          <Bookmark className="h-5 w-5" />
+        ) : (
+          <FileText className="h-5 w-5" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="break-words font-semibold leading-5 text-slate-900">
+          {item.label?.trim() || "Nome não informado"}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+          <span>{student ? "Aluno" : item.type}</span>
+          {showSecondary && (
+            <span className="break-all text-slate-600">
+              {student ? "Processo/BI: " : "· "}{secondary}
+            </span>
+          )}
+        </div>
+      </div>
+      <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 group-aria-selected:text-slate-700" />
+    </Command.Item>
+  );
+}
+
+export function CommandPalette({ escolaId, portal }: Props) {
   const router = useRouter();
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -61,65 +97,45 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
     command();
   }, []);
 
-  const getStatusColor = (status: string | null) => {
-    if (!status) return "bg-slate-100 text-slate-500";
-    const s = status.toLowerCase();
-    if (s.includes("ativo") || s.includes("aprovada") || s.includes("pago")) return "bg-emerald-50 text-emerald-700 border-emerald-100";
-    if (s.includes("pendente") || s.includes("aguardando") || s.includes("atraso")) return "bg-amber-50 text-amber-700 border-amber-100";
-    if (s.includes("cancelado") || s.includes("inativo")) return "bg-rose-50 text-rose-700 border-rose-100";
-    return "bg-slate-50 text-slate-600 border-slate-100";
-  };
-
-  const actionIcon: Record<SearchActionKind, typeof User> = {
-    enrollment: UserPlus,
-    profile: User,
-    payment: CreditCard,
-    desk: BriefcaseBusiness,
-    grade: GraduationCap,
-    document: FileText,
-    reenrollment: RefreshCcw,
-  };
-
-  const getPrimaryAction = React.useCallback((item: MinimalSearchResult) => {
-    const preferredKind =
-      item.intent === "financeiro"
-        ? "payment"
-        : item.intent === "academico"
-          ? "grade"
-          : item.intent === "perfil"
-            ? "profile"
-            : item.intent === "documentos"
-              ? "document"
-              : item.actions.length > 0
-              ? "profile"
-              : null;
-
-    return preferredKind ? item.actions.find((action) => action.kind === preferredKind) ?? null : null;
-  }, []);
-
   const selectResult = React.useCallback((item: MinimalSearchResult) => {
-    rememberResult(item);
-    const actionHandler = onAction;
-    const primaryAction = actionHandler ? getPrimaryAction(item) : null;
+    let href = item.href;
 
-    if (primaryAction && actionHandler) {
-      runCommand(() => actionHandler(primaryAction, item));
-      return;
+    // A pesquisa encontra a pessoa; o Balcão existente concentra as ações.
+    // Outros tipos de resultado mantêm a navegação canónica do seu portal.
+    if (item.type === "aluno" && escolaParam && (portal === "secretaria" || portal === "operacoes")) {
+      const currentPath = window.location.pathname;
+      const currentParams = new URLSearchParams(window.location.search);
+      if (currentPath.endsWith("/secretaria/balcao")) {
+        const currentAlunoId = currentParams.get("alunoId");
+        const currentAction = currentParams.get("action");
+        if (
+          currentAlunoId &&
+          (currentAlunoId !== item.id || (currentAction && currentAction !== "desk")) &&
+          !window.confirm("Quer mudar o atendimento? Dados não guardados poderão perder-se.")
+        ) return;
+      }
+
+      href = buildBalcaoActionHref({
+        escolaParam,
+        portal,
+        actionId: "desk",
+        alunoId: item.id,
+      });
+
+      // Não perder o ano letivo que a escola selecionou no portal de origem.
+      const academicYearId = currentParams.get(ACADEMIC_YEAR_PARAM);
+      if (academicYearId) {
+        const join = href.includes("?") ? "&" : "?";
+        href += `${join}${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(academicYearId)}`;
+      }
     }
 
-    runCommand(() => router.push(item.href));
-  }, [getPrimaryAction, onAction, rememberResult, router, runCommand]);
-
-  const selectAction = React.useCallback((action: SearchAction, item: MinimalSearchResult) => {
     rememberResult(item);
     runCommand(() => {
-      if (onAction) {
-        onAction(action, item);
-        return;
-      }
-      router.push(action.href);
+      setQuery("");
+      router.push(href);
     });
-  }, [onAction, rememberResult, router, runCommand]);
+  }, [escolaParam, portal, rememberResult, router, runCommand, setQuery]);
 
   const staticActions = React.useMemo(() => {
     const actions = [
@@ -246,22 +262,11 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
               {recentResults.length > 0 && (
                 <Command.Group heading="Recentes" className="px-2 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   {recentResults.map((item) => (
-                    <Command.Item
+                    <SearchResultRow
                       key={`recent-${item.type}-${item.id}`}
+                      item={item}
                       onSelect={() => selectResult(item)}
-                      className="flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-emerald transition-colors cursor-pointer group"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 group-aria-selected:bg-emerald/10 transition-colors">
-                          {item.type === "aluno" ? <User className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-bold text-slate-900 group-aria-selected:text-emerald">{item.label}</div>
-                          <div className="text-[10px] uppercase tracking-wider text-slate-400">{item.type}</div>
-                        </div>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-slate-300 opacity-0 group-aria-selected:opacity-100 -translate-x-2 group-aria-selected:translate-x-0 transition-all" />
-                    </Command.Item>
+                    />
                   ))}
                 </Command.Group>
               )}
@@ -286,87 +291,11 @@ export function CommandPalette({ escolaId, portal, onAction }: Props) {
             {results.length > 0 && (
               <Command.Group heading="Resultados da Busca" className="px-2 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-4">
                 {results.map((item) => (
-                  <Command.Item
-                    key={item.id}
+                  <SearchResultRow
+                    key={`${item.type}-${item.id}`}
+                    item={item}
                     onSelect={() => selectResult(item)}
-                    className="flex items-center justify-between rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-emerald transition-colors cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 group-aria-selected:bg-emerald/10 transition-colors">
-                        {item.intent === "financeiro" ? (
-                          <CreditCard className="h-4 w-4" />
-                        ) : item.type === "aluno" ? (
-                          <User className="h-4 w-4" />
-                        ) : item.type === "turma" ? (
-                          <GraduationCap className="h-4 w-4" />
-                        ) : item.type === "candidatura" ? (
-                          <Bookmark className="h-4 w-4" />
-                        ) : (
-                          <FileText className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-bold text-slate-900 group-aria-selected:text-emerald transition-colors">
-                            {item.label}
-                          </span>
-                          {item.highlight && (
-                            <span className={cn(
-                              "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none",
-                              getStatusColor(item.highlight)
-                            )}>
-                              {item.highlight}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">
-                          {item.type} {item.intent && `• ${item.intent}`}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {onAction && item.actions.length > 0 && (
-                        <div className="hidden items-center gap-1 sm:flex">
-                          {item.actions.map((action) => {
-                            const Icon = actionIcon[action.kind] ?? FileText;
-                            const isPrimary = getPrimaryAction(item)?.kind === action.kind;
-                            return (
-                              <button
-                                key={action.kind}
-                                type="button"
-                                onPointerEnter={() => prefetchGlobalSearchAction(action, item)}
-                                onFocus={() => prefetchGlobalSearchAction(action, item)}
-                                onMouseDown={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                }}
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  selectAction(action, item);
-                                }}
-                                className={cn(
-                                  "inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold transition",
-                                  isPrimary
-                                    ? "border-emerald/30 bg-emerald/10 text-emerald hover:bg-emerald/15"
-                                    : "border-slate-200 bg-white text-slate-600 hover:border-emerald/30 hover:bg-emerald/5 hover:text-emerald",
-                                )}
-                              >
-                                <Icon className="h-3 w-3" />
-                                {action.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {item.intent && (
-                        <span className="text-[10px] font-bold text-emerald bg-emerald/10 px-2 py-1 rounded-lg">
-                          {item.intent === 'financeiro' ? 'Lançar' : 'Ver'}
-                        </span>
-                      )}
-                      <ArrowRight className="h-4 w-4 text-slate-300 opacity-0 group-aria-selected:opacity-100 -translate-x-2 group-aria-selected:translate-x-0 transition-all" />
-                    </div>
-                  </Command.Item>
+                  />
                 ))}
               </Command.Group>
             )}
