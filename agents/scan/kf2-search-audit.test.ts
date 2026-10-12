@@ -111,16 +111,32 @@ test("fails when tenant isolation is removed", () => {
   assert.ok(findings.some((item) => item.error.includes("tenant")));
 });
 
-test("topbar command palette has an icon for every registered Balcão action", () => {
-  const registry = readFileSync("apps/web/src/lib/balcao/action-registry.ts", "utf8");
+test("topbar results keep name and identifier visible without nested action buttons", () => {
   const palette = readFileSync(commandPaletteFile, "utf8");
+  const row = palette.match(/function SearchResultRow[\s\S]*?\n}\n\nexport function CommandPalette/)?.[0];
+  assert.ok(row, "search results must use a shared, identifiable row");
+  assert.match(row, /item\.label/);
+  assert.match(row, /item\.highlight/);
+  assert.match(row, /Processo\/BI:/);
+  assert.match(row, /<Command\.Item/);
+  assert.doesNotMatch(row, /<button\b/, "no interactive controls nested inside Command.Item");
+  assert.equal((palette.match(/<SearchResultRow\b/g) ?? []).length, 2, "results and recents share the same row");
+  assert.doesNotMatch(palette, /item\.actions\.map|actionIcon/, "action toolbar belongs in the Balcão");
+});
 
-  const registered = [...registry.matchAll(/^  ([a-z]+): \{/gm)].map((match) => match[1]).sort();
-  const iconMap = palette.match(/const actionIcon: Record<SearchActionKind, typeof User> = \{([\s\S]*?)\n  \};/)?.[1];
-  assert.ok(iconMap, "actionIcon must be an exhaustive, typed map");
-  const mapped = [...iconMap.matchAll(/^    ([a-z]+): [A-Z]\w+,?$/gm)].map((match) => match[1]).sort();
+test("student search navigates directly to the existing Balcão, not an action modal", () => {
+  const palette = readFileSync(commandPaletteFile, "utf8");
+  const topbar = readFileSync("apps/web/src/components/layout/klasse/Topbar.tsx", "utf8");
 
-  assert.deepEqual(mapped, registered, "an undefined action icon crashes the search results (React #130)");
+  assert.match(palette, /item\.type === "aluno"[\s\S]*portal === "secretaria" \|\| portal === "operacoes"/);
+  assert.match(palette, /href = buildBalcaoActionHref\(\{/);
+  assert.match(palette, /actionId: "desk"/);
+  assert.match(palette, /alunoId: item\.id/);
+  assert.match(palette, /let href = item\.href/);
+  assert.match(palette, /window\.confirm\(/, "switching an active student must warn about unsaved work");
+  assert.match(palette, /ACADEMIC_YEAR_PARAM/, "preserve academic year when navigating");
+  assert.match(topbar, /<CommandPalette escolaId=\{escolaId\} portal=\{portal\} \/>/);
+  assert.doesNotMatch(topbar, /GlobalSearchActionSheet|onAction=/);
 });
 
 test("topbar command palette uses a single cmdk root and accessible dialog description", () => {
