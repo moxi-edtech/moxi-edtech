@@ -1,0 +1,31 @@
+name: Receipt Reconciliation Guard
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/receipt-reconciliation-guard.yml'
+      - 'apps/web/src/components/financeiro/ReciboPagamentoCompacto.tsx'
+      - 'apps/web/tests/unit/receipt-replay-gate.spec.ts'
+      - 'apps/web/tests/unit/receipt-operational-label.spec.tsx'
+      - 'supabase/ops/scripts/replay_receipt_outbox_PROVEN_ONLY.sql'
+      - 'docs/ops/receipt-reconciliation-20261012/**'
+jobs:
+  receipt-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Receipt label, dry-run and owner gate
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/receipt-operational-label.spec.tsx tests/unit/receipt-replay-gate.spec.ts
+      - name: TypeScript
+        run: pnpm -C apps/web typecheck
+      - name: Lint changed TS files
+        working-directory: apps/web
+        run: pnpm exec eslint src/components/financeiro/ReciboPagamentoCompacto.tsx tests/unit/receipt-operational-label.spec.tsx tests/unit/receipt-replay-gate.spec.ts --max-warnings 0
