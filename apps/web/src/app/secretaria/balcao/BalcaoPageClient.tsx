@@ -16,9 +16,7 @@ import {
   type BalcaoActionId,
 } from "@/lib/balcao/action-registry";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
-
-// O contexto de retorno não é o aluno-alvo da nova matrícula.
-const RETURN_STUDENT_PARAM = "atendimentoAlunoId";
+import { readBalcaoStudentId, setBalcaoLocationContext } from "@/lib/balcao/return-context";
 
 function parseAction(value: string | null): BalcaoActionId {
   return value && value in BALCAO_ACTION_REGISTRY
@@ -40,18 +38,15 @@ export default function BalcaoPageClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryAlunoId = searchParams?.get("alunoId") ?? null;
-  const retainedAlunoId = searchParams?.get(RETURN_STUDENT_PARAM) ?? null;
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
   const queryAction = parseAction(searchParams?.get("action") ?? null);
+  const locationStudentId = readBalcaoStudentId(new URLSearchParams(searchParams?.toString() ?? ""), queryAction);
   const returnToParam = searchParams?.get("returnTo") ?? null;
   const returnTo = returnToParam?.startsWith("/") && !returnToParam.startsWith("//")
     ? returnToParam
     : null;
 
-  const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(
-    queryAction === "enrollment" ? retainedAlunoId : queryAlunoId,
-  );
+  const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(locationStudentId);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(queryAction);
   const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
   const [atendimentoKey, setAtendimentoKey] = useState(0);
@@ -62,10 +57,8 @@ export default function BalcaoPageClient({
   } = useCommandCenterStudent(selectedAlunoId, academicYearId);
 
   useEffect(() => {
-    // Deep links e refresh devem restaurar o aluno anterior, mas nunca
-    // passá-lo como alvo da nova matrícula.
-    setSelectedAlunoId(queryAction === "enrollment" ? retainedAlunoId : queryAlunoId);
-  }, [queryAlunoId, queryAction, retainedAlunoId]);
+    setSelectedAlunoId(locationStudentId);
+  }, [locationStudentId]);
 
   useEffect(() => {
     setActiveAction(queryAction);
@@ -80,22 +73,13 @@ export default function BalcaoPageClient({
     alunoId?: string | null;
     actionId?: BalcaoActionId;
   }) => {
-    const next = new URLSearchParams(searchParams?.toString() ?? "");
     const nextAlunoId = params.alunoId === undefined ? selectedAlunoId : params.alunoId;
     const nextAction = params.actionId ?? activeAction;
-
-    if (nextAction === "enrollment") {
-      next.delete("alunoId");
-      if (nextAlunoId) next.set(RETURN_STUDENT_PARAM, nextAlunoId);
-      else next.delete(RETURN_STUDENT_PARAM);
-    } else {
-      next.delete(RETURN_STUDENT_PARAM);
-      if (nextAlunoId) next.set("alunoId", nextAlunoId);
-      else next.delete("alunoId");
-    }
-
-    if (nextAction === "desk") next.delete("action");
-    else next.set("action", nextAction);
+    const next = setBalcaoLocationContext(
+      new URLSearchParams(searchParams?.toString() ?? ""),
+      nextAlunoId,
+      nextAction,
+    );
 
     const query = next.toString();
     const targetPath = pathname || "/secretaria/balcao";
