@@ -226,3 +226,36 @@ gravado `/tmp/klasse-full-replay-green` e se houver uma credencial
 O CI não imprime URL nem SQL do diff; os nomes de objetos divergentes
 são registrados separadamente. Enquanto os pré-requisitos estiverem
 ausentes, o CI marca **BLOCKED** e não simula equivalência.
+
+## Addendum — resolução das seis colisões no DRAFT (12/10/2026)
+
+Este commit **não altera qualquer arquivo cuja versão já estivesse registrada
+em produção**. As seis colisões foram resolvidas no diretório ativo:
+
+| Versão originalmente duplicada | Versão no remoto | Tratamento |
+|---|---|---|
+| `20260520004000` | ausente | `create_afiliados_portal` preservado; `create_marketing_assets` passa a `20260520004001`, com guards para policies |
+| `20260821120000` | ausente | versão principal preservada; `dedupe_professor_assignments` passa a `20260821120001`, com CREATE de função somente se ausente |
+| `20260827170000` | presente, mas sem SQL registrado | `aluno_emitir_documentos_operacionais` preservada; a função conflitante antiga vai a `supabase/ops/historical_version_collisions` e há nova `20260827170001` que não substitui função existente |
+| `20260924010000` | ausente | `.rollback.sql` movido para `supabase/ops/historical_version_collisions`, sem execução no replay |
+| `20261215012000` | presente (`add_finalizar_matricula_blindada`) | arquivo registrado preservado; antiga constraint arquivada, nova `20261215012001` condicional preserva sem alteração a constraint efetiva de produção que inclui `transferido` |
+| `20261218100000` | presente (`refine_mapa_aproveitamento_consolidation`) | arquivo registrado preservado; seed antigo arquivado, nova `20261218100001` cria função/trigger apenas se ausentes |
+
+O arquivo não versionado `MIGRATION_ADMISSAO_P0.sql` foi retirado do
+diretório executável e preservado em `supabase/ops/historical_version_collisions`.
+Ele possuía grants e SQL de negócio não homologados para replay automático.
+Não foi aplicado ou descartado.
+
+O gate `scripts/check-migration-inventory.py` passa a **falhar** com
+duplicações e nomes inválidos. Resultado atual da branch Draft:
+**926 versões locais únicas, 624 registradas em produção, 302 somente locais,
+0 versões remotas sem arquivo, 0 colisões, 0 nomes inválidos**.
+O inventário de **860/624, 61 remoto exclusivo, 297 local exclusivo** nas
+seções anteriores permanece como **snapshot da main inicial**, não do DRAFT.
+A presença dos novos números não autoriza `db push` nem `repair`.
+
+As funções conflitantes originalmente eram `CREATE OR REPLACE`; a nova
+versão só instala uma função se ela não existir. Isso é conservador, mas
+não comprova que a função já existente tenha a lógica desejada: revisar
+suas definições efetivas por separado. Não aplicar automaticamente até
+o replay e schema-only parity gates passarem.

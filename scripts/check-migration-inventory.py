@@ -39,6 +39,10 @@ if missing_remote:
     raise SystemExit(f"Still missing {len(missing_remote)} remote migration versions from tracked source")
 if len(remote_versions) != 624:
     raise SystemExit("Unrecognized production migration-history snapshot")
+if duplicate:
+    raise SystemExit("Duplicate migration versions are forbidden: " + ",".join(sorted(duplicate)))
+if invalid:
+    raise SystemExit("Invalid migration filenames inside supabase/migrations: " + ",".join(invalid))
 if not (root / "apps/web/tests/unit/fiscal-immutability-guards.spec.ts").exists():
     raise SystemExit("Fiscal negative guards not under permanent main test workflow")
 print("historical_remote_versions_accounted_for=true")
