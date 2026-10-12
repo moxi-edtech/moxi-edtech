@@ -93,6 +93,7 @@ export function BalcaoWorkspace({
       <CommandCenterPanel
         key={selectedStudent.id}
         escolaId={escolaId}
+        inModal
         alunoId={activeAction === "enrollment" ? null : selectedStudent.id}
         actionId={activeAction}
         onActionChange={handleActionChange}
