@@ -1,0 +1,24 @@
+name: KLASSE AI Reconciliation Guard
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/klasse-ai-reconciliation-guard.yml'
+      - 'apps/web/tests/unit/klasse-ai-reconciliation.spec.ts'
+      - 'docs/ops/KLASSE_AI_BASE_RECONCILIATION_20261013.md'
+      - 'apps/web/src/lib/integrations/klasse-chatgpt/**'
+      - 'apps/web/src/app/api/integrations/chatgpt/**'
+jobs:
+  ai-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/web && node --test --import tsx tests/unit/klasse-chatgpt-contract.spec.ts tests/unit/klasse-ai-reconciliation.spec.ts
+      - run: pnpm -C apps/web typecheck
