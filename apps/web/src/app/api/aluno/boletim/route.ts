@@ -65,7 +65,7 @@ export async function GET(request: Request) {
 
     const selectedId = new URL(request.url).searchParams.get("studentId");
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
-    if (!alunoId) return NextResponse.json({ ok: true, disciplinas: [], nome_aluno: null, trimestre_atual: null });
+    if (!alunoId) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
 
     const [{ data: aluno }, { data: matricula }] = await Promise.all([
       supabase.from("alunos").select("nome").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
@@ -94,7 +94,7 @@ export async function GET(request: Request) {
     const anoLetivoId = academicContext.anoLetivoId;
 
     // --- SEGURANÇA: Verificar permissão de visualização detalhada (serviço pago) ---
-    const { data: permission } = await supabase
+    const { data: permission, error: permissionError } = await supabase
       .from('servico_pedidos')
       .select('status')
       .eq('escola_id', ctx.escolaId)
@@ -105,6 +105,7 @@ export async function GET(request: Request) {
       .limit(1)
       .maybeSingle();
     
+    if (permissionError) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503 });
     const isLiberado = !!permission;
     // ----------------------------------------------------------------------------
 
@@ -135,6 +136,9 @@ export async function GET(request: Request) {
     })
 
     const { data: frequencias } = await frequenciasQuery;
+
+    // Sem pagamento confirmado, não consultar nem devolver notas.
+    if (!isLiberado) return NextResponse.json({ ok: true, context: academicContext, nome_aluno: aluno?.nome ?? null, trimestre_atual: null, is_liberado: false, disciplinas: [] });
 
     let boletimQuery = supabase
       .from("vw_boletim_por_matricula")

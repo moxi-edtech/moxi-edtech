@@ -27,7 +27,7 @@ export async function GET(_req: Request, context: { params: Promise<{ disciplina
     }
 
     // --- SEGURANÇA: Verificar se o boletim foi pago ---
-    const { data: permission } = await supabase
+    const { data: permission, error: permissionError } = await supabase
       .from('servico_pedidos')
       .select('status')
       .eq('escola_id', escolaId)
@@ -38,6 +38,7 @@ export async function GET(_req: Request, context: { params: Promise<{ disciplina
       .limit(1)
       .maybeSingle();
 
+    if (permissionError) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503 });
     if (!permission) {
       return NextResponse.json({ 
         ok: false, 

@@ -193,14 +193,14 @@ export function TabNotas() {
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-                          Pauta de Avaliação Publicada
+                          Boletim de notas
                         </h3>
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/80 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/50">
                           Emolumento de Secretaria
                         </span>
                       </div>
                       <p className="text-xs font-normal text-slate-600 leading-relaxed max-w-xl">
-                        As pautas do ano letivo foram lançadas. Regularize a taxa de emissão para visualizar as notas trimestrais detalhadas e descarregar o Boletim Oficial com validação digital via QR Code.
+                        Pague o boletim de notas para consultar as notas já lançadas pelos professores e descarregar o PDF com os resultados disponíveis no momento.
                       </p>
                     </div>
                   </div>
@@ -209,7 +209,7 @@ export function TabNotas() {
                     href={`/aluno/documentos${query}`}
                     className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-bold text-white shadow-sm hover:bg-slate-800 active:scale-98 transition-all shrink-0"
                   >
-                    <span>Regularizar e Desbloquear</span>
+                    <span>Pagar boletim</span>
                     <ChevronRight size={15} className="text-slate-400" />
                   </Link>
                 </div>
@@ -238,33 +238,15 @@ export function TabNotas() {
                         <div className="mt-5 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
                             <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
                                 <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">1º Trimestre</p>
-                                <div className="space-y-1.5 font-medium text-slate-700">
-                                    <div className="flex justify-between"><span>MAC:</span> <span>{fmtNota(disc.nota_t1)}</span></div>
-                                    <div className="flex justify-between"><span>NPP:</span> <span>{fmtNota(disc.nota_t1)}</span></div>
-                                    <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1.5">
-                                        <span className="font-bold">Média:</span> <span className="font-bold text-slate-900">{fmtNota(disc.nota_t1)}</span>
-                                    </div>
-                                </div>
+                                <p className="text-lg font-bold text-slate-900">{fmtNota(disc.nota_t1)}</p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
                                 <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">2º Trimestre</p>
-                                <div className="space-y-1.5 font-medium text-slate-700">
-                                    <div className="flex justify-between"><span>MAC:</span> <span>{fmtNota(disc.nota_t2)}</span></div>
-                                    <div className="flex justify-between"><span>NPP:</span> <span>{fmtNota(disc.nota_t2)}</span></div>
-                                    <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1.5">
-                                        <span className="font-bold">Média:</span> <span className="font-bold text-slate-900">{fmtNota(disc.nota_t2)}</span>
-                                    </div>
-                                </div>
+                                <p className="text-lg font-bold text-slate-900">{fmtNota(disc.nota_t2)}</p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
                                 <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">3º Trimestre</p>
-                                <div className="space-y-1.5 font-medium text-slate-700">
-                                    <div className="flex justify-between"><span>MAC:</span> <span>{fmtNota(disc.nota_t3)}</span></div>
-                                    <div className="flex justify-between"><span>NPP:</span> <span>{fmtNota(disc.nota_t3)}</span></div>
-                                    <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1.5">
-                                        <span className="font-bold">Média:</span> <span className="font-bold text-slate-900">{fmtNota(disc.nota_t3)}</span>
-                                    </div>
-                                </div>
+                                <p className="text-lg font-bold text-slate-900">{fmtNota(disc.nota_t3)}</p>
                             </div>
 
                             <div className="md:col-span-3 mt-2 flex items-center justify-between px-2">
@@ -297,7 +279,7 @@ export function TabNotas() {
                   </details>
                 );
               })}
-              {disciplinas.length === 0 && <p className="text-sm text-slate-500 text-center py-8">Sem disciplinas no boletim.</p>}
+              {isLiberado && disciplinas.length === 0 && <p className="text-sm text-slate-500 text-center py-8">Ainda não há notas lançadas no boletim.</p>}
             </div>
           </section>
         )}

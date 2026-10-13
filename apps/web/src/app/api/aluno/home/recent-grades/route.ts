@@ -46,16 +46,18 @@ export async function GET(request: Request) {
     if (!matriculaId) return NextResponse.json({ ok: true, items: [] });
 
     // --- SEGURANÇA: Verificar se o boletim foi pago ---
-    const { data: permission } = await supabase
+    const { data: permission, error: permissionError } = await supabase
       .from('servico_pedidos')
       .select('status')
       .eq('escola_id', ctx.escolaId)
       .eq('aluno_id', alunoId)
+      .eq('matricula_id', matriculaId)
       .eq('servico_codigo', 'DOC_DECLARACAO_NOTAS')
       .eq('status', 'granted')
       .limit(1)
       .maybeSingle();
 
+    if (permissionError) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503 });
     if (!permission) {
       return NextResponse.json({ ok: true, items: [], restricted: true });
     }
