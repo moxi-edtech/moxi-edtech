@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { canUseFinanceChargeMessages } from "@/lib/school-profile/finance-capabilities";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -15,6 +17,11 @@ export async function GET(request: Request) {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx?.escolaId || !ctx.userId) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
+    const profile = await resolveSchoolOperatingProfile(supabase as any, ctx.escolaId);
+    if (!canUseFinanceChargeMessages(profile)) {
+      return NextResponse.json({ ok: true, alert: null });
     }
 
     const { data: userRes } = await supabase.auth.getUser();

@@ -4,6 +4,8 @@ import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import type { Database, Json } from "~types/supabase";
 import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { deriveSchoolFinanceCapabilities } from "@/lib/school-profile/finance-capabilities";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -26,6 +28,22 @@ export async function GET(request: Request) {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx || !ctx.escolaId || !ctx.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
+    const profile = await resolveSchoolOperatingProfile(supabase as any, ctx.escolaId);
+    const capabilities = deriveSchoolFinanceCapabilities(profile);
+    if (!capabilities.studentFinancePortal) {
+      return NextResponse.json({
+        ok: true,
+        available: false,
+        capabilities,
+        mensalidades: [],
+        servicos: [],
+        movimentos: [],
+        resumo: { saldo_consolidado: 0, total_pago: 0, total_pendente: 0, em_dia: true },
+        dados_pagamento: null,
+        fonte: "school_operating_profile",
+      });
+    }
+
     const url = new URL(request.url);
     const fromAno = parseYear(url.searchParams.get("fromAno"));
     const toAno = parseYear(url.searchParams.get("toAno"));
@@ -44,20 +62,23 @@ export async function GET(request: Request) {
 
     const selectedId = url.searchParams.get("studentId");
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
-    if (!alunoId) return NextResponse.json({ ok: true, mensalidades: [], movimentos: [] });
+    if (!alunoId) return NextResponse.json({ ok: true, available: true, capabilities, mensalidades: [], servicos: [], movimentos: [] });
 
-    // 1. Buscar Mensalidades (Legado, para compatibilidade de UI e botões de pagar)
-    const { data: mensalidades, error: mensError } = await supabase
-      .from("mensalidades")
-      .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, data_vencimento, status, data_pagamento_efetiva")
-      .eq("aluno_id", alunoId)
-      .eq("escola_id", ctx.escolaId)
-      .gte("ano_referencia", fromAno)
-      .lte("ano_referencia", toAno)
-      .order("ano_referencia", { ascending: false })
-      .order("mes_referencia", { ascending: false });
-
-    if (mensError) throw mensError;
+    // 1. Mensalidades só existem como operação ativa no modelo tuition.
+    let mensalidades: any[] = [];
+    if (capabilities.recurringTuition) {
+      const { data, error: mensError } = await supabase
+        .from("mensalidades")
+        .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, data_vencimento, status, data_pagamento_efetiva")
+        .eq("aluno_id", alunoId)
+        .eq("escola_id", ctx.escolaId)
+        .gte("ano_referencia", fromAno)
+        .lte("ano_referencia", toAno)
+        .order("ano_referencia", { ascending: false })
+        .order("mes_referencia", { ascending: false });
+      if (mensError) throw mensError;
+      mensalidades = data ?? [];
+    }
 
     const mensalidadeIds = (mensalidades ?? []).map((m) => m.id);
     const reciboByMensalidadeId = new Map<string, string>();
@@ -78,14 +99,18 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Buscar Movimentos do Ledger (SSOT)
-    const { data: movimentos, error: ledgerError } = await supabase
+    // 2. Livro razão: num modelo sem propina, débitos históricos de mensalidade
+    // não voltam a aparecer como obrigação ativa no portal.
+    let ledgerQuery = supabase
       .from("financeiro_ledger")
       .select("*")
       .eq("aluno_id", alunoId)
-      .eq("escola_id", ctx.escolaId)
+      .eq("escola_id", ctx.escolaId);
+    if (!capabilities.recurringTuition) {
+      ledgerQuery = ledgerQuery.neq("origem", "mensalidade");
+    }
+    const { data: movimentos, error: ledgerError } = await ledgerQuery
       .order("data_movimento", { ascending: false });
-
     if (ledgerError) throw ledgerError;
 
     const { data: pagamentosServicos, error: servicosError } = await supabase
@@ -154,6 +179,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       ok: true,
+      available: true,
+      capabilities,
       mensalidades: rows,
       servicos,
       movimentos: ledgerMovimentos,

@@ -3094,7 +3094,7 @@ export default function BalcaoAtendimento({
       )}
       </div>
 
-      {rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && dossier.aluno && (
+      {rematricula.modalOpen && rematricula.anoLetivo && dossier.aluno && (
         <RematriculaBalcaoModal
           open={rematricula.modalOpen}
           embedded={view === "reenrollment"}
@@ -3113,6 +3113,7 @@ export default function BalcaoAtendimento({
           setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
           service={rematricula.service}
+          paymentRequired={rematricula.paymentRequired}
           itensPagamento={itensRematricula}
           itensDisponiveis={itensDisponiveisNaRematricula}
           paymentAlreadyValidated={rematricula.cardState === "DOCUMENT_PENDING" || rematricula.cardState === "ACADEMIC_HISTORY_PENDING"}

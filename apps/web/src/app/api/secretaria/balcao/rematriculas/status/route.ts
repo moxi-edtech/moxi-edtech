@@ -11,11 +11,10 @@ import { resolveOpenRematriculaWindow, resolveRematriculaWindow } from "@/lib/se
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progression-server";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
+import { canUseFinancialSuspension, canUseOneOffStudentPayments } from "@/lib/school-profile/finance-capabilities";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
-import {
-  resolveBalcaoRematriculaTargetYear,
-  shouldBlockClosedRematriculaWindow,
-} from "@/lib/rematricula/balcao-target-year";
+import { resolveBalcaoRematriculaTargetYear, shouldBlockClosedRematriculaWindow } from "@/lib/rematricula/balcao-target-year";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -67,6 +66,10 @@ export async function GET(request: Request) {
         { status: 403 },
       );
     }
+
+    const operatingProfile = await resolveSchoolOperatingProfile(supabase as any, escolaId);
+    const financialSuspensionEnabled = canUseFinancialSuspension(operatingProfile);
+    const studentPaymentEnabled = canUseOneOffStudentPayments(operatingProfile);
 
     const authz = await requireRoleInSchool({
       supabase,
@@ -320,14 +323,16 @@ export async function GET(request: Request) {
           .maybeSingle()
       : { data: null };
 
-    const { data: mensalidadesFinanceiras } = await supabase
+    const { data: mensalidadesFinanceiras } = financialSuspensionEnabled
+      ? await supabase
       .from("mensalidades")
       .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, mes_referencia, ano_referencia")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
-      .eq("matricula_id", matriculaOrigem.id);
-    // O bloqueio financeiro considera somente mensalidades vencidas da origem.
-    // Valores futuros não impedem a confirmação da rematrícula.
+      .eq("matricula_id", matriculaOrigem.id)
+      : { data: [] };
+    // Bloqueio somente quando a escola habilitou suspensão financeira e
+    // somente para mensalidades já vencidas da matrícula de origem.
     const overdueDebt = summarizeOverdueRematriculaDebt(mensalidadesFinanceiras ?? []);
     const mensalidadesEmAberto = overdueDebt.rows;
     const dividaTotal = overdueDebt.total;
@@ -351,13 +356,15 @@ export async function GET(request: Request) {
     const targetClasse = Array.isArray((targetTurma as any)?.classes)
       ? (targetTurma as any).classes[0]
       : (targetTurma as any)?.classes;
-    const targetPricing = await resolveValorConfirmacao(supabase, {
+    const targetPricing = studentPaymentEnabled
+      ? await resolveValorConfirmacao(supabase, {
       escolaId,
       anoLetivo: targetAnoLetivoAno,
       cursoId: targetTurma?.curso_id,
       classeId: targetTurma?.classe_id,
       valorGlobal: service?.valor_base,
-    });
+    })
+      : { valor: 0, origem: "school_profile", tabela: null };
 
     // ── Check existing pedido ─────────────────────────────────────────────
     const pedidosExistentes = rematriculaPedidosAtivos ?? [];
@@ -481,7 +488,7 @@ export async function GET(request: Request) {
       status = "RECONFIRMATION_REQUIRED";
     } else if (reclassificacao) {
       status = "FINALIST_PENDING";
-    } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
+    } else if (studentPaymentEnabled && (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe"))) {
       status = "PRICE_NOT_CONFIGURED";
     }
 
@@ -492,7 +499,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       status,
-      service: service
+      payment_required: studentPaymentEnabled,
+      service: studentPaymentEnabled && service
         ? {
             id: service.id,
             nome: service.nome,

@@ -38,3 +38,12 @@ export const PRIVATE_DEFAULT_PROFILE = (schoolId: string): SchoolOperatingProfil
 export function isPublicSchool(profile: SchoolOperatingProfile) {
   return profile.schoolSector === "public";
 }
+
+export function isValidSchoolFinanceCombination(
+  schoolSector: SchoolSector,
+  financeModel: FinanceModel,
+) {
+  // Sector is an institution attribute, not an unverified legal rule.
+  // Capabilities are controlled by the finance model selected after review.
+  return SCHOOL_SECTORS.includes(schoolSector) && FINANCE_MODELS.includes(financeModel);
+}

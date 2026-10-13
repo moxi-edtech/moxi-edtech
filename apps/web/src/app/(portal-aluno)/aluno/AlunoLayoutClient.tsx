@@ -9,10 +9,17 @@ import { AlunoBottomNav } from "@/components/aluno/layout/AlunoBottomNav";
 import { NetworkStatus } from "@/components/aluno/layout/NetworkStatus";
 import { PWAInstallPrompt } from "@/components/aluno/layout/PWAInstallPrompt";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
+import type { SchoolFinanceCapabilities } from "@/lib/school-profile/finance-capabilities";
 
 type Educando = { id: string; nome: string; escola_id: string | null };
 
-export default function AlunoLayoutClient({ children }: { children: React.ReactNode }) {
+export default function AlunoLayoutClient({
+  children,
+  financeCapabilities,
+}: {
+  children: React.ReactNode;
+  financeCapabilities: SchoolFinanceCapabilities;
+}) {
   const [ready, setReady] = useState(false);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [escolaParam, setEscolaParam] = useState<string | null>(null);
@@ -148,48 +155,44 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
   const safePathname = pathname ?? "";
   const escolaParamFromPath = getEscolaParamFromPath(safePathname);
   const navEscolaParam = escolaParamFromPath ?? escolaParam;
-  const navItems = useMemo(
-    () =>
-      [
-        { 
-          path: "/aluno/dashboard", 
-          label: "Início", 
-          icon: Home,
-          preload: {
-            keys: [`home-status-${alunoSelecionado ?? "default"}`, `home-alert-${alunoSelecionado ?? "default"}`],
-            urls: [`/api/aluno/home/status?studentId=${alunoSelecionado}`, `/api/aluno/home/finance-alert?studentId=${alunoSelecionado}`]
-          }
+  const navItems = useMemo(() => {
+    const homePreload = financeCapabilities.financeChargeMessages
+      ? {
+          keys: [`home-status-${alunoSelecionado ?? "default"}`, `home-alert-${alunoSelecionado ?? "default"}`],
+          urls: [`/api/aluno/home/status?studentId=${alunoSelecionado}`, `/api/aluno/home/finance-alert?studentId=${alunoSelecionado}`],
+        }
+      : {
+          keys: [`home-status-${alunoSelecionado ?? "default"}`],
+          urls: [`/api/aluno/home/status?studentId=${alunoSelecionado}`],
+        };
+
+    const items = [
+      { path: "/aluno/dashboard", label: "Início", icon: Home, preload: homePreload },
+      { path: "/aluno/horario", label: "Horário", icon: Clock },
+      {
+        path: "/aluno/academico",
+        label: "Académico",
+        icon: BookOpen,
+        preload: {
+          keys: [`academic-disciplinas-${alunoSelecionado ?? "default"}`],
+          urls: [`/api/aluno/academico/disciplinas?studentId=${alunoSelecionado}`],
         },
-        { path: "/aluno/horario", label: "Horário", icon: Clock },
-        { 
-          path: "/aluno/academico", 
-          label: "Académico", 
-          icon: BookOpen,
-          preload: {
-            keys: [`academic-disciplinas-${alunoSelecionado ?? "default"}`],
-            urls: [`/api/aluno/academico/disciplinas?studentId=${alunoSelecionado}`]
-          }
-        },
-        { 
-          path: "/aluno/financeiro", 
-          label: "Financeiro", 
-          icon: Wallet,
-          preload: {
-            keys: [`finance-status-${alunoSelecionado ?? "default"}`],
-            urls: [`/api/aluno/financeiro/status?studentId=${alunoSelecionado}`]
-          }
-        },
-        { path: "/aluno/atividades", label: "Actividades", icon: Sparkles },
-        { path: "/aluno/identidade", label: "ID Digital", icon: IdCard },
-        { path: "/aluno/documentos", label: "Documentos", icon: FileText },
-        { path: "/aluno/avisos", label: "Avisos", icon: Bell },
-        { path: "/aluno/perfil", label: "Perfil", icon: Settings },
-      ].map((item) => ({
-        ...item,
-        href: buildPortalHref(navEscolaParam, item.path),
-      })),
-    [navEscolaParam, alunoSelecionado],
-  );
+      },
+      ...(financeCapabilities.studentFinancePortal
+        ? [{ path: "/aluno/financeiro", label: "Financeiro", icon: Wallet }]
+        : []),
+      { path: "/aluno/atividades", label: "Actividades", icon: Sparkles },
+      { path: "/aluno/identidade", label: "ID Digital", icon: IdCard },
+      { path: "/aluno/documentos", label: "Documentos", icon: FileText },
+      { path: "/aluno/avisos", label: "Avisos", icon: Bell },
+      { path: "/aluno/perfil", label: "Perfil", icon: Settings },
+    ];
+
+    return items.map((item) => ({
+      ...item,
+      href: buildPortalHref(navEscolaParam, item.path),
+    }));
+  }, [navEscolaParam, alunoSelecionado, financeCapabilities]);
 
   const withAlunoParam = useCallback((href: string) => {
     if (!alunoSelecionado) return href;

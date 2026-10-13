@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { PaymentGatewayService } from '@/lib/financeiro/services/payment-gateway';
+import { resolveSchoolOperatingProfile } from '@/lib/school-profile/resolve-school-profile';
+import { requireRecurringTuition } from '@/lib/school-profile/guards';
 
 export async function POST(req: Request) {
   const supabase = (await supabaseServer()) as any;
@@ -33,6 +35,13 @@ export async function POST(req: Request) {
     const escolaId = (mensalidade as { escola_id?: string | null }).escola_id ?? null;
     if (!escolaId) {
       return NextResponse.json({ error: 'Escola não identificada' }, { status: 400 });
+    }
+
+    const financeGuard = requireRecurringTuition(
+      await resolveSchoolOperatingProfile(supabase, escolaId),
+    );
+    if (!financeGuard.ok) {
+      return NextResponse.json(financeGuard, { status: 409 });
     }
 
     const { data: existingIdempotency } = await supabase
