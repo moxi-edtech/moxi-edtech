@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { loadAllGradeTurmas } from "@/lib/secretaria/grade-class-picker";
+import { saveGradesInChunks, type GradeNote } from "@/lib/secretaria/grade-save";
 
 type TurmaItem = {
   id: string;
@@ -27,6 +28,18 @@ type DisciplinaItem = {
     avaliacao_mode?: string | null;
   } | null;
   curriculo_status?: string | null;
+};
+
+type PautaDetalhadaRow = {
+  aluno_id: string;
+  nome: string;
+  numero_chamada?: number | null;
+  foto?: string | null;
+  mac?: number | null;
+  npp?: number | null;
+  npt?: number | null;
+  mt?: number | null;
+  is_isento?: boolean;
 };
 
 type PeriodoItem = {
@@ -65,12 +78,15 @@ export function PautaRapidaModal({
   const [academicYearId, setAcademicYearId] = useState<string | null>(requestedAcademicYearId);
   const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ" | null>(null);
   const [academicContextError, setAcademicContextError] = useState<string | null>(null);
-  const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
+  const [academicYearLabel, setAcademicYearLabel] = useState<string | null>(null);
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [periodoNumero, setPeriodoNumero] = useState<number>(1);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [turmasError, setTurmasError] = useState<string | null>(null);
+  const [disciplinasError, setDisciplinasError] = useState<string | null>(null);
+  const [pautaError, setPautaError] = useState<string | null>(null);
+  const [retryTurmas, setRetryTurmas] = useState(0);
   const [turmaId, setTurmaId] = useState("");
   const [disciplinaId, setDisciplinaId] = useState("");
   const [loadingTurmas, setLoadingTurmas] = useState(false);
@@ -85,17 +101,11 @@ export function PautaRapidaModal({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(({ data }) => {
-      setAccessToken(data.session?.access_token ?? null);
-    });
-  }, []);
-
-  useEffect(() => {
     let active = true;
     setAcademicYearId(null);
     setAcademicMode(null);
     setAcademicContextError(null);
+    setAcademicYearLabel(null);
 
     const query = requestedAcademicYearId
       ? `?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(requestedAcademicYearId)}`
@@ -114,6 +124,7 @@ export function PautaRapidaModal({
         }
         setAcademicYearId(resolvedId);
         setAcademicMode(payload.context?.mode === "CURRENT" ? "CURRENT" : "HISTORICAL_READ");
+        setAcademicYearLabel(payload.context?.anoLetivoLabel ?? null);
       })
       .catch(() => {
         if (!active) return;
@@ -136,76 +147,72 @@ export function PautaRapidaModal({
       return;
     }
 
-    if (initialTurmaId) {
-      setTurmaId(initialTurmaId);
-      setDisciplinaId("");
-    }
-  }, [initialTurmaId, lockTurma]);
+    setTurmaId(initialTurmaId ?? "");
+    setDisciplinaId("");
+    setPautaInitial([]);
+    setSaveError(null);
+  }, [academicYearId, initialTurmaId, lockTurma]);
 
+  // The class picker must use the verified academic session, not
+  // the device clock or an admission-only materialized view.
   useEffect(() => {
     let active = true;
+    setTurmasError(null);
+    if (lockTurma) return () => { active = false; };
+    setTurmas([]);
+    if (!academicYearId || !academicMode) {
+      return () => { active = false; };
+    }
     const load = async () => {
-      if (lockTurma) return;
       setLoadingTurmas(true);
       try {
-        const params = new URLSearchParams({ ano: String(anoLetivo) });
-        const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`, {
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!active) return;
-        if (res.ok && json.ok) {
-          setTurmas(json.items || json.data || []);
-        } else {
+        const all = await loadAllGradeTurmas(fetch, academicYearId);
+        if (active) setTurmas(all);
+      } catch (error) {
+        if (active) {
           setTurmas([]);
+          setTurmasError(error instanceof Error ? error.message : "Não foi possível listar as turmas.");
         }
       } finally {
         if (active) setLoadingTurmas(false);
       }
     };
-    load();
-    return () => {
-      active = false;
-    };
-  }, [accessToken, anoLetivo, lockTurma]);
+    void load();
+    return () => { active = false; };
+  }, [academicYearId, academicMode, lockTurma, retryTurmas]);
 
   useEffect(() => {
-    if (!turmaId) {
-      setDisciplinas([]);
-      setDisciplinaId("");
-      return;
-    }
+    setDisciplinas([]);
+    setDisciplinaId("");
+    setPeriodos([]);
+    setDisciplinasError(null);
+    if (!turmaId || !academicYearId) return;
 
     let active = true;
     const load = async () => {
       setLoadingDisciplinas(true);
       try {
-        const res = await fetch(`/api/secretaria/turmas/${turmaId}/disciplinas`, {
+        const res = await fetch("/api/secretaria/turmas/" + encodeURIComponent(turmaId) + "/disciplinas", {
           cache: "no-store",
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
         });
         const json = await res.json().catch(() => ({}));
         if (!active) return;
-        if (res.ok && json.ok) {
-          setDisciplinas(json.items || []);
-          setPeriodos(json.periodos || []);
-          const firstNumero = json.periodos?.[0]?.numero;
-          if (typeof firstNumero === "number") {
-            setPeriodoNumero(firstNumero);
-          }
-        } else {
-          setDisciplinas([]);
-          setPeriodos([]);
+        if (!res.ok || !json.ok || !Array.isArray(json.items)) {
+          throw new Error(json.error || "Não foi possível carregar disciplinas desta turma.");
         }
+        setDisciplinas(json.items);
+        setPeriodos(Array.isArray(json.periodos) ? json.periodos : []);
+        const firstNumero = json.periodos?.[0]?.numero;
+        if (typeof firstNumero === "number") setPeriodoNumero(firstNumero);
+      } catch (error) {
+        if (active) setDisciplinasError(error instanceof Error ? error.message : "Falha ao carregar disciplinas.");
       } finally {
         if (active) setLoadingDisciplinas(false);
       }
     };
-    load();
-    return () => {
-      active = false;
-    };
-  }, [accessToken, turmaId]);
+    void load();
+    return () => { active = false; };
+  }, [academicYearId, turmaId]);
 
   useEffect(() => {
     if (typeof initialPeriodoNumero !== "number") return;
@@ -220,6 +227,7 @@ export function PautaRapidaModal({
   )
 
   useEffect(() => {
+    setPautaError(null);
     if (!academicYearId || !turmaId || !disciplinaId || !periodoNumero || !selectedTurmaDisciplinaId) {
       setPautaInitial([]);
       setPautaPesoPorTipo(null);
@@ -241,15 +249,15 @@ export function PautaRapidaModal({
           turmaDisciplinaId: selectedTurmaDisciplinaId,
         });
         if (focusAlunoId) params.set("alunoId", focusAlunoId);
-        const res = await fetch(`/api/secretaria/turmas/${turmaId}/pauta-grid?${params.toString()}`, {
-          cache: "no-store",
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-        });
+        const res = await fetch(
+          "/api/secretaria/turmas/" + encodeURIComponent(turmaId) + "/pauta-grid?" + params.toString(),
+          { cache: "no-store" },
+        );
         const json = await res.json().catch(() => ({}));
         if (!active) return;
         if (res.ok && json.ok && Array.isArray(json.items)) {
           const mapped: StudentGradeRow[] =
-            json.items.map((row: any, index: number) => ({
+            (json.items as PautaDetalhadaRow[]).map((row, index: number) => ({
               id: row.aluno_id,
               numero: row.numero_chamada ?? index + 1,
               nome: row.nome,
@@ -271,20 +279,24 @@ export function PautaRapidaModal({
           setPautaNotaCorte(typeof json.meta?.nota_corte === "number" ? json.meta.nota_corte : null);
           setPautaEscala(typeof json.meta?.escala === "string" ? json.meta.escala : null);
         } else {
-          setPautaInitial([]);
-              setPautaPesoPorTipo(null);
-          setPautaComponentes([]);
+          throw new Error(json.error || "Não foi possível carregar a pauta desta turma.");
         }
+      } catch (error) {
+        if (!active) return;
+        setPautaInitial([]);
+        setPautaPesoPorTipo(null);
+        setPautaComponentes([]);
+        setPautaError(error instanceof Error ? error.message : "Não foi possível carregar a pauta.");
       } finally {
         if (active) setLoadingPauta(false);
       }
     };
 
-    load();
+    void load();
     return () => {
       active = false;
     };
-  }, [academicYearId, accessToken, turmaId, disciplinaId, periodoNumero, focusAlunoId, selectedTurmaDisciplinaId]);
+  }, [academicYearId, turmaId, disciplinaId, periodoNumero, focusAlunoId, selectedTurmaDisciplinaId]);
 
   const disciplinasFiltradas = useMemo(() => {
     return disciplinas.filter((disciplina) => {
@@ -332,6 +344,9 @@ export function PautaRapidaModal({
     if (academicMode !== "CURRENT") {
       throw new Error("Este ano letivo está disponível apenas para consulta.");
     }
+    if (pautaNotaMaxima === null) {
+      throw new Error("Esta turma usa uma escala não numérica e não aceita notas quantitativas.");
+    }
     const turmaDisciplinaId = disciplinaSelecionada?.id ?? null;
     const disciplinaCanonicalId = disciplinaSelecionada?.disciplina?.id ?? disciplinaId;
     if (!turmaDisciplinaId) {
@@ -355,22 +370,11 @@ export function PautaRapidaModal({
     const postNotas = async (params: {
       tipo: string;
       isIsento: boolean;
-      notas: Array<{ aluno_id: string; valor: number | null }>;
+      notas: GradeNote[];
     }) => {
-      if (params.notas.length === 0) return;
-
-      const idempotencyKey =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-      const response = await fetch("/api/secretaria/notas", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "idempotency-key": idempotencyKey,
-        },
-        body: JSON.stringify({
+      await saveGradesInChunks(
+        fetch,
+        {
           turma_id: turmaId,
           ano_letivo_id: academicYearId,
           disciplina_id: disciplinaCanonicalId,
@@ -378,13 +382,10 @@ export function PautaRapidaModal({
           trimestre: periodoNumero,
           tipo_avaliacao: params.tipo,
           is_isento: params.isIsento,
-          notas: params.notas,
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error || "Falha ao guardar notas.");
-      }
+        },
+        params.notas,
+        () => crypto.randomUUID(),
+      );
     };
 
     const isentos = rows.filter((row) => row.is_isento);
@@ -449,12 +450,9 @@ export function PautaRapidaModal({
         {!lockTurma && (
           <div>
             <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Ano letivo</label>
-            <input
-              type="number"
-              value={anoLetivo}
-              onChange={(event) => setAnoLetivo(Number(event.target.value))}
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-            />
+            <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+              {academicYearLabel ?? (academicYearId ? "Ano letivo da escola" : "A identificar ano letivo...")}
+            </div>
           </div>
         )}
         <div>
@@ -467,7 +465,14 @@ export function PautaRapidaModal({
             <div className="mt-1 flex items-center gap-2">
               <select
                 value={turmaId}
-                onChange={(event) => setTurmaId(event.target.value)}
+                onChange={(event) => {
+                  setTurmaId(event.target.value);
+                  setPautaInitial([]);
+                  setSaveError(null);
+                  setDisciplinasError(null);
+                  setPautaError(null);
+                }}
+                disabled={!academicYearId || !!academicContextError || loadingTurmas}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               >
                 <option value="">Selecione a turma</option>
@@ -484,6 +489,15 @@ export function PautaRapidaModal({
               {loadingTurmas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
             </div>
           )}
+          {!lockTurma && turmasError ? (
+            <p role="alert" className="mt-2 text-xs text-red-700">
+              {turmasError}{" "}
+              <button type="button" onClick={() => setRetryTurmas((value) => value + 1)} className="font-bold underline">Tentar novamente</button>
+            </p>
+          ) : null}
+          {!lockTurma && academicYearId && !loadingTurmas && !turmasError && turmas.length === 0 ? (
+            <p className="mt-2 text-xs text-amber-800">Ainda não há turmas cadastradas neste ano letivo.</p>
+          ) : null}
         </div>
       </div>
 
@@ -505,6 +519,10 @@ export function PautaRapidaModal({
           </select>
           {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
         </div>
+        {disciplinasError ? <p role="alert" className="mt-2 text-xs text-red-700">{disciplinasError}</p> : null}
+        {turmaId && !loadingDisciplinas && !disciplinasError && disciplinas.length === 0 ? (
+          <p className="mt-2 text-xs text-amber-800">Esta turma ainda não possui disciplinas atribuídas. Configure a matriz curricular antes do lançamento.</p>
+        ) : null}
       </div>
 
       <div>
@@ -564,6 +582,8 @@ export function PautaRapidaModal({
           Disciplina selecionada: {disciplinaSelecionada.disciplina?.nome ?? "—"}
         </p>
       ) : null}
+
+      {pautaError ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{pautaError}</div> : null}
 
       {lockTurma && !turmaId ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
