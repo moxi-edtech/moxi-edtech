@@ -1,0 +1,84 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { MAX_GRADE_WRITE_BATCH, saveGradesInChunks } from "../../src/lib/secretaria/grade-save";
+
+const context = {
+  turma_id: "synthetic-turma",
+  ano_letivo_id: "synthetic-academic-year",
+  turma_disciplina_id: "synthetic-assignment",
+  disciplina_id: "synthetic-discipline",
+  trimestre: 2,
+  tipo_avaliacao: "MAC",
+  is_isento: false,
+};
+
+test("operator saves 107 grades in three canonical batches, each at most 50", async () => {
+  const calls: Array<{ headers: Record<string, string>; payload: Record<string, unknown> }> = [];
+  let key = 0;
+  await saveGradesInChunks(
+    async (url, init) => {
+      assert.equal(url, "/api/secretaria/notas");
+      calls.push({ headers: init.headers, payload: JSON.parse(init.body) });
+      return { ok: true, json: async () => ({ ok: true, data: { ok: true } }) };
+    },
+    context,
+    Array.from({ length: 107 }, (_, index) => ({ aluno_id: "synthetic-" + index, valor: 12 })),
+    () => "write-" + (++key),
+  );
+  assert.deepEqual(calls.map((call) => (call.payload.notas as unknown[]).length), [
+    MAX_GRADE_WRITE_BATCH, MAX_GRADE_WRITE_BATCH, 7,
+  ]);
+  assert.deepEqual(calls.map((call) => call.headers["idempotency-key"]), ["write-1", "write-2", "write-3"]);
+  for (const call of calls) {
+    assert.equal(call.payload.turma_id, context.turma_id);
+    assert.equal(call.payload.ano_letivo_id, context.ano_letivo_id);
+    assert.equal(call.payload.turma_disciplina_id, context.turma_disciplina_id);
+    assert.equal(call.payload.tipo_avaliacao, "MAC");
+    assert.equal(call.payload.trimestre, 2);
+  }
+});
+
+test("operator failure stops further grade writes and surfaces exact server failure", async () => {
+  let calls = 0;
+  await assert.rejects(
+    saveGradesInChunks(
+      async () => {
+        calls++;
+        return { ok: false, json: async () => ({ ok: false, error: "Período fechado para lançamento." }) };
+      },
+      context,
+      Array.from({ length: 110 }, (_, index) => ({ aluno_id: "synthetic-" + index, valor: null })),
+      () => "unique",
+    ),
+    /Período fechado/,
+  );
+  assert.equal(calls, 1);
+});
+
+test("RPC-level rejection cannot be reported as success by the frontend", async () => {
+  await assert.rejects(
+    saveGradesInChunks(
+      async () => ({ ok: true, json: async () => ({
+        ok: true, data: { ok: false, error: "Matrícula não corresponde à turma." },
+      }) }),
+      context,
+      [{ aluno_id: "synthetic", valor: 10 }],
+      () => "request-1",
+    ),
+    /não corresponde/,
+  );
+});
+
+test("invalid academic or assignment scope fails before network request", async () => {
+  let calls = 0;
+  await assert.rejects(
+    saveGradesInChunks(
+      async () => { calls++; return { ok: true, json: async () => ({ ok: true }) }; },
+      { ...context, ano_letivo_id: "" },
+      [{ aluno_id: "synthetic", valor: 15 }],
+      () => "x",
+    ),
+    /Faltam informações/,
+  );
+  assert.equal(calls, 0);
+});
