@@ -1,16 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ChevronDown, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
+import { BalcaoWorkspace } from "@/components/secretaria/BalcaoWorkspace";
 import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
 import { ModuleSwitcherInner } from "@/components/layout/klasse/ModuleSwitcher";
 import LockScreenButton from "@/components/session/LockScreenButton";
 import { requestSessionConfig } from "@/components/session/SessionLockProvider";
-import { GlobalSearchActionSheet } from "@/components/GlobalSearchActionSheet";
-import type { MinimalSearchResult, SearchAction } from "@/hooks/useGlobalSearch";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -39,12 +37,12 @@ export default function Topbar({
   escolaParam,
   portal,
 }: TopbarProps) {
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSearchAction, setActiveSearchAction] = useState<{
-    action: SearchAction;
-    result: MinimalSearchResult;
-  } | null>(null);
+  const [selectedSearchStudent, setSelectedSearchStudent] = useState<{ id: string; label: string; schoolId: string } | null>(null);
+  // Nunca manter um aluno em contexto quando a escola/tenant é alterada.
+  useEffect(() => {
+    setSelectedSearchStudent(null);
+  }, [escolaId]);
   const userInitial =
     (userName || portalSubtitle || "U")
       .trim()
@@ -60,13 +58,9 @@ export default function Topbar({
           <CommandPalette
             escolaId={escolaId}
             portal={portal}
-            onAction={
-              portal === "secretaria" || portal === "operacoes"
-                ? (action, result) => {
-                    setActiveSearchAction({ action, result });
-                  }
-                : undefined
-            }
+            onStudentSelect={(student) => {
+              if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
+            }}
           />
         </div>
 
@@ -125,12 +119,13 @@ export default function Topbar({
         </div>
       </div>
     </header>
-    {escolaId ? (
-      <GlobalSearchActionSheet
-        active={activeSearchAction}
+    {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
+      <BalcaoWorkspace
+        key={`${escolaId}:${selectedSearchStudent.id}`}
+        open
         escolaId={escolaId}
-        onClose={() => setActiveSearchAction(null)}
-        onSuccess={() => router.refresh()}
+        aluno={selectedSearchStudent}
+        onClose={() => setSelectedSearchStudent(null)}
       />
     ) : null}
     </>

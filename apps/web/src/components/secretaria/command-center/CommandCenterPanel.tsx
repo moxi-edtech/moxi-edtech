@@ -20,6 +20,7 @@ type Props = {
   turmaLabel?: string | null;
   actionId: BalcaoActionId;
   profileDossier?: ReactNode;
+  inModal?: boolean;
   returnTo?: string | null;
   onActionChange: (actionId: BalcaoActionId) => void;
   onAlunoSelected?: (aluno: AlunoDossier | null) => void;
@@ -33,6 +34,7 @@ export function CommandCenterPanel({
   turmaLabel = null,
   actionId,
   profileDossier,
+  inModal = false,
   returnTo = null,
   onActionChange,
   onAlunoSelected,
@@ -45,6 +47,7 @@ export function CommandCenterPanel({
       <AdmissaoWizardClient
         escolaId={escolaId}
         embedded
+        modalContext={inModal}
         onSuccess={(newAlunoId) => onSuccess?.(newAlunoId)}
         onActionChange={onActionChange}
       />
@@ -66,24 +69,28 @@ export function CommandCenterPanel({
     return (
       <section className="min-w-0 space-y-3" aria-label="Perfil integral do aluno">
         <div className="min-w-0">
-          <h2 className="text-sm font-bold text-slate-900">Perfil integral</h2>
+          <h2 className="text-sm font-bold text-slate-900">{profileDossier ? "Perfil integral" : "Dados pessoais do aluno"}</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Consulte dados pessoais, financeiro, histórico académico e documentos sem sair do atendimento.
+            {profileDossier
+              ? "Consulte dados pessoais, financeiro, histórico académico e documentos sem sair do atendimento."
+              : "Consulte e atualize os dados pessoais deste aluno dentro do atendimento."}
           </p>
         </div>
         {profileDossier ?? (
-          <div role="status" className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            A preparar a ficha integral do aluno...
-          </div>
-        )}
-        <details className="group min-w-0 rounded-xl border border-slate-200 bg-white">
-          <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-700 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C] sm:px-5">
-            Atualizar dados pessoais
-          </summary>
-          <div className="min-w-0 border-t border-slate-100 p-3 sm:p-5">
+          <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-5">
             <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />
           </div>
-        </details>
+        )}
+        {profileDossier ? (
+          <details className="group min-w-0 rounded-xl border border-slate-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-700 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C] sm:px-5">
+              Atualizar dados pessoais
+            </summary>
+            <div className="min-w-0 border-t border-slate-100 p-3 sm:p-5">
+              <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />
+            </div>
+          </details>
+        ) : null}
       </section>
     );
   }
