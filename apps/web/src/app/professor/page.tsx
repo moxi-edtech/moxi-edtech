@@ -7,7 +7,7 @@ import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon, BookOpenIcon, CalendarDaysIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type AtribItem = {
@@ -97,6 +97,9 @@ export default function Page() {
   const [finalizing, setFinalizing] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [expandedTurmaId, setExpandedTurmaId] = useState<string | null>(null);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const pollingInFlight = useRef(false);
+  const pollingFailures = useRef(0);
   const { success, error: toastError } = useToast();
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
@@ -104,8 +107,10 @@ export default function Page() {
   const professorHref = (path: string) => buildPortalHref(escolaParam, path);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNowTick(Date.now()), 15_000);
-    return () => window.clearInterval(timer);
+    const tick = () => { if (!document.hidden) setNowTick(Date.now()); };
+    const timer = window.setInterval(tick, 15_000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
   }, []);
 
   useEffect(() => {
@@ -163,21 +168,38 @@ export default function Page() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryVersion]);
 
   useEffect(() => {
-    const timer = window.setInterval(async () => {
+    let disposed = false;
+    const poll = async () => {
+      if (disposed || document.hidden || pollingInFlight.current) return;
+      pollingInFlight.current = true;
+      try {
       const todayIso = getSchoolNow().date;
       const response = await fetch(`/api/professor/aulas?from=${todayIso}`, { cache: "no-store" }).catch(() => null);
       const payload = response ? await response.json().catch(() => null) : null;
-      if (!payload?.ok) return;
+      if (!response?.ok || !payload?.ok) { pollingFailures.current = Math.min(pollingFailures.current + 1, 5); return; }
+      pollingFailures.current = 0;
+      if (disposed) return;
       const actualByKey = new Map((payload.items as AgendaItem[]).map((lesson) => [`${lesson.turma_id}:${lesson.disciplina_id}:${lesson.slot_id ?? lesson.inicio}`, lesson]));
       setAgenda((current) => current.map((item) => actualByKey.has(`${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`) ? { ...item, ...actualByKey.get(`${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`) } : item));
-    }, 30_000);
-    return () => window.clearInterval(timer);
+      } catch { pollingFailures.current = Math.min(pollingFailures.current + 1, 5); }
+      finally { pollingInFlight.current = false; }
+    };
+    // Poll only when visible; exponential backoff on failures, never overlapping requests.
+    let timeout: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      if (disposed) return;
+      timeout = setTimeout(async () => { await poll(); schedule(); }, Math.min(30_000 * 2 ** pollingFailures.current, 300_000));
+    };
+    const onVisible = () => { if (!document.hidden) { clearTimeout(timeout); void poll().finally(schedule); } };
+    document.addEventListener("visibilitychange", onVisible);
+    schedule();
+    return () => { disposed = true; clearTimeout(timeout); document.removeEventListener("visibilitychange", onVisible); };
   }, []);
 
-  const loadAgain = () => window.location.reload();
+  const loadAgain = () => setRetryVersion((current) => current + 1);
 
   const startLesson = async (item: AgendaItem) => {
     if (!item.turma_id || !item.disciplina_id) return;
