@@ -30,3 +30,13 @@ Base: branch feature/portais-aluno-professor-ux-20261013; referência: docs/prod
 ## Justificativa arquitetural
 
 Reutilizar o shell existente, as fontes de dados canónicas e o contrato de graciosidade; não instalar bibliotecas. O modelo alternativo não pode ser confundido com a UI montada. Priorizar recuperação segura de contexto no professor antes de alterações cosméticas.
+
+## Verificação adicional de referências (2026-10-13)
+
+Busca recursiva com `rg -n 'modelo_portal_do_aluno|PortalAlunoLayout' .` encontrou apenas: o próprio ficheiro alternativo, este documento, exclusão em `apps/web/tsconfig.json`, e referências de ferramentas em `scripts/check-klasse-ui-standards.mjs` e `scripts/validate-navigation.sh`. Não houve referência de importação estática, `import()` ou `next/dynamic` ao componente alternativo na árvore pesquisada. Classificação do **componente**: CODIGO_MORTO; o **diretório** ainda é referenciado por tooling, pelo que sua remoção completa exige auditar o conteúdo e ajustar as ferramentas em commit separado. Nenhum TODO do modelo foi ligado à produção.
+
+A rota efetiva do aluno usa `AlunoLayoutClient` com `max-w-5xl` e filhos das rotas; dados reais devem ser auditados nas páginas montadas, não substituídos por consultas do modelo alternativo. Sem capturas de tablet/desktop, a largura permanece inalterada.
+
+## Alteração incremental da Fase 2
+
+A dashboard do professor passou a usar retry por `retryVersion` sem recarregar a página e polling que evita requisições concorrentes, pausa em abas ocultas e faz backoff até cinco minutos. O teste de contrato estático `apps/web/tests/unit/professor-dashboard-recovery.spec.mjs` valida estes invariantes; isso **não substitui** testes funcionais nem E2E.
