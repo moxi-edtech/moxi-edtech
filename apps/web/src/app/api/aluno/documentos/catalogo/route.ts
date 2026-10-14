@@ -8,7 +8,6 @@ import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/por
 export const dynamic = "force-dynamic";
 
 const PORTAL_DOCUMENT_CODES = [
-  "DOC_DECLARACAO_NOTAS",
   "DOC_DECLARACAO_FREQUENCIA",
   "DOC_BOLETIM_TRIMESTRAL",
   "DOC_COMPROVANTE_MATRICULA",

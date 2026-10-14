@@ -18,7 +18,7 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
         <div>
           <p className="text-sm font-bold text-slate-900">Boletim de notas: pagamento e liberação</p>
           <p className="mt-1 text-xs text-slate-600">
-            Confirme pagamentos em Recebimentos. Os documentos gratuitos são aprovados na fila abaixo, sem confirmar transacções bancárias.
+            Confirme pagamentos em Recebimentos. Os documentos gratuitos são aprovados na fila abaixo, sem confirmar transacções bancárias. Declaração oficial com notas e boletim dinâmico são documentos diferentes, ambos dependem das taxas configuradas pela escola e liquidadas.
           </p>
           <p className="mt-1 text-xs text-slate-500">
             Se a taxa do boletim não aparecer ao aluno, configure-a em Administração → Configurações → Emolumentos &amp; Serviços.

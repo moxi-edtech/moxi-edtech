@@ -47,3 +47,25 @@ export async function checkBoletimAccess(
   if (error) return { granted: false, error: true };
   return { granted: isBoletimPaid((data ?? []) as PaymentOrder[]), error: false };
 }
+
+/** Emissão institucional: apenas o serviço exacto, concedido e liquidado.
+ * Não confundir declaração oficial de notas com boletim dinâmico.
+ */
+export async function checkSpecificDocumentPaid(
+  supabase: SupabaseClient<Database>,
+  scope: { escolaId: string; alunoId: string; matriculaId: string },
+  serviceCode: typeof BOLETIM_SERVICE_CODE | typeof BOLETIM_LEGACY_SERVICE_CODE,
+): Promise<{ granted: boolean; error: boolean }> {
+  const { data, error } = await supabase
+    .from("servico_pedidos")
+    .select("servico_codigo, valor_cobrado, status, pagamento_intents(status)")
+    .eq("escola_id", scope.escolaId)
+    .eq("aluno_id", scope.alunoId)
+    .eq("matricula_id", scope.matriculaId)
+    .eq("servico_codigo", serviceCode)
+    .eq("status", "granted")
+    .gt("valor_cobrado", 0)
+    .limit(30);
+  if (error) return { granted: false, error: true };
+  return { granted: isBoletimPaid((data ?? []) as PaymentOrder[]), error: false };
+}
