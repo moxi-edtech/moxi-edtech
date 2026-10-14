@@ -25,7 +25,8 @@ test('a navegação de boletim não usa /aluno/notas inexistente e preserva o al
   const notas = read('components/aluno/tabs/TabNotas.tsx');
   assert.doesNotMatch(docs, /\/aluno\/notas/);
   assert.match(docs, /buildPortalHref\(escolaSlug, `\/aluno\/academico/);
-  assert.match(docs, /encodeURIComponent\(studentId\)/);
+  assert.match(docs, /queryParams\.set\("studentId", studentId\)/);
+  assert.match(docs, /queryParams\.set\("ano_letivo_id", academicYearId\)/);
   assert.match(notas, /buildPortalHref\(escolaSlug, `\/aluno\/documentos/);
 });
 

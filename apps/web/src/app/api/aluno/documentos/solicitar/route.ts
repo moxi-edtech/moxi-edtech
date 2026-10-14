@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAlunoContext } from "@/lib/alunoContext";
+import { AcademicYearContextError } from "@/lib/academic-year/context";
+import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +10,7 @@ export const dynamic = "force-dynamic";
 const RequestSchema = z.object({
   codigo: z.string(),
   studentId: z.string().uuid().optional(),
+  ano_letivo_id: z.string().uuid().optional(),
 });
 
 export async function POST(req: Request) {
@@ -23,7 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Parâmetros inválidos" }, { status: 400 });
     }
 
-    const { codigo, studentId } = parsed.data;
+    const { codigo, studentId, ano_letivo_id: anoLetivoId } = parsed.data;
     const { escolaId } = ctx;
     const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId, userEmail: (await supabase.auth.getUser()).data.user?.email });
     if (studentId && !authorizedIds.includes(studentId)) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
@@ -33,6 +36,12 @@ export async function POST(req: Request) {
     // Um boletim sem taxa configurada não pode criar um pedido gratuito
     // que mais tarde pareça um pagamento concluído.
     if (codigo === "DOC_BOLETIM_TRIMESTRAL") {
+      const resolved = await resolveBoletimMatricula(supabase, {
+        escolaId, alunoId, userId: ctx.userId, anoLetivoId, operation: "WRITE",
+      });
+      if (!resolved.matricula?.id) {
+        return NextResponse.json({ ok: false, error: "Matrícula ativa não encontrada." }, { status: 409 });
+      }
       const { data: servico, error: servicoError } = await supabase
         .from("servicos_escola")
         .select("valor_base")
@@ -46,21 +55,34 @@ export async function POST(req: Request) {
       }
     }
 
-    // Chamar RPC de solicitação de serviço
-    const { data, error } = await (supabase as any).rpc("aluno_solicitar_servico", {
-      p_escola_id: escolaId,
-      p_aluno_id: alunoId,
-      p_servico_codigo: codigo,
-    });
+    // Boletim: contratação atómica com matrícula e session_id explícitos.
+    // Outros documentos mantêm o contrato legado (sem alteração do motor financeiro).
+    const resolved = codigo === "DOC_BOLETIM_TRIMESTRAL"
+      ? await resolveBoletimMatricula(supabase, { escolaId, alunoId, userId: ctx.userId, anoLetivoId, operation: "WRITE" })
+      : null;
+    const { data, error } = codigo === "DOC_BOLETIM_TRIMESTRAL"
+      ? await (supabase as unknown as { rpc: (name: string, args: Record<string, string>) => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }> }).rpc("aluno_solicitar_boletim_matricula", {
+          p_escola_id: escolaId, p_aluno_id: alunoId,
+          p_matricula_id: resolved!.matricula!.id, p_session_id: resolved!.context.anoLetivoId,
+        })
+      : await supabase.rpc("aluno_solicitar_servico", {
+          p_escola_id: escolaId, p_aluno_id: alunoId, p_servico_codigo: codigo,
+        });
 
     if (error) {
       console.error("[SolicitarDoc] RPC Error:", error);
       return NextResponse.json({ ok: false, error: error.message, next_action: { type: "retry_request", label: "Tentar novamente", href: "/aluno/documentos" } }, { status: 409 });
     }
 
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return NextResponse.json({ ok: false, error: "Resposta inválida ao solicitar o serviço." }, { status: 503 });
+    }
     return NextResponse.json({ ...data, next_action: data?.status === "pending_payment" ? { type: "pay_service", label: "Pagar agora", href: "/aluno/documentos" } : data?.status === "granted" ? { type: "download", label: "Descarregar", href: "/aluno/documentos" } : { type: "track_request", label: "Acompanhar pedido", href: "/aluno/documentos" } });
-  } catch (error: any) {
-    console.error("[SolicitarDoc] Server Error:", error);
+  } catch (error: unknown) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    console.error("[SolicitarDoc] Server Error:", error instanceof Error ? error.name : "unknown");
     return NextResponse.json({ ok: false, error: "Falha ao processar solicitação", next_action: { type: "retry_request", label: "Tentar novamente", href: "/aluno/documentos" } }, { status: 500 });
   }
 }

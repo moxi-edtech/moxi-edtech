@@ -41,6 +41,11 @@ export function TabNotas() {
   const searchParams = useSearchParams();
   const escolaSlug = getEscolaParamFromPath(usePathname());
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
+  const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
+  const bulletinParams = new URLSearchParams();
+  if (studentId) bulletinParams.set("studentId", studentId);
+  if (academicYearId) bulletinParams.set("ano_letivo_id", academicYearId);
+  const bulletinQuery = bulletinParams.toString() ? `?${bulletinParams.toString()}` : "";
   const [loading, setLoading] = useState(true);
   const [isLiberado, setIsLiberado] = useState(false);
   const [matriculaEncontrada, setMatriculaEncontrada] = useState(true);
@@ -130,7 +135,7 @@ export function TabNotas() {
     setDownloading(true);
     setDownloadError(null);
     try {
-      const response = await fetch(`/api/aluno/boletim/pdf${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""}`, { cache: "no-store" });
+      const response = await fetch(`/api/aluno/boletim/pdf${bulletinQuery}`, { cache: "no-store" });
       if (!response.ok) {
         const json = await response.json().catch(() => null) as { error?: string } | null;
         throw new Error(json?.error || "Não foi possível gerar o boletim.");
@@ -158,7 +163,7 @@ export function TabNotas() {
     setDisciplinas([]);
     setBoletimServico(null);
     setAccessError(null);
-  }, [studentId]);
+  }, [studentId, bulletinQuery]);
 
   // Actualizar em primeiro plano: pagamento validado pela secretaria desbloqueia sem relogin.
   useEffect(() => {
@@ -183,7 +188,7 @@ export function TabNotas() {
     setAccessError(null);
     const load = async () => {
       try {
-        const res = await fetch(`/api/aluno/boletim${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""}`, { cache: "no-store", signal: ctrl.signal });
+        const res = await fetch(`/api/aluno/boletim${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
         const json = await res.json() as BoletimResponse;
         if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível consultar o boletim.");
         if (!active) return;
@@ -191,7 +196,7 @@ export function TabNotas() {
         setIsLiberado(json.is_liberado);
         setDisciplinas(json.is_liberado ? json.disciplinas ?? [] : []);
         if (!json.is_liberado && json.matricula_encontrada !== false) {
-          const catalogResponse = await fetch(`/api/aluno/documentos/catalogo${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""}`, { cache: "no-store", signal: ctrl.signal });
+          const catalogResponse = await fetch(`/api/aluno/documentos/catalogo${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
           const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[] };
           if (!catalogResponse.ok || !catalog.ok) throw new Error(catalog.error || "Não foi possível consultar a taxa do boletim.");
           if (!active) return;
@@ -216,7 +221,7 @@ export function TabNotas() {
     };
     void load();
     return () => { active = false; ctrl.abort(); };
-  }, [studentId, refreshVersion]);
+  }, [studentId, bulletinQuery, refreshVersion]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -285,7 +290,7 @@ export function TabNotas() {
                       <p role="status" className="text-sm text-rose-800">Comprovativo rejeitado. Consulte o motivo na Secretaria Digital antes de reenviar.</p>
                     ) : null}
                     {boletimServico && boletimServico.valor > 0 ? (
-                      <Link href={buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}`)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
+                      <Link href={buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
                         {boletimServico.status === "pending" || boletimServico.status === "granted" ? "Acompanhar pagamento" : boletimServico.status === "pending_payment" ? "Enviar comprovativo" : "Pagar boletim"}
                         <ChevronRight size={16} />
                       </Link>

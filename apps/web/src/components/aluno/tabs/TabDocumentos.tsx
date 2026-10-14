@@ -46,7 +46,11 @@ export function TabDocumentos() {
   const rawServiceCode = searchParams?.get("servico") ?? null;
   // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
   const serviceCode = rawServiceCode === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : rawServiceCode;
-  const query = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+  const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
+  const queryParams = new URLSearchParams();
+  if (studentId) queryParams.set("studentId", studentId);
+  if (academicYearId) queryParams.set("ano_letivo_id", academicYearId);
+  const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
 
   const [loading, setLoading] = useState<string | null>(null);
   const [docs, setDocs] = useState<DocumentoCatalogo[]>([]);
@@ -128,7 +132,7 @@ export function TabDocumentos() {
       const res = await fetch(`/api/aluno/documentos/solicitar${query}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo: doc.codigo, ...(studentId ? { studentId } : {}) })
+        body: JSON.stringify({ codigo: doc.codigo, ...(studentId ? { studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })
       });
       
       const json = await res.json();
@@ -176,7 +180,7 @@ export function TabDocumentos() {
         const type = doc.codigo === 'DOC_CARTAO_ESTUDANTE' ? 'cartao' : doc.codigo === 'DOC_FICHA_INSCRICAO' ? 'ficha' : doc.codigo === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : doc.codigo === 'DOC_CERTIFICADO_HABILITACOES' ? 'certificado' : 'declaracao';
         const res = await fetch(`/api/aluno/documentos/emitir${query}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type, serviceCode: doc.codigo, ...(studentId ? { studentId } : {}) })
+          body: JSON.stringify({ type, serviceCode: doc.codigo, ...(studentId ? { studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Falha ao emitir documento');
@@ -262,7 +266,7 @@ export function TabDocumentos() {
                     <div className="pt-1">
                       {doc.pagamento_configurado === false ? <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold text-amber-900">Contactar secretaria</span> : <StatusBadge status={doc.status} />}
                       {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" ? (
-                        <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId ? `?aluno=${encodeURIComponent(studentId)}` : ""}`)} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</Link>
+                        <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</Link>
                       ) : null}
                     </div>
                   </div>

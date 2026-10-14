@@ -2,6 +2,7 @@ import { checkBoletimAccess, BOLETIM_SERVICE_CODES, BOLETIM_SERVICE_CODE } from 
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAlunoContext } from '@/lib/alunoContext'
+import { resolveBoletimMatricula } from '@/lib/aluno/resolveBoletimMatricula'
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from '@/lib/portalAlunoAuth'
 
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,7 @@ const RequestSchema = z.object({
   type: z.enum(['boletim', 'declaracao', 'cartao', 'ficha', 'historico', 'certificado']),
   studentId: z.string().uuid().optional(),
   serviceCode: z.string().trim().min(3).optional(),
+  ano_letivo_id: z.string().uuid().optional(),
 })
 
 export async function POST(req: Request) {
@@ -25,15 +27,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos' }, { status: 400 })
     }
 
-    const { type, studentId, serviceCode } = parsed.data
+    const { type, studentId, serviceCode, ano_letivo_id: anoLetivoId } = parsed.data
     const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: (await supabase.auth.getUser()).data.user?.email })
     const alunoId = resolveSelectedStudentId({ selectedId: studentId ?? null, authorizedIds, fallbackId: ctx.alunoId })
     if (!alunoId) return NextResponse.json({ ok: false, error: 'Educando não autorizado', next_action: { type: 'contact_secretaria', label: 'Regularizar acesso', href: '/aluno/avisos' } }, { status: 403 })
     const { escolaId } = ctx
-    const { data: matricula } = await supabase.from('matriculas').select('id, turma_id, ano_letivo').eq('escola_id', escolaId).eq('aluno_id', alunoId).in('status', ['ativa', 'ativo']).order('ano_letivo', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    const { data: matricula } = type === 'boletim'
+      ? { data: (await resolveBoletimMatricula(supabase, {
+          escolaId, alunoId, userId: ctx.userId, anoLetivoId,
+        })).matricula }
+      : await supabase.from('matriculas').select('id, turma_id, ano_letivo').eq('escola_id', escolaId).eq('aluno_id', alunoId).in('status', ['ativa', 'ativo']).order('ano_letivo', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (!matricula?.id) return NextResponse.json({ ok: false, error: 'O educando não possui matrícula activa', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } }, { status: 409 })
     const matriculaId = matricula.id
-    const anoLetivo = matricula.ano_letivo
+    const anoLetivo = "ano_letivo" in matricula ? matricula.ano_letivo : null
 
     // --- SEGURANÇA: Verificar se o aluno tem permissão (serviço pago/liberado) ---
     const resolvedServiceCode = serviceCode ?? (type === 'boletim' ? BOLETIM_SERVICE_CODE : 'DOC_DECLARACAO_FREQUENCIA');
@@ -51,7 +57,7 @@ export async function POST(req: Request) {
       const access = await checkBoletimAccess(supabase, { escolaId, alunoId, matriculaId });
       if (access.error) return NextResponse.json({ ok: false, error: 'Não foi possível verificar o pagamento.' }, { status: 503 });
       if (!access.granted) return NextResponse.json({ ok: false, error: 'Pague o boletim de notas e aguarde a confirmação da secretaria.' }, { status: 403 });
-      return NextResponse.json({ ok: true, url: `/api/aluno/boletim/pdf?studentId=${encodeURIComponent(alunoId)}` });
+      return NextResponse.json({ ok: true, url: `/api/aluno/boletim/pdf?studentId=${encodeURIComponent(alunoId)}${anoLetivoId ? `&ano_letivo_id=${encodeURIComponent(anoLetivoId)}` : ""}` });
     }
     if (BOLETIM_SERVICE_CODES.some((code) => code === resolvedServiceCode)) {
       return NextResponse.json({ ok: false, error: 'Este serviço só pode ser emitido como boletim.' }, { status: 400 });
