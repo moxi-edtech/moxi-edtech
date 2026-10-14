@@ -47,6 +47,9 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
         run: node apps/web/scripts/visual/portais-screenshot.mjs
+      - name: Vite diagnostics on failure
+        if: failure()
+        run: tail -n 130 /tmp/klasse-visual.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
