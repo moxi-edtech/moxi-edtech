@@ -39,14 +39,14 @@ test("aula real omite disciplina, professor e sala quando ausentes", () => {
 });
 test("a tela não cria notas locais: autorização pertence às APIs existentes",async()=>{
   const fs=await import("node:fs/promises");
-  const ui=await fs.readFile("apps/web/src/components/aluno/dashboard/DashboardLoader.tsx","utf8");
+  const ui=await fs.readFile(new URL("../../src/components/aluno/dashboard/DashboardLoader.tsx", import.meta.url),"utf8");
   assert.doesNotMatch(ui,/ultima_nota|notasRecentes|NotaBar|\.disciplinas\s*\.map/);
   assert.match(ui,/\/api\/aluno\/boletim/);
   assert.match(ui,/\/api\/aluno\/documentos\/catalogo/);
 });
 test("isolamento: o endpoint continua a resolver escola, matrícula e aluno da sessão; não aceita studentId arbitrário",async()=>{
   const fs=await import("node:fs/promises");
-  const route=await fs.readFile("apps/web/src/app/api/aluno/dashboard/route.ts","utf8");
+  const route=await fs.readFile(new URL("../../src/app/api/aluno/dashboard/route.ts", import.meta.url),"utf8");
   assert.match(route,/getAlunoContext\(\)/);
   assert.match(route,/checkBoletimAccess\(/);
   assert.match(route,/\.eq\('escola_id', escolaId\)/);
