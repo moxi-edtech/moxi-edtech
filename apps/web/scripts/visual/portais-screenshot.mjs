@@ -36,13 +36,13 @@ try {
           const root = document.documentElement;
           return { horizontalOverflow: Math.max(0, root.scrollWidth - root.clientWidth),
             bodyText: document.body.innerText.slice(0, 1600),
-            rendered: document.querySelector("#storybook-root")?.childElementCount ?? 0 };
+            rendered: document.querySelector("#root")?.childElementCount ?? 0 };
         });
         const output = `${directory}/${name}-${width}x${height}-${Math.round(zoom*100)}.jpg`;
         await page.screenshot({ path: output, type: "jpeg", quality: 72, fullPage: false });
         const visible = textMatcher.test(metrics.bodyText);
         report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, fixtureRendered: visible, output });
-        if (!visible) errors.push(`${name} ${width}x${height} zoom ${zoom}: content not rendered`);
+        if (!visible) errors.push(`${name} ${width}x${height} zoom ${zoom}: content not rendered; root children ${metrics.rendered}`);
         if (metrics.horizontalOverflow > 12) errors.push(`${name} ${width}x${height} zoom ${zoom}: horizontal overflow ${metrics.horizontalOverflow}px`);
       }
     }
