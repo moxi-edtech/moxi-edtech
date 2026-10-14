@@ -46,7 +46,11 @@ export function TabDocumentos() {
   const rawServiceCode = searchParams?.get("servico") ?? null;
   // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
   const serviceCode = rawServiceCode === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : rawServiceCode;
-  const query = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+  const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
+  const queryParams = new URLSearchParams();
+  if (studentId) queryParams.set("studentId", studentId);
+  if (academicYearId) queryParams.set("ano_letivo_id", academicYearId);
+  const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
 
   const [loading, setLoading] = useState<string | null>(null);
   const [docs, setDocs] = useState<DocumentoCatalogo[]>([]);

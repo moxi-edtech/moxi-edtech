@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
-import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { AcademicYearContextError } from "@/lib/academic-year/context";
+import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
 import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
 import { loadNotasLancadas } from "@/lib/aluno/boletimNotas";
 
@@ -24,18 +25,16 @@ export async function GET(request: Request) {
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
 
-    const academicContext = await resolveAcademicYearContext(supabase, {
-      userId: ctx.userId,
-      requestedAcademicYearId: new URL(request.url).searchParams.get("ano_letivo_id"),
-      operation: "READ",
-    });
 
-    const [{ data: aluno }, { data: matricula }] = await Promise.all([
+
+    const [{ data: aluno }, resolved] = await Promise.all([
       supabase.from("alunos").select("nome").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
-      supabase.from("matriculas").select("id, turma_id")
-        .eq("aluno_id", alunoId).eq("escola_id", ctx.escolaId)
-        .eq("session_id", academicContext.anoLetivoId).limit(1).maybeSingle(),
+      resolveBoletimMatricula(supabase, {
+        escolaId: ctx.escolaId, alunoId, userId: ctx.userId,
+        anoLetivoId: new URL(request.url).searchParams.get("ano_letivo_id"),
+      }),
     ]);
+    const { matricula, context: academicContext } = resolved;
 
     if (!matricula?.id || !matricula.turma_id) {
       return NextResponse.json({ ok: true, is_liberado: false, matricula_encontrada: false, total_faltas: 0, total_faltas_max: 0, disciplinas: [], nome_aluno: aluno?.nome ?? null });
