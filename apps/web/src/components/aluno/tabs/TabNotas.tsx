@@ -22,7 +22,7 @@ type BoletimResponse = {
   matricula_encontrada?: boolean;
   error?: string;
   disciplinas: Disciplina[];
-  context?: { anoLetivoLabel?: string | null } | null;
+  context?: { anoLetivoLabel?: string | null; mode?: "CURRENT" | "HISTORICAL_READ" } | null;
 };
 
 type BoletimServico = { codigo: string; valor: number; status: string; reject_reason?: string | null; pedido_id?: string | null };
@@ -52,6 +52,7 @@ export function TabNotas() {
   const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
   const [academicYear, setAcademicYear] = useState<string | null>(null);
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
+  const [historicalRead, setHistoricalRead] = useState(false);
   const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("");
   const [reapreciacaoSaving, setReapreciacaoSaving] = useState(false);
@@ -158,6 +159,7 @@ export function TabNotas() {
     setSelectedPeriod(null);
     setAcademicYear(null);
     setLoadedScope(null);
+    setHistoricalRead(false);
     setReapreciacaoDisc(null);
     setMelhoriaDisc(null);
     setBoletimServico(null);
@@ -211,6 +213,7 @@ export function TabNotas() {
         setMatriculaEncontrada(json.matricula_encontrada !== false);
         setIsLiberado(json.is_liberado);
         setLoadedScope(bulletinQuery);
+        setHistoricalRead(json.context?.mode === "HISTORICAL_READ");
         const published = json.is_liberado ? json.disciplinas ?? [] : [];
         setDisciplinas(published);
         setSelectedPeriod(chooseInitialPeriod(published));
@@ -232,6 +235,7 @@ export function TabNotas() {
           setAccessError(error instanceof Error ? error.message : "Não foi possível carregar o boletim.");
           setIsLiberado(false);
           setLoadedScope(null);
+          setHistoricalRead(false);
           setDisciplinas([]);
           setSelectedPeriod(null);
         }
@@ -305,7 +309,7 @@ export function TabNotas() {
             return <article key={disc.id} className="space-y-4 py-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <h3 className="min-w-0 flex-1 break-words text-base font-semibold text-slate-900">{disc.nome}</h3>
-                {disc.avaliacoes.length > 0 && <details className="group relative">
+                {!historicalRead && disc.avaliacoes.length > 0 && <details className="group relative">
                   <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 ${focus}`}>
                     Opções <ChevronDown aria-hidden className="h-4 w-4"/>
                   </summary>
@@ -332,8 +336,8 @@ export function TabNotas() {
         </aside>
       </section>}
       {safeIsLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
-      {safeIsLiberado && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
-      {safeIsLiberado && reapreciacaoDisc && (
+      {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
+      {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-raa-title">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
             <h2 id="aluno-raa-title" className="font-semibold text-slate-900">Solicitar reapreciação — {reapreciacaoDisc.nome}</h2>
@@ -345,7 +349,7 @@ export function TabNotas() {
         </div>
       )}
 
-      {safeIsLiberado && melhoriaDisc && (
+      {safeIsLiberado && !historicalRead && melhoriaDisc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-melhoria-title">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
             <h2 id="aluno-melhoria-title" className="font-semibold text-slate-900">Solicitar melhoria — {melhoriaDisc.nome}</h2>

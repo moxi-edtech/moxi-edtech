@@ -91,3 +91,12 @@ test("a matrícula e o aluno anteriores nunca disponibilizam notas enquanto a no
  assert.match(source,/safeIsLiberado && reapreciacaoDisc/);
  assert.match(source,/safeIsLiberado && melhoriaDisc/);
 });
+
+test("histórico só permite leitura, sem enviar reapreciação ou melhoria da matrícula actual",async()=>{
+ const fs=await import("node:fs/promises");
+ const ui=await fs.readFile(new URL("../../src/components/aluno/tabs/TabNotas.tsx",import.meta.url),"utf8");
+ assert.match(ui,/json\.context\?\.mode === "HISTORICAL_READ"/);
+ assert.match(ui,/!historicalRead && disc\.avaliacoes\.length/);
+ assert.match(ui,/safeIsLiberado && !historicalRead && reapreciacaoDisc/);
+ assert.match(ui,/safeIsLiberado && !historicalRead && melhoriaDisc/);
+});
