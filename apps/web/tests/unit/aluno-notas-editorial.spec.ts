@@ -88,8 +88,8 @@ test("a matrícula e o aluno anteriores nunca disponibilizam notas enquanto a no
  assert.match(source,/safeIsLiberado \? disciplinas : \[\]/);
  assert.match(source,/safeDisciplinas\.map/);
  assert.match(source,/setLoadedScope\(bulletinQuery\)/);
- assert.match(source,/safeIsLiberado && reapreciacaoDisc/);
- assert.match(source,/safeIsLiberado && melhoriaDisc/);
+ assert.match(source,/safeIsLiberado && !historicalRead && reapreciacaoDisc/);
+ assert.match(source,/safeIsLiberado && !historicalRead && melhoriaDisc/);
 });
 
 test("histórico só permite leitura, sem enviar reapreciação ou melhoria da matrícula actual",async()=>{
