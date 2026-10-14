@@ -302,8 +302,10 @@ export default function DocumentosEmissaoHubClient({
 
   const isPago = Boolean(selectedServico && Number(selectedServico.valor_base ?? 0) > 0);
   const valorBase = Number(selectedServico?.valor_base ?? 0);
-
-  const canSubmit = Boolean(selectedAluno?.id && tipo && !submitting);
+  const requiresPaidNotes = tipo === "declaracao_notas" || tipo === "boletim_trimestral";
+  // A direção decide o preço no catálogo; nunca inventar um valor padrão.
+  const missingNotesFee = requiresPaidNotes && (!selectedServico || valorBase <= 0);
+  const canSubmit = Boolean(selectedAluno?.id && tipo && !submitting && !missingNotesFee);
 
   const handleSelectAluno = (id: string, label: string) => {
     setSelectedAluno({ id, label });
@@ -312,6 +314,10 @@ export default function DocumentosEmissaoHubClient({
 
   const handleEmitir = async () => {
     if (!selectedAluno?.id || !tipo) return;
+    if (missingNotesFee) {
+      setError("A escola precisa configurar uma taxa positiva para este documento antes de o emitir.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -604,6 +610,20 @@ export default function DocumentosEmissaoHubClient({
         )}
       </section>
 
+      {missingNotesFee && (
+        <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          A taxa deste documento de notas ainda não está configurada. A direcção deve defini-la em Emolumentos & Serviços. Nenhuma declaração ou boletim pode ser emitido gratuitamente por engano.
+        </p>
+      )}
+      {selectedAluno && tipo && (
+        <section aria-label="Rever emissão" className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+          <h3 className="font-bold text-slate-900">Rever antes de confirmar</h3>
+          <p className="mt-1">Aluno: <strong>{selectedAluno.label}</strong></p>
+          <p>Documento: <strong>{TIPOS.find((item) => item.id === tipo)?.title}</strong></p>
+          <p>Taxa: <strong>{isPago ? `${valorBase} Kz` : "Gratuito"}</strong></p>
+          {requiresPaidNotes && <p className="mt-2 text-amber-800">A emissão só será permitida depois de este serviço estar concedido e o pagamento efectivamente liquidado. Confirmar o pedido não substitui validar o pagamento.</p>}
+        </section>
+      )}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}

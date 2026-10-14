@@ -1,0 +1,42 @@
+name: Boletim Payment Contract DB
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271014120000_boletim_payment_transition_guards.sql'
+      - 'supabase/ops/tests/bootstrap_boletim_payment_contract.sql'
+      - 'supabase/ops/tests/regression_boletim_payment_contract.sql'
+      - 'supabase/ops/tests/concurrency_boletim_payment_contract.sh'
+      - '.github/workflows/boletim-payment-contract-db.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-disposable:
+    name: Payment transition SQL regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic bootstrap
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_boletim_payment_contract.sql
+      - name: Apply unshipped migration in disposable Postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271014120000_boletim_payment_transition_guards.sql
+      - name: Verify rejection/resubmission/audit/idempotency
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_boletim_payment_contract.sql
+      - name: Verify concurrent approval and rejection
+        run: bash supabase/ops/tests/concurrency_boletim_payment_contract.sh

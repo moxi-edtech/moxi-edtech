@@ -46,7 +46,11 @@ export function TabDocumentos() {
   const rawServiceCode = searchParams?.get("servico") ?? null;
   // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
   const serviceCode = rawServiceCode === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : rawServiceCode;
-  const query = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+  const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
+  const queryParams = new URLSearchParams();
+  if (studentId) queryParams.set("studentId", studentId);
+  if (academicYearId) queryParams.set("ano_letivo_id", academicYearId);
+  const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
 
   const [loading, setLoading] = useState<string | null>(null);
   const [docs, setDocs] = useState<DocumentoCatalogo[]>([]);
@@ -70,9 +74,11 @@ export function TabDocumentos() {
       if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar a Secretaria Digital.");
       setDocs(json.documentos ?? []);
       setDadosPagamento(json.dados_pagamento ?? null);
+      return true;
     } catch (err) {
-      setDocs([]);
+      if (!quiet) setDocs([]);
       setCatalogError(err instanceof Error ? err.message : "Não foi possível carregar os serviços.");
+      return false;
     } finally {
       if (!quiet) setFetching(false);
     }
@@ -85,17 +91,44 @@ export function TabDocumentos() {
     void fetchCatalogo();
   }, [fetchCatalogo]);
 
-  const hasPending = docs.some((doc) => doc.status === "pending");
+  const hasPending = docs.some((item) => item.status === "pending");
   useEffect(() => {
     if (!hasPending) return;
-    const refresh = () => { if (document.visibilityState === "visible") void fetchCatalogo(true); };
-    const interval = window.setInterval(refresh, 20000);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
+    let stopped = false;
+    let inFlight = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
+    const schedule = () => {
+      if (stopped || document.hidden) return;
+      timer = setTimeout(() => { timer = undefined; void refresh(); },
+        Math.min(30_000 * 2 ** failures, 300_000));
+    };
+    const refresh = async () => {
+      if (stopped || document.hidden || inFlight) return;
+      inFlight = true;
+      try {
+        const succeeded = await fetchCatalogo(true);
+        failures = succeeded ? 0 : Math.min(failures + 1, 4);
+      } catch {
+        failures = Math.min(failures + 1, 4);
+      } finally {
+        inFlight = false;
+        schedule();
+      }
+    };
+    const onVisible = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+      if (!document.hidden) void refresh();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    schedule();
     return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
+      stopped = true;
+      if (timer !== undefined) clearTimeout(timer);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [hasPending, fetchCatalogo]);
 
@@ -107,6 +140,13 @@ export function TabDocumentos() {
     if (doc.status === 'granted') {
       if (DIGITAL_DOCUMENT_CODES.has(doc.codigo)) handleDownload(doc);
       else window.location.assign('/aluno/avisos');
+    } else if (doc.status === 'rejected' && isBoletimServiceCode(doc.codigo)) {
+      if (!doc.pagamento_intent_id) {
+        error("Comprovativo não localizado", "Contacte a secretaria. Não solicite outro boletim nem pague novamente.");
+        return;
+      }
+      setSelectedDoc(doc);
+      setShowDrawer(true);
     } else if (doc.status === 'available' || doc.status === 'rejected') {
       handleRequest(doc);
     } else if (doc.status === 'pending_payment') {
@@ -128,7 +168,7 @@ export function TabDocumentos() {
       const res = await fetch(`/api/aluno/documentos/solicitar${query}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo: doc.codigo, ...(studentId ? { studentId } : {}) })
+        body: JSON.stringify({ codigo: doc.codigo, ...(studentId ? { studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })
       });
       
       const json = await res.json();
@@ -176,7 +216,7 @@ export function TabDocumentos() {
         const type = doc.codigo === 'DOC_CARTAO_ESTUDANTE' ? 'cartao' : doc.codigo === 'DOC_FICHA_INSCRICAO' ? 'ficha' : doc.codigo === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : doc.codigo === 'DOC_CERTIFICADO_HABILITACOES' ? 'certificado' : 'declaracao';
         const res = await fetch(`/api/aluno/documentos/emitir${query}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type, serviceCode: doc.codigo, ...(studentId ? { studentId } : {}) })
+          body: JSON.stringify({ type, serviceCode: doc.codigo, ...(studentId ? { studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Falha ao emitir documento');
@@ -262,7 +302,7 @@ export function TabDocumentos() {
                     <div className="pt-1">
                       {doc.pagamento_configurado === false ? <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold text-amber-900">Contactar secretaria</span> : <StatusBadge status={doc.status} />}
                       {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" ? (
-                        <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId ? `?aluno=${encodeURIComponent(studentId)}` : ""}`)} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</Link>
+                        <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</Link>
                       ) : null}
                     </div>
                   </div>
@@ -301,7 +341,7 @@ export function TabDocumentos() {
               {doc.status !== 'available' && doc.status !== 'granted' && (
                 <p className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
                   <strong className="text-slate-800">Próximo passo: </strong>
-                  {doc.pagamento_configurado === false ? 'contacte a secretaria para definir o valor do boletim.' : doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria. Não pague novamente.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
+                  {doc.pagamento_configurado === false ? 'contacte a secretaria para definir o valor do boletim.' : doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria. Não pague novamente.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' && isBoletimServiceCode(doc.codigo) ? 'corrija o comprovativo e reenvie-o no mesmo pedido. Não pague novamente.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
                 </p>
               )}
             </AlunoCard>
@@ -330,6 +370,7 @@ export function TabDocumentos() {
           void fetchCatalogo(true);
         }}
         studentId={studentId}
+        academicYearId={academicYearId}
         dadosPagamento={dadosPagamento}
         documento={selectedDoc ? {
           codigo: selectedDoc.codigo,

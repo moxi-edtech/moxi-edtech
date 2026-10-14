@@ -17,6 +17,7 @@ on:
       - 'apps/web/src/components/secretaria/SecretariaDocumentosWorkspace.tsx'
       - 'apps/web/src/components/secretaria/PagamentosPendentesWindow.tsx'
       - 'apps/web/src/lib/aluno/boletim*.ts'
+      - 'apps/web/src/lib/aluno/resolveBoletimMatricula.ts'
       - 'apps/web/tests/unit/aluno-boletim*.spec.mjs'
       - '.github/workflows/boletim-portal-contracts.yml'
 
@@ -46,7 +47,8 @@ jobs:
           node --import tsx --test \
             tests/unit/aluno-boletim-flow.spec.mjs \
             tests/unit/aluno-boletim-payment-gate.spec.mjs \
-            tests/unit/aluno-boletim-navigation-cleanup.spec.mjs
+            tests/unit/aluno-boletim-navigation-cleanup.spec.mjs \
+            tests/unit/aluno-boletim-scope.spec.mjs
       - name: KLASSE UI Standards
         run: node scripts/check-klasse-ui-standards.mjs
       - name: Focused ESLint
