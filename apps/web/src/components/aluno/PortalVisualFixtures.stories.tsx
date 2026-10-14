@@ -11,7 +11,7 @@ import ProfessorPage from "@/app/professor/page";
 const SCHOOL = "00000000-0000-4000-8000-000000000401";
 const STUDENT = "00000000-0000-4000-8000-000000000402";
 const INTENT = "00000000-0000-4000-8000-000000000403";
-type FixtureMode = "pending" | "rejected" | "paid" | "professor";
+type FixtureMode = "pending" | "rejected" | "paid" | "professor" | "grade-paid" | "grade-unpaid" | "grade-pending" | "grade-rejected" | "grade-empty";
 declare global {
   interface Window { __klasseVisualFixture?: FixtureMode; __klasseVisualFetchInstalled?: boolean }
 }
@@ -26,15 +26,15 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
     const doc = {
       id: "fixture-service", codigo: "DOC_BOLETIM_TRIMESTRAL",
       nome: "Boletim de notas trimestral", descricao: "Notas efetivamente lançadas.",
-      valor: 1500, status: mode === "paid" ? "granted" : mode === "rejected" ? "rejected" : "pending",
+      valor: 1500, status: mode === "paid" || mode === "grade-paid" || mode === "grade-empty" ? "granted" : mode === "rejected" || mode === "grade-rejected" ? "rejected" : mode === "grade-unpaid" ? "available" : "pending",
       pedido_id: "fixture-order", pagamento_intent_id: INTENT,
       exige_pagamento_antes_de_liberar: true, pagamento_configurado: true,
-      reject_reason: mode === "rejected" ? "O ficheiro enviado não estava legível." : null,
+      reject_reason: mode === "rejected" || mode === "grade-rejected" ? "O ficheiro enviado não estava legível." : null,
     };
     const replies: Record<string, object> = {
-      "/api/aluno/documentos/catalogo": { ok: true, documentos: [doc], dados_pagamento: { banco: "Banco de Teste", iban: "AO00 0000 0000 0000 0000 0000 0" }, boletim_pago: mode === "paid" },
-      "/api/aluno/boletim": { ok: true, matricula_encontrada: true, is_liberado: mode === "paid", nome_aluno: "Aluno de Teste", disciplinas: mode === "paid" ? [
-        { id: "disc-1", nome: "Matemática", avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }] },
+      "/api/aluno/documentos/catalogo": { ok: true, documentos: [doc], dados_pagamento: { banco: "Banco de Teste", iban: "AO00 0000 0000 0000 0000 0000 0" }, boletim_pago: ["paid","grade-paid","grade-empty"].includes(mode) },
+      "/api/aluno/boletim": { ok: true, matricula_encontrada: true, is_liberado: ["paid","grade-paid","grade-empty"].includes(mode), nome_aluno: "Aluno de Teste", disciplinas: mode === "grade-empty" ? [] : ["paid","grade-paid"].includes(mode) ? [
+        { id: "disc-1", nome: "Matemática", avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }, { nome: "Exame do período", tipo: "exame", trimestre: 2, nota: 15 }] },
         { id: "disc-2", nome: "Língua Portuguesa", avaliacoes: [{ nome: "Trabalho prático", tipo: "trabalho", trimestre: 1, nota: 17 }] },
       ] : [] },
       "/api/aluno/raa/dependencias": { ok: true, summary: { total: 0, abertas: 0, resolvidas: 0 }, items: [] },
@@ -57,8 +57,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
   };
 }
 
-const Surface = ({ mode, children }: { mode: FixtureMode; children: React.ReactNode }) => {
-  if (typeof window !== "undefined") window.__klasseVisualFixture = mode;
+const Surface = ({ children }: { mode: FixtureMode; children: React.ReactNode }) => {
   return <ToastProvider><main className="mx-auto min-h-screen max-w-6xl bg-slate-50 p-3 sm:p-6">{children}</main></ToastProvider>;
 };
 
@@ -70,3 +69,9 @@ export const DocumentosPendentes: Story = { render: () => <Surface mode="pending
 export const DocumentosRejeitados: Story = { render: () => <Surface mode="rejected"><TabDocumentos /></Surface> };
 export const NotasPagas: Story = { render: () => <Surface mode="paid"><TabNotas /></Surface> };
 export const ProfessorComTurmas: Story = { render: () => <Surface mode="professor"><ProfessorPage /></Surface> };
+
+export const GradePaid: Story = { render: () => <Surface mode="grade-paid"><TabNotas /></Surface> };
+export const GradeUnpaid: Story = { render: () => <Surface mode="grade-unpaid"><TabNotas /></Surface> };
+export const GradePending: Story = { render: () => <Surface mode="grade-pending"><TabNotas /></Surface> };
+export const GradeRejected: Story = { render: () => <Surface mode="grade-rejected"><TabNotas /></Surface> };
+export const GradeEmpty: Story = { render: () => <Surface mode="grade-empty"><TabNotas /></Surface> };
