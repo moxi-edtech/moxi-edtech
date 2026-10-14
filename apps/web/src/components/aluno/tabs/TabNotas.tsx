@@ -165,20 +165,37 @@ export function TabNotas() {
     setAccessError(null);
   }, [studentId, bulletinQuery]);
 
-  // Actualizar em primeiro plano: pagamento validado pela secretaria desbloqueia sem relogin.
+  // Pausa a aba oculta e limita consultas; após desbloqueio reduz o ritmo.
   useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === "visible") setRefreshVersion((current) => current + 1);
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (disposed || document.hidden) return;
+      timer = setTimeout(() => {
+        timer = undefined;
+        if (document.hidden || disposed) return;
+        setRefreshVersion((current) => current + 1);
+        schedule();
+      }, isLiberado ? 120_000 : accessError ? 120_000 : 30_000);
     };
-    const interval = window.setInterval(refresh, isLiberado ? 60000 : 20000);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
+    const onVisible = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+      if (!document.hidden) {
+        setRefreshVersion((current) => current + 1);
+        schedule();
+      }
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    schedule();
     return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
+      disposed = true;
+      if (timer !== undefined) clearTimeout(timer);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [isLiberado, studentId]);
+  }, [isLiberado, studentId, accessError]);
 
   useEffect(() => {
     const ctrl = new AbortController();

@@ -74,9 +74,11 @@ export function TabDocumentos() {
       if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar a Secretaria Digital.");
       setDocs(json.documentos ?? []);
       setDadosPagamento(json.dados_pagamento ?? null);
+      return true;
     } catch (err) {
-      setDocs([]);
+      if (!quiet) setDocs([]);
       setCatalogError(err instanceof Error ? err.message : "Não foi possível carregar os serviços.");
+      return false;
     } finally {
       if (!quiet) setFetching(false);
     }
@@ -89,17 +91,44 @@ export function TabDocumentos() {
     void fetchCatalogo();
   }, [fetchCatalogo]);
 
-  const hasPending = docs.some((doc) => doc.status === "pending");
+  const hasPending = docs.some((item) => item.status === "pending");
   useEffect(() => {
     if (!hasPending) return;
-    const refresh = () => { if (document.visibilityState === "visible") void fetchCatalogo(true); };
-    const interval = window.setInterval(refresh, 20000);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
+    let stopped = false;
+    let inFlight = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
+    const schedule = () => {
+      if (stopped || document.hidden) return;
+      timer = setTimeout(() => { timer = undefined; void refresh(); },
+        Math.min(30_000 * 2 ** failures, 300_000));
+    };
+    const refresh = async () => {
+      if (stopped || document.hidden || inFlight) return;
+      inFlight = true;
+      try {
+        const succeeded = await fetchCatalogo(true);
+        failures = succeeded ? 0 : Math.min(failures + 1, 4);
+      } catch {
+        failures = Math.min(failures + 1, 4);
+      } finally {
+        inFlight = false;
+        schedule();
+      }
+    };
+    const onVisible = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+      if (!document.hidden) void refresh();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    schedule();
     return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
+      stopped = true;
+      if (timer !== undefined) clearTimeout(timer);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [hasPending, fetchCatalogo]);
 
