@@ -1,3 +1,4 @@
+import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     });
 
     const selectedId = new URL(request.url).searchParams.get("studentId");
+    if (selectedId && !authorizedIds.includes(selectedId)) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: true, items: [] });
 
@@ -46,22 +48,9 @@ export async function GET(request: Request) {
     if (!matriculaId) return NextResponse.json({ ok: true, items: [] });
 
     // --- SEGURANÇA: Verificar se o boletim foi pago ---
-    const { data: permission, error: permissionError } = await supabase
-      .from('servico_pedidos')
-      .select('status')
-      .eq('escola_id', ctx.escolaId)
-      .eq('aluno_id', alunoId)
-      .eq('matricula_id', matriculaId)
-      .eq('servico_codigo', 'DOC_DECLARACAO_NOTAS')
-      .eq('status', 'granted')
-      .limit(1)
-      .maybeSingle();
-
-    if (permissionError) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503 });
-    if (!permission) {
-      return NextResponse.json({ ok: true, items: [], restricted: true });
-    }
-    // --------------------------------------------------
+    const access = await checkBoletimAccess(supabase, { escolaId: ctx.escolaId, alunoId, matriculaId });
+    if (access.error) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503 });
+    if (!access.granted) return NextResponse.json({ ok: true, items: [], restricted: true });
 
     const { data } = await supabase
       .from("notas")

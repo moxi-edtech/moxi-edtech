@@ -2,12 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/Button";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
-import { Lock as LockIcon, FileText, ChevronRight, AlertCircle, Loader2, Calculator } from "lucide-react";
+import { Lock as LockIcon, FileText, ChevronRight, Loader2, Download } from "lucide-react";
 import Link from "next/link";
-import { SimuladorNotasModal } from "@/components/aluno/academico/SimuladorNotasModal";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
 
 type Disciplina = {
@@ -16,16 +14,19 @@ type Disciplina = {
   nota_t1?: number | null;
   nota_t2?: number | null;
   nota_t3?: number | null;
-  nota_final?: number | null;
-  faltas?: number;
+  avaliacoes: Array<{ nome: string; tipo: string; trimestre: number; nota: number }>;
 };
 
 type BoletimResponse = {
   ok: boolean;
   is_liberado: boolean;
   nome_aluno?: string | null;
+  matricula_encontrada?: boolean;
+  error?: string;
   disciplinas: Disciplina[];
 };
+
+type BoletimServico = { codigo: string; valor: number; status: string };
 
 type ListaDisciplina = { id: string; nome: string };
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
@@ -34,22 +35,21 @@ function fmtNota(v?: number | null) {
   return typeof v === "number" ? v.toFixed(1) : "—";
 }
 
-function finalStatus(nota?: number | null) {
-  if (typeof nota !== "number") return { label: "Pendente", cls: "bg-slate-100 text-slate-700" };
-  return nota >= 10
-    ? { label: "Aprovado", cls: "bg-emerald-100 text-emerald-700" }
-    : { label: "Reprovado", cls: "bg-red-100 text-red-700" };
-}
-
 export function TabNotas() {
   const searchParams = useSearchParams();
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [isLiberado, setIsLiberado] = useState(false);
+  const [matriculaEncontrada, setMatriculaEncontrada] = useState(true);
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const [boletimServico, setBoletimServico] = useState<BoletimServico | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
   const [listaDisciplinas, setListaDisciplinas] = useState<ListaDisciplina[]>([]);
   const [loadingLista, setLoadingLista] = useState(true);
-  const [isSimuladorOpen, setIsSimuladorOpen] = useState(false);
   const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("");
   const [reapreciacaoSaving, setReapreciacaoSaving] = useState(false);
@@ -62,7 +62,6 @@ export function TabNotas() {
   const [melhoriaSaving, setMelhoriaSaving] = useState(false);
   const [melhoriaMessage, setMelhoriaMessage] = useState<string | null>(null);
 
-  const query = studentId ? `?aluno=${studentId}` : "";
 
   const solicitarReapreciacao = async () => {
     if (!reapreciacaoDisc || reapreciacaoMotivo.trim().length < 10) {
@@ -124,22 +123,97 @@ export function TabNotas() {
     }
   };
 
+  const descarregarBoletim = async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const response = await fetch(`/api/aluno/boletim/pdf${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""}`, { cache: "no-store" });
+      if (!response.ok) {
+        const json = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(json?.error || "Não foi possível gerar o boletim.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "boletim_de_notas.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 3000);
+    } catch (error: unknown) {
+      setDownloadError(error instanceof Error ? error.message : "Falha ao descarregar o boletim.");
+      setRefreshVersion((version) => version + 1);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    setIsLiberado(false);
+    setDisciplinas([]);
+    setBoletimServico(null);
+    setAccessError(null);
+  }, [studentId]);
+
+  // Actualizar em primeiro plano: pagamento validado pela secretaria desbloqueia sem relogin.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") setRefreshVersion((current) => current + 1);
+    };
+    const interval = window.setInterval(refresh, isLiberado ? 60000 : 20000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [isLiberado, studentId]);
+
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch(`/api/aluno/boletim${studentId ? `?studentId=${studentId}` : ""}`, { cache: "no-store", signal: ctrl.signal })
-      .then((r) => r.json() as Promise<BoletimResponse>)
-      .then((json) => {
-          setDisciplinas(json.disciplinas ?? []);
-          setIsLiberado(json.is_liberado);
-      })
-      .catch((error) => {
-        if (error?.name !== "AbortError") {
+    let active = true;
+    if (refreshVersion === 0) setLoading(true);
+    else setRefreshing(true);
+    setAccessError(null);
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/aluno/boletim${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""}`, { cache: "no-store", signal: ctrl.signal });
+        const json = await res.json() as BoletimResponse;
+        if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível consultar o boletim.");
+        if (!active) return;
+        setMatriculaEncontrada(json.matricula_encontrada !== false);
+        setIsLiberado(json.is_liberado);
+        setDisciplinas(json.is_liberado ? json.disciplinas ?? [] : []);
+        if (!json.is_liberado && json.matricula_encontrada !== false) {
+          const catalogResponse = await fetch(`/api/aluno/documentos/catalogo${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""}`, { cache: "no-store", signal: ctrl.signal });
+          const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[] };
+          if (!catalogResponse.ok || !catalog.ok) throw new Error(catalog.error || "Não foi possível consultar a taxa do boletim.");
+          if (!active) return;
+          const servicos = catalog.documentos ?? [];
+          const servico = servicos.find((item) => item.codigo === "DOC_BOLETIM_TRIMESTRAL" && item.valor > 0)
+            ?? servicos.find((item) => item.codigo === "DOC_DECLARACAO_NOTAS" && item.valor > 0)
+            ?? servicos.find((item) => item.codigo === "DOC_BOLETIM_TRIMESTRAL");
+          setBoletimServico(servico ?? null);
+        }
+      } catch (error: unknown) {
+        if (active && !(error instanceof DOMException && error.name === "AbortError")) {
+          setAccessError(error instanceof Error ? error.message : "Não foi possível carregar o boletim.");
+          setIsLiberado(false);
           setDisciplinas([]);
         }
-      })
-      .finally(() => setLoading(false));
-    return () => ctrl.abort();
-  }, [studentId]);
+      } finally {
+        if (active) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    };
+    void load();
+    return () => { active = false; ctrl.abort(); };
+  }, [studentId, refreshVersion]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -164,14 +238,7 @@ export function TabNotas() {
         <header className="flex flex-wrap items-center justify-between gap-2 px-1">
             <SectionTitle>Meu Boletim</SectionTitle>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsSimuladorOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold transition-all border border-emerald-200 shadow-sm active:scale-95"
-              >
-                <Calculator size={14} className="text-emerald-600" /> Simulador de Aprovação
-              </button>
-              {!loading && !isLiberado && (
+              {!loading && !accessError && matriculaEncontrada && !isLiberado && (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-tight border border-amber-100">
                       <LockIcon size={12} /> Acesso Restrito
                   </span>
@@ -183,102 +250,82 @@ export function TabNotas() {
           <div className="h-48 animate-pulse rounded-[2.5rem] bg-slate-100" />
         ) : (
           <section className="space-y-3">
-            {!isLiberado && (
-              <div className="relative mb-6 overflow-hidden rounded-3xl border border-amber-200/90 bg-gradient-to-br from-amber-50 via-white to-amber-50/40 p-5 sm:p-6 shadow-sm">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-200/60 shadow-sm">
-                      <LockIcon size={20} className="stroke-[2.2]" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-                          Boletim de notas
-                        </h3>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/80 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/50">
-                          Emolumento de Secretaria
-                        </span>
-                      </div>
-                      <p className="text-xs font-normal text-slate-600 leading-relaxed max-w-xl">
-                        Pague o boletim de notas para consultar as notas já lançadas pelos professores e descarregar o PDF com os resultados disponíveis no momento.
-                      </p>
-                    </div>
+            {accessError ? (
+              <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
+                <p className="font-bold">Não foi possível verificar o boletim.</p>
+                <p className="mt-1">{accessError} Nenhum novo pagamento é necessário até confirmar o estado com a secretaria.</p>
+                <button type="button" onClick={() => setRefreshVersion((current) => current + 1)} className="mt-3 rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-bold">Tentar novamente</button>
+              </div>
+            ) : !matriculaEncontrada ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+                Não foi encontrada uma matrícula neste ano letivo. Contacte a secretaria antes de solicitar o boletim.
+              </div>
+            ) : !isLiberado ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
+                <div className="flex flex-wrap items-start gap-3">
+                  <LockIcon size={22} className="mt-1 shrink-0 text-amber-700" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <h3 className="text-base font-bold text-slate-900">Notas disponíveis após pagamento do boletim</h3>
+                    <p className="text-sm text-slate-700">
+                      Depois de a secretaria confirmar o pagamento, poderá consultar as notas já lançadas e descarregar o PDF actualizado.
+                    </p>
+                    {boletimServico?.valor && boletimServico.valor > 0 ? (
+                      <p className="text-sm font-bold text-slate-900">Taxa: {new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(boletimServico.valor)}</p>
+                    ) : (
+                      <p className="text-sm font-semibold text-amber-900">A escola ainda não configurou a taxa do boletim. Contacte a secretaria.</p>
+                    )}
+                    {boletimServico?.status === "pending" ? (
+                      <p role="status" className="text-sm font-semibold text-blue-800">Comprovativo recebido. Aguarde a validação da secretaria. Não volte a pagar.</p>
+                    ) : boletimServico?.status === "granted" ? (
+                      <p role="status" className="text-sm font-semibold text-blue-800">Pagamento em reconciliação. Contacte a secretaria se o acesso não for liberado.</p>
+                    ) : boletimServico?.status === "rejected" || boletimServico?.status === "canceled" ? (
+                      <p role="status" className="text-sm text-rose-800">Comprovativo rejeitado. Consulte o motivo na Secretaria Digital antes de reenviar.</p>
+                    ) : null}
+                    {boletimServico && boletimServico.valor > 0 ? (
+                      <Link href={`/aluno/documentos?servico=${boletimServico.codigo}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
+                        {boletimServico.status === "pending" || boletimServico.status === "granted" ? "Acompanhar pagamento" : boletimServico.status === "pending_payment" ? "Enviar comprovativo" : "Pagar boletim"}
+                        <ChevronRight size={16} />
+                      </Link>
+                    ) : null}
+                    <button type="button" onClick={() => setRefreshVersion((current) => current + 1)} className="ml-2 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-slate-700 underline">
+                      {refreshing ? "A verificar..." : "Actualizar estado"}
+                    </button>
                   </div>
-
-                  <Link 
-                    href={`/aluno/documentos${query}`}
-                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-bold text-white shadow-sm hover:bg-slate-800 active:scale-98 transition-all shrink-0"
-                  >
-                    <span>Pagar boletim</span>
-                    <ChevronRight size={15} className="text-slate-400" />
-                  </Link>
                 </div>
               </div>
-            )}
+            ) : null}
 
             <div className="grid gap-3">
-              {disciplinas.map((disc) => {
-                const status = finalStatus(disc.nota_final);
-                return (
-                  <details key={disc.id} className="group rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm transition-all open:ring-2 open:ring-emerald/10">
-                    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-slate-900">
-                        <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-open:bg-emerald-50 group-open:text-emerald transition-colors">
-                                <FileText size={16} />
+              {isLiberado && disciplinas.map((disc) => (
+                <details key={disc.id} className="group rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm open:ring-2 open:ring-emerald/10">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-slate-900">
+                    <span className="inline-flex items-center gap-2"><FileText size={16} className="text-slate-500" />{disc.nome}</span>
+                    <ChevronRight size={16} className="shrink-0 text-slate-400 transition-transform group-open:rotate-90" />
+                  </summary>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    {[1, 2, 3].map((trimestre) => {
+                      const notas = disc.avaliacoes.filter((avaliacao) => avaliacao.trimestre === trimestre);
+                      return (
+                        <div key={trimestre} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                          <p className="mb-2 text-xs font-bold text-slate-600">{trimestre}º trimestre</p>
+                          {notas.length ? notas.map((avaliacao, index) => (
+                            <div key={`${avaliacao.nome}-${index}`} className="flex justify-between gap-3 py-1 text-xs text-slate-700">
+                              <span>{avaliacao.nome}</span><span className="font-bold tabular-nums">{fmtNota(avaliacao.nota)}</span>
                             </div>
-                            <span>{disc.nome}</span>
+                          )) : <p className="text-xs text-slate-500">Ainda sem notas lançadas.</p>}
                         </div>
-                        <div className="flex items-center gap-2">
-                             {!isLiberado && <LockIcon size={12} className="text-slate-300" />}
-                             <ChevronRight size={16} className="text-slate-300 transition-transform group-open:rotate-90" />
-                        </div>
-                    </summary>
+                      );
+                    })}
+                  </div>
+                  {disc.avaliacoes.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-3 border-t border-slate-100 pt-3">
+                      <button type="button" onClick={() => { setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className="text-xs font-semibold text-emerald-800 underline">Pedir reapreciação</button>
+                      <button type="button" onClick={() => void abrirMelhoria(disc)} className="text-xs font-semibold text-slate-700 underline">Solicitar melhoria</button>
+                    </div>
+                  ) : null}
+                </details>
+              ))}
 
-                    {isLiberado ? (
-                        <div className="mt-5 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
-                            <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                                <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">1º Trimestre</p>
-                                <p className="text-lg font-bold text-slate-900">{fmtNota(disc.nota_t1)}</p>
-                            </div>
-                            <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                                <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">2º Trimestre</p>
-                                <p className="text-lg font-bold text-slate-900">{fmtNota(disc.nota_t2)}</p>
-                            </div>
-                            <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                                <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">3º Trimestre</p>
-                                <p className="text-lg font-bold text-slate-900">{fmtNota(disc.nota_t3)}</p>
-                            </div>
-
-                            <div className="md:col-span-3 mt-2 flex items-center justify-between px-2">
-                                <div className="flex flex-col">
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Nota Final</p>
-                                    <p className="text-xl font-black text-slate-900">{fmtNota(disc.nota_final)}</p>
-                                </div>
-                                <span className={`rounded-xl px-4 py-1.5 text-xs font-black uppercase tracking-tight shadow-sm ${status.cls}`}>{status.label}</span>
-                            </div>
-                            {typeof disc.nota_final === "number" && disc.nota_final < 10 && (
-                              <button type="button" onClick={() => { setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className="md:col-span-3 text-left text-xs font-bold text-emerald-700 hover:underline">
-                                Solicitar reapreciação desta disciplina →
-                              </button>
-                            )}
-                            {typeof disc.nota_final === "number" && disc.nota_final >= 10 && (
-                              <button type="button" onClick={() => void abrirMelhoria(disc)} className="md:col-span-3 text-left text-xs font-bold text-slate-700 hover:underline">
-                                Solicitar melhoria de nota →
-                              </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="mt-4 p-4 text-center bg-slate-50/80 rounded-xl border border-dashed border-slate-200">
-                            <LockIcon size={20} className="mx-auto text-slate-400 mb-1.5" />
-                            <p className="text-xs font-semibold text-slate-600">Efetue o pagamento do boletim para liberar as notas detalhadas.</p>
-                            <Link href={`/aluno/documentos${query}`} className="mt-2 inline-flex items-center gap-1 text-xs font-black text-emerald-700 hover:underline">
-                                Ir para Secretaria Digital →
-                            </Link>
-                        </div>
-                    )}
-                  </details>
-                );
-              })}
               {isLiberado && disciplinas.length === 0 && <p className="text-sm text-slate-500 text-center py-8">Ainda não há notas lançadas no boletim.</p>}
             </div>
           </section>
@@ -316,20 +363,15 @@ export function TabNotas() {
       </div>
 
       {isLiberado && (
-        <div className="flex justify-end pt-2">
-            <Button asChild tone="green" className="min-h-10 w-full sm:w-auto px-5 rounded-xl font-black text-xs shadow-sm">
-                <a href={`/api/aluno/boletim/pdf${studentId ? `?studentId=${studentId}` : ""}`} target="_blank" rel="noreferrer">
-                    <Download className="mr-2 h-4 w-4" /> Descarregar Boletim Oficial (PDF)
-                </a>
-            </Button>
+        <div className="flex flex-col items-end gap-2 pt-2">
+          {downloadError && <p role="alert" className="w-full rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{downloadError} Pode tentar novamente.</p>}
+          <button type="button" onClick={() => void descarregarBoletim()} disabled={downloading} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white disabled:opacity-60 sm:w-auto">
+            {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {downloading ? "A preparar boletim..." : "Descarregar boletim actualizado (PDF)"}
+          </button>
+          <p className="text-xs text-slate-500">O PDF inclui as notas que já foram lançadas. Pode descarregar novamente quando houver novas avaliações.</p>
         </div>
       )}
-
-      <SimuladorNotasModal
-        isOpen={isSimuladorOpen}
-        onClose={() => setIsSimuladorOpen(false)}
-        disciplinas={disciplinas}
-      />
 
       {reapreciacaoDisc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-raa-title">
@@ -356,8 +398,4 @@ export function TabNotas() {
       )}
     </div>
   );
-}
-
-function Download({ className, ...props }: any) {
-    return <svg {...props} className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M7 10l5 5m0 0l5-5m-5 5V3" /></svg>
 }

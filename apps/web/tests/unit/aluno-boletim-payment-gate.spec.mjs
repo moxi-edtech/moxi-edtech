@@ -3,22 +3,42 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const root = new URL('../../src/', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
-test('boletim rejects unauthorized student and fails closed on payment lookup error', () => {
-  const src = read('app/api/aluno/boletim/route.ts');
-  assert.match(src, /if \(!alunoId\).*status: 403/);
-  assert.match(src, /if \(permissionError\).*status: 503/);
-  assert.ok(src.indexOf('if (!isLiberado) return') < src.indexOf('.from("vw_boletim_por_matricula")'));
-});
-test('all grade endpoints use confirmed grant; recent grades scoped to current enrollment', () => {
-  for (const path of ['app/api/aluno/home/recent-grades/route.ts', 'app/api/aluno/disciplinas/[disciplinaId]/notas/route.ts', 'app/api/aluno/boletim/pdf/route.ts']) {
-    const src = read(path);
-    assert.match(src, /DOC_DECLARACAO_NOTAS/);
-    assert.match(src, /matricula_id/);
-    assert.match(src, /\.eq\(['"]status['"], ['"]granted['"]\)/);
+
+test('todos os caminhos de visualização e emissão de notas usam a mesma autorização paga', () => {
+  for (const path of [
+    'app/api/aluno/boletim/route.ts',
+    'app/api/aluno/boletim/pdf/route.ts',
+    'app/api/aluno/dashboard/route.ts',
+    'app/api/aluno/home/recent-grades/route.ts',
+    'app/api/aluno/disciplinas/[disciplinaId]/notas/route.ts',
+    'app/api/aluno/documentos/emitir/route.ts',
+  ]) {
+    assert.match(read(path), /checkBoletimAccess\(/, path);
   }
 });
-test('boletim does not fabricate MAC and NPP from the same trimester grade', () => {
-  const src = read('components/aluno/tabs/TabNotas.tsx');
-  assert.doesNotMatch(src, /<span>MAC:<\/span>/);
-  assert.doesNotMatch(src, /<span>NPP:<\/span>/);
+
+test('notas pagas são extraídas da fonte actual, não da vista materializada do boletim', () => {
+  const source = read('lib/aluno/boletimNotas.ts');
+  assert.match(source, /\.from\("notas"\)/);
+  assert.match(source, /\.from\("turma_disciplinas"\)/);
+  assert.doesNotMatch(read('app/api/aluno/boletim/route.ts'), /vw_boletim_por_matricula/);
+  assert.doesNotMatch(read('app/api/aluno/boletim/pdf/route.ts'), /vw_boletim_por_matricula/);
+  assert.match(read('lib/aluno/boletimAccess.ts'), /status === "settled"/);
+  assert.match(read('lib/aluno/boletimAccess.ts'), /order.status === "granted"/);
+});
+
+test('o portal não duplica MAC e NPP nem apresenta notas como nota anual fictícia', () => {
+  const source = read('components/aluno/tabs/TabNotas.tsx');
+  assert.doesNotMatch(source, /<span>MAC:<\/span>/);
+  assert.doesNotMatch(source, /<span>NPP:<\/span>/);
+  assert.doesNotMatch(source, /Nota Final/);
+  assert.match(source, /avaliacao\.nome/);
+});
+
+test('a secretaria confirma o pagamento no mesmo fluxo de recebimentos e alerta para liberação de notas', () => {
+  const source = read('components/secretaria/PagamentosPendentesWindow.tsx');
+  assert.match(source, /validar\(pagamentoId, aprovado/);
+  assert.match(source, /Confirmar e liberar notas/);
+  assert.match(read('components/aluno/tabs/TabDocumentos.tsx'), /20000/);
+  assert.match(read('components/aluno/tabs/TabNotas.tsx'), /20000/);
 });

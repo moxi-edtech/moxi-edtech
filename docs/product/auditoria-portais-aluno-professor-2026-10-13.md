@@ -40,3 +40,18 @@ A rota efetiva do aluno usa `AlunoLayoutClient` com `max-w-5xl` e filhos das rot
 ## Alteração incremental da Fase 2
 
 A dashboard do professor passou a usar retry por `retryVersion` sem recarregar a página e polling que evita requisições concorrentes, pausa em abas ocultas e faz backoff até cinco minutos. O teste de contrato estático `apps/web/tests/unit/professor-dashboard-recovery.spec.mjs` valida estes invariantes; isso **não substitui** testes funcionais nem E2E.
+
+## Boletim pago — fluxo aluno / secretaria (13-10-2026)
+
+Contrato aplicado no PR #194:
+
+1. **Configuração do valor:** a escola define a taxa real do serviço `DOC_BOLETIM_TRIMESTRAL` em Administração → Configurações → Emolumentos & Serviços. Valor padrão zero **não** concede acesso a notas e não é cobrado como se fosse taxa configurada. Um `DOC_DECLARACAO_NOTAS` historicamente pago é aceite apenas se houver pagamento positivo efectivamente liquidado.
+2. **Aluno:** em «Notas» vê o valor, o link directo ao serviço na Secretaria Digital e os estados «por pagar», «comprovativo enviado», «rejeitado» e «confirmado»; após confirmação pode consultar os valores das avaliações realmente lançadas, sem médias trimestrais/finais inventadas. Pode baixar um novo PDF, mesmo que outras avaliações estejam por lançar.
+3. **Secretaria:** comprovativos de serviços pagos são tratados em Secretaria → Recebimentos, no fluxo existente de `validar_lote_pagamentos`. O operador revê aluno, valor esperado e comprovativo; confirmação liquida a intenção e concede o pedido. A fila de documentos gratuitos não substitui nem duplica a decisão financeira.
+4. **Autorização:** todas as rotas que expõem notas verificam o mesmo par `servico_pedidos.granted` + `pagamento_intents.settled` e valor positivo, sempre para escola, aluno e matrícula. Apenas `settled` ou apenas `granted` não basta. Falhas de verificação negam acesso; cobranças são idempotentes na RPC existente.
+5. **Actualidade:** o portal e o PDF consultam directamente `notas` e `avaliacoes`, evitando esperar pelo cron da vista materializada do boletim. Cada avaliação é exibida pelo nome/tipo/trimestre, incluindo notas zero, e as avaliações ainda sem nota ficam ausentes. O PDF pagina e é regenerado a cada pedido.
+6. **Recuperação:** o aluno não precisa de voltar a entrar após a validação; verifica-se o estado em primeiro plano quando a página está activa, ao recuperar foco, ou pelo botão «Actualizar». Um erro de rede é explicado sem sugestão de pagar novamente.
+
+Sem novas tabelas, migrations, RLS nem motor de pagamento. Para validar com escola real é necessário confirmar valor configurado e executar um cenário de pagamento de teste autorizado (não usar matrícula real sem autorização).
+
+Validação automatizada localizada: `node --import tsx --test tests/unit/aluno-boletim-flow.spec.mjs tests/unit/aluno-boletim-payment-gate.spec.mjs` no directório `apps/web`. O teste de isolamento usa duas escolas, dois alunos e duas matrículas fictícias; o PDF é exercitado com 125 avaliações, incluindo paginação.
