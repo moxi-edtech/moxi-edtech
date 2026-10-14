@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CommandCenterPanel } from "@/components/secretaria/command-center/CommandCenterPanel";
 import { CommandCenterShell } from "@/components/secretaria/command-center/CommandCenterShell";
+import { CommandCenterStudentPicker } from "@/components/secretaria/command-center/CommandCenterStudentPicker";
+import { useCommandCenterStudent } from "@/components/secretaria/command-center/useCommandCenterStudent";
 import type { BalcaoActionId } from "@/lib/balcao/action-registry";
 
 type Student = { id: string; label: string };
@@ -28,6 +30,11 @@ export function BalcaoWorkspace({
   // Selecionar "Nova matrícula" muda a operação, nunca o aluno em atendimento.
   const [selectedStudent, setSelectedStudent] = useState<Student>(aluno);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);
+  const [switchingStudent, setSwitchingStudent] = useState(false);
+  const [academicYearId, setAcademicYearId] = useState<string | null>(null);
+  const { student: studentContext, subtitle } = useCommandCenterStudent(
+    selectedStudent.id, academicYearId, selectedStudent.label,
+  );
   const completedEnrollmentRef = useRef(false);
   const studentRequestRef = useRef(0);
 
@@ -35,11 +42,30 @@ export function BalcaoWorkspace({
     setSelectedStudent(aluno);
     setActiveAction(actionId);
     completedEnrollmentRef.current = false;
+    setSwitchingStudent(false);
   }, [actionId, aluno.id, aluno.label]);
 
   useEffect(() => () => {
     studentRequestRef.current += 1;
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setAcademicYearId(null);
+    if (!open) return () => controller.abort();
+    void fetch("/api/academic-context", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        if (!controller.signal.aborted) setAcademicYearId(
+          payload?.ok && typeof payload.context?.anoLetivoId === "string"
+            ? payload.context.anoLetivoId : null,
+        );
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAcademicYearId(null);
+      });
+    return () => controller.abort();
+  }, [escolaId, open]);
 
   const confirmLeavingEnrollment = useCallback(() => (
     activeAction !== "enrollment" || completedEnrollmentRef.current ||
@@ -49,8 +75,29 @@ export function BalcaoWorkspace({
   const handleActionChange = useCallback((next: BalcaoActionId) => {
     if (next === activeAction || !confirmLeavingEnrollment()) return;
     if (next === "enrollment") completedEnrollmentRef.current = false;
+    setSwitchingStudent(false);
     setActiveAction(next);
   }, [activeAction, confirmLeavingEnrollment]);
+
+  const handleSwitchStudent = useCallback(() => {
+    // Even a non-enrollment tab can have unsaved receipts or notes.
+    if (activeAction !== "desk" && !window.confirm(
+      "Trocar de aluno? As alterações ainda não guardadas poderão perder-se.",
+    )) return;
+    setSwitchingStudent(true);
+  }, [activeAction]);
+
+  const handleStudentPicked = useCallback((next: Student) => {
+    if (next.id === selectedStudent.id) {
+      setSwitchingStudent(false);
+      return;
+    }
+    studentRequestRef.current += 1;
+    completedEnrollmentRef.current = false;
+    setSelectedStudent(next);
+    setActiveAction("desk"); // reset all student-bound panels and drafts
+    setSwitchingStudent(false);
+  }, [selectedStudent.id]);
 
   const handleClose = useCallback(() => {
     if (!confirmLeavingEnrollment()) return;
@@ -85,20 +132,31 @@ export function BalcaoWorkspace({
   return (
     <CommandCenterShell
       variant="modal"
-      student={selectedStudent}
+      student={{ ...selectedStudent, subtitle }}
       activeAction={activeAction}
       onActionChange={handleActionChange}
+      onSwitchStudent={switchingStudent ? undefined : handleSwitchStudent}
       onClose={handleClose}
     >
-      <CommandCenterPanel
-        key={selectedStudent.id}
-        escolaId={escolaId}
-        inModal
-        alunoId={activeAction === "enrollment" ? null : selectedStudent.id}
-        actionId={activeAction}
-        onActionChange={handleActionChange}
-        onSuccess={handleSuccess}
-      />
+      {switchingStudent ? (
+        <CommandCenterStudentPicker
+          currentAlunoId={selectedStudent.id}
+          onSelect={handleStudentPicked}
+          onCancel={() => setSwitchingStudent(false)}
+        />
+      ) : (
+        <CommandCenterPanel
+          key={selectedStudent.id}
+          escolaId={escolaId}
+          inModal
+          alunoId={activeAction === "enrollment" ? null : selectedStudent.id}
+          turmaId={studentContext?.turmaId ?? null}
+          turmaLabel={studentContext?.turma ?? null}
+          actionId={activeAction}
+          onActionChange={handleActionChange}
+          onSuccess={handleSuccess}
+        />
+      )}
     </CommandCenterShell>
   );
 }
