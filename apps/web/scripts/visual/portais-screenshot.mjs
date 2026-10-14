@@ -27,7 +27,7 @@ try {
     for (const [width, height] of sizes) {
       for (const zoom of zooms) {
         await page.setViewportSize({ width, height });
-        const url = `${baseUrl}/iframe.html?id=${storyId}&viewMode=story`;
+        const url = `${baseUrl}/?story=${name}`;
         await page.goto(url, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(1200);
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);

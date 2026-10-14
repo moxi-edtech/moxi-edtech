@@ -4,6 +4,7 @@ on:
     paths:
       - 'apps/web/src/components/aluno/PortalVisualFixtures.stories.tsx'
       - 'apps/web/scripts/visual/portais-screenshot.mjs'
+      - 'apps/web/visual-harness/**'
       - 'apps/web/src/components/aluno/tabs/TabDocumentos.tsx'
       - 'apps/web/src/components/aluno/tabs/TabNotas.tsx'
       - 'apps/web/src/app/professor/page.tsx'
@@ -14,11 +15,7 @@ jobs:
   synthetic-browser-evidence:
     name: 5 viewports x 3 zoom levels x 4 actual portal components
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: https://fixture.invalid
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: fixture-only-not-a-real-credential
-      STORYBOOK_DISABLE_TELEMETRY: '1'
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -29,23 +26,21 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Build Storybook with synthetic fixtures
-        run: pnpm -C apps/web exec storybook build --output-dir storybook-static
-      - name: Install isolated Playwright runner (not a production dependency)
+      - name: Install isolated visual tools (CI only)
         run: |
           mkdir -p /tmp/klasse-visual
-          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0
+          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
           /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
-      - name: Run Storybook locally
+      - name: Start Vite for actual React portal components using synthetic API fixtures
         run: |
-          python3 -m http.server 6006 --bind 127.0.0.1 --directory apps/web/storybook-static > /tmp/klasse-storybook.log 2>&1 &
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:6006/iframe.html >/dev/null; then exit 0; fi
+          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/klasse-visual.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:6006/ >/dev/null; then exit 0; fi
             sleep 2
           done
-          echo "Storybook preview not available"
+          tail -n 90 /tmp/klasse-visual.log
           exit 1
-      - name: Capture five resolutions at three zooms, no production data
+      - name: Capture synthetic responsive/zoom matrix
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
         run: node apps/web/scripts/visual/portais-screenshot.mjs
