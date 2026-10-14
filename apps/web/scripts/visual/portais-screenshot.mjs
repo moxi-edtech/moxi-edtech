@@ -12,6 +12,11 @@ const stories = [
   ["documentos-rejeitados", "klasse-portal-visual-fixtures--documentos-rejeitados", /Boletim/i],
   ["notas-pagas", "klasse-portal-visual-fixtures--notas-pagas", /Notas|Matemática/i],
   ["professor-com-turmas", "klasse-portal-visual-fixtures--professor-com-turmas", /Portal do Professor/i],
+  ["grade-paid", "synthetic-grade-paid", /As tuas notas/i],
+  ["grade-unpaid", "synthetic-grade-unpaid", /As tuas notas/i],
+  ["grade-pending", "synthetic-grade-pending", /As tuas notas/i],
+  ["grade-rejected", "synthetic-grade-rejected", /As tuas notas/i],
+  ["grade-empty", "synthetic-grade-empty", /As tuas notas/i],
 ];
 const sizes = [[360,640],[390,844],[768,1024],[1366,768],[1920,1080]];
 const zooms = [1, 1.25, 1.5];
@@ -29,22 +34,48 @@ try {
         await page.setViewportSize({ width, height });
         const url = `${baseUrl}/?story=${name}`;
         await page.goto(url, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(1200);
+        if (name.startsWith("grade-")) await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
+        await page.waitForTimeout(350);
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
         await page.waitForTimeout(200);
         const metrics = await page.evaluate(() => {
           const root = document.documentElement;
           return { horizontalOverflow: Math.max(0, root.scrollWidth - root.clientWidth),
             bodyText: document.body.innerText.slice(0, 1600),
-            rendered: document.querySelector("#root")?.childElementCount ?? 0 };
+            rendered: document.querySelector("#root")?.childElementCount ?? 0,
+            nestedScrolls: Array.from(document.querySelectorAll("*")).filter(el=>el !== document.documentElement && el !== document.body && el.clientHeight > 0 && ["auto","scroll"].includes(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight+15).length };
         });
         const output = `${directory}/${name}-${width}x${height}-${Math.round(zoom*100)}.jpg`;
         await page.screenshot({ path: output, type: "jpeg", quality: 72, fullPage: false });
         const visible = textMatcher.test(metrics.bodyText);
         report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, fixtureRendered: visible, output });
+        if (name.startsWith("grade-")) {
+          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name} ${width}x${height} zoom ${zoom}: protected assessment leak`);
+          if (name === "grade-paid" && (!metrics.bodyText.includes("Exame do período") || !metrics.bodyText.includes("15"))) errors.push(`${name} ${width}x${height} zoom ${zoom}: paid assessments not visible`);
+          if (name === "grade-pending" && !metrics.bodyText.includes("Comprovativo em análise")) errors.push(`${name} ${width}x${height} zoom ${zoom}: pending state missing`);
+          if (name === "grade-unpaid" && !metrics.bodyText.includes("Pagar boletim")) errors.push(`${name} ${width}x${height} zoom ${zoom}: payment CTA missing`);
+          if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido")) errors.push(`${name} ${width}x${height} zoom ${zoom}: resubmit missing`);
+          if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name} ${width}x${height} zoom ${zoom}: empty state missing`);
+        }
+        if (name.startsWith("grade-") && metrics.nestedScrolls > 0) errors.push(`${name} ${width}x${height} zoom ${zoom}: unnecessary nested scroll ${metrics.nestedScrolls}`);
         if (!visible) errors.push(`${name} ${width}x${height} zoom ${zoom}: content not rendered; root children ${metrics.rendered}`);
         if (metrics.horizontalOverflow > 12) errors.push(`${name} ${width}x${height} zoom ${zoom}: horizontal overflow ${metrics.horizontalOverflow}px`);
       }
+    }
+    if (name === "grade-paid") {
+      await page.goto(`${baseUrl}/?story=grade-paid`, {waitUntil:"domcontentloaded"});
+      await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
+      await page.getByRole("button",{name:"1.º trimestre"}).click();
+      await page.getByText("Prova trimestral").waitFor();
+      await page.getByRole("button",{name:"2.º trimestre"}).click();
+      await page.getByText("Exame do período").waitFor();
+      await page.locator("details summary").first().click();
+      await page.getByRole("button",{name:"Pedir reapreciação"}).click();
+      await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor();
+      await page.getByRole("button",{name:"Fechar"}).click();
+      await page.getByRole("button",{name:"Solicitar melhoria"}).click();
+      await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor();
+      await page.getByRole("button",{name:"Fechar"}).click();
     }
     await context.close();
   }
