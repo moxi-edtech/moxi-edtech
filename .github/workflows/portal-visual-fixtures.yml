@@ -1,0 +1,59 @@
+name: Portal Visual Fixture Screenshots
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/aluno/PortalVisualFixtures.stories.tsx'
+      - 'apps/web/scripts/visual/portais-screenshot.mjs'
+      - 'apps/web/visual-harness/**'
+      - 'apps/web/src/components/aluno/tabs/TabDocumentos.tsx'
+      - 'apps/web/src/components/aluno/tabs/TabNotas.tsx'
+      - 'apps/web/src/app/professor/page.tsx'
+      - '.github/workflows/portal-visual-fixtures.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-browser-evidence:
+    name: 5 viewports x 3 zoom levels x 4 actual portal components
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated visual tools (CI only)
+        run: |
+          mkdir -p /tmp/klasse-visual
+          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
+          /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start Vite for actual React portal components using synthetic API fixtures
+        run: |
+          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/klasse-visual.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:6006/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 90 /tmp/klasse-visual.log
+          exit 1
+      - name: Validate Vite transformed React entry
+        run: |
+          curl --fail-with-body --silent --show-error http://127.0.0.1:6006/main.tsx -o /tmp/klasse-main-built.js || { tail -n 70 /tmp/klasse-visual.log; exit 1; }
+      - name: Capture synthetic responsive/zoom matrix
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/portais-screenshot.mjs
+      - name: Vite diagnostics on failure
+        if: failure()
+        run: tail -n 130 /tmp/klasse-visual.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: portal-visual-fixtures-synthetic
+          path: apps/web/visual-evidence/
+          retention-days: 7
+          if-no-files-found: warn
