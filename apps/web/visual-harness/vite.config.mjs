@@ -11,6 +11,7 @@ export default {
       { find: "~", replacement: path.resolve(dir, "../src") },
     ],
   },
+  esbuild: { jsx: "automatic", jsxImportSource: "react" },
   css: { postcss: path.resolve(dir, "..") },
   define: {
     "process.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify("https://fixture.invalid"),
