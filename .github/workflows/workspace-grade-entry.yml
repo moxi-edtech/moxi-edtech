@@ -1,0 +1,86 @@
+name: Workspace Grade Entry
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/workspace-grade-entry.yml"
+      - "apps/web/src/app/api/secretaria/notas/turmas/route.ts"
+      - "apps/web/src/lib/secretaria/grade-class-picker.ts"
+      - "apps/web/src/lib/secretaria/grade-save.ts"
+      - "apps/web/src/components/secretaria/PautaRapidaModal.tsx"
+      - "apps/web/src/components/secretaria/EnrollmentPostActionModal.tsx"
+      - "apps/web/src/app/secretaria/(portal-secretaria)/notas/page.tsx"
+      - "apps/web/tests/unit/grade-class-picker.spec.ts"
+      - "apps/web/tests/unit/grade-save.spec.ts"
+      - "apps/web/tests/unit/balcao-grade-flow-contract.spec.ts"
+      - "docs/ops/BALCAO_GRADE_ENTRY_AUDIT_20261013.md"
+
+permissions:
+  contents: read
+
+jobs:
+  grade-entry-client-and-api:
+    name: Grade selection, save and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Grade class picker / evaluation-save regression
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/grade-class-picker.spec.ts tests/unit/grade-save.spec.ts tests/unit/balcao-grade-flow-contract.spec.ts tests/unit/balcao-return-context-reconciliation.spec.ts
+      - name: Typecheck
+        run: pnpm -C apps/web typecheck
+      - name: ESLint for affected flow
+        working-directory: apps/web
+        run: |
+          pnpm exec eslint \
+            "src/app/api/secretaria/notas/turmas/route.ts" \
+            "src/app/secretaria/(portal-secretaria)/notas/page.tsx" \
+            "src/components/secretaria/PautaRapidaModal.tsx" \
+            "src/components/secretaria/EnrollmentPostActionModal.tsx" \
+            "src/lib/secretaria/grade-class-picker.ts" \
+            "src/lib/secretaria/grade-save.ts" \
+            "tests/unit/grade-class-picker.spec.ts" \
+            "tests/unit/grade-save.spec.ts" \
+            "tests/unit/balcao-grade-flow-contract.spec.ts" \
+            --max-warnings 10000
+
+  grade-entry-db-regression:
+    name: Synthetic teacher, operator and tenant grade writes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap isolated grading contract (synthetic identifiers)
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_notas_writer_minimal.sql
+      - name: Apply canonical grade writer in disposable Postgres
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20270826131000_harden_lancar_notas_batch_authz_scale.sql
+      - name: Validate operator notes, cross-tenant, grade range, closed sessions
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_notas_writer_authz_scale.sql

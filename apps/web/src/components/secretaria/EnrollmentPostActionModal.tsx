@@ -23,6 +23,10 @@ export function EnrollmentPostActionModal({
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
   const [disciplinas, setDisciplinas] = useState<Array<{ id: string; disciplina?: { id?: string; nome?: string } | null }>>([]);
   const [disciplinaId, setDisciplinaId] = useState("");
+  const [academicYearId, setAcademicYearId] = useState<string | null>(null);
+  const [academicYearError, setAcademicYearError] = useState<string | null>(null);
+  const [notaMaxima, setNotaMaxima] = useState<number | null>(null);
+  const [notaContextError, setNotaContextError] = useState<string | null>(null);
   const [turmaDisciplinaId, setTurmaDisciplinaId] = useState("");
   const [periodo, setPeriodo] = useState("1");
   const [nota, setNota] = useState("");
@@ -41,6 +45,33 @@ export function EnrollmentPostActionModal({
   const Icon = action === "portal" ? KeyRound : action === "notas" ? GraduationCap : Wallet;
 
   useEffect(() => {
+    let active = true;
+    setAcademicYearId(null);
+    setAcademicYearError(null);
+    if (!open || action !== "notas") return () => { active = false; };
+
+    void fetch("/api/academic-context", { cache: "no-store" })
+      .then((response) => response.json().then((payload) => ({ response, payload })))
+      .then(({ response, payload }) => {
+        if (!active) return;
+        if (
+          !response.ok || !payload.ok
+          || payload.context?.mode !== "CURRENT"
+          || typeof payload.context?.anoLetivoId !== "string"
+          || payload.context?.escolaId !== escolaId
+        ) {
+          setAcademicYearError(payload.error || "O ano letivo desta escola não permite lançamento de notas.");
+          return;
+        }
+        setAcademicYearId(payload.context.anoLetivoId);
+      })
+      .catch(() => {
+        if (active) setAcademicYearError("Não foi possível identificar o ano letivo ativo.");
+      });
+    return () => { active = false; };
+  }, [action, escolaId, open]);
+
+  useEffect(() => {
     if (!open || action !== "notas" || !turmaId) return;
     setDisciplinas([]);
     setDisciplinaId("");
@@ -50,9 +81,53 @@ export function EnrollmentPostActionModal({
       .catch(() => setDisciplinas([]));
   }, [open, action, turmaId]);
 
+  useEffect(() => {
+    let active = true;
+    setNotaMaxima(null);
+    setNotaContextError(null);
+    if (!open || action !== "notas" || !academicYearId || !turmaId || !disciplinaId || !turmaDisciplinaId) {
+      return () => { active = false; };
+    }
+
+    const params = new URLSearchParams({
+      disciplinaId,
+      turmaDisciplinaId,
+      trimestre: periodo,
+      anoLetivoId: academicYearId,
+      alunoId,
+    });
+    void fetch("/api/secretaria/turmas/" + encodeURIComponent(turmaId) + "/pauta-grid?" + params.toString(), {
+      cache: "no-store",
+    })
+      .then((response) => response.json().then((payload) => ({ response, payload })))
+      .then(({ response, payload }) => {
+        if (!active) return;
+        if (!response.ok || !payload.ok || !Array.isArray(payload.items)) {
+          throw new Error(payload.error || "Não foi possível confirmar a pauta deste aluno.");
+        }
+        if (!payload.items.some((row: { aluno_id?: string }) => row.aluno_id === alunoId)) {
+          throw new Error("Este aluno não pertence à pauta da turma selecionada.");
+        }
+        const max = payload.meta?.nota_maxima;
+        if (typeof max !== "number" || !Number.isFinite(max) || max <= 0) {
+          throw new Error("Esta turma não possui escala quantitativa para lançamento.");
+        }
+        setNotaMaxima(max);
+      })
+      .catch((error) => {
+        if (active) setNotaContextError(error instanceof Error ? error.message : "Não foi possível confirmar a pauta.");
+      });
+    return () => { active = false; };
+  }, [action, academicYearId, alunoId, disciplinaId, open, periodo, turmaDisciplinaId, turmaId]);
+
   const lancarNota = async () => {
     const selected = disciplinas.find((item) => item.disciplina?.id === disciplinaId);
-    if (!turmaId || !selected?.disciplina?.id || !selected.id || !nota) return;
+    if (!turmaId || !selected?.disciplina?.id || !selected.id || !nota || !academicYearId || notaMaxima === null) return;
+    const valor = Number(nota);
+    if (!Number.isFinite(valor) || valor < 0 || valor > notaMaxima) {
+      setResult({ error: "A nota deve estar dentro da escala da turma." });
+      return;
+    }
     setLoading(true);
     setResult(null);
     try {
@@ -61,10 +136,11 @@ export function EnrollmentPostActionModal({
         headers: { "Content-Type": "application/json", "idempotency-key": crypto.randomUUID() },
         body: JSON.stringify({
           turma_id: turmaId,
+          ano_letivo_id: academicYearId,
           disciplina_id: selected.disciplina.id,
           turma_disciplina_id: selected.id,
           trimestre: Number(periodo),
-          notas: [{ aluno_id: alunoId, valor: Number(nota) }],
+          notas: [{ aluno_id: alunoId, valor }],
         }),
       });
       const json = await response.json().catch(() => ({}));
@@ -130,16 +206,19 @@ export function EnrollmentPostActionModal({
           <div className="space-y-3">
             <p className="text-sm text-slate-600">Lance a nota de {alunoNome} sem sair do atendimento.</p>
             {!turmaId && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">A turma desta matrícula não foi identificada.</p>}
-            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); }} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={!turmaId || loading}>
+            {academicYearError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{academicYearError}</p>}
+            {notaContextError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{notaContextError}</p>}
+            {!academicYearId && !academicYearError && <p className="text-xs text-slate-500">A confirmar o ano letivo ativo...</p>}
+            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={!turmaId || loading}>
               <option value="">Selecionar disciplina</option>
               {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
             </select>
             <div className="grid grid-cols-2 gap-3">
-              <select value={periodo} onChange={(event) => setPeriodo(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading}><option value="1">1.º período</option><option value="2">2.º período</option><option value="3">3.º período</option></select>
-              <input type="number" min="0" max="100" step="0.01" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading} />
+              <select value={periodo} onChange={(event) => { setPeriodo(event.target.value); setNota(""); setResult(null); }} className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading}><option value="1">1.º período</option><option value="2">2.º período</option><option value="3">3.º período</option></select>
+              <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading} />
             </div>
             {result?.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{result.error}</p>}
-            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || !turmaId || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
+            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
           </div>
         )}
 

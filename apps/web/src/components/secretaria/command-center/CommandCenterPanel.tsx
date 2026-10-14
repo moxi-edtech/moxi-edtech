@@ -1,8 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { AlunoProfilePanel } from "@/components/secretaria/AlunoProfilePanel";
+import { CommandCenterStudentDossier } from "@/components/secretaria/command-center/CommandCenterStudentDossier";
 import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
 import BalcaoAtendimento, {
   type AlunoDossier,
@@ -41,6 +42,11 @@ export function CommandCenterPanel({
   onSuccess,
 }: Props) {
   const action = getBalcaoAction(actionId);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+  const handleProfileSuccess = () => {
+    setProfileRefreshKey((value) => value + 1);
+    onSuccess?.();
+  };
 
   if (action.panel === "enrollment") {
     return (
@@ -68,29 +74,28 @@ export function CommandCenterPanel({
   if (action.panel === "profile") {
     return (
       <section className="min-w-0 space-y-3" aria-label="Perfil integral do aluno">
-        <div className="min-w-0">
-          <h2 className="text-sm font-bold text-slate-900">{profileDossier ? "Perfil integral" : "Dados pessoais do aluno"}</h2>
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Perfil integral do aluno</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            {profileDossier
-              ? "Consulte dados pessoais, financeiro, histórico académico e documentos sem sair do atendimento."
-              : "Consulte e atualize os dados pessoais deste aluno dentro do atendimento."}
+            Consulte dados pessoais, financeiro, histórico académico e documentos no mesmo atendimento.
           </p>
         </div>
-        {profileDossier ?? (
-          <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-5">
-            <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />
-          </div>
+        {profileDossier && profileRefreshKey === 0 ? profileDossier : (
+          <CommandCenterStudentDossier
+            key={alunoId}
+            escolaId={escolaId}
+            alunoId={alunoId}
+            refreshKey={profileRefreshKey}
+          />
         )}
-        {profileDossier ? (
-          <details className="group min-w-0 rounded-xl border border-slate-200 bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-700 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C] sm:px-5">
-              Atualizar dados pessoais
-            </summary>
-            <div className="min-w-0 border-t border-slate-100 p-3 sm:p-5">
-              <AlunoProfilePanel alunoId={alunoId} onSuccess={onSuccess} />
-            </div>
-          </details>
-        ) : null}
+        <details className="group min-w-0 rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-700 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C] sm:px-5">
+            Atualizar dados pessoais
+          </summary>
+          <div className="min-w-0 border-t border-slate-100 p-3 sm:p-5">
+            <AlunoProfilePanel alunoId={alunoId} onSuccess={handleProfileSuccess} />
+          </div>
+        </details>
       </section>
     );
   }
@@ -100,7 +105,7 @@ export function CommandCenterPanel({
       <PautaRapidaModal
         initialTurmaId={turmaId ?? undefined}
         initialTurmaLabel={turmaLabel ?? undefined}
-        lockTurma
+        lockTurma={Boolean(turmaId)}
         focusAlunoId={alunoId}
         hideNavigation
       />

@@ -1,0 +1,50 @@
+name: Workspace Student Dossier
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/workspace-student-dossier.yml"
+      - "apps/web/src/components/secretaria/BalcaoWorkspace.tsx"
+      - "apps/web/src/components/secretaria/command-center/CommandCenterPanel.tsx"
+      - "apps/web/src/components/secretaria/command-center/CommandCenterStudentPicker.tsx"
+      - "apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx"
+      - "apps/web/src/components/aluno/AlunoPerfilPage.tsx"
+      - "apps/web/src/lib/aluno/load-dossier-data.ts"
+      - "apps/web/src/app/api/secretaria/alunos/**/dossier/route.ts"
+      - "apps/web/tests/unit/workspace-student-dossier.spec.tsx"
+
+permissions:
+  contents: read
+
+jobs:
+  student-context-and-dossier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Student switching, dossier parity and authorization guards
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/workspace-student-dossier.spec.tsx tests/unit/balcao-return-context-reconciliation.spec.ts
+      - name: TypeScript
+        run: pnpm -C apps/web typecheck
+      - name: Focused lint
+        working-directory: apps/web
+        run: |
+          pnpm exec eslint \
+            src/components/secretaria/BalcaoWorkspace.tsx \
+            src/components/secretaria/command-center/CommandCenterPanel.tsx \
+            src/components/secretaria/command-center/CommandCenterStudentPicker.tsx \
+            src/components/secretaria/command-center/CommandCenterStudentDossier.tsx \
+            src/components/aluno/AlunoPerfilPage.tsx \
+            src/lib/aluno/load-dossier-data.ts \
+            'src/app/api/secretaria/alunos/[id]/dossier/route.ts' \
+            tests/unit/workspace-student-dossier.spec.tsx \
+            --max-warnings 10000

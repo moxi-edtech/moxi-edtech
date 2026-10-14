@@ -1,0 +1,25 @@
+name: Workspace Reconciliation Guard
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/workspace-reconciliation-guard.yml'
+      - 'apps/web/tests/unit/balcao-return-context-reconciliation.spec.ts'
+      - 'docs/ops/WORKSPACE_BASE_RECONCILIATION_20261013.md'
+      - 'apps/web/src/lib/balcao/return-context.ts'
+      - 'apps/web/src/components/secretaria/**'
+      - 'apps/web/src/app/secretaria/balcao/**'
+jobs:
+  workspace-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/web && node --test --import tsx tests/unit/balcao-return-context-reconciliation.spec.ts tests/unit/command-center-registry.spec.ts
+      - run: pnpm -C apps/web typecheck

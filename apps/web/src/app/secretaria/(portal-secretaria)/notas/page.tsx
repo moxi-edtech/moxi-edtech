@@ -6,6 +6,8 @@ import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/Gra
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
 import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters"
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context"
+import { loadAllGradeTurmas } from "@/lib/secretaria/grade-class-picker"
+import { saveGradesInChunks, type GradeNote } from "@/lib/secretaria/grade-save"
 
 type TurmaItem = {
   id: string
@@ -57,12 +59,16 @@ export default function SecretariaNotasPage() {
 
 function SecretariaNotasContent() {
   const searchParams = useSearchParams()
-  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM)
+  const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null
+  const [academicYearId, setAcademicYearId] = useState<string | null>(null)
   const initialTurmaId = searchParams?.get("turmaId") ?? ""
   const initialDisciplinaId = searchParams?.get("disciplinaId") ?? ""
   const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ" | null>(null)
   const [academicContextError, setAcademicContextError] = useState<string | null>(null)
   const [turmas, setTurmas] = useState<TurmaItem[]>([])
+  const [turmasError, setTurmasError] = useState<string | null>(null)
+  const [pautaError, setPautaError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([])
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([])
   const [periodoNumero, setPeriodoNumero] = useState<number>(1)
@@ -91,63 +97,50 @@ function SecretariaNotasContent() {
     setPautaEscala(null)
   }, [academicYearId, initialDisciplinaId, initialTurmaId])
 
+  // A direct visit to /secretaria/notas has no academic year URL param:
+  // resolve the school's active session instead of displaying an empty page.
   useEffect(() => {
     let active = true
+    setAcademicYearId(null)
     setAcademicMode(null)
     setAcademicContextError(null)
+    const suffix = requestedAcademicYearId
+      ? "?" + ACADEMIC_YEAR_PARAM + "=" + encodeURIComponent(requestedAcademicYearId)
+      : ""
 
-    if (!academicYearId) {
-      setTurmas([])
-      return () => {
-        active = false
-      }
-    }
-
-    void fetch(`/api/academic-context?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(academicYearId)}`, {
-      cache: "no-store",
-    })
+    void fetch("/api/academic-context" + suffix, { cache: "no-store" })
       .then((response) => response.json().then((payload) => ({ response, payload })))
       .then(({ response, payload }) => {
         if (!active) return
-        if (!response.ok || !payload?.ok) {
+        if (!response.ok || !payload?.ok || typeof payload.context?.anoLetivoId !== "string") {
           setAcademicContextError(payload?.error || "Não foi possível identificar o ano letivo.")
           return
         }
-        setAcademicMode(payload.context?.mode === "CURRENT" ? "CURRENT" : "HISTORICAL_READ")
+        setAcademicYearId(payload.context.anoLetivoId)
+        setAcademicMode(payload.context.mode === "CURRENT" ? "CURRENT" : "HISTORICAL_READ")
       })
       .catch(() => {
         if (active) setAcademicContextError("Não foi possível identificar o ano letivo.")
       })
-
-    return () => {
-      active = false
-    }
-  }, [academicYearId])
+    return () => { active = false }
+  }, [requestedAcademicYearId])
 
   useEffect(() => {
     let active = true
-    if (!academicYearId) {
-      setTurmas([])
-      return () => {
-        active = false
-      }
-    }
+    setTurmas([])
+    setTurmasError(null)
+    if (!academicYearId) return () => { active = false }
 
     const load = async () => {
-      const params = new URLSearchParams({ session_id: academicYearId })
-      const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`, { cache: "no-store" })
-      const json = await res.json().catch(() => ({}))
-      if (!active) return
-      if (res.ok && json.ok) {
-        setTurmas(json.items || json.data || [])
-      } else {
-        setTurmas([])
+      try {
+        const all = await loadAllGradeTurmas(fetch, academicYearId)
+        if (active) setTurmas(all)
+      } catch (error) {
+        if (active) setTurmasError(error instanceof Error ? error.message : "Falha ao carregar turmas.")
       }
     }
     void load()
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [academicYearId])
 
   useEffect(() => {
@@ -215,6 +208,7 @@ function SecretariaNotasContent() {
       return
     }
     let active = true
+    setPautaError(null)
     const load = async () => {
       setLoading(true)
       try {
@@ -250,6 +244,7 @@ function SecretariaNotasContent() {
           setPautaNotaCorte(typeof json.meta?.nota_corte === "number" ? json.meta.nota_corte : null)
           setPautaEscala(typeof json.meta?.escala === "string" ? json.meta.escala : null)
         } else {
+          setPautaError(json.error || "Não foi possível carregar a pauta.")
           setPauta([])
           setPautaPesoPorTipo({})
           setPautaComponentes([])
@@ -257,18 +252,21 @@ function SecretariaNotasContent() {
           setPautaNotaCorte(10)
           setPautaEscala(null)
         }
+      } catch (error) {
+        if (active) setPautaError(error instanceof Error ? error.message : "Falha ao carregar pauta.")
       } finally {
         if (active) setLoading(false)
       }
     }
 
-    load()
+    void load()
     return () => {
       active = false
     }
   }, [academicYearId, turmaId, disciplinaId, turmaDisciplinaId, periodoNumero])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
+    setSaveError(null)
     if (!academicYearId || !turmaId || !disciplinaId || !turmaDisciplinaId) return
     if (academicMode !== "CURRENT") {
       throw new Error("Este ano letivo está disponível apenas para consulta.")
@@ -292,21 +290,11 @@ function SecretariaNotasContent() {
     const postNotas = async (params: {
       tipo: string
       isIsento: boolean
-      notas: Array<{ aluno_id: string; valor: number | null }>
+      notas: GradeNote[]
     }) => {
-      if (params.notas.length === 0) return
-      const idempotencyKey =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`
-
-      const response = await fetch("/api/secretaria/notas", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "idempotency-key": idempotencyKey,
-        },
-        body: JSON.stringify({
+      await saveGradesInChunks(
+        fetch,
+        {
           turma_id: turmaId,
           ano_letivo_id: academicYearId,
           disciplina_id: disciplinaId,
@@ -314,13 +302,10 @@ function SecretariaNotasContent() {
           trimestre: periodoNumero,
           tipo_avaliacao: params.tipo,
           is_isento: params.isIsento,
-          notas: params.notas,
-        }),
-      })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error || "Falha ao guardar notas.")
-      }
+        },
+        params.notas,
+        () => crypto.randomUUID(),
+      )
     }
 
     const isentos = rows.filter((row) => row.is_isento)
@@ -371,6 +356,15 @@ function SecretariaNotasContent() {
           {academicContextError}
         </div>
       ) : null}
+      {turmasError ? (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{turmasError}</div>
+      ) : null}
+      {pautaError ? (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{pautaError}</div>
+      ) : null}
+      {saveError ? (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{saveError}</div>
+      ) : null}
       {academicMode === "HISTORICAL_READ" ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Ano letivo em consulta histórica. As notas podem ser consultadas, mas não alteradas.
@@ -385,6 +379,7 @@ function SecretariaNotasContent() {
       <div className="grid md:grid-cols-2 gap-3 items-center">
         <select
           value={turmaId}
+          disabled={!academicYearId || Boolean(academicContextError) || Boolean(turmasError)}
           onChange={(event) => {
             setTurmaId(event.target.value)
             setDisciplinaId("")
@@ -449,6 +444,7 @@ function SecretariaNotasContent() {
           initialData={pauta}
           subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
           onSave={handleSaveBatch}
+          onSaveError={(error) => setSaveError(error instanceof Error ? error.message : "Não foi possível guardar as notas.")}
           showIsento={true}
           componentesAtivos={pautaComponentes}
           pesoPorTipo={pautaPesoPorTipo}
