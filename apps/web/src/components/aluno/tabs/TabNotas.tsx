@@ -22,7 +22,7 @@ type BoletimResponse = {
   matricula_encontrada?: boolean;
   error?: string;
   disciplinas: Disciplina[];
-  context?: { anoLetivo?: number | null; ano_letivo?: number | null; year?: number | null } | null;
+  context?: { anoLetivoLabel?: string | null } | null;
 };
 
 type BoletimServico = { codigo: string; valor: number; status: string; reject_reason?: string | null; pedido_id?: string | null };
@@ -50,7 +50,7 @@ export function TabNotas() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
-  const [academicYear, setAcademicYear] = useState<number | null>(null);
+  const [academicYear, setAcademicYear] = useState<string | null>(null);
   const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("");
   const [reapreciacaoSaving, setReapreciacaoSaving] = useState(false);
@@ -209,8 +209,8 @@ export function TabNotas() {
         const published = json.is_liberado ? json.disciplinas ?? [] : [];
         setDisciplinas(published);
         setSelectedPeriod(chooseInitialPeriod(published));
-        const yr = json.context?.anoLetivo ?? json.context?.ano_letivo ?? json.context?.year ?? null;
-        setAcademicYear(typeof yr === "number" ? yr : null);
+        const label = json.context?.anoLetivoLabel?.trim() || null;
+        setAcademicYear(label);
         if (!json.is_liberado && json.matricula_encontrada !== false) {
           const catalogResponse = await fetch(`/api/aluno/documentos/catalogo${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
           const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[] };
