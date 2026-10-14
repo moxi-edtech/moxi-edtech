@@ -36,29 +36,11 @@ export async function POST(req: Request) {
     // Um boletim sem taxa configurada não pode criar um pedido gratuito
     // que mais tarde pareça um pagamento concluído.
     if (codigo === "DOC_BOLETIM_TRIMESTRAL") {
-      // A RPC histórica recebe apenas aluno/código e escolhe a matrícula activa mais
-      // recente. Até existir escrita com matrícula explícita no banco, bloquear
-      // contextos ambíguos em vez de emitir cobrança para o ano errado.
-      const { matricula } = await resolveBoletimMatricula(supabase, {
+      const resolved = await resolveBoletimMatricula(supabase, {
         escolaId, alunoId, userId: ctx.userId, anoLetivoId, operation: "WRITE",
       });
-      if (!matricula?.id) {
-        return NextResponse.json({ ok: false, error: "Matrícula não encontrada para este ano letivo." }, { status: 409 });
-      }
-      const { data: active, error: activeError } = await supabase.from("matriculas")
-        .select("id").eq("escola_id", escolaId).eq("aluno_id", alunoId)
-        .in("status", ["ativa", "ativo"]).limit(2);
-      if (activeError) return NextResponse.json({ ok: false, error: "Não foi possível verificar a matrícula." }, { status: 503 });
-      if (active?.length !== 1 || active[0].id !== matricula.id) {
-        return NextResponse.json({ ok: false, error: "Existem matrículas activas em conflito. A secretaria deve regularizar o ano letivo antes de cobrar." }, { status: 409 });
-      }
-      const { data: conflictingOrder, error: pendingError } = await supabase.from("servico_pedidos")
-        .select("id").eq("escola_id", escolaId).eq("aluno_id", alunoId)
-        .eq("servico_codigo", codigo).in("status", ["pending_payment", "blocked"])
-        .neq("matricula_id", matricula.id).limit(1);
-      if (pendingError) return NextResponse.json({ ok: false, error: "Não foi possível verificar pedidos anteriores." }, { status: 503 });
-      if (conflictingOrder?.length) {
-        return NextResponse.json({ ok: false, error: "Há um pedido de boletim em outra matrícula. Contacte a secretaria; não efectue novo pagamento." }, { status: 409 });
+      if (!resolved.matricula?.id) {
+        return NextResponse.json({ ok: false, error: "Matrícula ativa não encontrada." }, { status: 409 });
       }
       const { data: servico, error: servicoError } = await supabase
         .from("servicos_escola")
@@ -73,30 +55,25 @@ export async function POST(req: Request) {
       }
     }
 
-    // Chamar RPC de solicitação de serviço
-    const { data, error } = await (supabase as any).rpc("aluno_solicitar_servico", {
-      p_escola_id: escolaId,
-      p_aluno_id: alunoId,
-      p_servico_codigo: codigo,
-    });
+    // Boletim: contratação atómica com matrícula e session_id explícitos.
+    // Outros documentos mantêm o contrato legado (sem alteração do motor financeiro).
+    const resolved = codigo === "DOC_BOLETIM_TRIMESTRAL"
+      ? await resolveBoletimMatricula(supabase, { escolaId, alunoId, userId: ctx.userId, anoLetivoId, operation: "WRITE" })
+      : null;
+    const { data, error } = codigo === "DOC_BOLETIM_TRIMESTRAL"
+      ? await (supabase as unknown as { rpc: (name: string, args: Record<string, string>) => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }> }).rpc("aluno_solicitar_boletim_matricula", {
+          p_escola_id: escolaId, p_aluno_id: alunoId,
+          p_matricula_id: resolved!.matricula!.id, p_session_id: resolved!.context.anoLetivoId,
+        })
+      : await supabase.rpc("aluno_solicitar_servico", {
+          p_escola_id: escolaId, p_aluno_id: alunoId, p_servico_codigo: codigo,
+        });
 
     if (error) {
       console.error("[SolicitarDoc] RPC Error:", error);
       return NextResponse.json({ ok: false, error: error.message, next_action: { type: "retry_request", label: "Tentar novamente", href: "/aluno/documentos" } }, { status: 409 });
     }
 
-    // A RPC antiga não recebe session_id. Conferimos o resultado antes de
-    // expor qualquer cobrança ao aluno (preflight acima impede ambiguidade).
-    if (codigo === "DOC_BOLETIM_TRIMESTRAL" && typeof data?.pedido_id === "string") {
-      const { matricula } = await resolveBoletimMatricula(supabase, {
-        escolaId, alunoId, userId: ctx.userId, anoLetivoId, operation: "WRITE",
-      });
-      const { data: pedido, error: pedidoError } = await supabase.from("servico_pedidos")
-        .select("matricula_id").eq("id", data.pedido_id).eq("escola_id", escolaId).eq("aluno_id", alunoId).maybeSingle();
-      if (pedidoError || pedido?.matricula_id !== matricula?.id) {
-        return NextResponse.json({ ok: false, error: "A solicitação não corresponde à matrícula seleccionada. Não efectue pagamento e contacte a secretaria." }, { status: 409 });
-      }
-    }
     return NextResponse.json({ ...data, next_action: data?.status === "pending_payment" ? { type: "pay_service", label: "Pagar agora", href: "/aluno/documentos" } : data?.status === "granted" ? { type: "download", label: "Descarregar", href: "/aluno/documentos" } : { type: "track_request", label: "Acompanhar pedido", href: "/aluno/documentos" } });
   } catch (error: unknown) {
     if (error instanceof AcademicYearContextError) {
