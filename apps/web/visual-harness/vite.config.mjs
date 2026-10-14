@@ -5,8 +5,8 @@ export default {
   root: dir,
   resolve: {
     alias: [
-      { find: /^next\\/navigation$/, replacement: path.resolve(dir, "next-navigation.ts") },
-      { find: /^next\\/link$/, replacement: path.resolve(dir, "next-link.tsx") },
+      { find: "next/navigation", replacement: path.resolve(dir, "next-navigation.ts") },
+      { find: "next/link", replacement: path.resolve(dir, "next-link.tsx") },
       { find: "@", replacement: path.resolve(dir, "../src") },
     ],
   },
