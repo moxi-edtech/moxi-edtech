@@ -245,6 +245,10 @@ export function TabNotas() {
   const moneyStatus = boletimServico?.status === "pending_payment" ? "available" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
   const access = accessPresentation(moneyStatus, boletimServico?.reject_reason);
   const docsUrl = buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`);
+  const navParams = new URLSearchParams();
+  if (studentId) navParams.set("aluno", studentId);
+  if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
+  const navQuery = navParams.size ? `?${navParams.toString()}` : "";
   const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-12 text-slate-800" data-testid="aluno-pauta-editorial">
@@ -254,9 +258,9 @@ export function TabNotas() {
         <p className="text-base leading-7 text-slate-600">Acompanha as avaliações que já foram lançadas.</p>
         {academicYear !== null && <p className="text-sm text-slate-500">Ano letivo {academicYear}</p>}
         <nav aria-label="Navegação académica" className="flex flex-wrap gap-x-5 gap-y-2 border-b border-slate-200 pt-2 text-sm">
-          <Link aria-current="page" href={buildPortalHref(escolaSlug, "/aluno/academico")} className={`inline-flex min-h-11 items-center border-b-2 border-[#2B6044] font-semibold text-[#2B6044] ${focus}`}>Notas</Link>
-          <Link href={buildPortalHref(escolaSlug, "/aluno/disciplinas")} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Disciplinas</Link>
-          <Link href={buildPortalHref(escolaSlug, "/aluno/documentos")} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Documentos</Link>
+          <Link aria-current="page" href={buildPortalHref(escolaSlug, `/aluno/academico${navQuery}`)} className={`inline-flex min-h-11 items-center border-b-2 border-[#2B6044] font-semibold text-[#2B6044] ${focus}`}>Notas</Link>
+          <Link href={buildPortalHref(escolaSlug, `/aluno/disciplinas${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Disciplinas</Link>
+          <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Documentos</Link>
         </nav>
       </header>
       {loading ? <section aria-label="A carregar as tuas notas" className="space-y-5 motion-safe:animate-pulse">
