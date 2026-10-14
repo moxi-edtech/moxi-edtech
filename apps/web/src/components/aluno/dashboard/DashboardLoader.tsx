@@ -1,387 +1,152 @@
 "use client";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { IdCard, Calendar, FileCheck, ShieldAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { AlertCircle, ArrowRight, BookOpen, CalendarDays, FileText, Wallet, Bell, GraduationCap, Clock3 } from "lucide-react";
+import { ErrorState } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
-import AvisosRecentesCard from "./AvisosRecentesCard";
-import { RematriculaBanner } from "./RematriculaBanner";
-import { ErrorState, StatCardsSkeleton, TableSkeleton } from "@/components/feedback/FeedbackSystem";
-import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { NotaBar } from "@/components/aluno/shared/NotaBar";
-import { Pill } from "@/components/aluno/shared/Pill";
-import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
-import { DiarioFamiliarTimeline } from "@/components/aluno/dashboard/DiarioFamiliarTimeline";
+import { buildStudentAttention, nextLessonLabel, type StudentDocument, type StudentRematricula } from "@/lib/aluno/dashboardPresentation";
 
 type DashboardData = {
   ok: boolean;
-  proxima_aula: any | null;
-  ultima_nota: any | null;
-  status_financeiro: { emDia: boolean; pendentes: number } | null;
-  avisos_recentes: Array<{ id: string; titulo: string; resumo: string; origem: string; data: string }>;
+  proxima_aula: { weekday: number | null; inicio: string | null; fim?: string | null; sala?: string | null; disciplina?: string | null; professor?: string | null } | null;
+  status_financeiro: { pendentes: number; error?: string } | null;
+  avisos_recentes: { id: string; titulo: string | null; resumo: string | null; origem: string | null; data: string | null }[];
+  ano_letivo?: number | null;
+  turma_nome?: string | null;
 };
-
-type RaaStatusData = {
-  ok: boolean;
-  result?: { status: "retido" | "reprovado" | "pendente" | "aprovado"; motivo: string; mensagem: string; disciplinas_afetadas: number } | null;
-};
-
-type BoletimData = {
-  ok: boolean;
-  nome_aluno?: string | null;
-  trimestre_atual?: number | null;
-  total_faltas?: number;
-  total_faltas_max?: number;
-  disciplinas: Array<{
-    id: string;
-    nome: string;
-    avaliacoes: Array<{ nome: string; tipo: string; trimestre: number; nota: number }>;
-  }>;
-};
-
+type BoletimData = { ok: boolean; nome_aluno?: string | null; is_liberado?: boolean };
+type CatalogoData = { ok: boolean; documentos?: StudentDocument[]; boletim_pago?: boolean };
+type RaaData = { ok: boolean; result?: { status: string; mensagem: string } | null };
+type ScreenData = { dashboard: DashboardData; boletim: BoletimData | null; catalogo: CatalogoData | null; rematricula: StudentRematricula | null; raa: RaaData | null };
+const go = (school: string | null, path: string) => buildPortalHref(school || "default", path);
+async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T | null> {
+  try {
+    const res = await fetch(path, { cache: "no-store", signal });
+    if (!res.ok) return null;
+    const value: unknown = await res.json();
+    if (!value || typeof value !== "object" || !("ok" in value) || (value as {ok:unknown}).ok !== true) return null;
+    return value as T;
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return null;
+  }
+}
+const heading = "text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl";
+const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
+const action = `inline-flex min-h-11 items-center gap-2 rounded-xl text-sm font-semibold text-[#24573e] underline-offset-4 hover:underline ${focus}`;
+function LoadingDashboard() {
+  return <div className="mx-auto max-w-6xl animate-pulse space-y-8 px-4 py-6 sm:px-8" aria-label="A carregar a tua página">
+    <div className="space-y-4"><div className="h-4 w-40 rounded-lg bg-slate-200"/><div className="h-9 w-56 rounded-lg bg-slate-200"/><div className="h-4 w-44 rounded-lg bg-slate-200"/></div>
+    <div className="grid gap-6 lg:grid-cols-5"><div className="h-52 rounded-2xl bg-slate-100 lg:col-span-3"/><div className="h-52 rounded-2xl bg-slate-100 lg:col-span-2"/></div>
+    <div className="h-48 rounded-2xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/>
+  </div>;
+}
 export default function DashboardLoader() {
-  const router = useRouter();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [boletim, setBoletim] = useState<BoletimData | null>(null);
-  const [raaStatus, setRaaStatus] = useState<RaaStatusData["result"]>(null);
+  const pathname = usePathname();
+  const school = getEscolaParamFromPath(pathname ?? "") ?? "default";
+  const [screen, setScreen] = useState<ScreenData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const notasRecentes = useMemo(() => (boletim?.disciplinas ?? [])
-    .flatMap((disc) => (disc.avaliacoes ?? []).map((avaliacao) => ({
-      disciplina: `${disc.nome} · ${avaliacao.nome}`,
-      nota: avaliacao.nota,
-      trimestre: avaliacao.trimestre,
-    })))
-    .sort((a, b) => b.trimestre - a.trimestre)
-    .slice(0, 3), [boletim]);
-
-  const pendentes = data?.status_financeiro?.pendentes ?? 0;
-  const ultimaNota = data?.ultima_nota?.valor ?? null;
-  const nomeAluno = boletim?.nome_aluno ?? "Aluno";
-
-  const notaColor = (nota: number | null) => {
-    if (nota === null) return "text-slate-400";
-    if (nota >= 14) return "text-emerald-600";
-    if (nota >= 10) return "text-amber-600";
-    return "text-rose-500";
-  };
-
-  const loadDashboard = useCallback(async (signal?: AbortSignal) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [dashboardRes, boletimRes, raaRes] = await Promise.all([
-        fetch("/api/aluno/dashboard", { cache: "no-store", signal }),
-        fetch("/api/aluno/boletim", { cache: "no-store", signal }),
-        fetch("/api/aluno/home/raa-status", { cache: "no-store", signal }),
-      ]);
-      const dashboardJson = (await dashboardRes.json()) as DashboardData;
-      const boletimJson = (await boletimRes.json()) as BoletimData;
-      if (!dashboardRes.ok || !dashboardJson?.ok) {
-        throw new Error(
-          dashboardJson && (dashboardJson as any).error
-            ? (dashboardJson as any).error
-            : "Falha ao carregar dashboard"
-        );
-      }
-      setData(dashboardJson);
-      if (boletimRes.ok && boletimJson?.ok) {
-        setBoletim(boletimJson);
-      }
-      const raaJson = (await raaRes.json().catch(() => null)) as RaaStatusData | null;
-      if (raaRes.ok && raaJson?.ok) setRaaStatus(raaJson.result ?? null);
-    } catch (e) {
-      if (signal?.aborted) return;
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, []);
-
+  const [reload, setReload] = useState(0);
+  const refresh = useCallback(() => setReload(n => n + 1), []);
   useEffect(() => {
     const controller = new AbortController();
-    loadDashboard(controller.signal);
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // O resumo é a única fonte obrigatória; as outras APIs de domínio já aplicam auth,
+        // seleção de matrícula/ano letivo e as regras de liquidação existentes.
+        const dashRes = await fetch("/api/aluno/dashboard", {cache:"no-store",signal:controller.signal});
+        const dash = await dashRes.json() as DashboardData & {error?: string};
+        if (!dashRes.ok || !dash.ok) throw new Error(dash.error || "Não foi possível carregar a tua página.");
+        // Pedidos adicionais são sequenciais e facultativos, não consultas paralelas nem SQL novo.
+        const boletim = await fetchJson<BoletimData>("/api/aluno/boletim", controller.signal);
+        const catalogo = await fetchJson<CatalogoData>("/api/aluno/documentos/catalogo", controller.signal);
+        const rematricula = await fetchJson<StudentRematricula & {ok:boolean}>("/api/aluno/rematricula/status", controller.signal);
+        const raa = await fetchJson<RaaData>("/api/aluno/home/raa-status", controller.signal);
+        if (!controller.signal.aborted) setScreen({dashboard:dash,boletim,catalogo,rematricula,raa});
+      } catch(e) {
+        if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Não foi possível carregar a tua página.");
+      } finally { if (!controller.signal.aborted) setLoading(false); }
+    };
+    void load();
     return () => controller.abort();
-  }, [loadDashboard]);
-
-  const totalFaltas = boletim?.total_faltas ?? 0;
-  const totalFaltasMax = boletim?.total_faltas_max ?? 0;
-
-  const percFaltas = totalFaltasMax > 0 ? (totalFaltas / totalFaltasMax) * 100 : 0;
-
-  const attendanceColor = (perc: number) => {
-    if (perc >= 80) return "text-rose-600";
-    if (perc >= 50) return "text-amber-600";
-    return "text-emerald-600";
-  };
-
-  const attendanceBarColor = (perc: number) => {
-    if (perc >= 80) return "#e11d48";
-    if (perc >= 50) return "#E3B23C";
-    return "#16a34a";
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        <AlunoCard className="bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white border-[#1f4028]">
-          <div className="h-3 w-32 rounded-full bg-white/20" />
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-3">
-              <div className="h-5 sm:h-6 w-44 rounded-full bg-white/20" />
-              <div className="flex flex-wrap gap-2">
-                <div className="h-5 sm:h-6 w-24 rounded-full bg-white/20" />
-                <div className="h-5 sm:h-6 w-28 rounded-full bg-white/20" />
-                <div className="h-5 sm:h-6 w-28 rounded-full bg-white/20" />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {[0, 1, 2].map((idx) => (
-                <div key={idx} className="rounded-xl bg-white/10 px-3 py-2 text-center">
-                  <div className="h-3 w-20 rounded-full bg-white/20 mx-auto" />
-                  <div className="mt-2 h-4 sm:h-5 w-12 rounded-full bg-white/20 mx-auto" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </AlunoCard>
-
-        <div className="space-y-3">
-          <div className="h-4 w-32 rounded-full bg-slate-200" />
-          <div className="grid gap-3 md:grid-cols-3">
-            {[0, 1, 2].map((idx) => (
-              <AlunoCard key={idx}>
-                <div className="flex items-center justify-between">
-                  <div className="h-4 w-24 rounded-full bg-slate-200" />
-                  <div className="h-4 w-10 rounded-full bg-slate-200" />
-                </div>
-                <div className="mt-3 h-2 w-full rounded-full bg-slate-200" />
-              </AlunoCard>
-            ))}
-          </div>
-        </div>
-
-        <AlunoCard>
-          <div className="h-4 w-28 rounded-full bg-slate-200" />
-          <div className="mt-3 flex gap-3">
-            <div className="h-4 w-32 rounded-full bg-slate-200" />
-            <div className="h-4 w-20 rounded-full bg-slate-200" />
-          </div>
-        </AlunoCard>
-
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <p className="text-sm font-bold text-slate-700">Avisos recentes</p>
-          </div>
-          <TableSkeleton rows={3} cols={3} />
-        </div>
+  }, [reload]);
+  const attentions = useMemo(() => screen ? buildStudentAttention({
+    pendentes: screen.dashboard.status_financeiro?.pendentes ?? 0,
+    financialError: Boolean(screen.dashboard.status_financeiro?.error),
+    documentos: screen.catalogo?.documentos,
+    rematricula: screen.rematricula,
+    academic: screen.raa?.result,
+  }) : [], [screen]);
+  if (loading) return <LoadingDashboard/>;
+  if (error || !screen) return <div className="mx-auto max-w-6xl px-4 py-8"><ErrorState title="Não foi possível carregar" description={error || "Tenta novamente."} onRetry={refresh}/></div>;
+  const lesson = nextLessonLabel(screen.dashboard.proxima_aula);
+  const firstName = screen.boletim?.nome_aluno?.trim().split(/\s+/)[0] || "aluno";
+  const today = new Intl.DateTimeFormat("pt-AO",{weekday:"long",day:"numeric",month:"long"}).format(new Date());
+  const shortcuts = [
+    {label:"Disciplinas",hint:"As tuas aulas e matérias",href:"/aluno/disciplinas",icon:GraduationCap},
+    {label:"Boletim",hint:"Notas e documentos",href:"/aluno/documentos",icon:FileText},
+    {label:"Pagamentos",hint:"Mensalidades e comprovativos",href:"/aluno/financeiro",icon:Wallet},
+    {label:"Horário",hint:"Aulas da semana",href:"/aluno/horario",icon:CalendarDays},
+  ];
+  return <main className="mx-auto w-full max-w-6xl space-y-8 px-4 pb-28 pt-5 text-slate-800 sm:px-8 sm:pt-10" data-testid="aluno-dashboard-editorial">
+    <header className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+        <p className="flex items-center gap-2 text-sm font-semibold text-[#2B6044]"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-slate-500">/ Portal do aluno</span></p>
+        <nav aria-label="Navegação rápida" className="hidden gap-5 text-sm lg:flex">
+          {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/disciplinas"],["Notas","/aluno/documentos"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(school,path)} className={`min-h-11 content-center text-slate-600 hover:text-[#2B6044] ${focus}`}>{label}</Link>)}
+        </nav>
       </div>
-    );
-  }
-  if (error) {
-    return (
-      <ErrorState
-        title="Não foi possível carregar"
-        description={error}
-        onRetry={() => loadDashboard()}
-      />
-    );
-  }
-  return (
-    <div className="space-y-6">
-      <RematriculaBanner />
-
-      <AlunoCard variant="hero">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-200/70">Resumo Lectivo</p>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-black text-white tracking-tight">{nomeAluno}</h2>
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              <Pill label={`Trimestre ${boletim?.trimestre_atual ?? "—"}`} status="emerald" className="bg-white/15 text-white border-white/20" />
-              <Pill
-                label={pendentes > 0 ? "Com pendências" : "Propinas em dia"}
-                status={pendentes > 0 ? "warning" : "approved"}
-                className={pendentes > 0 ? "bg-amber-400 text-slate-950 border-amber-300 font-black" : "bg-emerald-400 text-slate-950 border-emerald-300 font-black"}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-2xl bg-white/10 p-3 text-center backdrop-blur-sm border border-white/10">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/80">Última nota</p>
-              <p className={`text-lg font-black ${notaColor(ultimaNota)} text-white mt-0.5`}>{ultimaNota ?? "—"}</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-3 text-center backdrop-blur-sm border border-white/10">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/80">Pendentes</p>
-              <p className="text-lg font-black text-white mt-0.5">{pendentes}</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-3 text-center backdrop-blur-sm border border-white/10">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/80">Próxima aula</p>
-              <p className="text-lg font-black text-white mt-0.5">
-                {data?.proxima_aula?.weekday != null ? `Dia ${data.proxima_aula.weekday}` : "—"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </AlunoCard>
-
-      {raaStatus && (
-        <AlunoCard className={`border shadow-sm ${raaStatus.status === "retido" ? "border-rose-200 bg-rose-50/90" : raaStatus.status === "pendente" ? "border-amber-200 bg-amber-50/90" : raaStatus.status === "aprovado" ? "border-emerald-200 bg-emerald-50/90" : "border-slate-200 bg-white"}`}>
-          <div className="flex items-start gap-3">
-            <div className={`rounded-xl p-2 ${raaStatus.status === "retido" ? "bg-rose-100 text-rose-700" : "bg-white text-slate-600"}`}><ShieldAlert className="h-4 w-4" /></div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Estado académico RAA</p>
-              <p className="mt-1 text-sm font-black text-slate-900">{raaStatus.mensagem}</p>
-              <p className="mt-1 text-xs text-slate-600">{raaStatus.disciplinas_afetadas > 0 ? `${raaStatus.disciplinas_afetadas} disciplina(s) afetada(s).` : "O estado é calculado pelo resolvedor académico."}</p>
-            </div>
-          </div>
-        </AlunoCard>
-      )}
-
-      {pendentes > 0 && (
-        <AlunoCard className="border-amber-200 bg-amber-50/90 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
-                Regularização financeira
-              </p>
-              <p className="mt-1 text-sm font-black text-slate-900">
-                A ativação da sua rematrícula requer a regularização das mensalidades em aberto.
-              </p>
-              <p className="mt-1 text-xs font-medium text-slate-600">
-                Encontrámos {pendentes} mensalidade(s) não liquidada(s). Consulte o valor,
-                efetue o pagamento e envie o comprovativo para validação da secretaria.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const escolaParam = getEscolaParamFromPath(window.location.pathname) || "default";
-                router.push(buildPortalHref(escolaParam, "/aluno/financeiro"));
-              }}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-            >
-              Ver dívida e enviar comprovativo
-            </button>
-          </div>
-        </AlunoCard>
-      )}
-
-      <AlunoCard 
-        onClick={() => {
-          const escolaParam = getEscolaParamFromPath(window.location.pathname) || "default";
-          router.push(buildPortalHref(escolaParam, "/aluno/identidade"));
-        }}
-        className="group border border-slate-100 bg-white hover:border-slate-200 p-3.5 transition-all"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm group-hover:scale-105 transition-transform">
-              <IdCard className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-900">Identidade Digital</p>
-              <p className="text-[11px] text-slate-500">Cartão de estudante e QR Code de acesso.</p>
-            </div>
-          </div>
-          <div className="rounded-full bg-slate-50 p-1.5 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all">
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </AlunoCard>
-
-      {/* Card Minimalista de Próxima Avaliação (Contagem Regressiva) */}
-      <AlunoCard
-        onClick={() => {
-          const escolaParam = getEscolaParamFromPath(window.location.pathname) || "default";
-          router.push(buildPortalHref(escolaParam, "/aluno/horario"));
-        }}
-        className="group border border-slate-100 bg-white hover:border-slate-200 p-3.5 transition-all"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100/80 shadow-sm">
-              <FileCheck className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-xs font-bold text-slate-900">Prova de Matemática (NPP)</p>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-700">Faltam 3 dias</span>
-              </div>
-              <p className="text-[11px] text-slate-500">2º Trimestre • Sexta-feira às 08:00</p>
-            </div>
-          </div>
-          <div className="rounded-full bg-slate-50 p-1.5 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all">
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </AlunoCard>
-
-      <div className="space-y-3">
-        <SectionTitle action="Ver todas">Notas recentes</SectionTitle>
-        {notasRecentes.length === 0 ? (
-          <AlunoCard>
-            <p className="text-sm text-slate-500">Sem notas recentes.</p>
-          </AlunoCard>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-3">
-            {notasRecentes.map((nota) => (
-              <AlunoCard key={nota.disciplina}>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900">{nota.disciplina}</p>
-                  <span className={`text-sm font-semibold ${notaColor(nota.nota)}`}>{nota.nota}</span>
-                </div>
-                <div className="mt-3">
-                  <NotaBar nota={nota.nota} max={20} color="#16a34a" />
-                </div>
-              </AlunoCard>
-            ))}
-          </div>
-        )}
+      <div className="space-y-2">
+        <p className="text-sm capitalize text-slate-500">{today}</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Olá, {firstName}</h1>
+        {(screen.dashboard.turma_nome || screen.dashboard.ano_letivo) && <p className="text-sm text-slate-600">{[screen.dashboard.turma_nome, screen.dashboard.ano_letivo ? `Ano letivo ${screen.dashboard.ano_letivo}` : ""].filter(Boolean).join(" · ")}</p>}
+        <p className="pt-1 text-base text-slate-600">O que precisas de saber hoje.</p>
       </div>
-
-      {totalFaltas > 0 && (
-        <div className="space-y-3">
-          <SectionTitle>Assiduidade e Faltas</SectionTitle>
-          <AlunoCard>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-900">Resumo de Faltas</p>
-                <p className="text-xs text-slate-500">
-                  Acumulaste <span className={`font-bold ${attendanceColor(percFaltas)}`}>{totalFaltas} faltas</span>. 
-                  O limite máximo permitido é de {totalFaltasMax} faltas.
-                </p>
-              </div>
-              <div className="w-full md:w-48 space-y-2">
-                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <span>Uso do Limite</span>
-                  <span className={attendanceColor(percFaltas)}>{Math.round(percFaltas)}%</span>
-                </div>
-                <NotaBar nota={totalFaltas} max={totalFaltasMax} color={attendanceBarColor(percFaltas)} />
-              </div>
+    </header>
+    <div className="grid items-start gap-8 lg:grid-cols-5">
+      <section aria-labelledby="next-class" className="space-y-4 lg:col-span-3">
+        <h2 id="next-class" className={heading}>A tua próxima aula</h2>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          {lesson ? <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="rounded-xl bg-[#2B6044]/10 px-4 py-3 text-[#2B6044]"><p className="text-2xl font-semibold tabular-nums">{lesson.time}</p></div>
+              <div className="min-w-0"><p className="text-sm text-slate-500">{lesson.day}</p><p className="mt-1 text-lg font-semibold text-slate-900">{lesson.subject}</p></div>
             </div>
-          </AlunoCard>
+            {lesson.details.length > 0 && <p className="text-sm text-slate-600">{lesson.details.join(" · ")}</p>}
+          </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-slate-400"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 text-sm leading-6 text-slate-600">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
+          <Link className={`${action} mt-5`} href={go(school,"/aluno/horario")}>Ver o horário completo <ArrowRight className="h-4 w-4"/></Link>
         </div>
-      )}
-
-      <AlunoCard>
-        <SectionTitle>Próxima aula</SectionTitle>
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-600">
-          <span>
-            {data?.proxima_aula?.inicio && data?.proxima_aula?.fim
-              ? `${data.proxima_aula.inicio}–${data.proxima_aula.fim}`
-              : "Horário indisponível"}
-          </span>
-          {data?.proxima_aula?.sala && <span>Sala {data.proxima_aula.sala}</span>}
+      </section>
+      {attentions.length > 0 && <section aria-labelledby="attention-title" className="space-y-4 lg:col-span-2" data-testid="attention">
+        <h2 id="attention-title" className={heading}>Precisa da tua atenção</h2>
+        <div className="space-y-4 rounded-2xl border border-[#C8902A]/40 bg-[#C8902A]/[0.06] p-5 sm:p-6">
+          {attentions.slice(0,3).map((item,index) => <div key={item.kind+item.href} className={index?"border-t border-[#C8902A]/20 pt-4":""}>
+            <div className="flex items-start gap-3"><AlertCircle aria-hidden="true" className="mt-1 h-5 w-5 shrink-0 text-[#956412]"/><div className="min-w-0 space-y-2">
+              <p className="font-semibold text-slate-900">{item.title}</p>
+              <p className="text-sm leading-6 text-slate-700">{item.description}</p>
+              <Link href={go(school,item.href)} className={action}>{item.action}<ArrowRight className="h-4 w-4"/></Link>
+            </div></div>
+          </div>)}
         </div>
-      </AlunoCard>
-
-      <AvisosRecentesCard items={data?.avisos_recentes ?? []} />
-      <DiarioFamiliarTimeline />
+      </section>}
     </div>
-  );
+    <section aria-labelledby="school-links" className="space-y-4">
+      <h2 id="school-links" className={heading}>A tua vida escolar</h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(school,href)} className={`flex min-h-32 min-w-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-[#2B6044]/50 hover:bg-[#2B6044]/[0.03] motion-reduce:transition-none ${focus}`}>
+          <Icon className="h-6 w-6 text-[#2B6044]" aria-hidden="true"/><div><p className="text-sm font-semibold text-slate-900">{label}</p><p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">{hint}</p></div>
+        </Link>)}
+      </div>
+    </section>
+    <section aria-labelledby="notices" className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="notices" className={heading}>Avisos da escola</h2><Link className={action} href={go(school,"/aluno/avisos")}>Ver todos<ArrowRight className="h-4 w-4"/></Link></div>
+      {(screen.dashboard.avisos_recentes??[]).length===0 ? <p className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-5 text-sm text-slate-600"><Bell className="h-5 w-5 shrink-0"/> Ainda não há avisos recentes. As novidades da escola vão aparecer aqui.</p> : <ul className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-5">
+        {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-4"><p className="font-medium text-slate-900">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 text-sm leading-6 text-slate-600">{a.resumo}</p>}<p className="mt-2 text-xs text-slate-500">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
+      </ul>}
+    </section>
+  </main>;
 }
