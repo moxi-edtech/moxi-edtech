@@ -22,28 +22,34 @@ const existingPage = source("components/aluno/AlunoPerfilPage.tsx");
 
 test("Trocar aluno is present in every student-bound Command Center tab", () => {
   for (const activeAction of ["desk", "payment", "document", "reenrollment", "profile", "grade"] as const) {
-    const markup = renderToStaticMarkup(React.createElement(CommandCenterShell, {
-      variant: "modal",
-      student: { id: "synthetic-student", label: "Estudante de teste" },
-      activeAction,
-      onActionChange: () => {},
-      onSwitchStudent: () => {},
-      onClose: () => {},
-      children: React.createElement("div", {}, "Painel"),
-    }));
+    const markup = renderToStaticMarkup(
+      <CommandCenterShell
+        variant="modal"
+        student={{ id: "synthetic-student", label: "Estudante de teste" }}
+        activeAction={activeAction}
+        onActionChange={() => {}}
+        onSwitchStudent={() => {}}
+        onClose={() => {}}
+      >
+        <div>Painel</div>
+      </CommandCenterShell>,
+    );
     assert.match(markup, /Trocar aluno/, activeAction);
   }
 });
 
 test("student switch is not offered when enrollment does not target the selected student", () => {
-  const markup = renderToStaticMarkup(React.createElement(CommandCenterShell, {
-    variant: "modal",
-    student: { id: "synthetic-student", label: "Estudante de teste" },
-    activeAction: "enrollment",
-    onActionChange: () => {},
-    onSwitchStudent: () => {},
-    children: React.createElement("div", {}, "Nova matrícula"),
-  }));
+  const markup = renderToStaticMarkup(
+    <CommandCenterShell
+      variant="modal"
+      student={{ id: "synthetic-student", label: "Estudante de teste" }}
+      activeAction="enrollment"
+      onActionChange={() => {}}
+      onSwitchStudent={() => {}}
+    >
+      <div>Nova matrícula</div>
+    </CommandCenterShell>,
+  );
   assert.doesNotMatch(markup, /Trocar aluno/);
 });
 
