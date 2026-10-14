@@ -193,10 +193,18 @@ test("embedded admissions inside modal never rewrite the underlying dashboard UR
   assert.match(wizard, /if \(modalContext\) \{[\s\S]*?setModalResumeId\(null\);[\s\S]*?return;/);
 });
 
-test("modal profile renders usable content while page keeps the full dossier", () => {
+test("modal and page show the same full student dossier, with editing secondary", () => {
   const panel = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterPanel.tsx", "utf8");
-  assert.match(panel, /profileDossier \?\? \([\s\S]*?<AlunoProfilePanel alunoId=\{alunoId\}/);
-  assert.match(panel, /profileDossier \? \([\s\S]*?<details/);
+  const inline = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx", "utf8");
+  const fullPage = readFileSync("apps/web/src/components/aluno/AlunoPerfilPage.tsx", "utf8");
+  assert.match(panel, /profileDossier && profileRefreshKey === 0 \? profileDossier : \(/);
+  assert.match(panel, /<CommandCenterStudentDossier/);
+  assert.match(panel, /<details[\s\S]*?<AlunoProfilePanel alunoId=\{alunoId\}/);
+  assert.match(inline, /<DossierTabs/);
+  assert.match(inline, /<DossierFinanceiroSection/);
+  assert.match(inline, /<DossierHistoricoSection/);
+  assert.match(inline, /<DossierDocumentosSection/);
+  assert.match(fullPage, /loadAlunoDossierData\(/);
   assert.doesNotMatch(panel, /A preparar a ficha integral do aluno\.\.\./);
 });
 
