@@ -111,6 +111,13 @@ export function TabDocumentos() {
     if (doc.status === 'granted') {
       if (DIGITAL_DOCUMENT_CODES.has(doc.codigo)) handleDownload(doc);
       else window.location.assign('/aluno/avisos');
+    } else if (doc.status === 'rejected' && isBoletimServiceCode(doc.codigo)) {
+      if (!doc.pagamento_intent_id) {
+        error("Comprovativo não localizado", "Contacte a secretaria. Não solicite outro boletim nem pague novamente.");
+        return;
+      }
+      setSelectedDoc(doc);
+      setShowDrawer(true);
     } else if (doc.status === 'available' || doc.status === 'rejected') {
       handleRequest(doc);
     } else if (doc.status === 'pending_payment') {
@@ -305,7 +312,7 @@ export function TabDocumentos() {
               {doc.status !== 'available' && doc.status !== 'granted' && (
                 <p className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
                   <strong className="text-slate-800">Próximo passo: </strong>
-                  {doc.pagamento_configurado === false ? 'contacte a secretaria para definir o valor do boletim.' : doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria. Não pague novamente.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
+                  {doc.pagamento_configurado === false ? 'contacte a secretaria para definir o valor do boletim.' : doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria. Não pague novamente.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' && isBoletimServiceCode(doc.codigo) ? 'corrija o comprovativo e reenvie-o no mesmo pedido. Não pague novamente.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
                 </p>
               )}
             </AlunoCard>
@@ -334,6 +341,7 @@ export function TabDocumentos() {
           void fetchCatalogo(true);
         }}
         studentId={studentId}
+        academicYearId={academicYearId}
         dadosPagamento={dadosPagamento}
         documento={selectedDoc ? {
           codigo: selectedDoc.codigo,
