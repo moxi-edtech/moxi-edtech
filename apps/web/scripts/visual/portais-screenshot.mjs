@@ -71,7 +71,6 @@ try {
       await page.getByRole("button",{name:"Pedir reapreciação"}).click();
       await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor();
       await page.getByRole("button",{name:"Fechar"}).click();
-      await page.locator("details summary").first().click();
       await page.getByRole("button",{name:"Solicitar melhoria"}).click();
       await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor();
       await page.getByRole("button",{name:"Fechar"}).click();
