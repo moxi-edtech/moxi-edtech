@@ -49,3 +49,34 @@ test("seleção de duas matrículas preserva ano e aluno nas APIs de notas e PDF
  assert.match(ui,/bulletinParams\.set\("ano_letivo_id", academicYearId\)/);
  assert.match(ui,/api\/aluno\/boletim\/pdf\$\{bulletinQuery\}/);
 });
+
+test("contexto sintético A e B: IDs autorizados mantêm isolamento e aluno com matrículas diferentes mantém seleção",async()=>{
+ const {resolveSelectedStudentId,resolveAuthorizedStudentIds}=await import("../../src/lib/portalAlunoAuth");
+ const rows=[
+  {id:"synthetic-student-A",profile_id:"synthetic-user-A",escola_id:"synthetic-school-A"},
+  {id:"synthetic-student-B",profile_id:"synthetic-user-B",escola_id:"synthetic-school-B"},
+ ];
+ const client={
+  from(table:string){
+   const where:Record<string,string>={};
+   const query={
+    select(_columns:string){return query;},
+    eq(field:string,value:string){where[field]=value;return query;},
+    limit(_count:number){return query;},
+    async maybeSingle(){return {data:null};},
+    then(resolve:(v:{data:typeof rows})=>unknown){return Promise.resolve({data:table==="alunos"?rows.filter(x=>Object.entries(where).every(([k,v])=>x[k as keyof typeof x]===v)):[]}).then(resolve);}
+   };
+   return query;
+  }
+ } as unknown as Parameters<typeof resolveAuthorizedStudentIds>[0]["supabase"];
+ const idsA=await resolveAuthorizedStudentIds({supabase:client,userId:"synthetic-user-A",escolaId:"synthetic-school-A"});
+ const idsB=await resolveAuthorizedStudentIds({supabase:client,userId:"synthetic-user-B",escolaId:"synthetic-school-B"});
+ assert.deepEqual(idsA,["synthetic-student-A"]);
+ assert.deepEqual(idsB,["synthetic-student-B"]);
+ assert.equal(resolveSelectedStudentId({selectedId:"synthetic-student-B",authorizedIds:idsA,fallbackId:"synthetic-student-A"}),"synthetic-student-A");
+ assert.equal(resolveSelectedStudentId({selectedId:"synthetic-student-A",authorizedIds:idsB,fallbackId:"synthetic-student-B"}),"synthetic-student-B");
+ // A mesma identidade autorizada pode ter várias matrículas; as APIs resolvem o ano escolhido.
+ const api=await (await import("node:fs/promises")).readFile(new URL("../../src/app/api/aluno/boletim/route.ts",import.meta.url),"utf8");
+ assert.match(api,/resolveBoletimMatricula\(/);
+ assert.match(api,/anoLetivoId: new URL\(request.url\).searchParams.get\("ano_letivo_id"\)/);
+});

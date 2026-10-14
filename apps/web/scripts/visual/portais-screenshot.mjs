@@ -60,6 +60,22 @@ try {
         if (metrics.horizontalOverflow > 12) errors.push(`${name} ${width}x${height} zoom ${zoom}: horizontal overflow ${metrics.horizontalOverflow}px`);
       }
     }
+    if (name === "grade-paid") {
+      await page.goto(`${baseUrl}/?story=grade-paid`, {waitUntil:"domcontentloaded"});
+      await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
+      await page.getByRole("button",{name:"1.º trimestre"}).click();
+      await page.getByText("Prova trimestral").waitFor();
+      await page.getByRole("button",{name:"2.º trimestre"}).click();
+      await page.getByText("Exame do período").waitFor();
+      await page.locator("details summary").first().click();
+      await page.getByRole("button",{name:"Pedir reapreciação"}).click();
+      await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor();
+      await page.getByRole("button",{name:"Fechar"}).click();
+      await page.locator("details summary").first().click();
+      await page.getByRole("button",{name:"Solicitar melhoria"}).click();
+      await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor();
+      await page.getByRole("button",{name:"Fechar"}).click();
+    }
     await context.close();
   }
 } finally {

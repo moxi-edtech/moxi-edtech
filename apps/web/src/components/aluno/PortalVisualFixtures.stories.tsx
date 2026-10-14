@@ -37,6 +37,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
         { id: "disc-1", nome: "Matemática", avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }, { nome: "Exame do período", tipo: "exame", trimestre: 2, nota: 15 }] },
         { id: "disc-2", nome: "Língua Portuguesa", avaliacoes: [{ nome: "Trabalho prático", tipo: "trabalho", trimestre: 1, nota: 17 }] },
       ] : [] },
+      "/api/aluno/raa/melhoria": { ok: true, sessoes: [] },
       "/api/aluno/raa/dependencias": { ok: true, summary: { total: 0, abertas: 0, resolvidas: 0 }, items: [] },
       "/api/aluno/disciplinas": { ok: true, disciplinas: [] },
       "/api/professor/atribuicoes": { ok: true, items: [
