@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
-import { X, Upload, CheckCircle2, Loader2 } from "lucide-react";
+import { X, Upload, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
@@ -56,6 +55,14 @@ export function ServicePaymentDrawer({
   const [error, setError] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState("");
 
+  useEffect(() => {
+    if (open) {
+      setError(null);
+      setProgress(0);
+      setMensagem("");
+    }
+  }, [open, documento?.intentId]);
+
   if (!open || !documento) return null;
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +75,10 @@ export function ServicePaymentDrawer({
       return;
     }
 
+    if (original.size === 0) {
+      setError("O comprovativo está vazio.");
+      return;
+    }
     if (original.size > MAX_BYTES) {
       setError("Arquivo muito grande. Limite de 5MB.");
       return;
@@ -87,8 +98,8 @@ export function ServicePaymentDrawer({
       if (!json?.ok) throw new Error(json?.error ?? "Falha ao enviar");
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Erro ao enviar comprovativo");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar comprovativo");
     } finally {
       setSending(false);
     }
@@ -101,7 +112,7 @@ export function ServicePaymentDrawer({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end justify-center"
-        onClick={onClose}
+        onClick={() => { if (!sending) onClose(); }}
       >
         <motion.div 
           initial={{ y: "100%" }}
@@ -113,7 +124,7 @@ export function ServicePaymentDrawer({
         >
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-black text-slate-900">Pagamento de Serviço</h3>
-            <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
+            <button type="button" aria-label="Fechar pagamento" disabled={sending} onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition disabled:opacity-40">
               <X size={20} />
             </button>
           </div>
@@ -126,6 +137,12 @@ export function ServicePaymentDrawer({
                 <span className="text-xl font-black text-emerald">{money.format(documento.valor)}</span>
             </div>
           </div>
+
+          {!dadosPagamento?.iban && !dadosPagamento?.kwik_chave && (
+            <p role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              A escola ainda não disponibilizou IBAN ou chave KWIK. Contacte a secretaria para confirmar como pagar antes de enviar um comprovativo.
+            </p>
+          )}
 
           {dadosPagamento && (
             <div className="mb-6 rounded-2xl bg-emerald-50/50 p-4 border border-emerald-100">
@@ -199,9 +216,8 @@ export function ServicePaymentDrawer({
              )}
           </div>
 
-          <p className="mt-6 text-[10px] text-slate-400 text-center leading-relaxed px-4">
-            Após o envio, a secretaria irá validar o recebimento. <br/>
-            O documento será liberado para download automaticamente.
+          <p className="mt-6 text-xs text-slate-600 text-center leading-relaxed px-4">
+            Depois de enviar o comprovativo, aguarde a secretaria confirmar o pagamento. Não precisa efectuar outra transferência. As notas e o boletim ficam disponíveis após a confirmação.
           </p>
         </motion.div>
       </motion.div>

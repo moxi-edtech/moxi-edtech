@@ -1,0 +1,62 @@
+name: Boletim Portal Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/app/api/aluno/boletim/**'
+      - 'apps/web/src/app/api/aluno/dashboard/**'
+      - 'apps/web/src/app/api/aluno/documentos/**'
+      - 'apps/web/src/app/api/aluno/home/recent-grades/**'
+      - 'apps/web/src/app/api/aluno/disciplinas/**'
+      - 'apps/web/src/app/api/secretaria/documentos/aprovacoes/**'
+      - 'apps/web/src/app/secretaria/**/documentos/**'
+      - 'apps/web/src/app/escola/**/secretaria/**/documentos/**'
+      - 'apps/web/src/components/aluno/tabs/TabNotas.tsx'
+      - 'apps/web/src/components/aluno/tabs/TabDocumentos.tsx'
+      - 'apps/web/src/components/aluno/dashboard/DashboardLoader.tsx'
+      - 'apps/web/src/components/secretaria/SecretariaDocumentosWorkspace.tsx'
+      - 'apps/web/src/components/secretaria/PagamentosPendentesWindow.tsx'
+      - 'apps/web/src/lib/aluno/boletim*.ts'
+      - 'apps/web/tests/unit/aluno-boletim*.spec.mjs'
+      - '.github/workflows/boletim-portal-contracts.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  student-secretaria-contracts:
+    name: Student and Secretaria bulletin contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Payment, tenant and navigation regressions
+        run: |
+          cd apps/web
+          node --import tsx --test \
+            tests/unit/aluno-boletim-flow.spec.mjs \
+            tests/unit/aluno-boletim-payment-gate.spec.mjs \
+            tests/unit/aluno-boletim-navigation-cleanup.spec.mjs
+      - name: KLASSE UI Standards
+        run: node scripts/check-klasse-ui-standards.mjs
+      - name: Focused ESLint
+        run: |
+          pnpm -C apps/web exec eslint \
+            src/components/aluno/tabs/TabNotas.tsx \
+            src/components/aluno/tabs/TabDocumentos.tsx \
+            src/components/secretaria/SecretariaDocumentosWorkspace.tsx \
+            src/components/secretaria/PagamentosPendentesWindow.tsx \
+            src/lib/aluno/boletimAccess.ts \
+            src/lib/aluno/boletimNotas.ts \
+            src/lib/aluno/boletimPdf.ts \
+            --max-warnings 10000

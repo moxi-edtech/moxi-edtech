@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, FileText, Image as ImageIcon, CheckCircle2, XCircle } from "lucide-react";
+import { isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
 import { usePagamentosPendentes, type PagamentoPendenteRow, type PagamentosPendentesFilters } from "@/hooks/usePagamentosPendentes";
 import { useRematriculaBalcao } from "@/hooks/useRematriculaBalcao";
 import type { RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
@@ -106,14 +107,15 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
     const row = rows.find((item) => item.pagamento_id === pagamentoId);
     const quantidadeItens = row?.quantidade_itens ?? 1;
     const isServico = row?.tipo_entidade === "servico";
+    const isBoletim = isServico && isBoletimServiceCode(row?.servico_codigo ?? null);
     const isRematricula = isServico && row?.servico_codigo === "SERV_REMATRICULA";
     setDecisionNotice({
       tone: aprovado ? "success" : "info",
       title: aprovado
-        ? isRematricula ? "Pagamento de rematrícula validado" : isServico ? "Serviço liberado" : "Pagamento aprovado"
+        ? isRematricula ? "Pagamento de rematrícula validado" : isBoletim ? "Boletim de notas liberado" : isServico ? "Serviço liberado" : "Pagamento aprovado"
         : "Comprovativo rejeitado",
       detail: aprovado
-        ? isRematricula ? "O comprovativo foi confirmado. A rematrícula será concluída no modal deste aluno." : isServico ? "O aluno já pode voltar ao portal e descarregar o serviço." : quantidadeItens > 1 ? `${quantidadeItens} mensalidades foram liquidadas numa única decisão; os recibos serão actualizados.` : "O pagamento foi liquidado e o recibo será actualizado."
+        ? isRematricula ? "O comprovativo foi confirmado. A rematrícula será concluída no modal deste aluno." : isBoletim ? "O aluno já pode consultar as notas lançadas e descarregar o boletim actualizado." : isServico ? "O aluno já pode voltar ao portal e descarregar o serviço." : quantidadeItens > 1 ? `${quantidadeItens} mensalidades foram liquidadas numa única decisão; os recibos serão actualizados.` : "O pagamento foi liquidado e o recibo será actualizado."
         : "O motivo foi enviado ao aluno. Ele poderá corrigir e reenviar o comprovativo.",
       alunoId: row?.aluno_id,
     });
@@ -145,9 +147,10 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           <h1 className="text-xl font-semibold text-slate-900">Janela de recebimento</h1>
           <p className="text-sm text-slate-500">Validação de comprovantes pendentes via fluxo auditável.</p>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-          {total} pendente(s)
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setFilters((current) => ({ ...current, origem: "servico" }))} className="min-h-9 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-800">Ver pagamentos de serviços</button>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">{total} pendente(s)</span>
+        </div>
       </header>
 
       <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-3">
@@ -248,6 +251,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           {rows.map((row) => {
             const actioning = Boolean(actioningById[row.pagamento_id]);
             const isRematricula = row.tipo_entidade === "servico" && row.servico_codigo === "SERV_REMATRICULA";
+            const isBoletim = row.tipo_entidade === "servico" && isBoletimServiceCode(row.servico_codigo);
             return (
               <article key={row.pagamento_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
@@ -258,7 +262,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
                   <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700">A aguardar validação</span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-xs">
-                  <span className="text-slate-500">Tipo<p className="mt-0.5 font-bold text-slate-800">{isRematricula ? "Rematrícula" : row.servico_nome || row.tipo_entidade}</p></span>
+                  <span className="text-slate-500">Tipo<p className="mt-0.5 font-bold text-slate-800">{isBoletim ? "Boletim de notas" : isRematricula ? "Rematrícula" : row.servico_nome || row.tipo_entidade}</p></span>
                   <span className="text-slate-500">Valor enviado<p className="mt-0.5 font-bold text-slate-800">{kwanza.format(Number(row.valor_enviado || 0))}</p></span>
                 </div>
                 {row.comprovante_url ? <a href={row.comprovante_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-700">{isPdf(row.comprovante_url) ? <FileText className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />} Ver comprovativo</a> : <p className="mt-3 text-xs text-slate-500">Sem comprovativo anexado.</p>}
@@ -303,7 +307,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
                         {row.tipo_entidade}
                       </span>
                       <p className="mt-1 text-xs font-semibold text-slate-600">
-                        {row.quantidade_itens && row.quantidade_itens > 1 ? `${row.quantidade_itens} mensalidades · comprovativo consolidado` : row.servico_nome || row.servico_codigo || "—"}
+                        {row.quantidade_itens && row.quantidade_itens > 1 ? `${row.quantidade_itens} mensalidades · comprovativo consolidado` : isBoletimServiceCode(row.servico_codigo) ? "Boletim de notas" : row.servico_nome || row.servico_codigo || "—"}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-slate-800">{kwanza.format(Number(row.valor_esperado || 0))}</td>
@@ -457,9 +461,10 @@ function RecebimentoApprovalModal({
 
   const isServico = row.tipo_entidade === "servico";
   const isRematricula = isServico && row.servico_codigo === "SERV_REMATRICULA";
+  const isBoletim = isServico && isBoletimServiceCode(row.servico_codigo);
   const isLote = !isServico && (row.quantidade_itens ?? 1) > 1;
   const isGratuito = Number(row.valor_esperado || 0) === 0 && Number(row.valor_enviado || 0) === 0;
-  const title = isRematricula
+  const title = isBoletim ? "Confirmar pagamento do boletim" : isRematricula
     ? "Revisar rematrícula"
     : isGratuito
       ? "Revisar pedido gratuito"
@@ -468,7 +473,7 @@ function RecebimentoApprovalModal({
         : isServico
           ? "Revisar serviço"
           : "Revisar mensalidade";
-  const actionLabel = isRematricula
+  const actionLabel = isBoletim ? "Confirmar e liberar notas" : isRematricula
     ? "Validar e escolher turma"
     : isGratuito
       ? "Aprovar pedido gratuito"
@@ -477,7 +482,9 @@ function RecebimentoApprovalModal({
         : isLote
           ? "Confirmar mensalidades"
           : "Confirmar pagamento";
-  const consequence = isRematricula
+  const consequence = isBoletim
+    ? "Após confirmar este pagamento, o aluno poderá ver as notas já lançadas e descarregar o boletim actualizado. Confirme o valor e o comprovativo antes de liberar o acesso."
+    : isRematricula
     ? "O comprovativo será confirmado e o modal de rematrícula será aberto para rever a turma destino."
     : isGratuito
       ? "A aprovação libera o pedido sem cobrança e mantém o registo da decisão da secretaria."

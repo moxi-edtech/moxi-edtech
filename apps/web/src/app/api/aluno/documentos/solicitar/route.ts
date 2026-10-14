@@ -26,8 +26,25 @@ export async function POST(req: Request) {
     const { codigo, studentId } = parsed.data;
     const { escolaId } = ctx;
     const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId, userEmail: (await supabase.auth.getUser()).data.user?.email });
+    if (studentId && !authorizedIds.includes(studentId)) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
     const alunoId = resolveSelectedStudentId({ selectedId: studentId ?? null, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: false, error: "Educando não autorizado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });
+
+    // Um boletim sem taxa configurada não pode criar um pedido gratuito
+    // que mais tarde pareça um pagamento concluído.
+    if (codigo === "DOC_BOLETIM_TRIMESTRAL") {
+      const { data: servico, error: servicoError } = await supabase
+        .from("servicos_escola")
+        .select("valor_base")
+        .eq("escola_id", escolaId)
+        .eq("codigo", codigo)
+        .eq("ativo", true)
+        .maybeSingle();
+      if (servicoError) return NextResponse.json({ ok: false, error: "Não foi possível consultar a taxa do boletim." }, { status: 503 });
+      if (!servico || Number(servico.valor_base) <= 0) {
+        return NextResponse.json({ ok: false, error: "A secretaria precisa configurar a taxa do boletim antes de solicitar o pagamento." }, { status: 409 });
+      }
+    }
 
     // Chamar RPC de solicitação de serviço
     const { data, error } = await (supabase as any).rpc("aluno_solicitar_servico", {

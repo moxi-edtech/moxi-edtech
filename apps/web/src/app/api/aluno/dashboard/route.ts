@@ -1,3 +1,4 @@
+import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { applyKf2ListInvariants } from "@/lib/kf2";
@@ -123,20 +124,25 @@ export async function GET() {
       }
     } catch {}
 
-    // Última nota lançada (placeholder: depende de schema de notas)
+    // A Dashboard não pode contornar o pagamento protegido nos restantes endpoints.
     let ultima_nota: NotaRow | null = null;
+    let notas_acesso_indisponivel = false;
     try {
-      if (matriculaId && escolaId) {
-        const { data: ns } = await supabase
+      if (matriculaId && escolaId && ctx.alunoId) {
+        const access = await checkBoletimAccess(supabase, { escolaId, alunoId: ctx.alunoId, matriculaId });
+        if (access.error) notas_acesso_indisponivel = true;
+        if (access.granted) {
+          const { data: ns } = await supabase
           .from('notas')
           .select('valor, created_at')
           .eq('escola_id', escolaId)
           .eq('matricula_id', matriculaId)
           .order('created_at', { ascending: false })
           .limit(1);
-        ultima_nota = ns?.[0] ?? null;
+          ultima_nota = ns?.[0] ?? null;
+        }
       }
-    } catch {}
+    } catch { notas_acesso_indisponivel = true; }
 
     // Status financeiro (baseado em mensalidades do aluno)
     let status_financeiro: StatusFinanceiro = { emDia: true, pendentes: 0 };
@@ -207,6 +213,7 @@ export async function GET() {
       ok: true,
       proxima_aula,
       ultima_nota,
+      notas_acesso_indisponivel,
       status_financeiro,
       avisos_recentes,
       dados_pagamento: await (async () => {

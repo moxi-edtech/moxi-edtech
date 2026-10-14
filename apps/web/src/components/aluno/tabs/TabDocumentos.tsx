@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FileText, Download, Loader2, CheckCircle2, Wallet, Clock, AlertCircle, Upload, XCircle, ChevronRight, ShieldCheck } from "lucide-react";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { BOLETIM_SERVICE_CODE, BOLETIM_LEGACY_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { formatKwanza } from "@/lib/formatters";
 import { ServicePaymentDrawer } from "../layout/ServicePaymentDrawer";
@@ -21,12 +24,12 @@ interface DocumentoCatalogo {
   pagamento_intent_id?: string | null;
   exige_pagamento_antes_de_liberar: boolean;
   reject_reason?: string | null;
+  pagamento_configurado?: boolean;
 }
 
 const DIGITAL_DOCUMENT_CODES = new Set([
-  'DOC_DECLARACAO_NOTAS',
   'DOC_DECLARACAO_FREQUENCIA',
-  'DOC_BOLETIM_TRIMESTRAL',
+  BOLETIM_SERVICE_CODE,
   'DOC_COMPROVANTE_MATRICULA',
   'DOC_CARTAO_ESTUDANTE',
   'DOC_FICHA_INSCRICAO',
@@ -36,55 +39,86 @@ const DIGITAL_DOCUMENT_CODES = new Set([
 
 export function TabDocumentos() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const escolaSlug = getEscolaParamFromPath(pathname);
   const { error, success } = useToast();
   const studentId = searchParams?.get("aluno") ?? null;
-  const serviceCode = searchParams?.get("servico") ?? null;
-  const query = studentId ? `?studentId=${studentId}` : '';
+  const rawServiceCode = searchParams?.get("servico") ?? null;
+  // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
+  const serviceCode = rawServiceCode === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : rawServiceCode;
+  const query = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
 
   const [loading, setLoading] = useState<string | null>(null);
   const [docs, setDocs] = useState<DocumentoCatalogo[]>([]);
-  const [dadosPagamento, setDadosPagamento] = useState<any>(null);
+  const [dadosPagamento, setDadosPagamento] = useState<{ iban?: string; banco?: string; titular_conta?: string; kwik_chave?: string } | null>(null);
   const [fetching, setFetching] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   
   // Modal state
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
-  const visibleDocs = serviceCode ? docs.filter((doc) => doc.codigo === serviceCode) : docs;
+  const visibleDocs = docs.filter((doc) =>
+    doc.codigo !== BOLETIM_LEGACY_SERVICE_CODE && (!serviceCode || doc.codigo === serviceCode)
+  );
 
-  const fetchCatalogo = async () => {
+  const fetchCatalogo = useCallback(async (quiet = false) => {
     setCatalogError(null);
-    setFetching(true);
+    if (!quiet) setFetching(true);
     try {
-      const res = await fetch(`/api/aluno/documentos/catalogo${query}`);
+      const res = await fetch(`/api/aluno/documentos/catalogo${query}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar a Secretaria Digital.");
       setDocs(json.documentos ?? []);
       setDadosPagamento(json.dados_pagamento ?? null);
     } catch (err) {
-      console.error("Failed to fetch catalog", err);
+      setDocs([]);
       setCatalogError(err instanceof Error ? err.message : "Não foi possível carregar os serviços.");
     } finally {
-      setFetching(false);
+      if (!quiet) setFetching(false);
     }
-  };
+  }, [query]);
 
   useEffect(() => {
-    fetchCatalogo();
-  }, [studentId]);
+    setDocs([]);
+    setSelectedDoc(null);
+    setShowDrawer(false);
+    void fetchCatalogo();
+  }, [fetchCatalogo]);
+
+  const hasPending = docs.some((doc) => doc.status === "pending");
+  useEffect(() => {
+    if (!hasPending) return;
+    const refresh = () => { if (document.visibilityState === "visible") void fetchCatalogo(true); };
+    const interval = window.setInterval(refresh, 20000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [hasPending, fetchCatalogo]);
 
   const handleAction = async (doc: DocumentoCatalogo) => {
+    if (doc.pagamento_configurado === false) {
+      error("Taxa não configurada", "A secretaria precisa definir o valor do boletim antes de o aluno fazer o pagamento.");
+      return;
+    }
     if (doc.status === 'granted') {
       if (DIGITAL_DOCUMENT_CODES.has(doc.codigo)) handleDownload(doc);
       else window.location.assign('/aluno/avisos');
     } else if (doc.status === 'available' || doc.status === 'rejected') {
       handleRequest(doc);
     } else if (doc.status === 'pending_payment') {
+      if (!doc.pagamento_intent_id) {
+        error("Pagamento não localizado", "Actualize o estado do pedido ou contacte a secretaria. Não faça outro pagamento.");
+        return;
+      }
       setSelectedDoc(doc);
       setShowDrawer(true);
     } else if (doc.status === 'pending' || doc.status === 'blocked') {
       await fetchCatalogo();
-      success("Pedido em acompanhamento", "O estado foi actualizado. A secretaria será avisada quando houver uma decisão.");
+      success("Pedido em acompanhamento", "O estado foi actualizado. Aguarde a confirmação da secretaria.");
     }
   };
 
@@ -111,7 +145,7 @@ export function TabDocumentos() {
         success("Solicitação enviada", json.message || "Seu pedido foi registrado com sucesso.");
       }
       
-      fetchCatalogo();
+      void fetchCatalogo(true);
     } catch (err: unknown) {
       error("Erro na solicitação", err instanceof Error ? err.message : "Não foi possível processar o pedido.");
     } finally {
@@ -122,22 +156,35 @@ export function TabDocumentos() {
   const handleDownload = async (doc: DocumentoCatalogo) => {
     setLoading(doc.codigo);
     try {
-      const type = doc.codigo === 'DOC_CARTAO_ESTUDANTE' ? 'cartao' : doc.codigo === 'DOC_FICHA_INSCRICAO' ? 'ficha' : doc.codigo === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : doc.codigo === 'DOC_CERTIFICADO_HABILITACOES' ? 'certificado' : ['DOC_DECLARACAO_NOTAS', 'DOC_BOLETIM_TRIMESTRAL'].includes(doc.codigo) ? 'boletim' : 'declaracao';
-      
-      const res = await fetch(`/api/aluno/documentos/emitir${query}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, serviceCode: doc.codigo, ...(studentId ? { studentId } : {}) })
-      });
-      
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Falha ao emitir documento');
-      
-      if (json.url) {
-        window.open(json.url, '_blank');
+      const isBoletim = isBoletimServiceCode(doc.codigo);
+      if (isBoletim) {
+        const res = await fetch(`/api/aluno/boletim/pdf${query}`, { cache: "no-store" });
+        if (!res.ok) {
+          const json = await res.json().catch(() => null) as { error?: string } | null;
+          throw new Error(json?.error || "Não foi possível descarregar o boletim.");
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "boletim_de_notas.pdf";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 3000);
+      } else {
+        const type = doc.codigo === 'DOC_CARTAO_ESTUDANTE' ? 'cartao' : doc.codigo === 'DOC_FICHA_INSCRICAO' ? 'ficha' : doc.codigo === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : doc.codigo === 'DOC_CERTIFICADO_HABILITACOES' ? 'certificado' : 'declaracao';
+        const res = await fetch(`/api/aluno/documentos/emitir${query}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, serviceCode: doc.codigo, ...(studentId ? { studentId } : {}) })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Falha ao emitir documento');
+        if (json.url) window.open(json.url, '_blank', 'noopener,noreferrer');
       }
     } catch (err: unknown) {
       error("Erro no download", err instanceof Error ? err.message : "Não conseguimos obter o documento.");
+      void fetchCatalogo(true);
     } finally {
       setLoading(null);
     }
@@ -158,7 +205,7 @@ export function TabDocumentos() {
       <header className="px-1 space-y-1">
         <h2 className="text-xl font-black text-slate-900 tracking-tight">Secretaria Digital</h2>
         <p className="text-xs font-medium text-slate-500 leading-relaxed">
-          Solicita e descarrega documentos oficiais com acompanhamento de estado em tempo real.
+          Escolha o documento, envie o comprovativo de pagamento e acompanhe a validação da secretaria.
         </p>
       </header>
 
@@ -182,7 +229,6 @@ export function TabDocumentos() {
           {visibleDocs.map((doc) => (
             <AlunoCard 
               key={doc.id}
-              onClick={() => handleAction(doc)}
               className="group relative transition-all duration-300 hover:shadow-md active:scale-[0.99] border border-slate-100/80 bg-white p-5 sm:p-6 rounded-3xl space-y-4"
             >
               <div className="flex items-start justify-between gap-4 sm:gap-6">
@@ -203,7 +249,7 @@ export function TabDocumentos() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-bold text-slate-900 leading-snug">{doc.nome}</h3>
                       <span className="text-[11px] font-black text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-0.5 rounded-full shrink-0">
-                        {doc.valor > 0 ? formatKwanza(doc.valor) : 'Gratuito'}
+                        {doc.pagamento_configurado === false ? "Taxa não definida" : doc.valor > 0 ? formatKwanza(doc.valor) : 'Gratuito'}
                       </span>
                     </div>
 
@@ -214,7 +260,10 @@ export function TabDocumentos() {
                     )}
 
                     <div className="pt-1">
-                      <StatusBadge status={doc.status} />
+                      {doc.pagamento_configurado === false ? <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold text-amber-900">Contactar secretaria</span> : <StatusBadge status={doc.status} />}
+                      {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" ? (
+                        <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId ? `?aluno=${encodeURIComponent(studentId)}` : ""}`)} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</Link>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -226,7 +275,11 @@ export function TabDocumentos() {
                       <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                     </div>
                   ) : (
-                    <ActionButton status={doc.status} codigo={doc.codigo} gratuito={doc.valor <= 0} />
+                    doc.pagamento_configurado === false ? <span className="text-xs font-semibold text-amber-800">Taxa pendente</span> : (
+                      <button type="button" onClick={() => void handleAction(doc)} className="rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" aria-label={`${doc.status === 'granted' ? 'Descarregar' : doc.status === 'pending' ? 'Acompanhar' : 'Solicitar'}: ${doc.nome}`}>
+                        <ActionButton status={doc.status} codigo={doc.codigo} gratuito={doc.valor <= 0} />
+                      </button>
+                    )
                   )}
                 </div>
               </div>
@@ -248,7 +301,7 @@ export function TabDocumentos() {
               {doc.status !== 'available' && doc.status !== 'granted' && (
                 <p className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
                   <strong className="text-slate-800">Próximo passo: </strong>
-                  {doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
+                  {doc.pagamento_configurado === false ? 'contacte a secretaria para definir o valor do boletim.' : doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria. Não pague novamente.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
                 </p>
               )}
             </AlunoCard>
@@ -264,7 +317,7 @@ export function TabDocumentos() {
         <div className="space-y-1">
           <p className="text-xs font-black uppercase tracking-wider text-slate-700">Autenticidade & Segurança</p>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Todos os documentos emitidos possuem um <strong>QR Code com assinatura digital</strong> para validação instantânea pelas instituições parceiras.
+            Consulte sempre o documento emitido e os seus dados. Os documentos que possuem código de verificação incluem instruções para confirmar a autenticidade; o boletim de notas apresenta as avaliações lançadas até à emissão.
           </p>
         </div>
       </div>
@@ -273,8 +326,8 @@ export function TabDocumentos() {
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
         onSuccess={() => {
-          success("Comprovativo enviado", "Aguarde a validação pela secretaria.");
-          fetchCatalogo();
+          success("Comprovativo recebido", "A secretaria irá validar o pagamento. Não precisa pagar novamente.");
+          void fetchCatalogo(true);
         }}
         studentId={studentId}
         dadosPagamento={dadosPagamento}

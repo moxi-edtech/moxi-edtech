@@ -30,16 +30,12 @@ type BoletimData = {
   ok: boolean;
   nome_aluno?: string | null;
   trimestre_atual?: number | null;
+  total_faltas?: number;
+  total_faltas_max?: number;
   disciplinas: Array<{
     id: string;
     nome: string;
-    nota_t1?: number | null;
-    nota_t2?: number | null;
-    nota_t3?: number | null;
-    nota_final?: number | null;
-    faltas: number;
-    faltas_max: number;
-    status: "lancada" | "pendente" | "bloqueada";
+    avaliacoes: Array<{ nome: string; tipo: string; trimestre: number; nota: number }>;
   }>;
 };
 
@@ -51,16 +47,14 @@ export default function DashboardLoader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const notasRecentes = useMemo(() => {
-    const disciplinas = boletim?.disciplinas ?? [];
-    return disciplinas
-      .map((disc) => {
-        const nota = disc.nota_final ?? disc.nota_t3 ?? disc.nota_t2 ?? disc.nota_t1 ?? null;
-        return { disciplina: disc.nome, nota };
-      })
-      .filter((item) => typeof item.nota === "number")
-      .slice(0, 3) as Array<{ disciplina: string; nota: number }>;
-  }, [boletim]);
+  const notasRecentes = useMemo(() => (boletim?.disciplinas ?? [])
+    .flatMap((disc) => (disc.avaliacoes ?? []).map((avaliacao) => ({
+      disciplina: `${disc.nome} · ${avaliacao.nome}`,
+      nota: avaliacao.nota,
+      trimestre: avaliacao.trimestre,
+    })))
+    .sort((a, b) => b.trimestre - a.trimestre)
+    .slice(0, 3), [boletim]);
 
   const pendentes = data?.status_financeiro?.pendentes ?? 0;
   const ultimaNota = data?.ultima_nota?.valor ?? null;
@@ -111,13 +105,8 @@ export default function DashboardLoader() {
     return () => controller.abort();
   }, [loadDashboard]);
 
-  const totalFaltas = useMemo(() => {
-    return (boletim?.disciplinas ?? []).reduce((acc, d) => acc + (d.faltas || 0), 0);
-  }, [boletim]);
-
-  const totalFaltasMax = useMemo(() => {
-    return (boletim?.disciplinas ?? []).reduce((acc, d) => acc + (d.faltas_max || 0), 0);
-  }, [boletim]);
+  const totalFaltas = boletim?.total_faltas ?? 0;
+  const totalFaltasMax = boletim?.total_faltas_max ?? 0;
 
   const percFaltas = totalFaltasMax > 0 ? (totalFaltas / totalFaltasMax) * 100 : 0;
 

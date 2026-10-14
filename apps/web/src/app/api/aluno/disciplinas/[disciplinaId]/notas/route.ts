@@ -1,13 +1,8 @@
 // @kf2 allow-scan
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
-
-type BoletimDisciplinaRow = {
-  trimestre: number | null;
-  nota_final: number | null;
-  status: string | null;
-  missing_count: number | null;
-};
+import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
+import { loadNotasLancadas } from "@/lib/aluno/boletimNotas";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,62 +11,31 @@ export async function GET(_req: Request, context: { params: Promise<{ disciplina
   try {
     const { disciplinaId } = await context.params;
     const { supabase, ctx } = await getAlunoContext();
-
-    if (!ctx) {
-      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    }
-
+    if (!ctx?.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const { matriculaId, escolaId, alunoId } = ctx;
-    if (!matriculaId || !escolaId || !alunoId) {
-      return NextResponse.json({ ok: true, notas: [] });
-    }
+    if (!matriculaId || !escolaId || !alunoId) return NextResponse.json({ ok: true, notas: [] });
 
-    // --- SEGURANÇA: Verificar se o boletim foi pago ---
-    const { data: permission } = await supabase
-      .from('servico_pedidos')
-      .select('status')
-      .eq('escola_id', escolaId)
-      .eq('aluno_id', alunoId)
-      .eq('matricula_id', matriculaId)
-      .eq('servico_codigo', 'DOC_DECLARACAO_NOTAS')
-      .eq('status', 'granted')
-      .limit(1)
-      .maybeSingle();
+    const access = await checkBoletimAccess(supabase, { escolaId, alunoId, matriculaId });
+    if (access.error) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503 });
+    if (!access.granted) return NextResponse.json({ ok: false, error: "Pague o boletim de notas e aguarde a confirmação da secretaria." }, { status: 403 });
 
-    if (!permission) {
-      return NextResponse.json({ 
-        ok: false, 
-        error: 'Acesso bloqueado. É necessário pagar o Boletim de Notas na secretaria para visualizar os detalhes.' 
-      }, { status: 403 });
-    }
-    // --------------------------------------------------
+    const { data: matricula } = await supabase.from("matriculas").select("turma_id")
+      .eq("id", matriculaId).eq("aluno_id", alunoId).eq("escola_id", escolaId).maybeSingle();
+    if (!matricula?.turma_id) return NextResponse.json({ ok: false, error: "Matrícula não encontrada." }, { status: 404 });
 
-    // Fonte única para aluno: mesma view usada no boletim do portal aluno.
-    const { data, error } = await supabase
-      .from("vw_boletim_por_matricula")
-      .select("trimestre, nota_final, status, missing_count")
-      .eq("matricula_id", matriculaId)
-      .eq("disciplina_id", disciplinaId)
-      .order("trimestre", { ascending: true });
-
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-    }
-
-    const notas = ((data || []) as BoletimDisciplinaRow[]).map((row) => ({
-      trimestre: row.trimestre,
-      nota: row.nota_final,
-      status:
-        row.status === "PENDENTE_CONFIG"
-          ? "bloqueada"
-          : (row.missing_count ?? 0) > 0
-            ? "pendente"
-            : "lancada",
-    }));
-
-    return NextResponse.json({ ok: true, notas });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const disciplinas = await loadNotasLancadas(supabase, { escolaId, matriculaId, turmaId: matricula.turma_id });
+    const disciplina = disciplinas.find((item) => item.id === disciplinaId);
+    return NextResponse.json({
+      ok: true,
+      notas: (disciplina?.avaliacoes ?? []).map((avaliacao) => ({
+        trimestre: avaliacao.trimestre,
+        tipo: avaliacao.tipo,
+        nome: avaliacao.nome,
+        nota: avaliacao.nota,
+        status: "lancada",
+      })),
+    });
+  } catch (error: unknown) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Erro inesperado" }, { status: 500 });
   }
 }

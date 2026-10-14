@@ -28,6 +28,10 @@ export async function POST(request: Request) {
 
     const mensagem = mensagemRaw ? mensagemRaw.trim().slice(0, 500) : null;
 
+    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      return NextResponse.json({ ok: false, error: "Formato inválido. Envie PDF, JPG, PNG ou WEBP." }, { status: 415 });
+    }
+    if (file.size === 0) return NextResponse.json({ ok: false, error: "Comprovativo vazio." }, { status: 400 });
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ ok: false, error: "O arquivo excede o limite de 5MB" }, { status: 413 });
     }
@@ -64,7 +68,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const objectPath = `${ctx.escolaId}/${alunoId}/servicos/${intentId}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    const objectPath = `${ctx.escolaId}/${alunoId}/servicos/${intentId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 90)}`;
     const bytes = Buffer.from(await file.arrayBuffer());
 
     const { error: uploadError } = await routeClient.storage

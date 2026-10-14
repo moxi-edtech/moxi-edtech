@@ -1,8 +1,7 @@
 "use client";
 
 import AuditPageView from "@/components/audit/AuditPageView";
-import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
-import DocumentosAprovacoesQueue from "@/components/secretaria/DocumentosAprovacoesQueue";
+import SecretariaDocumentosWorkspace from "@/components/secretaria/SecretariaDocumentosWorkspace";
 import { useEscolaId } from "@/hooks/useEscolaId";
 
 export default function DocumentosPage() {
@@ -31,10 +30,7 @@ export default function DocumentosPage() {
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="documentos" />
-      <div className="p-4 md:p-6">
-        <DocumentosAprovacoesQueue />
-        <DocumentosEmissaoHubClient escolaId={escolaId} />
-      </div>
+      <SecretariaDocumentosWorkspace escolaId={escolaId} />
     </>
   );
 }
