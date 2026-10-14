@@ -35,6 +35,7 @@ export function BalcaoWorkspace({
   const { student: studentContext, subtitle } = useCommandCenterStudent(
     selectedStudent.id, academicYearId, selectedStudent.label,
   );
+  const currentStudent = studentContext?.id === selectedStudent.id ? studentContext : null;
   const completedEnrollmentRef = useRef(false);
   const studentRequestRef = useRef(0);
 
@@ -80,18 +81,20 @@ export function BalcaoWorkspace({
   }, [activeAction, confirmLeavingEnrollment]);
 
   const handleSwitchStudent = useCallback(() => {
-    // Even a non-enrollment tab can have unsaved receipts or notes.
-    if (activeAction !== "desk" && !window.confirm(
-      "Trocar de aluno? As alterações ainda não guardadas poderão perder-se.",
-    )) return;
+    // Opening the picker never discards work or changes the student.
     setSwitchingStudent(true);
-  }, [activeAction]);
+  }, []);
 
   const handleStudentPicked = useCallback((next: Student) => {
     if (next.id === selectedStudent.id) {
       setSwitchingStudent(false);
       return;
     }
+    // Confirm only when actually selecting another student. Cancelling the
+    // picker never loses an unsaved grade, payment or enrollment draft.
+    if (!window.confirm(
+      "Trocar de aluno? As alterações ainda não guardadas poderão perder-se.",
+    )) return;
     studentRequestRef.current += 1;
     completedEnrollmentRef.current = false;
     setSelectedStudent(next);
@@ -132,7 +135,7 @@ export function BalcaoWorkspace({
   return (
     <CommandCenterShell
       variant="modal"
-      student={{ ...selectedStudent, subtitle }}
+      student={{ ...selectedStudent, subtitle: currentStudent ? subtitle : null }}
       activeAction={activeAction}
       onActionChange={handleActionChange}
       onSwitchStudent={switchingStudent ? undefined : handleSwitchStudent}
@@ -150,8 +153,8 @@ export function BalcaoWorkspace({
           escolaId={escolaId}
           inModal
           alunoId={activeAction === "enrollment" ? null : selectedStudent.id}
-          turmaId={studentContext?.turmaId ?? null}
-          turmaLabel={studentContext?.turma ?? null}
+          turmaId={currentStudent?.turmaId ?? null}
+          turmaLabel={currentStudent?.turma ?? null}
           actionId={activeAction}
           onActionChange={handleActionChange}
           onSuccess={handleSuccess}

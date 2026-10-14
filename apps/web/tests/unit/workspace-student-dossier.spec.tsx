@@ -57,6 +57,7 @@ test("modal and standalone workspace wire a protected student-switch callback", 
   assert.match(modal, /onSwitchStudent=\{switchingStudent \? undefined : handleSwitchStudent\}/);
   assert.match(page, /onSwitchStudent=\{handleSwitchStudent\}/);
   assert.match(modal, /window\.confirm\(/);
+  assert.match(modal, /currentStudent = studentContext\?\.id === selectedStudent\.id/);
   assert.match(modal, /setActiveAction\("desk"\); \/\/ reset all student-bound panels/);
   assert.match(modal, /studentRequestRef\.current \+= 1/);
   assert.match(modal, /key=\{selectedStudent\.id\}/);
@@ -101,5 +102,5 @@ test("dossier API fails closed on cross-school students and requires operational
 
 test("grade panel allows authorized turma choice when the contextual lookup has no class", () => {
   assert.match(panel, /lockTurma=\{Boolean\(turmaId\)\}/);
-  assert.match(modal, /turmaId=\{studentContext\?\.turmaId \?\? null\}/);
+  assert.match(modal, /turmaId=\{currentStudent\?\.turmaId \?\? null\}/);
 });
