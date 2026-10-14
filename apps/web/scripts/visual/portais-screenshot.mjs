@@ -52,7 +52,7 @@ try {
         await page.screenshot({ path: output, type: "jpeg", quality: 72, fullPage: false });
         const visible = textMatcher.test(metrics.bodyText);
         if (name.startsWith("dashboard-")) {
-          if (/Prova trimestral|Trabalho prático|16\\/20|17\\/20/.test(metrics.bodyText))
+          if (["Prova trimestral", "Trabalho prático", "16/20", "17/20"].some(marker => metrics.bodyText.includes(marker)))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: protected grades leaked`);
           if (name === "dashboard-clean" && metrics.bodyText.includes("Precisa da tua atenção"))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: false pending section`);
