@@ -9,7 +9,7 @@ export function availablePeriods(subjects: GradeSubject[]): number[] {
 export function chooseInitialPeriod(subjects: GradeSubject[], current: number | null = null): number | null {
   const periods = availablePeriods(subjects);
   if (current !== null && periods.includes(current)) return current;
-  return periods.at(-1) ?? null;
+  return periods.length ? periods[periods.length-1] : null;
 }
 export function periodAssessments(subject: GradeSubject, period: number | null): GradeEntry[] {
   if (period === null) return [];
