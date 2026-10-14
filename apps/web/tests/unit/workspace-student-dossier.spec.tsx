@@ -68,7 +68,7 @@ test("the full profile is not replaced by an edit-only form", () => {
   ]) assert.match(dossier, new RegExp(section));
   assert.match(dossier, /controller\.abort\(\)/);
   assert.match(dossier, /body\.aluno\.id !== alunoId/);
-  assert.match(dossier, /private, no-store/);
+  assert.match(dossierRoute, /private, no-store/);
 });
 
 test("the existing full profile and the workspace use exactly the same dossier loader", () => {
