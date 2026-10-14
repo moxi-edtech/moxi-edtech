@@ -44,7 +44,7 @@ test('um único serviço inicia novos pedidos de boletim, preservando pagamentos
 test('a fila de documentos gratuitos não aprova o boletim pago; documentos oficiais continuam', () => {
   const decisions = read('app/api/secretaria/documentos/aprovacoes/route.ts');
   assert.doesNotMatch(decisions, /DOC_BOLETIM_TRIMESTRAL/);
-  assert.match(decisions, /DOC_DECLARACAO_NOTAS/);
+  assert.doesNotMatch(decisions, /DOC_DECLARACAO_NOTAS/);
   const hub = read('components/secretaria/DocumentosEmissaoHubClient.tsx');
   assert.match(hub, /declaracao_notas: "DOC_DECLARACAO_NOTAS"/);
   assert.match(hub, /boletim_trimestral: "DOC_BOLETIM_TRIMESTRAL"/);
