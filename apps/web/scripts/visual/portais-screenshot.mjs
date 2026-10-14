@@ -50,7 +50,7 @@ try {
         report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, fixtureRendered: visible, output });
         if (name.startsWith("grade-")) {
           if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name} ${width}x${height} zoom ${zoom}: protected assessment leak`);
-          if (name === "grade-paid" && (!metrics.bodyText.includes("Prova trimestral") || !metrics.bodyText.includes("16"))) errors.push(`${name} ${width}x${height} zoom ${zoom}: paid assessments not visible`);
+          if (name === "grade-paid" && (!metrics.bodyText.includes("Exame do período") || !metrics.bodyText.includes("15"))) errors.push(`${name} ${width}x${height} zoom ${zoom}: paid assessments not visible`);
           if (name === "grade-pending" && !metrics.bodyText.includes("Comprovativo em análise")) errors.push(`${name} ${width}x${height} zoom ${zoom}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Pagar boletim")) errors.push(`${name} ${width}x${height} zoom ${zoom}: payment CTA missing`);
           if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido")) errors.push(`${name} ${width}x${height} zoom ${zoom}: resubmit missing`);
