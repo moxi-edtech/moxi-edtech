@@ -42,7 +42,8 @@ try {
           const root = document.documentElement;
           return { horizontalOverflow: Math.max(0, root.scrollWidth - root.clientWidth),
             bodyText: document.body.innerText.slice(0, 1600),
-            rendered: document.querySelector("#root")?.childElementCount ?? 0 };
+            rendered: document.querySelector("#root")?.childElementCount ?? 0,
+            nestedScrolls: Array.from(document.querySelectorAll("*")).filter(el=>el !== document.documentElement && el !== document.body && el.clientHeight > 0 && ["auto","scroll"].includes(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight+15).length };
         });
         const output = `${directory}/${name}-${width}x${height}-${Math.round(zoom*100)}.jpg`;
         await page.screenshot({ path: output, type: "jpeg", quality: 72, fullPage: false });
@@ -56,6 +57,7 @@ try {
           if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido")) errors.push(`${name} ${width}x${height} zoom ${zoom}: resubmit missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name} ${width}x${height} zoom ${zoom}: empty state missing`);
         }
+        if (name.startsWith("grade-") && metrics.nestedScrolls > 0) errors.push(`${name} ${width}x${height} zoom ${zoom}: unnecessary nested scroll ${metrics.nestedScrolls}`);
         if (!visible) errors.push(`${name} ${width}x${height} zoom ${zoom}: content not rendered; root children ${metrics.rendered}`);
         if (metrics.horizontalOverflow > 12) errors.push(`${name} ${width}x${height} zoom ${zoom}: horizontal overflow ${metrics.horizontalOverflow}px`);
       }
