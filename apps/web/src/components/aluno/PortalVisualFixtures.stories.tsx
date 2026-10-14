@@ -5,13 +5,14 @@ import { ToastProvider } from "@/components/feedback/FeedbackSystem";
 import { TabDocumentos } from "@/components/aluno/tabs/TabDocumentos";
 import { TabNotas } from "@/components/aluno/tabs/TabNotas";
 import ProfessorPage from "@/app/professor/page";
+import DashboardLoader from "@/components/aluno/dashboard/DashboardLoader";
 
 // Storybook/CI only. These UUIDs and labels are synthetic; no Supabase credentials,
 // production students, payment evidence, or network calls are used as fixture data.
 const SCHOOL = "00000000-0000-4000-8000-000000000401";
 const STUDENT = "00000000-0000-4000-8000-000000000402";
 const INTENT = "00000000-0000-4000-8000-000000000403";
-type FixtureMode = "pending" | "rejected" | "paid" | "professor";
+type FixtureMode = "pending" | "rejected" | "paid" | "professor" | "dashboard-clean" | "dashboard-pending" | "dashboard-rejected" | "dashboard-rematricula" | "dashboard-overdue" | "dashboard-empty";
 declare global {
   interface Window { __klasseVisualFixture?: FixtureMode; __klasseVisualFetchInstalled?: boolean }
 }
@@ -31,9 +32,19 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
       exige_pagamento_antes_de_liberar: true, pagamento_configurado: true,
       reject_reason: mode === "rejected" ? "O ficheiro enviado não estava legível." : null,
     };
+    const dashboardMode = mode.startsWith("dashboard-");
+    const docsStatus = mode === "dashboard-rejected" ? "rejected" : mode === "dashboard-pending" ? "pending" : "granted";
+    const documents = dashboardMode && (mode === "dashboard-clean" || mode === "dashboard-rematricula" || mode === "dashboard-overdue" || mode === "dashboard-empty") ? [] : [{ ...doc, status: dashboardMode ? docsStatus : doc.status, reject_reason: mode === "dashboard-rejected" ? "O comprovativo não está legível." : doc.reject_reason }];
     const replies: Record<string, object> = {
-      "/api/aluno/documentos/catalogo": { ok: true, documentos: [doc], dados_pagamento: { banco: "Banco de Teste", iban: "AO00 0000 0000 0000 0000 0000 0" }, boletim_pago: mode === "paid" },
-      "/api/aluno/boletim": { ok: true, matricula_encontrada: true, is_liberado: mode === "paid", nome_aluno: "Aluno de Teste", disciplinas: mode === "paid" ? [
+      "/api/aluno/dashboard": { ok: true, ano_letivo: mode === "dashboard-empty" ? null : 2026, turma_nome: mode === "dashboard-empty" ? null : "7.ª Classe A",
+        proxima_aula: mode === "dashboard-empty" ? null : { weekday: 3, inicio: "08:00", fim: "09:00", sala: "04", slot_id: "slot-fixture" },
+        status_financeiro: { pendentes: mode === "dashboard-overdue" ? 1 : 0 },
+        avisos_recentes: mode === "dashboard-empty" ? [] : [{ id: "synthetic-notice", titulo: "Reunião de encarregados", resumo: "Comunicado de testes.", origem: "Secretaria", data: "2026-10-13T12:00:00Z" }] },
+      "/api/aluno/home/raa-status": { ok: true, result: null },
+      "/api/aluno/rematricula/status": { ok: true, eligible: mode === "dashboard-rematricula", alreadyDone: false, nextAno: 2027, hasDebt: false },
+
+      "/api/aluno/documentos/catalogo": { ok: true, documentos: documents, dados_pagamento: { banco: "Banco de Teste", iban: "AO00 0000 0000 0000 0000 0000 0" }, boletim_pago: mode === "paid" },
+      "/api/aluno/boletim": { ok: true, matricula_encontrada: true, is_liberado: mode === "paid", nome_aluno: mode === "dashboard-empty" ? null : "Aluno de Teste", is_liberado: mode === "paid", disciplinas: mode === "paid" ? [
         { id: "disc-1", nome: "Matemática", avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }] },
         { id: "disc-2", nome: "Língua Portuguesa", avaliacoes: [{ nome: "Trabalho prático", tipo: "trabalho", trimestre: 1, nota: 17 }] },
       ] : [] },
@@ -70,3 +81,10 @@ export const DocumentosPendentes: Story = { render: () => <Surface mode="pending
 export const DocumentosRejeitados: Story = { render: () => <Surface mode="rejected"><TabDocumentos /></Surface> };
 export const NotasPagas: Story = { render: () => <Surface mode="paid"><TabNotas /></Surface> };
 export const ProfessorComTurmas: Story = { render: () => <Surface mode="professor"><ProfessorPage /></Surface> };
+
+export const DashboardClean: Story = { render: () => <Surface mode="dashboard-clean"><DashboardLoader /></Surface> };
+export const DashboardPending: Story = { render: () => <Surface mode="dashboard-pending"><DashboardLoader /></Surface> };
+export const DashboardRejected: Story = { render: () => <Surface mode="dashboard-rejected"><DashboardLoader /></Surface> };
+export const DashboardRematricula: Story = { render: () => <Surface mode="dashboard-rematricula"><DashboardLoader /></Surface> };
+export const DashboardOverdue: Story = { render: () => <Surface mode="dashboard-overdue"><DashboardLoader /></Surface> };
+export const DashboardEmpty: Story = { render: () => <Surface mode="dashboard-empty"><DashboardLoader /></Surface> };
