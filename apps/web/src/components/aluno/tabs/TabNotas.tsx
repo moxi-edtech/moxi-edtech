@@ -51,6 +51,7 @@ export function TabNotas() {
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
   const [academicYear, setAcademicYear] = useState<string | null>(null);
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("");
   const [reapreciacaoSaving, setReapreciacaoSaving] = useState(false);
@@ -156,6 +157,9 @@ export function TabNotas() {
     setDisciplinas([]);
     setSelectedPeriod(null);
     setAcademicYear(null);
+    setLoadedScope(null);
+    setReapreciacaoDisc(null);
+    setMelhoriaDisc(null);
     setBoletimServico(null);
     setAccessError(null);
   }, [studentId, bulletinQuery]);
@@ -206,6 +210,7 @@ export function TabNotas() {
         if (!active) return;
         setMatriculaEncontrada(json.matricula_encontrada !== false);
         setIsLiberado(json.is_liberado);
+        setLoadedScope(bulletinQuery);
         const published = json.is_liberado ? json.disciplinas ?? [] : [];
         setDisciplinas(published);
         setSelectedPeriod(chooseInitialPeriod(published));
@@ -226,6 +231,7 @@ export function TabNotas() {
         if (active && !(error instanceof DOMException && error.name === "AbortError")) {
           setAccessError(error instanceof Error ? error.message : "Não foi possível carregar o boletim.");
           setIsLiberado(false);
+          setLoadedScope(null);
           setDisciplinas([]);
           setSelectedPeriod(null);
         }
@@ -240,8 +246,12 @@ export function TabNotas() {
     return () => { active = false; ctrl.abort(); };
   }, [studentId, bulletinQuery, refreshVersion]);
 
-  const periods = availablePeriods(disciplinas);
-  const period = selectedPeriod !== null && periods.includes(selectedPeriod) ? selectedPeriod : chooseInitialPeriod(disciplinas);
+  // Fail closed synchronously on student/year change, before effects clear prior state.
+  const safeIsLiberado = loadedScope === bulletinQuery && isLiberado;
+  const safeDisciplinas = safeIsLiberado ? disciplinas : [];
+  const visibleLoading = loading || (loadedScope !== bulletinQuery && !accessError);
+  const periods = availablePeriods(safeDisciplinas);
+  const period = selectedPeriod !== null && periods.includes(selectedPeriod) ? selectedPeriod : chooseInitialPeriod(safeDisciplinas);
   const moneyStatus = boletimServico?.status === "pending_payment" ? "available" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
   const access = accessPresentation(moneyStatus, boletimServico?.reject_reason);
   const docsUrl = buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`);
@@ -263,7 +273,7 @@ export function TabNotas() {
           <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Documentos</Link>
         </nav>
       </header>
-      {loading ? <section aria-label="A carregar as tuas notas" className="space-y-5 motion-safe:animate-pulse">
+      {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-5 motion-safe:animate-pulse">
         <div className="h-12 max-w-sm rounded-xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/><div className="h-28 rounded-2xl bg-slate-100"/>
       </section> : accessError ? <section role="alert" className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
         <h2 className="text-lg font-semibold">Não foi possível consultar as tuas notas</h2>
@@ -271,7 +281,7 @@ export function TabNotas() {
         <button type="button" onClick={() => setRefreshVersion(v => v+1)} className={`min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-[#2B6044] ${focus}`}>Tentar novamente</button>
       </section> : !matriculaEncontrada ? <section className="rounded-2xl bg-slate-50 p-5">
         <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-2 text-sm leading-6 text-slate-600">Contacta a secretaria para confirmar a tua matrícula antes de solicitar o boletim.</p>
-      </section> : !isLiberado ? <section aria-labelledby="boletim-locked" className="space-y-4 rounded-2xl border border-[#C8902A]/30 bg-white p-5 sm:p-6">
+      </section> : !safeIsLiberado ? <section aria-labelledby="boletim-locked" className="space-y-4 rounded-2xl border border-[#C8902A]/30 bg-white p-5 sm:p-6">
         <LockIcon aria-hidden className="h-6 w-6 text-[#A06D17]"/>
         <h2 id="boletim-locked" className="text-xl font-semibold text-slate-900">{access.title}</h2>
         <p className="text-sm leading-6 text-slate-600">{access.message}</p>
@@ -290,7 +300,7 @@ export function TabNotas() {
           </div> : <p className="rounded-xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">Ainda não há avaliações publicadas. Os períodos aparecem quando a escola lançar as notas.</p>}
         </div>
         {periods.length > 0 && <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-4 sm:px-6">
-          {disciplinas.map(disc => {
+          {safeDisciplinas.map(disc => {
             const published = periodAssessments(disc,period);
             return <article key={disc.id} className="space-y-4 py-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -321,9 +331,9 @@ export function TabNotas() {
           </button>
         </aside>
       </section>}
-      {isLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
-      {isLiberado && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
-      {reapreciacaoDisc && (
+      {safeIsLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
+      {safeIsLiberado && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
+      {safeIsLiberado && reapreciacaoDisc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-raa-title">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
             <h2 id="aluno-raa-title" className="font-semibold text-slate-900">Solicitar reapreciação — {reapreciacaoDisc.nome}</h2>
@@ -335,7 +345,7 @@ export function TabNotas() {
         </div>
       )}
 
-      {melhoriaDisc && (
+      {safeIsLiberado && melhoriaDisc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-melhoria-title">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
             <h2 id="aluno-melhoria-title" className="font-semibold text-slate-900">Solicitar melhoria — {melhoriaDisc.nome}</h2>

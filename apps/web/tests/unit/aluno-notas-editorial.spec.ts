@@ -80,3 +80,14 @@ test("contexto sintético A e B: IDs autorizados mantêm isolamento e aluno com 
  assert.match(api,/resolveBoletimMatricula\(/);
  assert.match(api,/anoLetivoId: new URL\(request.url\).searchParams.get\("ano_letivo_id"\)/);
 });
+
+test("a matrícula e o aluno anteriores nunca disponibilizam notas enquanto a nova resposta carrega", async () => {
+ const fs=await import("node:fs/promises");
+ const source=await fs.readFile(new URL("../../src/components/aluno/tabs/TabNotas.tsx",import.meta.url),"utf8");
+ assert.match(source,/loadedScope === bulletinQuery && isLiberado/);
+ assert.match(source,/safeIsLiberado \? disciplinas : \[\]/);
+ assert.match(source,/safeDisciplinas\.map/);
+ assert.match(source,/setLoadedScope\(bulletinQuery\)/);
+ assert.match(source,/safeIsLiberado && reapreciacaoDisc/);
+ assert.match(source,/safeIsLiberado && melhoriaDisc/);
+});
