@@ -301,9 +301,9 @@ export function TabNotas() {
                   </div>
                 </details>}
               </div>
-              {published.length ? <ul className="space-y-3">{published.map((av,index)=><li key={`${disc.id}-${av.nome}-${index}`} className="flex min-w-0 items-baseline justify-between gap-5 text-sm">
-                <span className="min-w-0 break-words leading-6 text-slate-600">{av.nome}</span>
-                <span className="shrink-0 font-semibold tabular-nums text-slate-900" aria-label={`Nota ${formatPublishedGrade(av.nota)}`}>{formatPublishedGrade(av.nota)}</span>
+              {published.length ? <ul className="space-y-3">{published.map((avaliacao,index)=><li key={`${disc.id}-${avaliacao.nome}-${index}`} className="flex min-w-0 items-baseline justify-between gap-5 text-sm">
+                <span className="min-w-0 break-words leading-6 text-slate-600">{avaliacao.nome}</span>
+                <span className="shrink-0 font-semibold tabular-nums text-slate-900" aria-label={`Nota ${formatPublishedGrade(avaliacao.nota)}`}>{formatPublishedGrade(avaliacao.nota)}</span>
               </li>)}</ul> : <p className="text-sm leading-6 text-slate-500">Ainda não há avaliações lançadas de {disc.nome} neste período.</p>}
             </article>;
           })}
