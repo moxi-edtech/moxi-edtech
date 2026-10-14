@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
+import { isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
+import { AcademicYearContextError } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,6 +22,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const intentId = formData.get("intentId")?.toString();
     const studentIdParam = formData.get("studentId")?.toString() ?? null;
+    const academicYearId = formData.get("ano_letivo_id")?.toString() ?? null;
     const mensagemRaw = formData.get("mensagem")?.toString() ?? null;
     const file = formData.get("file");
 
@@ -44,16 +48,32 @@ export async function POST(request: Request) {
     // Validar se a intenção pertence ao aluno
     const { data: intent } = await routeClient
       .from("pagamento_intents")
-      .select("id, status, evidence_url")
+      .select("id, status, evidence_url, servico_pedido_id")
       .eq("id", intentId)
       .eq("escola_id", ctx.escolaId)
       .eq("aluno_id", alunoId)
       .maybeSingle();
 
-    if (!intent) {
+    if (!intent?.servico_pedido_id) {
         return NextResponse.json({ ok: false, error: "Solicitação não encontrada" }, { status: 404 });
     }
 
+    const { data: pedido, error: pedidoError } = await routeClient.from("servico_pedidos")
+      .select("id, matricula_id, servico_codigo")
+      .eq("id", intent.servico_pedido_id).eq("escola_id", ctx.escolaId)
+      .eq("aluno_id", alunoId).maybeSingle();
+    if (pedidoError || !pedido) {
+      return NextResponse.json({ ok: false, error: "Pedido original não encontrado. Contacte a secretaria." }, { status: 409 });
+    }
+    if (isBoletimServiceCode(pedido.servico_codigo ?? "")) {
+      const { matricula } = await resolveBoletimMatricula(supabase, {
+        escolaId: ctx.escolaId, alunoId, userId: ctx.userId,
+        anoLetivoId: academicYearId, operation: "WRITE",
+      });
+      if (pedido.matricula_id !== matricula?.id) {
+        return NextResponse.json({ ok: false, error: "Este comprovativo pertence a outra matrícula. Não volte a pagar." }, { status: 409 });
+      }
+    }
     if (intent.status === "settled") {
       return NextResponse.json({ ok: false, error: "Esta solicitação já está paga e concluída." }, { status: 400 });
     }
@@ -68,7 +88,12 @@ export async function POST(request: Request) {
       });
     }
 
-    const objectPath = `${ctx.escolaId}/${alunoId}/servicos/${intentId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 90)}`;
+    if (!["draft", "failed", "pending"].includes(intent.status)) {
+      return NextResponse.json({ ok: false, error: "O pedido não permite novo envio. Contacte a secretaria." }, { status: 409 });
+    }
+    // Não incluir o nome original do ficheiro: pode conter dados de menores.
+    const extension = file.type === "application/pdf" ? "pdf" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const objectPath = `${ctx.escolaId}/${alunoId}/servicos/${intentId}/${crypto.randomUUID()}.${extension}`;
     const bytes = Buffer.from(await file.arrayBuffer());
 
     const { error: uploadError } = await routeClient.storage
@@ -98,20 +123,26 @@ export async function POST(request: Request) {
     );
 
     if (rpcError || rpcData?.ok !== true) {
+      await routeClient.storage.from(COMPROVATIVOS_BUCKET).remove([objectPath]);
       return NextResponse.json(
         { ok: false, error: rpcError?.message || rpcData?.error || "Falha ao registrar comprovativo" },
         { status: 500 },
       );
     }
 
+    if (rpcData?.idempotent === true) {
+      await routeClient.storage.from(COMPROVATIVOS_BUCKET).remove([objectPath]);
+    }
     return NextResponse.json({
       ok: true,
       status: "pending",
-      idempotent: false,
+      idempotent: rpcData?.idempotent === true,
       message: "Comprovativo recebido. A secretaria irá validar o pagamento.",
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch (error: unknown) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    return NextResponse.json({ ok: false, error: "Não foi possível enviar o comprovativo. Tente novamente." }, { status: 500 });
   }
 }

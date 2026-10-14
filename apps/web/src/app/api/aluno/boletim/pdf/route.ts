@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { criarPdfBoletim } from "@/lib/aluno/boletimPdf";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
-import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { AcademicYearContextError } from "@/lib/academic-year/context";
+import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
 import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
 import { loadNotasLancadas } from "@/lib/aluno/boletimNotas";
 
@@ -13,11 +14,7 @@ export async function GET(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx?.escolaId || !ctx.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    const academicContext = await resolveAcademicYearContext(supabase, {
-      userId: ctx.userId,
-      requestedAcademicYearId: new URL(request.url).searchParams.get("ano_letivo_id"),
-      operation: "READ",
-    });
+
     const { data: userRes } = await supabase.auth.getUser();
     const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: userRes?.user?.email });
     const selectedId = new URL(request.url).searchParams.get("studentId");
@@ -25,9 +22,10 @@ export async function GET(request: Request) {
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
 
-    const { data: matricula } = await supabase.from("matriculas").select("id, turma_id")
-      .eq("aluno_id", alunoId).eq("escola_id", ctx.escolaId).eq("session_id", academicContext.anoLetivoId)
-      .limit(1).maybeSingle();
+    const { matricula } = await resolveBoletimMatricula(supabase, {
+      escolaId: ctx.escolaId, alunoId, userId: ctx.userId,
+      anoLetivoId: new URL(request.url).searchParams.get("ano_letivo_id"),
+    });
     if (!matricula?.id || !matricula.turma_id) return NextResponse.json({ ok: false, error: "Matrícula não encontrada" }, { status: 404 });
 
     const access = await checkBoletimAccess(supabase, { escolaId: ctx.escolaId, alunoId, matriculaId: matricula.id });

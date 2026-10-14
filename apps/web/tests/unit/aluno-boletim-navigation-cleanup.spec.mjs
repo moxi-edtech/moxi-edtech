@@ -25,7 +25,8 @@ test('a navegação de boletim não usa /aluno/notas inexistente e preserva o al
   const notas = read('components/aluno/tabs/TabNotas.tsx');
   assert.doesNotMatch(docs, /\/aluno\/notas/);
   assert.match(docs, /buildPortalHref\(escolaSlug, `\/aluno\/academico/);
-  assert.match(docs, /encodeURIComponent\(studentId\)/);
+  assert.match(docs, /queryParams\.set\("studentId", studentId\)/);
+  assert.match(docs, /queryParams\.set\("ano_letivo_id", academicYearId\)/);
   assert.match(notas, /buildPortalHref\(escolaSlug, `\/aluno\/documentos/);
 });
 
@@ -43,7 +44,7 @@ test('um único serviço inicia novos pedidos de boletim, preservando pagamentos
 test('a fila de documentos gratuitos não aprova o boletim pago; documentos oficiais continuam', () => {
   const decisions = read('app/api/secretaria/documentos/aprovacoes/route.ts');
   assert.doesNotMatch(decisions, /DOC_BOLETIM_TRIMESTRAL/);
-  assert.match(decisions, /DOC_DECLARACAO_NOTAS/);
+  assert.doesNotMatch(decisions, /DOC_DECLARACAO_NOTAS/);
   const hub = read('components/secretaria/DocumentosEmissaoHubClient.tsx');
   assert.match(hub, /declaracao_notas: "DOC_DECLARACAO_NOTAS"/);
   assert.match(hub, /boletim_trimestral: "DOC_BOLETIM_TRIMESTRAL"/);

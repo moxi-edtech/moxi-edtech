@@ -1,12 +1,13 @@
 import { isBoletimPaid, BOLETIM_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
+import { AcademicYearContextError } from "@/lib/academic-year/context";
+import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 
 export const dynamic = "force-dynamic";
 
 const PORTAL_DOCUMENT_CODES = [
-  "DOC_DECLARACAO_NOTAS",
   "DOC_DECLARACAO_FREQUENCIA",
   "DOC_BOLETIM_TRIMESTRAL",
   "DOC_COMPROVANTE_MATRICULA",
@@ -30,7 +31,10 @@ export async function GET(request: Request) {
     if (!selectedId) return NextResponse.json({ ok: false, error: "Nenhum educando autorizado encontrado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });
 
     const { escolaId } = ctx;
-    const { data: matricula } = await supabase.from("matriculas").select("id").eq("escola_id", escolaId).eq("aluno_id", selectedId).in("status", ["ativa", "ativo"]).order("ano_letivo", { ascending: false }).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const { matricula } = await resolveBoletimMatricula(supabase, {
+      escolaId, alunoId: selectedId, userId: ctx.userId,
+      anoLetivoId: new URL(request.url).searchParams.get("ano_letivo_id"),
+    });
     if (!matricula?.id) return NextResponse.json({ ok: false, error: "O educando não possui matrícula activa", next_action: { type: "contact_secretaria", label: "Contactar a secretaria", href: "/aluno/avisos" } }, { status: 409 });
 
     // 1. Buscar catálogo de documentos da escola
@@ -119,8 +123,11 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ ok: true, documentos: docs, dados_pagamento, boletim_pago: boletimPago });
-  } catch (error: any) {
-    console.error("[DocsCatalogo] Error:", error);
+  } catch (error: unknown) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    console.error("[DocsCatalogo] Error:", error instanceof Error ? error.name : "unknown");
     return NextResponse.json({ ok: false, error: "Falha ao carregar catálogo" }, { status: 500 });
   }
 }

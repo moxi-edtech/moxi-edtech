@@ -1,0 +1,40 @@
+name: Boletim Academic Session DB
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271014110000_aluno_boletim_matricula_session.sql'
+      - 'supabase/ops/tests/boletim_session_*.sql'
+      - 'supabase/ops/tests/concurrency_boletim_session.sh'
+      - '.github/workflows/boletim-academic-session-db.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-disposable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build synthetic identity, schools, years and payment tables
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/boletim_session_bootstrap.sql
+      - name: Apply migration in disposable Postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271014110000_aluno_boletim_matricula_session.sql
+      - name: Assert one payment per enrollment, tenancy and historical status
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/boletim_session_regression.sql
+      - name: Assert concurrency produces one order only
+        run: bash supabase/ops/tests/concurrency_boletim_session.sh

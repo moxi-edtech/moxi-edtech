@@ -1,0 +1,37 @@
+name: Boletim Integrated DB Fixture
+on:
+  pull_request:
+    paths:
+      - 'supabase/ops/tests/boletim_integrated_*.sql'
+      - '.github/workflows/boletim-integrated-db.yml'
+permissions:
+  contents: read
+jobs:
+  request-proof-reject-resubmit-settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build synthetic fixture
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/boletim_integrated_bootstrap.sql
+      - name: Apply unshipped B and C migrations in disposable Postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271014110000_aluno_boletim_matricula_session.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271014120000_boletim_payment_transition_guards.sql
+      - name: Assert full synthetic request to paid authorization contract
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/boletim_integrated_regression.sql

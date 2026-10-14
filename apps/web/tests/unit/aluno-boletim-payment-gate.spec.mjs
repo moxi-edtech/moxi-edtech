@@ -39,6 +39,7 @@ test('a secretaria confirma o pagamento no mesmo fluxo de recebimentos e alerta 
   const source = read('components/secretaria/PagamentosPendentesWindow.tsx');
   assert.match(source, /validar\(pagamentoId, aprovado/);
   assert.match(source, /Confirmar e liberar notas/);
-  assert.match(read('components/aluno/tabs/TabDocumentos.tsx'), /20000/);
-  assert.match(read('components/aluno/tabs/TabNotas.tsx'), /20000/);
+  assert.match(read('components/aluno/tabs/TabDocumentos.tsx'), /Math\.min\(30_000 \* 2 \*\* failures, 300_000\)/);
+  assert.match(read('components/aluno/tabs/TabNotas.tsx'), /isLiberado \? 120_000/);
+  assert.match(read('components/aluno/tabs/TabNotas.tsx'), /document\.hidden/);
 });
