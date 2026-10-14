@@ -37,7 +37,7 @@ export default async function DocumentosPage() {
             { label: "Documentos" },
           ]}
         />
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
           <div>
             <p className="text-sm font-bold text-slate-900">Boletim de notas: pagamento e liberação</p>
             <p className="mt-1 text-xs text-slate-600">Os comprovativos pagos são confirmados em Recebimentos, não na fila de documentos gratuitos. Confira o valor antes de validar.</p>
