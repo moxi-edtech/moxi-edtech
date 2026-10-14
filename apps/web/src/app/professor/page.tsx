@@ -128,11 +128,13 @@ export default function Page() {
           fetch("/api/professor/dashboard/pendencias", { cache: "no-store" }),
           fetch("/api/professor/dashboard/overview", { cache: "no-store" }),
         ]);
+        if (![atribsRes, agendaRes, aulasRes].every((response) => response.ok)) throw new Error("Não foi possível consultar as turmas e aulas.");
         const atribsJson = await atribsRes.json().catch(() => null);
         const agendaJson = await agendaRes.json().catch(() => null);
         const aulasJson = await aulasRes.json().catch(() => null);
         const pendJson = await pendRes.json().catch(() => null);
         const overviewJson = await overviewRes.json().catch(() => null);
+        if (!atribsJson?.ok || !agendaJson?.ok || !aulasJson?.ok) throw new Error("Dados académicos indisponíveis. Tente novamente.");
         if (!cancelled) {
           setAtribs((atribsJson?.items || []) as AtribItem[]);
           const actualLessons = (aulasJson?.items || []) as AgendaItem[];
@@ -147,7 +149,7 @@ export default function Page() {
               faltas_a_lancar: Number(pendJson.faltas_a_lancar ?? 0),
             });
           } else {
-            setPendenciasResumo({ avaliacoes_pendentes: 0, faltas_a_lancar: 0 });
+            setPendenciasResumo(null);
           }
           if (overviewRes.ok && overviewJson?.ok) {
             setOverview({
@@ -173,7 +175,7 @@ export default function Page() {
   useEffect(() => {
     let disposed = false;
     const poll = async () => {
-      if (disposed || document.hidden || pollingInFlight.current) return;
+      if (disposed || document.hidden || pollingInFlight.current || loadError) return;
       pollingInFlight.current = true;
       try {
       const todayIso = getSchoolNow().date;
@@ -187,17 +189,29 @@ export default function Page() {
       } catch { pollingFailures.current = Math.min(pollingFailures.current + 1, 5); }
       finally { pollingInFlight.current = false; }
     };
-    // Poll only when visible; exponential backoff on failures, never overlapping requests.
-    let timeout: ReturnType<typeof setTimeout>;
+    // Suspend timers while hidden, resume on focus; never overlap requests.
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     const schedule = () => {
-      if (disposed) return;
-      timeout = setTimeout(async () => { await poll(); schedule(); }, Math.min(30_000 * 2 ** pollingFailures.current, 300_000));
+      if (disposed || document.hidden) return;
+      timeout = setTimeout(async () => {
+        timeout = undefined;
+        await poll();
+        schedule();
+      }, Math.min(30_000 * 2 ** pollingFailures.current, 300_000));
     };
-    const onVisible = () => { if (!document.hidden) { clearTimeout(timeout); void poll().finally(schedule); } };
+    const onVisible = () => {
+      if (timeout !== undefined) clearTimeout(timeout);
+      timeout = undefined;
+      if (!document.hidden) void poll().finally(schedule);
+    };
     document.addEventListener("visibilitychange", onVisible);
     schedule();
-    return () => { disposed = true; clearTimeout(timeout); document.removeEventListener("visibilitychange", onVisible); };
-  }, []);
+    return () => {
+      disposed = true;
+      if (timeout !== undefined) clearTimeout(timeout);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadError]);
 
   const loadAgain = () => setRetryVersion((current) => current + 1);
 
@@ -329,12 +343,19 @@ export default function Page() {
              <div className="hidden sm:block">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
                 <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Sistema Online
+                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Painel académico
                 </p>
              </div>
           </div>
         </header>
 
+        {loadError && (
+          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+            <p className="font-bold">Não foi possível carregar os dados do professor.</p>
+            <p className="mt-1">Nenhuma nota ou presença foi alterada. Verifique a ligação ou as suas permissões.</p>
+            <button type="button" onClick={loadAgain} className="mt-3 rounded-lg bg-rose-800 px-4 py-2 font-bold text-white">Tentar novamente</button>
+          </div>
+        )}
         <AssignmentsBanner />
 
         {/* WIDGET AULA ATIVA EM DECORRÊNCIA */}
@@ -504,6 +525,10 @@ export default function Page() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 rounded-[1.5rem] bg-white border border-slate-200 animate-pulse" />)}
               </div>
+            ) : turmaMap.length === 0 ? (
+              <div role="status" className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+                Ainda não existem turmas atribuídas. Contacte a direcção ou secretaria da escola.
+              </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {turmaMap.map((turma) => (
@@ -546,7 +571,9 @@ export default function Page() {
              </div>
 
              <div className="rounded-[2.5rem] bg-white border border-slate-200 p-6 shadow-sm divide-y divide-slate-100">
-                {loading ? (
+                {loadError ? (
+                   <p role="status" className="py-8 text-center text-sm text-slate-600">Agenda indisponível. Utilize «Tentar novamente» acima.</p>
+                ) : loading ? (
                    [1,2,3].map(i => <div key={i} className="py-4 h-16 animate-pulse" />)
                 ) : (agendaByDay.get(todayKey) || []).length === 0 ? (
                    <div className="py-12 text-center space-y-3">
