@@ -290,7 +290,7 @@ export function TabNotas() {
                       <p role="status" className="text-sm text-rose-800">Comprovativo rejeitado. Consulte o motivo na Secretaria Digital antes de reenviar.</p>
                     ) : null}
                     {boletimServico && boletimServico.valor > 0 ? (
-                      <Link href={buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}`)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
+                      <Link href={buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
                         {boletimServico.status === "pending" || boletimServico.status === "granted" ? "Acompanhar pagamento" : boletimServico.status === "pending_payment" ? "Enviar comprovativo" : "Pagar boletim"}
                         <ChevronRight size={16} />
                       </Link>

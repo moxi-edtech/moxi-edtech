@@ -2,6 +2,25 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
+export function assertBoletimMatriculaScope(
+  matricula: { session_id: string | null; status: string | null } | null,
+  sessionId: string,
+  mode: "CURRENT" | "HISTORICAL_READ",
+  operation: "READ" | "WRITE" = "READ",
+): void {
+  if (matricula?.session_id && matricula.session_id !== sessionId) {
+    throw new AcademicYearContextError("CROSS_YEAR_ENTITY_MISMATCH", 409, "A matrícula não pertence ao ano letivo selecionado.");
+  }
+  if (operation === "WRITE") {
+    if (mode !== "CURRENT") {
+      throw new AcademicYearContextError("ACADEMIC_YEAR_CLOSED", 409, "Não é possível criar pedidos num ano letivo encerrado.");
+    }
+    if (!matricula || !["ativa", "ativo"].includes(matricula.status ?? "")) {
+      throw new AcademicYearContextError("ACADEMIC_ENTITY_NOT_FOUND", 409, "A matrícula selecionada não está ativa para novos pedidos.");
+    }
+  }
+}
+
 /**
  * Fonte única de matrícula/ano para o portal do aluno.
  * Histórico pode ser consultado, mas não pode iniciar uma cobrança nova.
@@ -33,13 +52,6 @@ export async function resolveBoletimMatricula(
     .order("created_at", { ascending: false })
     .limit(1).maybeSingle();
   if (error) throw error;
-  if (input.operation === "WRITE") {
-    if (context.mode !== "CURRENT") {
-      throw new AcademicYearContextError("ACADEMIC_YEAR_CLOSED", 409, "Não é possível criar pedidos num ano letivo encerrado.");
-    }
-    if (!data || !["ativa", "ativo"].includes(data.status ?? "")) {
-      throw new AcademicYearContextError("ACADEMIC_ENTITY_NOT_FOUND", 409, "A matrícula selecionada não está ativa para novos pedidos.");
-    }
-  }
+  assertBoletimMatriculaScope(data, context.anoLetivoId, context.mode, input.operation);
   return { context, matricula: data };
 }
