@@ -28,7 +28,7 @@ test("notas protegidas nunca aparecem quando API nega is_liberado; modal preserv
  const fs=await import("node:fs/promises");
  const ui=await fs.readFile(new URL("../../src/components/aluno/tabs/TabNotas.tsx",import.meta.url),"utf8");
  assert.match(ui,/json\.is_liberado \? json\.disciplinas \?\? \[\] : \[\]/);
- assert.match(ui,/!isLiberado \?/);
+ assert.match(ui,/!safeIsLiberado \?/);
  assert.match(ui,/reapreciacao/);
  assert.match(ui,/melhoria/);
  assert.doesNotMatch(ui,/toFixed\(|Math\.round\(|reduce\([^\n]*(nota|media)/);
