@@ -8,6 +8,8 @@ on:
       - 'apps/web/src/components/aluno/tabs/TabDocumentos.tsx'
       - 'apps/web/src/components/aluno/tabs/TabNotas.tsx'
       - 'apps/web/src/app/professor/page.tsx'
+      - 'apps/web/src/components/aluno/dashboard/**'
+      - 'apps/web/src/lib/aluno/dashboardPresentation.ts'
       - '.github/workflows/portal-visual-fixtures.yml'
 permissions:
   contents: read
@@ -43,6 +45,8 @@ jobs:
       - name: Validate Vite transformed React entry
         run: |
           curl --fail-with-body --silent --show-error http://127.0.0.1:6006/main.tsx -o /tmp/klasse-main-built.js || { tail -n 70 /tmp/klasse-visual.log; exit 1; }
+      - name: Test editorial dashboard scenarios
+        run: node --test --import tsx apps/web/tests/unit/aluno-dashboard-editorial.spec.ts
       - name: Capture synthetic responsive/zoom matrix
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
