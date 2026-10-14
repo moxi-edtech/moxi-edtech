@@ -44,7 +44,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
       "/api/aluno/rematricula/status": { ok: true, eligible: mode === "dashboard-rematricula", alreadyDone: false, nextAno: 2027, hasDebt: false },
 
       "/api/aluno/documentos/catalogo": { ok: true, documentos: documents, dados_pagamento: { banco: "Banco de Teste", iban: "AO00 0000 0000 0000 0000 0000 0" }, boletim_pago: mode === "paid" },
-      "/api/aluno/boletim": { ok: true, matricula_encontrada: true, is_liberado: mode === "paid", nome_aluno: mode === "dashboard-empty" ? null : "Aluno de Teste", is_liberado: mode === "paid", disciplinas: mode === "paid" ? [
+      "/api/aluno/boletim": { ok: true, matricula_encontrada: true, is_liberado: mode === "paid", nome_aluno: mode === "dashboard-empty" ? null : "Aluno de Teste", disciplinas: mode === "paid" ? [
         { id: "disc-1", nome: "Matemática", avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }] },
         { id: "disc-2", nome: "Língua Portuguesa", avaliacoes: [{ nome: "Trabalho prático", tipo: "trabalho", trimestre: 1, nota: 17 }] },
       ] : [] },

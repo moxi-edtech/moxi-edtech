@@ -30,7 +30,7 @@ jobs:
       - name: Run adaptive, access and navigation tests
         run: |
           node --test --import tsx apps/web/tests/unit/aluno-dashboard-editorial.spec.ts
-          node --test apps/web/tests/unit/aluno-boletim-flow.spec.mjs apps/web/tests/unit/aluno-boletim-navigation-cleanup.spec.mjs apps/web/tests/unit/aluno-boletim-payment-gate.spec.mjs apps/web/tests/unit/professor-dashboard-recovery.spec.mjs
+          node --test --import tsx apps/web/tests/unit/aluno-boletim-flow.spec.mjs apps/web/tests/unit/aluno-boletim-navigation-cleanup.spec.mjs apps/web/tests/unit/aluno-boletim-payment-gate.spec.mjs apps/web/tests/unit/professor-dashboard-recovery.spec.mjs
   quality-build:
     name: Typecheck lint and full production build
     runs-on: ubuntu-latest
