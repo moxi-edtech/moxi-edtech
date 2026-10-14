@@ -318,7 +318,7 @@ export function TabNotas() {
         </aside>
       </section>}
       {isLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
-      <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>
+      {isLiberado && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
       {reapreciacaoDisc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-raa-title">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
