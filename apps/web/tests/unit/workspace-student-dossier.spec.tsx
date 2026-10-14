@@ -6,6 +6,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { CommandCenterShell } from "../../src/components/secretaria/command-center/CommandCenterShell";
 
+// Next.js compiles these client JSX components with automatic JSX runtime.
+// The standalone tsx/node test runner uses the classic runtime instead.
+Object.assign(globalThis, { React });
+
 const source = (path: string) => readFileSync("src/" + path, "utf8");
 const modal = source("components/secretaria/BalcaoWorkspace.tsx");
 const page = source("app/secretaria/balcao/BalcaoPageClient.tsx");
