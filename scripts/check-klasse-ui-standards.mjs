@@ -111,7 +111,6 @@ function isException(file) {
   return (
     normalized.startsWith("apps/landing/") ||
     normalized.includes("/aluno/") ||
-    normalized.includes("/modelo_portal_do_aluno/") ||
     normalized.includes("/android/") ||
     normalized.includes("/ios/") ||
     /modal|drawer|sheet|dialog|slideover/.test(basename) ||

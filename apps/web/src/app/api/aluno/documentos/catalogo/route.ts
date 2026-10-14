@@ -1,4 +1,4 @@
-import { isBoletimPaid, BOLETIM_SERVICE_CODES } from "@/lib/aluno/boletimAccess";
+import { isBoletimPaid, BOLETIM_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
@@ -77,13 +77,13 @@ export async function GET(request: Request) {
       pagamento_intents: (pedido.pagamento_intents ?? []).map((intent) => ({ status: intent.status })),
     })));
     const pedidoBoletimPago = (pedidos ?? []).find((order) =>
-      BOLETIM_SERVICE_CODES.some((code) => code === order.servico_codigo) &&
+      isBoletimServiceCode(order.servico_codigo) &&
       order.status === "granted" && Number(order.valor_cobrado) > 0 &&
       (order.pagamento_intents ?? []).some((intent) => intent.status === "settled"));
     const docs = catalogo.map((item) => {
       const pedidosServico = (pedidos ?? []).filter((pedido) => pedido.servico_codigo === item.codigo);
       const pedido = pedidosServico.find((order) => order.status === "granted" && (
-        !BOLETIM_SERVICE_CODES.some((code) => code === item.codigo) ||
+        !isBoletimServiceCode(item.codigo) ||
         (Number(order.valor_cobrado) > 0 && (order.pagamento_intents ?? []).some((intent) => intent.status === "settled"))
       )) ?? pedidosServico[0];
       const intents = [...(pedido?.pagamento_intents ?? [])].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
@@ -92,8 +92,8 @@ export async function GET(request: Request) {
       if (intent?.status === "pending" && status !== "granted") status = "pending";
       else if (intent?.status === "failed" || pedido?.status === "canceled") status = "rejected";
       else if (intent?.status === "settled" && status !== "granted") status = "pending";
-      if (item.codigo === "DOC_BOLETIM_TRIMESTRAL" && boletimPago) status = "granted";
-      if (BOLETIM_SERVICE_CODES.some((code) => code === item.codigo) && status === "granted" && !boletimPago) {
+      if (item.codigo === BOLETIM_SERVICE_CODE && boletimPago) status = "granted";
+      if (isBoletimServiceCode(item.codigo) && status === "granted" && !boletimPago) {
         status = "pending";
       }
       const metadata = intent?.meta && typeof intent.meta === "object" && !Array.isArray(intent.meta)
@@ -103,10 +103,10 @@ export async function GET(request: Request) {
         pedido_id: pedido?.id ?? null,
         pagamento_intent_id: intent?.id ?? null,
         status,
-        valor: item.codigo === "DOC_BOLETIM_TRIMESTRAL" && boletimPago
+        valor: item.codigo === BOLETIM_SERVICE_CODE && boletimPago
           ? pedidoBoletimPago?.valor_cobrado ?? item.valor_base
           : pedido?.valor_cobrado ?? item.valor_base,
-        pagamento_configurado: !BOLETIM_SERVICE_CODES.some((code) => code === item.codigo) || Number(pedido?.valor_cobrado ?? item.valor_base) > 0 || boletimPago,
+        pagamento_configurado: !isBoletimServiceCode(item.codigo) || Number(pedido?.valor_cobrado ?? item.valor_base) > 0 || boletimPago,
         reject_reason: typeof metadata?.reject_reason === "string" ? metadata.reject_reason : pedido?.reason_detail ?? null,
         next_action: status === "granted"
           ? { type: "download", label: "Descarregar", href: "/aluno/documentos" }

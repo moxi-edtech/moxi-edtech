@@ -55,3 +55,19 @@ Contrato aplicado no PR #194:
 Sem novas tabelas, migrations, RLS nem motor de pagamento. Para validar com escola real é necessário confirmar valor configurado e executar um cenário de pagamento de teste autorizado (não usar matrícula real sem autorização).
 
 Validação automatizada localizada: `node --import tsx --test tests/unit/aluno-boletim-flow.spec.mjs tests/unit/aluno-boletim-payment-gate.spec.mjs` no directório `apps/web`. O teste de isolamento usa duas escolas, dois alunos e duas matrículas fictícias; o PDF é exercitado com 125 avaliações, incluindo paginação.
+
+
+## Simplificação de caminhos e manutenção — 13-10-2026 (PR #194)
+
+A auditoria inicial classificava `src/modelo_portal_do_aluno` como implementação alternativa não montada. A limpeza confirmou a inexistência de importadores reais e removeu os 16 ficheiros obsoletos, bem como as referências no `tsconfig`, nas verificações de navegação e nas exceções de estilo. Esta secção **substitui** o estado de pendência descrito acima para essa pasta.
+
+- `SecretariaDocumentosWorkspace` passa a ser a única composição utilizada por `/secretaria/documentos` e `/escola/[id]/secretaria/documentos`. As rotas conservam a resolução da escola e os respetivos contratos de autorização, sem duplicar aviso de pagamentos, fila de aprovações ou emissão. A diretiva `"use client"` permanece na primeira linha da rota canónica.
+- O único caminho para **novos pagamentos de boletim do aluno** é `DOC_BOLETIM_TRIMESTRAL`; links históricos `?servico=DOC_DECLARACAO_NOTAS` abrem esse mesmo serviço. Pedidos `DOC_DECLARACAO_NOTAS` já liquidados continuam a permitir leitura, sem gerar outra cobrança. A emissão de declarações de notas pela Secretaria é uma operação oficial distinta e **não foi eliminada**.
+- O boletim deixa de surgir como documento gratuito na fila de aprovação administrativa. A validação de serviços pagos continua exclusiva da caixa/Recebimentos, sem alterar as RPCs financeiras. `GET /api/aluno/boletim/pdf` é a implementação canónica de PDF; `POST /api/aluno/documentos/emitir` mantém a resposta de URL como adaptador de compatibilidade para clientes antigos, sem segundo gerador de PDF.
+- O link «Ver notas» deixou de apontar para a rota inexistente `/aluno/notas` e utiliza `/aluno/academico` no contexto da escola, preservando `?aluno=`. O link Notas → Documentos também preserva o contexto canónico.
+- O texto da Secretaria Digital deixou de garantir indevidamente QR Code em **todos** os PDFs: boletins dinâmicos não incluem esse recurso por defeito.
+- As duas interfaces de **Recebimentos** (moderna e de compatibilidade) não foram fusionadas nesta limpeza: diferem no tratamento de caixa, lotes e rematrícula, e consolidá-las exigiria regressão funcional própria. As filas de documentos gratuitos e de pagamentos não devem ser confundidas.
+
+Nenhum dado de escola foi alterado; sem migração SQL, alterações RLS, merge nem deploy. Os testes automatizados de isolamento e boletim pago permanecem obrigatórios antes de publicar.
+
+**Proteção contra regressões:** `.github/workflows/boletim-portal-contracts.yml` verifica automaticamente pagamento confirmado, isolamento, PDF paginado, navegação, ausência do modelo alternativo e composição canónica da Secretaria. Não exige base de dados de produção nem novos pagamentos reais.

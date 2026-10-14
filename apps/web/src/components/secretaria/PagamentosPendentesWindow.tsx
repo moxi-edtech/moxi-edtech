@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, FileText, Image as ImageIcon, CheckCircle2, XCircle } from "lucide-react";
+import { isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
 import { usePagamentosPendentes, type PagamentoPendenteRow, type PagamentosPendentesFilters } from "@/hooks/usePagamentosPendentes";
 import { useRematriculaBalcao } from "@/hooks/useRematriculaBalcao";
 import type { RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
@@ -8,8 +9,6 @@ import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalca
 import { ModalShell } from "@/components/ui/ModalShell";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-const isBoletimService = (code: string | null) => code === "DOC_BOLETIM_TRIMESTRAL" || code === "DOC_DECLARACAO_NOTAS";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -108,7 +107,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
     const row = rows.find((item) => item.pagamento_id === pagamentoId);
     const quantidadeItens = row?.quantidade_itens ?? 1;
     const isServico = row?.tipo_entidade === "servico";
-    const isBoletim = isServico && isBoletimService(row?.servico_codigo ?? null);
+    const isBoletim = isServico && isBoletimServiceCode(row?.servico_codigo ?? null);
     const isRematricula = isServico && row?.servico_codigo === "SERV_REMATRICULA";
     setDecisionNotice({
       tone: aprovado ? "success" : "info",
@@ -252,7 +251,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           {rows.map((row) => {
             const actioning = Boolean(actioningById[row.pagamento_id]);
             const isRematricula = row.tipo_entidade === "servico" && row.servico_codigo === "SERV_REMATRICULA";
-            const isBoletim = row.tipo_entidade === "servico" && isBoletimService(row.servico_codigo);
+            const isBoletim = row.tipo_entidade === "servico" && isBoletimServiceCode(row.servico_codigo);
             return (
               <article key={row.pagamento_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
@@ -308,7 +307,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
                         {row.tipo_entidade}
                       </span>
                       <p className="mt-1 text-xs font-semibold text-slate-600">
-                        {row.quantidade_itens && row.quantidade_itens > 1 ? `${row.quantidade_itens} mensalidades · comprovativo consolidado` : isBoletimService(row.servico_codigo) ? "Boletim de notas" : row.servico_nome || row.servico_codigo || "—"}
+                        {row.quantidade_itens && row.quantidade_itens > 1 ? `${row.quantidade_itens} mensalidades · comprovativo consolidado` : isBoletimServiceCode(row.servico_codigo) ? "Boletim de notas" : row.servico_nome || row.servico_codigo || "—"}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-slate-800">{kwanza.format(Number(row.valor_esperado || 0))}</td>
@@ -462,7 +461,7 @@ function RecebimentoApprovalModal({
 
   const isServico = row.tipo_entidade === "servico";
   const isRematricula = isServico && row.servico_codigo === "SERV_REMATRICULA";
-  const isBoletim = isServico && isBoletimService(row.servico_codigo);
+  const isBoletim = isServico && isBoletimServiceCode(row.servico_codigo);
   const isLote = !isServico && (row.quantidade_itens ?? 1) > 1;
   const isGratuito = Number(row.valor_esperado || 0) === 0 && Number(row.valor_enviado || 0) === 0;
   const title = isBoletim ? "Confirmar pagamento do boletim" : isRematricula

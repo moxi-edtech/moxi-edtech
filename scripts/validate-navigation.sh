@@ -19,7 +19,6 @@ DIRECT_SHORT_NAV=$(rg -n "href=\\{?['\"]/($PORTAL_PATTERN)(/|['\"]|\\?)|router\\
   apps/web/src/app/professor \
   'apps/web/src/app/(portal-aluno)' \
   apps/web/src/app/escola \
-  apps/web/src/modelo_portal_do_aluno \
   --glob '*.{ts,tsx}' || true)
 
 OBJECT_SHORT_NAV=$(rg -n "\\b(href|link|action_href|route):\\s*['\"]/($PORTAL_PATTERN)(/|['\"]|\\?)" \

@@ -3,7 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { FileText, Download, Loader2, CheckCircle2, Wallet, Clock, AlertCircle, Upload, XCircle, ChevronRight, ShieldCheck } from "lucide-react";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { BOLETIM_SERVICE_CODE, BOLETIM_LEGACY_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { formatKwanza } from "@/lib/formatters";
 import { ServicePaymentDrawer } from "../layout/ServicePaymentDrawer";
@@ -25,9 +28,8 @@ interface DocumentoCatalogo {
 }
 
 const DIGITAL_DOCUMENT_CODES = new Set([
-  'DOC_DECLARACAO_NOTAS',
   'DOC_DECLARACAO_FREQUENCIA',
-  'DOC_BOLETIM_TRIMESTRAL',
+  BOLETIM_SERVICE_CODE,
   'DOC_COMPROVANTE_MATRICULA',
   'DOC_CARTAO_ESTUDANTE',
   'DOC_FICHA_INSCRICAO',
@@ -37,10 +39,14 @@ const DIGITAL_DOCUMENT_CODES = new Set([
 
 export function TabDocumentos() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const escolaSlug = getEscolaParamFromPath(pathname);
   const { error, success } = useToast();
   const studentId = searchParams?.get("aluno") ?? null;
-  const serviceCode = searchParams?.get("servico") ?? null;
-  const query = studentId ? `?studentId=${studentId}` : '';
+  const rawServiceCode = searchParams?.get("servico") ?? null;
+  // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
+  const serviceCode = rawServiceCode === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : rawServiceCode;
+  const query = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
 
   const [loading, setLoading] = useState<string | null>(null);
   const [docs, setDocs] = useState<DocumentoCatalogo[]>([]);
@@ -51,8 +57,8 @@ export function TabDocumentos() {
   // Modal state
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
-  const visibleDocs = serviceCode ? docs.filter((doc) => doc.codigo === serviceCode) : docs.filter((doc) =>
-    doc.codigo !== "DOC_DECLARACAO_NOTAS" || !docs.some((item) => item.codigo === "DOC_BOLETIM_TRIMESTRAL")
+  const visibleDocs = docs.filter((doc) =>
+    doc.codigo !== BOLETIM_LEGACY_SERVICE_CODE && (!serviceCode || doc.codigo === serviceCode)
   );
 
   const fetchCatalogo = useCallback(async (quiet = false) => {
@@ -150,7 +156,7 @@ export function TabDocumentos() {
   const handleDownload = async (doc: DocumentoCatalogo) => {
     setLoading(doc.codigo);
     try {
-      const isBoletim = ['DOC_DECLARACAO_NOTAS', 'DOC_BOLETIM_TRIMESTRAL'].includes(doc.codigo);
+      const isBoletim = isBoletimServiceCode(doc.codigo);
       if (isBoletim) {
         const res = await fetch(`/api/aluno/boletim/pdf${query}`, { cache: "no-store" });
         if (!res.ok) {
@@ -255,8 +261,8 @@ export function TabDocumentos() {
 
                     <div className="pt-1">
                       {doc.pagamento_configurado === false ? <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold text-amber-900">Contactar secretaria</span> : <StatusBadge status={doc.status} />}
-                      {doc.codigo === "DOC_BOLETIM_TRIMESTRAL" && doc.status === "granted" ? (
-                        <a href={`/aluno/notas${studentId ? `?aluno=${encodeURIComponent(studentId)}` : ""}`} onClick={(event) => event.stopPropagation()} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</a>
+                      {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" ? (
+                        <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId ? `?aluno=${encodeURIComponent(studentId)}` : ""}`)} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</Link>
                       ) : null}
                     </div>
                   </div>
@@ -311,7 +317,7 @@ export function TabDocumentos() {
         <div className="space-y-1">
           <p className="text-xs font-black uppercase tracking-wider text-slate-700">Autenticidade & Segurança</p>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Todos os documentos emitidos possuem um <strong>QR Code com assinatura digital</strong> para validação instantânea pelas instituições parceiras.
+            Consulte sempre o documento emitido e os seus dados. Os documentos que possuem código de verificação incluem instruções para confirmar a autenticidade; o boletim de notas apresenta as avaliações lançadas até à emissão.
           </p>
         </div>
       </div>

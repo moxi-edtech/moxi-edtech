@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
 import { Lock as LockIcon, FileText, ChevronRight, Loader2, Download } from "lucide-react";
 import Link from "next/link";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
+import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 
 type Disciplina = {
   id: string;
@@ -37,6 +39,7 @@ function fmtNota(v?: number | null) {
 
 export function TabNotas() {
   const searchParams = useSearchParams();
+  const escolaSlug = getEscolaParamFromPath(usePathname());
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [isLiberado, setIsLiberado] = useState(false);
@@ -193,9 +196,9 @@ export function TabNotas() {
           if (!catalogResponse.ok || !catalog.ok) throw new Error(catalog.error || "Não foi possível consultar a taxa do boletim.");
           if (!active) return;
           const servicos = catalog.documentos ?? [];
-          const servico = servicos.find((item) => item.codigo === "DOC_BOLETIM_TRIMESTRAL" && item.valor > 0)
-            ?? servicos.find((item) => item.codigo === "DOC_DECLARACAO_NOTAS" && item.valor > 0)
-            ?? servicos.find((item) => item.codigo === "DOC_BOLETIM_TRIMESTRAL");
+          // Um único serviço pode iniciar um novo pagamento. A declaração de notas
+          // antiga só é aceite como pagamento já concluído (na API), nunca cobrada de novo.
+          const servico = servicos.find((item) => item.codigo === BOLETIM_SERVICE_CODE);
           setBoletimServico(servico ?? null);
         }
       } catch (error: unknown) {
@@ -282,7 +285,7 @@ export function TabNotas() {
                       <p role="status" className="text-sm text-rose-800">Comprovativo rejeitado. Consulte o motivo na Secretaria Digital antes de reenviar.</p>
                     ) : null}
                     {boletimServico && boletimServico.valor > 0 ? (
-                      <Link href={`/aluno/documentos?servico=${boletimServico.codigo}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
+                      <Link href={buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}`)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
                         {boletimServico.status === "pending" || boletimServico.status === "granted" ? "Acompanhar pagamento" : boletimServico.status === "pending_payment" ? "Enviar comprovativo" : "Pagar boletim"}
                         <ChevronRight size={16} />
                       </Link>

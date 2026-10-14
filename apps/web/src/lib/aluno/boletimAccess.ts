@@ -5,6 +5,12 @@ import type { Database } from "~types/supabase";
 // Um pedido gratuito/aprovado não pode desbloquear o boletim.
 export const BOLETIM_SERVICE_CODES = ["DOC_BOLETIM_TRIMESTRAL", "DOC_DECLARACAO_NOTAS"] as const;
 export const BOLETIM_SERVICE_CODE = "DOC_BOLETIM_TRIMESTRAL";
+export const BOLETIM_LEGACY_SERVICE_CODE = "DOC_DECLARACAO_NOTAS";
+
+export function isBoletimServiceCode(code: string | null | undefined): boolean {
+  return code === BOLETIM_SERVICE_CODE || code === BOLETIM_LEGACY_SERVICE_CODE;
+}
+
 
 type PaymentOrder = {
   servico_codigo: string;
@@ -15,7 +21,7 @@ type PaymentOrder = {
 
 export function isBoletimPaid(orders: PaymentOrder[]): boolean {
   return orders.some((order) =>
-    BOLETIM_SERVICE_CODES.some((code) => code === order.servico_codigo) &&
+    isBoletimServiceCode(order.servico_codigo) &&
     order.status === "granted" &&
     Number(order.valor_cobrado) > 0 &&
     (order.pagamento_intents ?? []).some((intent) => intent.status === "settled")
