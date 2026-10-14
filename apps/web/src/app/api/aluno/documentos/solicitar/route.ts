@@ -74,6 +74,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error.message, next_action: { type: "retry_request", label: "Tentar novamente", href: "/aluno/documentos" } }, { status: 409 });
     }
 
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return NextResponse.json({ ok: false, error: "Resposta inválida ao solicitar o serviço." }, { status: 503 });
+    }
     return NextResponse.json({ ...data, next_action: data?.status === "pending_payment" ? { type: "pay_service", label: "Pagar agora", href: "/aluno/documentos" } : data?.status === "granted" ? { type: "download", label: "Descarregar", href: "/aluno/documentos" } : { type: "track_request", label: "Acompanhar pedido", href: "/aluno/documentos" } });
   } catch (error: unknown) {
     if (error instanceof AcademicYearContextError) {
