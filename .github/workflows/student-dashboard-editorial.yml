@@ -1,0 +1,50 @@
+name: Student Dashboard Editorial Gate
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/aluno/dashboard/**'
+      - 'apps/web/src/lib/aluno/dashboardPresentation.ts'
+      - 'apps/web/src/app/api/aluno/dashboard/route.ts'
+      - 'apps/web/tests/unit/aluno-dashboard-editorial.spec.ts'
+      - 'apps/web/visual-harness/**'
+      - 'apps/web/src/components/aluno/PortalVisualFixtures.stories.tsx'
+      - 'apps/web/scripts/visual/portais-screenshot.mjs'
+      - '.github/workflows/student-dashboard-editorial.yml'
+permissions:
+  contents: read
+jobs:
+  unit-contracts:
+    name: Synthetic adaptive states and access contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run adaptive, access and navigation tests
+        run: |
+          node --test --import tsx apps/web/tests/unit/aluno-dashboard-editorial.spec.ts
+          node --test apps/web/tests/unit/aluno-boletim-flow.spec.mjs apps/web/tests/unit/aluno-boletim-navigation-cleanup.spec.mjs apps/web/tests/unit/aluno-boletim-payment-gate.spec.mjs apps/web/tests/unit/professor-dashboard-recovery.spec.mjs
+  quality-build:
+    name: Typecheck lint and full production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C apps/web typecheck
+      - run: pnpm -C apps/web lint
+      - run: pnpm -C apps/web build
