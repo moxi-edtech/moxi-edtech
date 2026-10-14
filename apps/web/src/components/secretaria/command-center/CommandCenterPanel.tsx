@@ -105,7 +105,7 @@ export function CommandCenterPanel({
       <PautaRapidaModal
         initialTurmaId={turmaId ?? undefined}
         initialTurmaLabel={turmaLabel ?? undefined}
-        lockTurma
+        lockTurma={Boolean(turmaId)}
         focusAlunoId={alunoId}
         hideNavigation
       />
