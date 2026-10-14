@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildStudentAttention, nextLessonLabel, mayDisplayGrades } from "../../src/lib/aluno/dashboardPresentation";
+import { buildStudentAttention, nextLessonLabel } from "../../src/lib/aluno/dashboardPresentation";
 
 test("sem pendências não desenha dívida nem alertas", () => {
   assert.deepEqual(buildStudentAttention({pendentes:0,documentos:[],rematricula:{eligible:false}}),[]);
@@ -37,11 +37,6 @@ test("aula real omite disciplina, professor e sala quando ausentes", () => {
   assert.equal(lesson?.subject,"Aula programada");
   assert.deepEqual(lesson?.details,[]);
 });
-test("nota nunca aparece quando pagamento não foi liquidado, mesmo aprovado", () => {
-  assert.equal(mayDisplayGrades({is_liberado:true},false),false);
-  assert.equal(mayDisplayGrades({is_liberado:false},true),false);
-  assert.equal(mayDisplayGrades({is_liberado:true},true),true);
-});
 test("a tela não cria notas locais: autorização pertence às APIs existentes",async()=>{
   const fs=await import("node:fs/promises");
   const ui=await fs.readFile("apps/web/src/components/aluno/dashboard/DashboardLoader.tsx","utf8");
@@ -57,4 +52,48 @@ test("isolamento: o endpoint continua a resolver escola, matrícula e aluno da s
   assert.match(route,/\.eq\('escola_id', escolaId\)/);
   assert.match(route,/\.eq\('matricula_id', matriculaId\)/);
   assert.doesNotMatch(route,/searchParams\.get\(['"]studentId['"]\)/);
+});
+
+test("A e B: identidades sintéticas isoladas por escola no resolvedor de autorização real", async () => {
+  const { resolveAuthorizedStudentIds, resolveSelectedStudentId } = await import("../../src/lib/portalAlunoAuth");
+  // Não existe ligação com o Supabase de produção; a base é construída dentro do próprio teste.
+  const alunos = [
+    { id: "aluno-fixture-A", profile_id: "user-fixture-A", escola_id: "school-fixture-A" },
+    { id: "aluno-fixture-B", profile_id: "user-fixture-B", escola_id: "school-fixture-B" },
+  ];
+  const responsaveis = [
+    { id: "enc-fixture-A", escola_id: "school-fixture-A", email: "a@example.invalid" },
+    { id: "enc-fixture-B", escola_id: "school-fixture-B", email: "b@example.invalid" },
+  ];
+  const vinculos = [
+    { aluno_id: "aluno-fixture-A", encarregado_id: "enc-fixture-A", escola_id: "school-fixture-A" },
+    { aluno_id: "aluno-fixture-B", encarregado_id: "enc-fixture-B", escola_id: "school-fixture-B" },
+  ];
+  const tables: Record<string, Record<string, string>[]> = {
+    alunos, encarregados: responsaveis, aluno_encarregados: vinculos,
+  };
+  function client() {
+    return {
+      from(table: string) {
+        const filters: Record<string, string> = {};
+        const matching = () => (tables[table] ?? []).filter(row => Object.entries(filters).every(([key, val]) => row[key] === val));
+        const query = {
+          select(_columns: string) { return query; },
+          eq(field: string, val: string) { filters[field] = val; return query; },
+          limit(_n: number) { return query; },
+          async maybeSingle() { return { data: matching()[0] ?? null }; },
+          then(onfulfilled: (value: { data: Record<string, string>[] }) => unknown) { return Promise.resolve({ data: matching() }).then(onfulfilled); },
+        };
+        return query;
+      },
+    };
+  }
+  const fake = client() as unknown as Parameters<typeof resolveAuthorizedStudentIds>[0]["supabase"];
+  const idsA = await resolveAuthorizedStudentIds({supabase:fake,userId:"user-fixture-A",escolaId:"school-fixture-A",userEmail:"a@example.invalid"});
+  const idsB = await resolveAuthorizedStudentIds({supabase:fake,userId:"user-fixture-B",escolaId:"school-fixture-B",userEmail:"b@example.invalid"});
+  assert.deepEqual(idsA,["aluno-fixture-A"]);
+  assert.deepEqual(idsB,["aluno-fixture-B"]);
+  assert.equal(resolveSelectedStudentId({selectedId:"aluno-fixture-B",authorizedIds:idsA,fallbackId:"aluno-fixture-A"}),"aluno-fixture-A");
+  assert.equal(resolveSelectedStudentId({selectedId:"aluno-fixture-A",authorizedIds:idsB,fallbackId:"aluno-fixture-B"}),"aluno-fixture-B");
+  assert.deepEqual(await resolveAuthorizedStudentIds({supabase:fake,userId:"user-fixture-A",escolaId:"school-fixture-B",userEmail:"a@example.invalid"}),[]);
 });

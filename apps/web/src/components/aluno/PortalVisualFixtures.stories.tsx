@@ -12,7 +12,7 @@ import DashboardLoader from "@/components/aluno/dashboard/DashboardLoader";
 const SCHOOL = "00000000-0000-4000-8000-000000000401";
 const STUDENT = "00000000-0000-4000-8000-000000000402";
 const INTENT = "00000000-0000-4000-8000-000000000403";
-type FixtureMode = "pending" | "rejected" | "paid" | "professor" | "dashboard-clean" | "dashboard-pending" | "dashboard-rejected" | "dashboard-rematricula" | "dashboard-overdue" | "dashboard-empty";
+type FixtureMode = "pending" | "rejected" | "paid" | "professor" | "dashboard-clean" | "dashboard-pending" | "dashboard-rejected" | "dashboard-rematricula" | "dashboard-overdue" | "dashboard-empty" | "dashboard-approved";
 declare global {
   interface Window { __klasseVisualFixture?: FixtureMode; __klasseVisualFetchInstalled?: boolean }
 }
@@ -34,7 +34,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
     };
     const dashboardMode = mode.startsWith("dashboard-");
     const docsStatus = mode === "dashboard-rejected" ? "rejected" : mode === "dashboard-pending" ? "pending" : "granted";
-    const documents = dashboardMode && (mode === "dashboard-clean" || mode === "dashboard-rematricula" || mode === "dashboard-overdue" || mode === "dashboard-empty") ? [] : [{ ...doc, status: dashboardMode ? docsStatus : doc.status, reject_reason: mode === "dashboard-rejected" ? "O comprovativo não está legível." : doc.reject_reason }];
+    const documents = dashboardMode && (mode === "dashboard-clean" || mode === "dashboard-rematricula" || mode === "dashboard-overdue" || mode === "dashboard-empty" || mode === "dashboard-approved") ? [] : [{ ...doc, status: dashboardMode ? docsStatus : doc.status, reject_reason: mode === "dashboard-rejected" ? "O comprovativo não está legível." : doc.reject_reason }];
     const replies: Record<string, object> = {
       "/api/aluno/dashboard": { ok: true, ano_letivo: mode === "dashboard-empty" ? null : 2026, turma_nome: mode === "dashboard-empty" ? null : "7.ª Classe A",
         proxima_aula: mode === "dashboard-empty" ? null : { weekday: 3, inicio: "08:00", fim: "09:00", sala: "04", slot_id: "slot-fixture" },
@@ -68,8 +68,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
   };
 }
 
-const Surface = ({ mode, children }: { mode: FixtureMode; children: React.ReactNode }) => {
-  if (typeof window !== "undefined") window.__klasseVisualFixture = mode;
+const Surface = ({ children }: { mode: FixtureMode; children: React.ReactNode }) => {
   return <ToastProvider><main className="mx-auto min-h-screen max-w-6xl bg-slate-50 p-3 sm:p-6">{children}</main></ToastProvider>;
 };
 
@@ -88,3 +87,4 @@ export const DashboardRejected: Story = { render: () => <Surface mode="dashboard
 export const DashboardRematricula: Story = { render: () => <Surface mode="dashboard-rematricula"><DashboardLoader /></Surface> };
 export const DashboardOverdue: Story = { render: () => <Surface mode="dashboard-overdue"><DashboardLoader /></Surface> };
 export const DashboardEmpty: Story = { render: () => <Surface mode="dashboard-empty"><DashboardLoader /></Surface> };
+export const DashboardApproved: Story = { render: () => <Surface mode="dashboard-approved"><DashboardLoader /></Surface> };

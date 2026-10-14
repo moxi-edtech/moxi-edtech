@@ -18,6 +18,7 @@ const stories = [
   ["dashboard-rematricula", "synthetic-dashboard-rematricula", /A tua vida escolar/i],
   ["dashboard-overdue", "synthetic-dashboard-overdue", /A tua vida escolar/i],
   ["dashboard-empty", "synthetic-dashboard-empty", /A tua vida escolar/i],
+  ["dashboard-approved", "synthetic-dashboard-approved", /A tua vida escolar/i],
 ];
 const sizes = [[360,640],[390,844],[768,1024],[1366,768],[1920,1080]];
 const zooms = [1, 1.25, 1.5];
@@ -50,6 +51,22 @@ try {
         const output = `${directory}/${name}-${width}x${height}-${Math.round(zoom*100)}.jpg`;
         await page.screenshot({ path: output, type: "jpeg", quality: 72, fullPage: false });
         const visible = textMatcher.test(metrics.bodyText);
+        if (name.startsWith("dashboard-")) {
+          if (/Prova trimestral|Trabalho prático|16\\/20|17\\/20/.test(metrics.bodyText))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: protected grades leaked`);
+          if (name === "dashboard-clean" && metrics.bodyText.includes("Precisa da tua atenção"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: false pending section`);
+          if (name === "dashboard-pending" && !metrics.bodyText.includes("Comprovativo recebido"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: pending state missing`);
+          if (name === "dashboard-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: recovery action missing`);
+          if (name === "dashboard-rematricula" && !metrics.bodyText.includes("A tua rematrícula"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: rematrícula missing`);
+          if (name === "dashboard-overdue" && !metrics.bodyText.includes("uma mensalidade por regularizar"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: overdue missing`);
+          if (name === "dashboard-empty" && (metrics.bodyText.includes("08:00") || metrics.bodyText.includes("Reunião de encarregados")))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: invented schedule or notices`);
+        }
         report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, nestedScrolls: metrics.nestedScrolls, fixtureRendered: visible, output });
         if (name.startsWith("dashboard-") && metrics.nestedScrolls > 0) errors.push(`${name} ${width}x${height} zoom ${zoom}: nested scroll ${metrics.nestedScrolls}`);
         if (!visible) errors.push(`${name} ${width}x${height} zoom ${zoom}: content not rendered; root children ${metrics.rendered}`);

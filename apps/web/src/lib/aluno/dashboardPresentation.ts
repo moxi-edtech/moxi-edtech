@@ -95,6 +95,3 @@ export function nextLessonLabel(lesson: Lesson | null | undefined): {day: string
     subject: lesson.disciplina?.trim() || "Aula programada",
     details: [lesson.professor?.trim() ? `Professor: ${lesson.professor.trim()}` : "", lesson.sala?.trim() ? `Sala: ${lesson.sala.trim()}` : ""].filter(Boolean) };
 }
-export function mayDisplayGrades(boletim: { is_liberado?: boolean } | null | undefined, verifiedPaid: boolean): boolean {
-  return boletim?.is_liberado === true && verifiedPaid;
-}
