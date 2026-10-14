@@ -40,6 +40,9 @@ jobs:
           done
           tail -n 90 /tmp/klasse-visual.log
           exit 1
+      - name: Validate Vite transformed React entry
+        run: |
+          curl --fail-with-body --silent --show-error http://127.0.0.1:6006/main.tsx -o /tmp/klasse-main-built.js || { tail -n 70 /tmp/klasse-visual.log; exit 1; }
       - name: Capture synthetic responsive/zoom matrix
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
