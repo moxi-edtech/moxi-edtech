@@ -1,0 +1,48 @@
+name: Student Grades Editorial Gate
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/aluno/tabs/TabNotas.tsx'
+      - 'apps/web/src/lib/aluno/gradesPresentation.ts'
+      - 'apps/web/tests/unit/aluno-notas-editorial.spec.ts'
+      - '.github/workflows/student-grades-editorial.yml'
+permissions:
+  contents: read
+jobs:
+  contracts:
+    name: Grades access and presentation contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test --import tsx apps/web/tests/unit/aluno-notas-editorial.spec.ts
+      - run: node --test --import tsx apps/web/tests/unit/aluno-boletim-flow.spec.mjs apps/web/tests/unit/aluno-boletim-payment-gate.spec.mjs apps/web/tests/unit/aluno-boletim-navigation-cleanup.spec.mjs
+  build:
+    name: Grade page typecheck lint build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C apps/web typecheck
+      - run: pnpm -C apps/web lint
+      - name: Next production build with synthetic public parameters
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://fixture.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-test-not-a-secret
+        run: pnpm -C apps/web build
