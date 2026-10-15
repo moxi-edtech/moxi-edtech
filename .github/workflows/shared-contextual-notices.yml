@@ -1,0 +1,33 @@
+name: Shared Contextual Notices
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/ui/alert.tsx'
+      - 'apps/web/src/components/aluno/home/RematriculaBanner.tsx'
+      - 'apps/web/src/components/aluno/home/FinanceAlertBanner.tsx'
+      - 'apps/web/tests/unit/shared-contextual-notices.spec.ts'
+      - '.github/workflows/shared-contextual-notices.yml'
+permissions:
+  contents: read
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test --import tsx apps/web/tests/unit/shared-contextual-notices.spec.ts
+      - run: pnpm -C apps/web typecheck
+      - run: pnpm -C apps/web lint
+      - name: Build with synthetic configuration
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://fixture.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-test-not-a-secret
+        run: pnpm -C apps/web build
