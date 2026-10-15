@@ -92,7 +92,7 @@ export default function DashboardLoader() {
     {label:"Pagamentos",hint:"Mensalidades e comprovativos",href:"/aluno/financeiro",icon:Wallet},
     {label:"Horário",hint:"Aulas da semana",href:"/aluno/horario",icon:CalendarDays},
   ];
-  return <main className="relative isolate mx-auto w-full max-w-6xl space-y-8 px-4 pb-28 pt-5 text-slate-800 before:pointer-events-none before:absolute before:inset-y-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-[#F3F5F1] sm:px-8 sm:pt-10" data-testid="aluno-dashboard-editorial">
+  return <main className="mx-auto w-full max-w-6xl space-y-8 rounded-2xl bg-[#F3F5F1] px-4 pb-28 pt-5 text-slate-800 sm:px-8 sm:pt-10" data-testid="aluno-dashboard-editorial">
     <header className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-[#2B6044]"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-slate-500">/ Portal do aluno</span></p>
