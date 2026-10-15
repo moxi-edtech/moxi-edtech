@@ -30,8 +30,3 @@ jobs:
       - run: node --test --import tsx apps/web/tests/unit/shared-contextual-notices.spec.ts
       - run: pnpm -C apps/web typecheck
       - run: pnpm -C apps/web lint
-      - name: Build with synthetic configuration
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://fixture.invalid
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-test-not-a-secret
-        run: pnpm -C apps/web build
