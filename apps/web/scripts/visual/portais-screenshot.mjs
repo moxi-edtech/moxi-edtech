@@ -50,7 +50,7 @@ try {
         await page.goto(url, { waitUntil: "domcontentloaded" });
         if (name.startsWith("dashboard-")) await page.getByTestId("aluno-dashboard-editorial").waitFor({timeout:10000});
         else if (name.startsWith("grade-")) await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
-        else await page.waitForTimeout(1200);
+        else await page.locator("#root > *").first().waitFor({timeout:12000}).catch(() => { throw new Error(`${name}: fixture root did not render; browser errors: ${errors.slice(-5).join(" | ") || "none"}`); });
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
         await page.waitForTimeout(200);
         const metrics = await page.evaluate(() => {
