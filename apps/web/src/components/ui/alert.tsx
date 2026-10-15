@@ -57,3 +57,48 @@ const AlertDescription = React.forwardRef<
 AlertDescription.displayName = "AlertDescription"
 
 export { Alert, AlertTitle, AlertDescription }
+
+/**
+ * Notice is the shared presentation layer for contextual school messages.
+ * Domain components resolve status, permissions and actions before rendering it.
+ * The existing Alert primitive is retained for backwards compatibility.
+ */
+export type NoticeTone = "neutral" | "attention" | "critical" | "success";
+export type NoticeProps = {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  eyebrow?: React.ReactNode;
+  icon?: React.ReactNode;
+  action?: React.ReactNode;
+  detail?: React.ReactNode;
+  tone?: NoticeTone;
+  className?: string;
+  children?: React.ReactNode;
+  role?: "status" | "alert" | "region";
+};
+const noticeTones: Record<NoticeTone,string> = {
+  neutral: "border-slate-200 bg-white",
+  attention: "border-[#C8902A]/40 bg-white",
+  critical: "border-rose-300 bg-white",
+  success: "border-[#2B6044]/30 bg-white",
+};
+export function Notice({title,description,eyebrow,icon,action,detail,tone="neutral",className,children,role="region"}: NoticeProps) {
+  return (
+    <section role={role} aria-label={typeof title === "string" ? title : undefined}
+      className={cn("min-w-0 rounded-2xl border p-5 sm:p-6",noticeTones[tone],className)}>
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <div className="min-w-0 flex-1 space-y-2">
+          {(eyebrow || icon) && <div className="flex items-center gap-2 text-xs font-semibold text-[#2B6044]">
+            {icon && <span aria-hidden="true" className="shrink-0">{icon}</span>}
+            {eyebrow && <span>{eyebrow}</span>}
+          </div>}
+          <h3 className="break-words text-lg font-semibold leading-snug tracking-tight text-slate-900">{title}</h3>
+          {description && <div className="text-sm leading-6 text-slate-600">{description}</div>}
+          {detail && <div className="pt-1 text-sm leading-6 text-slate-600">{detail}</div>}
+        </div>
+        {action && <div className="flex shrink-0 items-center sm:self-center [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_button]:min-h-11 [&_button]:rounded-xl [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-[#2B6044] [&_button]:focus-visible:ring-offset-2">{action}</div>}
+      </div>
+      {children && <div className="mt-5">{children}</div>}
+    </section>
+  );
+}

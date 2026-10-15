@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/Button";
+import { Notice } from "@/components/ui/alert";
+import Link from "next/link";
 
 type Props = {
   loading: boolean;
@@ -12,16 +13,12 @@ export function FinanceAlertBanner({ loading, alert }: Props) {
   if (!alert) return null;
 
   return (
-    <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">Mensalidade em atraso</p>
-          <p className="text-xs text-slate-600">
-            {kwanza.format(alert.valor)} {alert.mes ? `• ${alert.mes}` : ""}
-          </p>
-        </div>
-        <Button tone="green" className="min-h-11" size="sm">Pagar Agora</Button>
-      </div>
-    </section>
+    <Notice
+      tone="attention"
+      eyebrow="Pagamentos"
+      title="Mensalidade em atraso"
+      description={`${kwanza.format(alert.valor)}${alert.mes ? ` · ${alert.mes}` : ""}. Consulta os detalhes para regularizar a mensalidade.`}
+      action={<Link href="/aluno/financeiro" className="rounded-xl bg-[#2B6044] px-5 text-sm font-semibold text-white hover:bg-[#214c36] focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2">Ver pagamento</Link>}
+    />
   );
 }

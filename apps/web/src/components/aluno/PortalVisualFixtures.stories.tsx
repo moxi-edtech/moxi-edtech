@@ -57,8 +57,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
   };
 }
 
-const Surface = ({ mode, children }: { mode: FixtureMode; children: React.ReactNode }) => {
-  if (typeof window !== "undefined") window.__klasseVisualFixture = mode;
+const Surface = ({ children }: { mode: FixtureMode; children: React.ReactNode }) => {
   return <ToastProvider><main className="mx-auto min-h-screen max-w-6xl bg-slate-50 p-3 sm:p-6">{children}</main></ToastProvider>;
 };
 
