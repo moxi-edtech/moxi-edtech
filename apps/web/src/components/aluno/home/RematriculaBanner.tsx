@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect } from 'react'
 import { Sparkles, ArrowRight, Loader2, CheckCircle2, Wallet, X, Upload, FileCheck2 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Notice } from '@/components/ui/notice'
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 
 type RematriculaStatus = {
@@ -295,12 +295,12 @@ export function RematriculaBanner() {
             <div className="p-1.5 bg-amber-100 rounded-lg">
               <Sparkles className="h-4 w-4 text-amber-600" />
             </div>
-            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
+            <span className="text-xs font-semibold text-[#2B6044]">
               Rematrícula {status.nextAno}
             </span>
           </div>
 
-          <h3 className="text-xl font-bold text-slate-900 leading-tight">
+          <h3 className="text-xl font-semibold text-slate-900 leading-tight">
             {isConfirmed
               ? 'Tudo encaminhado para o próximo ano!' 
               : paymentIntent?.has_evidence
@@ -379,10 +379,10 @@ export function RematriculaBanner() {
             <button
               onClick={handleConfirm}
               disabled={busy}
-              className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg active:scale-95 disabled:opacity-50 ${
+              className={`flex min-h-11 items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2B6044] disabled:opacity-50 ${
                 status.hasDebt 
                   ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' 
-                  : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber/20'
+                  : 'bg-[#2B6044] text-white hover:bg-[#214d37]'
               }`}
             >
               {busy ? (
@@ -440,6 +440,6 @@ export function RematriculaBanner() {
           </div>
         </div>
       )}
-    </motion.div>
+    </Notice>
   )
 }
