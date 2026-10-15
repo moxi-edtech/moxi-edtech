@@ -3,19 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
-import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
-import { Lock as LockIcon, FileText, ChevronRight, Loader2, Download } from "lucide-react";
+import { Lock as LockIcon, FileText, ChevronDown, Loader2, Download, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
 import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
+import { accessPresentation, availablePeriods, chooseInitialPeriod, formatPublishedGrade, periodAssessments } from "@/lib/aluno/gradesPresentation";
 
 type Disciplina = {
   id: string;
   nome: string;
-  nota_t1?: number | null;
-  nota_t2?: number | null;
-  nota_t3?: number | null;
   avaliacoes: Array<{ nome: string; tipo: string; trimestre: number; nota: number }>;
 };
 
@@ -26,16 +22,13 @@ type BoletimResponse = {
   matricula_encontrada?: boolean;
   error?: string;
   disciplinas: Disciplina[];
+  context?: { anoLetivoLabel?: string | null; mode?: "CURRENT" | "HISTORICAL_READ" } | null;
 };
 
-type BoletimServico = { codigo: string; valor: number; status: string };
+type BoletimServico = { codigo: string; valor: number; status: string; reject_reason?: string | null; pedido_id?: string | null };
 
-type ListaDisciplina = { id: string; nome: string };
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
-function fmtNota(v?: number | null) {
-  return typeof v === "number" ? v.toFixed(1) : "—";
-}
 
 export function TabNotas() {
   const searchParams = useSearchParams();
@@ -56,8 +49,10 @@ export function TabNotas() {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
-  const [listaDisciplinas, setListaDisciplinas] = useState<ListaDisciplina[]>([]);
-  const [loadingLista, setLoadingLista] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
+  const [academicYear, setAcademicYear] = useState<string | null>(null);
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
+  const [historicalRead, setHistoricalRead] = useState(false);
   const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("");
   const [reapreciacaoSaving, setReapreciacaoSaving] = useState(false);
@@ -161,6 +156,12 @@ export function TabNotas() {
     setLoading(true);
     setIsLiberado(false);
     setDisciplinas([]);
+    setSelectedPeriod(null);
+    setAcademicYear(null);
+    setLoadedScope(null);
+    setHistoricalRead(false);
+    setReapreciacaoDisc(null);
+    setMelhoriaDisc(null);
     setBoletimServico(null);
     setAccessError(null);
   }, [studentId, bulletinQuery]);
@@ -211,7 +212,13 @@ export function TabNotas() {
         if (!active) return;
         setMatriculaEncontrada(json.matricula_encontrada !== false);
         setIsLiberado(json.is_liberado);
-        setDisciplinas(json.is_liberado ? json.disciplinas ?? [] : []);
+        setLoadedScope(bulletinQuery);
+        setHistoricalRead(json.context?.mode === "HISTORICAL_READ");
+        const published = json.is_liberado ? json.disciplinas ?? [] : [];
+        setDisciplinas(published);
+        setSelectedPeriod(chooseInitialPeriod(published));
+        const label = json.context?.anoLetivoLabel?.trim() || null;
+        setAcademicYear(label);
         if (!json.is_liberado && json.matricula_encontrada !== false) {
           const catalogResponse = await fetch(`/api/aluno/documentos/catalogo${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
           const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[] };
@@ -227,7 +234,10 @@ export function TabNotas() {
         if (active && !(error instanceof DOMException && error.name === "AbortError")) {
           setAccessError(error instanceof Error ? error.message : "Não foi possível carregar o boletim.");
           setIsLiberado(false);
+          setLoadedScope(null);
+          setHistoricalRead(false);
           setDisciplinas([]);
+          setSelectedPeriod(null);
         }
       } finally {
         if (active) {
@@ -240,165 +250,94 @@ export function TabNotas() {
     return () => { active = false; ctrl.abort(); };
   }, [studentId, bulletinQuery, refreshVersion]);
 
-  useEffect(() => {
-    const ctrl = new AbortController();
-    setLoadingLista(true);
-    fetch("/api/aluno/disciplinas", { cache: "no-store", signal: ctrl.signal })
-      .then((r) => r.json() as Promise<{ disciplinas?: ListaDisciplina[] }>)
-      .then((json) => setListaDisciplinas(json.disciplinas ?? []))
-      .catch((error) => {
-        if (error?.name !== "AbortError") {
-          setListaDisciplinas([]);
-        }
-      })
-      .finally(() => setLoadingLista(false));
-    return () => ctrl.abort();
-  }, []);
-
+  // Fail closed synchronously on student/year change, before effects clear prior state.
+  const safeIsLiberado = loadedScope === bulletinQuery && isLiberado;
+  const safeDisciplinas = safeIsLiberado ? disciplinas : [];
+  const visibleLoading = loading || (loadedScope !== bulletinQuery && !accessError);
+  const periods = availablePeriods(safeDisciplinas);
+  const period = selectedPeriod !== null && periods.includes(selectedPeriod) ? selectedPeriod : chooseInitialPeriod(safeDisciplinas);
+  const moneyStatus = boletimServico?.status === "pending_payment" ? "available" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
+  const access = accessPresentation(moneyStatus, boletimServico?.reject_reason);
+  const docsUrl = buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`);
+  const navParams = new URLSearchParams();
+  if (studentId) navParams.set("aluno", studentId);
+  if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
+  const navQuery = navParams.size ? `?${navParams.toString()}` : "";
+  const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
   return (
-    <div className="space-y-6 pb-8">
-      <AcademicCarryoversCard studentId={studentId} />
-
-      <div className="space-y-4">
-        <header className="flex flex-wrap items-center justify-between gap-2 px-1">
-            <SectionTitle>Meu Boletim</SectionTitle>
-            <div className="flex items-center gap-2">
-              {!loading && !accessError && matriculaEncontrada && !isLiberado && (
-                  <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-tight border border-amber-100">
-                      <LockIcon size={12} /> Acesso Restrito
-                  </span>
-              )}
-            </div>
-        </header>
-
-        {loading ? (
-          <div className="h-48 animate-pulse rounded-[2.5rem] bg-slate-100" />
-        ) : (
-          <section className="space-y-3">
-            {accessError ? (
-              <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
-                <p className="font-bold">Não foi possível verificar o boletim.</p>
-                <p className="mt-1">{accessError} Nenhum novo pagamento é necessário até confirmar o estado com a secretaria.</p>
-                <button type="button" onClick={() => setRefreshVersion((current) => current + 1)} className="mt-3 rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-bold">Tentar novamente</button>
-              </div>
-            ) : !matriculaEncontrada ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-                Não foi encontrada uma matrícula neste ano letivo. Contacte a secretaria antes de solicitar o boletim.
-              </div>
-            ) : !isLiberado ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
-                <div className="flex flex-wrap items-start gap-3">
-                  <LockIcon size={22} className="mt-1 shrink-0 text-amber-700" />
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <h3 className="text-base font-bold text-slate-900">Notas disponíveis após pagamento do boletim</h3>
-                    <p className="text-sm text-slate-700">
-                      Depois de a secretaria confirmar o pagamento, poderá consultar as notas já lançadas e descarregar o PDF actualizado.
-                    </p>
-                    {boletimServico?.valor && boletimServico.valor > 0 ? (
-                      <p className="text-sm font-bold text-slate-900">Taxa: {new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(boletimServico.valor)}</p>
-                    ) : (
-                      <p className="text-sm font-semibold text-amber-900">A escola ainda não configurou a taxa do boletim. Contacte a secretaria.</p>
-                    )}
-                    {boletimServico?.status === "pending" ? (
-                      <p role="status" className="text-sm font-semibold text-blue-800">Comprovativo recebido. Aguarde a validação da secretaria. Não volte a pagar.</p>
-                    ) : boletimServico?.status === "granted" ? (
-                      <p role="status" className="text-sm font-semibold text-blue-800">Pagamento em reconciliação. Contacte a secretaria se o acesso não for liberado.</p>
-                    ) : boletimServico?.status === "rejected" || boletimServico?.status === "canceled" ? (
-                      <p role="status" className="text-sm text-rose-800">Comprovativo rejeitado. Consulte o motivo na Secretaria Digital antes de reenviar.</p>
-                    ) : null}
-                    {boletimServico && boletimServico.valor > 0 ? (
-                      <Link href={buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">
-                        {boletimServico.status === "pending" || boletimServico.status === "granted" ? "Acompanhar pagamento" : boletimServico.status === "pending_payment" ? "Enviar comprovativo" : "Pagar boletim"}
-                        <ChevronRight size={16} />
-                      </Link>
-                    ) : null}
-                    <button type="button" onClick={() => setRefreshVersion((current) => current + 1)} className="ml-2 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-slate-700 underline">
-                      {refreshing ? "A verificar..." : "Actualizar estado"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="grid gap-3">
-              {isLiberado && disciplinas.map((disc) => (
-                <details key={disc.id} className="group rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm open:ring-2 open:ring-emerald/10">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-slate-900">
-                    <span className="inline-flex items-center gap-2"><FileText size={16} className="text-slate-500" />{disc.nome}</span>
-                    <ChevronRight size={16} className="shrink-0 text-slate-400 transition-transform group-open:rotate-90" />
-                  </summary>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    {[1, 2, 3].map((trimestre) => {
-                      const notas = disc.avaliacoes.filter((avaliacao) => avaliacao.trimestre === trimestre);
-                      return (
-                        <div key={trimestre} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                          <p className="mb-2 text-xs font-bold text-slate-600">{trimestre}º trimestre</p>
-                          {notas.length ? notas.map((avaliacao, index) => (
-                            <div key={`${avaliacao.nome}-${index}`} className="flex justify-between gap-3 py-1 text-xs text-slate-700">
-                              <span>{avaliacao.nome}</span><span className="font-bold tabular-nums">{fmtNota(avaliacao.nota)}</span>
-                            </div>
-                          )) : <p className="text-xs text-slate-500">Ainda sem notas lançadas.</p>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {disc.avaliacoes.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap gap-3 border-t border-slate-100 pt-3">
-                      <button type="button" onClick={() => { setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className="text-xs font-semibold text-emerald-800 underline">Pedir reapreciação</button>
-                      <button type="button" onClick={() => void abrirMelhoria(disc)} className="text-xs font-semibold text-slate-700 underline">Solicitar melhoria</button>
-                    </div>
-                  ) : null}
-                </details>
-              ))}
-
-              {isLiberado && disciplinas.length === 0 && <p className="text-sm text-slate-500 text-center py-8">Ainda não há notas lançadas no boletim.</p>}
-            </div>
-          </section>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <SectionTitle>Minhas Disciplinas</SectionTitle>
-        {loadingLista ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
-            <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
-          </div>
-        ) : listaDisciplinas.length === 0 ? (
-          <AlunoCard>
-            <p className="text-sm text-slate-500">Nenhuma disciplina encontrada.</p>
-          </AlunoCard>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {listaDisciplinas.map((disc) => (
-              <AlunoCard key={disc.id} className="border-slate-100">
-                <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                        <FileText size={20} />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-slate-900">{disc.nome}</p>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Disciplina Activa</p>
-                    </div>
-                </div>
-              </AlunoCard>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {isLiberado && (
-        <div className="flex flex-col items-end gap-2 pt-2">
-          {downloadError && <p role="alert" className="w-full rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{downloadError} Pode tentar novamente.</p>}
-          <button type="button" onClick={() => void descarregarBoletim()} disabled={downloading} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white disabled:opacity-60 sm:w-auto">
-            {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            {downloading ? "A preparar boletim..." : "Descarregar boletim actualizado (PDF)"}
-          </button>
-          <p className="text-xs text-slate-500">O PDF inclui as notas que já foram lançadas. Pode descarregar novamente quando houver novas avaliações.</p>
+    <div className="mx-auto max-w-4xl space-y-8 pb-12 text-slate-800" data-testid="aluno-pauta-editorial">
+      <header className="space-y-3">
+        <p className="text-sm font-medium text-[#2B6044]">KLASSE / Portal do aluno</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">As tuas notas</h1>
+        <p className="text-base leading-7 text-slate-600">Acompanha as avaliações que já foram lançadas.</p>
+        {academicYear !== null && <p className="text-sm text-slate-500">Ano letivo {academicYear}</p>}
+        <nav aria-label="Navegação académica" className="flex flex-wrap gap-x-5 gap-y-2 border-b border-slate-200 pt-2 text-sm">
+          <Link aria-current="page" href={buildPortalHref(escolaSlug, `/aluno/academico${navQuery}`)} className={`inline-flex min-h-11 items-center border-b-2 border-[#2B6044] font-semibold text-[#2B6044] ${focus}`}>Notas</Link>
+          <Link href={buildPortalHref(escolaSlug, `/aluno/disciplinas${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Disciplinas</Link>
+          <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Documentos</Link>
+        </nav>
+      </header>
+      {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-5 motion-safe:animate-pulse">
+        <div className="h-12 max-w-sm rounded-xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/><div className="h-28 rounded-2xl bg-slate-100"/>
+      </section> : accessError ? <section role="alert" className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
+        <h2 className="text-lg font-semibold">Não foi possível consultar as tuas notas</h2>
+        <p className="text-sm leading-6 text-slate-700">{accessError} Não precisas de fazer outro pagamento.</p>
+        <button type="button" onClick={() => setRefreshVersion(v => v+1)} className={`min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-[#2B6044] ${focus}`}>Tentar novamente</button>
+      </section> : !matriculaEncontrada ? <section className="rounded-2xl bg-slate-50 p-5">
+        <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-2 text-sm leading-6 text-slate-600">Contacta a secretaria para confirmar a tua matrícula antes de solicitar o boletim.</p>
+      </section> : !safeIsLiberado ? <section aria-labelledby="boletim-locked" className="space-y-4 rounded-2xl border border-[#C8902A]/30 bg-white p-5 sm:p-6">
+        <LockIcon aria-hidden className="h-6 w-6 text-[#A06D17]"/>
+        <h2 id="boletim-locked" className="text-xl font-semibold text-slate-900">{access.title}</h2>
+        <p className="text-sm leading-6 text-slate-600">{access.message}</p>
+        {boletimServico?.valor && boletimServico.valor > 0 && moneyStatus === "available" && <p className="text-sm font-medium">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(boletimServico.valor)}</p>}
+        {moneyStatus === "available" && !boletimServico?.valor && <p className="text-sm text-slate-600">A taxa do boletim ainda não está configurada. Contacta a secretaria.</p>}
+        {(boletimServico?.valor || moneyStatus !== "available") && <Link href={docsUrl} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#2B6044] px-5 text-sm font-semibold text-white hover:bg-[#214d36] ${focus}`}>{access.action}<ArrowRight className="h-4 w-4"/></Link>}
+        <p className="text-xs leading-5 text-slate-500">A aprovação do pedido, por si só, não libera as avaliações. É preciso confirmar a liquidação.</p>
+      </section> : <section aria-labelledby="pauta-title" className="space-y-6">
+        <div className="space-y-4">
+          <h2 id="pauta-title" className="text-xl font-semibold tracking-tight text-slate-900">Avaliações por período</h2>
+          {periods.length>0 ? <div role="group" aria-label="Selecionar período das avaliações" className="flex flex-wrap gap-2">
+            {periods.map(p => <button type="button" key={p} onClick={() => setSelectedPeriod(p)}
+              aria-pressed={period === p} className={`min-h-11 rounded-xl border px-4 text-sm font-semibold transition-colors motion-reduce:transition-none ${period === p ? "border-[#2B6044] bg-[#2B6044] text-white" : "border-slate-200 bg-white text-slate-700 hover:border-[#2B6044]"} ${focus}`}>
+              {p}.º trimestre
+            </button>)}
+          </div> : <p className="rounded-xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">Ainda não há avaliações publicadas. Os períodos aparecem quando a escola lançar as notas.</p>}
         </div>
-      )}
-
-      {reapreciacaoDisc && (
+        {periods.length > 0 && <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-4 sm:px-6">
+          {safeDisciplinas.map(disc => {
+            const published = periodAssessments(disc,period);
+            return <article key={disc.id} className="space-y-4 py-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h3 className="min-w-0 flex-1 break-words text-base font-semibold text-slate-900">{disc.nome}</h3>
+                {!historicalRead && disc.avaliacoes.length > 0 && <details className="group relative">
+                  <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 ${focus}`}>
+                    Opções <ChevronDown aria-hidden className="h-4 w-4"/>
+                  </summary>
+                  <div className="absolute right-0 z-20 mt-1 w-52 max-w-[80vw] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                    <button type="button" onClick={() => { setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Pedir reapreciação</button>
+                    <button type="button" onClick={() => void abrirMelhoria(disc)} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Solicitar melhoria</button>
+                  </div>
+                </details>}
+              </div>
+              {published.length ? <ul className="space-y-3">{published.map((avaliacao,index)=><li key={`${disc.id}-${avaliacao.nome}-${index}`} className="flex min-w-0 items-baseline justify-between gap-5 text-sm">
+                <span className="min-w-0 break-words leading-6 text-slate-600">{avaliacao.nome}</span>
+                <span className="shrink-0 font-semibold tabular-nums text-slate-900" aria-label={`Nota ${formatPublishedGrade(avaliacao.nota)}`}>{formatPublishedGrade(avaliacao.nota)}</span>
+              </li>)}</ul> : <p className="text-sm leading-6 text-slate-500">Ainda não há avaliações lançadas de {disc.nome} neste período.</p>}
+            </article>;
+          })}
+        </div>}
+        <aside className="space-y-3 border-t border-slate-200 pt-6">
+          <div className="flex items-center gap-3"><FileText aria-hidden className="h-5 w-5 text-[#2B6044]"/><h2 className="text-lg font-semibold text-slate-900">Precisas do boletim em PDF?</h2></div>
+          <p className="text-sm leading-6 text-slate-600">Descarrega o boletim com as avaliações já publicadas.</p>
+          {downloadError && <p role="alert" className="text-sm text-rose-800">{downloadError}</p>}
+          <button type="button" onClick={() => void descarregarBoletim()} disabled={downloading} className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#2B6044] px-5 text-sm font-semibold text-[#2B6044] disabled:opacity-50 ${focus}`}>
+            {downloading ? <Loader2 className="h-4 w-4 motion-safe:animate-spin"/> : <Download className="h-4 w-4"/>}{downloading ? "A preparar o PDF..." : "Descarregar boletim"}
+          </button>
+        </aside>
+      </section>}
+      {safeIsLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
+      {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
+      {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-raa-title">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
             <h2 id="aluno-raa-title" className="font-semibold text-slate-900">Solicitar reapreciação — {reapreciacaoDisc.nome}</h2>
@@ -410,7 +349,7 @@ export function TabNotas() {
         </div>
       )}
 
-      {melhoriaDisc && (
+      {safeIsLiberado && !historicalRead && melhoriaDisc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-melhoria-title">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
             <h2 id="aluno-melhoria-title" className="font-semibold text-slate-900">Solicitar melhoria — {melhoriaDisc.nome}</h2>
