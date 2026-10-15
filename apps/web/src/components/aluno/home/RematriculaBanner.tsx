@@ -241,10 +241,14 @@ export function RematriculaBanner() {
       && ['aprovada', 'matriculado', 'matriculada', 'concluido', 'concluida'].includes(status.status || ''),
   )
 
+  const rejectedEvidence = Boolean(paymentIntent && ['failed', 'rejected', 'cancelled', 'canceled'].includes(paymentIntent.status));
+  const pendingEvidence = Boolean(paymentIntent?.has_evidence && !rejectedEvidence && paymentIntent?.status !== 'settled');
   const headline = isConfirmed
     ? 'Rematrícula confirmada'
-    : paymentIntent?.has_evidence
-      ? 'Comprovativo recebido e em análise'
+    : rejectedEvidence
+      ? 'Comprovativo não confirmado'
+      : pendingEvidence
+        ? 'Comprovativo recebido e em análise'
       : paymentIntent
         ? 'Pagamento da rematrícula disponível'
         : status.alreadyDone
@@ -256,18 +260,20 @@ export function RematriculaBanner() {
               : 'Já podes fazer a rematrícula';
   const explanation = isConfirmed
     ? 'A tua rematrícula foi confirmada pela escola.'
-    : paymentIntent?.has_evidence
-      ? 'A secretaria está a analisar o comprovativo. Não precisas de pagar novamente.'
+    : rejectedEvidence
+      ? (paymentIntent?.rejection_reason || 'A secretaria não confirmou o comprovativo.') + ' Podes reenviar o comprovativo no mesmo pedido.'
+      : pendingEvidence
+        ? 'A secretaria está a analisar o comprovativo. Não precisas de pagar novamente.'
       : paymentIntent
         ? `O pedido de pagamento de ${money.format(paymentIntent.amount)} está disponível. Usa a mesma transação para enviar o comprovativo.`
         : status.hasDebt
           ? 'É necessário regularizar as mensalidades vencidas antes de continuar.'
           : `Confirma a continuidade no ano letivo ${status.nextAno ?? 'seguinte'}.`;
   const nextAction = isConfirmed ? null : (
-    <button type="button" onClick={handleConfirm} disabled={busy || Boolean(paymentIntent?.has_evidence)}
+    <button type="button" onClick={handleConfirm} disabled={busy}
       className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#2B6044] px-5 py-3 text-sm font-semibold text-white hover:bg-[#214c36] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none">
       {busy ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : status.hasDebt ? <Wallet aria-hidden="true" className="h-4 w-4" /> : <ArrowRight aria-hidden="true" className="h-4 w-4" />}
-      {status.hasDebt ? 'Abrir financeiro' : paymentIntent ? 'Continuar pedido' : 'Fazer rematrícula'}
+      {status.hasDebt ? 'Abrir financeiro' : rejectedEvidence ? 'Reenviar comprovativo' : pendingEvidence ? 'Ver estado do pedido' : paymentIntent ? 'Continuar pedido' : 'Fazer rematrícula'}
     </button>
   );
   return (
