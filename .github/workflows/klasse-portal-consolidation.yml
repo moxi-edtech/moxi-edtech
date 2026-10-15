@@ -28,7 +28,7 @@ jobs:
         working-directory: apps/web
         shell: bash
         run: |
-          mapfile -t suites < <(find apps/web/tests/unit -type f \( -name '*.spec.ts' -o -name '*.spec.tsx' -o -name '*.spec.mjs' \) | sort)
+          mapfile -t suites < <(find tests/unit -type f \( -name '*.spec.ts' -o -name '*.spec.tsx' -o -name '*.spec.mjs' \) | sort)
           printf 'Executing %s unit suites with synthetic test data\n' "${#suites[@]}"
           test "${#suites[@]}" -gt 0
           node --test --import tsx "${suites[@]}"
