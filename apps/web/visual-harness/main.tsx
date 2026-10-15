@@ -12,6 +12,8 @@ const stories: Record<string, { render?: (...args: unknown[]) => React.ReactNode
   "professor-com-turmas": ProfessorComTurmas,
 };
 const name = new URLSearchParams(window.location.search).get("story") || "documentos-pendentes";
+const mode: Record<string, NonNullable<Window["__klasseVisualFixture"]>> = {"documentos-pendentes":"pending","documentos-rejeitados":"rejected","notas-pagas":"paid","professor-com-turmas":"professor"};
+window.__klasseVisualFixture = mode[name] ?? "pending";
 const Scene = stories[name]?.render;
 const target = document.getElementById("root");
 if (target && Scene) createRoot(target).render(<>{Scene()}</>);
