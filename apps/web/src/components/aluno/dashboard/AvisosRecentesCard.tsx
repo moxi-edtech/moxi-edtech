@@ -1,3 +1,4 @@
+import { Notice } from "@/components/ui/notice";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 
 export default function AvisosRecentesCard({ items }: { items: Array<{ id: string; titulo: string; resumo: string; origem: string; data: string }> }) {
@@ -12,13 +13,7 @@ export default function AvisosRecentesCard({ items }: { items: Array<{ id: strin
       ) : (
         <ul className="mt-3 space-y-3">
           {items.map((a) => (
-            <li key={a.id} className="rounded-xl border border-slate-100 px-3 py-2">
-              <div className="text-xs text-slate-400">
-                {a.origem} • {new Date(a.data).toLocaleDateString("pt-PT")}
-              </div>
-              <div className="text-sm font-semibold text-slate-900">{a.titulo}</div>
-              <div className="text-sm text-slate-600">{a.resumo}</div>
-            </li>
+            <li key={a.id}><Notice title={a.titulo} description={a.resumo} eyebrow={`${a.origem} • ${new Date(a.data).toLocaleDateString("pt-AO")}`} className="mb-0" /></li>
           ))}
         </ul>
       )}
