@@ -1,0 +1,28 @@
+name: Shared Notice UI Gate
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/ui/notice.tsx'
+      - 'apps/web/src/components/aluno/home/RematriculaBanner.tsx'
+      - 'apps/web/src/components/aluno/dashboard/AvisosRecentesCard.tsx'
+      - 'apps/web/tests/unit/shared-notice.spec.ts'
+      - '.github/workflows/shared-notice-ui.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test --import tsx apps/web/tests/unit/shared-notice.spec.ts
+      - run: pnpm -C apps/web typecheck
+      - run: pnpm -C apps/web lint
