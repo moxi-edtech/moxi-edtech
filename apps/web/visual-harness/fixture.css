@@ -1,0 +1,6 @@
+/* Visual harness only. Load Tailwind utilities before globals.css, whose legacy
+   @config/@plugin ordering cannot be interpreted reliably by Vite's CSS parser.
+   Never copy mock styles over the production component styling. */
+@import "tailwindcss";
+@config "../tailwind.config.js";
+@source "../src";

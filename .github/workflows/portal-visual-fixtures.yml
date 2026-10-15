@@ -8,12 +8,18 @@ on:
       - 'apps/web/src/components/aluno/tabs/TabDocumentos.tsx'
       - 'apps/web/src/components/aluno/tabs/TabNotas.tsx'
       - 'apps/web/src/app/professor/page.tsx'
+      - 'apps/web/src/components/aluno/dashboard/**'
+      - 'apps/web/src/lib/aluno/dashboardPresentation.ts'
+      - 'apps/web/src/lib/aluno/gradesPresentation.ts'
+      - 'apps/web/src/components/ui/alert.tsx'
+      - 'apps/web/src/components/aluno/home/**'
+      - 'apps/web/tests/unit/aluno-notas-editorial.spec.ts'
       - '.github/workflows/portal-visual-fixtures.yml'
 permissions:
   contents: read
 jobs:
   synthetic-browser-evidence:
-    name: 5 viewports x 3 zoom levels x 4 actual portal components
+    name: 5 viewports x 3 zoom levels x consolidated portal scenarios
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -43,6 +49,10 @@ jobs:
       - name: Validate Vite transformed React entry
         run: |
           curl --fail-with-body --silent --show-error http://127.0.0.1:6006/main.tsx -o /tmp/klasse-main-built.js || { tail -n 70 /tmp/klasse-visual.log; exit 1; }
+      - name: Test editorial dashboard scenarios
+        run: node --test --import tsx apps/web/tests/unit/aluno-dashboard-editorial.spec.ts
+      - name: Test editorial grades and payment access
+        run: node --test --import tsx apps/web/tests/unit/aluno-notas-editorial.spec.ts
       - name: Capture synthetic responsive/zoom matrix
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs

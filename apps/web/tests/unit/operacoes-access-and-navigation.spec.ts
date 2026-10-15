@@ -15,16 +15,19 @@ test("matriz de acesso de Operações preserva o grupo autorizado", () => {
     "admin_escola",
     "staff_admin",
     "admin_financeiro",
+    "financeiro",
+    "secretaria",
+    "secretaria_financeiro",
+    "admin_secretaria",
   ]) {
     assert.equal(
       roleMatchesAllowedRoles(role, K12_OPERACOES_ROLE_GROUP, "k12"),
       true,
-      `${role} deve manter acesso a Operações`
+      `${role} deve manter acesso a Operações conforme a matriz de permissões actual`
     );
   }
 
   for (const role of [
-    "financeiro",
     "professor",
     "aluno",
     "formacao_admin",
@@ -47,6 +50,7 @@ test("sidebar de Operações simplifica o Financeiro sem expor rotas legadas", (
 
   assert.deepEqual(finance.children, [
     { href: "/escola/[escolaId]/operacoes/financeiro", label: "Visão geral" },
+    { href: "/escola/[escolaId]/operacoes/radar", label: "Radar de inadimplência" },
     { href: "/escola/[escolaId]/operacoes/financeiro/recebimentos", label: "Recebimentos" },
     { href: "/escola/[escolaId]/operacoes/financeiro/controle-caixa", label: "Controlo de caixa" },
     { href: "/escola/[escolaId]/operacoes/financeiro/cobrancas", label: "Cobranças" },

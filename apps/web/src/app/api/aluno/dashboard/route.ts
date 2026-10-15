@@ -71,6 +71,8 @@ export async function GET() {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const { escolaId, matriculaId, turmaId, anoLetivo } = ctx;
+    // Identidade da turma verificada pelo próprio contexto autenticado do aluno.
+    const turma_nome = escolaId && turmaId ? (await supabase.from("turmas").select("nome").eq("escola_id", escolaId).eq("id", turmaId).maybeSingle()).data?.nome ?? null : null;
 
     // Próxima aula (lê apenas versão publicada do quadro oficial)
     let proxima_aula: ProximaAulaRow | null = null;
@@ -212,6 +214,8 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       proxima_aula,
+      ano_letivo: anoLetivo,
+      turma_nome,
       ultima_nota,
       notas_acesso_indisponivel,
       status_financeiro,
