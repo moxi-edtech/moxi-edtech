@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useState, useEffect } from 'react'
-import { Sparkles, ArrowRight, Loader2, CheckCircle2, Wallet, X, Upload, FileCheck2 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { ArrowRight, Loader2, CheckCircle2, Wallet, X, Upload, FileCheck2 } from 'lucide-react'
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
+import { Notice } from '@/components/ui/alert'
 
 type RematriculaStatus = {
   ok: boolean
@@ -193,78 +193,28 @@ export function RematriculaBanner() {
 
   if (!status.eligible && !status.alreadyDone) {
     if (status.code === 'ACADEMIC_PROMOTION_PENDING') {
-      return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-        <p className="font-black">Rematrícula ainda não disponível</p>
-        <p className="mt-1">{status.reason || 'As notas e o resultado académico precisam estar fechados antes da rematrícula.'}</p>
-        {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}
-        <p className="mt-2 text-xs font-semibold">Próximo passo: aguarde a escola concluir as notas e confirmar a aprovação.</p>
-        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button>
-      </div>
-    }
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Rematrícula ainda não disponível" description={status.reason || 'As notas e o resultado académico precisam estar fechados antes da rematrícula.'} detail={<>Aguarda a escola concluir as notas e confirmar a aprovação.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
 
     if (status.code === 'ACADEMIC_REVIEW_REQUIRED') {
-      return <div className="mb-6 rounded-3xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
-        <p className="font-black">Recurso académico pendente</p>
-        <p className="mt-1">{status.reason || 'O RAA ainda não autorizou a efetivação da rematrícula.'}</p>
-        {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}
-        <p className="mt-2 text-xs font-semibold">Próximo passo: acompanhe o recurso com a secretaria e atualize o estado depois da decisão.</p>
-        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-sky-800 shadow-sm">Atualizar estado</button>
-      </div>
-    }
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="neutral" title="Recurso académico pendente" description={status.reason || 'O RAA ainda não autorizou a efetivação da rematrícula.'} detail={<>Acompanha o recurso com a secretaria.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
 
     if (status.code === 'ACADEMIC_CONDITIONAL_BLOCKED') {
-      return <div className="mb-6 rounded-3xl border border-violet-200 bg-violet-50 p-5 text-sm text-violet-900">
-        <p className="font-black">Inscrição condicional ainda não efetivável</p>
-        <p className="mt-1">{status.reason || 'O RAA reconhece a progressão condicional, mas ainda existe uma etapa académica obrigatória.'}</p>
-        {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <p className="mt-2 text-xs font-semibold">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}</p>}
-        <p className="mt-2 text-xs font-semibold">Próximo passo: conclua o recurso ou exame indicado pelo RAA e atualize o estado.</p>
-        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-violet-800 shadow-sm">Atualizar estado</button>
-      </div>
-    }
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Inscrição condicional ainda não efetivável" description={status.reason || 'O RAA reconhece a progressão condicional, mas ainda existe uma etapa académica obrigatória.'} detail={<>Conclui o recurso ou exame indicado pelo RAA.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
 
     if (status.code === 'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED') {
-      return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-        <p className="font-black">Retenção por faltas em validação</p>
-        <p className="mt-1">{status.reason || 'A regra escolar precisa ser validada antes da nova matrícula na mesma classe.'}</p>
-        <p className="mt-2 text-xs font-semibold">Próximo passo: contacte a secretaria para rever frequência e a regra aplicável.</p>
-        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-amber-800 shadow-sm">Atualizar estado</button>
-      </div>
-    }
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Retenção por faltas em validação" description={status.reason || 'A regra escolar precisa ser validada antes da nova matrícula na mesma classe.'} detail={<>Contacta a secretaria para rever a frequência.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
 
     if (status.code === 'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED') {
-      return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900">
-        <p className="font-black">Decisão administrativa necessária</p>
-        <p className="mt-1">{status.reason || 'A retenção por indisciplina não permite rematrícula automática.'}</p>
-        <p className="mt-2 text-xs font-semibold">Próximo passo: a secretaria/direção deve concluir a decisão disciplinar aplicável.</p>
-        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button>
-      </div>
-    }
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="critical" title="Decisão administrativa necessária" description={status.reason || 'A retenção por indisciplina não permite rematrícula automática.'} detail={<>Aguarda a decisão da secretaria ou direção.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
 
     if (status.code === 'ACADEMIC_NOT_APPROVED') {
-      return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900">
-        <p className="font-black">Resultado académico não autoriza rematrícula</p>
-        <p className="mt-1">{status.reason || 'A decisão RAA vigente não autoriza progressão para a etapa seguinte.'}</p>
-        <p className="mt-2 text-xs font-semibold">Procure a secretaria apenas se acreditar que o resultado académico está incorreto.</p>
-        <button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button>
-      </div>
-    }
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="critical" title="Resultado académico não autoriza rematrícula" description={status.reason || 'A decisão RAA vigente não autoriza progressão para a etapa seguinte.'} detail={<>Contacta a secretaria se o resultado estiver incorreto.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
 
     if (status.code === 'ACADEMIC_CYCLE_COMPLETED') {
-      return <div className="mb-6 rounded-3xl border border-violet-200 bg-violet-50 p-5 text-sm text-violet-900">
-        <p className="font-black">Ciclo académico concluído</p>
-        <p className="mt-1">{status.reason || 'Não existe uma classe seguinte para rematrícula.'}</p>
-        <p className="mt-2 text-xs font-semibold">Próximo passo: consulte os documentos finais ou contacte a secretaria.</p>
-      </div>
-    }
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="neutral" title="Ciclo académico concluído" description={status.reason || 'Não existe uma classe seguinte para rematrícula.'} detail={<>Consulta os documentos finais ou contacta a secretaria.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>}  />
 
     if (status.code === 'REMATRICULA_DEBT_REQUIRED') {
-      return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-        <p className="font-black">Regularização financeira necessária</p>
-        <p className="mt-1">{status.reason || 'Regularize os saldos vencidos antes de rematricular.'}</p>
-        <p className="mt-2 text-xs font-semibold">O RAA autoriza a progressão, mas a rematrícula permanece bloqueada enquanto houver saldo vencido.</p>
-        <button type="button" onClick={() => window.location.assign('/aluno/financeiro')} className="mt-3 rounded-xl bg-amber-700 px-4 py-2 text-xs font-black text-white">Abrir financeiro</button>
-      </div>
-    }
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Regularização financeira necessária" description={status.reason || 'Regulariza os saldos vencidos antes de rematricular.'} detail={<>A rematrícula permanece bloqueada enquanto houver saldo vencido.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => window.location.assign('/aluno/financeiro')} className="rounded-xl bg-[#2B6044] px-4 text-sm font-semibold text-white">Abrir financeiro</button>} />
 
     const title = status.code === 'SERVICE_NOT_CONFIGURED'
       ? 'Taxa da classe destino ainda não configurada'
@@ -273,7 +223,7 @@ export function RematriculaBanner() {
       : status.code === 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE' || status.code === 'CURRENT_ACADEMIC_YEAR_UNAVAILABLE'
         ? 'Ano letivo ainda não configurado'
         : 'Janela de rematrícula ainda não aberta'
-    return <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p className="font-black">{title}</p><p className="mt-1">{status.reason || 'A rematrícula estará disponível quando a escola concluir a configuração necessária.'}</p>{status.nextWindow?.data_inicio && <p className="mt-2 text-xs font-semibold">Próximo período previsto: {new Intl.DateTimeFormat('pt-AO', { dateStyle: 'medium' }).format(new Date(status.nextWindow.data_inicio))}</p>}<button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm">Atualizar estado</button></div>
+    return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="neutral" title={title} description={status.reason || 'A rematrícula estará disponível quando a escola concluir a configuração necessária.'} detail={status.nextWindow?.data_inicio ? `Próximo período previsto: ${new Intl.DateTimeFormat('pt-AO', { dateStyle: 'medium' }).format(new Date(status.nextWindow.data_inicio))}` : undefined} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
   }
   const paymentIntent = status.rematricula?.paymentIntent
   const hasPendingPayment = Boolean(paymentIntent && paymentIntent.status !== 'settled')
@@ -283,131 +233,55 @@ export function RematriculaBanner() {
       && ['aprovada', 'matriculado', 'matriculada', 'concluido', 'concluida'].includes(status.status || ''),
   )
 
+  const headline = isConfirmed
+    ? 'Rematrícula confirmada'
+    : paymentIntent?.has_evidence
+      ? 'Comprovativo recebido e em análise'
+      : paymentIntent
+        ? 'Pagamento da rematrícula disponível'
+        : status.alreadyDone
+          ? 'O teu pedido de rematrícula já foi iniciado'
+          : status.hasDebt
+            ? 'Regulariza as mensalidades vencidas para continuar'
+            : status.rematricula?.reservation
+              ? 'A tua vaga está pré-reservada'
+              : 'Já podes fazer a rematrícula';
+  const explanation = isConfirmed
+    ? 'A tua rematrícula foi confirmada pela escola.'
+    : paymentIntent?.has_evidence
+      ? 'A secretaria está a analisar o comprovativo. Não precisas de pagar novamente.'
+      : paymentIntent
+        ? `O pedido de pagamento de ${money.format(paymentIntent.amount)} está disponível. Usa a mesma transação para enviar o comprovativo.`
+        : status.hasDebt
+          ? 'É necessário regularizar as mensalidades vencidas antes de continuar.'
+          : `Confirma a continuidade no ano letivo ${status.nextAno ?? 'seguinte'}.`;
+  const nextAction = isConfirmed ? null : (
+    <button type="button" onClick={handleConfirm} disabled={busy || Boolean(paymentIntent?.has_evidence)}
+      className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#2B6044] px-5 py-3 text-sm font-semibold text-white hover:bg-[#214c36] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none">
+      {busy ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : status.hasDebt ? <Wallet aria-hidden="true" className="h-4 w-4" /> : <ArrowRight aria-hidden="true" className="h-4 w-4" />}
+      {status.hasDebt ? 'Abrir financeiro' : paymentIntent ? 'Continuar pedido' : 'Fazer rematrícula'}
+    </button>
+  );
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm mb-6"
-    >
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-amber-100 rounded-lg">
-              <Sparkles className="h-4 w-4 text-amber-600" />
-            </div>
-            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
-              Rematrícula {status.nextAno}
-            </span>
+    <div className="mb-6">
+      <Notice
+        eyebrow={status.nextAno ? `Vida escolar · Rematrícula ${status.nextAno}` : 'Vida escolar · Rematrícula'}
+        icon={isConfirmed ? <CheckCircle2 className="h-4 w-4" /> : <FileCheck2 className="h-4 w-4" />}
+        title={headline}
+        description={explanation}
+        tone={status.hasDebt ? 'attention' : isConfirmed ? 'success' : 'neutral'}
+        action={nextAction}
+        detail={status.rematricula?.destination || status.rematricula?.service ? (
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            {status.rematricula?.destination && <span>Classe: {status.rematricula.destination.classe_nome}</span>}
+            {status.rematricula?.service && <span>Taxa: {money.format(status.rematricula.service.valor)}</span>}
           </div>
-
-          <h3 className="text-xl font-bold text-slate-900 leading-tight">
-            {isConfirmed
-              ? 'Tudo encaminhado para o próximo ano!' 
-              : paymentIntent?.has_evidence
-                ? 'Comprovativo recebido e em análise'
-                : paymentIntent
-                  ? 'Pagamento da rematrícula disponível'
-              : status.alreadyDone
-                ? 'Seu pedido de rematrícula já foi iniciado!'
-                : status.hasDebt
-                  ? status.rematricula?.reservation
-                    ? 'A sua vaga está reservada; falta regularizar as mensalidades vencidas.'
-                    : 'Regularize as mensalidades vencidas para continuar'
-                : status.rematricula?.reservation
-                  ? 'Sua vaga está pré-reservada!'
-                  : 'Você está elegível para continuar a rematrícula'}
-          </h3>
-          <p className="text-sm text-slate-600 mt-1 max-w-md">
-            {status.alreadyDone 
-              ? (isConfirmed
-                  ? 'Sua rematrícula foi confirmada. Vemo-nos no próximo ano!' 
-                  : paymentIntent?.has_evidence
-                    ? 'O comprovativo foi recebido e está em validação pela secretaria. Não é necessário pagar novamente.'
-                    : paymentIntent
-                      ? `A transação está disponível. Pague ${money.format(paymentIntent.amount)} e envie o comprovativo.`
-                      : 'O pedido está criado. Conclua o pagamento e envie o comprovativo.')
-              : (status.hasDebt
-                  ? status.rematricula?.reservation
-                    ? 'A reserva existe, mas a confirmação fica bloqueada apenas pelas mensalidades vencidas. Regularize-as e atualize o estado.'
-                    : 'Regularize apenas as mensalidades vencidas. Cobranças futuras não bloqueiam a rematrícula.'
-                  : `Confirme a continuidade no Ano Letivo ${status.nextAno} com o valor calculado para a sua classe destino.`)}
-          </p>
-          {status.academic?.decision === 'retido' ? (
-            <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
-              <p className="font-black">Repetição da mesma classe autorizada pelo RAA</p>
-              <p className="mt-1">
-                O resultado académico foi retido. A rematrícula continua no próximo ano letivo, mas a classe destino deve ser a mesma da matrícula de origem.
-              </p>
-            </div>
-          ) : null}
-          {status.academic?.decision === 'inscricao_condicional' ? (
-            <div className="mt-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-900">
-              <p className="font-black">Progressão condicional autorizada pelo RAA</p>
-              <p className="mt-1">
-                A rematrícula pode avançar para a próxima classe. As disciplinas pendentes continuam registadas e precisam ser acompanhadas.
-              </p>
-              {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 ? (
-                <p className="mt-2 font-bold">
-                  Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-          {status.rematricula?.destination || status.rematricula?.service ? (
-            <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-700">
-              {status.rematricula?.destination ? (
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                  Destino: {status.rematricula.destination.classe_nome}
-                </span>
-              ) : null}
-              {status.rematricula?.service ? (
-                <span className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-amber-800">
-                  Taxa: {money.format(status.rematricula.service.valor)}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-
-        <div>
-          {isConfirmed ? (
-            <div className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-bold text-sm">
-              <CheckCircle2 className="h-4 w-4 text-emerald" />
-              Solicitado
-            </div>
-          ) : (
-            <button
-              onClick={handleConfirm}
-              disabled={busy}
-              className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg active:scale-95 disabled:opacity-50 ${
-                status.hasDebt 
-                  ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' 
-                  : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber/20'
-              }`}
-            >
-              {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : status.hasDebt ? (
-                <>
-                  <Wallet className="h-4 w-4" />
-                  Regularizar Finanças
-                </>
-              ) : (
-                <>
-                  {hasPendingPayment ? 'Continuar pagamento' : 'Ver opções de rematrícula'}
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {statusError && <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><span>O estado pode estar desatualizado.</span><button type="button" onClick={() => void fetchStatus()} className="font-black underline">Atualizar estado</button></div>}
-
-      {/* Decorative background circle */}
-      <div className="absolute -right-12 -top-12 w-40 h-40 bg-amber-100 rounded-full blur-3xl opacity-50" />
-
+        ) : undefined}
+      >
+        {status.academic?.decision === 'retido' && <p className="text-sm leading-6 text-slate-600">A repetição da mesma classe foi autorizada pelo RAA. A classe de destino deve corresponder à matrícula de origem.</p>}
+        {status.academic?.decision === 'inscricao_condicional' && <p className="text-sm leading-6 text-slate-600">A progressão condicional foi autorizada pelo RAA. As disciplinas pendentes continuam a exigir acompanhamento.</p>}
+        {statusError && <div role="status" className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600"><span>Não foi possível atualizar o estado.</span><button type="button" onClick={() => void fetchStatus()} className="min-h-11 font-semibold text-[#2B6044] underline">Tentar novamente</button></div>}
+      </Notice>
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4" onClick={() => setOpen(false)}>
           <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
@@ -440,6 +314,6 @@ export function RematriculaBanner() {
           </div>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }
