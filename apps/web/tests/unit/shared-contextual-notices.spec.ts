@@ -14,7 +14,10 @@ test("rematricula preserves payment initiation, upload, refresh and RAA contract
  const ui=read("aluno/home/RematriculaBanner.tsx");
  for(const p of ["'/api/aluno/rematricula/status'","'/api/aluno/rematricula/iniciar'","'/api/aluno/documentos/comprovativo'","paymentIntent?.id","ACADEMIC_PROMOTION_PENDING","ACADEMIC_REVIEW_REQUIRED","ACADEMIC_CONDITIONAL_BLOCKED","REMATRICULA_DEBT_REQUIRED","selectedServices","uploadProgress"])assert.ok(ui.includes(p),p);
  assert.match(ui,/paymentIntent\?\.has_evidence/);
- assert.match(ui,/disabled=\{busy \|\| Boolean\(paymentIntent\?\.has_evidence\)\}/);
+ assert.match(ui,/disabled=\{busy\}/);
+ assert.match(ui,/rejectedEvidence/);
+ assert.match(ui,/Reenviar comprovativo/);
+ assert.match(ui,/Ver estado do pedido/);
  assert.match(ui,/<Notice/);
 });
 test("financial notices reuse same presentation and route to actual financial portal",()=>{
