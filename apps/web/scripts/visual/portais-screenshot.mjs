@@ -12,6 +12,24 @@ const stories = [
   ["documentos-rejeitados", "klasse-portal-visual-fixtures--documentos-rejeitados", /Boletim/i],
   ["notas-pagas", "klasse-portal-visual-fixtures--notas-pagas", /Notas|Matemática/i],
   ["professor-com-turmas", "klasse-portal-visual-fixtures--professor-com-turmas", /Portal do Professor/i],
+  ["dashboard-clean", "synthetic-dashboard-clean", /A tua vida escolar/i],
+  ["dashboard-pending", "synthetic-dashboard-pending", /A tua vida escolar/i],
+  ["dashboard-rejected", "synthetic-dashboard-rejected", /A tua vida escolar/i],
+  ["dashboard-rematricula", "synthetic-dashboard-rematricula", /A tua vida escolar/i],
+  ["dashboard-overdue", "synthetic-dashboard-overdue", /A tua vida escolar/i],
+  ["dashboard-empty", "synthetic-dashboard-empty", /A tua vida escolar/i],
+  ["dashboard-approved", "synthetic-dashboard-approved", /A tua vida escolar/i],
+  ["grade-paid", "synthetic-grade-paid", /As tuas notas/i],
+  ["grade-unpaid", "synthetic-grade-unpaid", /As tuas notas/i],
+  ["grade-pending", "synthetic-grade-pending", /As tuas notas/i],
+  ["grade-rejected", "synthetic-grade-rejected", /As tuas notas/i],
+  ["grade-empty", "synthetic-grade-empty", /As tuas notas/i],
+  ["notice-info", "synthetic-notice-info", /Informação escolar/i],
+  ["notice-attention", "synthetic-notice-attention", /Atenção ao prazo/i],
+  ["notice-critical", "synthetic-notice-critical", /Pedido rejeitado/i],
+  ["notice-success", "synthetic-notice-success", /Pedido concluído/i],
+  ["notice-rematricula", "synthetic-notice-rematricula", /rematrícula/i],
+  ["notice-finance", "synthetic-notice-finance", /Mensalidade em atraso/i],
 ];
 const sizes = [[360,640],[390,844],[768,1024],[1366,768],[1920,1080]];
 const zooms = [1, 1.25, 1.5];
@@ -24,24 +42,54 @@ try {
     const context = await browser.newContext();
     const page = await context.newPage();
     page.on("pageerror", error => errors.push(`${name}: ${error.message.split("\n")[0]}`));
+    page.on("response", response => { if (response.status() >= 500) errors.push(`${name}: HTTP ${response.status()} ${response.url().split("?")[0]}`); });
     for (const [width, height] of sizes) {
       for (const zoom of zooms) {
         await page.setViewportSize({ width, height });
         const url = `${baseUrl}/?story=${name}`;
         await page.goto(url, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(1200);
+        if (name.startsWith("dashboard-")) await page.getByTestId("aluno-dashboard-editorial").waitFor({timeout:10000});
+        else if (name.startsWith("grade-")) await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
+        else await page.waitForTimeout(1200);
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
         await page.waitForTimeout(200);
         const metrics = await page.evaluate(() => {
           const root = document.documentElement;
           return { horizontalOverflow: Math.max(0, root.scrollWidth - root.clientWidth),
             bodyText: document.body.innerText.slice(0, 1600),
+            nestedScrolls: Array.from(document.querySelectorAll("*")).filter(el=> el !== document.body && el !== document.documentElement && el.clientHeight > 0 && ["auto","scroll"].includes(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight+15).length,
             rendered: document.querySelector("#root")?.childElementCount ?? 0 };
         });
         const output = `${directory}/${name}-${width}x${height}-${Math.round(zoom*100)}.jpg`;
         await page.screenshot({ path: output, type: "jpeg", quality: 72, fullPage: false });
         const visible = textMatcher.test(metrics.bodyText);
-        report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, fixtureRendered: visible, output });
+        if (name.startsWith("dashboard-")) {
+          if (["Prova trimestral", "Trabalho prático", "16/20", "17/20"].some(marker => metrics.bodyText.includes(marker)))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: protected grades leaked`);
+          if (name === "dashboard-clean" && metrics.bodyText.includes("Precisa da tua atenção"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: false pending section`);
+          if (name === "dashboard-pending" && !metrics.bodyText.includes("Comprovativo recebido"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: pending state missing`);
+          if (name === "dashboard-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: recovery action missing`);
+          if (name === "dashboard-rematricula" && !metrics.bodyText.includes("A tua rematrícula"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: rematrícula missing`);
+          if (name === "dashboard-overdue" && !metrics.bodyText.includes("uma mensalidade por regularizar"))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: overdue missing`);
+          if (name === "dashboard-empty" && (metrics.bodyText.includes("08:00") || metrics.bodyText.includes("Reunião de encarregados")))
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: invented schedule or notices`);
+        }
+        if (name.startsWith("grade-")) {
+          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name}: protected assessments leaked`);
+          if (name === "grade-paid" && !metrics.bodyText.includes("Exame do período")) errors.push(`${name}: paid assessments missing`);
+          if (name === "grade-pending" && !metrics.bodyText.includes("Comprovativo em análise")) errors.push(`${name}: pending state missing`);
+          if (name === "grade-unpaid" && !metrics.bodyText.includes("Pagar boletim")) errors.push(`${name}: payment CTA missing`);
+          if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido")) errors.push(`${name}: resubmit action missing`);
+          if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
+        }
+        if ((name.startsWith("grade-") || name.startsWith("notice-")) && metrics.nestedScrolls) errors.push(`${name}: unnecessary nested scroll`);
+        report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, nestedScrolls: metrics.nestedScrolls, fixtureRendered: visible, output });
+        if (name.startsWith("dashboard-") && metrics.nestedScrolls > 0) errors.push(`${name} ${width}x${height} zoom ${zoom}: nested scroll ${metrics.nestedScrolls}`);
         if (!visible) errors.push(`${name} ${width}x${height} zoom ${zoom}: content not rendered; root children ${metrics.rendered}`);
         if (metrics.horizontalOverflow > 12) errors.push(`${name} ${width}x${height} zoom ${zoom}: horizontal overflow ${metrics.horizontalOverflow}px`);
       }
