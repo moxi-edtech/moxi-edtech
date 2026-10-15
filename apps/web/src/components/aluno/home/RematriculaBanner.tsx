@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useState, useEffect } from 'react'
-import { Sparkles, ArrowRight, Loader2, CheckCircle2, Wallet, X, Upload, FileCheck2 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { CalendarClock, ArrowRight, Loader2, CheckCircle2, Wallet, X, Upload, FileCheck2 } from 'lucide-react'
+import { Notice } from '@/components/ui/alert'
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 
 type RematriculaStatus = {
@@ -174,7 +174,7 @@ export function RematriculaBanner() {
   }
 
   if (loading) return <div className="mb-6 h-28 animate-pulse rounded-3xl border border-slate-200 bg-white" aria-label="A verificar rematrícula" />
-  if (statusError && !status) return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p className="font-black">Não foi possível verificar a rematrícula.</p><p className="mt-1">{statusError}</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-rose-700 px-4 py-2 text-xs font-black text-white">Tentar novamente</button></div>
+  if (statusError && !status) return <Notice className="mb-6" tone="critical" title="Não foi possível verificar a rematrícula" description={statusError} action={<button type="button" onClick={() => void fetchStatus()} className="min-h-11 rounded-xl bg-[#2B6044] px-5 py-3 text-sm font-semibold text-white">Tentar novamente</button>}/>
   if (!status || (!status.eligible && !status.alreadyDone && ![
     'CURRENT_ACADEMIC_YEAR_UNAVAILABLE',
     'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE',
@@ -283,131 +283,36 @@ export function RematriculaBanner() {
       && ['aprovada', 'matriculado', 'matriculada', 'concluido', 'concluida'].includes(status.status || ''),
   )
 
+  const title = isConfirmed ? 'Rematrícula confirmada'
+    : paymentIntent?.has_evidence && paymentIntent.status !== 'settled' ? 'Comprovativo recebido e em análise'
+    : paymentIntent ? 'Pagamento da rematrícula disponível'
+    : status.alreadyDone ? 'O teu pedido de rematrícula já foi iniciado'
+    : status.hasDebt ? 'Regulariza as mensalidades vencidas para continuar'
+    : status.rematricula?.reservation ? 'A tua vaga está pré-reservada' : 'Já podes fazer a rematrícula'
+  const description = isConfirmed ? 'A tua rematrícula foi confirmada para o próximo ano letivo.'
+    : paymentIntent?.has_evidence && paymentIntent.status !== 'settled' ? 'A secretaria está a analisar o comprovativo. Não precisas de pagar novamente.'
+    : paymentIntent ? `Consulta a transação de ${money.format(paymentIntent.amount)} e envia o comprovativo.`
+    : status.hasDebt ? 'Regulariza apenas as mensalidades vencidas. Cobranças futuras não bloqueiam a rematrícula.'
+    : status.alreadyDone ? 'O pedido está criado. Consulta o próximo passo para concluir a rematrícula.'
+    : `Confirma a continuidade no ano letivo ${status.nextAno}.`
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm mb-6"
-    >
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-amber-100 rounded-lg">
-              <Sparkles className="h-4 w-4 text-amber-600" />
-            </div>
-            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
-              Rematrícula {status.nextAno}
-            </span>
-          </div>
-
-          <h3 className="text-xl font-bold text-slate-900 leading-tight">
-            {isConfirmed
-              ? 'Tudo encaminhado para o próximo ano!' 
-              : paymentIntent?.has_evidence
-                ? 'Comprovativo recebido e em análise'
-                : paymentIntent
-                  ? 'Pagamento da rematrícula disponível'
-              : status.alreadyDone
-                ? 'Seu pedido de rematrícula já foi iniciado!'
-                : status.hasDebt
-                  ? status.rematricula?.reservation
-                    ? 'A sua vaga está reservada; falta regularizar as mensalidades vencidas.'
-                    : 'Regularize as mensalidades vencidas para continuar'
-                : status.rematricula?.reservation
-                  ? 'Sua vaga está pré-reservada!'
-                  : 'Você está elegível para continuar a rematrícula'}
-          </h3>
-          <p className="text-sm text-slate-600 mt-1 max-w-md">
-            {status.alreadyDone 
-              ? (isConfirmed
-                  ? 'Sua rematrícula foi confirmada. Vemo-nos no próximo ano!' 
-                  : paymentIntent?.has_evidence
-                    ? 'O comprovativo foi recebido e está em validação pela secretaria. Não é necessário pagar novamente.'
-                    : paymentIntent
-                      ? `A transação está disponível. Pague ${money.format(paymentIntent.amount)} e envie o comprovativo.`
-                      : 'O pedido está criado. Conclua o pagamento e envie o comprovativo.')
-              : (status.hasDebt
-                  ? status.rematricula?.reservation
-                    ? 'A reserva existe, mas a confirmação fica bloqueada apenas pelas mensalidades vencidas. Regularize-as e atualize o estado.'
-                    : 'Regularize apenas as mensalidades vencidas. Cobranças futuras não bloqueiam a rematrícula.'
-                  : `Confirme a continuidade no Ano Letivo ${status.nextAno} com o valor calculado para a sua classe destino.`)}
-          </p>
-          {status.academic?.decision === 'retido' ? (
-            <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
-              <p className="font-black">Repetição da mesma classe autorizada pelo RAA</p>
-              <p className="mt-1">
-                O resultado académico foi retido. A rematrícula continua no próximo ano letivo, mas a classe destino deve ser a mesma da matrícula de origem.
-              </p>
-            </div>
-          ) : null}
-          {status.academic?.decision === 'inscricao_condicional' ? (
-            <div className="mt-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-900">
-              <p className="font-black">Progressão condicional autorizada pelo RAA</p>
-              <p className="mt-1">
-                A rematrícula pode avançar para a próxima classe. As disciplinas pendentes continuam registadas e precisam ser acompanhadas.
-              </p>
-              {(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 ? (
-                <p className="mt-2 font-bold">
-                  Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-          {status.rematricula?.destination || status.rematricula?.service ? (
-            <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-700">
-              {status.rematricula?.destination ? (
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                  Destino: {status.rematricula.destination.classe_nome}
-                </span>
-              ) : null}
-              {status.rematricula?.service ? (
-                <span className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-amber-800">
-                  Taxa: {money.format(status.rematricula.service.valor)}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-
-        <div>
-          {isConfirmed ? (
-            <div className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-bold text-sm">
-              <CheckCircle2 className="h-4 w-4 text-emerald" />
-              Solicitado
-            </div>
-          ) : (
-            <button
-              onClick={handleConfirm}
-              disabled={busy}
-              className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg active:scale-95 disabled:opacity-50 ${
-                status.hasDebt 
-                  ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' 
-                  : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber/20'
-              }`}
-            >
-              {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : status.hasDebt ? (
-                <>
-                  <Wallet className="h-4 w-4" />
-                  Regularizar Finanças
-                </>
-              ) : (
-                <>
-                  {hasPendingPayment ? 'Continuar pagamento' : 'Ver opções de rematrícula'}
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {statusError && <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><span>O estado pode estar desatualizado.</span><button type="button" onClick={() => void fetchStatus()} className="font-black underline">Atualizar estado</button></div>}
-
-      {/* Decorative background circle */}
-      <div className="absolute -right-12 -top-12 w-40 h-40 bg-amber-100 rounded-full blur-3xl opacity-50" />
-
+    <>
+      <Notice className="mb-6" tone={status.hasDebt ? 'attention' : isConfirmed ? 'success' : 'neutral'}
+        eyebrow={`Vida escolar · Rematrícula ${status.nextAno ?? ''}`}
+        icon={<CalendarClock size={20}/>} title={title} description={description}
+        detail={<div className="space-y-2">
+          {status.academic?.decision === 'retido' && <p>O RAA autorizou a repetição da mesma classe.</p>}
+          {status.academic?.decision === 'inscricao_condicional' && <p>Progressão condicional autorizada pelo RAA. As disciplinas pendentes continuam a ser acompanhadas.</p>}
+          {status.rematricula?.destination && <p>Classe destino: <strong>{status.rematricula.destination.classe_nome}</strong></p>}
+          {status.rematricula?.service && <p>Taxa: <strong>{money.format(status.rematricula.service.valor)}</strong></p>}
+          {statusError && <p role="status">O estado pode estar desatualizado. <button type="button" onClick={() => void fetchStatus()} className="min-h-11 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#2B6044]">Atualizar estado</button></p>}
+        </div>}
+        action={isConfirmed ? <span className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#2B6044]"><CheckCircle2 size={18}/> Concluída</span>
+          : <button type="button" onClick={handleConfirm} disabled={busy} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2B6044] px-5 py-3 text-sm font-semibold text-white hover:bg-[#214b35] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2B6044] disabled:opacity-50 sm:w-auto">
+            {busy ? <Loader2 size={18} className="animate-spin"/> : status.hasDebt ? <Wallet size={18}/> : null}
+            {status.hasDebt ? 'Abrir financeiro' : hasPendingPayment ? 'Continuar pagamento' : 'Ver rematrícula'}
+            {!busy && !status.hasDebt && <ArrowRight size={18}/>}
+          </button>}/>
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4" onClick={() => setOpen(false)}>
           <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
@@ -440,6 +345,6 @@ export function RematriculaBanner() {
           </div>
         </div>
       )}
-    </motion.div>
+    </>
   )
 }

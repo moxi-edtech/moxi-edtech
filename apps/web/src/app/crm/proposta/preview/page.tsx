@@ -114,7 +114,7 @@ function ProposalPreviewContent() {
               Proposta de Adesão
             </h1>
             <p className="text-sm text-zinc-500 font-semibold mt-2.5">
-              Ref: KL-PROP-{Date.now().toString().substring(7)}
+              Ref: KL-PROP-{searchParams?.get("ref") || "PRÉVIA"}
             </p>
           </div>
           <div className="text-right sm:text-right flex flex-col items-end">
