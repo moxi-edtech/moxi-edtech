@@ -109,6 +109,16 @@ try {
       await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor();
       await page.getByRole("button",{name:"Fechar"}).click();
     }
+    if (["notice-info","notice-attention","notice-finance"].includes(name)) {
+      await page.keyboard.press("Tab");
+      const focusEvidence = await page.evaluate(() => {
+        const active = document.activeElement;
+        if (!(active instanceof HTMLElement) || !["A","BUTTON"].includes(active.tagName)) return false;
+        const style = getComputedStyle(active);
+        return active.matches(":focus-visible") && (style.outlineStyle !== "none" || style.boxShadow !== "none");
+      });
+      if (!focusEvidence) errors.push(`${name}: keyboard focus indicator not visible`);
+    }
     if (name.startsWith("notice-") && name !== "notice-rematricula") {
       await page.emulateMedia({ reducedMotion: "reduce" });
       const violations = await page.evaluate(() => {
