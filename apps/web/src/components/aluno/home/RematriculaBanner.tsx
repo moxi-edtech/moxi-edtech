@@ -194,27 +194,35 @@ export function RematriculaBanner() {
   if (!status.eligible && !status.alreadyDone) {
     if (status.code === 'ACADEMIC_PROMOTION_PENDING') {
       return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Rematrícula ainda não disponível" description={status.reason || 'As notas e o resultado académico precisam estar fechados antes da rematrícula.'} detail={<>Aguarda a escola concluir as notas e confirmar a aprovação.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
+    }
 
     if (status.code === 'ACADEMIC_REVIEW_REQUIRED') {
       return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="neutral" title="Recurso académico pendente" description={status.reason || 'O RAA ainda não autorizou a efetivação da rematrícula.'} detail={<>Acompanha o recurso com a secretaria.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
+    }
 
     if (status.code === 'ACADEMIC_CONDITIONAL_BLOCKED') {
       return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Inscrição condicional ainda não efetivável" description={status.reason || 'O RAA reconhece a progressão condicional, mas ainda existe uma etapa académica obrigatória.'} detail={<>Conclui o recurso ou exame indicado pelo RAA.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
+    }
 
     if (status.code === 'ACADEMIC_ATTENDANCE_REVIEW_REQUIRED') {
       return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Retenção por faltas em validação" description={status.reason || 'A regra escolar precisa ser validada antes da nova matrícula na mesma classe.'} detail={<>Contacta a secretaria para rever a frequência.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
+    }
 
     if (status.code === 'ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED') {
       return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="critical" title="Decisão administrativa necessária" description={status.reason || 'A retenção por indisciplina não permite rematrícula automática.'} detail={<>Aguarda a decisão da secretaria ou direção.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
+    }
 
     if (status.code === 'ACADEMIC_NOT_APPROVED') {
       return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="critical" title="Resultado académico não autoriza rematrícula" description={status.reason || 'A decisão RAA vigente não autoriza progressão para a etapa seguinte.'} detail={<>Contacta a secretaria se o resultado estiver incorreto.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => void fetchStatus()} className="rounded-xl border border-[#2B6044] px-4 text-sm font-semibold text-[#2B6044]">Atualizar estado</button>} />
+    }
 
     if (status.code === 'ACADEMIC_CYCLE_COMPLETED') {
       return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="neutral" title="Ciclo académico concluído" description={status.reason || 'Não existe uma classe seguinte para rematrícula.'} detail={<>Consulta os documentos finais ou contacta a secretaria.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>}  />
+    }
 
     if (status.code === 'REMATRICULA_DEBT_REQUIRED') {
       return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Regularização financeira necessária" description={status.reason || 'Regulariza os saldos vencidos antes de rematricular.'} detail={<>A rematrícula permanece bloqueada enquanto houver saldo vencido.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => window.location.assign('/aluno/financeiro')} className="rounded-xl bg-[#2B6044] px-4 text-sm font-semibold text-white">Abrir financeiro</button>} />
+    }
 
     const title = status.code === 'SERVICE_NOT_CONFIGURED'
       ? 'Taxa da classe destino ainda não configurada'
