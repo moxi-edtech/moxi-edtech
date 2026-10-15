@@ -94,6 +94,40 @@ try {
         if (metrics.horizontalOverflow > 12) errors.push(`${name} ${width}x${height} zoom ${zoom}: horizontal overflow ${metrics.horizontalOverflow}px`);
       }
     }
+    if (name === "grade-paid") {
+      await page.goto(`${baseUrl}/?story=grade-paid`, {waitUntil:"domcontentloaded"});
+      await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
+      await page.getByRole("button",{name:"1.º trimestre"}).click();
+      await page.getByText("Prova trimestral").waitFor();
+      await page.getByRole("button",{name:"2.º trimestre"}).click();
+      await page.getByText("Exame do período").waitFor();
+      await page.locator("details summary").first().click();
+      await page.getByRole("button",{name:"Pedir reapreciação"}).click();
+      await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor();
+      await page.getByRole("button",{name:"Fechar"}).click();
+      await page.getByRole("button",{name:"Solicitar melhoria"}).click();
+      await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor();
+      await page.getByRole("button",{name:"Fechar"}).click();
+    }
+    if (name.startsWith("notice-") && name !== "notice-rematricula") {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      const violations = await page.evaluate(() => {
+        const node = document.querySelector("section[role]");
+        if (!node) return ["notice semantic region missing"];
+        const title = node.querySelector("h3");
+        const textColor = title ? getComputedStyle(title).color : "";
+        const bg = getComputedStyle(node).backgroundColor;
+        const nums = (v) => (v.match(/[0-9.]+/g) || []).slice(0,3).map(Number);
+        const lum = rgb => rgb.map(v => { const n=v/255; return n<=0.04045?n/12.92:((n+0.055)/1.055)**2.4; }).reduce((sum,v,i)=>sum+v*[0.2126,0.7152,0.0722][i],0);
+        const l1=lum(nums(textColor)),l2=lum(nums(bg));
+        const contrast=(Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
+        const issues=[];
+        if(contrast<4.5)issues.push(`WCAG AA heading contrast ${contrast.toFixed(2)}`);
+        if(parseFloat(getComputedStyle(node).animationDuration)>0)issues.push("notice animates under reduced-motion");
+        return issues;
+      });
+      errors.push(...violations.map(v=>`${name}: ${v}`));
+    }
     await context.close();
   }
 } finally {
