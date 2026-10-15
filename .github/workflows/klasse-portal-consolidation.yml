@@ -25,6 +25,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: All web unit specs (no exclusions or skips)
+        working-directory: apps/web
         shell: bash
         run: |
           mapfile -t suites < <(find apps/web/tests/unit -type f \( -name '*.spec.ts' -o -name '*.spec.tsx' -o -name '*.spec.mjs' \) | sort)
@@ -45,20 +46,21 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Financial academic and tenant-role regressions
+        working-directory: apps/web
         run: |
           node --test --import tsx \
-            apps/web/tests/unit/checkout-payment-state.spec.ts \
-            apps/web/tests/unit/mensalidades-preview.spec.ts \
-            apps/web/tests/unit/rematricula-debt.spec.ts \
-            apps/web/tests/unit/raa-progression.spec.ts \
-            apps/web/tests/unit/academic-year-context.spec.ts \
-            apps/web/tests/unit/k12-role-inheritance.spec.ts \
-            apps/web/tests/unit/super-admin-role-assignment.spec.ts \
-            apps/web/tests/unit/aluno-boletim-scope.spec.mjs \
-            apps/web/tests/unit/aluno-boletim-payment-gate.spec.mjs \
-            apps/web/tests/unit/activity-feed-security.spec.ts \
-            apps/web/tests/unit/auth-cookie-session-contract.spec.ts \
-            apps/web/tests/unit/receipt-access-http.spec.ts \
-            apps/web/tests/unit/shared-contextual-notices.spec.ts \
-            apps/web/tests/unit/aluno-dashboard-editorial.spec.ts \
-            apps/web/tests/unit/aluno-notas-editorial.spec.ts
+            tests/unit/checkout-payment-state.spec.ts \
+            tests/unit/mensalidades-preview.spec.ts \
+            tests/unit/rematricula-debt.spec.ts \
+            tests/unit/raa-progression.spec.ts \
+            tests/unit/academic-year-context.spec.ts \
+            tests/unit/k12-role-inheritance.spec.ts \
+            tests/unit/super-admin-role-assignment.spec.ts \
+            tests/unit/aluno-boletim-scope.spec.mjs \
+            tests/unit/aluno-boletim-payment-gate.spec.mjs \
+            tests/unit/activity-feed-security.spec.ts \
+            tests/unit/auth-cookie-session-contract.spec.ts \
+            tests/unit/receipt-access-http.spec.ts \
+            tests/unit/shared-contextual-notices.spec.ts \
+            tests/unit/aluno-dashboard-editorial.spec.ts \
+            tests/unit/aluno-notas-editorial.spec.ts
