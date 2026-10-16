@@ -1,0 +1,35 @@
+name: Class Transfer Disposable DB
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261016093000_audit_safe_class_transfer.sql'
+      - 'supabase/ops/tests/class_transfer_*'
+      - '.github/workflows/class-transfer-db.yml'
+permissions:
+  contents: read
+jobs:
+  disposable-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic schema and role fixtures
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/class_transfer_bootstrap.sql
+      - name: Apply migration twice and verify regression
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261016093000_audit_safe_class_transfer.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261016093000_audit_safe_class_transfer.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/class_transfer_regression.sql
