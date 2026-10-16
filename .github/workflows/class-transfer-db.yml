@@ -33,3 +33,5 @@ jobs:
           psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261016093000_audit_safe_class_transfer.sql
           psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261016093000_audit_safe_class_transfer.sql
           psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/class_transfer_regression.sql
+      - name: Race two independent PostgreSQL connections for last seat
+        run: bash supabase/ops/tests/class_transfer_concurrency.sh
