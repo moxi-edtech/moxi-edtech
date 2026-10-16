@@ -3,7 +3,6 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
-import { recordAuditServer } from "@/lib/audit";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
@@ -105,15 +104,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
     if (!newMatriculaId) {
       return NextResponse.json({ ok: false, error: 'Formato de resposta inesperado do RPC.' }, { status: 500 });
     }
-
-    recordAuditServer({
-      escolaId,
-      portal: "secretaria",
-      acao: "MATRICULA_TRANSFERIDA",
-      entity: "matriculas",
-      entityId: matriculaId,
-      details: { turma_origem: matriculaData.turma_id, turma_destino: parsed.data.turma_id, motivo: parsed.data.motivo },
-    }).catch(() => null);
 
     return NextResponse.json({ ok: true, matricula_id: newMatriculaId });
   } catch (e) {
