@@ -1,4 +1,5 @@
 import React from "react";
+import TransferForm from "../src/components/secretaria/TransferForm";
 import { createRoot } from "react-dom/client";
 import "./fixture.css";
 import "../src/app/globals.css";
@@ -52,7 +53,21 @@ const fixtureModes: Record<string, NonNullable<Window["__klasseVisualFixture"]>>
   "notice-finance": "notice-finance",
 };
 window.__klasseVisualFixture = fixtureModes[name] ?? "pending";
+if (name === "class-transfer") {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.includes("/api/secretaria/turmas-simples")) return new Response(JSON.stringify({ok:true,items:[
+      {id:"00000000-0000-4000-8000-000000000011",nome:"Turma A",ano_letivo:2026,classe_id:"c",curso_id:"x"},
+      {id:"00000000-0000-4000-8000-000000000012",nome:"Turma B",ano_letivo:2026,classe_id:"c",curso_id:"x"}
+    ]}),{status:200,headers:{"Content-Type":"application/json"}});
+    if (url.includes("/check-transfer")) return new Response(JSON.stringify({allow:true,lotada:false,vagas_restantes:4,mudanca_turno:false,financeiro:{altera_valor:false,valor_antigo:0,valor_novo:0,diferenca:0,mensagem:"Sem alteração financeira"}}),{status:200,headers:{"Content-Type":"application/json"}});
+    if (url.includes("/transfer") && init?.method==="PUT") return new Response(JSON.stringify({ok:true,matricula_id:"00000000-0000-4000-8000-000000000021"}),{status:200,headers:{"Content-Type":"application/json"}});
+    return originalFetch(input,init);
+  };
+}
 const Scene = stories[name]?.render;
 const target = document.getElementById("root");
-if (target && Scene) createRoot(target).render(<>{Scene()}</>);
+if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
+else if (target && Scene) createRoot(target).render(<>{Scene()}</>);
 else if (target) target.textContent = "Visual fixture not found";
