@@ -132,12 +132,14 @@ async function signCanonicalString(params: { canonicalString: string; privateKey
   return Buffer.from(result.Signature).toString("base64");
 }
 
-async function pickSerieFR(sql: postgres.Sql, empresaId: string): Promise<SerieRow> {
+async function pickSerieFR(sql: postgres.Sql, empresaId: string, seriesYear: number): Promise<SerieRow> {
   const rows = await sql<SerieRow[]>`
     select id, prefixo, origem_documento
     from public.fiscal_series
     where empresa_id = ${empresaId}::uuid
       and tipo_documento = 'FR'
+      and agt_status = 'provisioned'
+      and series_year = ${seriesYear}
       and ativa = true
       and descontinuada_em is null
     order by
@@ -149,7 +151,7 @@ async function pickSerieFR(sql: postgres.Sql, empresaId: string): Promise<SerieR
 
   const serie = rows[0];
   if (!serie) {
-    throw new Error(`SERIE_NAO_ENCONTRADA: empresa ${empresaId} sem série FR ativa.`);
+    throw new Error(`AGT_SERIES_REQUIRED: empresa ${empresaId} sem série FR AGT provisionada para ${seriesYear}.`);
   }
   return serie;
 }
@@ -344,12 +346,6 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
 
       for (const link of links) {
         try {
-          let serie = serieCache.get(data.empresa_id);
-          if (!serie) {
-            serie = await pickSerieFR(sql, data.empresa_id);
-            serieCache.set(data.empresa_id, serie);
-          }
-
           if (link.origem_tipo === "financeiro_pagamentos_registrar") {
             const pagamentoRows = await sql<PagamentoRow[]>`
               select id, mensalidade_id, valor_pago, data_pagamento, settled_at, created_at
@@ -383,6 +379,14 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
               mensalidade?.data_pagamento_efetiva ??
               pagamento.created_at;
             const invoiceDate = toDateOnly(rawDate);
+
+            const paymentYear = Number(invoiceDate.slice(0, 4));
+            const paymentSerieKey = `${data.empresa_id}:${paymentYear}`;
+            let serie = serieCache.get(paymentSerieKey);
+            if (!serie) {
+              serie = await pickSerieFR(sql, data.empresa_id, paymentYear);
+              serieCache.set(paymentSerieKey, serie);
+            }
 
             const emit = await emitAndSign({
               sql,
@@ -444,6 +448,14 @@ export const fiscalFinanceiroReprocess = inngest.createFunction(
             const invoiceDate = toDateOnly(
               mensalidade.data_pagamento_efetiva ?? mensalidade.created_at
             );
+
+            const receiptYear = Number(invoiceDate.slice(0, 4));
+            const receiptSerieKey = `${data.empresa_id}:${receiptYear}`;
+            let serie = serieCache.get(receiptSerieKey);
+            if (!serie) {
+              serie = await pickSerieFR(sql, data.empresa_id, receiptYear);
+              serieCache.set(receiptSerieKey, serie);
+            }
 
             const emit = await emitAndSign({
               sql,
