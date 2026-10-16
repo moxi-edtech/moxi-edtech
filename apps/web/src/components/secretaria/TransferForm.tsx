@@ -43,6 +43,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [impacto, setImpacto] = useState<ImpactoTransferencia | null>(null);
   const [checking, setChecking] = useState(false);
+  const [motivo, setMotivo] = useState("");
 
   const turmaAtual = turmas.find((turma) => turma.id === currentTurmaId) ?? null;
   const turmasCompativeis = turmaAtual
@@ -102,7 +103,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
       const res = await fetch(`/api/secretaria/admissoes/matriculas/${matriculaId}/transfer`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turma_id: turmaId }),
+        body: JSON.stringify({ turma_id: turmaId, motivo: motivo.trim() }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
@@ -116,7 +117,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
     }
   };
 
-  const disableConfirm = !turmaId || checking || loading || (impacto && impacto.lotada && !impacto.allow);
+  const disableConfirm = !turmaId || motivo.trim().length < 10 || !impacto?.allow || checking || loading || (impacto && impacto.lotada && !impacto.allow);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -195,6 +196,11 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
         </div>
       )}
 
+      <div>
+        <label htmlFor="motivo-transferencia" className="block text-sm font-medium text-slate-700">Motivo da correcção ou transferência</label>
+        <textarea id="motivo-transferencia" value={motivo} onChange={(e) => setMotivo(e.target.value)} minLength={10} maxLength={300} required placeholder="Explique o motivo (mínimo 10 caracteres)" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20" rows={3} />
+        <p className="mt-1 text-xs text-slate-500">A alteração mantém o identificador da matrícula. Notas e pagamentos existentes não são apagados; confirme a adequação das avaliações à turma de destino.</p>
+      </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end gap-4 pt-2">
