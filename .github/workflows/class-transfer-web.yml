@@ -27,4 +27,7 @@ jobs:
       - name: Lint transfer files
         run: pnpm -C apps/web exec eslint src/components/secretaria/TransferForm.tsx src/components/secretaria/MatriculasListClient.tsx 'src/app/api/secretaria/matriculas/[matriculaId]/transfer/route.ts' 'src/app/api/secretaria/turmas/[id]/transferir/route.ts'
       - name: Web build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-ci-placeholder
         run: pnpm -C apps/web build
