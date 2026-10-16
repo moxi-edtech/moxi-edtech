@@ -1,5 +1,6 @@
 CREATE SCHEMA auth;
 CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE anon NOLOGIN;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$SELECT nullif(current_setting('test.actor',true),'')::uuid$$;
 CREATE FUNCTION public.current_tenant_escola_id() RETURNS uuid LANGUAGE sql STABLE AS $$SELECT nullif(current_setting('test.school',true),'')::uuid$$;
 CREATE TABLE public.role_fixture (school uuid, actor uuid, role text, PRIMARY KEY(school,actor,role));
