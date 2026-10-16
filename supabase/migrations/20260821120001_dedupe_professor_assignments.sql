@@ -1,10 +1,13 @@
 BEGIN;
-
+DO $guarded$
+BEGIN
+  IF to_regprocedure('public.get_professor_atribuicoes()') IS NULL THEN
+    EXECUTE $migration_ddl$
 -- A publicação de currículos pode deixar mais de uma turma_disciplina para
 -- a mesma disciplina. A atribuição docente deve expor apenas um vínculo
 -- determinístico, já que a tabela de atribuição docente não guarda o
 -- turma_disciplina_id legado.
-CREATE OR REPLACE FUNCTION public.get_professor_atribuicoes()
+CREATE FUNCTION public.get_professor_atribuicoes()
 RETURNS TABLE (
   turma_id uuid,
   turma_nome text,
@@ -66,6 +69,10 @@ AS $$
   ORDER BY a.turma_id, a.disciplina_id, td.id;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_professor_atribuicoes() TO authenticated;
 
+$migration_ddl$;
+    REVOKE EXECUTE ON FUNCTION public.get_professor_atribuicoes() FROM PUBLIC, anon;
+    GRANT EXECUTE ON FUNCTION public.get_professor_atribuicoes() TO authenticated;
+  END IF;
+END $guarded$;
 COMMIT;
