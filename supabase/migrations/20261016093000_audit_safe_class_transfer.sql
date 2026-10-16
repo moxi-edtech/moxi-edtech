@@ -28,12 +28,12 @@ BEGIN
  PERFORM 1 FROM public.turmas t WHERE t.id IN (v_source.id,p_turma_destino_id)
  AND t.escola_id=v_escola_id ORDER BY t.id FOR UPDATE;
  SELECT * INTO v_target FROM public.turmas WHERE id=p_turma_destino_id AND escola_id=v_escola_id;
+ IF v_target.id IS NULL THEN RAISE EXCEPTION 'DATA: Turma destino inválida.'; END IF;
  SELECT * INTO v_origem FROM public.matriculas
  WHERE id=p_matricula_origem_id AND escola_id=v_escola_id
  AND turma_id=v_source.id
  AND public.canonicalize_matricula_status_text(status)='ativo' FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'DATA: Matrícula foi alterada; recarregue antes de repetir.'; END IF;
- IF NOT FOUND THEN RAISE EXCEPTION 'DATA: Turma destino inválida.'; END IF;
  IF v_source.id=v_target.id THEN RAISE EXCEPTION 'DATA: Turma destino deve ser diferente.'; END IF;
  IF v_source.ano_letivo IS DISTINCT FROM v_target.ano_letivo OR
  v_source.classe_id IS DISTINCT FROM v_target.classe_id OR
