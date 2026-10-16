@@ -2,7 +2,7 @@ name: Class Transfer Disposable DB
 on:
   pull_request:
     paths:
-      - 'supabase/migrations/20261016093000_audit_safe_class_transfer.sql'
+      - 'supabase/migrations/20261016124216_audit_safe_class_transfer_20261016.sql'
       - 'supabase/ops/tests/class_transfer_*'
       - '.github/workflows/class-transfer-db.yml'
 permissions:
@@ -30,8 +30,8 @@ jobs:
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/class_transfer_bootstrap.sql
       - name: Apply migration twice and verify regression
         run: |
-          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261016093000_audit_safe_class_transfer.sql
-          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261016093000_audit_safe_class_transfer.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261016124216_audit_safe_class_transfer_20261016.sql
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261016124216_audit_safe_class_transfer_20261016.sql
           psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/class_transfer_regression.sql
       - name: Race two independent PostgreSQL connections for last seat
         run: bash supabase/ops/tests/class_transfer_concurrency.sh
