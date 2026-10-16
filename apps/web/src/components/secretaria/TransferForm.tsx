@@ -8,6 +8,7 @@ interface TransferFormProps {
   matriculaId: string;
   currentTurmaId: string;
   anoLetivo?: number | null;
+  anoLetivoId?: string | null;
   onSuccess: () => void;
 }
 
@@ -36,7 +37,7 @@ interface ImpactoTransferencia {
   };
 }
 
-export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, onSuccess }: TransferFormProps) {
+export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, anoLetivoId, onSuccess }: TransferFormProps) {
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +104,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
       const res = await fetch(`/api/secretaria/admissoes/matriculas/${matriculaId}/transfer`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turma_id: turmaId, motivo: motivo.trim() }),
+        body: JSON.stringify({ turma_id: turmaId, ano_letivo_id: anoLetivoId, motivo: motivo.trim() }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
@@ -117,7 +118,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
     }
   };
 
-  const disableConfirm = !turmaId || motivo.trim().length < 10 || !impacto?.allow || checking || loading || (impacto && impacto.lotada && !impacto.allow);
+  const disableConfirm = !anoLetivoId || !turmaId || motivo.trim().length < 10 || !impacto?.allow || checking || loading || (impacto && impacto.lotada && !impacto.allow);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -201,6 +202,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
         <textarea id="motivo-transferencia" value={motivo} onChange={(e) => setMotivo(e.target.value)} minLength={10} maxLength={300} required placeholder="Explique o motivo (mínimo 10 caracteres)" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20" rows={3} />
         <p className="mt-1 text-xs text-slate-500">A alteração mantém o identificador da matrícula. Notas e pagamentos existentes não são apagados; confirme a adequação das avaliações à turma de destino.</p>
       </div>
+      {!anoLetivoId && <p className="text-sm text-amber-700">Não foi possível identificar o ano letivo académico. Selecione o ano letivo antes de continuar.</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end gap-4 pt-2">
