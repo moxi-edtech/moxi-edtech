@@ -1,0 +1,30 @@
+name: Class Transfer Web Regression
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/secretaria/TransferForm.tsx'
+      - 'apps/web/src/components/secretaria/MatriculasListClient.tsx'
+      - 'apps/web/src/app/api/secretaria/**/transfer/route.ts'
+      - '.github/workflows/class-transfer-web.yml'
+permissions:
+  contents: read
+jobs:
+  web-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck web
+        run: pnpm -C apps/web typecheck
+      - name: Lint transfer files
+        run: pnpm -C apps/web exec eslint src/components/secretaria/TransferForm.tsx src/components/secretaria/MatriculasListClient.tsx 'src/app/api/secretaria/matriculas/[matriculaId]/transfer/route.ts' 'src/app/api/secretaria/turmas/[id]/transferir/route.ts'
+      - name: Web build
+        run: pnpm -C apps/web build
