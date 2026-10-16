@@ -953,6 +953,7 @@ export default function MatriculasListClient() {
               matriculaId={selectedMatricula.id}
               currentTurmaId={selectedMatricula.turma_id}
               anoLetivo={anoLetivoAtivo}
+              anoLetivoId={sessions.find((s) => s.ano_resolvido === anoLetivoAtivo)?.id ?? null}
               onSuccess={() => {
                 setShowTransferForm(false);
                 load(page);
