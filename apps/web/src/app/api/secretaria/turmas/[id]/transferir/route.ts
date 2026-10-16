@@ -12,10 +12,10 @@ export const revalidate = 0;
 const BodySchema = z.object({
   target_turma_id: z.string().uuid(),
   ano_letivo_id: z.string().uuid(),
-  motivo: z.string().trim().max(300).optional().nullable(),
+  motivo: z.string().trim().min(10).max(300),
 });
 
-const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
 const ACTIVE_STATUSES = ["ativo", "ativa", "matriculado"] as const;
 
 export async function POST(
@@ -123,6 +123,11 @@ export async function POST(
     }
 
     const matriculasAtivas = sourceRows ?? [];
+    // A sequência de RPCs não é uma transacção única. Bloquear a operação
+    // antes de qualquer escrita até existir RPC de lote atómica e testada.
+    return NextResponse.json({ ok: false, error: "Transferência em massa temporariamente indisponível: use a transferência individual para evitar alterações parciais." }, { status: 409 });
+
+    /* const matriculasAtivasOriginal = sourceRows ?? [];
     if (matriculasAtivas.length === 0) {
       return NextResponse.json(
         { ok: false, error: "A turma de origem não possui matrículas ativas para transferir." },
@@ -210,6 +215,7 @@ export async function POST(
       failed: failures.length,
       failures,
     });
+    */
   } catch (e) {
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
