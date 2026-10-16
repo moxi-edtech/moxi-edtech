@@ -1,0 +1,49 @@
+SET test.school='00000000-0000-4000-8000-000000000001';
+SET test.actor='00000000-0000-4000-8000-000000000031';
+CREATE FUNCTION pg_temp.reject(p_id uuid,p_target uuid,p_reason text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+ PERFORM public.transferir_aluno_turma(p_id,p_target,p_reason);
+ RAISE EXCEPTION 'Expected rejection but transfer succeeded';
+EXCEPTION WHEN OTHERS THEN
+ IF SQLERRM='Expected rejection but transfer succeeded' THEN RAISE; END IF;
+END $$;
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012',NULL);
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012','    ');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000011','Motivo de teste válido');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000013','Motivo de teste válido');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000014','Motivo de teste válido');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000015','Motivo de teste válido');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000016','Motivo de teste válido');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000023','00000000-0000-4000-8000-000000000012','Motivo de teste válido');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000024','00000000-0000-4000-8000-000000000012','Motivo de teste válido');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000025','00000000-0000-4000-8000-000000000012','Motivo de teste válido');
+SET test.actor='00000000-0000-4000-8000-000000000033';
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012','Motivo de teste válido');
+SET test.actor='00000000-0000-4000-8000-000000000034';
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012','Motivo de teste válido');
+SET test.actor='00000000-0000-4000-8000-000000000035';
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012','Motivo de teste válido');
+SET test.school='00000000-0000-4000-8000-000000000002';
+SET test.actor='00000000-0000-4000-8000-000000000031';
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012','Motivo de teste válido');
+SET test.school='00000000-0000-4000-8000-000000000001';
+BEGIN;
+SET LOCAL test.actor='00000000-0000-4000-8000-000000000032';
+SELECT public.transferir_aluno_turma('00000000-0000-4000-8000-000000000022','00000000-0000-4000-8000-000000000012','Direcção autorizada para correcção');
+ROLLBACK;
+SELECT public.transferir_aluno_turma('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012','Correção administrativa válida');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012','Correção administrativa válida');
+SELECT pg_temp.reject('00000000-0000-4000-8000-000000000022','00000000-0000-4000-8000-000000000012','Correção administrativa válida');
+DO $$ BEGIN
+ IF (SELECT count(*) FROM public.audit_logs)!=1 THEN RAISE EXCEPTION 'Audit count incorrect'; END IF;
+ IF (SELECT count(*) FROM public.notas)!=1 OR (SELECT count(*) FROM public.pagamentos)!=1 OR (SELECT count(*) FROM public.presencas)!=1 THEN RAISE EXCEPTION 'Related records changed'; END IF;
+ IF (SELECT turma_id FROM public.matriculas WHERE id='00000000-0000-4000-8000-000000000021')!='00000000-0000-4000-8000-000000000012' THEN RAISE EXCEPTION 'Wrong destination'; END IF;
+END $$;
+
+-- Migration rollback smoke: rollback of function DDL leaves executable RPC intact.
+BEGIN;
+DROP FUNCTION public.transferir_aluno_turma(uuid,uuid,text);
+ROLLBACK;
+DO $$ BEGIN
+ IF to_regprocedure('public.transferir_aluno_turma(uuid,uuid,text)') IS NULL THEN RAISE EXCEPTION 'Rollback removed RPC'; END IF;
+END $$;

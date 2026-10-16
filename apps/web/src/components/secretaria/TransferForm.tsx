@@ -8,6 +8,7 @@ interface TransferFormProps {
   matriculaId: string;
   currentTurmaId: string;
   anoLetivo?: number | null;
+  anoLetivoId?: string | null;
   onSuccess: () => void;
 }
 
@@ -36,13 +37,15 @@ interface ImpactoTransferencia {
   };
 }
 
-export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, onSuccess }: TransferFormProps) {
+export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, anoLetivoId, onSuccess }: TransferFormProps) {
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [impacto, setImpacto] = useState<ImpactoTransferencia | null>(null);
   const [checking, setChecking] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [confirming, setConfirming] = useState(false);
 
   const turmaAtual = turmas.find((turma) => turma.id === currentTurmaId) ?? null;
   const turmasCompativeis = turmaAtual
@@ -95,14 +98,15 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!turmaId) return;
+    if (!turmaId || loading || !impacto?.allow) return;
+    if (!confirming) { setConfirming(true); return; }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/secretaria/admissoes/matriculas/${matriculaId}/transfer`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turma_id: turmaId }),
+        body: JSON.stringify({ turma_id: turmaId, ano_letivo_id: anoLetivoId, motivo: motivo.trim() }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
@@ -116,7 +120,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
     }
   };
 
-  const disableConfirm = !turmaId || checking || loading || (impacto && impacto.lotada && !impacto.allow);
+  const disableConfirm = !anoLetivoId || !turmaId || motivo.trim().length < 10 || !impacto?.allow || checking || loading || (impacto && impacto.lotada && !impacto.allow);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -127,7 +131,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
         <select
           id="turma"
           value={turmaId}
-          onChange={(e) => setTurmaId(e.target.value)}
+          onChange={(e) => { setTurmaId(e.target.value); setConfirming(false); }}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
           required
           disabled={!anoLetivo}
@@ -195,12 +199,19 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div>
+        <label htmlFor="motivo-transferencia" className="block text-sm font-medium text-slate-700">Motivo da correcção ou transferência</label>
+        <textarea id="motivo-transferencia" value={motivo} onChange={(e) => { setMotivo(e.target.value); setConfirming(false); }} minLength={10} maxLength={300} required placeholder="Explique o motivo (mínimo 10 caracteres)" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20" rows={3} />
+        <p className="mt-1 text-xs text-slate-500">A alteração mantém o identificador da matrícula. Notas e pagamentos existentes não são apagados; confirme a adequação das avaliações à turma de destino.</p>
+      </div>
+      {!anoLetivoId && <p className="text-sm text-amber-700">Não foi possível identificar o ano letivo académico. Selecione o ano letivo antes de continuar.</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {confirming && <section role="status" aria-live="polite" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm"><strong>Reveja antes de aplicar</strong><p>Matrícula: {matriculaId}</p><p>Turma atual: {turmaAtual ? formatTurmaDisplayName(turmaAtual) : currentTurmaId}</p><p>Nova turma: {turmas.find(t => t.id === turmaId) ? formatTurmaDisplayName(turmas.find(t => t.id === turmaId)!) : turmaId}</p><p>Motivo: {motivo.trim()}</p></section>}
 
       <div className="flex justify-end gap-4 pt-2">
         <button
           type="button"
-          onClick={onSuccess}
+          onClick={() => { if (confirming) setConfirming(false); else onSuccess(); }}
           className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
         >
           Cancelar
@@ -210,7 +221,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
           disabled={!!disableConfirm}
           className="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
         >
-          {loading ? "Transferindo..." : "Confirmar transferência"}
+          {loading ? "Transferindo..." : confirming ? "Aplicar transferência" : "Rever transferência"}
         </button>
       </div>
     </form>
