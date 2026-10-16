@@ -12,6 +12,7 @@ export const revalidate = 0;
 
 const BodySchema = z.object({
   turma_id: z.string().uuid(),
+  motivo: z.string().trim().min(10).max(300),
   ano_letivo_id: z.string().uuid(),
 });
 
@@ -93,7 +94,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
       .rpc('transferir_aluno_turma', {
         p_matricula_origem_id: matriculaId,
         p_turma_destino_id: parsed.data.turma_id,
-        p_motivo: null,
+        p_motivo: parsed.data.motivo,
       })
       .single();
 
@@ -111,7 +112,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
       acao: "MATRICULA_TRANSFERIDA",
       entity: "matriculas",
       entityId: matriculaId,
-      details: { turma_origem: matriculaData.turma_id, turma_destino: parsed.data.turma_id },
+      details: { turma_origem: matriculaData.turma_id, turma_destino: parsed.data.turma_id, motivo: parsed.data.motivo },
     }).catch(() => null);
 
     return NextResponse.json({ ok: true, matricula_id: newMatriculaId });
