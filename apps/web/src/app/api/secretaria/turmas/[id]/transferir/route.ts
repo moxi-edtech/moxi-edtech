@@ -3,7 +3,6 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
-import { recordAuditServer } from "@/lib/audit";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
@@ -127,95 +126,7 @@ export async function POST(
     // antes de qualquer escrita até existir RPC de lote atómica e testada.
     return NextResponse.json({ ok: false, error: "Transferência em massa temporariamente indisponível: use a transferência individual para evitar alterações parciais." }, { status: 409 });
 
-    /* const matriculasAtivasOriginal = sourceRows ?? [];
-    if (matriculasAtivas.length === 0) {
-      return NextResponse.json(
-        { ok: false, error: "A turma de origem não possui matrículas ativas para transferir." },
-        { status: 400 }
-      );
-    }
 
-    const capacidadeDestino = Number(targetTurma.capacidade_maxima ?? 0);
-    const ocupacaoDestino = Number(targetTurma.ocupacao_atual ?? 0);
-    const vagasRestantes = capacidadeDestino > 0 ? capacidadeDestino - ocupacaoDestino : null;
-    if (vagasRestantes !== null && vagasRestantes < matriculasAtivas.length) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: `A turma destino não tem vagas suficientes. Restantes: ${Math.max(vagasRestantes, 0)}. Necessárias: ${matriculasAtivas.length}.`,
-        },
-        { status: 409 }
-      );
-    }
-
-    const transferredIds: string[] = [];
-    const failures: Array<{ matricula_id: string; error: string }> = [];
-
-    for (const matricula of matriculasAtivas) {
-      const { data: newMatriculaId, error: rpcError } = await supabase
-        .rpc("transferir_aluno_turma", {
-          p_matricula_origem_id: matricula.id,
-          p_turma_destino_id: parsed.data.target_turma_id,
-          p_motivo: parsed.data.motivo ?? null,
-        })
-        .single();
-
-      if (rpcError || !newMatriculaId) {
-        failures.push({
-          matricula_id: matricula.id,
-          error: rpcError?.message || "Falha ao transferir matrícula.",
-        });
-        continue;
-      }
-
-      transferredIds.push(String(newMatriculaId));
-    }
-
-    recordAuditServer({
-      escolaId,
-      portal: "secretaria",
-      acao: "TURMA_TRANSFERENCIA_EM_MASSA",
-      entity: "turmas",
-      entityId: sourceTurmaId,
-      details: {
-        turma_origem_id: sourceTurmaId,
-        turma_origem_nome: sourceTurma.nome,
-        turma_destino_id: parsed.data.target_turma_id,
-        turma_destino_nome: targetTurma.turma_nome,
-        motivo: parsed.data.motivo ?? null,
-        requested: matriculasAtivas.length,
-        transferred: transferredIds.length,
-        failed: failures.length,
-      },
-    }).catch(() => null);
-
-    if (failures.length > 0) {
-      const firstFailure = failures[0];
-      return NextResponse.json(
-        {
-          ok: false,
-          error: firstFailure?.error || "Falha ao transferir uma ou mais matrículas.",
-          turma_origem: { id: sourceTurmaId, nome: sourceTurma.nome },
-          turma_destino: { id: parsed.data.target_turma_id, nome: targetTurma.turma_nome },
-          requested: matriculasAtivas.length,
-          transferred: transferredIds.length,
-          failed: failures.length,
-          failures,
-        },
-        { status: 409 }
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      turma_origem: { id: sourceTurmaId, nome: sourceTurma.nome },
-      turma_destino: { id: parsed.data.target_turma_id, nome: targetTurma.turma_nome },
-      requested: matriculasAtivas.length,
-      transferred: transferredIds.length,
-      failed: failures.length,
-      failures,
-    });
-    */
   } catch (e) {
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
