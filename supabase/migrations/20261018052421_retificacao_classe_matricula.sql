@@ -8,6 +8,8 @@ DECLARE
  v_destino public.turmas%ROWTYPE;
  v_motivo text := nullif(btrim(p_motivo),'');
  v_historico jsonb;
+ v_historico_apos jsonb;
+ v_m_apos public.matriculas%ROWTYPE;
 BEGIN
  IF auth.uid() IS NULL OR v_escola IS NULL OR NOT coalesce(public.user_has_role_in_school(v_escola,ARRAY['admin','admin_escola']),false)
  THEN RAISE EXCEPTION 'AUTH: Apenas o administrador da escola pode retificar a classe.'; END IF;
@@ -40,6 +42,29 @@ BEGIN
  IF EXISTS(SELECT 1 FROM jsonb_each_text(v_historico) AS h(k,v) WHERE v::integer>0) AND NOT coalesce(p_confirmar_historico,false)
  THEN RAISE EXCEPTION 'CONFIRMACAO: Revise o histórico e confirme a preservação dos registos anteriores.'; END IF;
  UPDATE public.matriculas SET turma_id=v_destino.id, updated_at=now(), updated_by=auth.uid() WHERE id=v_m.id AND escola_id=v_escola;
+ -- Transactional postconditions: any broken link aborts the correction and rolls back.
+ SELECT * INTO v_m_apos FROM public.matriculas WHERE id=v_m.id AND escola_id=v_escola;
+ IF NOT FOUND OR v_m_apos.aluno_id IS DISTINCT FROM v_m.aluno_id
+   OR v_m_apos.session_id IS DISTINCT FROM v_m.session_id
+   OR v_m_apos.ano_letivo IS DISTINCT FROM v_m.ano_letivo
+   OR v_m_apos.turma_id IS DISTINCT FROM v_destino.id
+ THEN RAISE EXCEPTION 'INTEGRIDADE: matrícula, aluno ou contexto académico alterado indevidamente.'; END IF;
+ SELECT jsonb_build_object(
+  'notas',(SELECT count(*) FROM public.notas WHERE matricula_id=v_m.id),
+  'avaliacoes',(SELECT count(*) FROM public.notas_avaliacoes WHERE matricula_id=v_m.id),
+  'pedidos_melhoria',(SELECT count(*) FROM public.melhoria_nota_pedidos WHERE matricula_id=v_m.id),
+  'pautas_turma_origem',(SELECT count(*) FROM public.pautas_oficiais WHERE turma_id=v_origem.id),
+  'pagamentos',(SELECT count(*) FROM public.pagamentos WHERE aluno_id=v_m.aluno_id AND escola_id=v_escola),
+  'cobrancas',(SELECT count(*) FROM public.financeiro_cobrancas WHERE aluno_id=v_m.aluno_id AND escola_id=v_escola),
+  'mensalidades',(SELECT count(*) FROM public.mensalidades WHERE matricula_id=v_m.id),
+  'contratos',(SELECT count(*) FROM public.financeiro_contratos WHERE matricula_id=v_m.id),
+  'lancamentos',(SELECT count(*) FROM public.financeiro_lancamentos WHERE matricula_id=v_m.id),
+  'exames',(SELECT count(*) FROM public.exame_resultados WHERE matricula_id=v_m.id),
+  'frequencia',(SELECT count(*) FROM public.frequencia_status_periodo WHERE matricula_id=v_m.id)
+ ) INTO v_historico_apos;
+ IF v_historico_apos IS DISTINCT FROM v_historico THEN
+  RAISE EXCEPTION 'INTEGRIDADE: alteração inesperada nos vínculos académicos ou financeiros.';
+ END IF;
  INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details,before,after)
  VALUES(v_escola,auth.uid(),'MATRICULA_CLASSE_RETIFICADA','matriculas',v_m.id::text,'secretaria',jsonb_build_object('motivo',v_motivo,'tipo','retificacao_classe','historico_preservado',v_historico,'matricula_id_preservado',v_m.id,'aluno_id_preservado',v_m.aluno_id,'sessao_preservada',v_m.session_id,'confirmacao_historico',p_confirmar_historico),jsonb_build_object('turma_id',v_origem.id,'classe_id',v_origem.classe_id),jsonb_build_object('turma_id',v_destino.id,'classe_id',v_destino.classe_id));
  RETURN v_m.id;
