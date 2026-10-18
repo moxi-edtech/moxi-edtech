@@ -30,13 +30,18 @@ BEGIN
   'pedidos_melhoria',(SELECT count(*) FROM public.melhoria_nota_pedidos WHERE matricula_id=v_m.id),
   'pautas_turma_origem',(SELECT count(*) FROM public.pautas_oficiais WHERE turma_id=v_origem.id),
   'pagamentos',(SELECT count(*) FROM public.pagamentos WHERE aluno_id=v_m.aluno_id AND escola_id=v_escola),
-  'cobrancas',(SELECT count(*) FROM public.financeiro_cobrancas WHERE aluno_id=v_m.aluno_id AND escola_id=v_escola)
+  'cobrancas',(SELECT count(*) FROM public.financeiro_cobrancas WHERE aluno_id=v_m.aluno_id AND escola_id=v_escola),
+  'mensalidades',(SELECT count(*) FROM public.mensalidades WHERE matricula_id=v_m.id),
+  'contratos',(SELECT count(*) FROM public.financeiro_contratos WHERE matricula_id=v_m.id),
+  'lancamentos',(SELECT count(*) FROM public.financeiro_lancamentos WHERE matricula_id=v_m.id),
+  'exames',(SELECT count(*) FROM public.exame_resultados WHERE matricula_id=v_m.id),
+  'frequencia',(SELECT count(*) FROM public.frequencia_status_periodo WHERE matricula_id=v_m.id)
  ) INTO v_historico;
  IF EXISTS(SELECT 1 FROM jsonb_each_text(v_historico) AS h(k,v) WHERE v::integer>0) AND NOT coalesce(p_confirmar_historico,false)
  THEN RAISE EXCEPTION 'CONFIRMACAO: Revise o histórico e confirme a preservação dos registos anteriores.'; END IF;
  UPDATE public.matriculas SET turma_id=v_destino.id, updated_at=now(), updated_by=auth.uid() WHERE id=v_m.id AND escola_id=v_escola;
  INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details,before,after)
- VALUES(v_escola,auth.uid(),'MATRICULA_CLASSE_RETIFICADA','matriculas',v_m.id::text,'secretaria',jsonb_build_object('motivo',v_motivo,'tipo','retificacao_classe','historico_preservado',v_historico,'confirmacao_historico',p_confirmar_historico),jsonb_build_object('turma_id',v_origem.id,'classe_id',v_origem.classe_id),jsonb_build_object('turma_id',v_destino.id,'classe_id',v_destino.classe_id));
+ VALUES(v_escola,auth.uid(),'MATRICULA_CLASSE_RETIFICADA','matriculas',v_m.id::text,'secretaria',jsonb_build_object('motivo',v_motivo,'tipo','retificacao_classe','historico_preservado',v_historico,'matricula_id_preservado',v_m.id,'aluno_id_preservado',v_m.aluno_id,'sessao_preservada',v_m.session_id,'confirmacao_historico',p_confirmar_historico),jsonb_build_object('turma_id',v_origem.id,'classe_id',v_origem.classe_id),jsonb_build_object('turma_id',v_destino.id,'classe_id',v_destino.classe_id));
  RETURN v_m.id;
 END;
 $$;

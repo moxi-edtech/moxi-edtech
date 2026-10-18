@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
-import type { Role } from "@/lib/roles";
+import type { Role } from "@/lib/authz";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ async function context(matriculaId: string) {
 }
 
 async function preview(supabase: any, matricula: any, escolaId: string, turmaId: string) {
-  const [origin, target, notes, assessments, appeals, official, payments, charges] = await Promise.all([
+  const [origin, target, notes, assessments, appeals, official, payments, charges, monthly, contracts, entries, exams, attendance] = await Promise.all([
     supabase.from("turmas").select("id,classe_id,curso_id,ano_letivo,session_id,turno").eq("id",matricula.turma_id).eq("escola_id",escolaId).maybeSingle(),
     supabase.from("vw_turmas_para_matricula").select("id,classe_id,curso_id,ano_letivo,turno,capacidade_maxima,ocupacao_atual").eq("id",turmaId).eq("escola_id",escolaId).maybeSingle(),
     supabase.from("notas").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
@@ -34,8 +34,13 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
     supabase.from("pautas_oficiais").select("id",{count:"exact",head:true}).eq("turma_id",matricula.turma_id),
     supabase.from("pagamentos").select("id",{count:"exact",head:true}).eq("aluno_id",matricula.aluno_id).eq("escola_id",escolaId),
     supabase.from("financeiro_cobrancas").select("id",{count:"exact",head:true}).eq("aluno_id",matricula.aluno_id).eq("escola_id",escolaId),
+    supabase.from("mensalidades").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
+    supabase.from("financeiro_contratos").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
+    supabase.from("financeiro_lancamentos").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
+    supabase.from("exame_resultados").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
+    supabase.from("frequencia_status_periodo").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
   ]);
-  const errors = [origin,target,notes,assessments,appeals,official,payments,charges].filter(x=>x.error).map(x=>x.error.message);
+  const errors = [origin,target,notes,assessments,appeals,official,payments,charges,monthly,contracts,entries,exams,attendance].filter(x=>x.error).map(x=>x.error.message);
   if (errors.length) throw new Error(`Não foi possível verificar todos os impactos: ${errors.join('; ')}`);
   if (!origin.data || !target.data) throw new Error("Turma de origem ou destino não encontrada.");
   const o=origin.data, t=target.data;
@@ -45,8 +50,8 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
   const avisos:string[]=[];
   if(o.classe_id===t.classe_id) blockers.push("Para a mesma classe, utilize Trocar turma.");
   if(o.ano_letivo!==t.ano_letivo || o.curso_id!==t.curso_id || o.session_id!==targetSession.session_id) blockers.push("Ano letivo, sessão ou curso incompatível.");
-  if((notes.count||0)+(assessments.count||0)+(appeals.count||0)+(official.count||0)>0) avisos.push("As notas e pautas anteriores serão preservadas, sem transferência automática para a nova classe.");
-  if((payments.count||0)+(charges.count||0)>0) avisos.push("Pagamentos, recibos e cobranças existentes serão preservados; confira a tabela de preços da nova classe.");
+  if((notes.count||0)+(assessments.count||0)+(appeals.count||0)+(official.count||0)+(exams.count||0)+(attendance.count||0)>0) avisos.push("As notas e pautas anteriores serão preservadas, sem transferência automática para a nova classe.");
+  if((payments.count||0)+(charges.count||0)+(monthly.count||0)+(contracts.count||0)+(entries.count||0)>0) avisos.push("Pagamentos, recibos e cobranças existentes serão preservados; confira a tabela de preços da nova classe.");
   const lotada=Number(t.capacidade_maxima)>0 && Number(t.ocupacao_atual)>=Number(t.capacidade_maxima);
   if(lotada) blockers.push("Turma destino sem vagas.");
   return { allow:blockers.length===0, blockers, avisos, requer_confirmacao_historico:avisos.length>0, lotada, vagas_restantes:Math.max(0,Number(t.capacidade_maxima)-Number(t.ocupacao_atual)), mudanca_turno:o.turno!==t.turno, financeiro:{altera_valor:false,valor_antigo:0,valor_novo:0,diferenca:0,mensagem:"A correção de classe não recalcula mensalidades automaticamente. Confirme a tabela de preços da classe destino."} };
