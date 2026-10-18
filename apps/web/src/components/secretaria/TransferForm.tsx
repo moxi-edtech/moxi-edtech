@@ -29,6 +29,8 @@ interface ImpactoTransferencia {
   vagas_restantes: number;
   mudanca_turno: boolean;
   blockers?: string[];
+  avisos?: string[];
+  requer_confirmacao_historico?: boolean;
   financeiro: {
     altera_valor: boolean;
     valor_antigo: number;
@@ -48,6 +50,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
   const [motivo, setMotivo] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [retificarClasse, setRetificarClasse] = useState(false);
+  const [confirmarHistorico, setConfirmarHistorico] = useState(false);
 
   const turmaAtual = turmas.find((turma) => turma.id === currentTurmaId) ?? null;
   const turmasCompativeis = turmaAtual
@@ -108,7 +111,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
       const res = await fetch(`/api/secretaria/admissoes/matriculas/${matriculaId}/${retificarClasse ? "rectify-class" : "transfer"}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turma_id: turmaId, ano_letivo_id: anoLetivoId, motivo: motivo.trim() }),
+        body: JSON.stringify({ turma_id: turmaId, ano_letivo_id: anoLetivoId, motivo: motivo.trim(), confirmar_historico: retificarClasse && confirmarHistorico }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
@@ -122,12 +125,12 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
     }
   };
 
-  const disableConfirm = !anoLetivoId || !turmaId || motivo.trim().length < 10 || !impacto?.allow || checking || loading || (impacto && impacto.lotada && !impacto.allow);
+  const disableConfirm = (retificarClasse && impacto?.requer_confirmacao_historico && !confirmarHistorico) || !anoLetivoId || !turmaId || motivo.trim().length < 10 || !impacto?.allow || checking || loading || (impacto && impacto.lotada && !impacto.allow);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <fieldset className="flex flex-wrap gap-4 rounded-xl bg-slate-50 p-3 text-sm"><legend className="sr-only">Tipo de alteração</legend><label><input type="radio" checked={!retificarClasse} onChange={() => { setRetificarClasse(false); setTurmaId(""); setImpacto(null); setConfirming(false); }} /> Trocar turma</label><label><input type="radio" checked={retificarClasse} onChange={() => { setRetificarClasse(true); setTurmaId(""); setImpacto(null); setConfirming(false); }} /> Corrigir classe (administrador)</label></fieldset>
-      {retificarClasse && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Retificação administrativa, não progressão. A operação será bloqueada quando houver avaliações, pautas ou movimentos financeiros a regularizar.</p>}
+      <fieldset className="flex flex-wrap gap-4 rounded-xl bg-slate-50 p-3 text-sm"><legend className="sr-only">Tipo de alteração</legend><label><input type="radio" checked={!retificarClasse} onChange={() => { setRetificarClasse(false); setTurmaId(""); setImpacto(null); setConfirming(false); setConfirmarHistorico(false); }} /> Trocar turma</label><label><input type="radio" checked={retificarClasse} onChange={() => { setRetificarClasse(true); setTurmaId(""); setImpacto(null); setConfirming(false); setConfirmarHistorico(false); }} /> Corrigir classe (administrador)</label></fieldset>
+      {retificarClasse && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Retificação administrativa, não progressão. Notas, pautas e movimentos financeiros anteriores serão preservados. Reveja os avisos e confirme para avançar.</p>}
       <div>
         <label htmlFor="turma" className="block text-sm font-medium text-gray-700">
           Nova Turma
@@ -177,6 +180,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
         </p>
       )}
 
+      {retificarClasse && impacto?.avisos?.length ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><strong>Histórico existente</strong>{impacto.avisos.map(item=><p key={item} className="mt-1">{item}</p>)}<label className="mt-3 flex items-start gap-2"><input type="checkbox" checked={confirmarHistorico} onChange={e=>{setConfirmarHistorico(e.target.checked);setConfirming(false);}} className="mt-1"/><span>Compreendo que o histórico será preservado e confirmo a retificação da classe.</span></label></div> : null}
       {impacto?.blockers?.length ? <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{impacto.blockers.map((item) => <p key={item}>{item}</p>)}</div> : null}
       {impacto && !checking && (
         <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
