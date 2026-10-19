@@ -123,6 +123,13 @@ export function CommandCenterStudentDossier({
         workspace
         aluno={aluno}
         slotPerfil={<DossierPerfilSection aluno={aluno} />}
+        slotMatricula={
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-slate-900">Matrícula atual</h2>
+            <p className="text-sm text-slate-600">Turma: {aluno.matricula_atual?.turma ?? "Não definida"}</p>
+            <Link href={"/escola/" + encodeURIComponent(escolaId) + "/operacoes/alunos/" + encodeURIComponent(alunoId) + "?tab=matricula"} className="inline-flex rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-100">Abrir retificação de matrícula</Link>
+          </div>
+        }
         slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role="secretaria" servicos={servicos} />}
         slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role="secretaria" escolaId={escolaId} />}
         slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit />}
