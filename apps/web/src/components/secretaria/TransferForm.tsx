@@ -6,6 +6,7 @@ import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 interface TransferFormProps {
   matriculaId: string;
+  canRectifyClass?: boolean;
   currentTurmaId: string;
   anoLetivo?: number | null;
   anoLetivoId?: string | null;
@@ -40,7 +41,7 @@ interface ImpactoTransferencia {
   };
 }
 
-export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, anoLetivoId, onSuccess }: TransferFormProps) {
+export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, anoLetivoId, onSuccess, canRectifyClass = true }: TransferFormProps) {
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +130,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <fieldset className="flex flex-wrap gap-4 rounded-xl bg-slate-50 p-3 text-sm"><legend className="sr-only">Tipo de alteração</legend><label><input type="radio" checked={!retificarClasse} onChange={() => { setRetificarClasse(false); setTurmaId(""); setImpacto(null); setConfirming(false); setConfirmarHistorico(false); }} /> Trocar turma</label><label><input type="radio" checked={retificarClasse} onChange={() => { setRetificarClasse(true); setTurmaId(""); setImpacto(null); setConfirming(false); setConfirmarHistorico(false); }} /> Corrigir classe (administrador)</label></fieldset>
+      <fieldset className="flex flex-wrap gap-4 rounded-xl bg-slate-50 p-3 text-sm"><legend className="sr-only">Tipo de alteração</legend><label><input type="radio" checked={!retificarClasse} onChange={() => { setRetificarClasse(false); setTurmaId(""); setImpacto(null); setConfirming(false); setConfirmarHistorico(false); }} /> Trocar turma</label>{canRectifyClass && <label><input type="radio" checked={retificarClasse} onChange={() => { setRetificarClasse(true); setTurmaId(""); setImpacto(null); setConfirming(false); setConfirmarHistorico(false); }} /> Corrigir classe (administrador)</label>}</fieldset>
       {retificarClasse && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Retificação administrativa, não progressão. Notas, pautas e movimentos financeiros anteriores serão preservados. Reveja os avisos e confirme para avançar.</p>}
       <div>
         <label htmlFor="turma" className="block text-sm font-medium text-gray-700">

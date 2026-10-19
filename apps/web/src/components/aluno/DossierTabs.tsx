@@ -2,16 +2,17 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { BookOpen, FileText, Users, Wallet } from "lucide-react";
+import { BookOpen, FileText, Users, Wallet, ArrowUpDown } from "lucide-react";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
 
-type DossierTab = "perfil" | "financeiro" | "historico" | "historico_transitado" | "documentos";
+type DossierTab = "perfil" | "matricula" | "financeiro" | "historico" | "historico_transitado" | "documentos";
 type TabItem = { id: DossierTab; label: string; icon: React.ReactNode; badge?: number | null };
 
 export function DossierTabs({
   aluno,
   workspace = false,
   slotPerfil,
+  slotMatricula,
   slotFinanceiro,
   slotHistorico,
   slotHistoricoTransitado,
@@ -20,6 +21,7 @@ export function DossierTabs({
   aluno: AlunoNormalizado;
   workspace?: boolean;
   slotPerfil: React.ReactNode;
+  slotMatricula: React.ReactNode;
   slotFinanceiro: React.ReactNode;
   slotHistorico: React.ReactNode;
   slotHistoricoTransitado: React.ReactNode;
@@ -27,12 +29,13 @@ export function DossierTabs({
 }) {
   const searchParams = useSearchParams();
   const requestedTab = searchParams?.get("tab");
-  const initialTab: DossierTab = requestedTab === "financeiro" || requestedTab === "historico" || requestedTab === "historico_transitado" || requestedTab === "documentos"
+  const initialTab: DossierTab = requestedTab === "matricula" || requestedTab === "financeiro" || requestedTab === "historico" || requestedTab === "historico_transitado" || requestedTab === "documentos"
     ? requestedTab
     : "perfil";
   const [active, setActive] = useState<DossierTab>(initialTab);
   const slots = {
     perfil: slotPerfil,
+    matricula: slotMatricula,
     financeiro: slotFinanceiro,
     historico: slotHistorico,
     historico_transitado: slotHistoricoTransitado,
@@ -40,6 +43,7 @@ export function DossierTabs({
   };
   const tabs: TabItem[] = [
     { id: "perfil", label: workspace ? "Dados pessoais" : "Perfil", icon: <Users size={13} /> },
+    { id: "matricula", label: "Matrícula", icon: <ArrowUpDown size={13} /> },
     { id: "financeiro", label: "Financeiro", icon: <Wallet size={13} />, badge: aluno.financeiro.mensalidades_atrasadas.length || null },
     { id: "historico", label: "Histórico", icon: <BookOpen size={13} /> },
     { id: "historico_transitado", label: "Histórico Transitado", icon: <BookOpen size={13} /> },
