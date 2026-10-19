@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-const sql=readFileSync('supabase/migrations/20261018052421_retificacao_classe_matricula.sql','utf8');
+const sql=readFileSync('supabase/migrations/20261019104203_retificacao_classe_matricula_20261018.sql','utf8');
 const api=readFileSync('apps/web/src/app/api/secretaria/matriculas/[matriculaId]/rectify-class/route.ts','utf8');
 const form=readFileSync('apps/web/src/components/secretaria/TransferForm.tsx','utf8');
 for(const table of ['notas','notas_avaliacoes','melhoria_nota_pedidos','pautas_oficiais','pagamentos','financeiro_cobrancas','mensalidades','financeiro_contratos','financeiro_lancamentos','exame_resultados','frequencia_status_periodo']) {
