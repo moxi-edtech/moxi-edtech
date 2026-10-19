@@ -47,6 +47,7 @@ BEGIN
  IF NOT FOUND OR v_m_apos.aluno_id IS DISTINCT FROM v_m.aluno_id
    OR v_m_apos.session_id IS DISTINCT FROM v_m.session_id
    OR v_m_apos.ano_letivo IS DISTINCT FROM v_m.ano_letivo
+   OR v_m_apos.data_inicio_financeiro IS DISTINCT FROM v_m.data_inicio_financeiro
    OR v_m_apos.turma_id IS DISTINCT FROM v_destino.id
  THEN RAISE EXCEPTION 'INTEGRIDADE: matrícula, aluno ou contexto académico alterado indevidamente.'; END IF;
  SELECT jsonb_build_object(

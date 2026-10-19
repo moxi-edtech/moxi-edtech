@@ -8,6 +8,7 @@ for(const table of ['notas','notas_avaliacoes','melhoria_nota_pedidos','pautas_o
 }
 assert.match(sql,/v_m_apos\.aluno_id IS DISTINCT FROM v_m\.aluno_id/);
 assert.match(sql,/v_m_apos\.session_id IS DISTINCT FROM v_m\.session_id/);
+assert.match(sql,/v_m_apos\.data_inicio_financeiro IS DISTINCT FROM v_m\.data_inicio_financeiro/);
 assert.match(sql,/v_historico_apos IS DISTINCT FROM v_historico/);
 assert.match(sql,/RAISE EXCEPTION 'INTEGRIDADE:/);
 assert.match(sql,/FOR UPDATE/);
