@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
+import { RetificarMatriculaAction } from "@/components/aluno/RetificarMatriculaAction";
 import { DossierHeader } from "@/components/aluno/DossierHeader";
 import { DossierTabs } from "@/components/aluno/DossierTabs";
 import {
@@ -31,12 +32,24 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
   });
   if (!loaded) return notFound();
   const { aluno, servicos } = loaded;
+  const matriculaAtualId = aluno.matricula_atual?.matricula_id;
+  const matriculaAtual = matriculaAtualId && role === "admin"
+    ? await supabase.from("matriculas").select("turma_id, ano_letivo").eq("id", matriculaAtualId).eq("escola_id", resolvedEscolaId).eq("aluno_id", alunoId).maybeSingle()
+    : null;
+  const turmaAtualId = matriculaAtual?.data?.turma_id;
+  const anoAtual = Number(String(matriculaAtual?.data?.ano_letivo ?? "").match(/20\d{2}/)?.[0]);
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
 
   return (
     <div className={workspace ? "min-w-0" : embedded ? "bg-slate-50" : "min-h-screen bg-slate-50"}>
       <div className={workspace ? "min-w-0 space-y-4" : `max-w-6xl mx-auto space-y-5 ${embedded ? "p-4 sm:p-6" : "px-6 py-8"}`}>
         {!workspace && <DossierHeader aluno={aluno} role={role} escolaId={resolvedEscolaId} />}
+        {role === "admin" && matriculaAtualId && turmaAtualId && Number.isFinite(anoAtual) && (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-white px-5 py-4">
+            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-900">Matrícula atual</p><p className="text-xs text-slate-500">Corrigir turma ou classe sem apagar o histórico académico e financeiro.</p></div>
+            <RetificarMatriculaAction matriculaId={matriculaAtualId} turmaId={turmaAtualId} anoLetivo={anoAtual} />
+          </div>
+        )}
         <DossierTabs
           workspace={workspace}
           aluno={aluno}
