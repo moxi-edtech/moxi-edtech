@@ -168,6 +168,9 @@ jobs:
       - name: Verify PostgreSQL client
         run: psql --version
 
+      - name: Class rectification academic and financial linkage contract
+        run: node scripts/ci/class-rectification-contract.mjs
+
       - name: Bootstrap minimal Balcao contract
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
