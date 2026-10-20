@@ -205,7 +205,7 @@ export async function GET(request: Request) {
           [
             `nome_candidato.ilike.%${normalizedQ}%`,
             `protocolo_publico.ilike.${normalizedQ.toUpperCase()}%`,
-            `id.ilike.${normalizedQ.toLowerCase()}%`,
+            ...(z.string().uuid().safeParse(q).success ? [`id.eq.${q.toLowerCase()}`] : []),
           ].join(',')
         )
       }
