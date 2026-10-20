@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import { DossierTabs } from "@/components/aluno/DossierTabs";
-import { TransferForm } from "@/components/secretaria/TransferForm";
+import TransferForm from "@/components/secretaria/TransferForm";
 import {
   DossierDocumentosSection,
   DossierFinanceiroSection,
