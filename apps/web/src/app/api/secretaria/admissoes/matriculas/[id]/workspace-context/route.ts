@@ -25,6 +25,9 @@ export async function GET(
   });
   if (authorization.error) return authorization.error;
 
+  const { error: classPermissionError } = await requireRoleInSchool({
+    supabase, escolaId, roles: ["admin", "admin_escola"],
+  });
   const { data, error: queryError } = await supabase.from("matriculas")
     .select("id, turma_id, ano_letivo, session_id")
     .eq("id", id).eq("escola_id", escolaId).maybeSingle();
@@ -34,6 +37,6 @@ export async function GET(
   }
   return NextResponse.json({
     ok: true,
-    matricula: { id: data.id, turmaId: data.turma_id, ano: data.ano_letivo, sessionId: data.session_id },
+    matricula: { id: data.id, turmaId: data.turma_id, ano: data.ano_letivo, sessionId: data.session_id, canRectifyClass: !classPermissionError },
   }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
