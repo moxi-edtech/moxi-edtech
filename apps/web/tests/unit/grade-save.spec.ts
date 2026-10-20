@@ -47,7 +47,7 @@ test("operator failure stops further grade writes and surfaces exact server fail
         return { ok: false, json: async () => ({ ok: false, error: "Período fechado para lançamento." }) };
       },
       context,
-      Array.from({ length: 110 }, (_, index) => ({ aluno_id: "synthetic-" + index, valor: null })),
+      Array.from({ length: 110 }, (_, index) => ({ aluno_id: "synthetic-" + index, valor: 12 })),
       () => "unique",
     ),
     /Período fechado/,
@@ -81,4 +81,33 @@ test("invalid academic or assignment scope fails before network request", async 
     /Faltam informações/,
   );
   assert.equal(calls, 0);
+});
+
+test("blank grade is rejected before any request; empty component is not persisted", async () => {
+  let calls = 0;
+  const fetcher = async () => {
+    calls++;
+    return { ok: true, json: async () => ({ ok: true }) };
+  };
+  await assert.rejects(
+    saveGradesInChunks(fetcher, context, [{ aluno_id: "synthetic", valor: null }], () => "key"),
+    /sem valor/,
+  );
+  await saveGradesInChunks(fetcher, context, [], () => "key");
+  assert.equal(calls, 0);
+});
+
+test("explicit exemption writes numeric zero through existing canonical endpoint", async () => {
+  let payload: Record<string, unknown> | undefined;
+  await saveGradesInChunks(
+    async (_url, init) => {
+      payload = JSON.parse(init.body);
+      return { ok: true, json: async () => ({ ok: true }) };
+    },
+    { ...context, is_isento: true },
+    [{ aluno_id: "synthetic", valor: 0 }],
+    () => "exempt-1",
+  );
+  assert.deepEqual(payload?.notas, [{ aluno_id: "synthetic", valor: 0 }]);
+  assert.equal(payload?.is_isento, true);
 });
