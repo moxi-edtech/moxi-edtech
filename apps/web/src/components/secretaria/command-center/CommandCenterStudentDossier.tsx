@@ -39,7 +39,7 @@ export function CommandCenterStudentDossier({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
-  const [matriculaInfo, setMatriculaInfo] = useState<{ id: string; turmaId: string; ano: number; sessionId: string | null } | null>(null);
+  const [matriculaInfo, setMatriculaInfo] = useState<{ id: string; turmaId: string; ano: number; sessionId: string | null; canRectifyClass: boolean } | null>(null);
   const [matriculaError, setMatriculaError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -160,9 +160,10 @@ export function CommandCenterStudentDossier({
                 currentTurmaId={matriculaInfo.turmaId}
                 anoLetivo={matriculaInfo.ano}
                 anoLetivoId={matriculaInfo.sessionId}
+                canRectifyClass={matriculaInfo.canRectifyClass}
                 onSuccess={() => setRetry((current) => current + 1)}
               />
-            ) : !matriculaError ? <p className="text-sm text-slate-500">A carregar opções de retificação...</p> : null}
+            ) : !aluno.matricula_atual?.matricula_id ? <p className="text-sm text-slate-500">Sem matrícula atual para retificar.</p> : !matriculaError ? <p className="text-sm text-slate-500">A carregar opções de retificação...</p> : null}
           </div>
         }
         slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role="secretaria" servicos={servicos} />}
