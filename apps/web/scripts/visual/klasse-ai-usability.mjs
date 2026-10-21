@@ -183,6 +183,22 @@ async function exerciseIsolation(){
   await denied.waitForTimeout(350);
   assert.equal(await denied.getByRole('button',{name:'Abrir KLASSE IA'}).count(),0,'unauthorized cannot see chat');
   await denied.close();
+
+  // Regression from the live Operations dashboard: the K12 hybrid Admin/Finance role
+  // has secretariat inheritance. The operational copilot must be visible to it.
+  const hybrid = await browser.newPage({viewport:{width:390,height:844}});
+  await hybrid.goto('http://127.0.0.1:6006/?story=school-intelligence&role=admin_financeiro');
+  const launcher = hybrid.getByRole('button',{name:'Abrir KLASSE IA'});
+  await launcher.waitFor({timeout:10000});
+  await launcher.click();
+  await hybrid.getByRole('dialog',{name:'Conversa com o KLASSE IA'}).waitFor();
+  await hybrid.close();
+
+  const financeOnly = await browser.newPage({viewport:{width:390,height:844}});
+  await financeOnly.goto('http://127.0.0.1:6006/?story=school-intelligence&role=financeiro');
+  await financeOnly.waitForTimeout(300);
+  assert.equal(await financeOnly.getByRole('button',{name:'Abrir KLASSE IA'}).count(),0,'finance-only role stays denied');
+  await financeOnly.close();
 }
 try{
   for(const [w,h] of [[360,640],[390,844],[768,1024],[1366,768],[1920,1080]]){

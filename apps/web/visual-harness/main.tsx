@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { emitFixtureAuth } from "./auth-fixture";
+import { canUseOperationalCopilot } from "../src/lib/roles/ai-roles";
 import TransferForm from "../src/components/secretaria/TransferForm";
 import AiChatWidget from "../src/components/ai/AiChatWidget";
 import { createRoot } from "react-dom/client";
@@ -88,7 +89,7 @@ if (name === "school-intelligence") {
     const url = String(input);
     if (url.includes("/api/admin/ai/access")) {
       fixtureCounters.access++;
-      const allowed = Boolean(activeFixtureUser) && !["professor", "aluno", "financeiro"].includes(fixtureRole);
+      const allowed = Boolean(activeFixtureUser) && canUseOperationalCopilot(fixtureRole);
       return new Response(JSON.stringify({ ok: true, data: {
         allowed, role: fixtureRole, userId: activeFixtureUser, schoolId: activeFixtureSchool,
       } }), { status: 200, headers: { "Content-Type": "application/json" } });
