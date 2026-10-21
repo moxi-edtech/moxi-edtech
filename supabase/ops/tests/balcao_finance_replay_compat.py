@@ -301,6 +301,18 @@ assert security_sql.count("ENABLE ROW LEVEL SECURITY;") == 8
 (root / "20271231000001_ci_only_deferred_original_security_hardening.sql").write_text(security_sql)
 security_source.write_text("BEGIN;\n-- REPLAY-ONLY: exact hardening SQL at 20271231000001 after all its dependencies.\nCOMMIT;\n")
 print("STAGED-COMPAT deferred unmodified original security hardening after its 2027 dependencies")
+# The July RPC linter rewrites two onboarding provisioning functions that
+# do not exist until June 2027. Defer the EXACT linter transaction: no SQL
+# fragments or application permissions changed. All final RPCs are validated
+# in the fully migrated DB before any financial fixture is executed.
+lint_path = root / "20260718125000_fix_active_rpc_lint_batch_2.sql"
+lint_sql = lint_path.read_text()
+assert lint_sql.startswith("BEGIN;\n") and lint_sql.rstrip().endswith("COMMIT;")
+assert "public.create_and_provision_escola_from_onboarding" in lint_sql
+assert "public.provisionar_escola_from_onboarding" in lint_sql
+(root / "20271231000002_ci_only_deferred_original_rpc_lint.sql").write_text(lint_sql)
+lint_path.write_text("BEGIN;\n-- REPLAY-ONLY: original RPC linter deferred until provisioning RPCs exist.\nCOMMIT;\n")
+print("STAGED-COMPAT deferred original provisioning RPC linter until dependencies exist")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
