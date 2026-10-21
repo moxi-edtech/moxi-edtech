@@ -253,13 +253,22 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
   const [aluno, setAluno] = useState<AlunoDossier | null>(null);
   const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [lastVerifiedAt, setLastVerifiedAt] = useState<Date | null>(null);
+  const lastLoadedStudentRef = useRef<string | null>(null);
   // A result from another student or an older revalidation can never win.
   const requestGeneration = useRef(0);
 
   const load = useCallback(
     async (alunoId: string): Promise<boolean> => {
       const generation = ++requestGeneration.current;
+      if (lastLoadedStudentRef.current !== alunoId) {
+        setAluno(null);
+        setMensalidades([]);
+        setLastVerifiedAt(null);
+      }
       setLoading(true);
+      setLoadError(false);
       try {
         const supabase = createClient();
         let dossierRpc = "get_aluno_dossier";
@@ -412,11 +421,19 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
           });
         if (generation !== requestGeneration.current) return false;
         setMensalidades(ms);
+        lastLoadedStudentRef.current = alunoId;
+        setLastVerifiedAt(new Date());
+        setLoadError(false);
         return true;
       } catch {
         if (generation === requestGeneration.current) {
-          setAluno(null);
-          setMensalidades([]);
+          setLoadError(true);
+          // Keep the last confirmed snapshot visible (but inert) on refresh
+          // failure; never treat stale financial data as an updated saldo.
+          if (lastLoadedStudentRef.current !== alunoId) {
+            setAluno(null);
+            setMensalidades([]);
+          }
         }
         return false;
       } finally {
@@ -428,12 +445,15 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
 
   const clear = useCallback(() => {
     requestGeneration.current += 1;
+    lastLoadedStudentRef.current = null;
     setAluno(null);
     setMensalidades([]);
+    setLastVerifiedAt(null);
+    setLoadError(false);
     setLoading(false);
   }, []);
 
-  return { aluno, mensalidades, loading, load, clear };
+  return { aluno, mensalidades, loading, loadError, lastVerifiedAt, load, clear };
 }
 
 function useServicos(escolaId: string) {
@@ -3043,7 +3063,20 @@ export default function BalcaoAtendimento({
         </>
       )}
 
-      {dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current)) ? (
+      {dossier.aluno && (view === "payment" || view === "document" || view === "overview" || view === "all") ? (
+        <div role={dossier.loadError ? "alert" : "status"} aria-live="polite"
+          className="mb-3 flex min-h-9 flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+          {dossier.loadError ? "Falha ao confirmar dados atuais. Operações financeiras indisponíveis." : dossier.loading || refreshingRevision
+            ? "Atualizando dados... As operações aguardam confirmação do servidor." : "Dados financeiros atualizados"}
+          {dossier.lastVerifiedAt ? <time dateTime={dossier.lastVerifiedAt.toISOString()}>
+            Última atualização: {dossier.lastVerifiedAt.toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+          </time> : null}
+          {dossier.loadError && selectedAlunoId ? (
+            <button type="button" onClick={() => void dossier.load(selectedAlunoId)} className="rounded border px-2 py-1 font-semibold">Tentar novamente</button>
+          ) : null}
+        </div>
+      ) : null}
+      {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
           <Loader2 className="h-8 w-8 animate-spin text-amber" />
           <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
@@ -3052,6 +3085,7 @@ export default function BalcaoAtendimento({
         view === "payment" && debtModalOpen ? (
           <div className="min-h-[1px]" aria-hidden="true" />
         ) : view === "overview" ? (
+          <div inert={dossier.loading || dossier.loadError || refreshingRevision} aria-disabled={dossier.loading || dossier.loadError || refreshingRevision}>
           <CommandCenterOverview
             aluno={dossier.aluno}
             mensalidades={dossier.mensalidades}
@@ -3064,10 +3098,13 @@ export default function BalcaoAtendimento({
             onNavigate={onNavigateAction}
             onTrocarAluno={handleTrocarAluno}
           />
+          </div>
         ) : view === "reenrollment" && rematricula.modalOpen ? (
           <div className="min-h-[1px]" aria-hidden="true" />
         ) : (
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+          <div inert={dossier.loading || dossier.loadError || refreshingRevision}
+            aria-disabled={dossier.loading || dossier.loadError || refreshingRevision}
+            className="grid grid-cols-1 gap-5 lg:grid-cols-12">
             <div
               className={
                 view === "payment"

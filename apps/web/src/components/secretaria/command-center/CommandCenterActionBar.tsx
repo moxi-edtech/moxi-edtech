@@ -31,11 +31,13 @@ export function CommandCenterActionBar({
   onChange,
   label = "O que deseja fazer?",
   hasStudent = true,
+  pendingActions = [],
 }: {
   value: BalcaoActionId;
   onChange: (actionId: BalcaoActionId) => void;
   label?: string;
   hasStudent?: boolean;
+  pendingActions?: ReadonlyArray<BalcaoActionId>;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
@@ -67,12 +69,14 @@ export function CommandCenterActionBar({
           .map((action) => {
           const Icon = ACTION_ICONS[action.id as keyof typeof ACTION_ICONS];
           const selected = value === action.id;
+          const pending = pendingActions.includes(action.id);
           return (
             <button
               key={action.id}
               type="button"
               onClick={() => onChange(action.id)}
               aria-pressed={selected}
+              aria-label={`${action.shortLabel}${pending ? ", alterações por guardar" : ""}`}
               className={[
                 "inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C]",
                 selected
@@ -83,6 +87,9 @@ export function CommandCenterActionBar({
             >
               <Icon className={["h-3.5 w-3.5", selected ? "text-amber" : ""].join(" ")} />
               {action.shortLabel}
+              {pending ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800" aria-hidden="true">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />Por guardar
+              </span> : null}
             </button>
           );
         })}

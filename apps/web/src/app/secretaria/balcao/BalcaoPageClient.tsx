@@ -8,7 +8,10 @@ import Link from "next/link";
 import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 import BalcaoAtendimento, { type AlunoDossier } from "@/components/secretaria/BalcaoAtendimento";
 import { CommandCenterPanel } from "@/components/secretaria/command-center/CommandCenterPanel";
+import { useBalcaoTelemetry } from "@/components/secretaria/command-center/useBalcaoTelemetry";
 import { RetainedActionPanels } from "@/components/secretaria/command-center/RetainedActionPanels";
+import { useBalcaoKeyboardShortcuts } from "@/components/secretaria/command-center/useBalcaoKeyboardShortcuts";
+import type { BalcaoDraftSummary } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { CommandCenterShell } from "@/components/secretaria/command-center/CommandCenterShell";
 import { useCommandCenterStudent } from "@/components/secretaria/command-center/useCommandCenterStudent";
 import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
@@ -47,11 +50,19 @@ export default function BalcaoPageClient({
 
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(locationStudentId);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(queryAction);
+  const { markNavigationStart } = useBalcaoTelemetry(activeAction);
   const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
   const [atendimentoKey, setAtendimentoKey] = useState(0);
   const [refreshRevision, setRefreshRevision] = useState(0);
   const unsavedWorkRef = useRef(false);
   const submittingRef = useRef(false);
+  const [actionDraftStatuses, setActionDraftStatuses] = useState<Readonly<Partial<Record<BalcaoActionId, BalcaoDraftSummary>>>>({});
+  const handleActionDraftStatuses = useCallback((next: Readonly<Partial<Record<BalcaoActionId, BalcaoDraftSummary>>>) => {
+    setActionDraftStatuses(next);
+  }, []);
+  const pendingActions = Object.entries(actionDraftStatuses)
+    .filter(([, summary]) => summary?.dirty)
+    .map(([action]) => action as BalcaoActionId);
   const handleUnsavedChange = useCallback((value: boolean) => { unsavedWorkRef.current = value; }, []);
   const handleSubmittingChange = useCallback((value: boolean) => { submittingRef.current = value; }, []);
   const {
@@ -117,11 +128,12 @@ export default function BalcaoPageClient({
       !window.confirm("Sair da nova matrícula? Alterações ainda não guardadas poderão perder-se. O aluno anterior continuará selecionado.")
     ) return;
 
+    markNavigationStart();
     // Ao entrar na Matrícula, preservamos o atendimento para regressar,
     // sem apresentar esse aluno como o destinatário da nova inscrição.
     setActiveAction(actionId);
     syncLocation({ alunoId: selectedAlunoId, actionId, historyMode: "push" });
-  }, [activeAction, selectedAlunoId, syncLocation]);
+  }, [activeAction, selectedAlunoId, syncLocation, markNavigationStart]);
 
   const handleSwitchStudent = useCallback(() => {
     if (submittingRef.current) return; // Never change student during an in-flight write.
@@ -161,6 +173,15 @@ export default function BalcaoPageClient({
     syncLocation({ alunoId: nextAlunoId });
   }, [setCommandCenterStudent, syncLocation]);
 
+  const shortcuts = useBalcaoKeyboardShortcuts({
+    onSearch: () => {
+      const search = document.querySelector<HTMLInputElement>('input[placeholder^="Buscar aluno"]');
+      if (search) search.focus();
+      else handleSwitchStudent(); // Same unsaved-work confirmation as the UI
+    },
+    onSwitch: handleSwitchStudent,
+  });
+
   return (
     <CommandCenterShell
       variant="page"
@@ -171,6 +192,8 @@ export default function BalcaoPageClient({
       } : null}
       activeAction={activeAction}
       onActionChange={handleActionChange}
+      pendingActions={pendingActions}
+      shortcuts={shortcuts}
       onSwitchStudent={handleSwitchStudent}
       leading={
         <Link
@@ -193,6 +216,7 @@ export default function BalcaoPageClient({
             contextSignature={`${userScope}:${escolaId}:${selectedAlunoId ?? "-"}:${commandCenterStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
             onUnsavedChange={handleUnsavedChange}
             onSubmittingChange={handleSubmittingChange}
+            onActionStatusesChange={handleActionDraftStatuses}
             renderAction={(panelAction) => (
               <CommandCenterPanel
                 escolaId={escolaId}
