@@ -22,7 +22,7 @@ export type TurmaContextData = {
     pageSize: number;
     hasMore: boolean;
   };
-  disciplinas: Array<{ id: string; nome: string; professores: string[] }>;
+  disciplinas: Array<{ id: string; nome: string; professores: string[]; professoresDetalhes?: Array<{ id: string; nome: string }> }>;
   professores: string[];
   disciplinasLimitadas: boolean;
 };
