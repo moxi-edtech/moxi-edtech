@@ -14,9 +14,10 @@ type Props = {
   onStudentSelect: (student: { id: string; label: string }) => void;
   onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
   onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
+  onExploreClasse: (classe: { id: string; label: string; academicYearId: string }) => void;
 };
 
-export function TurmaContextView({ context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina }: Props) {
+export function TurmaContextView({ context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina, onExploreClasse }: Props) {
   const [page, setPage] = useState(1);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
 
@@ -52,9 +53,16 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
-            {turma.curso?.nome || "Curso"} · {turma.classe?.nome || "Classe"} · Ano letivo {turma.anoLetivo.ano}
+            {turma.curso?.nome || "Curso"} · Ano letivo {turma.anoLetivo.ano}
             {turma.anoLetivo.historico ? " · Histórico" : ""}
           </p>
+          {turma.classe && (
+            <button type="button" onClick={() => onExploreClasse({
+              id: turma.classe!.id, label: turma.classe!.nome, academicYearId: turma.anoLetivo.id,
+            })} className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-800 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600">
+              {turma.classe.nome} <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          )}
           <h2 className="mt-1 text-lg font-semibold text-slate-900">{turma.nome}</h2>
           <p className="mt-1 text-xs text-slate-600">
             {turma.turno || "Turno não definido"} · {turma.sala ? `Sala ${turma.sala}` : "Sala não definida"}
