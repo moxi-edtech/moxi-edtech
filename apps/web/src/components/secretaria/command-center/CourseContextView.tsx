@@ -13,6 +13,9 @@ type Props = {
   context: EntityContext;
   portal?: string;
   onNavigate: (href: string) => void;
+  onExploreTurma: (turma: { id: string; label: string; academicYearId: string }) => void;
+  initialClasseId?: string | null;
+  onClasseChange?: (id: string | null) => void;
 };
 
 function Metric({ value, label }: { value: number; label: string }) {
@@ -26,10 +29,15 @@ function Metric({ value, label }: { value: number; label: string }) {
   );
 }
 
-export function CourseContextView({ context, portal, onNavigate }: Props) {
+export function CourseContextView({ context, portal, onNavigate, onExploreTurma, initialClasseId, onClasseChange }: Props) {
   const { data, error, loading, retry } = useCourseContext(context);
   const reducedMotion = useReducedMotion();
-  const [classeId, setClasseId] = useState<string | null>(null);
+  const [classeId, setClasseId] = useState<string | null>(initialClasseId ?? null);
+  function selectClasse(id: string | null) {
+    setClasseId(id);
+    onClasseChange?.(id);
+    setTurmaId(null);
+  }
   const [turmaId, setTurmaId] = useState<string | null>(null);
 
   const visibleTurmas = useMemo(
@@ -82,7 +90,7 @@ export function CourseContextView({ context, portal, onNavigate }: Props) {
       </div>
 
       <nav aria-label="Navegação contextual" className="flex flex-wrap items-center gap-1 text-xs text-slate-600">
-        <button type="button" className="rounded-lg px-2 py-1 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" onClick={() => { setClasseId(null); setTurmaId(null); }}>Curso</button>
+        <button type="button" className="rounded-lg px-2 py-1 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" onClick={() => selectClasse(null)}>Curso</button>
         {selectedClasse && (
           <>
             <ChevronRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />
@@ -107,7 +115,7 @@ export function CourseContextView({ context, portal, onNavigate }: Props) {
               Todas as classes <span className="text-xs tabular-nums text-slate-500">{data.stats.turmas} turmas</span>
             </button>
             {data.classes.map((classe) => (
-              <button type="button" key={classe.id} onClick={() => { setClasseId(classe.id); setTurmaId(null); }}
+              <button type="button" key={classe.id} onClick={() => selectClasse(classe.id)}
                 aria-pressed={classeId === classe.id}
                 className={`mt-1 flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${classeId === classe.id ? "bg-slate-100 font-semibold" : ""}`}>
                 <span className="min-w-0 truncate">{classe.nome}</span>
@@ -150,9 +158,9 @@ export function CourseContextView({ context, portal, onNavigate }: Props) {
               {selectedTurma.alunos} alunos · {selectedTurma.capacidade == null ? "Capacidade não definida" : `Capacidade de ${selectedTurma.capacidade}`} · {selectedTurma.turno || "Turno não informado"}
             </p>
           </div>
-          <button type="button" onClick={() => openTurma(selectedTurma.id)}
+          <button type="button" onClick={() => onExploreTurma({ id: selectedTurma.id, label: selectedTurma.nome, academicYearId: data.anoLetivo.id })}
             className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-2 font-semibold text-white hover:brightness-95">
-            Abrir turma <ArrowUpRight className="h-4 w-4" />
+            Explorar turma <ArrowUpRight className="h-4 w-4" />
           </button>
         </motion.section>
       )}
