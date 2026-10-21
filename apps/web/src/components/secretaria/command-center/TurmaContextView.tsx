@@ -13,9 +13,10 @@ type Props = {
   onNavigate: (href: string) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
   onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
+  onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
 };
 
-export function TurmaContextView({ context, portal, onNavigate, onStudentSelect, onExploreProfessor }: Props) {
+export function TurmaContextView({ context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina }: Props) {
   const [page, setPage] = useState(1);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
 
@@ -107,7 +108,11 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
           <div className="max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
             {disciplinas.map((d) => (
               <div key={d.id} className="px-3 py-3">
-                <p className="font-medium text-slate-900">{d.nome}</p>
+                <button type="button"
+                  onClick={() => onExploreDisciplina({ id: d.id, label: d.nome, academicYearId: turma.anoLetivo.id })}
+                  className="inline-flex items-center gap-1 text-left font-medium text-emerald-800 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600">
+                  {d.nome} <ChevronRight className="h-3.5 w-3.5" />
+                </button>
                 <p className="mt-1 text-xs text-slate-500">{d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}</p>
               </div>
             ))}
