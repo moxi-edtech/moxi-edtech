@@ -89,4 +89,13 @@ model_source = (root / "20261121090000_modelos_avaliacao_formula_meta.sql").read
 assert "ADD COLUMN IF NOT EXISTS formula jsonb NOT NULL" in model_source
 (root / "20260311010099_ci_only_early_modelos_avaliacao_formula.sql").write_text(model_source)
 print("STAGED-COMPAT 20260311010099_ci_only_early_modelos_avaliacao_formula.sql")
+# A clean schema has no curriculum catalog rows. March health subjects
+# require parents first, but their real seed is dated November. Bring forward
+# EXACT source seed DML; the source already uses ON CONFLICT upserts, so it
+# runs again in November with normal final semantics and no fake parents.
+seed_source = (root / "20261127000001_curriculum_presets_seed.sql").read_text()
+assert "ON CONFLICT (id) DO UPDATE" in seed_source
+assert "ON CONFLICT (preset_id, name, grade_level) DO UPDATE" in seed_source
+(root / "20260321065000_ci_only_early_curriculum_seed.sql").write_text(seed_source)
+print("STAGED-COMPAT 20260321065000_ci_only_early_curriculum_seed.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
