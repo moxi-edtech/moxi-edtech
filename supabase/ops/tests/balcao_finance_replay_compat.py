@@ -173,4 +173,29 @@ early_formacao = (
 )
 (root / "20260505000000_ci_only_early_formacao_dependencies.sql").write_text(early_formacao)
 print("STAGED-COMPAT 20260505000000_ci_only_early_formacao_dependencies.sql")
+# May phases change OUT parameters on same function signature: PostgreSQL
+# requires DROP + CREATE (not CREATE OR REPLACE). Use the real function body.
+once("20260507130000_fase_4_turma_admissao_stats.sql",
+     "CREATE OR REPLACE FUNCTION get_turmas_pedagogico_stats(p_escola_id UUID)",
+     "DROP FUNCTION IF EXISTS public.get_turmas_pedagogico_stats(uuid);\nCREATE OR REPLACE FUNCTION get_turmas_pedagogico_stats(p_escola_id UUID)")
+
+# The original repo includes CONCURRENTLY in 7 historical migrations. A
+# disposable Supabase CLI replay wraps statements differently from psql
+# autocommit. Retain all index definitions, only drop CONCURRENTLY for the
+# local throwaway database (same final index, different lock strategy).
+index_counts = {
+    "20260127020500_fix_p0_issues.sql": 1,
+    "20260227160000_performance_critical_indexes.sql": 8,
+    "20270312090000_portal_aluno_perf_indexes.sql": 5,
+    "20270603113000_secretaria_alunos_search_indexed.sql": 2,
+    "20270603114000_secretaria_alunos_search_generated_vector.sql": 2,
+    "20270714103000_global_search_fast_path_indexes.sql": 29,
+    "20270826126000_academic_carryovers_fk_indexes.sql": 1,
+}
+for name, count in index_counts.items():
+    path = root / name
+    sql = path.read_text()
+    assert sql.count("CREATE INDEX CONCURRENTLY") == count, name
+    path.write_text(sql.replace("CREATE INDEX CONCURRENTLY", "CREATE INDEX"))
+    print("STAGED-COMPAT disposable index lock strategy", name, count)
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")

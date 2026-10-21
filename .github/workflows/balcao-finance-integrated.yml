@@ -3,7 +3,7 @@ name: Balcao Full Financial Integration
 on:
   pull_request:
     paths:
-      - "supabase/ops/tests/balcao_finance_full_*"
+      - "supabase/ops/tests/balcao_*"
       - ".github/workflows/balcao-finance-integrated.yml"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
       - "apps/web/src/components/secretaria/command-center/**"
