@@ -320,6 +320,14 @@ export default function AiChatWidget({
     };
   }, [schoolId]);
 
+  // A mudança de escola invalida toda a conversa e qualquer proposta anterior.
+  // Não reutilizar mensagens com dados de alunos entre tenants.
+  useEffect(() => {
+    setMessages([]);
+    setFlow(null);
+    setResolvedSchoolId(null);
+  }, [schoolId]);
+
   useEffect(() => {
     if (!isAllowed) return;
 
