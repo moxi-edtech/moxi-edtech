@@ -12,9 +12,10 @@ type Props = {
   portal?: string;
   onNavigate: (href: string) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
+  onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
 };
 
-export function TurmaContextView({ context, portal, onNavigate, onStudentSelect }: Props) {
+export function TurmaContextView({ context, portal, onNavigate, onStudentSelect, onExploreProfessor }: Props) {
   const [page, setPage] = useState(1);
   useEffect(() => { setPage(1); }, [context.id, context.academicYearId, context.escolaId]);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
@@ -108,7 +109,19 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect 
             {disciplinas.map((d) => (
               <div key={d.id} className="px-3 py-3">
                 <p className="font-medium text-slate-900">{d.nome}</p>
-                <p className="mt-1 text-xs text-slate-500">{d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}</p>
+                {d.professoresDetalhes?.length ? (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {d.professoresDetalhes.map((teacher) => (
+                      <button type="button" key={teacher.id}
+                        onClick={() => onExploreProfessor({ id: teacher.id, label: teacher.nome, academicYearId: turma.anoLetivo.id })}
+                        className="rounded-md px-1.5 py-1 text-xs text-emerald-800 underline-offset-2 hover:bg-emerald-50 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600">
+                        {teacher.nome}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">{d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}</p>
+                )}
               </div>
             ))}
             {!disciplinas.length && <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>}
