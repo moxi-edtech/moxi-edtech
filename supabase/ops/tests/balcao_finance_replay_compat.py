@@ -96,6 +96,14 @@ print("STAGED-COMPAT 20260311010099_ci_only_early_modelos_avaliacao_formula.sql"
 seed_source = (root / "20261127000001_curriculum_presets_seed.sql").read_text()
 assert "ON CONFLICT (id) DO UPDATE" in seed_source
 assert "ON CONFLICT (preset_id, name, grade_level) DO UPDATE" in seed_source
+# One *byte-identical* VALUES row occurs twice in the 1,313 original rows,
+# making PostgreSQL reject an otherwise idempotent ON CONFLICT statement.
+# Keep all 1,312 DISTINCT original rows. Do NOT generate/fake parents.
+duplicate = "  ('esg_puniv_cej','Desenvolvimento Económico e Social','12ª Classe','ESPECIFICA',4,'core'),\n"
+assert seed_source.count(duplicate) == 2, "Unexpected historical catalog change"
+seed_source = seed_source.replace(duplicate, "", 1)
 (root / "20260321065000_ci_only_early_curriculum_seed.sql").write_text(seed_source)
+(root / "20261127000001_curriculum_presets_seed.sql").write_text(seed_source)
+print("STAGED-COMPAT one byte-identical duplicate removed from the 1,313 source subject rows")
 print("STAGED-COMPAT 20260321065000_ci_only_early_curriculum_seed.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
