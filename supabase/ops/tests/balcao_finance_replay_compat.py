@@ -167,7 +167,9 @@ early_formacao = (
     table_ddl("20270411030000_formacao_catalogo_curso_tabs.sql", "formacao_cohort_modulos",
               "CREATE INDEX IF NOT EXISTS idx_formacao_cohort_modulos_escola_cohort") + "\n" +
     table_ddl("20270502180000_formacao_digital_diary.sql", "formacao_aulas",
-              "CREATE INDEX IF NOT EXISTS idx_formacao_aulas_escola_cohort")
+              "CREATE INDEX IF NOT EXISTS idx_formacao_aulas_escola_cohort") + "\n" +
+    table_ddl("20270411010000_formacao_inscricoes_base.sql", "formacao_inscricoes",
+              "CREATE INDEX IF NOT EXISTS idx_formacao_inscricoes_escola_cohort")
 )
 (root / "20260505000000_ci_only_early_formacao_dependencies.sql").write_text(early_formacao)
 print("STAGED-COMPAT 20260505000000_ci_only_early_formacao_dependencies.sql")
