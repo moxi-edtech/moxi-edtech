@@ -7,7 +7,17 @@ CREATE OR REPLACE FUNCTION public.command_center_course_overview(
 LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path = ''
 AS $$
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_access_to_escola_fast(p_escola_id) THEN
+  -- The route enforces roles, but the RPC is also exposed via PostgREST.
+  -- Repeat the gate here so calling /rest/v1/rpc directly cannot bypass it.
+  IF auth.uid() IS NULL
+    OR NOT public.has_access_to_escola_fast(p_escola_id)
+    OR NOT public.user_has_role_in_school(
+      p_escola_id,
+      ARRAY['admin', 'admin_escola', 'staff_admin', 'diretor',
+            'secretaria', 'admin_secretaria', 'secretaria_financeiro',
+            'admin_financeiro']::text[]
+    )
+  THEN
     RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
   END IF;
   IF NOT EXISTS (
