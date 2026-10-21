@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CommandCenterPanel } from "@/components/secretaria/command-center/CommandCenterPanel";
+import { useBalcaoTelemetry } from "@/components/secretaria/command-center/useBalcaoTelemetry";
 import { RetainedActionPanels } from "@/components/secretaria/command-center/RetainedActionPanels";
+import { useBalcaoKeyboardShortcuts } from "@/components/secretaria/command-center/useBalcaoKeyboardShortcuts";
+import type { BalcaoDraftSummary } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { CommandCenterShell } from "@/components/secretaria/command-center/CommandCenterShell";
 import { CommandCenterStudentPicker } from "@/components/secretaria/command-center/CommandCenterStudentPicker";
 import { useCommandCenterStudent } from "@/components/secretaria/command-center/useCommandCenterStudent";
@@ -35,6 +38,7 @@ export function BalcaoWorkspace({
   // Selecionar "Nova matrícula" muda a operação, nunca o aluno em atendimento.
   const [selectedStudent, setSelectedStudent] = useState<Student>(aluno);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);
+  const { markNavigationStart } = useBalcaoTelemetry(activeAction);
   const [switchingStudent, setSwitchingStudent] = useState(false);
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [academicYearId, setAcademicYearId] = useState<string | null>(null);
@@ -46,6 +50,13 @@ export function BalcaoWorkspace({
   const studentRequestRef = useRef(0);
   const hasUnsavedWorkRef = useRef(false);
   const submittingRef = useRef(false);
+  const [actionDraftStatuses, setActionDraftStatuses] = useState<Readonly<Partial<Record<BalcaoActionId, BalcaoDraftSummary>>>>({});
+  const handleActionDraftStatuses = useCallback((next: Readonly<Partial<Record<BalcaoActionId, BalcaoDraftSummary>>>) => {
+    setActionDraftStatuses(next);
+  }, []);
+  const pendingActions = Object.entries(actionDraftStatuses)
+    .filter(([, summary]) => summary?.dirty)
+    .map(([action]) => action as BalcaoActionId);
   const handleUnsavedChange = useCallback((value: boolean) => { hasUnsavedWorkRef.current = value; }, []);
   const handleSubmittingChange = useCallback((value: boolean) => { submittingRef.current = value; }, []);
 
@@ -87,9 +98,10 @@ export function BalcaoWorkspace({
   const handleActionChange = useCallback((next: BalcaoActionId) => {
     if (next === activeAction || !confirmLeavingEnrollment()) return;
     if (next === "enrollment") completedEnrollmentRef.current = false;
+    markNavigationStart();
     setSwitchingStudent(false);
     setActiveAction(next);
-  }, [activeAction, confirmLeavingEnrollment]);
+  }, [activeAction, confirmLeavingEnrollment, markNavigationStart]);
 
   const handleSwitchStudent = useCallback(() => {
     if (submittingRef.current) return;
@@ -148,6 +160,11 @@ export function BalcaoWorkspace({
     onSuccess?.();
   }, [onSuccess]);
 
+  const shortcuts = useBalcaoKeyboardShortcuts({
+    onSearch: handleSwitchStudent,
+    onSwitch: handleSwitchStudent, // never bypasses pending/submit guard
+  });
+
   if (!open) return null;
 
   return (
@@ -156,6 +173,8 @@ export function BalcaoWorkspace({
       student={{ ...selectedStudent, subtitle: currentStudent ? subtitle : null }}
       activeAction={activeAction}
       onActionChange={handleActionChange}
+      pendingActions={pendingActions}
+      shortcuts={shortcuts}
       onSwitchStudent={switchingStudent ? undefined : handleSwitchStudent}
       onClose={handleClose}
     >
@@ -186,6 +205,7 @@ export function BalcaoWorkspace({
           contextSignature={`${userScope}:${escolaId}:${poloScope}:${selectedStudent.id}:${currentStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
           onUnsavedChange={handleUnsavedChange}
             onSubmittingChange={handleSubmittingChange}
+            onActionStatusesChange={handleActionDraftStatuses}
           renderAction={(panelAction) => (
             <CommandCenterPanel
               escolaId={escolaId}

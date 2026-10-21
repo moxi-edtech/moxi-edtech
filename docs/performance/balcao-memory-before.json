@@ -1,0 +1,110 @@
+{
+  "fixture": true,
+  "authenticatedBackend": false,
+  "cycles": 210,
+  "samples": [
+    {
+      "cycle": 0,
+      "heapBytes": 9743188,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 2
+    },
+    {
+      "cycle": 20,
+      "heapBytes": 10713672,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 40,
+      "heapBytes": 10905392,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 60,
+      "heapBytes": 10986164,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 80,
+      "heapBytes": 11086520,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 100,
+      "heapBytes": 11107844,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 120,
+      "heapBytes": 11121000,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 140,
+      "heapBytes": 11138304,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 160,
+      "heapBytes": 11140412,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 180,
+      "heapBytes": 11156508,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 200,
+      "heapBytes": 11147184,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 210,
+      "heapBytes": 11159516,
+      "domNodes": 40,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    }
+  ],
+  "budget": {
+    "allowedHeapBytes": 22358088,
+    "allowedDomNodes": 146,
+    "allowedListeners": 50,
+    "maxRetainedPanels": 7
+  },
+  "errors": []
+}
