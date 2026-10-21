@@ -82,4 +82,11 @@ assert "CREATE TABLE IF NOT EXISTS public.curriculum_preset_subjects (" in curri
 assert "ENABLE ROW LEVEL SECURITY" in curriculum_source
 (root / "20260311000099_ci_only_early_curriculum_catalog.sql").write_text(curriculum_source)
 print("STAGED-COMPAT 20260311000099_ci_only_early_curriculum_catalog.sql")
+# Models table exists in March but its formula/regras columns arrive in
+# November, before which March already backfills them. Apply exact later DDL
+# (with its RLS intact) prior to the early consumer, then reapply in November.
+model_source = (root / "20261121090000_modelos_avaliacao_formula_meta.sql").read_text()
+assert "ADD COLUMN IF NOT EXISTS formula jsonb NOT NULL" in model_source
+(root / "20260311010099_ci_only_early_modelos_avaliacao_formula.sql").write_text(model_source)
+print("STAGED-COMPAT 20260311010099_ci_only_early_modelos_avaliacao_formula.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
