@@ -209,6 +209,20 @@ calendar_ddl = calendar_source.split("-- RLS", 1)[0]
     calendar_ddl + "\nALTER TABLE public.calendario_eventos ENABLE ROW LEVEL SECURITY;\n"
 )
 print("STAGED-COMPAT 20260509190000_ci_only_early_med_calendar.sql")
+# May materialized grade/boletim query already selects December's model
+# exception fields. Stage the two exact ADD COLUMN definitions before the
+# actual May view. No FKs or authorization changes are skipped.
+model_cascade_source = (root / "20261205000012_add_modelo_avaliacao_cascade.sql").read_text()
+for snippet in (
+    "ALTER TABLE public.modelos_avaliacao\n  ADD COLUMN IF NOT EXISTS curso_id uuid;",
+    "ALTER TABLE public.curso_matriz\n  ADD COLUMN IF NOT EXISTS modelo_excecao_id uuid;",
+):
+    assert model_cascade_source.count(snippet) == 1
+(root / "20260528122900_ci_only_early_modelo_cascade_columns.sql").write_text(
+    "ALTER TABLE public.modelos_avaliacao ADD COLUMN IF NOT EXISTS curso_id uuid;\n"
+    "ALTER TABLE public.curso_matriz ADD COLUMN IF NOT EXISTS modelo_excecao_id uuid;\n"
+)
+print("STAGED-COMPAT 20260528122900_ci_only_early_modelo_cascade_columns.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
