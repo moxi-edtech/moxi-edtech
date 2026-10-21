@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { MAX_GRADE_WRITE_BATCH, saveGradesInChunks } from "../../src/lib/secretaria/grade-save";
 
@@ -110,4 +111,22 @@ test("explicit exemption writes numeric zero through existing canonical endpoint
   );
   assert.deepEqual(payload?.notas, [{ aluno_id: "synthetic", valor: 0 }]);
   assert.equal(payload?.is_isento, true);
+});
+
+// Both Secretaria surfaces must use the same canonical writer and must not
+// send empty evaluation slots as SQL NULL values.
+test("Balcão and full Secretariat grades never forward null components", () => {
+  const sources = [
+    "src/components/secretaria/PautaRapidaModal.tsx",
+    "src/app/secretaria/(portal-secretaria)/notas/page.tsx",
+  ];
+  for (const path of sources) {
+    const source = readFileSync(path, "utf8");
+    assert.match(source, /saveGradesInChunks/);
+    assert.match(source, /isentos\.map\(\(row\) => \(\{ aluno_id: row\.id, valor: 0 \}\)\)/);
+    assert.match(source, /activeRows\.flatMap\(/);
+    assert.doesNotMatch(source, /valor: row\[campo\] \?\? null/);
+  }
+  const api = readFileSync("src/app/api/secretaria/notas/route.ts", "utf8");
+  assert.match(api, /valor: z\.number\(\)\.finite\(\)\.min\(0\)\.max\(100\)/);
 });
