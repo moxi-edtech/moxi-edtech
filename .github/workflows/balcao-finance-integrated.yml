@@ -21,10 +21,16 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.121.0
+      - name: Stage test-only historical DDL compatibility (ephemeral runner)
+        run: |
+          # The unmodified 20260202011000 backfill references aluno_id before
+          # an ADD COLUMN migration. Preserve all originals and make the
+          # precondition explicit without changing production migrations.
+          cp supabase/ops/tests/balcao_full_ci_compat_aluno_id.sql supabase/migrations/20260202010999_ci_only_compat_aluno_id.sql
       - name: Start disposable Supabase with ALL original migrations
         run: |
           supabase start --exclude studio,mailpit,storage-api,imgproxy,logflare,vector,edge-runtime,realtime,supavisor,postgres-meta
-      - name: Prove every version was applied, no selective bootstrap
+      - name: Prove all original migrations PLUS recorded CI-only precondition were applied
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
