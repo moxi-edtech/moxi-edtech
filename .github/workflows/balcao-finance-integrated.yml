@@ -21,30 +21,8 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.121.0
-      - name: Stage test-only historical DDL compatibility (ephemeral runner)
-        run: |
-          # The unmodified 20260202011000 backfill references aluno_id before
-          # an ADD COLUMN migration. Preserve all originals and make the
-          # precondition explicit without changing production migrations.
-          cp supabase/ops/tests/balcao_full_ci_compat_aluno_id.sql supabase/migrations/20260202010999_ci_only_compat_aluno_id.sql
-          # Historical trigger ends with $function$ but opens with $$.
-          # Fix only its delimiter in the CI runner's *copy*, preserving the
-          # original PL/pgSQL body. Zero production migration changes.
-          python3 - <<'PYCI'
-          from pathlib import Path
-          path=Path('supabase/migrations/20260203000015_refactor_gerar_mensalidades_trigger.sql')
-          text=path.read_text()
-          assert text.count('AS $$') == 1 and text.count('$function$;') == 1
-          path.write_text(text.replace('AS $$','AS $function$',1))
-          PYCI
-          python3 - <<'PYCI'
-          from pathlib import Path
-          path=Path('supabase/migrations/20260203000024_rpc_realizar_pagamento_balcao.sql')
-          text=path.read_text()
-          anchor="  v_lancamentos_ids uuid[] := '{}';"
-          assert text.count(anchor)==1 and 'INTO v_lancamento_id' in text
-          path.write_text(text.replace(anchor, '  v_lancamento_id uuid;\n'+anchor,1))
-          PYCI
+      - name: Stage strict compatibility for historical dependency gaps (ephemeral runner)
+        run: python3 supabase/ops/tests/balcao_finance_replay_compat.py supabase/migrations
       - name: Start disposable Supabase with ALL original migrations
         run: |
           supabase start --exclude studio,mailpit,storage-api,imgproxy,logflare,vector,edge-runtime,realtime,supavisor,postgres-meta
@@ -56,7 +34,20 @@ jobs:
           expected=$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l | tr -d ' ')
           applied=$(psql "$PGURL" -At -v ON_ERROR_STOP=1 -c 'select count(*) from supabase_migrations.schema_migrations')
           echo "All local migrations: expected=$expected applied=$applied"
+          # Every staged SQL has a numeric version except legacy unversioned files.
           [ "$applied" -ge "$expected" ] || { echo "Migration chain incomplete: cannot claim RLS integration"; exit 1; }
+          psql "$PGURL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$ BEGIN
+            IF to_regclass('public.pautas_oficiais') IS NULL THEN
+              RAISE EXCEPTION 'REAL_PAUTAS_TABLE_MISSING';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgrelid='public.pautas_oficiais'::regclass
+                AND tgname='trg_pautas_archive_outbox' AND NOT tgisinternal
+            ) THEN RAISE EXCEPTION 'DEFERRED_PAUTAS_TRIGGER_MISSING'; END IF;
+          END $$;
+          SQL
       - name: Real RLS and monthly payment/proof/approval/rejection/retry/receipt/balance
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
