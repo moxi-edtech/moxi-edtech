@@ -58,4 +58,18 @@ AFTER INSERT OR UPDATE ON public.pautas_oficiais
 FOR EACH ROW
 EXECUTE FUNCTION public.trigger_archive_document_outbox();
 """)
+# March migration 17 drops numero_login while two security-invoker search
+# views STILL depend on it. Migration 18 replaces those views. Preserve all
+# DDL by shifting DROP to AFTER replacement; migration 19 restores the column
+# (same definition used in the later IF NOT EXISTS migration) to allow later
+# historical SQL to reference it. This is runner-only, never prod DDL.
+once("20260310000017_drop_profiles_numero_login.sql",
+    "ALTER TABLE public.profiles\n  DROP COLUMN IF EXISTS numero_login;",
+    "-- CI replay: column drop moved after view replacements in next migration.")
+once("20260310000018_update_search_views.sql",
+    "ALTER VIEW public.vw_search_usuarios OWNER TO postgres;\n\nCOMMIT;",
+    "ALTER VIEW public.vw_search_usuarios OWNER TO postgres;\n\nALTER TABLE public.profiles DROP COLUMN IF EXISTS numero_login;\n\nCOMMIT;")
+once("20260310000019_fix_login_functions.sql",
+    "BEGIN;\n\nDROP FUNCTION IF EXISTS public.confirmar_matricula_core(uuid);",
+    "BEGIN;\n\nALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS numero_login text;\n\nDROP FUNCTION IF EXISTS public.confirmar_matricula_core(uuid);")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
