@@ -340,6 +340,12 @@ new_check = """  IF strpos(v_definition, p_old) = 0 THEN
   END IF;"""
 assert partner_sql.count(old_check) == 1
 partner_lint.write_text(partner_sql.replace(old_check,new_check,1))
+# Several referenced partner functions do not exist until June/July 2027.
+# Apply the source's exact intended audit fix only after all five functions
+# were actually created; retain the fail-closed old/new fragment guard.
+(root / "20271231000004_ci_only_deferred_partner_audit_uuid.sql").write_text(partner_lint.read_text())
+partner_lint.write_text("BEGIN;\n-- CI replay: partner audit linter delayed until all real RPCs exist.\nCOMMIT;\n")
+print("STAGED-COMPAT deferred strict original UUID audit helper until all partner RPCs exist")
 print("STAGED-COMPAT July partner linter rejects unexpected fragments but accepts already-correct target")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
