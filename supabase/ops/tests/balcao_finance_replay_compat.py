@@ -323,6 +323,24 @@ assert "public.provisionar_escola_from_onboarding" in revert_sql
 revert_path.write_text("BEGIN;\n-- REPLAY-ONLY: original RPC lint rollback runs after its 2027 provisioning RPC.\nCOMMIT;\n")
 print("STAGED-COMPAT deferred exact original RPC lint revert after forward")
 print("STAGED-COMPAT deferred original provisioning RPC linter until dependencies exist")
+# A June partner audit RPC already implemented the intended UUID replacement
+# for some functions that July's named-function linter tries again. Require
+# EITHER the exact old fragment to migrate, OR the exact new fragment already
+# applied. Do not skip unexpected function text or weaken any guard.
+partner_lint = root / "20260718135000_fix_partner_audit_user_uuid.sql"
+partner_sql = partner_lint.read_text()
+old_check = """  IF strpos(v_definition, p_old) = 0 THEN
+    RAISE EXCEPTION 'Expected fragment not found in public.%', p_name;
+  END IF;"""
+new_check = """  IF strpos(v_definition, p_old) = 0 THEN
+    IF strpos(v_definition, p_new) > 0 THEN
+      RETURN; -- Already replaced by earlier authentic partner migration.
+    END IF;
+    RAISE EXCEPTION 'Neither original nor corrected fragment found in public.%', p_name;
+  END IF;"""
+assert partner_sql.count(old_check) == 1
+partner_lint.write_text(partner_sql.replace(old_check,new_check,1))
+print("STAGED-COMPAT July partner linter rejects unexpected fragments but accepts already-correct target")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
