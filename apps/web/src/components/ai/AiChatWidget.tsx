@@ -332,7 +332,9 @@ export default function AiChatWidget({
       greeting = `Olá! Estou no KLASSE e conheço esta área. Como posso ajudar? (${describeScreenContext(context)})`;
     }
 
-    setMessages([
+    // Preserve the conversation when navigating between admin/secretaria screens.
+    // Context updates affect new requests, not the existing chat transcript.
+    setMessages((previous) => previous.length > 0 ? previous : [
       ai(greeting, {
         quickReplies: [
           { label: "O que posso fazer nesta tela?", action: "screen_capabilities" },
