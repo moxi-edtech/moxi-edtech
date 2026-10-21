@@ -197,7 +197,9 @@ test("modal and page show the same full student dossier, with editing secondary"
   const panel = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterPanel.tsx", "utf8");
   const inline = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx", "utf8");
   const fullPage = readFileSync("apps/web/src/components/aluno/AlunoPerfilPage.tsx", "utf8");
-  assert.match(panel, /profileDossier && profileRefreshKey === 0 \? profileDossier : \(/);
+  // Both modal and page render one interactive dossier; avoid duplicate SSR loaders.
+  assert.doesNotMatch(panel, /profileDossier/, "profile should use one client dossier for every entry point");
+  assert.match(panel, /refreshKey=\{profileRefreshKey \+ refreshRevision\}/);
   assert.match(panel, /<CommandCenterStudentDossier/);
   assert.match(panel, /<details[\s\S]*?<AlunoProfilePanel alunoId=\{alunoId\}/);
   assert.match(inline, /<DossierTabs/);
