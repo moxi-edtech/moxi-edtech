@@ -15,6 +15,8 @@ import {
   LayoutDashboard,
   Zap,
   Bookmark,
+  ArrowLeft,
+  ExternalLink,
 } from "lucide-react";
 import { Command } from "cmdk";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -23,6 +25,7 @@ import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { createEntityContext, type EntityContext } from "@/lib/command-center/entity-context";
 
 type Props = {
   escolaId?: string | null;
@@ -76,6 +79,11 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
   const escolaParam = escolaSlug || escolaId;
 
   const [open, setOpen] = React.useState(false);
+  const [entityContext, setEntityContext] = React.useState<EntityContext | null>(null);
+  const onOpenChange = React.useCallback((next: boolean) => {
+    setOpen(next);
+    if (!next) setEntityContext(null);
+  }, []);
   const { query, setQuery, results, loading, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
     portal,
   });
@@ -86,6 +94,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((open) => !open);
+        setEntityContext(null);
       }
     };
 
@@ -129,6 +138,13 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
         const join = href.includes("?") ? "&" : "?";
         href += `${join}${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(academicYearId)}`;
       }
+    }
+
+    const context = createEntityContext(item, escolaId, new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM));
+    if (context && (portal === "admin" || portal === "operacoes" || portal === "secretaria")) {
+      rememberResult(item);
+      setEntityContext(context);
+      return;
     }
 
     rememberResult(item);
@@ -218,17 +234,23 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
 
       <Command.Dialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={onOpenChange}
         label="Global Command Menu"
         shouldFilter={false}
         className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]"
       >
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => onOpenChange(false)} />
         
-        <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className={`relative w-full ${entityContext ? "max-w-4xl" : "max-w-2xl"} overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200`}>
           <DialogTitle className="sr-only">Buscar ou digitar ação</DialogTitle>
           <DialogDescription className="sr-only">Pesquisar alunos, turmas e operações disponíveis neste portal.</DialogDescription>
-          <div className="flex items-center border-b border-slate-100 px-4 py-3">
+          {entityContext && (
+            <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+              <button type="button" onClick={() => setEntityContext(null)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"><ArrowLeft className="h-4 w-4" /> Voltar à pesquisa</button>
+              <span className="truncate text-sm font-semibold text-slate-900">{entityContext.label}</span>
+            </div>
+          )}
+          {!entityContext && <div className="flex items-center border-b border-slate-100 px-4 py-3">
             <Search className="mr-3 h-5 w-5 text-slate-400" />
             <Command.Input
               value={query}
@@ -245,7 +267,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
             )}
           </div>
 
-          <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
+          {!entityContext && <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
             {detectedIntent && (
               <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl bg-emerald/5 border border-emerald/10">
                 <Zap className="h-3 w-3 text-emerald" />
@@ -305,7 +327,20 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                 ))}
               </Command.Group>
             )}
-          </Command.List>
+          </Command.List>}
+          {entityContext && (
+            <section aria-label="Visão contextual" className="min-h-64 p-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{entityContext.type}</p>
+              <h2 className="mt-2 text-xl font-semibold text-slate-900">{entityContext.label}</h2>
+              <p className="mt-3 text-sm text-slate-600">Exploração contextual em preparação. A pesquisa e as páginas existentes continuam disponíveis.</p>
+              <button type="button" className="mt-6 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => {
+                const target = results.find((item) => item.id === entityContext.id && item.type === entityContext.type) || recentResults.find((item) => item.id === entityContext.id && item.type === entityContext.type);
+                if (!target) return;
+                onOpenChange(false);
+                router.push(target.href);
+              }}><ExternalLink className="h-4 w-4" /> Abrir página existente</button>
+            </section>
+          )}
 
           <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3">
             <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium">
