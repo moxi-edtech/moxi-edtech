@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   classeEnrollmentStatuses, classePageRange, composeClasseOverview,
+  isClasseAvailableInYear,
   isClasseTurmaInYear,
 } from "../../src/lib/command-center/classe-explorer";
 import { classeContextHref, classeContextQueryKey } from "../../src/hooks/useClasseContext";
@@ -37,6 +38,13 @@ describe("Explorador contextual de Classes", () => {
     assert.equal(isClasseTurmaInYear(turma("b", "other-school-year", 2026), year), false);
     assert.equal(isClasseTurmaInYear(turma("c", null, 2026), year), true);
     assert.equal(isClasseTurmaInYear(turma("d", null, 2025), year), false);
+  });
+
+  it("allows reused classes with real turmas in another selected year", () => {
+    assert.equal(isClasseAvailableInYear(null, year.id, []), true);
+    assert.equal(isClasseAvailableInYear(year.id, year.id, []), true);
+    assert.equal(isClasseAvailableInYear("old-year", year.id, []), false);
+    assert.equal(isClasseAvailableInYear("old-year", year.id, [turma("current")]), true);
   });
 
   it("reuses turma roster policy excluding pending, cancelled and transferred", () => {
