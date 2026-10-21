@@ -63,6 +63,8 @@ try {
     assert.equal(await draft("payment").inputValue(),"",kind+" must isolate memory cache");
   }
   await draft("payment").fill("Não perder no unload");
+  // React reports controlled state through an effect, not synchronously with fill().
+  await page.waitForFunction(() => document.querySelector('[data-testid="has-unsaved"]')?.textContent === 'true');
   assert.equal(await page.getByTestId("has-unsaved").innerText(),"true");
   const unloadRegistered=await page.evaluate(()=>{
     const event=new Event("beforeunload",{cancelable:true});
