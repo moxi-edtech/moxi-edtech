@@ -28,6 +28,10 @@ export type ProfessorScheduleRow = {
 
 export type ProfessorSubject = { id: string; nome: string };
 
+export function isPublishedTimetableVersion(status: string | null | undefined) {
+  return status === "publicada";
+}
+
 export function belongsToProfessorAcademicYear(
   turma: Pick<ProfessorTurmaRow, "anoLetivo" | "anoLetivoId">,
   year: { id: string; ano: number },
