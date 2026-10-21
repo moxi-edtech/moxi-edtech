@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { normalizeAiAllowedFeatures } from "@/lib/ai/default-features";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { AI_OPERATIONAL_COPILOT_ROLES, canUseOperationalCopilot } from "@/lib/roles/ai-roles";
+import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DBWithRPC } from "@/types/supabase-augment";
 
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
       .maybeSingle(),
     supabase.rpc("user_has_role_in_school", {
       p_escola_id: escolaId,
-      p_roles: AI_OPERATIONAL_COPILOT_ROLES,
+      p_roles: AI_WIDGET_ROLES,
     }),
   ]);
 
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     process.env.AI_ENABLED !== "false" &&
     !settingsRes.error &&
     Boolean(settingsRes.data?.enabled);
-  const allowed = enabled && Boolean(hasRoleRes.data) && canUseOperationalCopilot(role);
+  const allowed = enabled && Boolean(hasRoleRes.data) && AI_WIDGET_ROLES.includes(role);
 
   return withNoStore(
     NextResponse.json({
