@@ -58,3 +58,7 @@ Consultas simuladas: baseline p50 38 ms/p95 42 ms. Não foram medidos planos SQL
 5. A PR #211 toca `CommandCenterPanel`, e a PR #212 implementa o copiloto. Precisam de reconciliação de diffs antes do merge. Nem transferência de turma nem avisos foram reimplementados nesta PR.
 
 **Status:** PR #213 dedicada, sem merge/deploy. A publicação deve continuar gated por revisão, homologação funcional autenticada e métricas de utilizadores reais.
+
+### Double-check (21/10/2026)
+
+A segunda revisão identificou que o marcador de trabalho pendente podia permanecer ativo após uma gravação confirmada, provocando alertas falsos de abandono. Foi corrigido com `savedAction` + `saveRevision`: somente a aba cuja operação canónica concluiu tem o marcador limpo. Atualizações em segundo plano **não** limpam o marcador, e outros rascunhos mantêm a proteção. O E2E sintético agora verifica ambos os casos: gravação confirmada limpa a proteção, atualização de servidor sem gravação não limpa nem remonta o rascunho. A CI do novo HEAD deve ser reexecutada após a correção.

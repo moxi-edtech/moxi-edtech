@@ -47,7 +47,11 @@ export function RetainedActionPanels({
   renderAction,
   onUnsavedChange,
   contextSignature,
+  savedAction,
+  saveRevision = 0,
 }: {
+  savedAction?: BalcaoActionId | null;
+  saveRevision?: number;
   activeAction: BalcaoActionId;
   contextSignature: string;
   renderAction: (action: BalcaoActionId) => ReactNode;
@@ -71,6 +75,18 @@ export function RetainedActionPanels({
       return next;
     });
   };
+
+  // Only an explicitly confirmed canonical write clears that action's dirty
+  // marker. Background refetches must NOT clear unsaved work in other tabs.
+  useEffect(() => {
+    if (!saveRevision || !savedAction) return;
+    setDirty((current) => {
+      if (!current.has(savedAction)) return current;
+      const next = new Set(current);
+      next.delete(savedAction);
+      return next;
+    });
+  }, [saveRevision, savedAction]);
 
   useEffect(() => {
     onUnsavedChange?.(dirty.size > 0);

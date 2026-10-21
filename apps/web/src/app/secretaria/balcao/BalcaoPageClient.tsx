@@ -54,6 +54,7 @@ export default function BalcaoPageClient({
   const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
   const [atendimentoKey, setAtendimentoKey] = useState(0);
   const [refreshRevision, setRefreshRevision] = useState(0);
+  const [savedAction, setSavedAction] = useState<BalcaoActionId | null>(null);
   const unsavedWorkRef = useRef(false);
   const handleUnsavedChange = useCallback((value: boolean) => { unsavedWorkRef.current = value; }, []);
   const {
@@ -92,7 +93,8 @@ export default function BalcaoPageClient({
     router.replace(query ? `${targetPath}?${query}` : targetPath, { scroll: false });
   }, [activeAction, pathname, router, searchParams, selectedAlunoId]);
 
-  const handleCommandCenterSuccess = useCallback((newAlunoId?: string) => {
+  const handleCommandCenterSuccess = useCallback((originAction: BalcaoActionId, newAlunoId?: string) => {
+    setSavedAction(originAction);
     setCaixaRefreshKey((current) => current + 1);
     setRefreshRevision((value) => value + 1);
     if (!newAlunoId) return;
@@ -183,6 +185,8 @@ export default function BalcaoPageClient({
             activeAction={activeAction}
             contextSignature={`${userScope}:${escolaId}:${selectedAlunoId ?? "-"}:${commandCenterStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
             onUnsavedChange={handleUnsavedChange}
+            savedAction={savedAction}
+            saveRevision={refreshRevision}
             renderAction={(panelAction) => (
               <CommandCenterPanel
                 escolaId={escolaId}
@@ -200,7 +204,7 @@ export default function BalcaoPageClient({
                   // An inactive/loading panel must never clear another action's student.
                   if (aluno?.id) handleAlunoSelected(aluno);
                 } : undefined}
-                onSuccess={handleCommandCenterSuccess}
+                onSuccess={(newAlunoId) => handleCommandCenterSuccess(panelAction, newAlunoId)}
               />
             )}
           />

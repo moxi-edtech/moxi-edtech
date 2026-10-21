@@ -80,6 +80,8 @@ function BalcaoRetentionFixture() {
   const [student, setStudent] = React.useState("student-a");
   const [revision, setRevision] = React.useState(0);
   const [unsaved, setUnsaved] = React.useState(false);
+  const [savedAction, setSavedAction] = React.useState<BalcaoActionId | null>(null);
+  const [saveRevision, setSaveRevision] = React.useState(0);
   const scope = [actor, school, polo, student].join(":");
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-6">
@@ -96,12 +98,15 @@ function BalcaoRetentionFixture() {
         <button type="button" data-testid="switch-school" onClick={() => { setSchool("school-b"); setAction("payment"); }}>Outra escola</button>
         <button type="button" data-testid="switch-polo" onClick={() => { setPolo("polo-b"); setAction("payment"); }}>Outro polo</button>
         <button type="button" data-testid="switch-student" onClick={() => { setStudent("student-b"); setAction("payment"); }}>Outro aluno</button>
+        <button type="button" data-testid="server-confirmed-save" onClick={() => { setSavedAction(action); setSaveRevision(v=>v+1); }}>Gravação canónica confirmada</button>
         <button type="button" data-testid="server-confirmed-mutation" onClick={() => setRevision(v => v+1)}>Servidor confirmou alteração</button>
       </div>
       <RetainedActionPanels
         key={scope}
         activeAction={action}
         contextSignature={scope+":"+revision}
+        savedAction={savedAction}
+        saveRevision={saveRevision}
         onUnsavedChange={setUnsaved}
         renderAction={(panel) => (
           <div className="rounded-xl border p-3">

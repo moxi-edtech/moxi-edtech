@@ -24,8 +24,16 @@ try {
   await go("document");
   assert.equal(await draft("document").inputValue(),"Declaração sintética");
   assert.equal(await page.getByTestId("has-unsaved").innerText(),"true");
+  await page.getByTestId("server-confirmed-save").click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="has-unsaved"]')?.textContent === 'true');
+  assert.equal(await draft("document").inputValue(),"Declaração sintética", "successful save must not remount the form");
+  await go("payment");
+  await page.getByTestId("server-confirmed-save").click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="has-unsaved"]')?.textContent === 'false');
+  await go("document");
+  await draft("document").fill("Novo rascunho não guardado");
   await page.getByTestId("server-confirmed-mutation").click();
-  assert.equal(await draft("document").inputValue(),"Declaração sintética", "background revision must not discard dirty form");
+  assert.equal(await draft("document").inputValue(),"Novo rascunho não guardado", "background revision must not discard dirty form");
   await page.getByTestId("switch-student").click();
   assert.equal(await draft("payment").inputValue(),"", "old student's draft must not appear for a new student");
   for (const kind of ["switch-polo","switch-school","switch-user"]) {
