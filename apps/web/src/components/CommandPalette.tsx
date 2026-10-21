@@ -404,6 +404,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                 />
               ) : entityContext.type === "turma" ? (
                 <TurmaContextView
+                  key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`}
                   context={entityContext}
                   portal={portal}
                   onNavigate={(href) => {
