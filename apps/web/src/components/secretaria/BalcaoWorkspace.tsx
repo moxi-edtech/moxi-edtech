@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CommandCenterPanel } from "@/components/secretaria/command-center/CommandCenterPanel";
+import { RetainedActionPanels } from "@/components/secretaria/command-center/RetainedActionPanels";
 import { CommandCenterShell } from "@/components/secretaria/command-center/CommandCenterShell";
 import { CommandCenterStudentPicker } from "@/components/secretaria/command-center/CommandCenterStudentPicker";
 import { useCommandCenterStudent } from "@/components/secretaria/command-center/useCommandCenterStudent";
@@ -13,6 +14,8 @@ type Student = { id: string; label: string };
 type Props = {
   open: boolean;
   escolaId: string;
+  userScope?: string | null;
+  poloScope?: string;
   aluno: Student;
   actionId?: BalcaoActionId;
   onClose: () => void;
@@ -22,6 +25,8 @@ type Props = {
 export function BalcaoWorkspace({
   open,
   escolaId,
+  userScope,
+  poloScope = "-",
   aluno,
   actionId = "desk",
   onClose,
@@ -31,6 +36,7 @@ export function BalcaoWorkspace({
   const [selectedStudent, setSelectedStudent] = useState<Student>(aluno);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);
   const [switchingStudent, setSwitchingStudent] = useState(false);
+  const [refreshRevision, setRefreshRevision] = useState(0);
   const [academicYearId, setAcademicYearId] = useState<string | null>(null);
   const { student: studentContext, subtitle } = useCommandCenterStudent(
     selectedStudent.id, academicYearId, selectedStudent.label,
@@ -38,12 +44,15 @@ export function BalcaoWorkspace({
   const currentStudent = studentContext?.id === selectedStudent.id ? studentContext : null;
   const completedEnrollmentRef = useRef(false);
   const studentRequestRef = useRef(0);
+  const hasUnsavedWorkRef = useRef(false);
+  const handleUnsavedChange = useCallback((value: boolean) => { hasUnsavedWorkRef.current = value; }, []);
 
   useEffect(() => {
     setSelectedStudent(aluno);
     setActiveAction(actionId);
     completedEnrollmentRef.current = false;
     setSwitchingStudent(false);
+    hasUnsavedWorkRef.current = false;
   }, [actionId, aluno.id, aluno.label]);
 
   useEffect(() => () => {
@@ -97,6 +106,7 @@ export function BalcaoWorkspace({
     )) return;
     studentRequestRef.current += 1;
     completedEnrollmentRef.current = false;
+    hasUnsavedWorkRef.current = false;
     setSelectedStudent(next);
     setActiveAction("desk"); // reset all student-bound panels and drafts
     setSwitchingStudent(false);
@@ -104,11 +114,14 @@ export function BalcaoWorkspace({
 
   const handleClose = useCallback(() => {
     if (!confirmLeavingEnrollment()) return;
+    if (activeAction !== "enrollment" && hasUnsavedWorkRef.current &&
+      !window.confirm("Fechar atendimento? Existem alterações ainda não guardadas.")) return;
     onClose();
-  }, [confirmLeavingEnrollment, onClose]);
+  }, [activeAction, confirmLeavingEnrollment, onClose]);
 
-  const handleSuccess = useCallback((newAlunoId?: string) => {
-    if (activeAction === "enrollment" && newAlunoId) {
+  const handleSuccess = useCallback((originAction: BalcaoActionId, newAlunoId?: string) => {
+    setRefreshRevision((value) => value + 1);
+    if (originAction === "enrollment" && newAlunoId) {
       completedEnrollmentRef.current = true;
       // Só depois do backend confirmar a matrícula mudamos para o aluno criado.
       setSelectedStudent({ id: newAlunoId, label: "Aluno matriculado" });
@@ -128,7 +141,7 @@ export function BalcaoWorkspace({
         });
     }
     onSuccess?.();
-  }, [activeAction, onSuccess]);
+  }, [onSuccess]);
 
   if (!open) return null;
 
@@ -147,9 +160,11 @@ export function BalcaoWorkspace({
           onSelect={handleStudentPicked}
           onCancel={() => setSwitchingStudent(false)}
         />
-      ) : (
+      ) : !userScope ? (
+        // Alternate entrypoints without an authenticated identity must not
+        // retain private student panels (conservative security fallback).
         <CommandCenterPanel
-          key={selectedStudent.id}
+          key={`${escolaId}:${selectedStudent.id}:${activeAction}`}
           escolaId={escolaId}
           inModal
           alunoId={activeAction === "enrollment" ? null : selectedStudent.id}
@@ -157,7 +172,29 @@ export function BalcaoWorkspace({
           turmaLabel={currentStudent?.turma ?? null}
           actionId={activeAction}
           onActionChange={handleActionChange}
-          onSuccess={handleSuccess}
+          onSuccess={(newAlunoId) => handleSuccess(activeAction, newAlunoId)}
+        />
+      ) : (
+        <RetainedActionPanels
+          key={`${userScope}:${escolaId}:${poloScope}:${selectedStudent.id}`}
+          activeAction={activeAction}
+          contextSignature={`${userScope}:${escolaId}:${poloScope}:${selectedStudent.id}:${currentStudent?.turmaId ?? "-"}:${refreshRevision}`}
+          onUnsavedChange={handleUnsavedChange}
+          renderAction={(panelAction) => (
+            <CommandCenterPanel
+              escolaId={escolaId}
+              draftScope={`${userScope}:${poloScope}`}
+              inModal
+              alunoId={panelAction === "enrollment" ? null : selectedStudent.id}
+              turmaId={currentStudent?.turmaId ?? null}
+              turmaLabel={currentStudent?.turma ?? null}
+              actionId={panelAction}
+              visible={panelAction === activeAction}
+              refreshRevision={refreshRevision}
+              onActionChange={handleActionChange}
+              onSuccess={(newAlunoId) => handleSuccess(panelAction, newAlunoId)}
+            />
+          )}
         />
       )}
     </CommandCenterShell>

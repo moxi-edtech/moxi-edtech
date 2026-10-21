@@ -38,6 +38,7 @@ export default async function BalcaoPage({
       escolaId={escolaId}
       escolaParam={escolaParam}
       profileAlunoId={profileAlunoId}
+      userScope={user.id}
       profileDossier={profileAlunoId ? (
         <Suspense fallback={<div role="status" className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">A carregar ficha integral do aluno...</div>}>
           <AlunoPerfilPage escolaId={escolaId} alunoId={profileAlunoId} role="secretaria" workspace />

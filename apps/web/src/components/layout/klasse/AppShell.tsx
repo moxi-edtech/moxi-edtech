@@ -94,6 +94,7 @@ export default function AppShell({
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [planoNome, setPlanoNome] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userScope, setUserScope] = useState<string | null>(null);
   const [_status, setStatus] = useState<string | null>(null);
 
   const safePathname = pathname ?? "";
@@ -269,9 +270,10 @@ export default function AppShell({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        if (!cancelled) setUserName(null);
+        if (!cancelled) { setUserName(null); setUserScope(null); }
         return;
       }
+      if (!cancelled) setUserScope(user.id);
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -375,6 +377,8 @@ export default function AppShell({
             portalTitle={topbarLabels?.title}
             portalSubtitle={topbarLabels?.subtitle}
             userName={userName}
+            userScope={userScope}
+            poloScope={new URLSearchParams(currentSearch).get("polo_id") ?? "-"}
             contextLabel="Dashboard"
             escolaNome={displayedEscolaNome}
             planoNome={displayedPlanoNome}

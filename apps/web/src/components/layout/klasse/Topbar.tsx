@@ -18,6 +18,8 @@ type TopbarProps = {
   portalTitle?: string;
   portalSubtitle?: string;
   userName?: string | null;
+  userScope?: string | null;
+  poloScope?: string;
   contextLabel?: string;
   escolaNome?: string | null;
   planoNome?: string | null;
@@ -30,6 +32,8 @@ export default function Topbar({
   portalTitle = "Portal",
   portalSubtitle = "MoxiNexa",
   userName,
+  userScope,
+  poloScope = "-",
   contextLabel: _contextLabel = "Dashboard",
   escolaNome: _escolaNome,
   planoNome: _planoNome,
@@ -42,7 +46,7 @@ export default function Topbar({
   // Nunca manter um aluno em contexto quando a escola/tenant é alterada.
   useEffect(() => {
     setSelectedSearchStudent(null);
-  }, [escolaId]);
+  }, [escolaId, userScope, poloScope]);
   const userInitial =
     (userName || portalSubtitle || "U")
       .trim()
@@ -119,9 +123,11 @@ export default function Topbar({
         </div>
       </div>
     </header>
-    {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
+    {userScope && escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
       <BalcaoWorkspace
-        key={`${escolaId}:${selectedSearchStudent.id}`}
+        key={`${userScope}:${escolaId}:${poloScope}:${selectedSearchStudent.id}`}
+        userScope={userScope}
+        poloScope={poloScope}
         open
         escolaId={escolaId}
         aluno={selectedSearchStudent}

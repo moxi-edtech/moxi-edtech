@@ -42,6 +42,21 @@ export default function SignOutButton({
     try {
       setLoading(true)
 
+      // Never leave admission / rematrícula drafts containing minor details
+      // for the next operator using this browser. Best effort on private mode.
+      if (typeof window !== 'undefined') {
+        for (const storage of [window.localStorage, window.sessionStorage]) {
+          try {
+            const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index));
+            for (const key of keys) {
+              if (key && (key.startsWith('admissao:draft:') ||
+                key.startsWith('klasse:admissao:draft:') ||
+                key.startsWith('klasse:rematricula:draft:'))) storage.removeItem(key)
+            }
+          } catch { /* private browsing may deny storage access */ }
+        }
+      }
+
       // Clear Service Worker Data Cache
       if (typeof window !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_DATA_CACHE' })

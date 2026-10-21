@@ -60,7 +60,7 @@ test("modal and standalone workspace wire a protected student-switch callback", 
   assert.match(modal, /currentStudent = studentContext\?\.id === selectedStudent\.id/);
   assert.match(modal, /setActiveAction\("desk"\); \/\/ reset all student-bound panels/);
   assert.match(modal, /studentRequestRef\.current \+= 1/);
-  assert.match(modal, /key=\{selectedStudent\.id\}/);
+  assert.match(modal, /key=\{`\$\{userScope\}:\$\{escolaId\}:\$\{poloScope\}:\$\{selectedStudent\.id\}`\}/);
   assert.match(modal, /onCancel=\{\(\) => setSwitchingStudent\(false\)\}/);
   assert.match(picker, /student\.id !== currentAlunoId/);
 });

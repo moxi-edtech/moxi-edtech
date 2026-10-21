@@ -2,6 +2,8 @@ import React from "react";
 import TransferForm from "../src/components/secretaria/TransferForm";
 import { createRoot } from "react-dom/client";
 import { BalcaoWorkspace } from "../src/components/secretaria/BalcaoWorkspace";
+import { RetainedActionPanels } from "../src/components/secretaria/command-center/RetainedActionPanels";
+import type { BalcaoActionId } from "../src/lib/balcao/action-registry";
 import { FeedbackProvider } from "../src/components/feedback/FeedbackSystem";
 import "./fixture.css";
 import "../src/app/globals.css";
@@ -68,9 +70,55 @@ if (name === "class-transfer") {
     return originalFetch(input,init);
   };
 }
+// Behavioral contract fixture: actual RetainedActionPanels component, synthetic
+// form and identity changes, no database or payment API access.
+function BalcaoRetentionFixture() {
+  const [action, setAction] = React.useState<BalcaoActionId>("payment");
+  const [actor, setActor] = React.useState("user-a");
+  const [school, setSchool] = React.useState("school-a");
+  const [polo, setPolo] = React.useState("polo-a");
+  const [student, setStudent] = React.useState("student-a");
+  const [revision, setRevision] = React.useState(0);
+  const [unsaved, setUnsaved] = React.useState(false);
+  const scope = [actor, school, polo, student].join(":");
+  return (
+    <main className="mx-auto max-w-2xl space-y-4 p-6">
+      <h1>Balcão · contratos sintéticos</h1>
+      <p data-testid="actor-context">{scope}</p>
+      <p data-testid="has-unsaved">{String(unsaved)}</p>
+      <div className="flex flex-wrap gap-2">
+        {(["payment", "document", "enrollment", "profile", "grade"] as const).map((tab) => (
+          <button type="button" key={tab} data-testid={`go-${tab}`} onClick={() => setAction(tab)}>{tab}</button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" data-testid="switch-user" onClick={() => { setActor("user-b"); setAction("payment"); }}>Novo utilizador</button>
+        <button type="button" data-testid="switch-school" onClick={() => { setSchool("school-b"); setAction("payment"); }}>Outra escola</button>
+        <button type="button" data-testid="switch-polo" onClick={() => { setPolo("polo-b"); setAction("payment"); }}>Outro polo</button>
+        <button type="button" data-testid="switch-student" onClick={() => { setStudent("student-b"); setAction("payment"); }}>Outro aluno</button>
+        <button type="button" data-testid="server-confirmed-mutation" onClick={() => setRevision(v => v+1)}>Servidor confirmou alteração</button>
+      </div>
+      <RetainedActionPanels
+        key={scope}
+        activeAction={action}
+        contextSignature={scope+":"+revision}
+        onUnsavedChange={setUnsaved}
+        renderAction={(panel) => (
+          <div className="rounded-xl border p-3">
+            <p data-testid={`target-${panel}`}>{panel === "enrollment" ? "Nova matrícula: aluno-alvo não selecionado" : "Aluno atual: "+student}</p>
+            <label>Rascunho <input data-testid={`draft-${panel}`} placeholder="Rascunho sintético" /></label>
+            <label>Comprovativo <input type="file" data-testid={`file-${panel}`} /></label>
+          </div>
+        )}
+      />
+    </main>
+  );
+}
+
 const Scene = stories[name]?.render;
 const target = document.getElementById("root");
-if (target && name === "balcao-perf") {
+if (target && name === "balcao-retention") createRoot(target).render(<BalcaoRetentionFixture />);
+else if (target && name === "balcao-perf") {
   const metrics = { commits: 0, duration: 0 };
   Object.assign(window, { __balcaoPerf: metrics });
   const fixtureStudent = { id: "00000000-0000-4000-8000-000000000401", label: "Aluno sintético" };
@@ -80,7 +128,7 @@ if (target && name === "balcao-perf") {
         metrics.commits += 1;
         metrics.duration += duration;
       }}>
-        <BalcaoWorkspace open escolaId="00000000-0000-4000-8000-000000000401"
+        <BalcaoWorkspace open userScope="fixture-actor-a" poloScope="fixture-polo-a" escolaId="00000000-0000-4000-8000-000000000401"
           aluno={fixtureStudent} onClose={() => {}} />
       </React.Profiler>
     </FeedbackProvider>
