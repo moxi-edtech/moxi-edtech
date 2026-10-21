@@ -15,14 +15,21 @@ import {
   LayoutDashboard,
   Zap,
   Bookmark,
+  ArrowLeft,
+  ExternalLink,
 } from "lucide-react";
 import { Command } from "cmdk";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useGlobalSearch, type MinimalSearchResult } from "@/hooks/useGlobalSearch";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { createEntityContext, type EntityContext } from "@/lib/command-center/entity-context";
+import { CourseContextView } from "@/components/secretaria/command-center/CourseContextView";
+import { TurmaContextView } from "@/components/secretaria/command-center/TurmaContextView";
 
 type Props = {
   escolaId?: string | null;
@@ -76,6 +83,32 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
   const escolaParam = escolaSlug || escolaId;
 
   const [open, setOpen] = React.useState(false);
+  const [entityContext, setEntityContext] = React.useState<EntityContext | null>(null);
+  const [parentCourse, setParentCourse] = React.useState<EntityContext | null>(null);
+  const [courseClassId, setCourseClassId] = React.useState<string | null>(null);
+  const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
+  // Only this palette owns the cache. Do not leak data between school/user sessions.
+  const [queryClient] = React.useState(() => new QueryClient({
+    defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
+  }));
+  const onOpenChange = React.useCallback((next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      setEntityContext(null);
+      setParentCourse(null);
+      setCourseClassId(null);
+      setCourseTurmaId(null);
+      queryClient.clear();
+    }
+  }, [queryClient]);
+  React.useEffect(() => {
+    queryClient.clear();
+    setEntityContext(null);
+    setParentCourse(null);
+    setCourseClassId(null);
+    setCourseTurmaId(null);
+  }, [escolaId, portal, queryClient]);
   const { query, setQuery, results, loading, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
     portal,
   });
@@ -85,18 +118,25 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((current) => {
+          if (current) queryClient.clear();
+          return !current;
+        });
+        setEntityContext(null);
+        setParentCourse(null);
+        setCourseClassId(null);
+      setCourseTurmaId(null);
       }
     };
 
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, []);
+  }, [queryClient]);
 
   const runCommand = React.useCallback((command: () => unknown) => {
-    setOpen(false);
+    onOpenChange(false);
     command();
-  }, []);
+  }, [onOpenChange]);
 
   const selectResult = React.useCallback((item: MinimalSearchResult) => {
     let href = item.href;
@@ -124,11 +164,21 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
       });
 
       // Não perder o ano letivo que a escola selecionou no portal de origem.
-      const academicYearId = currentParams.get(ACADEMIC_YEAR_PARAM);
+      const academicYearId = new URL(item.href, window.location.origin).searchParams.get(ACADEMIC_YEAR_PARAM) || currentParams.get(ACADEMIC_YEAR_PARAM);
       if (academicYearId) {
         const join = href.includes("?") ? "&" : "?";
         href += `${join}${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(academicYearId)}`;
       }
+    }
+
+    const context = createEntityContext(item, escolaId, new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM));
+    if (context && (portal === "admin" || portal === "operacoes" || portal === "secretaria")) {
+      rememberResult(item);
+      setParentCourse(null);
+      setCourseClassId(null);
+      setCourseTurmaId(null);
+      setEntityContext(context);
+      return;
     }
 
     rememberResult(item);
@@ -216,19 +266,26 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
         </kbd>
       </button>
 
+      <QueryClientProvider client={queryClient}>
       <Command.Dialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={onOpenChange}
         label="Global Command Menu"
         shouldFilter={false}
         className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]"
       >
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => onOpenChange(false)} />
         
-        <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <motion.div layout={!reduceMotion} transition={{ layout: { duration: 0.18, ease: "easeOut" } }} className={`relative mx-2 w-full ${entityContext ? "max-w-4xl" : "max-w-2xl"} overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:mx-0`}>
           <DialogTitle className="sr-only">Buscar ou digitar ação</DialogTitle>
           <DialogDescription className="sr-only">Pesquisar alunos, turmas e operações disponíveis neste portal.</DialogDescription>
-          <div className="flex items-center border-b border-slate-100 px-4 py-3">
+          {entityContext && (
+            <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+              <button type="button" onClick={() => { setEntityContext(parentCourse); setParentCourse(null); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"><ArrowLeft className="h-4 w-4" /> {parentCourse ? "Voltar ao curso" : "Voltar à pesquisa"}</button>
+              <span className="truncate text-sm font-semibold text-slate-900">{entityContext.label}</span>
+            </div>
+          )}
+          {!entityContext && <div className="flex items-center border-b border-slate-100 px-4 py-3">
             <Search className="mr-3 h-5 w-5 text-slate-400" />
             <Command.Input
               value={query}
@@ -243,8 +300,10 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                 ESC
               </kbd>
             )}
-          </div>
+          </div>}
 
+          <AnimatePresence mode="wait" initial={false}>
+          {!entityContext && <motion.div key="search" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduceMotion ? undefined : { opacity: 0 }} transition={{ duration: 0.12 }}>
           <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
             {detectedIntent && (
               <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl bg-emerald/5 border border-emerald/10">
@@ -259,7 +318,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                 <Search className="h-8 w-8 text-slate-300" />
               </div>
               <p className="text-sm font-medium text-slate-500">
-                Nenhum resultado encontrado para "{query}"
+                Nenhum resultado encontrado para &ldquo;{query}&rdquo;
               </p>
             </Command.Empty>
 
@@ -306,6 +365,67 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
               </Command.Group>
             )}
           </Command.List>
+          </motion.div>}
+          {entityContext && (
+            <motion.section key={`${entityContext.type}:${entityContext.id}`} initial={reduceMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, y: -4 }} transition={{ duration: 0.17 }} aria-label="Visão contextual" className="min-h-64 p-4 sm:p-6">
+              {entityContext.type === "curso" ? (
+                <CourseContextView
+                  key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`}
+                  context={entityContext}
+                  portal={portal}
+                  initialClasseId={courseClassId}
+                  initialTurmaId={courseTurmaId}
+                  onClasseChange={setCourseClassId}
+                  onTurmaChange={setCourseTurmaId}
+                  onExploreTurma={(turma) => {
+                    setCourseTurmaId(turma.id);
+                    setParentCourse(entityContext);
+                    setEntityContext({
+                      type: "turma",
+                      id: turma.id,
+                      label: turma.label,
+                      escolaId: entityContext.escolaId,
+                      academicYearId: turma.academicYearId,
+                    });
+                  }}
+                  onNavigate={(href) => {
+                    onOpenChange(false);
+                    router.push(href);
+                  }}
+                />
+              ) : entityContext.type === "turma" ? (
+                <TurmaContextView
+                  context={entityContext}
+                  portal={portal}
+                  onNavigate={(href) => {
+                    onOpenChange(false);
+                    router.push(href);
+                  }}
+                  onStudentSelect={(student) => selectResult({
+                    id: student.id,
+                    label: student.label,
+                    type: "aluno",
+                    highlight: null,
+                    href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(student.id)}${entityContext.academicYearId ? `?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(entityContext.academicYearId)}` : ""}`),
+                    actions: [],
+                  })}
+                />
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{entityContext.type}</p>
+                  <h2 className="text-xl font-semibold text-slate-900">{entityContext.label}</h2>
+                  <p className="text-sm text-slate-600">A visão desta entidade será disponibilizada em seguida. A página existente permanece disponível.</p>
+                  <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => {
+                    const target = results.find((item) => item.id === entityContext.id && item.type === entityContext.type) || recentResults.find((item) => item.id === entityContext.id && item.type === entityContext.type);
+                    if (!target) return;
+                    onOpenChange(false);
+                    router.push(target.href);
+                  }}><ExternalLink className="h-4 w-4" /> Abrir página existente</button>
+                </div>
+              )}
+            </motion.section>
+          )}
+          </AnimatePresence>
 
           <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3">
             <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium">
@@ -320,8 +440,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
               KLASSE Command Center
             </div>
           </div>
-        </div>
+        </motion.div>
       </Command.Dialog>
+      </QueryClientProvider>
     </>
   );
 }

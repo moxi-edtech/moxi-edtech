@@ -63,3 +63,12 @@ Views padronizadas em `public.vw_search_*` que expõem:
 - [x] Badges de status na UI.
 - [x] Entidade 'Candidaturas' incluída.
 - [x] Performance otimizada (sub-150ms).
+
+## Command Center — Visões Contextuais
+
+A evolução da pesquisa para um modal de exploração **Curso → Classe → Turma → Aluno** tem a sua especificação oficial e um roadmap próprio, com checklist verificável:
+
+- [**Command Center: Modal de Visões Contextuais — Documento oficial**](./command-center-contextual-modal.md)
+- [Issue de auditoria e plano #224](https://github.com/moxi-edtech/moxi-edtech/issues/224)
+
+**Nota de estado:** os tipos pesquisáveis por portal não significam automaticamente uma vista contextual disponível ou autorização de detalhe. O documento oficial diferencia código em branch, testes pendentes, homologação e produção. As métricas de desempenho citadas neste roadmap original devem ser novamente medidas para o modal contextual; não constituem comprovação de SLA desta nova funcionalidade.
