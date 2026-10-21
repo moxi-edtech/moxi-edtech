@@ -16,3 +16,10 @@ DO $$ BEGIN
     CREATE TYPE public.pagamento_status AS ENUM ('pending','settled','rejected','voided');
   END IF;
 END $$;
+
+-- Historical March 2026 SQL function already resolves t.status_fecho,
+-- although the identical production column is only created in November.
+-- No fake data/table or policy bypass: advance only the existing NOT NULL
+-- column/DEFAULT definition, which its later migration declares identically.
+ALTER TABLE public.turmas
+  ADD COLUMN IF NOT EXISTS status_fecho text DEFAULT 'ABERTO'::text NOT NULL;
