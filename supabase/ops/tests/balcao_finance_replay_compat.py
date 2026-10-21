@@ -72,4 +72,14 @@ once("20260310000018_update_search_views.sql",
 once("20260310000019_fix_login_functions.sql",
     "BEGIN;\n\nDROP FUNCTION IF EXISTS public.confirmar_matricula_core(uuid);",
     "BEGIN;\n\nALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS numero_login text;\n\nDROP FUNCTION IF EXISTS public.confirmar_matricula_core(uuid);")
+# Curriculum tables are first defined in November but March migrations
+# directly ALTER and INSERT into them. The November DDL is idempotent and
+# enables its own RLS/policies. Execute the *same* DDL earlier on an EMPTY
+# disposable database, then replay its original November migration normally.
+curriculum_source = (root / "20261127000000_curriculum_presets_tables.sql").read_text()
+assert "CREATE TABLE IF NOT EXISTS public.curriculum_presets (" in curriculum_source
+assert "CREATE TABLE IF NOT EXISTS public.curriculum_preset_subjects (" in curriculum_source
+assert "ENABLE ROW LEVEL SECURITY" in curriculum_source
+(root / "20260311000099_ci_only_early_curriculum_catalog.sql").write_text(curriculum_source)
+print("STAGED-COMPAT 20260311000099_ci_only_early_curriculum_catalog.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
