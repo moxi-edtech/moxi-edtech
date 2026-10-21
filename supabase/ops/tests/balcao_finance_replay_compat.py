@@ -120,4 +120,10 @@ assert teachers_ddl.rstrip().endswith(");") and skills_ddl.rstrip().endswith(");
     teachers_ddl + "\n" + skills_ddl + "\nALTER TABLE public.teachers ENABLE ROW LEVEL SECURITY;\nALTER TABLE public.teacher_skills ENABLE ROW LEVEL SECURITY;\n"
 )
 print("STAGED-COMPAT 20260324000000_ci_only_early_teachers_tables.sql")
+# The March admin-list function changes its RETURNS TABLE type with CREATE
+# OR REPLACE, disallowed by PostgreSQL. Explicitly replace only that function
+# (same exact signature, preserving the real permission checks and body).
+once("20260325000001_fix_admin_list_profiles_role_cast.sql",
+    "CREATE OR REPLACE FUNCTION public.admin_list_profiles(",
+    "DROP FUNCTION IF EXISTS public.admin_list_profiles(text[], integer);\n\nCREATE OR REPLACE FUNCTION public.admin_list_profiles(")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
