@@ -1,6 +1,8 @@
 import React from "react";
 import TransferForm from "../src/components/secretaria/TransferForm";
 import { createRoot } from "react-dom/client";
+import { BalcaoWorkspace } from "../src/components/secretaria/BalcaoWorkspace";
+import { FeedbackProvider } from "../src/components/feedback/FeedbackSystem";
 import "./fixture.css";
 import "../src/app/globals.css";
 import {
@@ -68,6 +70,21 @@ if (name === "class-transfer") {
 }
 const Scene = stories[name]?.render;
 const target = document.getElementById("root");
-if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
+if (target && name === "balcao-perf") {
+  const metrics = { commits: 0, duration: 0 };
+  Object.assign(window, { __balcaoPerf: metrics });
+  const fixtureStudent = { id: "00000000-0000-4000-8000-000000000401", label: "Aluno sintético" };
+  createRoot(target).render(
+    <FeedbackProvider>
+      <React.Profiler id="BalcaoWorkspace" onRender={(_id, _phase, duration) => {
+        metrics.commits += 1;
+        metrics.duration += duration;
+      }}>
+        <BalcaoWorkspace open escolaId="00000000-0000-4000-8000-000000000401"
+          aluno={fixtureStudent} onClose={() => {}} />
+      </React.Profiler>
+    </FeedbackProvider>
+  );
+} else if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
 else if (target && Scene) createRoot(target).render(<>{Scene()}</>);
 else if (target) target.textContent = "Visual fixture not found";
