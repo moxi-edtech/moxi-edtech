@@ -373,6 +373,14 @@ assert "ADD COLUMN IF NOT EXISTS estado text NOT NULL DEFAULT 'PUBLICADO'" in ca
 assert "CREATE TRIGGER trg_set_updated_at_calendario_templates" in calendar_evolution
 (root / "20260805005000_ci_only_early_calendar_template_evolution.sql").write_text(calendar_evolution)
 print("STAGED-COMPAT 20260805005000_ci_only_early_calendar_template_evolution.sql")
+# The August 2026 retroactive re-enrollment link backfill reads December's
+# origem_transicao_matricula_id field. Replay the complete original additive
+# columns/FK migration early; it is idempotent when replayed in December.
+transition_ddl = (root / "20261201090001_matriculas_gradeengine_transicao_hardening.sql").read_text()
+assert "ADD COLUMN IF NOT EXISTS origem_transicao_matricula_id uuid NULL;" in transition_ddl
+assert "FOREIGN KEY (origem_transicao_matricula_id)" in transition_ddl
+(root / "20260807193000_ci_only_early_matricula_transition_ddl.sql").write_text(transition_ddl)
+print("STAGED-COMPAT original matrícula transition fields and FK before August backfill")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
