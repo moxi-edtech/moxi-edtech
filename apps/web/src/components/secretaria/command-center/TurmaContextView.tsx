@@ -108,7 +108,7 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
             {disciplinas.map((d) => (
               <div key={d.id} className="px-3 py-3">
                 <p className="font-medium text-slate-900">{d.nome}</p>
-                <p className="mt-1 text-xs text-slate-500">{d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}</p>}
+                <p className="mt-1 text-xs text-slate-500">{d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}</p>
               </div>
             ))}
             {!disciplinas.length && <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>}
