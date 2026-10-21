@@ -31,11 +31,7 @@ jobs:
           PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
           set -euo pipefail
-          expected=$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l | tr -d ' ')
-          applied=$(psql "$PGURL" -At -v ON_ERROR_STOP=1 -c 'select count(*) from supabase_migrations.schema_migrations')
-          echo "All local migrations: expected=$expected applied=$applied"
-          # Every staged SQL has a numeric version except legacy unversioned files.
-          [ "$applied" -ge "$expected" ] || { echo "Migration chain incomplete: cannot claim RLS integration"; exit 1; }
+          python3 supabase/ops/tests/balcao_full_replay_assert.py
           psql "$PGURL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $$ BEGIN
             IF to_regclass('public.pautas_oficiais') IS NULL THEN

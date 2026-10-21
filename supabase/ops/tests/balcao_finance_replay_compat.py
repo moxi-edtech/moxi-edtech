@@ -146,4 +146,29 @@ assert formacao_sql.count(anchor) == 1
 formacao_sql = formacao_sql.replace(anchor, helper + "\n" + grant + "\n" + anchor, 1)
 formacao_path.write_text(formacao_sql)
 print("STAGED-COMPAT SQL auth helper moved after real cohort table in April migration")
+# May formação 2026 migrations consume real tables whose files are dated
+# April/May 2027. Stage only their exact parent CREATE TABLE statements
+# from the future SQL, immediately enabling RLS with zero policies/grants.
+# Source's original indexes and tenant policies apply in their normal order.
+def table_ddl(filename: str, tablename: str, next_marker: str) -> str:
+    source = (root / filename).read_text()
+    start = f"CREATE TABLE IF NOT EXISTS public.{tablename} ("
+    assert source.count(start) == 1, (filename, start)
+    assert source.count(next_marker) == 1, (filename, next_marker)
+    beg = source.index(start)
+    end = source.index(next_marker, beg)
+    ddl = source[beg:end].strip()
+    assert ddl.endswith(");"), (filename, ddl[-60:])
+    return ddl + f"\nALTER TABLE public.{tablename} ENABLE ROW LEVEL SECURITY;\n"
+
+early_formacao = (
+    table_ddl("20270408020000_formacao_backoffice_modules.sql", "formacao_cursos",
+              "CREATE INDEX IF NOT EXISTS idx_formacao_cursos_escola_status") + "\n" +
+    table_ddl("20270411030000_formacao_catalogo_curso_tabs.sql", "formacao_cohort_modulos",
+              "CREATE INDEX IF NOT EXISTS idx_formacao_cohort_modulos_escola_cohort") + "\n" +
+    table_ddl("20270502180000_formacao_digital_diary.sql", "formacao_aulas",
+              "CREATE INDEX IF NOT EXISTS idx_formacao_aulas_escola_cohort")
+)
+(root / "20260505000000_ci_only_early_formacao_dependencies.sql").write_text(early_formacao)
+print("STAGED-COMPAT 20260505000000_ci_only_early_formacao_dependencies.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
