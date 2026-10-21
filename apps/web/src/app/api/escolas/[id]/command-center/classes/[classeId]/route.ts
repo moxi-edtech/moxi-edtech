@@ -107,13 +107,14 @@ export async function GET(
       .eq("escola_id", escolaId).eq("id", parsed.data.classeId).maybeSingle();
     if (classError) throw classError;
     const classe = classData as unknown as ClassRow | null;
-    if (!classe || (classe.ano_letivo_id && classe.ano_letivo_id !== year.id)) {
+    if (!classe) {
       return noStore({ ok: false, error: "Classe não encontrada neste ano letivo." }, 404);
     }
 
     const { data: turmaData, error: turmaError } = await supabase.from("turmas")
       .select("id,nome,turno,sala,capacidade_maxima,curso_id,ano_letivo,ano_letivo_id")
       .eq("escola_id", escolaId).eq("classe_id", classe.id)
+      .or(`ano_letivo_id.eq.${year.id},and(ano_letivo_id.is.null,ano_letivo.eq.${year.ano})`)
       .order("id", { ascending: true }).limit(MAX_TURMAS + 1);
     if (turmaError) throw turmaError;
     let limitado = (turmaData ?? []).length > MAX_TURMAS;
@@ -126,6 +127,11 @@ export async function GET(
       }))
       .filter((row) => isClasseTurmaInYear(row, year))
       .slice(0, MAX_TURMAS);
+    // Explicit classe.ano_letivo_id is often stale because KLASSE reuses
+    // classe rows across years. A real turma in the requested year remains valid.
+    if (!turmas.length && classe.ano_letivo_id && classe.ano_letivo_id !== year.id) {
+      return noStore({ ok: false, error: "Classe não encontrada neste ano letivo." }, 404);
+    }
     const turmaIds = turmas.map((turma) => turma.id);
 
     const enrollmentPolicy = classeEnrollmentStatuses(year.status === "CLOSED");
