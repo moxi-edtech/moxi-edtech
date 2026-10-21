@@ -60,6 +60,8 @@ CommandPalette (cmdk + diálogo acessível)
 | Agregação | `supabase/migrations/20271015100000_command_center_course_overview.sql` | Migração versionada, **não homologada** |
 | Modal de turma | `TurmaContextView.tsx` + `useTurmaContext.ts` | Implementação na branch; homologação autenticada pendente |
 | Modal de professor | `ProfessorContextView.tsx` + `useProfessorContext.ts` | Código implementado na PR empilhada sobre #225; homologação pendente |
+| Modal de disciplina | `DisciplinaContextView.tsx` + `useDisciplinaContext.ts` | Implementado na nova PR sobre #226; CI e homologação pendentes |
+| Pesquisa de disciplinas | `DisciplinaSearchResults.tsx` e endpoint próprio autorizado | Admin/Operações; sem alterar a RPC global nesta fase |
 | Modal próprio de classe | Ainda não existente | Fallback na pesquisa |
 | Histórico/deep links do modal | Ainda não existente | Roadmap |
 
@@ -280,6 +282,36 @@ A identidade da pesquisa usa `vw_search_professores.id = professores.id`, não `
 
 **Fora do escopo:** emails, contactos, BI, remuneração, saldos, notas, chamadas e contagem de alunos distintos não agregada. **Aceite pendente:** testes RLS e GET autenticado, turmas de outro ano, professor de outra escola, draft/arquivado, origem legada, limite de 500, E2E de navegação, foco e Escape.
 
+### 5.8 Contrato de disciplina — PR empilhada sobre #226 (ainda não homologado)
+
+**Pesquisa dentro do mesmo Command Palette:**
+
+```http
+GET /api/escolas/{escolaId}/command-center/disciplinas?q=Matemática&ano_letivo_id={uuid}
+```
+
+- Disponível nos portais **Admin e Operações**. `q` normalizada e sanitizada, mínimo 2, máximo 100 caracteres e no máximo 8 resultados. Busca apenas `disciplinas_catalogo` da escola autorizada por `nome/sigla`.
+- Retorna `{ok:true,items:[{id,type:'disciplina',label,highlight,academicYearId}],anoLetivoId}` ou falha HTTP explícita. A descoberta não autoriza consultar o detalhe.
+- Pesquisa e cache usam TanStack Query dentro do `QueryClientProvider` **local** do modal. O `search_global_entities` não foi modificado: o grupo "Disciplinas" compartilha a lista cmdk, mas usa API separada por enquanto.
+- `disciplinaSearchQueryKey`: `['command-center','disciplina-search',escolaId,academicYearId,query]`; cancelamento `AbortSignal`, 300 ms debounce, TTL fresco 30 s e retry só em erros transitórios. Testar acessibilidade, erro, sem resultados e seleção com teclado.
+
+**GET do detalhe:**
+
+```http
+GET /api/escolas/{escolaId}/command-center/disciplinas/{disciplinaId}?ano_letivo_id={uuid}
+```
+
+- Revalida sessão, escola, papel K12, ano letivo READ e identidade em `disciplinas_catalogo`; `400/401/403/404/409/500` têm estados distintos e não viram dados vazios artificiais.
+- `disciplina`: `id,nome,sigla,area,isCore,isAvaliavel,cargaHorariaReferencia` (sem notas, identificadores pessoais ou dados financeiros).
+- `anoLetivo`: `id,ano,historico`.
+- `professores`: `[{id,nome,turmas}]`; `turmas`: `[{id,nome,turno,classeNome,cursoNome,professores:[{id,nome}]}]`, ambos isolados por ano/escola e com deduplicação.
+- `curriculo`: `[{cursoId,cursoNome,classeId,classeNome,cargaHorariaSemanal,obrigatoria}]`, uma **referência curricular**, não um indicador de aulas ministradas no ano. Classes vinculadas a outro ano são excluídas.
+- `stats`: `professores,turmas,cursos,classes`; estes contadores só são completos enquanto `limitado=false`. Limites explícitos (300 matrizes, 500 vinculações/fonte e 200 turmas) produzem **`limitado=true`** e um aviso visível.
+- `turma_disciplinas` via `curso_matriz.disciplina_id`, `turma_disciplinas_professores.disciplina_id` e `quadro_horarios.disciplina_id` são as três origens. Horários só formam vínculos quando `horario_versoes.status='publicada'` e a versão pertence à mesma turma/escola. Rascunhos ou versões arquivadas não contam.
+- `disciplinaContextQueryKey`: `['command-center','disciplina',escolaId,disciplinaId,academicYearId]`; fetch privado `cache:no-store`, abort, stale 30 s, gc 120 s.
+- Trajeto principal: pesquisar Disciplina → escolher Professor → escolher Turma → voltar ao Professor/Disciplina; rota revalida cada contexto, sem confiar nos resultados da pesquisa.
+- Não inclui contagem de alunos distintos, cálculos de notas nem autorizações financeiras. Próximos gates: CI, permissões RLS, testes autenticados por escola/ano e homologação mobile/teclado.
+
 ## 6. TanStack Query, cache, invalidação e Motion
 
 O hook `useCourseContext` está na branch e utiliza este contrato:
@@ -350,7 +382,7 @@ O modal contextual atualmente tenta abrir `curso|classe|turma|professor` nos por
 | **Pagamento** | Financeiro | Navegação canónica | Método, estado, conciliação, recibo |
 | **Recibo** | Financeiro | Navegação canónica | Documento fiscal e ações permitidas |
 | **Utilizador** | Admin / Operações / Superadmin | Navegação canónica | Papel, vínculo, escola e gestão autorizada |
-| **Disciplina** | **Ainda não pesquisável** | Não | Currículo, turmas, docentes, resultados |
+| **Disciplina** | **Admin / Operações (endpoint próprio na PR)** | **Visão dedicada na PR empilhada** | Professores, turmas e matriz curricular por ano; homologação pendente |
 | **Avaliação / pauta** | **Ainda não pesquisável** | Não | Publicação, notas e períodos |
 | **Ano letivo / período** | **Ainda não pesquisável** | Não | Navegação temporal, leitura histórica |
 | **Sala / instalação** | **Ainda não pesquisável** | Não | Ocupação e alocação, se existir modelo consolidado |
@@ -467,8 +499,14 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 - [ ] Homologar professor com várias turmas/escolas/anos, perfis apagados e vínculos legados.
 - [ ] Validar typecheck, lint, build, testes e CI verde para a PR empilhada.
 - [ ] Definir agregação exata de alunos distintos do professor no PostgreSQL.
-- [ ] Adicionar disciplina à pesquisa apenas com fonte, índice e gate.
-- [ ] Criar explorador de disciplina/turmas/carga curricular.
+- [x] Adicionar disciplinas à pesquisa do modal de Admin/Operações via rota autenticada, sem alteração da RPC global.
+- [x] Criar explorador de disciplinas: professores, turmas e referência da matriz curricular por ano.
+- [x] Implementar navegação Disciplina → Professor → Turma, e retorno pelo histórico contextual.
+- [x] Consolidar alocações diretas, legadas e horários **publicados**, com deduplicação por ID.
+- [x] Criar testes unitários de filtros de ano, chaves TanStack Query, duplicados e busca segura.
+- [ ] Verificar índice seletivo/custo da pesquisa de disciplinas e performance p50/p95.
+- [ ] Homologar endpoints com sessão real, RLS, turma e professor de outra escola, ano histórico e limites.
+- [ ] Confirmar CI completamente verde (TypeScript, lint, build, contratos), revisão e smoke autenticado.
 - [ ] Integrar notas/avaliações apenas com regras de publicação/permissão.
 
 **Gate:** dados pedagógicos autorizados, CI verde e homologação. Itens marcados significam código versionado, não produção.
@@ -508,7 +546,8 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 | P0 | Diferentes permissões para pesquisar, consultar e agir | Gates por entidade/ação e testes REST/RPC |
 | P0 | Recentes em `localStorage` por escola/portal, não utilizador | Minimizar e limpar por identidade/logout |
 | P1 | Vista de curso lista só até 100 turmas | Paginação server-side, não inferir vazio |
-| P1 | Classe ainda é fallback; professor e turma precisam de homologação | Implementar classe em PR própria; validar exploradores existentes |
+| P1 | Classe continua fallback; professor, turma e disciplina carecem de homologação | Implementar classe em PR própria e testar as três visões contextualizadas |
+| P1 | Pesquisa de disciplinas em endpoint paralelo até integração no RPC | Validar latência e decidir eventual unificação sem expor tipos a outros portais |
 | P1 | Breadcrumb não corresponde a Back/Forward real | Contrato seguro de deep link |
 | P1 | Retry automático não distingue 403 de falha transitória | Classificar status e evitar repetição inútil |
 | P1 | Cache não invalidado em todas as mutações escolares | Invalidação por tenant/entidade/ano |
