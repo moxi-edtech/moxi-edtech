@@ -1,4 +1,5 @@
 import { classifyRematriculaResponse } from "@/lib/secretaria/rematricula-result";
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { useState, useCallback, useEffect } from "react";
 
 // ─── Exported Types ──────────────────────────────────────────────────────────
@@ -274,6 +275,16 @@ export function useRematriculaBalcao(opts: {
   const [apiError, setApiError] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
   const [responsavelContato, setResponsavelContato] = useState("");
+  useBalcaoDraftForm("reenrollment", {
+    turma: selectedTurmaId, metodo,
+    detalhes, decisaoResultado, decisaoFonte, decisaoMotivo, decisaoObservacao,
+    itensPagamento: opts.itensPagamento ?? [],
+  }, {
+    turma: null, metodo: "cash", detalhes: DETALHES_VAZIOS,
+    decisaoResultado: "aprovado", decisaoFonte: "raa", decisaoMotivo: "", decisaoObservacao: "",
+    itensPagamento: [],
+  }, { submitting, enabled: Boolean(opts.alunoId) && !result?.ok });
+
 
   // ────────────────────────────────────────────────────────────────────────
   // Fetch rematrícula eligibility status

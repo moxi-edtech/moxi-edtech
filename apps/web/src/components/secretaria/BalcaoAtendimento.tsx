@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import {
   ShoppingCart,
   Plus,
@@ -2759,6 +2760,16 @@ export default function BalcaoAtendimento({
     academicYearId: effectiveAcademicYearId,
     onSuccess: onCheckoutSuccess,
   });
+
+  // The actual React checkout state is the draft, not clicks or button labels.
+  // This also covers programmatic cart updates and attachment URL changes.
+  useBalcaoDraftForm("checkout", {
+    itens: carrinho.itens, metodo: carrinho.itens.length ? carrinho.metodo : "tpa",
+    detalhes: carrinho.itens.length ? carrinho.detalhes : { referencia: "", evidencia_url: "", gateway_ref: "" },
+    valorRecebido: carrinho.itens.length ? carrinho.valorRecebido : "",
+  }, {
+    itens: [], metodo: "tpa", detalhes: { referencia: "", evidencia_url: "", gateway_ref: "" }, valorRecebido: "",
+  }, { submitting: checkout.isSubmitting, enabled: view === "payment" || view === "document" || view === "all" });
 
   // Cada ação do Command Center tem um contexto transitório próprio. Sem este
   // reset, um item deixado em "Pagar" podia reaparecer no checkout de

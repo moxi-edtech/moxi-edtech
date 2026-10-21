@@ -38,9 +38,11 @@ test("new enrollment is independent; browser back restores the suspended student
 });
 
 test("dirty input, receipts and checkout selections survive tab switches and are confirmed before discard", () => {
-  assert.match(retained,/onInputCapture/);
-  assert.match(retained,/onChangeCapture/);
-  assert.match(retained,/onClickCapture/);
+  const draft = source("components/secretaria/command-center/BalcaoDraftState.tsx");
+  assert.match(retained,/BalcaoDraftScope/);
+  assert.doesNotMatch(retained,/onClickCapture|onInputCapture|onChangeCapture/);
+  assert.match(draft,/useBalcaoDraftForm/);
+  assert.match(draft,/JSON.stringify\(value\) !== JSON.stringify\(baseline\)/);
   assert.match(retained,/beforeunload/);
   assert.match(modal,/hasUnsavedWorkRef\.current/);
   assert.match(modal,/window\.confirm\([\s\S]{0,100}"Trocar de aluno/);

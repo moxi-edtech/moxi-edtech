@@ -1,118 +1,96 @@
 "use client";
 
-import { memo, useEffect, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { BalcaoActionId } from "@/lib/balcao/action-registry";
+import { BalcaoDraftScope, type BalcaoDraftSummary } from "./BalcaoDraftState";
+import { useBalcaoHistoryGuard } from "./useBalcaoHistoryGuard";
 
-/**
- * Each action is mounted on first visit and kept alive only for the lifetime
- * of the current school/student workspace. The parent MUST key this boundary
- * by student and tenant; it must never be a module-global cache.
- *
- * Hidden actions preserve native file inputs, payment selections and local
- * React form state without additional requests on every tab change.
- */
 type ActionSlotProps = {
   action: BalcaoActionId;
   active: boolean;
   renderAction: (action: BalcaoActionId) => ReactNode;
   contextSignature: string;
-  onDirty: (action: BalcaoActionId) => void;
+  onStatus: (action: BalcaoActionId, summary: BalcaoDraftSummary) => void;
 };
 
-const ActionSlot = memo(function ActionSlot({ action, active, renderAction, onDirty }: ActionSlotProps) {
+const ActionSlot = memo(function ActionSlot({ action, active, renderAction, onStatus }: ActionSlotProps) {
+  const handleStatus = useCallback((summary: BalcaoDraftSummary) => onStatus(action, summary), [action, onStatus]);
   return (
     <section
       data-balcao-retained-action={action}
       hidden={!active}
       aria-hidden={!active}
       inert={!active}
-      onInputCapture={() => onDirty(action)}
-      onChangeCapture={() => onDirty(action)}
-      onClickCapture={(event) => {
-        const element = event.target;
-        if (!(element instanceof Element)) return;
-        const button = element.closest("button");
-        if (!button) return;
-        const label = button.textContent?.toLowerCase() || button.getAttribute("aria-label")?.toLowerCase() || "";
-        if (/adicionar|selecionar|remover|guardar|gravar|confirmar|anexar|pagar|matricular|transferir|enviar/.test(label)) onDirty(action);
-      }}
     >
-      {renderAction(action)}
+      <BalcaoDraftScope onChange={handleStatus}>{renderAction(action)}</BalcaoDraftScope>
     </section>
   );
-}, (previous, next) => previous.active === next.active && previous.contextSignature === next.contextSignature);
+}, (previous, next) =>
+  previous.active === next.active &&
+  previous.contextSignature === next.contextSignature &&
+  previous.onStatus === next.onStatus
+);
 
 export function RetainedActionPanels({
   activeAction,
   renderAction,
   onUnsavedChange,
+  onSubmittingChange,
+  onActionStatusesChange,
   contextSignature,
-  savedAction,
-  saveRevision = 0,
 }: {
-  savedAction?: BalcaoActionId | null;
-  saveRevision?: number;
   activeAction: BalcaoActionId;
   contextSignature: string;
   renderAction: (action: BalcaoActionId) => ReactNode;
   onUnsavedChange?: (unsaved: boolean) => void;
+  onSubmittingChange?: (submitting: boolean) => void;
+  onActionStatusesChange?: (statuses: Readonly<Partial<Record<BalcaoActionId, BalcaoDraftSummary>>>) => void;
 }) {
   const [visited, setVisited] = useState<BalcaoActionId[]>([activeAction]);
-  const [dirty, setDirty] = useState<ReadonlySet<BalcaoActionId>>(() => new Set());
+  const [actionStatuses, setActionStatuses] = useState<Partial<Record<BalcaoActionId, BalcaoDraftSummary>>>({});
   useEffect(() => {
-    setVisited((current) =>
-      current.includes(activeAction) ? current : [...current, activeAction],
-    );
+    setVisited(current => current.includes(activeAction) ? current : [...current, activeAction]);
   }, [activeAction]);
 
-  // Include the newly selected panel in the same render, not one effect later.
-  const mounted = visited.includes(activeAction) ? visited : [...visited, activeAction];
-  const markUnsaved = (action: BalcaoActionId) => {
-    setDirty((current) => {
-      if (current.has(action)) return current;
-      const next = new Set(current);
-      next.add(action);
-      return next;
+  const onStatus = useCallback((action: BalcaoActionId, summary: BalcaoDraftSummary) => {
+    setActionStatuses(current => {
+      const old = current[action];
+      // Ignore identity-equal states to avoid new renders/effect loops.
+      if (old === summary) return current;
+      return { ...current, [action]: summary };
     });
-  };
+  }, []);
 
-  // Only an explicitly confirmed canonical write clears that action's dirty
-  // marker. Background refetches must NOT clear unsaved work in other tabs.
-  useEffect(() => {
-    if (!saveRevision || !savedAction) return;
-    setDirty((current) => {
-      if (!current.has(savedAction)) return current;
-      const next = new Set(current);
-      next.delete(savedAction);
-      return next;
-    });
-  }, [saveRevision, savedAction]);
+  const summary = useMemo(() => {
+    const reports = Object.values(actionStatuses);
+    return {
+      dirty: reports.some(report => report?.dirty),
+      submitting: reports.some(report => report?.submitting),
+    };
+  }, [actionStatuses]);
 
-  useEffect(() => {
-    onUnsavedChange?.(dirty.size > 0);
-  }, [dirty, onUnsavedChange]);
+  useEffect(() => { onUnsavedChange?.(summary.dirty); }, [summary.dirty, onUnsavedChange]);
+  useEffect(() => { onSubmittingChange?.(summary.submitting); }, [summary.submitting, onSubmittingChange]);
+  useEffect(() => { onActionStatusesChange?.(actionStatuses); }, [actionStatuses, onActionStatusesChange]);
+
+  useBalcaoHistoryGuard(summary.dirty, summary.submitting);
 
   useEffect(() => {
-    if (!dirty.size) return;
-    const protect = (event: BeforeUnloadEvent) => {
+    if (!summary.dirty) return;
+    const confirmUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
-    window.addEventListener("beforeunload", protect);
-    return () => window.removeEventListener("beforeunload", protect);
-  }, [dirty.size]);
+    window.addEventListener("beforeunload", confirmUnload);
+    return () => window.removeEventListener("beforeunload", confirmUnload);
+  }, [summary.dirty]);
 
+  const mounted = visited.includes(activeAction) ? visited : [...visited, activeAction];
   return (
     <>
-      {mounted.map((action) => (
-        <ActionSlot
-          key={action}
-          action={action}
-          active={action === activeAction}
-          contextSignature={contextSignature}
-          renderAction={renderAction}
-          onDirty={markUnsaved}
-        />
+      {mounted.map(action => (
+        <ActionSlot key={action} action={action} active={action === activeAction}
+          contextSignature={contextSignature} renderAction={renderAction} onStatus={onStatus} />
       ))}
     </>
   );

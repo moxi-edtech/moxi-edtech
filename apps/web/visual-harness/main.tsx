@@ -3,6 +3,7 @@ import TransferForm from "../src/components/secretaria/TransferForm";
 import { createRoot } from "react-dom/client";
 import { BalcaoWorkspace } from "../src/components/secretaria/BalcaoWorkspace";
 import { RetainedActionPanels } from "../src/components/secretaria/command-center/RetainedActionPanels";
+import { useBalcaoDraftForm } from "../src/components/secretaria/command-center/BalcaoDraftState";
 import type { BalcaoActionId } from "../src/lib/balcao/action-registry";
 import { FeedbackProvider } from "../src/components/feedback/FeedbackSystem";
 import "./fixture.css";
@@ -70,8 +71,27 @@ if (name === "class-transfer") {
     return originalFetch(input,init);
   };
 }
-// Behavioral contract fixture: actual RetainedActionPanels component, synthetic
-// form and identity changes, no database or payment API access.
+// Test the *same* draft-state contract as the real forms. No private values are
+// ever written to global state, navigation history or telemetry.
+function SyntheticDraftFields({ action, student }: { action: BalcaoActionId; student: string }) {
+  const [value, setValue] = React.useState("");
+  const [attached, setAttached] = React.useState<string | null>(null);
+  const [saved, setSaved] = React.useState({ value: "", attached: null as string | null });
+  const [submitting, setSubmitting] = React.useState(false);
+  useBalcaoDraftForm(action, { value, attached }, saved, { submitting });
+  return <div className="rounded-xl border p-3">
+    <p data-testid={`target-${action}`}>{action === "enrollment" ? "Nova matrícula: aluno-alvo não selecionado" : "Aluno atual: "+student}</p>
+    <label>Rascunho <input value={value} onChange={e=>setValue(e.target.value)} data-testid={`draft-${action}`} /></label>
+    <label>Comprovativo <input type="file" data-testid={`file-${action}`} onChange={e=>setAttached(e.target.files?.[0]?.name ?? null)} /></label>
+    <button type="button" data-testid={`programmatic-${action}`} onClick={()=>setValue("Gerado via React state")}>Programático</button>
+    <button type="button" data-testid={`clear-${action}`} onClick={()=>{setValue("");setAttached(null)}}>Reverter</button>
+    <button type="button" data-testid={`save-${action}`} onClick={()=>setSaved({value,attached})}>Guardar confirmado</button>
+    <button type="button" data-testid={`submitting-${action}`} onClick={()=>setSubmitting(true)}>Iniciar submissão</button>
+    <button type="button" data-testid={`failure-${action}`} onClick={()=>setSubmitting(false)}>Falha de submissão</button>
+    <button type="button" data-testid={`finish-${action}`} onClick={()=>{setSaved({value,attached});setSubmitting(false)}}>Submissão confirmada</button>
+  </div>;
+}
+
 function BalcaoRetentionFixture() {
   const [action, setAction] = React.useState<BalcaoActionId>("payment");
   const [actor, setActor] = React.useState("user-a");
@@ -80,44 +100,36 @@ function BalcaoRetentionFixture() {
   const [student, setStudent] = React.useState("student-a");
   const [revision, setRevision] = React.useState(0);
   const [unsaved, setUnsaved] = React.useState(false);
-  const [savedAction, setSavedAction] = React.useState<BalcaoActionId | null>(null);
-  const [saveRevision, setSaveRevision] = React.useState(0);
+  const [submitting, setSubmitting] = React.useState(false);
   const scope = [actor, school, polo, student].join(":");
-  return (
-    <main className="mx-auto max-w-2xl space-y-4 p-6">
-      <h1>Balcão · contratos sintéticos</h1>
-      <p data-testid="actor-context">{scope}</p>
-      <p data-testid="has-unsaved">{String(unsaved)}</p>
-      <div className="flex flex-wrap gap-2">
-        {(["payment", "document", "enrollment", "profile", "grade"] as const).map((tab) => (
-          <button type="button" key={tab} data-testid={`go-${tab}`} onClick={() => setAction(tab)}>{tab}</button>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" data-testid="switch-user" onClick={() => { setActor("user-b"); setAction("payment"); }}>Novo utilizador</button>
-        <button type="button" data-testid="switch-school" onClick={() => { setSchool("school-b"); setAction("payment"); }}>Outra escola</button>
-        <button type="button" data-testid="switch-polo" onClick={() => { setPolo("polo-b"); setAction("payment"); }}>Outro polo</button>
-        <button type="button" data-testid="switch-student" onClick={() => { setStudent("student-b"); setAction("payment"); }}>Outro aluno</button>
-        <button type="button" data-testid="server-confirmed-save" onClick={() => { setSavedAction(action); setSaveRevision(v=>v+1); }}>Gravação canónica confirmada</button>
-        <button type="button" data-testid="server-confirmed-mutation" onClick={() => setRevision(v => v+1)}>Servidor confirmou alteração</button>
-      </div>
-      <RetainedActionPanels
-        key={scope}
-        activeAction={action}
-        contextSignature={scope+":"+revision}
-        savedAction={savedAction}
-        saveRevision={saveRevision}
-        onUnsavedChange={setUnsaved}
-        renderAction={(panel) => (
-          <div className="rounded-xl border p-3">
-            <p data-testid={`target-${panel}`}>{panel === "enrollment" ? "Nova matrícula: aluno-alvo não selecionado" : "Aluno atual: "+student}</p>
-            <label>Rascunho <input data-testid={`draft-${panel}`} placeholder="Rascunho sintético" /></label>
-            <label>Comprovativo <input type="file" data-testid={`file-${panel}`} /></label>
-          </div>
-        )}
-      />
-    </main>
-  );
+  const switchContext = (update: () => void) => {
+    if (submitting) return;
+    if (unsaved && !window.confirm("Descartar rascunhos pendentes?")) return;
+    update(); setAction("payment");
+  };
+  return <main className="mx-auto max-w-2xl space-y-4 p-6">
+    <h1>Balcão · contratos sintéticos</h1>
+    <p data-testid="actor-context">{scope}</p>
+    <p data-testid="has-unsaved">{String(unsaved)}</p>
+    <p data-testid="is-submitting">{String(submitting)}</p>
+    <div className="flex flex-wrap gap-2">
+      {(["payment", "document", "enrollment", "profile", "grade"] as const).map(tab => (
+        <button type="button" key={tab} data-testid={`go-${tab}`} onClick={() => setAction(tab)}>{tab}</button>
+      ))}
+    </div>
+    <div className="flex flex-wrap gap-2">
+      <button type="button" data-testid="switch-user" onClick={() => switchContext(()=>setActor("user-b"))}>Novo utilizador</button>
+      <button type="button" data-testid="switch-school" onClick={() => switchContext(()=>setSchool("school-b"))}>Outra escola</button>
+      <button type="button" data-testid="switch-polo" onClick={() => switchContext(()=>setPolo("polo-b"))}>Outro polo</button>
+      <button type="button" data-testid="switch-student" onClick={() => switchContext(()=>setStudent("student-b"))}>Outro aluno</button>
+      <button type="button" data-testid="server-confirmed-save" onClick={() => document.querySelector<HTMLButtonElement>(`[data-testid="save-${action}"]`)?.click()}>Guardar no servidor</button>
+      <button type="button" data-testid="server-confirmed-mutation" onClick={() => setRevision(v=>v+1)}>Revalidar sem guardar</button>
+    </div>
+    <RetainedActionPanels key={scope} activeAction={action} contextSignature={scope+":"+revision}
+      onUnsavedChange={setUnsaved} onSubmittingChange={setSubmitting}
+      renderAction={panel => <SyntheticDraftFields action={panel} student={student} />}
+    />
+  </main>;
 }
 
 const Scene = stories[name]?.render;

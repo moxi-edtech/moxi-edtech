@@ -51,7 +51,9 @@ jobs:
       - name: E2E synthetic drafts, attached document, identity boundaries
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-perf-tools/node_modules/playwright/index.mjs
-        run: node apps/web/scripts/performance/balcao-behavior.mjs
+        run: |
+          node apps/web/scripts/performance/balcao-behavior.mjs
+          node apps/web/scripts/performance/balcao-history.mjs
       - name: Repeated navigation benchmark
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-perf-tools/node_modules/playwright/index.mjs
@@ -65,7 +67,7 @@ jobs:
         run: |
           node --test --import tsx agents/scan/kf2-search-audit.test.ts
           cd apps/web
-          node --test --import tsx tests/unit/workspace-student-dossier.spec.tsx tests/unit/balcao-return-context-reconciliation.spec.ts tests/unit/balcao-performance-contract.spec.ts
+          node --test --import tsx tests/unit/workspace-student-dossier.spec.tsx tests/unit/balcao-return-context-reconciliation.spec.ts tests/unit/balcao-performance-contract.spec.ts tests/unit/balcao-draft-state.spec.ts
       - name: Typecheck and full eslint
         run: |
           pnpm -C apps/web typecheck

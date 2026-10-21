@@ -54,9 +54,10 @@ export default function BalcaoPageClient({
   const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
   const [atendimentoKey, setAtendimentoKey] = useState(0);
   const [refreshRevision, setRefreshRevision] = useState(0);
-  const [savedAction, setSavedAction] = useState<BalcaoActionId | null>(null);
   const unsavedWorkRef = useRef(false);
+  const submittingRef = useRef(false);
   const handleUnsavedChange = useCallback((value: boolean) => { unsavedWorkRef.current = value; }, []);
+  const handleSubmittingChange = useCallback((value: boolean) => { submittingRef.current = value; }, []);
   const {
     student: commandCenterStudent,
     setStudent: setCommandCenterStudent,
@@ -94,7 +95,6 @@ export default function BalcaoPageClient({
   }, [activeAction, pathname, router, searchParams, selectedAlunoId]);
 
   const handleCommandCenterSuccess = useCallback((originAction: BalcaoActionId, newAlunoId?: string) => {
-    setSavedAction(originAction);
     setCaixaRefreshKey((current) => current + 1);
     setRefreshRevision((value) => value + 1);
     if (!newAlunoId) return;
@@ -119,6 +119,7 @@ export default function BalcaoPageClient({
   }, [activeAction, selectedAlunoId, syncLocation]);
 
   const handleSwitchStudent = useCallback(() => {
+    if (submittingRef.current) return; // Never change student during an in-flight write.
     // Este aviso protege a transição entre módulos. Ações já submetidas
     // continuam sob a autoridade do backend; não declarar sucesso localmente.
     if ((activeAction !== "desk" || unsavedWorkRef.current) && !window.confirm(
@@ -134,6 +135,7 @@ export default function BalcaoPageClient({
   }, [activeAction, setCommandCenterStudent, syncLocation]);
 
   const handleAlunoSelected = useCallback((aluno: AlunoDossier | null) => {
+    if (submittingRef.current) return;
     const nextAlunoId = aluno?.id ?? null;
     setSelectedAlunoId(nextAlunoId);
     if (!aluno) {
@@ -185,8 +187,7 @@ export default function BalcaoPageClient({
             activeAction={activeAction}
             contextSignature={`${userScope}:${escolaId}:${selectedAlunoId ?? "-"}:${commandCenterStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
             onUnsavedChange={handleUnsavedChange}
-            savedAction={savedAction}
-            saveRevision={refreshRevision}
+            onSubmittingChange={handleSubmittingChange}
             renderAction={(panelAction) => (
               <CommandCenterPanel
                 escolaId={escolaId}

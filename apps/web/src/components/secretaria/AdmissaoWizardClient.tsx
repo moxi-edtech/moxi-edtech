@@ -1,6 +1,7 @@
 // apps/web/src/components/secretaria/AdmissaoWizardClient.tsx
 "use client";
 
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Archive, Check, Edit3, ExternalLink, RefreshCw, Save } from "lucide-react";
@@ -313,6 +314,8 @@ function Step1Identificacao(props: {
     mesmo_que_encarregado: false,
   });
 
+  const initialFormSnapshot = useRef(form).current;
+  const [persistedForm, setPersistedForm] = useState<DraftIdentificacao | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -321,11 +324,14 @@ function Step1Identificacao(props: {
   const [familySuggestion, setFamilySuggestion] = useState<{ id: string; nome: string; membros: string[] } | null>(null);
   const [familyLookupLoading, setFamilyLookupLoading] = useState(false);
   const debouncedResponsiblePhone = useDebouncedValue(form.responsavel_contato ?? "", 500);
+  useBalcaoDraftForm("enrollment.identification", form, persistedForm ?? initialFormSnapshot, {
+    submitting: saving, enabled: hydrated && canEditDraft,
+  });
 
   // hydrate initial
   useEffect(() => {
     if (!initialData) return;
-    setForm({
+    const hydratedForm: DraftIdentificacao = {
       nome_candidato: initialData.nome_candidato ?? "",
       telefone: initialData.dados_candidato?.telefone ?? "",
       bi_numero: initialData.dados_candidato?.bi_numero ?? "",
@@ -353,7 +359,9 @@ function Step1Identificacao(props: {
       responsavel_financeiro_nif: initialData.dados_candidato?.responsavel_financeiro_nif ?? "",
       mesmo_que_encarregado: Boolean(initialData.dados_candidato?.mesmo_que_encarregado),
       agregado_familiar_id: initialData.dados_candidato?.agregado_familiar_id ?? "",
-    });
+    };
+    setForm(hydratedForm);
+    setPersistedForm(hydratedForm);
   }, [initialData]);
 
   useEffect(() => {
@@ -548,10 +556,11 @@ function Step1Identificacao(props: {
         setCandidaturaId(resp.data.candidatura_id);
       }
 
+      setPersistedForm(form);
       setLastSavedAt(Date.now());
       return { ok: true as const };
     },
-    [canAutosave, canEditDraft, escolaId, payload, setCandidaturaId]
+    [canAutosave, canEditDraft, escolaId, payload, form, setCandidaturaId]
   );
 
   // autosave on debounced form change
@@ -1020,20 +1029,26 @@ function Step2FitAcademico(props: {
 
   const [loadingCfg, setLoadingCfg] = useState(false);
   const [loadingVagas, setLoadingVagas] = useState(false);
+  const [persistedFit, setPersistedFit] = useState<typeof sel | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localRestored, setLocalRestored] = useState(false);
+  useBalcaoDraftForm("enrollment.academic", sel, persistedFit ?? {
+    cursoId: "", classeId: "", turmaId: "", percentagemDesconto: 0, motivoDesconto: "",
+  }, { submitting: saving, enabled: hydrated && canEditDraft });
 
   // hydrate initial
   useEffect(() => {
     if (!initialData) return;
-    setSel({
+    const hydratedFit = {
       cursoId: initialData.curso_id ?? "",
       classeId: initialData.classe_id ?? "",
       turmaId: initialData.turma_preferencial_id ?? "",
       percentagemDesconto: initialData.percentagem_desconto ?? 0,
       motivoDesconto: initialData.motivo_desconto ?? "",
-    });
+    };
+    setSel(hydratedFit);
+    setPersistedFit(hydratedFit);
     setCursoId(initialData.curso_id ?? null);
     setClasseId(initialData.classe_id ?? null);
     if (initialData.turma_preferencial_id) {
@@ -1173,6 +1188,14 @@ function Step2FitAcademico(props: {
 
       if (!resp.ok) {
         setError(resp.error);
+      } else {
+        setPersistedFit(current => ({ ...current ?? sel, ...{
+          cursoId: patch.curso_id ?? sel.cursoId,
+          classeId: patch.classe_id ?? sel.classeId,
+          turmaId: patch.turma_preferencial_id ?? sel.turmaId,
+          percentagemDesconto: patch.percentagem_desconto ?? sel.percentagemDesconto,
+          motivoDesconto: patch.motivo_desconto ?? sel.motivoDesconto,
+        }}));
       }
     },
     [escolaId, candidaturaId, canEditDraft]

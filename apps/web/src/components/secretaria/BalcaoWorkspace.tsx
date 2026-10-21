@@ -37,7 +37,6 @@ export function BalcaoWorkspace({
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);
   const [switchingStudent, setSwitchingStudent] = useState(false);
   const [refreshRevision, setRefreshRevision] = useState(0);
-  const [savedAction, setSavedAction] = useState<BalcaoActionId | null>(null);
   const [academicYearId, setAcademicYearId] = useState<string | null>(null);
   const { student: studentContext, subtitle } = useCommandCenterStudent(
     selectedStudent.id, academicYearId, selectedStudent.label,
@@ -46,7 +45,9 @@ export function BalcaoWorkspace({
   const completedEnrollmentRef = useRef(false);
   const studentRequestRef = useRef(0);
   const hasUnsavedWorkRef = useRef(false);
+  const submittingRef = useRef(false);
   const handleUnsavedChange = useCallback((value: boolean) => { hasUnsavedWorkRef.current = value; }, []);
+  const handleSubmittingChange = useCallback((value: boolean) => { submittingRef.current = value; }, []);
 
   useEffect(() => {
     setSelectedStudent(aluno);
@@ -91,11 +92,13 @@ export function BalcaoWorkspace({
   }, [activeAction, confirmLeavingEnrollment]);
 
   const handleSwitchStudent = useCallback(() => {
+    if (submittingRef.current) return;
     // Opening the picker never discards work or changes the student.
     setSwitchingStudent(true);
   }, []);
 
   const handleStudentPicked = useCallback((next: Student) => {
+    if (submittingRef.current) return;
     if (next.id === selectedStudent.id) {
       setSwitchingStudent(false);
       return;
@@ -114,6 +117,7 @@ export function BalcaoWorkspace({
   }, [selectedStudent.id]);
 
   const handleClose = useCallback(() => {
+    if (submittingRef.current) return;
     if (!confirmLeavingEnrollment()) return;
     if (activeAction !== "enrollment" && hasUnsavedWorkRef.current &&
       !window.confirm("Fechar atendimento? Existem alterações ainda não guardadas.")) return;
@@ -121,7 +125,6 @@ export function BalcaoWorkspace({
   }, [activeAction, confirmLeavingEnrollment, onClose]);
 
   const handleSuccess = useCallback((originAction: BalcaoActionId, newAlunoId?: string) => {
-    setSavedAction(originAction);
     setRefreshRevision((value) => value + 1);
     if (originAction === "enrollment" && newAlunoId) {
       completedEnrollmentRef.current = true;
@@ -182,8 +185,7 @@ export function BalcaoWorkspace({
           activeAction={activeAction}
           contextSignature={`${userScope}:${escolaId}:${poloScope}:${selectedStudent.id}:${currentStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
           onUnsavedChange={handleUnsavedChange}
-          savedAction={savedAction}
-          saveRevision={refreshRevision}
+            onSubmittingChange={handleSubmittingChange}
           renderAction={(panelAction) => (
             <CommandCenterPanel
               escolaId={escolaId}
