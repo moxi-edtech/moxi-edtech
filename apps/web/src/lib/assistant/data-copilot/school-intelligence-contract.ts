@@ -154,3 +154,21 @@ export function validIntelligenceContinuation(
     !candidate.poloId && candidate.consultedAt <= now &&
     now - candidate.consultedAt <= 15 * 60_000 ? candidate : null;
 }
+
+/** Canonical assignment coverage; do not derive the denominator from pending rows. */
+export type TeacherAssignment = { professor_id: string; turma_id: string; disciplina_id: string };
+export function verifyTeacherAssignmentCoverage(assignments: TeacherAssignment[], rows: ProfessorGradeRow[]) {
+  const key = (a: TeacherAssignment) => `${a.professor_id}:${a.turma_id}:${a.disciplina_id}`;
+  const assigned = new Set(assignments.map(key));
+  const observed = new Set(rows.filter((r): r is ProfessorGradeRow & { professor_id: string; turma_id: string; disciplina_id: string } =>
+    Boolean(r.professor_id && r.turma_id && r.disciplina_id)).map(key));
+  const unobserved = [...assigned].filter((item) => !observed.has(item));
+  const unknown = [...observed].filter((item) => !assigned.has(item));
+  return {
+    verified: unobserved.length === 0 && unknown.length === 0 && assigned.size > 0,
+    denominator: new Set(assignments.map((a) => a.professor_id)).size,
+    assignments: assigned.size,
+    unobserved: unobserved.length,
+    unknown: unknown.length,
+  };
+}

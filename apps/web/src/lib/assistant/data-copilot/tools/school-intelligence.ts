@@ -1,4 +1,5 @@
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { disabledIntelligenceReason } from "../intelligence-activation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { resolveAcademicYearScope, type AcademicYearScope } from "@/lib/academic-year/context";
@@ -8,7 +9,7 @@ import { instantiateAssistantActionV2 } from "../../actions-v2";
 import {
   classifySchoolQuestion, extractSchoolFilters, isStatisticalSchoolQuestion, safeDisplayText,
   canReadWholeSchoolIntelligence, validIntelligenceContinuation,
-  SchoolIntelligenceConversationSchema, summarizeTeacherGrades,
+  SchoolIntelligenceConversationSchema, summarizeTeacherGrades, verifyTeacherAssignmentCoverage,
   type IntelligenceIntent, type ProfessorGradeRow, type SchoolIntelligenceFilters,
 } from "../school-intelligence-contract";
 import type { DataCopilotResponse, DataCopilotTool, ToolRunParams } from "../types";
@@ -43,6 +44,8 @@ export async function runSchoolIntelligence(params: ToolRunParams): Promise<Data
   const intent = classifySchoolQuestion(params.query, conversation);
   if (!intent) return isStatisticalSchoolQuestion(params.query)
     ? failure("Esta pergunta não corresponde a uma consulta homologada do catálogo; não vou inventar a resposta.", "Catálogo KLASSE IA") : null;
+  const disabledReason = disabledIntelligenceReason(intent);
+  if (disabledReason) return failure(disabledReason, `Ativação independente: ${intent}`);
   if (!hasAssistantPermission(params.role, intentPermissions[intent])) {
     return failure("O seu papel não está autorizado a consultar este domínio.", "Permissões KLASSE / escola_users");
   }
@@ -139,6 +142,17 @@ async function teacherGrades(
     new RegExp(`(^|[^0-9])${filters.classNumber}([^0-9]|$)`).test(item.classe_nome ?? ""));
   if (!scoped.length) return failure("Nenhuma turma encontrada no ano letivo e na classe escolhidos; não é possível inferir o total de docentes.", "vw_turmas_para_matricula");
   const turmaIds = scoped.map((item) => item.id);
+  // Denominator comes from the canonical teacher↔class↔subject assignment table,
+  // never from the materialized pendency view. A mismatch fails closed.
+  const { data: assignments, count: assignmentCount, error: assignmentError } = await supabase
+    .from("turma_disciplinas_professores")
+    .select("professor_id,turma_id,disciplina_id", { count: "exact" })
+    .eq("escola_id", schoolId).in("turma_id", turmaIds)
+    .limit(MAX_GRADE_ROWS).abortSignal(signal);
+  if (assignmentError) throw assignmentError;
+  if (assignmentCount === null || assignmentCount > MAX_GRADE_ROWS) return failure(
+    "Atribuições excedem o limite de verificação; não é seguro calcular o denominador.",
+    "turma_disciplinas_professores");
   const { data, count, error } = await supabase.from("vw_professor_pendencias")
     .select("professor_id,turma_id,turma_nome,disciplina_id,disciplina_nome,trimestre,tipo,avaliacao_id,total_alunos,notas_lancadas,pendentes", { count: "exact" })
     .eq("escola_id", schoolId).eq("trimestre", Number(period.numero))
@@ -150,6 +164,10 @@ async function teacherGrades(
     ...item, trimestre: item.trimestre ?? 0, total_alunos: Number(item.total_alunos ?? 0),
     notas_lancadas: Number(item.notas_lancadas ?? 0), pendentes: Number(item.pendentes ?? 0),
   }));
+  const coverage = verifyTeacherAssignmentCoverage(assignments ?? [], rows);
+  if (!coverage.verified) return failure(
+    `O denominador de docentes não está comprovado: ${coverage.unobserved} atribuições sem avaliação na view e ${coverage.unknown} avaliações sem atribuição atual. A atribuição encerrada e as avaliações previstas precisam de confirmação no calendário.`,
+    "turma_disciplinas_professores + vw_professor_pendencias");
   const result = summarizeTeacherGrades(rows, period.trava_notas_em, today);
   if (!result.ok) return failure(result.reason, "vw_professor_pendencias + periodos_letivos");
   const delayed = [...result.pending, ...result.incomplete];
@@ -177,7 +195,7 @@ async function teacherGrades(
   }
   const openGrades = instantiateAssistantActionV2("academico:open_grades", role, { schoolId });
   return createDataCopilotResponse({ insight: {
-    diagnosis: `**${result.teachersOverdue} de ${result.teachersAssigned} professores com atribuições e alunos** têm lançamentos com prazo vencido.` +
+    diagnosis: `**${result.teachersOverdue} de ${coverage.denominator} professores com atribuições comprovadas** têm lançamentos com prazo vencido.` +
       (details ? `\n\n${details}` : ""),
     impact: `Pendente (nada lançado): ${result.teachersPending} docentes, ${result.pendingAssessments} instrumentos. ` +
       `Incompleto (parte lançada): ${result.teachersIncomplete} docentes, ${result.incompleteAssessments} instrumentos. ` +
@@ -189,7 +207,7 @@ async function teacherGrades(
       { label: "Prazo de referência", value: String(period.trava_notas_em) },
       { label: "Turmas afetadas", value: String(result.affectedClasses) },
       { label: "Disciplinas afetadas", value: String(result.affectedDisciplines) },
-      { label: "Docentes distintos em atraso", value: `${result.teachersOverdue}/${result.teachersAssigned}` },
+      { label: "Docentes distintos em atraso", value: `${result.teachersOverdue}/${coverage.denominator}` },
       { label: "Página da lista", value: String(page + 1) },
     ], actions: openGrades ? [{ ...openGrades, label: "Ver área de Notas (confirmar filtros)" }] : [], provenance: { source: "academic-grade-gaps · vw_professor_pendencias + vw_turmas_para_matricula + periodos_letivos + vw_search_professores",
       consultedAt: today.toISOString(), scope: `Escola autorizada · ano ${year.ano} · ${period.numero}.º trimestre · classe ${filters.classNumber ?? "todas"} · sem segmentação por polo na fonte`, freshness: "partial",
