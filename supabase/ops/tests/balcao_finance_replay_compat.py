@@ -210,3 +210,38 @@ calendar_ddl = calendar_source.split("-- RLS", 1)[0]
 )
 print("STAGED-COMPAT 20260509190000_ci_only_early_med_calendar.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
+
+# Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
+# original repository share the same 14-digit version. Preserve both distinct
+# forward SQL bodies by shifting the SECOND filename by one second, without
+# touching content. The .rollback.sql artifact is NOT a forward migration:
+# applying it would knowingly undo the adjacent forward script.
+version_collisions = {
+    "20260520004000_create_marketing_assets.sql": "20260520004001_create_marketing_assets.sql",
+    "20260821120000_portal_rematricula_transacao_consolidada.sql": "20260821120001_portal_rematricula_transacao_consolidada.sql",
+    "20260827170000_fix_assignment_disciplina_ambiguity.sql": "20260827170001_fix_assignment_disciplina_ambiguity.sql",
+    "20261215012000_fix_matriculas_numero_constraint_status_aliases.sql": "20261215012001_fix_matriculas_numero_constraint_status_aliases.sql",
+    "20261218100000_seed_default_raa_policy.sql": "20261218100001_seed_default_raa_policy.sql",
+}
+import hashlib
+import json
+manifest = []
+for original, renamed in version_collisions.items():
+    src = root / original
+    target = root / renamed
+    if not src.is_file() or target.exists():
+        raise RuntimeError(f"unexpected migration version collision: {original} -> {renamed}")
+    digest = hashlib.sha256(src.read_bytes()).hexdigest()
+    src.rename(target)
+    assert hashlib.sha256(target.read_bytes()).hexdigest() == digest
+    manifest.append({"original": original, "staged": renamed, "sha256": digest})
+    print("STAGED-COMPAT version-only rename", original, "=>", renamed)
+rollback = root / "20260924010000_fix_gerar_mensalidades_preco_zero.rollback.sql"
+forward = root / "20260924010000_fix_gerar_mensalidades_preco_zero.sql"
+assert rollback.is_file() and forward.is_file(), "unexpected rollback/forward pair"
+rollback_digest = hashlib.sha256(rollback.read_bytes()).hexdigest()
+rollback.unlink()
+manifest.append({"original": rollback.name, "staged": None, "reason": "rollback-not-forward", "sha256": rollback_digest})
+print("STAGED-COMPAT excluded explicit rollback artifact", rollback.name)
+manifest_path = root.parent / "balcao_replay_manifest.json"
+manifest_path.write_text(json.dumps({"renames_and_exclusions": manifest}, indent=2) + "\n")
