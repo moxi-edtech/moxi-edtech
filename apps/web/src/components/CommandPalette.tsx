@@ -265,7 +265,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                 ESC
               </kbd>
             )}
-          </div>
+          </div>}
 
           {!entityContext && <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
             {detectedIntent && (
