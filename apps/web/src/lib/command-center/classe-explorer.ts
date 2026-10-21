@@ -39,6 +39,20 @@ export function isClasseTurmaInYear(
   return belongsToProfessorAcademicYear(turma, year);
 }
 
+/**
+ * Classes can be reused across years even when their recorded ano_letivo_id
+ * differs. Actual turmas in the requested year prove the class is relevant.
+ */
+export function isClasseAvailableInYear(
+  classeAnoLetivoId: string | null,
+  resolvedAnoLetivoId: string,
+  eligibleTurmas: readonly Pick<ClasseTurma, "id">[],
+) {
+  return !classeAnoLetivoId ||
+    classeAnoLetivoId === resolvedAnoLetivoId ||
+    eligibleTurmas.length > 0;
+}
+
 export function classeEnrollmentStatuses(historical: boolean) {
   return turmaEnrollmentPolicy(historical);
 }
