@@ -198,4 +198,15 @@ for name, count in index_counts.items():
     assert sql.count("CREATE INDEX CONCURRENTLY") == count, name
     path.write_text(sql.replace("CREATE INDEX CONCURRENTLY", "CREATE INDEX"))
     print("STAGED-COMPAT disposable index lock strategy", name, count)
+# Temporal cockpit in May reads the actual Angolan MED calendar table;
+# November's original schema is dated 20270509. Stage its exact enum+table
+# and force RLS on immediately, without relaxing policies or fake rows.
+calendar_source = (root / "20270509000000_calendario_eventos_med_686_25.sql").read_text()
+assert "CREATE TABLE IF NOT EXISTS public.calendario_eventos (" in calendar_source
+assert calendar_source.count("-- RLS") == 1
+calendar_ddl = calendar_source.split("-- RLS", 1)[0]
+(root / "20260509190000_ci_only_early_med_calendar.sql").write_text(
+    calendar_ddl + "\nALTER TABLE public.calendario_eventos ENABLE ROW LEVEL SECURITY;\n"
+)
+print("STAGED-COMPAT 20260509190000_ci_only_early_med_calendar.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
