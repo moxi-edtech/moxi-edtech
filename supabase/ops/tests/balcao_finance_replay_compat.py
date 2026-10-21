@@ -235,6 +235,16 @@ with (root / "20260528122900_ci_only_early_modelo_cascade_columns.sql").open("a"
     out.write("\n" + formula_source)
 print("STAGED-COMPAT early real calcular_media_trimestral formula")
 print("STAGED-COMPAT 20260528122900_ci_only_early_modelo_cascade_columns.sql")
+# The connected production schema exposes ai_school_settings but NO
+# checked-in migration creates it. Recover exact production metadata, never
+# student rows, as a fixture-only prerequisite; the original SELECT RLS policy
+# is still applied by the June migration and must be checked in final schema.
+ai_settings_metadata = Path(__file__).with_name("balcao_full_ci_restore_ai_school_settings.sql").read_text()
+assert "ALTER TABLE public.ai_school_settings ENABLE ROW LEVEL SECURITY" in ai_settings_metadata
+assert "CREATE POLICY ai_school_settings_update" in ai_settings_metadata
+assert "CREATE OR REPLACE FUNCTION public.can_use_klasse_ai" in ai_settings_metadata
+(root / "20260626152000_ci_only_metadata_ai_school_settings.sql").write_text(ai_settings_metadata)
+print("STAGED-COMPAT 20260626152000_ci_only_metadata_ai_school_settings.sql (production READ-ONLY metadata)")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
