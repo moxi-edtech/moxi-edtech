@@ -15,7 +15,9 @@ type Props = {
   onNavigate: (href: string) => void;
   onExploreTurma: (turma: { id: string; label: string; academicYearId: string }) => void;
   initialClasseId?: string | null;
+  initialTurmaId?: string | null;
   onClasseChange?: (id: string | null) => void;
+  onTurmaChange?: (id: string | null) => void;
 };
 
 function Metric({ value, label }: { value: number; label: string }) {
@@ -29,7 +31,7 @@ function Metric({ value, label }: { value: number; label: string }) {
   );
 }
 
-export function CourseContextView({ context, portal, onNavigate, onExploreTurma, initialClasseId, onClasseChange }: Props) {
+export function CourseContextView({ context, portal, onNavigate, onExploreTurma, initialClasseId, initialTurmaId, onClasseChange, onTurmaChange }: Props) {
   const { data, error, loading, retry } = useCourseContext(context);
   const reducedMotion = useReducedMotion();
   const [classeId, setClasseId] = useState<string | null>(initialClasseId ?? null);
@@ -37,8 +39,9 @@ export function CourseContextView({ context, portal, onNavigate, onExploreTurma,
     setClasseId(id);
     onClasseChange?.(id);
     setTurmaId(null);
+    onTurmaChange?.(null);
   }
-  const [turmaId, setTurmaId] = useState<string | null>(null);
+  const [turmaId, setTurmaId] = useState<string | null>(initialTurmaId ?? null);
 
   const visibleTurmas = useMemo(
     () => (data?.turmas ?? []).filter((turma) => !classeId || turma.classeId === classeId),
@@ -94,7 +97,7 @@ export function CourseContextView({ context, portal, onNavigate, onExploreTurma,
         {selectedClasse && (
           <>
             <ChevronRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-            <button type="button" className="rounded-lg px-2 py-1 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" onClick={() => setTurmaId(null)}>{selectedClasse.nome}</button>
+            <button type="button" className="rounded-lg px-2 py-1 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" onClick={() => { setTurmaId(null); onTurmaChange?.(null); }}>{selectedClasse.nome}</button>
           </>
         )}
         {selectedTurma && (
@@ -132,7 +135,7 @@ export function CourseContextView({ context, portal, onNavigate, onExploreTurma,
           </h3>
           <div className="max-h-64 overflow-y-auto p-2">
             {visibleTurmas.map((turma) => (
-              <button type="button" key={turma.id} onClick={() => setTurmaId(turma.id)} aria-pressed={turmaId === turma.id}
+              <button type="button" key={turma.id} onClick={() => { setTurmaId(turma.id); onTurmaChange?.(turma.id); }} aria-pressed={turmaId === turma.id}
                 className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${turmaId === turma.id ? "bg-slate-100" : ""}`}>
                 <span className="min-w-0 truncate font-medium">{turma.nome}</span>
                 <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums text-slate-500">
