@@ -1,0 +1,53 @@
+name: KLASSE IA Clean Chat Browser
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/ai/AiChatWidget.tsx'
+      - 'apps/web/scripts/visual/klasse-ai-chat-clean.mjs'
+      - 'apps/web/visual-harness/**'
+      - '.github/workflows/klasse-ai-chat-clean.yml'
+permissions:
+  contents: read
+jobs:
+  responsive-chat-fixtures:
+    name: Responsive chat UI and interaction
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated browser tools
+        run: |
+          mkdir -p /tmp/klasse-visual
+          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
+          /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start synthetic React fixture
+        run: |
+          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/klasse-visual.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:6006/ > /dev/null && exit 0
+            sleep 2
+          done
+          tail -n 90 /tmp/klasse-visual.log
+          exit 1
+      - name: Render and exercise mobile / desktop chat at two zoom levels
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/klasse-ai-chat-clean.mjs
+      - name: Diagnostics on failure
+        if: failure()
+        run: tail -n 100 /tmp/klasse-visual.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: klasse-ai-chat-clean-synthetic
+          path: apps/web/visual-evidence/klasse-ai-chat-clean/
+          retention-days: 7
+          if-no-files-found: warn
