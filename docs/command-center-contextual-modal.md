@@ -1,16 +1,54 @@
 # KLASSE — Command Center: Modal de Visões Contextuais
 
-**Especificação oficial de produto e engenharia · v1.0 · 21/10/2026**
+**Especificação oficial de produto e engenharia · v1.1 · atualização pós-release em 21/10/2026**
 
 | Propriedade | Definição |
 | --- | --- |
-| Status | **Especificação aprovada como base de trabalho; funcionalidade em desenvolvimento** |
-| Implementação | `feat/command-center-contextual-modal-foundation-20261021` |
+| Status | **Implementação publicada em produção; homologação autenticada pendente** |
+| Implementação | `main` · release de integração [#229](https://github.com/moxi-edtech/moxi-edtech/pull/229) |
 | Origem | [Auditoria e plano — Issue #224](https://github.com/moxi-edtech/moxi-edtech/issues/224) |
 | Referência de pesquisa | [Global Search — roadmap](./global-search-roadmap.md) |
-| Publicação | **Não homologada e não publicada por este documento** |
+| Publicação | **Publicada em https://app.klasse.ao · deployment Vercel READY · SHA `9398232a79534e24ac4a34cfc9c2ddcb912fc65e`** |
 
 > **Convenção do roadmap:** `[x]` = implementação **identificada no código desta branch** ou decisão tomada, **não** significa teste passado, aplicação da migração, merge ou deploy. `[ ]` = trabalho, verificação ou homologação pendente. Uma fase só é concluída quando passar no respetivo gate.
+
+## 0. Registo de release e estado verificado — 21/10/2026
+
+**Esta secção prevalece sobre as descrições históricas de “branch”, “proposta”, “não instalada” ou “futura” que permaneçam abaixo como registo do desenvolvimento.** A documentação conserva requisitos e hipóteses anteriores para rastreabilidade; estes não devem ser confundidos com o estado de produção.
+
+| Marco | Estado e evidência |
+| --- | --- |
+| Base Curso/Turma | [PR #225](https://github.com/moxi-edtech/moxi-edtech/pull/225), integrada |
+| Professor | [PR #226](https://github.com/moxi-edtech/moxi-edtech/pull/226), integrada na cadeia |
+| Disciplina | [PR #227](https://github.com/moxi-edtech/moxi-edtech/pull/227), integrada na cadeia |
+| Classe | [PR #228](https://github.com/moxi-edtech/moxi-edtech/pull/228), integrada na cadeia |
+| Consolidação na `main` | [PR #229](https://github.com/moxi-edtech/moxi-edtech/pull/229), merge SHA `9398232a79534e24ac4a34cfc9c2ddcb912fc65e` |
+| CI da integração | **6/6 checks verdes** antes do merge, incluindo TypeScript, ESLint, testes e build Next.js |
+| Supabase | RPC `command_center_course_overview(uuid,uuid,uuid)` aplicada e confirmada por consulta a `pg_proc` |
+| Vercel | Deployment `dpl_rCYzbgCtcgmZqERn7fRtWbSyJRFV`, estado **READY**, commit correspondente ao merge; alias `app.klasse.ao` |
+| Erros de runtime | Consulta da Vercel na janela de 15 minutos pós-deploy sem erros reportados; **não equivale** a homologação funcional |
+| Homologação autenticada | **Pendente**: não há evidência de navegação completa com sessões reais e múltiplos papéis |
+
+### O que está implementado e publicado
+
+- **Curso:** resumo, indicadores académicos, classes e turmas no ano selecionado.
+- **Classe:** visão própria, curso associado, turmas, alunos distintos paginados, disciplinas, professores, capacidade condicionada à disponibilidade dos dados; classes reutilizadas entre anos seguem o ano efetivo da turma.
+- **Turma:** visão contextual, alunos paginados (20 por página), professores, disciplinas e ligação ao Balcão.
+- **Professor:** contexto académico e ligações a turmas e disciplinas.
+- **Disciplina:** pesquisa contextual, professores, turmas e relações curriculares.
+- **Navegação:** `Curso → Classe → Turma → Aluno/Balcão` e relações entre Professor, Disciplina, Turma e Classe, sem criar um segundo Balcão.
+- **Proteção prevista no código:** autenticação, escopo de escola/ano, papéis K12, consulta privada e RLS; a sua **eficácia em sessão real ainda exige comprovação**.
+
+### Gates de homologação ainda abertos
+
+- [ ] Executar testes autenticados por perfil (Admin, Operações e perfis sem permissão), incluindo 401/403/404.
+- [ ] Validar RLS e isolamento entre duas escolas com IDs de entidades arbitrários; impedir leitura por mudança manual de `escolaId` e `ano_letivo_id`.
+- [ ] Conferir contagens e políticas de matrículas atuais/históricas, canceladas, transferidas e duplicadas; classes reutilizadas entre anos.
+- [ ] Exercitar paginação (20/21/50+ alunos), limites/avisos de listas parciais e turmas/classes com grande volume.
+- [ ] Verificar navegação cruzada, regresso ao contexto, foco, Escape, teclado e mobile com sessão real.
+- [ ] Verificar métricas e erros de runtime numa janela representativa após a publicação.
+
+**Política de estado:** `CI verde` = validação automatizada; `READY` = deployment concluído; `homologado` = testes autenticados e dados reais comprovados. Estes estados são independentes. A release está **publicada, mas ainda não homologada ponta a ponta**.
 
 ## 1. Visão, limites e experiência pretendida
 
@@ -65,7 +103,7 @@ CommandPalette (cmdk + diálogo acessível)
 | Modal de classe | `ClasseContextView.tsx` + `useClasseContext.ts` + endpoint | Código implementado na PR #228 empilhada sobre #227; homologação pendente |
 | Histórico/deep links do modal | Ainda não existente | Roadmap |
 
-**Constatação sobre o Supabase ligado (21/10/2026):** a RPC `command_center_course_overview` **não constava** no banco consultado. A rota poderá devolver **503** até ser instalada e testada no ambiente correto. A migração presente na branch não equivale a migração aplicada.
+**Estado do Supabase em 21/10/2026:** a RPC `command_center_course_overview(uuid,uuid,uuid)` foi aplicada via migração e a sua presença confirmada em `pg_proc`. Isto **não substitui** testes autenticados de RLS, grants e contagens reais.
 
 ## 3. Estados oficiais do modal
 
@@ -227,15 +265,15 @@ A migration na branch usa `STABLE SECURITY INVOKER` e valida `auth.uid`, acesso 
 - Falha de read model nunca deve retornar `200` com zeros fictícios.
 - Não misturar valores emitidos, pagos, cancelados, vencidos ou em dívida; **sem financeiro até nova autorização**.
 
-### 5.5 APIs propostas para próximas entidades (não implementadas)
+### 5.5 APIs de entidades — estado pós-release
 
 | Rota proposta | Conteúdo | Proteção |
 | --- | --- | --- |
-| `GET /api/escolas/:id/command-center/classes/:classeId` | Classe e turmas paginadas no ano | Académica |
-| **Implementado na branch:** `GET /api/escolas/:id/command-center/turmas/:turmaId?page=N&ano_letivo_id=UUID` | Turma, disciplinas, professores e alunos paginados (20), contagem exata e `hasMore` | Académica; autorização por papel/escola/ano |
+| **Implementada:** `GET /api/escolas/:id/command-center/classes/:classeId` | Classe, turmas e alunos paginados no ano | Académica |
+| **Implementada na main:** `GET /api/escolas/:id/command-center/turmas/:turmaId?page=N&ano_letivo_id=UUID` | Turma, disciplinas, professores e alunos paginados (20), contagem exata e `hasMore` | Académica; autorização por papel/escola/ano |
 | Eventual rota de alunos separada | Páginas por cursor, caso offset deixe de escalar | Reavaliar sob métricas, sem duplicar endpoint |
-| `GET /api/escolas/:id/command-center/professores/:professorId` | Alocações, turmas, carga | Académica |
-| `GET /api/escolas/:id/command-center/disciplinas/:disciplinaId` | Matriz/curso, turmas, docentes | Académica |
+| **Implementada:** `GET /api/escolas/:id/command-center/professores/:professorId` | Alocações, turmas, carga | Académica |
+| **Implementada:** `GET /api/escolas/:id/command-center/disciplinas/:disciplinaId` | Matriz/curso, turmas, docentes | Académica |
 | `GET /api/escolas/:id/command-center/financeiro/...` | Métricas de cobrança por competência | **Gate financeiro distinto** |
 
 Cada rota futura deve ter schema de entrada, ano, escola, papel, RLS, colunas mínimas, paginação, erros e testes diretos de manipulação de IDs.
@@ -258,7 +296,7 @@ GET /api/escolas/{escolaId}/command-center/turmas/{turmaId}?ano_letivo_id={uuid}
 
 **Nota de engenharia:** a versão atual usa paginação por offset e join PostgREST; só declarar “concluído” quando a coerência dos totais e a consulta do professor/disciplinas forem verificadas num ambiente autenticado. Para conjuntos muito grandes, avaliar paginação por cursor.
 
-### 5.7 Contrato de professor — PR empilhada, ainda não homologado
+### 5.7 Contrato de professor — implementado na main; homologação autenticada pendente
 
 **GET:** `/api/escolas/{escolaId}/command-center/professores/{professorId}?ano_letivo_id={uuid}`
 
@@ -282,7 +320,7 @@ A identidade da pesquisa usa `vw_search_professores.id = professores.id`, não `
 
 **Fora do escopo:** emails, contactos, BI, remuneração, saldos, notas, chamadas e contagem de alunos distintos não agregada. **Aceite pendente:** testes RLS e GET autenticado, turmas de outro ano, professor de outra escola, draft/arquivado, origem legada, limite de 500, E2E de navegação, foco e Escape.
 
-### 5.8 Contrato de disciplina — PR empilhada sobre #226 (ainda não homologado)
+### 5.8 Contrato de disciplina — implementado na main; homologação autenticada pendente
 
 **Pesquisa dentro do mesmo Command Palette:**
 
@@ -312,7 +350,7 @@ GET /api/escolas/{escolaId}/command-center/disciplinas/{disciplinaId}?ano_letivo
 - Trajeto principal: pesquisar Disciplina → escolher Professor → escolher Turma → voltar ao Professor/Disciplina; rota revalida cada contexto, sem confiar nos resultados da pesquisa.
 - Não inclui contagem de alunos distintos, cálculos de notas nem autorizações financeiras. Próximos gates: CI, permissões RLS, testes autenticados por escola/ano e homologação mobile/teclado.
 
-### 5.9 Contrato de classe — PR #228 empilhada sobre #227 (CI e homologação pendentes)
+### 5.9 Contrato de classe — implementado na main; CI verde e homologação autenticada pendente
 
 ```http
 GET /api/escolas/{escolaId}/command-center/classes/{classeId}?ano_letivo_id={uuid}&page=1
@@ -567,7 +605,7 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 
 | Prioridade | Risco / diferença entre objetivo e realidade | Resolução |
 | --- | --- | --- |
-| P0 | RPC de curso ainda não instalada no ambiente Supabase consultado | Homologar migration e validar grants/RLS |
+| P0 | RPC de curso instalada; validação autenticada de grants, RLS e contagens ainda não realizada | Executar testes com papéis reais e cenários cross-tenant |
 | P0 | Status `ativo` da migration pode excluir históricos válidos | Auditar estados canónicos, transferências e duplicados |
 | P0 | Diferentes permissões para pesquisar, consultar e agir | Gates por entidade/ação e testes REST/RPC |
 | P0 | Recentes em `localStorage` por escola/portal, não utilizador | Minimizar e limpar por identidade/logout |
