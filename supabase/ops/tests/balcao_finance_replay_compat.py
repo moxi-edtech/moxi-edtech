@@ -225,6 +225,15 @@ for snippet in (
 )
 notas_later = (root / "20261201123000_isencao_notas_e_reabertura_pauta_auditada.sql").read_text()
 assert "ADD COLUMN IF NOT EXISTS is_isento boolean DEFAULT false" in notas_later
+# The same May boletim MV already calls the immutable December grade formula
+# RPC. Copy its exact immutable PL/pgSQL implementation early, then replay the
+# original later; no formula logic, fiscal state or permissions are changed.
+formula_source = (root / "20261205000010_calcular_media_trimestral.sql").read_text()
+assert formula_source.startswith("CREATE OR REPLACE FUNCTION public.calcular_media_trimestral(")
+assert "LANGUAGE plpgsql\nIMMUTABLE" in formula_source
+with (root / "20260528122900_ci_only_early_modelo_cascade_columns.sql").open("a") as out:
+    out.write("\n" + formula_source)
+print("STAGED-COMPAT early real calcular_media_trimestral formula")
 print("STAGED-COMPAT 20260528122900_ci_only_early_modelo_cascade_columns.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
