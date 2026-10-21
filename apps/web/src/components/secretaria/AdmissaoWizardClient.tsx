@@ -1198,7 +1198,7 @@ function Step2FitAcademico(props: {
         }}));
       }
     },
-    [escolaId, candidaturaId, canEditDraft]
+    [escolaId, candidaturaId, canEditDraft, sel]
   );
 
   const onSelectCurso = (cursoId: string) => {

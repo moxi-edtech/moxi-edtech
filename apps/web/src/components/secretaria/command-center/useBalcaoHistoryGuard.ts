@@ -12,7 +12,7 @@ import { useEffect, useRef } from "react";
  */
 export function useBalcaoHistoryGuard(dirty: boolean, submitting: boolean) {
   const current = useRef({ dirty, submitting });
-  current.current = { dirty, submitting };
+  useEffect(() => { current.current = { dirty, submitting }; }, [dirty, submitting]);
   const skipping = useRef(false);
   useEffect(() => {
     if (!dirty && !submitting) return;
