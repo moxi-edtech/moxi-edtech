@@ -1,0 +1,167 @@
+"use client";
+
+import {
+  AlertCircle, ArrowUpRight, BookOpen, CalendarDays, ChevronRight,
+  GraduationCap, Loader2, RefreshCw, UsersRound,
+} from "lucide-react";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import type { EntityContext } from "@/lib/command-center/entity-context";
+import { buildPortalHref } from "@/lib/navigation";
+import { PROFESSOR_WEEKDAYS } from "@/lib/command-center/professor-explorer";
+import { useProfessorContext } from "@/hooks/useProfessorContext";
+
+type Props = {
+  context: EntityContext;
+  portal?: string;
+  onExploreTurma: (turma: { id: string; label: string; academicYearId: string }) => void;
+  onNavigate: (href: string) => void;
+};
+
+function Metric({ label, value, limited }: { label: string; value: number; limited: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
+        {new Intl.NumberFormat("pt-AO").format(value)}{limited ? "+" : ""}
+      </p>
+    </div>
+  );
+}
+
+export function ProfessorContextView({ context, portal, onExploreTurma, onNavigate }: Props) {
+  const { data, error, status, loading, refreshing, retry } = useProfessorContext(context);
+  if (loading) return (
+    <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-600" role="status">
+      <Loader2 className="h-4 w-4 animate-spin" /> A carregar o professor…
+    </div>
+  );
+  if (error || !data) return (
+    <div className="space-y-3 p-3 text-sm" role="alert">
+      <p className="text-rose-700">{error || "Não foi possível carregar o professor."}</p>
+      {status !== 401 && status !== 403 && status !== 404 && (
+        <button type="button" onClick={() => void retry()}
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
+          <RefreshCw className="h-4 w-4" /> Tentar novamente
+        </button>
+      )}
+    </div>
+  );
+
+  const existingPage = buildPortalHref(context.escolaId,
+    portal === "admin" ? "/admin/professores" : "/operacoes/professores");
+  const params = new URLSearchParams();
+  params.set(ACADEMIC_YEAR_PARAM, data.anoLetivo.id);
+  const pageHref = existingPage + (existingPage.includes("?") ? "&" : "?") + params.toString();
+  const limited = data.limitado;
+
+  return (
+    <div className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-slate-500">
+            Perfil académico · Ano letivo {data.anoLetivo.ano}
+            {data.anoLetivo.historico ? " · Histórico" : ""}
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-slate-900">{data.professor.nome}</h2>
+        </div>
+        <button type="button" onClick={() => onNavigate(pageHref)}
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
+          Gestão de professores <ArrowUpRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      <section aria-label="Indicadores académicos" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
+        <Metric label="Turmas" value={data.stats.turmas} limited={limited} />
+        <Metric label="Disciplinas distintas" value={data.stats.disciplinas} limited={limited} />
+        <Metric label="Aulas em horário publicado" value={data.stats.aulasPublicadas} limited={limited} />
+        {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
+      </section>
+
+      {limited && (
+        <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          Algumas vinculações ultrapassaram o limite de consulta. Os números apresentados são parciais; consulte a gestão para o restante.
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <section className="min-w-0">
+          <h3 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+            <UsersRound className="h-4 w-4 text-emerald-700" /> Turmas atribuídas
+          </h3>
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+            {data.turmas.map((turma) => (
+              <button type="button" key={turma.id}
+                onClick={() => onExploreTurma({
+                  id: turma.id, label: turma.nome, academicYearId: data.anoLetivo.id,
+                })}
+                className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+                <GraduationCap className="h-4 w-4 shrink-0 text-slate-500" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-slate-900">{turma.nome}</span>
+                  <span className="mt-0.5 block truncate text-xs text-slate-500">
+                    {[turma.cursoNome, turma.classeNome, turma.turno].filter(Boolean).join(" · ") || "Sem detalhes académicos"}
+                  </span>
+                  {turma.disciplinas.length > 0 && (
+                    <span className="mt-1 block break-words text-xs text-slate-600">
+                      {turma.disciplinas.map((disciplina) => disciplina.nome).join(", ")}
+                    </span>
+                  )}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
+            ))}
+            {!data.turmas.length && (
+              <p className="px-3 py-5 text-slate-500">Nenhuma turma atribuída neste ano letivo.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="min-w-0">
+          <h3 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+            <BookOpen className="h-4 w-4 text-emerald-700" /> Disciplinas
+          </h3>
+          <div className="max-h-64 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+            {data.disciplinas.map((disciplina) => (
+              <div key={disciplina.id} className="flex items-center justify-between gap-3 px-3 py-3">
+                <span className="font-medium text-slate-900">{disciplina.nome}</span>
+                <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                  {disciplina.turmas} {disciplina.turmas === 1 ? "turma" : "turmas"}
+                </span>
+              </div>
+            ))}
+            {!data.disciplinas.length && (
+              <p className="px-3 py-5 text-slate-500">Nenhuma disciplina atribuída neste ano letivo.</p>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <section className="min-w-0">
+        <h3 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+          <CalendarDays className="h-4 w-4 text-emerald-700" /> Horário publicado
+        </h3>
+        <div className="max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+          {data.horarios.map((aula, i) => (
+            <div key={`${aula.turmaId}:${aula.diaSemana}:${aula.inicio}:${i}`}
+              className="flex flex-wrap items-center justify-between gap-3 px-3 py-3">
+              <span className="font-medium text-slate-900">
+                {PROFESSOR_WEEKDAYS[aula.diaSemana] || `Dia ${aula.diaSemana}`} · {aula.inicio.slice(0, 5)}–{aula.fim.slice(0, 5)}
+              </span>
+              <span className="text-xs text-slate-600">
+                {aula.turmaNome}{aula.disciplinaNome ? ` · ${aula.disciplinaNome}` : ""}
+              </span>
+            </div>
+          ))}
+          {!data.horarios.length && (
+            <p className="px-3 py-5 text-slate-500">Sem horário publicado para este professor neste ano letivo.</p>
+          )}
+        </div>
+      </section>
+
+      <p className="text-xs text-slate-500">
+        Apenas vínculos académicos e horários publicados. Contactos, documentos, remunerações, notas e pagamentos não são apresentados.
+      </p>
+    </div>
+  );
+}

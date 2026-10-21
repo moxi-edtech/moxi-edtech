@@ -30,6 +30,7 @@ import { buildPortalHref } from "@/lib/navigation";
 import { createEntityContext, type EntityContext } from "@/lib/command-center/entity-context";
 import { CourseContextView } from "@/components/secretaria/command-center/CourseContextView";
 import { TurmaContextView } from "@/components/secretaria/command-center/TurmaContextView";
+import { ProfessorContextView } from "@/components/secretaria/command-center/ProfessorContextView";
 
 type Props = {
   escolaId?: string | null;
@@ -84,7 +85,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
 
   const [open, setOpen] = React.useState(false);
   const [entityContext, setEntityContext] = React.useState<EntityContext | null>(null);
-  const [parentCourse, setParentCourse] = React.useState<EntityContext | null>(null);
+  const [contextTrail, setContextTrail] = React.useState<EntityContext[]>([]);
   const [courseClassId, setCourseClassId] = React.useState<string | null>(null);
   const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
   const reduceMotion = useReducedMotion();
@@ -96,7 +97,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     setOpen(next);
     if (!next) {
       setEntityContext(null);
-      setParentCourse(null);
+      setContextTrail([]);
       setCourseClassId(null);
       setCourseTurmaId(null);
       queryClient.clear();
@@ -105,7 +106,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
   React.useEffect(() => {
     queryClient.clear();
     setEntityContext(null);
-    setParentCourse(null);
+    setContextTrail([]);
     setCourseClassId(null);
     setCourseTurmaId(null);
   }, [escolaId, portal, queryClient]);
@@ -123,7 +124,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
           return !current;
         });
         setEntityContext(null);
-        setParentCourse(null);
+        setContextTrail([]);
         setCourseClassId(null);
       setCourseTurmaId(null);
       }
@@ -174,7 +175,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     const context = createEntityContext(item, escolaId, new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM));
     if (context && (portal === "admin" || portal === "operacoes" || portal === "secretaria")) {
       rememberResult(item);
-      setParentCourse(null);
+      setContextTrail([]);
       setCourseClassId(null);
       setCourseTurmaId(null);
       setEntityContext(context);
@@ -281,7 +282,15 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
           <DialogDescription className="sr-only">Pesquisar alunos, turmas e operações disponíveis neste portal.</DialogDescription>
           {entityContext && (
             <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
-              <button type="button" onClick={() => { setEntityContext(parentCourse); setParentCourse(null); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"><ArrowLeft className="h-4 w-4" /> {parentCourse ? "Voltar ao curso" : "Voltar à pesquisa"}</button>
+              <button type="button" onClick={() => {
+                setEntityContext(contextTrail[contextTrail.length - 1] ?? null);
+                setContextTrail((trail) => trail.slice(0, -1));
+              }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100">
+                <ArrowLeft className="h-4 w-4" />
+                {contextTrail.length
+                  ? `Voltar ${contextTrail[contextTrail.length - 1].type === "turma" ? "à turma" : contextTrail[contextTrail.length - 1].type === "curso" ? "ao curso" : "ao professor"}`
+                  : "Voltar à pesquisa"}
+              </button>
               <span className="truncate text-sm font-semibold text-slate-900">{entityContext.label}</span>
             </div>
           )}
@@ -379,7 +388,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                   onTurmaChange={setCourseTurmaId}
                   onExploreTurma={(turma) => {
                     setCourseTurmaId(turma.id);
-                    setParentCourse(entityContext);
+                    setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
                       type: "turma",
                       id: turma.id,
@@ -395,6 +404,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                 />
               ) : entityContext.type === "turma" ? (
                 <TurmaContextView
+                  key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`}
                   context={entityContext}
                   portal={portal}
                   onNavigate={(href) => {
@@ -409,6 +419,35 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                     href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(student.id)}${entityContext.academicYearId ? `?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(entityContext.academicYearId)}` : ""}`),
                     actions: [],
                   })}
+                  onExploreProfessor={(professor) => {
+                    setContextTrail((trail) => [...trail, entityContext]);
+                    setEntityContext({
+                      type: "professor",
+                      id: professor.id,
+                      label: professor.label,
+                      escolaId: entityContext.escolaId,
+                      academicYearId: professor.academicYearId,
+                    });
+                  }}
+                />
+              ) : entityContext.type === "professor" ? (
+                <ProfessorContextView
+                  context={entityContext}
+                  portal={portal}
+                  onExploreTurma={(turma) => {
+                    setContextTrail((trail) => [...trail, entityContext]);
+                    setEntityContext({
+                      type: "turma",
+                      id: turma.id,
+                      label: turma.label,
+                      escolaId: entityContext.escolaId,
+                      academicYearId: turma.academicYearId,
+                    });
+                  }}
+                  onNavigate={(href) => {
+                    onOpenChange(false);
+                    router.push(href);
+                  }}
                 />
               ) : (
                 <div className="space-y-3">

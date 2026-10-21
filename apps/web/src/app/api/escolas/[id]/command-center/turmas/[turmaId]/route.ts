@@ -19,6 +19,7 @@ const schema = z.object({
 // The explorer is an academic, read-only surface: no payments, BI, contacts or grades.
 const PAGE_SIZE = 20;
 const MAX_DISCIPLINES = 100;
+const MAX_SCHEDULE_SLOTS = 300;
 
 type TeacherRow = {
   id: string;
@@ -108,7 +109,7 @@ export async function GET(
 
     // Do not use the existing turma-details API: it truncates enrollments to 50
     // and mixes financial and historical data in the same payload.
-    const [enrollmentReply, disciplineReply, assignmentReply] = await Promise.all([
+    const [enrollmentReply, disciplineReply, assignmentReply, scheduleReply] = await Promise.all([
       studentsQuery,
       supabase.from("turma_disciplinas")
         .select("id,curso_matriz_id,professor_id,curso_matriz(id,disciplina_id,disciplinas_catalogo(id,nome))")
@@ -118,14 +119,35 @@ export async function GET(
         .select("id,professor_id,disciplina_id")
         .eq("escola_id", escolaId).eq("turma_id", turmaId)
         .order("id", { ascending: true }).limit(MAX_DISCIPLINES + 1),
+      supabase.from("quadro_horarios")
+        .select("id,professor_id,disciplina_id,versao_id")
+        .eq("escola_id", escolaId).eq("turma_id", turmaId)
+        .order("id", { ascending: true }).limit(MAX_SCHEDULE_SLOTS + 1),
     ]);
 
     if (enrollmentReply.error) throw enrollmentReply.error;
     if (disciplineReply.error) throw disciplineReply.error;
     if (assignmentReply.error) throw assignmentReply.error;
+    if (scheduleReply.error) throw scheduleReply.error;
+
+    // Include teachers whose only visible allocation is in a PUBLISHED timetable.
+    // Draft or archived timetable versions must not create professor links.
+    const scheduleVersionIds = [...new Set((scheduleReply.data ?? [])
+      .map((row) => row.versao_id).filter((id): id is string => Boolean(id)))];
+    const publishedVersionIds = new Set<string>();
+    if (scheduleVersionIds.length) {
+      const { data: rows, error } = await supabase.from("horario_versoes")
+        .select("id").eq("escola_id", escolaId).eq("turma_id", turmaId)
+        .eq("status", "publicada").in("id", scheduleVersionIds);
+      if (error) throw error;
+      for (const version of rows ?? []) publishedVersionIds.add(version.id);
+    }
+    const publishedAssignments = (scheduleReply.data ?? [])
+      .filter((row) => row.versao_id && publishedVersionIds.has(row.versao_id) && row.professor_id)
+      .map((row) => ({ id: row.id, professor_id: row.professor_id, disciplina_id: row.disciplina_id }));
 
     const disciplines = (disciplineReply.data ?? []) as unknown as DisciplineRow[];
-    const assignments = assignmentReply.data ?? [];
+    const assignments = [...(assignmentReply.data ?? []), ...publishedAssignments];
     const teacherIds = [...new Set([
       ...disciplines.map((d) => d.professor_id).filter((id): id is string => Boolean(id)),
       ...assignments.map((a) => a.professor_id).filter((id): id is string => Boolean(id)),
@@ -156,20 +178,24 @@ export async function GET(
       for (const subject of catalog ?? []) legacyNames.set(subject.id, subject.nome);
     }
 
-    const subjectsById = new Map<string, { id: string; nome: string; professores: Set<string> }>();
+    const subjectsById = new Map<string, { id: string; nome: string; professores: Set<string>; professorIds: Set<string> }>();
     for (const d of disciplines) {
       const catalog = d.curso_matriz?.disciplinas_catalogo;
       const id = catalog?.id || d.curso_matriz?.disciplina_id;
       if (!id) continue;
-      if (!subjectsById.has(id)) subjectsById.set(id, { id, nome: catalog?.nome || "Disciplina", professores: new Set() });
-      if (d.professor_id && teachers.has(d.professor_id)) subjectsById.get(id)!.professores.add(teachers.get(d.professor_id)!);
+      if (!subjectsById.has(id)) subjectsById.set(id, { id, nome: catalog?.nome || "Disciplina", professores: new Set(), professorIds: new Set() });
+      if (d.professor_id && teachers.has(d.professor_id)) {
+        subjectsById.get(id)!.professores.add(teachers.get(d.professor_id)!);
+        subjectsById.get(id)!.professorIds.add(d.professor_id);
+      }
     }
     for (const a of assignments) {
       const id = a.disciplina_id;
       if (!id) continue;
-      if (!subjectsById.has(id) && legacyNames.has(id)) subjectsById.set(id, { id, nome: legacyNames.get(id)!, professores: new Set() });
+      if (!subjectsById.has(id) && legacyNames.has(id)) subjectsById.set(id, { id, nome: legacyNames.get(id)!, professores: new Set(), professorIds: new Set() });
       if (!subjectsById.has(id) || !a.professor_id || !teachers.has(a.professor_id)) continue;
       subjectsById.get(id)!.professores.add(teachers.get(a.professor_id)!);
+      subjectsById.get(id)!.professorIds.add(a.professor_id);
     }
 
     const students = (enrollmentReply.data ?? []).map((row) => {
@@ -190,9 +216,15 @@ export async function GET(
           anoLetivo: { id: year.id, ano: year.ano, historico: historic },
         },
         alunos: { items: students, total, page: parsed.data.page, pageSize: PAGE_SIZE, hasMore: start + students.length < total },
-        disciplinas: [...subjectsById.values()].map((d) => ({ id: d.id, nome: d.nome, professores: [...d.professores].sort() })),
+        disciplinas: [...subjectsById.values()].map((d) => ({
+          id: d.id, nome: d.nome, professores: [...d.professores].sort(),
+          professoresDetalhes: [...d.professorIds].map((id) => ({ id, nome: teachers.get(id)! }))
+            .sort((a, b) => a.nome.localeCompare(b.nome, "pt")),
+        })),
         professores: [...new Set([...subjectsById.values()].flatMap((d) => [...d.professores]))].sort(),
-        disciplinasLimitadas: disciplines.length > MAX_DISCIPLINES || assignments.length > MAX_DISCIPLINES,
+        professoresDetalhes: [...teachers.entries()].map(([id, nome]) => ({ id, nome }))
+          .sort((a, b) => a.nome.localeCompare(b.nome, "pt")),
+        disciplinasLimitadas: disciplines.length > MAX_DISCIPLINES || (assignmentReply.data ?? []).length > MAX_DISCIPLINES || (scheduleReply.data ?? []).length > MAX_SCHEDULE_SLOTS,
       },
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (cause) {
