@@ -6,7 +6,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import {
-  classeEnrollmentStatuses, composeClasseOverview, isClasseTurmaInYear,
+  classeEnrollmentStatuses, composeClasseOverview, isClasseTurmaInYear, isClasseAvailableInYear,
   type ClasseAssignment, type ClasseEnrollment, type ClasseTurma,
 } from "@/lib/command-center/classe-explorer";
 
@@ -129,7 +129,7 @@ export async function GET(
       .slice(0, MAX_TURMAS);
     // Explicit classe.ano_letivo_id is often stale because KLASSE reuses
     // classe rows across years. A real turma in the requested year remains valid.
-    if (!turmas.length && classe.ano_letivo_id && classe.ano_letivo_id !== year.id) {
+    if (!isClasseAvailableInYear(classe.ano_letivo_id, year.id, turmas)) {
       return noStore({ ok: false, error: "Classe não encontrada neste ano letivo." }, 404);
     }
     const turmaIds = turmas.map((turma) => turma.id);
