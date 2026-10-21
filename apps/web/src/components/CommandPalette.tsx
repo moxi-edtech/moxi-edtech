@@ -19,6 +19,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Command } from "cmdk";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useGlobalSearch, type MinimalSearchResult } from "@/hooks/useGlobalSearch";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
@@ -81,10 +83,22 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
 
   const [open, setOpen] = React.useState(false);
   const [entityContext, setEntityContext] = React.useState<EntityContext | null>(null);
+  const reduceMotion = useReducedMotion();
+  // Only this palette owns the cache. Do not leak data between school/user sessions.
+  const [queryClient] = React.useState(() => new QueryClient({
+    defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
+  }));
   const onOpenChange = React.useCallback((next: boolean) => {
     setOpen(next);
-    if (!next) setEntityContext(null);
-  }, []);
+    if (!next) {
+      setEntityContext(null);
+      queryClient.clear();
+    }
+  }, [queryClient]);
+  React.useEffect(() => {
+    queryClient.clear();
+    setEntityContext(null);
+  }, [escolaId, portal, queryClient]);
   const { query, setQuery, results, loading, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
     portal,
   });
@@ -94,19 +108,22 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((current) => {
+          if (current) queryClient.clear();
+          return !current;
+        });
         setEntityContext(null);
       }
     };
 
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, []);
+  }, [queryClient]);
 
   const runCommand = React.useCallback((command: () => unknown) => {
-    setOpen(false);
+    onOpenChange(false);
     command();
-  }, []);
+  }, [onOpenChange]);
 
   const selectResult = React.useCallback((item: MinimalSearchResult) => {
     let href = item.href;
@@ -233,6 +250,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
         </kbd>
       </button>
 
+      <QueryClientProvider client={queryClient}>
       <Command.Dialog
         open={open}
         onOpenChange={onOpenChange}
@@ -242,7 +260,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
       >
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => onOpenChange(false)} />
         
-        <div className={`relative w-full ${entityContext ? "max-w-4xl" : "max-w-2xl"} overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200`}>
+        <motion.div layout={!reduceMotion} transition={{ layout: { duration: 0.18, ease: "easeOut" } }} className={`relative mx-2 w-full ${entityContext ? "max-w-4xl" : "max-w-2xl"} overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:mx-0`}>
           <DialogTitle className="sr-only">Buscar ou digitar ação</DialogTitle>
           <DialogDescription className="sr-only">Pesquisar alunos, turmas e operações disponíveis neste portal.</DialogDescription>
           {entityContext && (
@@ -268,7 +286,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
             )}
           </div>}
 
-          {!entityContext && <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
+          <AnimatePresence mode="wait" initial={false}>
+          {!entityContext && <motion.div key="search" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduceMotion ? undefined : { opacity: 0 }} transition={{ duration: 0.12 }}>
+          <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
             {detectedIntent && (
               <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl bg-emerald/5 border border-emerald/10">
                 <Zap className="h-3 w-3 text-emerald" />
@@ -328,9 +348,10 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                 ))}
               </Command.Group>
             )}
-          </Command.List>}
+          </Command.List>
+          </motion.div>}
           {entityContext && (
-            <section aria-label="Visão contextual" className="min-h-64 p-4 sm:p-6">
+            <motion.section key={`${entityContext.type}:${entityContext.id}`} initial={reduceMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, y: -4 }} transition={{ duration: 0.17 }} aria-label="Visão contextual" className="min-h-64 p-4 sm:p-6">
               {entityContext.type === "curso" ? (
                 <CourseContextView
                   context={entityContext}
@@ -353,8 +374,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                   }}><ExternalLink className="h-4 w-4" /> Abrir página existente</button>
                 </div>
               )}
-            </section>
+            </motion.section>
           )}
+          </AnimatePresence>
 
           <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3">
             <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium">
@@ -369,8 +391,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
               KLASSE Command Center
             </div>
           </div>
-        </div>
+        </motion.div>
       </Command.Dialog>
+      </QueryClientProvider>
     </>
   );
 }
