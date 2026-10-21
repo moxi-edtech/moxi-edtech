@@ -126,4 +126,24 @@ print("STAGED-COMPAT 20260324000000_ci_only_early_teachers_tables.sql")
 once("20260325000001_fix_admin_list_profiles_role_cast.sql",
     "CREATE OR REPLACE FUNCTION public.admin_list_profiles(",
     "DROP FUNCTION IF EXISTS public.admin_list_profiles(text[], integer);\n\nCREATE OR REPLACE FUNCTION public.admin_list_profiles(")
+# A SQL-language authorization helper in the April formação migration
+# refers to a cohort table defined further down IN THE SAME FILE. Reorder
+# the helper + its grant after the authentic CREATE TABLE, before RLS policies.
+formacao_path = root / "20260407130000_formacao_schema_rls_foundation.sql"
+formacao_sql = formacao_path.read_text()
+formacao_fn_start = "CREATE OR REPLACE FUNCTION public.can_access_formacao_cohort_as_formador("
+formacao_fn_end = "\n$$;\n"
+assert formacao_sql.count(formacao_fn_start) == 1
+start = formacao_sql.index(formacao_fn_start)
+end = formacao_sql.index(formacao_fn_end, start) + len(formacao_fn_end)
+helper = formacao_sql[start:end]
+formacao_sql = formacao_sql[:start] + formacao_sql[end:]
+grant = "GRANT EXECUTE ON FUNCTION public.can_access_formacao_cohort_as_formador(uuid, uuid) TO authenticated;\n"
+assert formacao_sql.count(grant) == 1
+formacao_sql = formacao_sql.replace(grant, "", 1)
+anchor = "-- =========================\n-- Clientes B2B e faturação em lote\n-- ========================="
+assert formacao_sql.count(anchor) == 1
+formacao_sql = formacao_sql.replace(anchor, helper + "\n" + grant + "\n" + anchor, 1)
+formacao_path.write_text(formacao_sql)
+print("STAGED-COMPAT SQL auth helper moved after real cohort table in April migration")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
