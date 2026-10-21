@@ -113,7 +113,7 @@ export default function BalcaoPageClient({
   const handleActionChange = useCallback((actionId: BalcaoActionId) => {
     if (actionId === activeAction) return;
     if (
-      activeAction === "enrollment" &&
+      activeAction === "enrollment" && unsavedWorkRef.current &&
       !window.confirm("Sair da nova matrícula? Alterações ainda não guardadas poderão perder-se. O aluno anterior continuará selecionado.")
     ) return;
 
@@ -127,7 +127,7 @@ export default function BalcaoPageClient({
     if (submittingRef.current) return; // Never change student during an in-flight write.
     // Este aviso protege a transição entre módulos. Ações já submetidas
     // continuam sob a autoridade do backend; não declarar sucesso localmente.
-    if ((activeAction !== "desk" || unsavedWorkRef.current) && !window.confirm(
+    if (unsavedWorkRef.current && !window.confirm(
       "Quer trocar de aluno? Dados ainda não guardados neste atendimento poderão perder-se."
     )) return;
 

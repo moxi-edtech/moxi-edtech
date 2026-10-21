@@ -80,7 +80,7 @@ export function BalcaoWorkspace({
   }, [escolaId, open]);
 
   const confirmLeavingEnrollment = useCallback(() => (
-    activeAction !== "enrollment" || completedEnrollmentRef.current ||
+    activeAction !== "enrollment" || completedEnrollmentRef.current || !hasUnsavedWorkRef.current ||
     window.confirm("Sair da nova matrícula? Alterações ainda não guardadas poderão perder-se. O aluno anterior continuará selecionado.")
   ), [activeAction]);
 
@@ -105,7 +105,7 @@ export function BalcaoWorkspace({
     }
     // Confirm only when actually selecting another student. Cancelling the
     // picker never loses an unsaved grade, payment or enrollment draft.
-    if (!window.confirm(
+    if (hasUnsavedWorkRef.current && !window.confirm(
       "Trocar de aluno? As alterações ainda não guardadas poderão perder-se.",
     )) return;
     studentRequestRef.current += 1;
