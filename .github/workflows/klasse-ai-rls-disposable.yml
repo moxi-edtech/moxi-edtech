@@ -1,0 +1,33 @@
+name: KLASSE AI Disposable RLS Contract
+on:
+  pull_request:
+    paths:
+      - 'supabase/ops/tests/klasse_ai_rls_disposable.sql'
+      - '.github/workflows/klasse-ai-rls-disposable.yml'
+      - 'apps/web/src/lib/assistant/data-copilot/**'
+permissions:
+  contents: read
+jobs:
+  synthetic-postgres-rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify real PostgreSQL RLS with synthetic school and campus identities
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/klasse_ai_rls_disposable.sql

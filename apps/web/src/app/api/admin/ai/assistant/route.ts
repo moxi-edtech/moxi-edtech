@@ -8,6 +8,7 @@ import { validateAiAccess, updateAiUsageLog } from "@/lib/server/ai/ai-guards";
 import { isFastPathQuery, processKlasseBrainQuery } from "@/lib/assistant/klasse-brain";
 import { hasAssistantPermission } from "@/lib/assistant/permission-registry";
 import { canUseOperationalCopilot } from "@/lib/roles/ai-roles";
+import { SchoolIntelligenceConversationSchema, classifySchoolQuestion, isStatisticalSchoolQuestion } from "@/lib/assistant/data-copilot/school-intelligence-contract";
 import type { AssistantResponse } from "@/lib/assistant/klasse-brain";
 import {
   upsertAiInsight,
@@ -24,6 +25,7 @@ const assistantSchema = z.object({
   schoolId: z.string().trim().min(1),
   message: z.string().trim().max(2000).optional(),
   intent: z.string().trim().optional(),
+  conversation: SchoolIntelligenceConversationSchema.optional(),
   context: z
     .object({
       module: z.enum([
@@ -41,6 +43,7 @@ const assistantSchema = z.object({
         .enum(["student", "guardian", "class", "teacher", "invoice", "notice", "none"])
         .optional(),
       entityId: z.string().uuid().optional(),
+      academicYearId: z.string().uuid().optional(),
       capabilities: z.array(z.string().max(64)).max(12).optional(),
       selectedCount: z.number().int().min(0).max(1000).optional(),
       readonly: z.boolean().optional(),
@@ -71,6 +74,7 @@ async function attachPersistedInsight(params: {
   supabase: Awaited<ReturnType<typeof supabaseServerTyped<DBWithRPC>>>;
 }) {
   const { result } = params;
+  if (result.toolId === "school-intelligence-catalog") return result; // No nominal data persisted.
   if (result.mode !== "data_query" || !result.insight || !result.toolId) return result;
 
   const metadata = TOOL_INSIGHT_METADATA[result.toolId] ?? {
@@ -111,7 +115,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { schoolId, message, context } = parsed.data;
+  const { schoolId, message, context, conversation } = parsed.data;
   const query = message || "";
 
   const supabase = await supabaseServerTyped<DBWithRPC>();
@@ -164,7 +168,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const isFastPath = isFastPathQuery(query, context);
+  const isFastPath = isFastPathQuery(query, context) || Boolean(classifySchoolQuestion(query, conversation)) || isStatisticalSchoolQuestion(query);
 
   if (isFastPath) {
     // Fast path: Process locally and return instantly without checking/charging AI credits
@@ -172,6 +176,8 @@ export async function POST(req: Request) {
     const rawResult = await processKlasseBrainQuery({
       schoolId: resolvedEscolaId,
       role,
+      userId: user.id,
+      conversation,
       query,
       context,
       operatingProfile,
@@ -196,6 +202,8 @@ export async function POST(req: Request) {
     const rawResult = await processKlasseBrainQuery({
       schoolId: resolvedEscolaId,
       role,
+      userId: user.id,
+      conversation,
       query,
       context,
       operatingProfile,
@@ -223,6 +231,8 @@ export async function POST(req: Request) {
     const rawResult = await processKlasseBrainQuery({
       schoolId: resolvedEscolaId,
       role,
+      userId: user.id,
+      conversation,
       query,
       context,
       allowedFeatures: access.settings?.allowed_features,
