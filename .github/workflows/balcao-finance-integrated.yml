@@ -27,6 +27,16 @@ jobs:
           # an ADD COLUMN migration. Preserve all originals and make the
           # precondition explicit without changing production migrations.
           cp supabase/ops/tests/balcao_full_ci_compat_aluno_id.sql supabase/migrations/20260202010999_ci_only_compat_aluno_id.sql
+          # Historical trigger ends with $function$ but opens with $$.
+          # Fix only its delimiter in the CI runner's *copy*, preserving the
+          # original PL/pgSQL body. Zero production migration changes.
+          python3 - <<'PYCI'
+          from pathlib import Path
+          path=Path('supabase/migrations/20260203000015_refactor_gerar_mensalidades_trigger.sql')
+          text=path.read_text()
+          assert text.count('AS $$') == 1 and text.count('$function$;') == 1
+          path.write_text(text.replace('AS $$','AS $function$',1))
+          PYCI
       - name: Start disposable Supabase with ALL original migrations
         run: |
           supabase start --exclude studio,mailpit,storage-api,imgproxy,logflare,vector,edge-runtime,realtime,supavisor,postgres-meta
