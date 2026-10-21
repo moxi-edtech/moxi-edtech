@@ -160,7 +160,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
       });
 
       // Não perder o ano letivo que a escola selecionou no portal de origem.
-      const academicYearId = currentParams.get(ACADEMIC_YEAR_PARAM);
+      const academicYearId = new URL(item.href, window.location.origin).searchParams.get(ACADEMIC_YEAR_PARAM) || currentParams.get(ACADEMIC_YEAR_PARAM);
       if (academicYearId) {
         const join = href.includes("?") ? "&" : "?";
         href += `${join}${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(academicYearId)}`;
@@ -398,7 +398,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                     label: student.label,
                     type: "aluno",
                     highlight: null,
-                    href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(student.id)}`),
+                    href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(student.id)}${entityContext.academicYearId ? `?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(entityContext.academicYearId)}` : ""}`),
                     actions: [],
                   })}
                 />
