@@ -12,7 +12,11 @@ const results = [];
 try {
   for (const [width,height] of [[360,640],[390,844],[1366,768]]) {
     for (const zoom of [1,1.25]) {
-      const page = await browser.newPage({ viewport: { width,height } });
+      // Emulate browser zoom by reducing CSS viewport dimensions; a CSS zoom
+      // on the root would enlarge fixed elements without changing 100vw.
+      const cssWidth = Math.floor(width / zoom);
+      const cssHeight = Math.floor(height / zoom);
+      const page = await browser.newPage({ viewport: { width: cssWidth, height: cssHeight } });
       const pageErrors = [];
       page.on('pageerror', err => pageErrors.push(err.message));
       await page.addInitScript(() => localStorage.clear());
@@ -25,7 +29,6 @@ try {
       assert.equal(await dialog.locator('[class*="bg-gradient"]').count(), 0, 'no decorative gradients in chat');
       const textarea = dialog.getByRole('textbox', {name:'Mensagem para o KLASSE IA'});
       assert.ok(await dialog.getByLabel('Sugestões de consulta').locator('button').count() > 0, 'initial suggestions remain available');
-      await page.evaluate(value => document.documentElement.style.zoom=String(value), zoom);
       const metrics = await dialog.evaluate(element => {
         const box = element.getBoundingClientRect();
         const input = element.querySelector('textarea');
@@ -34,8 +37,8 @@ try {
           inputFont:parseFloat(getComputedStyle(input).fontSize),
           bodyOverflow:Math.max(0,document.documentElement.scrollWidth-document.documentElement.clientWidth) };
       });
-      assert.ok(metrics.left >= -2 && metrics.right <= width+2, `horizontal bounds ${JSON.stringify(metrics)}`);
-      assert.ok(metrics.top >= -2 && metrics.bottom <= height+2, `vertical bounds ${JSON.stringify(metrics)}`);
+      assert.ok(metrics.left >= -2 && metrics.right <= cssWidth+2, `horizontal bounds ${JSON.stringify(metrics)}`);
+      assert.ok(metrics.top >= -2 && metrics.bottom <= cssHeight+2, `vertical bounds ${JSON.stringify(metrics)}`);
       assert.ok(metrics.inputFont >= 14, `composer is too small: ${metrics.inputFont}`);
       assert.ok(metrics.bodyOverflow <= 8, `page overflow: ${metrics.bodyOverflow}`);
       const filename = `${output}/${width}x${height}-${Math.round(zoom*100)}.png`;
@@ -51,7 +54,7 @@ try {
       await dialog.getByRole('button',{name:'Voltar ao assistente'}).click();
       await dialog.getByText('Diagnóstico', {exact:true}).waitFor();
       assert.deepEqual(pageErrors,[],`browser errors: ${pageErrors.join('; ')}`);
-      results.push({ width,height,zoom,filename,metrics,passed:true });
+      results.push({ width,height,zoom,cssWidth,cssHeight,filename,metrics,passed:true });
       await page.close();
     }
   }
