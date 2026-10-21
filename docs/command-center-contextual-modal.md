@@ -59,7 +59,8 @@ CommandPalette (cmdk + diálogo acessível)
 | API | `apps/web/src/app/api/escolas/[id]/command-center/cursos/[cursoId]/route.ts` | GET académico de leitura |
 | Agregação | `supabase/migrations/20271015100000_command_center_course_overview.sql` | Migração versionada, **não homologada** |
 | Modal de turma | `TurmaContextView.tsx` + `useTurmaContext.ts` | Implementação na branch; homologação autenticada pendente |
-| Modal próprio de classe ou professor | Ainda não existente | Fallback na pesquisa |
+| Modal de professor | `ProfessorContextView.tsx` + `useProfessorContext.ts` | Código implementado na PR empilhada sobre #225; homologação pendente |
+| Modal próprio de classe | Ainda não existente | Fallback na pesquisa |
 | Histórico/deep links do modal | Ainda não existente | Roadmap |
 
 **Constatação sobre o Supabase ligado (21/10/2026):** a RPC `command_center_course_overview` **não constava** no banco consultado. A rota poderá devolver **503** até ser instalada e testada no ambiente correto. A migração presente na branch não equivale a migração aplicada.
@@ -255,6 +256,30 @@ GET /api/escolas/{escolaId}/command-center/turmas/{turmaId}?ano_letivo_id={uuid}
 
 **Nota de engenharia:** a versão atual usa paginação por offset e join PostgREST; só declarar “concluído” quando a coerência dos totais e a consulta do professor/disciplinas forem verificadas num ambiente autenticado. Para conjuntos muito grandes, avaliar paginação por cursor.
 
+### 5.7 Contrato de professor — PR empilhada, ainda não homologado
+
+**GET:** `/api/escolas/{escolaId}/command-center/professores/{professorId}?ano_letivo_id={uuid}`
+
+A identidade da pesquisa usa `vw_search_professores.id = professores.id`, não `profiles.user_id`. A API valida a sessão, resolve a escola, exige os papéis K12 da leitura académica e resolve o ano letivo em `READ`. Revalida professor e todas as suas turmas no escopo de escola/ano, sem confiar no resultado da pesquisa.
+
+| Campo de resposta | Contrato |
+| --- | --- |
+| `professor` | `{id,nome}`, com fallback de `profiles.nome` para `professores.apelido` sem expor email ou BI |
+| `anoLetivo` | `{id,ano,historico}` |
+| `turmas` | `[{id,nome,turno,classeNome,cursoNome,disciplinas:[{id,nome}]}]`, apenas vínculos do professor e ano |
+| `disciplinas` | `[{id,nome,turmas}]`, deduplicadas por ID académico |
+| `horarios` | `[{turmaId,turmaNome,disciplinaNome,diaSemana,inicio,fim}]`, só de versões `publicada` e slots não intervalos |
+| `stats` | `turmas,disciplinas,aulasPublicadas` (sem derivar alunos distintos de listas limitadas) |
+| `limitado` | Verdadeiro quando vínculos ultrapassam janela de 500 por origem; indicadores marcados como parciais |
+
+**Origens:** `turma_disciplinas` (canónica), `turma_disciplinas_professores` (legado), `quadro_horarios` com `horario_versoes.status='publicada'` (aulas publicadas), `horario_slots` e `disciplinas_catalogo` da mesma escola. Turmas com `ano_letivo_id` explícito não podem ser atribuídas a outro ano apenas por coincidência do número `ano_letivo`.
+
+**TanStack Query:** chave `['command-center','professor',escolaId,professorId,academicYearId]`; fetch não persistido, cancelável, stale 30 s, gc 120 s, retry apenas de falhas transitórias. Erro nunca vira contagem zero. Cache privado limpo no fecho/mudança de escola.
+
+**Navegação:** pesquisa → professor → turma → professor, com regresso no mesmo modal, sem alterar páginas. A rota de turma passa IDs de professores autorizados para criar os links, não apenas nomes.
+
+**Fora do escopo:** emails, contactos, BI, remuneração, saldos, notas, chamadas e contagem de alunos distintos não agregada. **Aceite pendente:** testes RLS e GET autenticado, turmas de outro ano, professor de outra escola, draft/arquivado, origem legada, limite de 500, E2E de navegação, foco e Escape.
+
 ## 6. TanStack Query, cache, invalidação e Motion
 
 O hook `useCourseContext` está na branch e utiliza este contrato:
@@ -316,7 +341,7 @@ O modal contextual atualmente tenta abrir `curso|classe|turma|professor` nos por
 | **Curso** | Admin / Operações | **Vista inicial na branch** | Indicadores validados, classes/turmas completas, acesso a alunos |
 | **Classe** | Admin / Operações | Fallback | Turmas, vagas, matrícula, disciplinas, indicadores |
 | **Turma** | Secretaria / Admin / Operações | **Vista dedicada na branch** | Homologar alunos paginados, docentes, disciplinas e ligação ao Balcão |
-| **Professor** | Admin / Operações | Fallback | Turmas, disciplinas, carga, alocações por ano |
+| **Professor** | Admin / Operações | **Vista dedicada na PR empilhada** | Turmas, disciplinas, horários publicados por ano; homologação pendente |
 | **Aluno** | Secretaria / Financeiro / Operações / Professor / Aluno / Gestor | **Balcão existente**, conforme portal | Entrada contextual sem duplicar atendimento |
 | **Matrícula** | Secretaria / Operações | Navegação canónica | Estado, turma, ano e histórico corrigível |
 | **Documento** | Secretaria / Operações | Navegação canónica | Tipo, validade, descarga autorizada |
@@ -432,14 +457,21 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 **Gate:** exploração sem falsas listas vazias nem paginação enganosa.
 
 ### Fase 5 — Professor, disciplina e pedagogia
-- [ ] Validar vínculos professor ↔ disciplina ↔ turma ↔ ano.
-- [ ] Criar vista dedicada de professor e alocações.
-- [ ] Adicionar disciplina à pesquisa **só** com indexação e gate.
-- [ ] Criar visão de disciplina/turmas/carga curricular.
-- [ ] Integrar notas e avaliações apenas dentro das regras de publicação/permissão.
-- [ ] Testar professor com múltiplas escolas e anos.
+- [x] Auditar vínculos diretos, legados e de horários publicados no Supabase.
+- [x] Criar endpoint académico de professor com escola, papel e ano em modo READ.
+- [x] Criar vista dedicada: turmas, disciplinas, horários publicados e estados.
+- [x] Integrar navegação Professor → Turma e Turma → Professor, com pilha de regresso no mesmo modal.
+- [x] Consolidar vínculos por identificador sem duplicar turma, disciplina nem slot.
+- [x] Criar testes unitários de ano, deduplicação, cache e status publicado.
+- [ ] Homologar identidade e permissões com sessão autenticada; testar escola A/B e papéis.
+- [ ] Homologar professor com várias turmas/escolas/anos, perfis apagados e vínculos legados.
+- [ ] Validar typecheck, lint, build, testes e CI verde para a PR empilhada.
+- [ ] Definir agregação exata de alunos distintos do professor no PostgreSQL.
+- [ ] Adicionar disciplina à pesquisa apenas com fonte, índice e gate.
+- [ ] Criar explorador de disciplina/turmas/carga curricular.
+- [ ] Integrar notas/avaliações apenas com regras de publicação/permissão.
 
-**Gate:** dados pedagógicos autorizados.
+**Gate:** dados pedagógicos autorizados, CI verde e homologação. Itens marcados significam código versionado, não produção.
 
 ### Fase 6 — Restantes entidades e finanças
 - [ ] Matrícula e candidatura: estados e ações autorizadas.
@@ -476,7 +508,7 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 | P0 | Diferentes permissões para pesquisar, consultar e agir | Gates por entidade/ação e testes REST/RPC |
 | P0 | Recentes em `localStorage` por escola/portal, não utilizador | Minimizar e limpar por identidade/logout |
 | P1 | Vista de curso lista só até 100 turmas | Paginação server-side, não inferir vazio |
-| P1 | Classe e professor ainda são fallback; turma necessita homologação | Endpoints próprios e validação do explorador de turma |
+| P1 | Classe ainda é fallback; professor e turma precisam de homologação | Implementar classe em PR própria; validar exploradores existentes |
 | P1 | Breadcrumb não corresponde a Back/Forward real | Contrato seguro de deep link |
 | P1 | Retry automático não distingue 403 de falha transitória | Classificar status e evitar repetição inútil |
 | P1 | Cache não invalidado em todas as mutações escolares | Invalidação por tenant/entidade/ano |
