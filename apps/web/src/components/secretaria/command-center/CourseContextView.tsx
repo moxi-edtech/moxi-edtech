@@ -14,6 +14,7 @@ type Props = {
   portal?: string;
   onNavigate: (href: string) => void;
   onExploreTurma: (turma: { id: string; label: string; academicYearId: string }) => void;
+  onExploreClasse: (classe: { id: string; label: string; academicYearId: string }) => void;
   initialClasseId?: string | null;
   initialTurmaId?: string | null;
   onClasseChange?: (id: string | null) => void;
@@ -31,7 +32,7 @@ function Metric({ value, label }: { value: number; label: string }) {
   );
 }
 
-export function CourseContextView({ context, portal, onNavigate, onExploreTurma, initialClasseId, initialTurmaId, onClasseChange, onTurmaChange }: Props) {
+export function CourseContextView({ context, portal, onNavigate, onExploreTurma, onExploreClasse, initialClasseId, initialTurmaId, onClasseChange, onTurmaChange }: Props) {
   const { data, error, loading, retry } = useCourseContext(context);
   const reducedMotion = useReducedMotion();
   const [classeId, setClasseId] = useState<string | null>(initialClasseId ?? null);
@@ -127,6 +128,15 @@ export function CourseContextView({ context, portal, onNavigate, onExploreTurma,
             ))}
             {!data.classes.length && <p className="p-3 text-xs text-slate-500">Nenhuma classe vinculada ao curso neste ano.</p>}
           </div>
+          {selectedClasse && (
+            <div className="border-t border-slate-100 p-3">
+              <button type="button" onClick={() => onExploreClasse({
+                id: selectedClasse.id, label: selectedClasse.nome, academicYearId: data.anoLetivo.id,
+              })} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                Explorar classe <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="min-w-0 rounded-xl border border-slate-200 bg-white">
