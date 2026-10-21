@@ -25,9 +25,9 @@ describe("turma explorer policy", () => {
 
 describe("turma PostgREST relation regression", () => {
   it("selects the curriculum subject FK instead of the ambiguous assessment subject FK", () => {
-    assert.match(TURMA_DISCIPLINAS_SELECT, /disciplinas_catalogo!curso_matriz_disciplina_id_fkey\\(id,nome\\)/);
+    assert.match(TURMA_DISCIPLINAS_SELECT, /disciplinas_catalogo!curso_matriz_disciplina_id_fkey\(id,nome\)/);
     assert.doesNotMatch(TURMA_DISCIPLINAS_SELECT, /curso_matriz_avaliacao_disciplina_fk/);
-    assert.doesNotMatch(TURMA_DISCIPLINAS_SELECT, /disciplinas_catalogo\\(id,nome\\)/);
+    assert.doesNotMatch(TURMA_DISCIPLINAS_SELECT, /disciplinas_catalogo\(id,nome\)/);
   });
   it("retains PostgREST code and message without logging query details, hints or data", () => {
     assert.deepEqual(describeTurmaReadFailure({
