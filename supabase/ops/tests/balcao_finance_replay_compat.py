@@ -263,7 +263,7 @@ print("STAGED-COMPAT 20260701114500_ci_only_early_onboarding_tables.sql")
 # Stage original foreign keys from 2027 as well, not schema-weakening columns.
 crm_stage = (
     table_ddl("20270621183000_create_afiliado_membros.sql", "afiliado_membros",
-              "CREATE INDEX IF NOT EXISTS ix_afiliado_membros_afiliado_id") + "\n" +
+              "CREATE INDEX IF NOT EXISTS ix_afiliado_membros_afiliado_id\n  ON") + "\n" +
     table_ddl("20270623140000_create_crm_pre_sales_pipeline.sql", "crm_leads",
               "-- Index for fast queries") + "\n" +
     table_ddl("20270630143000_partner_tasks_and_commercial_proposals.sql", "partner_tasks",
