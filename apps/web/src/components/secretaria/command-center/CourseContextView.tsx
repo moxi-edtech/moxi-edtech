@@ -6,16 +6,8 @@ import { AlertCircle, ArrowUpRight, BookOpen, ChevronRight, GraduationCap, Loade
 import type { EntityContext } from "@/lib/command-center/entity-context";
 import { buildPortalHref } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { useCourseContext } from "@/hooks/useCourseContext";
 
-type CourseOverview = {
-  curso: { id: string; nome: string; codigo: string | null; nivel: string | null; descricao: string | null; status: string | null };
-  anoLetivo: { id: string; ano: number; ativo: boolean };
-  stats: { classes: number; turmas: number; alunos: number };
-  classes: Array<{ id: string; nome: string; turmas: number; alunos: number }>;
-  turmas: Array<{ id: string; nome: string; classeId: string | null; turno: string | null; capacidade: number | null; alunos: number }>;
-  turmasLimitadas: boolean;
-};
-type Reply = { ok: boolean; data?: CourseOverview; error?: string };
 type Props = {
   context: EntityContext;
   portal?: string;
@@ -34,43 +26,14 @@ function Metric({ value, label }: { value: number; label: string }) {
 }
 
 export function CourseContextView({ context, portal, onNavigate }: Props) {
-  const [data, setData] = useState<CourseOverview | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [retry, setRetry] = useState(0);
+  const { data, error, loading, retry } = useCourseContext(context);
   const [classeId, setClasseId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    setData(null);
-    setError(null);
     setClasseId(null);
     setTurmaId(null);
-    const qs = new URLSearchParams();
-    if (context.academicYearId) qs.set(ACADEMIC_YEAR_PARAM, context.academicYearId);
-    const url = `/api/escolas/${encodeURIComponent(context.escolaId)}/command-center/cursos/${encodeURIComponent(context.id)}${qs.size ? `?${qs.toString()}` : ""}`;
-
-    void fetch(url, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const reply = (await response.json().catch(() => null)) as Reply | null;
-        if (!response.ok || !reply?.ok || !reply.data || reply.data.curso?.id !== context.id) {
-          throw new Error(reply?.error || "Não foi possível carregar este curso.");
-        }
-        return reply.data;
-      })
-      .then((payload) => {
-        if (!controller.signal.aborted) setData(payload);
-      })
-      .catch((cause: unknown) => {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Falha ao carregar dados.");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [context.id, context.escolaId, context.academicYearId, retry]);
+  }, [context.id, context.escolaId, context.academicYearId]);
 
   const visibleTurmas = useMemo(
     () => (data?.turmas ?? []).filter((turma) => !classeId || turma.classeId === classeId),
@@ -99,7 +62,7 @@ export function CourseContextView({ context, portal, onNavigate }: Props) {
     return (
       <div role="alert" className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
         <p>{error || "Não foi possível obter a visão do curso."}</p>
-        <button type="button" className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 font-semibold text-rose-800" onClick={() => setRetry((current) => current + 1)}>
+        <button type="button" className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 font-semibold text-rose-800" onClick={() => void retry()}>
           <RefreshCw className="h-4 w-4" /> Tentar novamente
         </button>
       </div>
