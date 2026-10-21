@@ -125,6 +125,8 @@ export async function GET(
     let limitado = matrix.length > MAX_MATRIZ || legacy.length > MAX_LINKS || schedule.length > MAX_LINKS;
     const relevantMatrix = matrix.slice(0, MAX_MATRIZ);
     const matrixIds = relevantMatrix.map((row) => row.id);
+    const publishedVersionCandidates = [...new Set(schedule.slice(0, MAX_LINKS)
+      .map((row) => row.versao_id).filter((id): id is string => Boolean(id)))];
     const [directReply, versionReply] = await Promise.all([
       matrixIds.length
         ? supabase.from("turma_disciplinas")
@@ -132,25 +134,24 @@ export async function GET(
           .eq("escola_id", escolaId).in("curso_matriz_id", matrixIds)
           .order("id", { ascending: true }).limit(MAX_LINKS + 1)
         : Promise.resolve({ data: [] as LinkRow[], error: null }),
-      schedule.length
+      publishedVersionCandidates.length
         ? supabase.from("horario_versoes")
-          .select("id,turma_id")
-          .eq("escola_id", escolaId).eq("status", "publicada")
-          .in("id", [...new Set(schedule.slice(0, MAX_LINKS)
-            .map((row) => row.versao_id).filter((id): id is string => Boolean(id)))])
-        : Promise.resolve({ data: [] as Array<{ id: string; turma_id: string }>, error: null }),
+          .select("id,turma_id,status")
+          .eq("escola_id", escolaId)
+          .in("id", publishedVersionCandidates)
+        : Promise.resolve({ data: [] as Array<{ id: string; turma_id: string; status: string }>, error: null }),
     ]);
     if (directReply.error) throw directReply.error;
     if (versionReply.error) throw versionReply.error;
     const direct = (directReply.data ?? []) as LinkRow[];
     if (direct.length > MAX_LINKS) limitado = true;
     const publishedVersions = new Map(
-      (versionReply.data ?? []).map((row) => [row.id, row.turma_id] as const),
+      (versionReply.data ?? []).map((row) => [row.id, { turmaId: row.turma_id, status: row.status }] as const),
     );
     const publishedLinks = schedule.slice(0, MAX_LINKS).filter((row) =>
       row.versao_id &&
-      isPublishedDisciplinaVersion(publishedVersions.has(row.versao_id) ? "publicada" : null) &&
-      publishedVersions.get(row.versao_id) === row.turma_id,
+      isPublishedDisciplinaVersion(publishedVersions.get(row.versao_id)?.status) &&
+      publishedVersions.get(row.versao_id)?.turmaId === row.turma_id,
     );
 
     const links: DisciplinaAssignment[] = [
