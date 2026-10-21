@@ -258,6 +258,35 @@ early_onboarding = (
 )
 (root / "20260701114500_ci_only_early_onboarding_tables.sql").write_text(early_onboarding)
 print("STAGED-COMPAT 20260701114500_ci_only_early_onboarding_tables.sql")
+# July partner/CRM RPCs reference four real tables added only in June 2027.
+# Stage their original DDL with RLS enabled and no bypass/placeholder policy.
+# Stage original foreign keys from 2027 as well, not schema-weakening columns.
+crm_stage = (
+    table_ddl("20270621183000_create_afiliado_membros.sql", "afiliado_membros",
+              "CREATE INDEX IF NOT EXISTS ix_afiliado_membros_afiliado_id") + "\n" +
+    table_ddl("20270623140000_create_crm_pre_sales_pipeline.sql", "crm_leads",
+              "-- Index for fast queries") + "\n" +
+    table_ddl("20270630143000_partner_tasks_and_commercial_proposals.sql", "partner_tasks",
+              "CREATE INDEX IF NOT EXISTS idx_partner_tasks_afiliado_status_due") + "\n" +
+    table_ddl("20270630143000_partner_tasks_and_commercial_proposals.sql", "crm_commercial_proposals",
+              "CREATE UNIQUE INDEX IF NOT EXISTS ux_crm_commercial_proposals_crm_lead")
+)
+crm_real_fk_sources = {
+    "20270628120000_crm_lead_to_onboarding_conversion.sql": [
+        "ALTER TABLE public.onboarding_requests\n  ADD COLUMN IF NOT EXISTS crm_lead_id uuid REFERENCES public.crm_leads(id) ON DELETE SET NULL;",
+        "ALTER TABLE public.crm_leads\n  ADD COLUMN IF NOT EXISTS onboarding_request_id uuid REFERENCES public.onboarding_requests(id) ON DELETE SET NULL,\n  ADD COLUMN IF NOT EXISTS converted_at timestamptz,\n  ADD COLUMN IF NOT EXISTS converted_by_membro_id uuid REFERENCES public.afiliado_membros(id) ON DELETE SET NULL;",
+    ],
+    "20270629103000_crm_lead_responsavel_membro.sql": [
+        "ALTER TABLE public.crm_leads\n  ADD COLUMN IF NOT EXISTS responsavel_membro_id uuid REFERENCES public.afiliado_membros(id) ON DELETE SET NULL;",
+    ],
+}
+for source_name, statements in crm_real_fk_sources.items():
+    source_sql = (root / source_name).read_text()
+    for statement in statements:
+        assert source_sql.count(statement) == 1, (source_name, statement)
+        crm_stage += "\n" + statement + "\n"
+(root / "20260702113000_ci_only_early_crm_tables.sql").write_text(crm_stage)
+print("STAGED-COMPAT 20260702113000_ci_only_early_crm_tables.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
