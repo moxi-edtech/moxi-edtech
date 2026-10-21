@@ -364,6 +364,15 @@ assert second_template_table.startswith("CREATE TABLE IF NOT EXISTS public.calen
     "ALTER TABLE public.calendario_template_items ENABLE ROW LEVEL SECURITY;\n"
 )
 print("STAGED-COMPAT original MED template tables, strict RLS, no fake rows")
+# The very next August 2026 offering-to-calendar mapping already reads
+# 2027's exact MED editorial columns, enums, checks and updated_at trigger.
+# Stage the ORIGINAL additive, idempotent migration, then replay it in 2027.
+calendar_evolution = (root / "20270803100000_evolve_calendario_template_model.sql").read_text()
+assert calendar_evolution.startswith("-- Evolve the academic-calendar model")
+assert "ADD COLUMN IF NOT EXISTS estado text NOT NULL DEFAULT 'PUBLICADO'" in calendar_evolution
+assert "CREATE TRIGGER trg_set_updated_at_calendario_templates" in calendar_evolution
+(root / "20260805005000_ci_only_early_calendar_template_evolution.sql").write_text(calendar_evolution)
+print("STAGED-COMPAT 20260805005000_ci_only_early_calendar_template_evolution.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
