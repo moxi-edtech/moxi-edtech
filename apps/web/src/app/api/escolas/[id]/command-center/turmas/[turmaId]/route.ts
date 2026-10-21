@@ -5,6 +5,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
+import { turmaEnrollmentPolicy, turmaPageRange } from "@/lib/command-center/turma-explorer-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,8 @@ export async function GET(
     // Historical READ includes concluded enrollments, but never transferred-out ones.
     // Active-year counts only include enrolled students who remain active.
     const historic = year.status !== "ACTIVE";
-    const start = (parsed.data.page - 1) * PAGE_SIZE;
+    const { from: start, to: end } = turmaPageRange(parsed.data.page, PAGE_SIZE);
+    const policy = turmaEnrollmentPolicy(historic);
 
     let studentsQuery = supabase
       .from("matriculas")
@@ -100,9 +102,9 @@ export async function GET(
       .is("alunos.deleted_at", null)
       .order("numero_chamada", { ascending: true, nullsFirst: false })
       .order("id", { ascending: true })
-      .range(start, start + PAGE_SIZE - 1);
-    if (historic) studentsQuery = studentsQuery.in("status", ["ativo", "concluido"]);
-    else studentsQuery = studentsQuery.eq("status", "ativo").eq("ativo", true);
+      .range(start, end);
+    studentsQuery = studentsQuery.in("status", [...policy.statuses]);
+    if (policy.requireActive) studentsQuery = studentsQuery.eq("ativo", true);
 
     // Do not use the existing turma-details API: it truncates enrollments to 50
     // and mixes financial and historical data in the same payload.
