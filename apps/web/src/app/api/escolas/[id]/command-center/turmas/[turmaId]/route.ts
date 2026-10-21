@@ -222,6 +222,8 @@ export async function GET(
             .sort((a, b) => a.nome.localeCompare(b.nome, "pt")),
         })),
         professores: [...new Set([...subjectsById.values()].flatMap((d) => [...d.professores]))].sort(),
+        professoresDetalhes: [...teachers.entries()].map(([id, nome]) => ({ id, nome }))
+          .sort((a, b) => a.nome.localeCompare(b.nome, "pt")),
         disciplinasLimitadas: disciplines.length > MAX_DISCIPLINES || (assignmentReply.data ?? []).length > MAX_DISCIPLINES || (scheduleReply.data ?? []).length > MAX_SCHEDULE_SLOTS,
       },
     }, { headers: { "Cache-Control": "private, no-store" } });
