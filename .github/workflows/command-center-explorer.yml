@@ -56,10 +56,12 @@ jobs:
             src/hooks/useDisciplinaContext.ts \
             src/hooks/useClasseContext.ts \
             src/lib/command-center \
+            "src/app/api/escolas/[id]/command-center/turmas/[turmaId]/route.ts" \
             "src/app/api/escolas/[id]/command-center/professores/[professorId]/route.ts" \
             "src/app/api/escolas/[id]/command-center/disciplinas/route.ts" \
             "src/app/api/escolas/[id]/command-center/disciplinas/[disciplinaId]/route.ts" \
             "src/app/api/escolas/[id]/command-center/classes/[classeId]/route.ts" \
+            tests/unit/turma-explorer-policy.spec.ts \
             tests/unit/professor-contextual-explorer.spec.ts \
             tests/unit/disciplina-contextual-explorer.spec.ts \
             tests/unit/classe-contextual-explorer.spec.ts --max-warnings 0

@@ -5,7 +5,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
-import { turmaEnrollmentPolicy, turmaPageRange } from "@/lib/command-center/turma-explorer-policy";
+import { describeTurmaReadFailure, TURMA_DISCIPLINAS_SELECT, turmaEnrollmentPolicy, turmaPageRange } from "@/lib/command-center/turma-explorer-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -112,7 +112,7 @@ export async function GET(
     const [enrollmentReply, disciplineReply, assignmentReply, scheduleReply] = await Promise.all([
       studentsQuery,
       supabase.from("turma_disciplinas")
-        .select("id,curso_matriz_id,professor_id,curso_matriz(id,disciplina_id,disciplinas_catalogo(id,nome))")
+        .select(TURMA_DISCIPLINAS_SELECT)
         .eq("escola_id", escolaId).eq("turma_id", turmaId)
         .order("id", { ascending: true }).limit(MAX_DISCIPLINES + 1),
       supabase.from("turma_disciplinas_professores")
@@ -231,7 +231,7 @@ export async function GET(
     if (cause instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: cause.message }, { status: cause.status });
     }
-    console.error("[command-center/turma] read failed", cause instanceof Error ? cause.message : "unexpected");
+    console.error("[command-center/turma] read failed", describeTurmaReadFailure(cause));
     return NextResponse.json({ ok: false, error: "Não foi possível carregar esta turma." }, { status: 500 });
   }
 }
