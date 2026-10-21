@@ -21,3 +21,9 @@ Testes novos: `assistant-raa-official-summary.spec.ts` (agregação por turma, e
 **Não verificado:** E2E autenticado RLS real de duas escolas e dois polos, permissões diretamente na RPC por perfil, completude dos vínculos de polo, desempenho medido do resolvedor por até 24 matrículas e compatibilidade de todas as migrations em Postgres descartável. Até estas verificações, `OFFICIAL_FAILURE_RISK` permanece **desligada** e recusa, mesmo com o código funcional implementado. Não houve alterações de policies, migrations, motor académico ou produção.
 
 A única decisão pendente de negócio sobre esta pergunta seria querer **uma previsão antecipada** de reprovação; a instrução atual proíbe previsões e não existe critério RAA oficial de probabilidade. Nenhuma aprovação suplementar do utilizador é necessária para reconhecer as decisões **oficiais já calculadas** pelo sistema.
+
+## E2E PostgreSQL sintético (novo teste)
+
+`supabase/ops/tests/klasse_ai_rls_disposable.sql` executa RLS **real** em PostgreSQL 17 descartável sob um papel `NOSUPERUSER NOBYPASSRLS`, com identidades sintéticas: escola A/B, polos X/Y/Z, secretário X/Y, diretor A/B, administrador geral, financeiro, professor e aluno. Verifica `SELECT` e função `SECURITY INVOKER` direta, incluindo texto malicioso como parâmetro, sem acesso entre escolas ou polos e sem acesso de perfis não autorizados. CI: `.github/workflows/klasse-ai-rls-disposable.yml`.
+
+**Limite explícito:** esta é uma fixture com uma policy sintética, não um E2E da pilha Supabase Auth/RLS real de produção. A execução integral das 873 migrations e a prova de vínculo polo↔turma no schema do KLASSE permanecem bloqueadas. **Nenhuma flag é ativada com base apenas neste teste.**
