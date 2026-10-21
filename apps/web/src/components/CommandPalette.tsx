@@ -86,6 +86,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
   const [entityContext, setEntityContext] = React.useState<EntityContext | null>(null);
   const [parentCourse, setParentCourse] = React.useState<EntityContext | null>(null);
   const [courseClassId, setCourseClassId] = React.useState<string | null>(null);
+  const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
   const reduceMotion = useReducedMotion();
   // Only this palette owns the cache. Do not leak data between school/user sessions.
   const [queryClient] = React.useState(() => new QueryClient({
@@ -97,6 +98,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
       setEntityContext(null);
       setParentCourse(null);
       setCourseClassId(null);
+      setCourseTurmaId(null);
       queryClient.clear();
     }
   }, [queryClient]);
@@ -105,6 +107,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     setEntityContext(null);
     setParentCourse(null);
     setCourseClassId(null);
+    setCourseTurmaId(null);
   }, [escolaId, portal, queryClient]);
   const { query, setQuery, results, loading, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
     portal,
@@ -122,6 +125,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
         setEntityContext(null);
         setParentCourse(null);
         setCourseClassId(null);
+      setCourseTurmaId(null);
       }
     };
 
@@ -172,6 +176,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
       rememberResult(item);
       setParentCourse(null);
       setCourseClassId(null);
+      setCourseTurmaId(null);
       setEntityContext(context);
       return;
     }
@@ -369,8 +374,11 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                   context={entityContext}
                   portal={portal}
                   initialClasseId={courseClassId}
+                  initialTurmaId={courseTurmaId}
                   onClasseChange={setCourseClassId}
+                  onTurmaChange={setCourseTurmaId}
                   onExploreTurma={(turma) => {
+                    setCourseTurmaId(turma.id);
                     setParentCourse(entityContext);
                     setEntityContext({
                       type: "turma",
