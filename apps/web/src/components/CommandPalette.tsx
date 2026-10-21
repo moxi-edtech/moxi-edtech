@@ -29,6 +29,7 @@ import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { createEntityContext, type EntityContext } from "@/lib/command-center/entity-context";
 import { CourseContextView } from "@/components/secretaria/command-center/CourseContextView";
+import { TurmaContextView } from "@/components/secretaria/command-center/TurmaContextView";
 
 type Props = {
   escolaId?: string | null;
@@ -83,6 +84,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
 
   const [open, setOpen] = React.useState(false);
   const [entityContext, setEntityContext] = React.useState<EntityContext | null>(null);
+  const [parentCourse, setParentCourse] = React.useState<EntityContext | null>(null);
+  const [courseClassId, setCourseClassId] = React.useState<string | null>(null);
   const reduceMotion = useReducedMotion();
   // Only this palette owns the cache. Do not leak data between school/user sessions.
   const [queryClient] = React.useState(() => new QueryClient({
@@ -92,12 +95,16 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     setOpen(next);
     if (!next) {
       setEntityContext(null);
+      setParentCourse(null);
+      setCourseClassId(null);
       queryClient.clear();
     }
   }, [queryClient]);
   React.useEffect(() => {
     queryClient.clear();
     setEntityContext(null);
+    setParentCourse(null);
+    setCourseClassId(null);
   }, [escolaId, portal, queryClient]);
   const { query, setQuery, results, loading, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
     portal,
@@ -113,6 +120,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
           return !current;
         });
         setEntityContext(null);
+        setParentCourse(null);
+        setCourseClassId(null);
       }
     };
 
@@ -161,6 +170,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     const context = createEntityContext(item, escolaId, new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM));
     if (context && (portal === "admin" || portal === "operacoes" || portal === "secretaria")) {
       rememberResult(item);
+      setParentCourse(null);
+      setCourseClassId(null);
       setEntityContext(context);
       return;
     }
@@ -265,7 +276,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
           <DialogDescription className="sr-only">Pesquisar alunos, turmas e operações disponíveis neste portal.</DialogDescription>
           {entityContext && (
             <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
-              <button type="button" onClick={() => setEntityContext(null)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"><ArrowLeft className="h-4 w-4" /> Voltar à pesquisa</button>
+              <button type="button" onClick={() => { setEntityContext(parentCourse); setParentCourse(null); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"><ArrowLeft className="h-4 w-4" /> {parentCourse ? "Voltar ao curso" : "Voltar à pesquisa"}</button>
               <span className="truncate text-sm font-semibold text-slate-900">{entityContext.label}</span>
             </div>
           )}
@@ -357,10 +368,39 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                   key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`}
                   context={entityContext}
                   portal={portal}
+                  initialClasseId={courseClassId}
+                  onClasseChange={setCourseClassId}
+                  onExploreTurma={(turma) => {
+                    setParentCourse(entityContext);
+                    setEntityContext({
+                      type: "turma",
+                      id: turma.id,
+                      label: turma.label,
+                      escolaId: entityContext.escolaId,
+                      academicYearId: turma.academicYearId,
+                    });
+                  }}
                   onNavigate={(href) => {
                     onOpenChange(false);
                     router.push(href);
                   }}
+                />
+              ) : entityContext.type === "turma" ? (
+                <TurmaContextView
+                  context={entityContext}
+                  portal={portal}
+                  onNavigate={(href) => {
+                    onOpenChange(false);
+                    router.push(href);
+                  }}
+                  onStudentSelect={(student) => selectResult({
+                    id: student.id,
+                    label: student.label,
+                    type: "aluno",
+                    highlight: null,
+                    href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(student.id)}`),
+                    actions: [],
+                  })}
                 />
               ) : (
                 <div className="space-y-3">
