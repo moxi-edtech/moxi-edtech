@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AlertCircle, ArrowUpRight, BookOpen, ChevronRight, GraduationCap, Loader2, RefreshCw, UsersRound } from "lucide-react";
 
 import type { EntityContext } from "@/lib/command-center/entity-context";
@@ -27,6 +28,7 @@ function Metric({ value, label }: { value: number; label: string }) {
 
 export function CourseContextView({ context, portal, onNavigate }: Props) {
   const { data, error, loading, retry } = useCourseContext(context);
+  const reducedMotion = useReducedMotion();
   const [classeId, setClasseId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
 
@@ -78,12 +80,27 @@ export function CourseContextView({ context, portal, onNavigate }: Props) {
         </div>
         <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600">{data.curso.status || "Estado não informado"}</span>
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-3 sm:gap-3">
         <Metric label="Alunos matriculados" value={data.stats.alunos} />
         <Metric label="Turmas ativas" value={data.stats.turmas} />
         <Metric label="Classes" value={data.stats.classes} />
       </div>
 
+      <nav aria-label="Navegação contextual" className="flex flex-wrap items-center gap-1 text-xs text-slate-600">
+        <button type="button" className="rounded-lg px-2 py-1 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" onClick={() => { setClasseId(null); setTurmaId(null); }}>Curso</button>
+        {selectedClasse && (
+          <>
+            <ChevronRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+            <button type="button" className="rounded-lg px-2 py-1 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" onClick={() => setTurmaId(null)}>{selectedClasse.nome}</button>
+          </>
+        )}
+        {selectedTurma && (
+          <>
+            <ChevronRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+            <span aria-current="page" className="rounded-lg bg-slate-100 px-2 py-1 font-semibold text-slate-900">{selectedTurma.nome}</span>
+          </>
+        )}
+      </nav>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <section className="min-w-0 rounded-xl border border-slate-200 bg-white">
           <h3 className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 font-semibold text-[#1F6B3B]">
@@ -129,8 +146,9 @@ export function CourseContextView({ context, portal, onNavigate }: Props) {
         </section>
       </div>
 
+      <AnimatePresence initial={false} mode="wait">
       {selectedTurma && (
-        <section aria-label="Turma selecionada" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <motion.section key={selectedTurma.id} initial={reducedMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reducedMotion ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.16 }} aria-label="Turma selecionada" aria-live="polite" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div>
             <p className="font-semibold text-slate-900">{selectedTurma.nome}</p>
             <p className="mt-1 text-xs text-slate-600">
@@ -141,8 +159,9 @@ export function CourseContextView({ context, portal, onNavigate }: Props) {
             className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-2 font-semibold text-white hover:brightness-95">
             Abrir turma <ArrowUpRight className="h-4 w-4" />
           </button>
-        </section>
+        </motion.section>
       )}
+      </AnimatePresence>
       {data.turmasLimitadas && (
         <p className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> A lista mostra até 100 turmas. Os totais acima incluem todas as turmas elegíveis.
