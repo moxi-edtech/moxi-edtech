@@ -1,0 +1,846 @@
+{
+  "fixture": true,
+  "authBackend": false,
+  "captures": [
+    {
+      "tab": "desk",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1366x768-100.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1366x768-100.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1366x768-100.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1366x768-100.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1366x768-100.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1366x768-100.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1366x768-100.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1366x768-125.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1366x768-125.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1366x768-125.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1366x768-125.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1366x768-125.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1366x768-125.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1366x768-125.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1366x768-150.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1366x768-150.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1366x768-150.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1366x768-150.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1366x768-150.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1366x768-150.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1366x768-150.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1536x864-100.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1536x864-100.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1536x864-100.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1536x864-100.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1536x864-100.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1536x864-100.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1536x864-100.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1536x864-125.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1536x864-125.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1536x864-125.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1536x864-125.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1536x864-125.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1536x864-125.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1536x864-125.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1536x864-150.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1536x864-150.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1536x864-150.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1536x864-150.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1536x864-150.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1536x864-150.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1536x864-150.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1920x1080-100.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1920x1080-100.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1920x1080-100.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1920x1080-100.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1920x1080-100.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1920x1080-100.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1920x1080-100.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1920x1080-125.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1920x1080-125.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1920x1080-125.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1920x1080-125.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1920x1080-125.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1920x1080-125.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1920x1080-125.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-1920x1080-150.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-1920x1080-150.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-1920x1080-150.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-1920x1080-150.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-1920x1080-150.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-1920x1080-150.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-1920x1080-150.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-768x1024-100.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-768x1024-100.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-768x1024-100.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-768x1024-100.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-768x1024-100.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-768x1024-100.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-768x1024-100.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-768x1024-125.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-768x1024-125.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-768x1024-125.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-768x1024-125.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-768x1024-125.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-768x1024-125.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-768x1024-125.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-768x1024-150.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-768x1024-150.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-768x1024-150.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-768x1024-150.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-768x1024-150.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-768x1024-150.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-768x1024-150.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-390x844-100.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-390x844-100.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-390x844-100.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-390x844-100.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-390x844-100.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-390x844-100.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-390x844-100.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-390x844-125.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-390x844-125.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-390x844-125.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-390x844-125.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-390x844-125.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-390x844-125.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-390x844-125.jpg"
+    },
+    {
+      "tab": "desk",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/desk-390x844-150.jpg"
+    },
+    {
+      "tab": "payment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/payment-390x844-150.jpg"
+    },
+    {
+      "tab": "profile",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/profile-390x844-150.jpg"
+    },
+    {
+      "tab": "enrollment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/enrollment-390x844-150.jpg"
+    },
+    {
+      "tab": "document",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/document-390x844-150.jpg"
+    },
+    {
+      "tab": "grade",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/grade-390x844-150.jpg"
+    },
+    {
+      "tab": "reenrollment",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence-m3/reenrollment-390x844-150.jpg"
+    }
+  ]
+}

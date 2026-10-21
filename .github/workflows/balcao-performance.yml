@@ -54,6 +54,7 @@ jobs:
         run: |
           node apps/web/scripts/performance/balcao-behavior.mjs
           node apps/web/scripts/performance/balcao-history.mjs
+          node apps/web/scripts/performance/balcao-route-e2e.mjs
       - name: Repeated navigation benchmark
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-perf-tools/node_modules/playwright/index.mjs

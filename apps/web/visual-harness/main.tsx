@@ -5,6 +5,7 @@ import { BalcaoWorkspace } from "../src/components/secretaria/BalcaoWorkspace";
 import { RetainedActionPanels } from "../src/components/secretaria/command-center/RetainedActionPanels";
 import { useBalcaoDraftForm } from "../src/components/secretaria/command-center/BalcaoDraftState";
 import type { BalcaoActionId } from "../src/lib/balcao/action-registry";
+import { readBalcaoStudentId, setBalcaoLocationContext } from "../src/lib/balcao/return-context";
 import { FeedbackProvider } from "../src/components/feedback/FeedbackSystem";
 import "./fixture.css";
 import "../src/app/globals.css";
@@ -79,10 +80,10 @@ function SyntheticDraftFields({ action, student }: { action: BalcaoActionId; stu
   const [saved, setSaved] = React.useState({ value: "", attached: null as string | null });
   const [submitting, setSubmitting] = React.useState(false);
   useBalcaoDraftForm(action, { value, attached }, saved, { submitting });
-  return <div className="rounded-xl border p-3">
+  return <div className="min-w-0 max-w-full rounded-xl border p-3">
     <p data-testid={`target-${action}`}>{action === "enrollment" ? "Nova matrícula: aluno-alvo não selecionado" : "Aluno atual: "+student}</p>
     <label>Rascunho <input value={value} onChange={e=>setValue(e.target.value)} data-testid={`draft-${action}`} /></label>
-    <label>Comprovativo <input type="file" data-testid={`file-${action}`} onChange={e=>setAttached(e.target.files?.[0]?.name ?? null)} /></label>
+    <label className="block min-w-0 max-w-full">Comprovativo <input className="block w-full min-w-0 max-w-full" type="file" data-testid={`file-${action}`} onChange={e=>setAttached(e.target.files?.[0]?.name ?? null)} /></label>
     <button type="button" data-testid={`programmatic-${action}`} onClick={()=>setValue("Gerado via React state")}>Programático</button>
     <button type="button" data-testid={`clear-${action}`} onClick={()=>{setValue("");setAttached(null)}}>Reverter</button>
     <button type="button" data-testid={`save-${action}`} onClick={()=>setSaved({value,attached})}>Guardar confirmado</button>
@@ -132,9 +133,78 @@ function BalcaoRetentionFixture() {
   </main>;
 }
 
+// Synthetic role-scoped integration of the *real* URL return-context helpers,
+// React retained panel and generation race guard. It does not claim to exercise
+// a Supabase-authenticated Next.js route or RLS; that remains a separate M2/M3
+// gate requiring an intact disposable full migration replay.
+function BalcaoRouteFixture() {
+  const read = () => new URLSearchParams(window.location.search);
+  const [currentAction, setCurrentAction] = React.useState<BalcaoActionId>("desk");
+  const [studentId, setStudentId] = React.useState<string | null>("student-a");
+  const [studentLabel, setStudentLabel] = React.useState("Aluno A · fictício");
+  const [dirty, setDirty] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const requestId = React.useRef(0);
+  const actionFromLocation = () => {
+    const params=read();
+    const value=params.get("action");
+    const action = (["desk","payment","profile","enrollment","document","grade","reenrollment"] as string[]).includes(value || "")
+      ? value as BalcaoActionId : "desk";
+    setCurrentAction(action);
+    setStudentId(readBalcaoStudentId(params,action));
+  };
+  React.useEffect(() => {
+    const params=read();
+    if (!params.get("alunoId")) {
+      const next=setBalcaoLocationContext(params,"student-a","desk");
+      window.history.replaceState(window.history.state,"","?"+next);
+    }
+    actionFromLocation();
+    window.addEventListener("popstate",actionFromLocation);
+    return ()=>window.removeEventListener("popstate",actionFromLocation);
+  },[]);
+  const visit = (action: BalcaoActionId) => {
+    const next=setBalcaoLocationContext(read(),studentId,action);
+    window.history.pushState(window.history.state,"","?"+next);
+    setCurrentAction(action);
+  };
+  const select = (id:string, delayMs:number) => {
+    if (submitting || (dirty && !window.confirm("Alterações pendentes. Trocar de aluno?"))) return;
+    const generation=++requestId.current;
+    window.setTimeout(()=>{
+      if(generation!==requestId.current)return;
+      setStudentId(id);
+      setStudentLabel(id==="student-b"?"Aluno B · fictício":"Aluno A · fictício");
+      setCurrentAction("desk");
+      const next=setBalcaoLocationContext(read(),id,"desk");
+      window.history.replaceState(window.history.state,"","?"+next);
+    },delayMs);
+  };
+  return <main className="mx-auto max-w-3xl space-y-4 p-5" data-testid="balcao-route-fixture">
+    <h1>Balcão / navegação autenticada em fixture (sem backend real)</h1>
+    <p data-testid="route-actor">secretaria-fixture-role</p>
+    <p data-testid="route-student">{studentId ?? "sem aluno"}</p>
+    <p data-testid="route-action">{currentAction}</p>
+    <p data-testid="route-dirty">{String(dirty)}</p>
+    <nav aria-label="Abas do atendimento" className="flex flex-wrap gap-2">
+      {(["desk","payment","profile","enrollment","document","grade","reenrollment"] as const).map(tab=>
+        <button type="button" data-testid={"route-go-"+tab} key={tab} onClick={()=>visit(tab)}>{tab}</button>
+      )}
+      <button type="button" data-testid="route-select-slow-a" onClick={()=>select("student-a",450)}>Selecionar A, atraso</button>
+      <button type="button" data-testid="route-select-fast-b" onClick={()=>select("student-b",15)}>Selecionar B, rápido</button>
+    </nav>
+    <RetainedActionPanels key={"secretaria-fixture:escola-a:polo-a:"+studentId} activeAction={currentAction}
+      contextSignature={"secretaria-fixture:escola-a:polo-a:"+studentId}
+      onUnsavedChange={setDirty} onSubmittingChange={setSubmitting}
+      renderAction={panel=> <SyntheticDraftFields action={panel} student={studentLabel}/>}
+    />
+  </main>;
+}
+
 const Scene = stories[name]?.render;
 const target = document.getElementById("root");
-if (target && name === "balcao-retention") createRoot(target).render(<BalcaoRetentionFixture />);
+if (target && name === "balcao-route") createRoot(target).render(<BalcaoRouteFixture />);
+else if (target && name === "balcao-retention") createRoot(target).render(<BalcaoRetentionFixture />);
 else if (target && name === "balcao-perf") {
   const metrics = { commits: 0, duration: 0 };
   Object.assign(window, { __balcaoPerf: metrics });
