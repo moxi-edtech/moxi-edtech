@@ -106,4 +106,18 @@ seed_source = seed_source.replace(duplicate, "", 1)
 (root / "20261127000001_curriculum_presets_seed.sql").write_text(seed_source)
 print("STAGED-COMPAT one byte-identical duplicate removed from the 1,313 source subject rows")
 print("STAGED-COMPAT 20260321065000_ci_only_early_curriculum_seed.sql")
+# March backfill/triggers refer to public.teachers, which is not created
+# until November. Stage ONLY exact CREATE TABLE statements (no fake rows or
+# permissive policies). Enable RLS immediately, so the early table fails
+# closed. November authentic migration installs indexes/guards/policies.
+teachers_source = (root / "20261128030000_create_teachers_tables.sql").read_text()
+assert teachers_source.startswith("create table if not exists public.teachers (")
+assert "create table if not exists public.teacher_skills (" in teachers_source
+teachers_ddl = teachers_source.split("create unique index if not exists teachers_escola_profile_uidx", 1)[0]
+skills_ddl = "create table if not exists public.teacher_skills (" + teachers_source.split("create table if not exists public.teacher_skills (", 1)[1].split("create unique index if not exists teacher_skills_teacher_disciplina_uidx", 1)[0]
+assert teachers_ddl.rstrip().endswith(");") and skills_ddl.rstrip().endswith(");")
+(root / "20260324000000_ci_only_early_teachers_tables.sql").write_text(
+    teachers_ddl + "\n" + skills_ddl + "\nALTER TABLE public.teachers ENABLE ROW LEVEL SECURITY;\nALTER TABLE public.teacher_skills ENABLE ROW LEVEL SECURITY;\n"
+)
+print("STAGED-COMPAT 20260324000000_ci_only_early_teachers_tables.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
