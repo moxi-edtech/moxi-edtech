@@ -456,6 +456,13 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                       academicYearId: professor.academicYearId,
                     });
                   }}
+                  onExploreDisciplina={(disciplina) => {
+                    setContextTrail((trail) => [...trail, entityContext]);
+                    setEntityContext({
+                      type: "disciplina", id: disciplina.id, label: disciplina.label,
+                      escolaId: entityContext.escolaId, academicYearId: disciplina.academicYearId,
+                    });
+                  }}
                 />
               ) : entityContext.type === "professor" ? (
                 <ProfessorContextView
@@ -469,6 +476,36 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                       label: turma.label,
                       escolaId: entityContext.escolaId,
                       academicYearId: turma.academicYearId,
+                    });
+                  }}
+                  onExploreDisciplina={(disciplina) => {
+                    setContextTrail((trail) => [...trail, entityContext]);
+                    setEntityContext({
+                      type: "disciplina", id: disciplina.id, label: disciplina.label,
+                      escolaId: entityContext.escolaId, academicYearId: disciplina.academicYearId,
+                    });
+                  }}
+                  onNavigate={(href) => {
+                    onOpenChange(false);
+                    router.push(href);
+                  }}
+                />
+              ) : entityContext.type === "disciplina" ? (
+                <DisciplinaContextView
+                  context={entityContext}
+                  portal={portal}
+                  onExploreProfessor={(professor) => {
+                    setContextTrail((trail) => [...trail, entityContext]);
+                    setEntityContext({
+                      type: "professor", id: professor.id, label: professor.label,
+                      escolaId: entityContext.escolaId, academicYearId: professor.academicYearId,
+                    });
+                  }}
+                  onExploreTurma={(turma) => {
+                    setContextTrail((trail) => [...trail, entityContext]);
+                    setEntityContext({
+                      type: "turma", id: turma.id, label: turma.label,
+                      escolaId: entityContext.escolaId, academicYearId: turma.academicYearId,
                     });
                   }}
                   onNavigate={(href) => {
