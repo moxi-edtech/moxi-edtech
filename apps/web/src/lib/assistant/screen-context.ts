@@ -11,6 +11,7 @@ export type AiWidgetContext = {
   page?: string;
   entityType?: "student" | "guardian" | "class" | "teacher" | "invoice" | "notice" | "none";
   entityId?: string;
+  academicYearId?: string;
   capabilities?: string[];
   selectedCount?: number;
   readonly?: boolean;

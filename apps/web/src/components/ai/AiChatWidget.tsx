@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { describeScreenContext, type AiWidgetContext } from "@/lib/assistant/screen-context";
+import type { SchoolIntelligenceConversation } from "@/lib/assistant/data-copilot/school-intelligence-contract";
 import { canUseOperationalCopilot } from "@/lib/roles/ai-roles";
 import { getActionsForRole, ASSISTANT_ACTIONS } from "@/lib/assistant/action-registry";
 import type { AssistantActionV2 } from "@/lib/assistant/actions-v2";
@@ -74,6 +75,7 @@ type AssistantResponsePayload = {
   insight?: InsightPayload;
   aiInsightId?: string;
   fallbackReason?: "permission_denied" | "knowledge_not_found" | "provider_unavailable" | "data_unavailable";
+  conversation?: SchoolIntelligenceConversation;
   clarification?: {
     question: string;
     options: Array<{ label: string; value: string }>;
@@ -243,6 +245,10 @@ export default function AiChatWidget({
   const [selectedTopic, setSelectedTopic] = useState<HelpTopic | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [queryCache] = useState(() => new Map<string, AssistantResponsePayload>());
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const intelligenceConversationRef = useRef<SchoolIntelligenceConversation | null>(null);
+  const queryEpochRef = useRef(0);
+  const [activeAcademicYearId, setActiveAcademicYearId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [position, setPosition] = useState<{ right: number; bottom: number }>({ right: 24, bottom: 24 });
@@ -300,6 +306,8 @@ export default function AiChatWidget({
 
         // Block student, teacher, guardian profiles from viewing the assistant completely
         if (!canUseOperationalCopilot(roleStr)) {
+          intelligenceConversationRef.current = null;
+          setSessionUserId(null);
           setIsAllowed(false);
           setCheckingAccess(false);
           return;
@@ -307,9 +315,14 @@ export default function AiChatWidget({
 
         setResolvedSchoolId(typeof data.schoolId === "string" ? data.schoolId : null);
         setUserRole(roleStr);
+        setSessionUserId(typeof data.userId === "string" ? data.userId : null);
         setIsAllowed(Boolean(res.ok && json?.ok && data.allowed));
       } catch {
-        if (active) setIsAllowed(false);
+        if (active) {
+          intelligenceConversationRef.current = null;
+          setSessionUserId(null);
+          setIsAllowed(false);
+        }
       } finally {
         if (active) setCheckingAccess(false);
       }
@@ -323,10 +336,33 @@ export default function AiChatWidget({
   // A mudança de escola invalida toda a conversa e qualquer proposta anterior.
   // Não reutilizar mensagens com dados de alunos entre tenants.
   useEffect(() => {
+    queryEpochRef.current += 1;
+    intelligenceConversationRef.current = null;
+    queryCache.clear();
     setMessages([]);
     setFlow(null);
     setResolvedSchoolId(null);
-  }, [schoolId]);
+    setSessionUserId(null);
+    setActiveAcademicYearId(null);
+  }, [schoolId, queryCache]);
+
+  // The active academic year is read from the user's selected route, not guessed by the LLM.
+  useEffect(() => {
+    const update = () => {
+      const value = new URLSearchParams(window.location.search).get("ano_letivo_id");
+      const valid = value && /^[a-f\d-]{36}$/i.test(value) ? value : null;
+      setActiveAcademicYearId((current) => {
+        if (current !== valid) {
+          intelligenceConversationRef.current = null;
+          queryEpochRef.current += 1;
+        }
+        return valid;
+      });
+    };
+    update();
+    window.addEventListener("popstate", update);
+    return () => window.removeEventListener("popstate", update);
+  }, [pathname]);
 
   useEffect(() => {
     if (!isAllowed) return;
@@ -892,8 +928,9 @@ export default function AiChatWidget({
   }
 
   async function handleGeneralQuery(text: string) {
+    const requestEpoch = queryEpochRef.current;
     setThinking(true);
-    const contextualQuery = resolveConversationalQuery(text, messages);
+    const contextualQuery = intelligenceConversationRef.current ? text : resolveConversationalQuery(text, messages);
 
     // Client-side local Cache logic for high performance & instant responses
     const cacheKey = `${effectiveSchoolId}:${userRole}:${contextualQuery.toLowerCase().trim()}:${context?.module || "any"}`;
@@ -923,11 +960,23 @@ export default function AiChatWidget({
         body: JSON.stringify({
           schoolId: effectiveSchoolId,
           message: contextualQuery,
-          context,
+          context: { ...context, academicYearId: activeAcademicYearId ?? context?.academicYearId },
+          conversation: intelligenceConversationRef.current &&
+            intelligenceConversationRef.current.userId === sessionUserId &&
+            intelligenceConversationRef.current.schoolId === effectiveSchoolId
+              ? intelligenceConversationRef.current : undefined,
         }),
+        signal: AbortSignal.timeout(7_500),
       });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao consultar assistente.");
+      if (requestEpoch !== queryEpochRef.current) return; // logout, school/year switch
+      if (!res.ok || !json?.ok) {
+        if (res.status === 401 || res.status === 403) intelligenceConversationRef.current = null;
+        throw new Error(json?.error || "Erro ao consultar assistente.");
+      }
+      intelligenceConversationRef.current = json.conversation &&
+        json.conversation.userId === sessionUserId && json.conversation.schoolId === effectiveSchoolId
+          ? json.conversation : null;
 
       if (json.mode === "fast_path") {
         queryCache.set(cacheKey, json);
@@ -942,11 +991,20 @@ export default function AiChatWidget({
           aiInsightId: json.aiInsightId,
           quickReplies: json.clarification?.options.map((option: { label: string; value: string }) => ({ label: option.label, action: `clarification:${encodeURIComponent(option.value)}` }))
             ?? json.suggestions?.map((s: AssistantSuggestionPayload) => ({ label: s.title, action: `suggestion:${s.key}` }))
-            ?? (json.fallbackReason === "data_unavailable" ? [{ label: "Tentar novamente", action: `retry_query:${encodeURIComponent(contextualQuery)}` }] : undefined),
+            ?? (json.conversation?.intent === "teacher_grade_deadlines" ? [
+              { label: "Ver lista de professores", action: `clarification:${encodeURIComponent("Quais são esses professores?")}` },
+            ] : json.conversation?.intent === "teacher_pending_details" ? [
+              { label: "Próxima página", action: `clarification:${encodeURIComponent("Próxima página")}` },
+            ] : (json.fallbackReason === "data_unavailable" || json.insight?.provenance?.freshness === "unknown") ? [
+              { label: "Tentar novamente", action: `retry_query:${encodeURIComponent(contextualQuery)}` },
+            ] : undefined),
         }),
       ]);
     } catch (err) {
-      pushMessages([ai(errorMessage(err, "Erro ao obter resposta do assistente."))]);
+      if (requestEpoch !== queryEpochRef.current) return;
+      pushMessages([ai(`${errorMessage(err, "Erro ao obter resposta do assistente.")} A consulta não alterou dados. Pode tentar novamente.`, {
+        quickReplies: [{ label: "Tentar novamente", action: `retry_query:${encodeURIComponent(contextualQuery)}` }],
+      })]);
     } finally {
       setThinking(false);
     }
@@ -1157,7 +1215,7 @@ export default function AiChatWidget({
                                     Fonte: <span className="font-semibold">{formatInsightSource(message.insight.provenance.source)}</span>
                                     {" · "}{message.insight.provenance.scope}
                                     {" · "}{message.insight.provenance.freshness === "live" ? "consulta ao vivo" : message.insight.provenance.freshness === "partial" ? "cobertura parcial" : "atualidade não confirmada"}
-                                    {" · Consultado "}{new Date(message.insight.provenance.consultedAt).toLocaleString("pt-AO")}
+                                    {" · Consultado "}{new Date(message.insight.provenance.consultedAt).toLocaleString("pt-AO", { timeZone: "Africa/Luanda", timeZoneName: "short" })}
                                   </p>
                                   {message.insight.provenance.limitation ? <p className="mt-1 text-amber-700">Limitação: {message.insight.provenance.limitation}</p> : null}
                                 </div>
@@ -1264,7 +1322,7 @@ export default function AiChatWidget({
                   {thinking ? (
                     <div className="flex justify-start">
                       <div className="rounded-lg border bg-white px-3 py-2 text-xs text-slate-500">
-                        <span className="inline-block animate-pulse">Processando...</span>
+                        <span className="inline-block animate-pulse" role="status" aria-live="polite">A consultar os dados da escola...</span>
                       </div>
                     </div>
                   ) : null}

@@ -23,7 +23,7 @@ export const studentEnrollmentContextTool: DataCopilotTool = {
     if (studentError) throw studentError;
     if (!student) return null;
     const { data: enrollments, error: enrollmentError } = await supabase.from("matriculas")
-      .select("id,turma_id,status,ano_letivo_id").eq("aluno_id", studentId).eq("escola_id", schoolId)
+      .select("id,turma_id,status,ano_letivo").eq("aluno_id", studentId).eq("escola_id", schoolId)
       .limit(10);
     if (enrollmentError) throw enrollmentError;
     const rows = enrollments ?? [];
@@ -35,7 +35,7 @@ export const studentEnrollmentContextTool: DataCopilotTool = {
         recommendation: "Confirme o ano lectivo e a matrícula pretendida antes de preparar uma correcção. A operação exige a autorização do serviço canónico.",
         evidence: [
           { label: "Matrículas consultadas", value: String(rows.length) },
-          ...rows.map((row, index) => ({ label: `Matrícula ${index + 1}`, value: `ID ${row.id}; turma ${row.turma_id ?? "não atribuída"}; ano ${row.ano_letivo_id ?? "não definido"}; estado ${row.status ?? "não definido"}` })),
+          ...rows.map((row, index) => ({ label: `Matrícula ${index + 1}`, value: `ID ${row.id}; turma ${row.turma_id ?? "não atribuída"}; ano ${row.ano_letivo ?? "não definido"}; estado ${row.status ?? "não definido"}` })),
         ],
         actions: [],
       },

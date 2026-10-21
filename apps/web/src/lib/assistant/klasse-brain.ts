@@ -5,6 +5,7 @@ import { searchKnowledge } from "./knowledge-search";
 import { AiWidgetContext, describeScreenContext, sanitizeContextForAi } from "./screen-context";
 import { createAssistantActionV2, filterAssistantActionsV2ForProfile, instantiateAssistantActionV2, type AssistantActionV2 } from "./actions-v2";
 import { runDataCopilotTool } from "./data-copilot/tool-registry";
+import { isStatisticalSchoolQuestion } from "./data-copilot/school-intelligence-contract";
 import { normalizeAssistantText } from "./data-copilot/query-matcher";
 import type { InsightAnswer } from "./data-copilot/types";
 import { updateAiUsageLog } from "@/lib/server/ai/ai-guards";
@@ -26,6 +27,7 @@ export type AssistantResponse = {
   insight?: InsightAnswer;
   toolId?: string;
   aiInsightId?: string;
+  conversation?: import("./data-copilot/school-intelligence-contract").SchoolIntelligenceConversation;
   links?: Array<{ label: string; href: string }>;
   requiresApproval?: boolean;
   clarification?: {
@@ -209,6 +211,8 @@ function canUseAssistantRoute(route: KlasseRoute, profile?: SchoolOperatingProfi
 
 export async function processKlasseBrainQuery(params: {
   schoolId: string;
+  userId?: string;
+  conversation?: unknown;
   role: string;
   query: string;
   context?: AiWidgetContext;
@@ -216,7 +220,7 @@ export async function processKlasseBrainQuery(params: {
   usageLogId?: string;
   operatingProfile?: SchoolOperatingProfile;
 }): Promise<AssistantResponse> {
-  const { schoolId, role, query, context, usageLogId, operatingProfile } = params;
+  const { schoolId, userId, conversation, role, query, context, usageLogId, operatingProfile } = params;
   const cleanQuery = query.trim().toLowerCase();
 
   // 1. Permission check: Check if user is allowed to view/use the assistant
@@ -249,7 +253,7 @@ export async function processKlasseBrainQuery(params: {
 
   let dataCopilotAnswer;
   try {
-    dataCopilotAnswer = await runDataCopilotTool({ schoolId, role, query, context, operatingProfile });
+    dataCopilotAnswer = await runDataCopilotTool({ schoolId, userId, conversation, role, query, context, operatingProfile });
   } catch (error) {
     console.error("[KLASSE IA] Fonte de dados indisponível:", error);
     return {
@@ -261,6 +265,14 @@ export async function processKlasseBrainQuery(params: {
   }
   if (dataCopilotAnswer) {
     return dataCopilotAnswer;
+  }
+
+  if (isStatisticalSchoolQuestion(query)) {
+    return {
+      ok: true, mode: "fallback",
+      answer: "Não existe uma consulta homologada para responder a esta pergunta com dados verificáveis. Reformule ou consulte o módulo correspondente; não vou estimar números.",
+      fallbackReason: "data_unavailable",
+    };
   }
 
   // 2. Fast Path: Check if user wants to see what they can do on this screen
