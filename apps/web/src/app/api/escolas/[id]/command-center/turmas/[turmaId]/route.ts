@@ -156,20 +156,24 @@ export async function GET(
       for (const subject of catalog ?? []) legacyNames.set(subject.id, subject.nome);
     }
 
-    const subjectsById = new Map<string, { id: string; nome: string; professores: Set<string> }>();
+    const subjectsById = new Map<string, { id: string; nome: string; professores: Set<string>; professorIds: Set<string> }>();
     for (const d of disciplines) {
       const catalog = d.curso_matriz?.disciplinas_catalogo;
       const id = catalog?.id || d.curso_matriz?.disciplina_id;
       if (!id) continue;
-      if (!subjectsById.has(id)) subjectsById.set(id, { id, nome: catalog?.nome || "Disciplina", professores: new Set() });
-      if (d.professor_id && teachers.has(d.professor_id)) subjectsById.get(id)!.professores.add(teachers.get(d.professor_id)!);
+      if (!subjectsById.has(id)) subjectsById.set(id, { id, nome: catalog?.nome || "Disciplina", professores: new Set(), professorIds: new Set() });
+      if (d.professor_id && teachers.has(d.professor_id)) {
+        subjectsById.get(id)!.professores.add(teachers.get(d.professor_id)!);
+        subjectsById.get(id)!.professorIds.add(d.professor_id);
+      }
     }
     for (const a of assignments) {
       const id = a.disciplina_id;
       if (!id) continue;
-      if (!subjectsById.has(id) && legacyNames.has(id)) subjectsById.set(id, { id, nome: legacyNames.get(id)!, professores: new Set() });
+      if (!subjectsById.has(id) && legacyNames.has(id)) subjectsById.set(id, { id, nome: legacyNames.get(id)!, professores: new Set(), professorIds: new Set() });
       if (!subjectsById.has(id) || !a.professor_id || !teachers.has(a.professor_id)) continue;
       subjectsById.get(id)!.professores.add(teachers.get(a.professor_id)!);
+      subjectsById.get(id)!.professorIds.add(a.professor_id);
     }
 
     const students = (enrollmentReply.data ?? []).map((row) => {
@@ -190,7 +194,11 @@ export async function GET(
           anoLetivo: { id: year.id, ano: year.ano, historico: historic },
         },
         alunos: { items: students, total, page: parsed.data.page, pageSize: PAGE_SIZE, hasMore: start + students.length < total },
-        disciplinas: [...subjectsById.values()].map((d) => ({ id: d.id, nome: d.nome, professores: [...d.professores].sort() })),
+        disciplinas: [...subjectsById.values()].map((d) => ({
+          id: d.id, nome: d.nome, professores: [...d.professores].sort(),
+          professoresDetalhes: [...d.professorIds].map((id) => ({ id, nome: teachers.get(id)! }))
+            .sort((a, b) => a.nome.localeCompare(b.nome, "pt")),
+        })),
         professores: [...new Set([...subjectsById.values()].flatMap((d) => [...d.professores]))].sort(),
         disciplinasLimitadas: disciplines.length > MAX_DISCIPLINES || assignments.length > MAX_DISCIPLINES,
       },
