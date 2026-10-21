@@ -347,6 +347,23 @@ partner_lint.write_text(partner_sql.replace(old_check,new_check,1))
 partner_lint.write_text("BEGIN;\n-- CI replay: partner audit linter delayed until all real RPCs exist.\nCOMMIT;\n")
 print("STAGED-COMPAT deferred strict original UUID audit helper until all partner RPCs exist")
 print("STAGED-COMPAT July partner linter rejects unexpected fragments but accepts already-correct target")
+# August 2026 school calendar offering scoping references 2027's original
+# MED template header/details tables. Copy exact CREATE TABLE only, fail
+# closed under RLS pending the original later creation/grants/seeds.
+calendar_template_src = (root / "20270509000004_create_calendario_templates.sql").read_text()
+assert calendar_template_src.count("-- 1. Table for Template Headers") == 1
+assert calendar_template_src.count("-- 2. Table for Template Details (Periods and Events)") == 1
+assert calendar_template_src.count("-- 3. Grant access") == 1
+first_template_table = calendar_template_src.split("-- 1. Table for Template Headers",1)[1].split("-- 2. Table for Template Details (Periods and Events)",1)[0].strip()
+second_template_table = calendar_template_src.split("-- 2. Table for Template Details (Periods and Events)",1)[1].split("-- 3. Grant access",1)[0].strip()
+assert first_template_table.startswith("CREATE TABLE IF NOT EXISTS public.calendario_templates (") and first_template_table.endswith(");")
+assert second_template_table.startswith("CREATE TABLE IF NOT EXISTS public.calendario_template_items (") and second_template_table.endswith(");")
+(root / "20260804115500_ci_only_early_calendar_templates.sql").write_text(
+    first_template_table + "\n" + second_template_table + "\n"
+    "ALTER TABLE public.calendario_templates ENABLE ROW LEVEL SECURITY;\n"
+    "ALTER TABLE public.calendario_template_items ENABLE ROW LEVEL SECURITY;\n"
+)
+print("STAGED-COMPAT original MED template tables, strict RLS, no fake rows")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
