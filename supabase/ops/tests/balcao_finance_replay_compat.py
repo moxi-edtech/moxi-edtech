@@ -381,6 +381,21 @@ assert "ADD COLUMN IF NOT EXISTS origem_transicao_matricula_id uuid NULL;" in tr
 assert "FOREIGN KEY (origem_transicao_matricula_id)" in transition_ddl
 (root / "20260807193000_ci_only_early_matricula_transition_ddl.sql").write_text(transition_ddl)
 print("STAGED-COMPAT original matrícula transition fields and FK before August backfill")
+# August legacy imported transcript migration requires the real 2027
+# historico_transitado_anos and child notes tables. Stage exact DDL with RLS
+# enabled (no permissive policies); later original migration applies policies.
+transcript_source = (root / "20270618100000_historico_transitado_foundation.sql").read_text()
+assert transcript_source.count("CREATE TABLE IF NOT EXISTS public.historico_transitado_anos (") == 1
+assert transcript_source.count("CREATE TABLE IF NOT EXISTS public.historico_transitado_notas (") == 1
+assert transcript_source.count("CREATE INDEX IF NOT EXISTS idx_historico_transitado_anos_escola_aluno") == 1
+t_start = transcript_source.index("CREATE TABLE IF NOT EXISTS public.historico_transitado_anos (")
+t_end = transcript_source.index("CREATE INDEX IF NOT EXISTS idx_historico_transitado_anos_escola_aluno",t_start)
+tables = transcript_source[t_start:t_end]
+assert tables.rstrip().endswith(");")
+(root / "20260810115500_ci_only_early_imported_transcript_tables.sql").write_text(
+    tables + "\nALTER TABLE public.historico_transitado_anos ENABLE ROW LEVEL SECURITY;\n"
+    "ALTER TABLE public.historico_transitado_notas ENABLE ROW LEVEL SECURITY;\n")
+print("STAGED-COMPAT original 2027 imported transcript tables before August backfill")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
