@@ -4,6 +4,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 export default {
   root: dir,
   resolve: {
+    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
     alias: [
       { find: "next/navigation", replacement: path.resolve(dir, "next-navigation.ts") },
       { find: "next/link", replacement: path.resolve(dir, "next-link.tsx") },
@@ -11,6 +12,7 @@ export default {
       { find: "~", replacement: path.resolve(dir, "../src") },
     ],
   },
+  optimizeDeps: { include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime"] },
   esbuild: { jsx: "automatic", jsxImportSource: "react" },
   css: { postcss: path.resolve(dir, "..") },
   define: {
