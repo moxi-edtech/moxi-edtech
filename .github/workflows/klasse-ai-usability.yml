@@ -35,7 +35,8 @@ jobs:
       - run: pnpm --dir apps/web typecheck
       - run: pnpm --dir apps/web lint
       - name: All unit contracts (fixtures only; no provider or DB)
-        run: node --test --import tsx apps/web/tests/unit/*.spec.ts
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/*.spec.ts
       - name: Build Next.js without provider or deployment
         run: pnpm --dir apps/web build
   browser:
