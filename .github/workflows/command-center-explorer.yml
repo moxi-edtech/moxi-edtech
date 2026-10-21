@@ -8,11 +8,13 @@ on:
       - 'apps/web/src/hooks/useTurmaContext.ts'
       - 'apps/web/src/hooks/useProfessorContext.ts'
       - 'apps/web/src/hooks/useDisciplinaContext.ts'
+      - 'apps/web/src/hooks/useClasseContext.ts'
       - 'apps/web/src/lib/command-center/**'
       - 'apps/web/src/app/api/escolas/**/command-center/**'
       - 'apps/web/tests/unit/turma-explorer-policy.spec.ts'
       - 'apps/web/tests/unit/professor-contextual-explorer.spec.ts'
       - 'apps/web/tests/unit/disciplina-contextual-explorer.spec.ts'
+      - 'apps/web/tests/unit/classe-contextual-explorer.spec.ts'
       - 'apps/web/package.json'
       - 'pnpm-lock.yaml'
       - 'supabase/migrations/*command_center*'
@@ -46,17 +48,21 @@ jobs:
             src/components/secretaria/command-center/TurmaContextView.tsx \
             src/components/secretaria/command-center/ProfessorContextView.tsx \
             src/components/secretaria/command-center/DisciplinaContextView.tsx \
+            src/components/secretaria/command-center/ClasseContextView.tsx \
             src/components/secretaria/command-center/DisciplinaSearchResults.tsx \
             src/hooks/useCourseContext.ts \
             src/hooks/useTurmaContext.ts \
             src/hooks/useProfessorContext.ts \
             src/hooks/useDisciplinaContext.ts \
+            src/hooks/useClasseContext.ts \
             src/lib/command-center \
             "src/app/api/escolas/[id]/command-center/professores/[professorId]/route.ts" \
             "src/app/api/escolas/[id]/command-center/disciplinas/route.ts" \
             "src/app/api/escolas/[id]/command-center/disciplinas/[disciplinaId]/route.ts" \
+            "src/app/api/escolas/[id]/command-center/classes/[classeId]/route.ts" \
             tests/unit/professor-contextual-explorer.spec.ts \
-            tests/unit/disciplina-contextual-explorer.spec.ts --max-warnings 0
+            tests/unit/disciplina-contextual-explorer.spec.ts \
+            tests/unit/classe-contextual-explorer.spec.ts --max-warnings 0
       - name: Unit contracts
-        run: pnpm -C apps/web exec tsx --test tests/unit/turma-explorer-policy.spec.ts tests/unit/professor-contextual-explorer.spec.ts tests/unit/disciplina-contextual-explorer.spec.ts
+        run: pnpm -C apps/web exec tsx --test tests/unit/turma-explorer-policy.spec.ts tests/unit/professor-contextual-explorer.spec.ts tests/unit/disciplina-contextual-explorer.spec.ts tests/unit/classe-contextual-explorer.spec.ts
       - run: pnpm -C apps/web build

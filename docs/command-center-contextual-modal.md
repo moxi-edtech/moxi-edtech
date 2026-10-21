@@ -62,7 +62,7 @@ CommandPalette (cmdk + diálogo acessível)
 | Modal de professor | `ProfessorContextView.tsx` + `useProfessorContext.ts` | Código implementado na PR empilhada sobre #225; homologação pendente |
 | Modal de disciplina | `DisciplinaContextView.tsx` + `useDisciplinaContext.ts` | Implementado na nova PR sobre #226; CI e homologação pendentes |
 | Pesquisa de disciplinas | `DisciplinaSearchResults.tsx` e endpoint próprio autorizado | Admin/Operações; sem alterar a RPC global nesta fase |
-| Modal próprio de classe | Ainda não existente | Fallback na pesquisa |
+| Modal de classe | `ClasseContextView.tsx` + `useClasseContext.ts` + endpoint | Código implementado na PR #228 empilhada sobre #227; homologação pendente |
 | Histórico/deep links do modal | Ainda não existente | Roadmap |
 
 **Constatação sobre o Supabase ligado (21/10/2026):** a RPC `command_center_course_overview` **não constava** no banco consultado. A rota poderá devolver **503** até ser instalada e testada no ambiente correto. A migração presente na branch não equivale a migração aplicada.
@@ -312,6 +312,27 @@ GET /api/escolas/{escolaId}/command-center/disciplinas/{disciplinaId}?ano_letivo
 - Trajeto principal: pesquisar Disciplina → escolher Professor → escolher Turma → voltar ao Professor/Disciplina; rota revalida cada contexto, sem confiar nos resultados da pesquisa.
 - Não inclui contagem de alunos distintos, cálculos de notas nem autorizações financeiras. Próximos gates: CI, permissões RLS, testes autenticados por escola/ano e homologação mobile/teclado.
 
+### 5.9 Contrato de classe — PR #228 empilhada sobre #227 (CI e homologação pendentes)
+
+```http
+GET /api/escolas/{escolaId}/command-center/classes/{classeId}?ano_letivo_id={uuid}&page=1
+```
+
+- A busca global de **Classe** já existe em Admin e Operações; o ID da pesquisa não concede permissão ao detalhe. Resolver `auth.getUser`, escola, papel K12 e `resolveAcademicYearScope(READ)` antes de carregar a classe e vínculos de turmas. IDs de outra escola devem resultar em 403 ou 404.
+- `classes.ano_letivo_id` **não é exclusivo**: a auditoria do banco em 21/10 encontrou **seis turmas** associadas a classes com `ano_letivo_id` diferente. Aceitar a classe se existir turma efetiva no ano consultado; para não haver mistura, filtrar `turmas` por ID de ano ou por ano numérico apenas quando o ID for nulo. Classe explicitamente atribuída a outro ano e sem turma nesse ano recebe 404.
+- `data.classe = {id,nome,numero,cargaHorariaSemanal,curso:{id,nome,codigo}|null}`.
+- `data.anoLetivo = {id,ano,historico}`.
+- `data.turmas = [{id,nome,turno,sala,capacidade,alunos,professores,disciplinas}]` ordenadas por nome/ID, no máximo 200; o frontend liga diretamente à rota contextual de Turma.
+- `data.alunos = {items:[{id,nome,turmaId,turmaNome,numeroChamada}],total,page,pageSize:20,hasMore}`, unificados por `aluno_id` mesmo se a matrícula se repetir em duas turmas. A lista só apresenta a página selecionada; clique segue para o Balcão existente.
+- Filtro de matrícula: escola, `session_id=ano_letivo_id`, `ano_letivo=ano`, turmas do ano, `alunos.deleted_at IS NULL` e RLS. Ano ativo: status `ativo`, flag `ativo=true`. Histórico: status `ativo|concluido` sem exigir flag ativo. Excluir `pendente`, transferido e cancelado.
+- `data.disciplinas = [{id,nome,cargaHorariaSemanal,obrigatoria,turmas,naMatriz}]` — as disciplinas da matriz curricular são referência, não prova de aulas, enquanto vínculos efetivos vêm de `turma_disciplinas`, `turma_disciplinas_professores` e horários com versão `publicada`.
+- `data.professores = [{id,nome,turmas,disciplinas}]`, deduplicados por ID; perfis eliminados e de outra escola não entram.
+- `data.stats = {alunos,turmas,capacidade,disciplinas,professores}`: alunos são **distintos**, capacidade representa soma somente quando todas as turmas têm capacidade definida (`null` nos outros casos); sem sugerir taxa de ocupação baseada em números parciais.
+- `limitado=true` em resposta incompleta (máximo 200 turmas, 3.000 matrículas paginadas internamente, 300 linhas de matriz, 500 alocações por origem, 900 horários), com aviso e sufixo `+` nos indicadores conhecidos.
+- `classeContextQueryKey = ['command-center','classe',escolaId,classeId,academicYearId,page]`; QueryClient isolado à palette, fetch com AbortSignal, stale 30 s, gc 120 s, 30 s de retenção lógica; sem retry automático de erros permanentes.
+- Navegação: Curso → Classe → Turma → Aluno/Balcão, além de Classe → Professor/Disciplina e retorno via pilha do mesmo modal. Nunca adicionar nova página de atendimento, notas ou financeiro.
+- **Gate pendente**: teste autenticado cross-tenant (inclusive IDs arbitrários), ano antigo, classes reutilizadas, ausência de turmas, 20/21/50+ alunos, transferência, 2 matrículas por aluno, RLS, teclado, foco, Escape, performance e compatibilidade mobile.
+
 ## 6. TanStack Query, cache, invalidação e Motion
 
 O hook `useCourseContext` está na branch e utiliza este contrato:
@@ -371,7 +392,7 @@ O modal contextual atualmente tenta abrir `curso|classe|turma|professor` nos por
 | Entidade | Pesquisa hoje | Modal próprio hoje | Evolução |
 | --- | --- | --- | --- |
 | **Curso** | Admin / Operações | **Vista inicial na branch** | Indicadores validados, classes/turmas completas, acesso a alunos |
-| **Classe** | Admin / Operações | Fallback | Turmas, vagas, matrícula, disciplinas, indicadores |
+| **Classe** | Admin / Operações | **Vista própria na PR #228** | Curso, turmas, alunos distintos, vagas, disciplinas, professores e acesso ao Balcão |
 | **Turma** | Secretaria / Admin / Operações | **Vista dedicada na branch** | Homologar alunos paginados, docentes, disciplinas e ligação ao Balcão |
 | **Professor** | Admin / Operações | **Vista dedicada na PR empilhada** | Turmas, disciplinas, horários publicados por ano; homologação pendente |
 | **Aluno** | Secretaria / Financeiro / Operações / Professor / Aluno / Gestor | **Balcão existente**, conforme portal | Entrada contextual sem duplicar atendimento |
@@ -477,7 +498,12 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 - [x] Filtrar turmas por classe no modal e mostrar breadcrumb.
 - [x] Mostrar resumo de turma e abrir página canónica.
 - [ ] Paginação dinâmica de turmas fora dos 100 primeiros registos.
-- [ ] Criar visão/endpoint dedicado de classe.
+- [x] Criar visão/endpoint dedicado de classe na PR #228, com escola/ano/papel e contratos de UI.
+- [x] Conectar Curso → Classe, Turma → Classe, Disciplina → Classe e Classe → Curso/Turma/Disciplina/Professor/Aluno.
+- [x] Deduplicar alunos por `aluno_id` e reutilizar a política de matrículas ativas/históricas da turma.
+- [x] Mostrar capacidade apenas se todas as turmas têm valor definido; não confundir faltas de dados com vagas reais.
+- [x] Compatibilizar classes reutilizadas entre anos: turmas do ano prevalecem sobre `classes.ano_letivo_id` obsoleto.
+- [ ] Homologar classe com mais de 3.000 matrículas e mais de 200 turmas (resultado parcial sinalizado).
 - [x] Criar visão/endpoint dedicado de turma (código na branch; homologação pendente).
 - [x] Carregar alunos paginados (20 por página) e ligar a seleção de aluno ao Balcão existente, quando disponível.
 - [x] Mostrar disciplinas/professores do vínculo académico sem valores financeiros ou BI.
@@ -546,7 +572,7 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 | P0 | Diferentes permissões para pesquisar, consultar e agir | Gates por entidade/ação e testes REST/RPC |
 | P0 | Recentes em `localStorage` por escola/portal, não utilizador | Minimizar e limpar por identidade/logout |
 | P1 | Vista de curso lista só até 100 turmas | Paginação server-side, não inferir vazio |
-| P1 | Classe continua fallback; professor, turma e disciplina carecem de homologação | Implementar classe em PR própria e testar as três visões contextualizadas |
+| P1 | Classe, professor, turma e disciplina requerem homologação autenticada | Verificar no browser/REST as quatro entidades, RLS e ano antes da promoção |
 | P1 | Pesquisa de disciplinas em endpoint paralelo até integração no RPC | Validar latência e decidir eventual unificação sem expor tipos a outros portais |
 | P1 | Breadcrumb não corresponde a Back/Forward real | Contrato seguro de deep link |
 | P1 | Retry automático não distingue 403 de falha transitória | Classificar status e evitar repetição inútil |
