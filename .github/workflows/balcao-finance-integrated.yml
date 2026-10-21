@@ -37,6 +37,14 @@ jobs:
           assert text.count('AS $$') == 1 and text.count('$function$;') == 1
           path.write_text(text.replace('AS $$','AS $function$',1))
           PYCI
+          python3 - <<'PYCI'
+          from pathlib import Path
+          path=Path('supabase/migrations/20260203000024_rpc_realizar_pagamento_balcao.sql')
+          text=path.read_text()
+          anchor="  v_lancamentos_ids uuid[] := '{}';"
+          assert text.count(anchor)==1 and 'INTO v_lancamento_id' in text
+          path.write_text(text.replace(anchor, '  v_lancamento_id uuid;\n'+anchor,1))
+          PYCI
       - name: Start disposable Supabase with ALL original migrations
         run: |
           supabase start --exclude studio,mailpit,storage-api,imgproxy,logflare,vector,edge-runtime,realtime,supavisor,postgres-meta
