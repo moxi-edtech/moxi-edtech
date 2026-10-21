@@ -77,6 +77,6 @@ test("private enrollment/reenrollment drafts have user+polo+school scope, cleanu
   assert.match(reenroll,/if \(!draftKey \|\| !opts\.alunoId/);
   const logout=source("components/auth/SignOutButton.tsx");
   for (const prefix of ["admissao:draft:", "klasse:admissao:draft:", "klasse:rematricula:draft:"]) assert.ok(logout.includes(prefix));
-  assert.match(logout,/window\.sessionStorage/);
-  assert.match(logout,/window\.localStorage/);
+  assert.match(logout,/\['localStorage', 'sessionStorage'\]/);
+  assert.match(logout,/window\[storageName\]/);
 });

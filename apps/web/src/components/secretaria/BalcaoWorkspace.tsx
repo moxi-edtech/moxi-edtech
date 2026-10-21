@@ -178,7 +178,7 @@ export function BalcaoWorkspace({
         <RetainedActionPanels
           key={`${userScope}:${escolaId}:${poloScope}:${selectedStudent.id}`}
           activeAction={activeAction}
-          contextSignature={`${userScope}:${escolaId}:${poloScope}:${selectedStudent.id}:${currentStudent?.turmaId ?? "-"}:${refreshRevision}`}
+          contextSignature={`${userScope}:${escolaId}:${poloScope}:${selectedStudent.id}:${currentStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
           onUnsavedChange={handleUnsavedChange}
           renderAction={(panelAction) => (
             <CommandCenterPanel

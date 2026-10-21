@@ -3142,8 +3142,14 @@ export default function BalcaoAtendimento({
           onClose={() => {
             rematricula.closeModal();
             setItensRematricula([]);
-            if (rematricula.result) {
-              void dossier.load(dossier.aluno!.id);
+            if (rematricula.result?.ok) {
+              // The canonical rematrícula writer has already committed. Signal
+              // cross-panel invalidation immediately; no cached financial view
+              // may be presented as current while the latest balance loads.
+              onPagamentoConcluido?.();
+              void dossier.load(dossier.aluno!.id).then((verified) => {
+                if (!verified) error("Rematrícula registada. Não foi possível confirmar o saldo atualizado.");
+              });
             }
           }}
           alunoNome={dossier.aluno.nome}

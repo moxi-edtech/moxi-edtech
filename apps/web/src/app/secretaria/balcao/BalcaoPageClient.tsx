@@ -181,7 +181,7 @@ export default function BalcaoPageClient({
           <RetainedActionPanels
             key={`${userScope}:${escolaId}:${searchParams?.get("polo_id") ?? "-"}:${selectedAlunoId ?? "-"}:${atendimentoKey}`}
             activeAction={activeAction}
-            contextSignature={`${userScope}:${escolaId}:${selectedAlunoId ?? "-"}:${commandCenterStudent?.turmaId ?? "-"}:${refreshRevision}`}
+            contextSignature={`${userScope}:${escolaId}:${selectedAlunoId ?? "-"}:${commandCenterStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
             onUnsavedChange={handleUnsavedChange}
             renderAction={(panelAction) => (
               <CommandCenterPanel

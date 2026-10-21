@@ -45,8 +45,9 @@ export default function SignOutButton({
       // Never leave admission / rematrícula drafts containing minor details
       // for the next operator using this browser. Best effort on private mode.
       if (typeof window !== 'undefined') {
-        for (const storage of [window.localStorage, window.sessionStorage]) {
+        for (const storageName of ['localStorage', 'sessionStorage'] as const) {
           try {
+            const storage = window[storageName]; // getter itself may throw in private mode
             const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index));
             for (const key of keys) {
               if (key && (key.startsWith('admissao:draft:') ||

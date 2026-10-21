@@ -48,3 +48,5 @@ O benchmark exercita componentes reais sob o **Vite visual harness**, não o ser
 ## Sobreposição com PRs existentes
 
 A PR #211 modifica o `CommandCenterPanel`, #212 introduz o copiloto; há trabalho paralelo de transferência e avisos. Este trabalho parte estritamente da `main` e não incorpora nem reimplementa essas PRs. O merge deve reconciliar os diffs; **nenhum merge ou deploy está autorizado**.
+
+- Bundle otimizado Next.js na rota `/secretaria/balcao/page`, medido antes de qualquer alteração: **2.057.804 bytes** de entradas do app-build-manifest; comparado no relatório de resultado.
