@@ -270,7 +270,7 @@ A identidade da pesquisa usa `vw_search_professores.id = professores.id`, não `
 | `disciplinas` | `[{id,nome,turmas}]`, deduplicadas por ID académico |
 | `horarios` | `[{turmaId,turmaNome,disciplinaNome,diaSemana,inicio,fim}]`, só de versões `publicada` e slots não intervalos |
 | `stats` | `turmas,disciplinas,aulasPublicadas` (sem derivar alunos distintos de listas limitadas) |
-| `limitado` | Verdadeiro quando vínculos ultrapassam janela de 500 por origem; indicadores marcados como parciais |
+| `limitado` | Verdadeiro quando vínculos ultrapassam 500 por origem ou 200 turmas por consulta; indicadores marcados como parciais |
 
 **Origens:** `turma_disciplinas` (canónica), `turma_disciplinas_professores` (legado), `quadro_horarios` com `horario_versoes.status='publicada'` (aulas publicadas), `horario_slots` e `disciplinas_catalogo` da mesma escola. Turmas com `ano_letivo_id` explícito não podem ser atribuídas a outro ano apenas por coincidência do número `ano_letivo`.
 
