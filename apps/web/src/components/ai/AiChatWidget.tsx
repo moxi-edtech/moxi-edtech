@@ -298,7 +298,7 @@ export default function AiChatWidget({
         const roleStr = String(data.role ?? "").toLowerCase();
 
         // Block student, teacher, guardian profiles from viewing the assistant completely
-        if (["aluno", "professor", "encarregado", "docente", "guardian"].includes(roleStr)) {
+        if (!["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"].includes(roleStr)) {
           setIsAllowed(false);
           setCheckingAccess(false);
           return;
