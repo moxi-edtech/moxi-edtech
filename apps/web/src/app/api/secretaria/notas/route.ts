@@ -20,7 +20,8 @@ const Body = z.object({
   is_isento: z.boolean().optional().default(false),
   notas: z.array(z.object({
     aluno_id: z.string().uuid(),
-    valor: z.number().min(0).max(100).nullable(),
+    // Não aceitar notas em branco: public.notas.valor é NOT NULL.
+    valor: z.number().finite().min(0).max(100),
   })).min(1).max(50),
 })
 
