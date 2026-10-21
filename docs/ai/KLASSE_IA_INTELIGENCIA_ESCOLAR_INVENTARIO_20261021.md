@@ -31,7 +31,7 @@ A branch `feature/klasse-ai-school-intelligence-20261021` deriva do HEAD remoto 
 | 7 | Quanto deveria receber este mês e quanto recebeu? | `vw_financeiro_kpis_mes_ano` | `previsto_total` (competência por vencimento) e `realizado_total` (pagamento liquidado em caixa). MV pode estar defasada |
 | 8 | Mensalidades vencidas há mais de N dias | `vw_financeiro_inadimplencia_top_ano` ou outra view | View existente agrega devedores; sem nível de mensalidade não atribuir mensalidades individualmente |
 | 9 | Alunos com documentos em falta | Lacuna de view oficial consolidada | Sem critério canónico por documento obrigatório e aluno elegível, recusa |
-| 10 | Turmas com maior risco de reprovação | `vw_risco_pedagogico_aluno` **não é RAA** | Recusa de classificação de reprovação sem resolvedor oficial; só sinalizadores factuais, sem inferência do LLM |
+| 10 | Turmas com maior risco de reprovação | `resolveRaaProgressionForMatricula` (mesmo resolvedor usado pelo endpoint de progressão) | RAA oficial determina situação corrente de retenção/transição/recurso, **não probabilidade futura**; agregação por turma com cobertura integral e limites de carga. Desligada até RLS/polo autenticados. |
 
 ## Segurança / polo
 

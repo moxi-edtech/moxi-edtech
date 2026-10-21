@@ -57,7 +57,7 @@ export function classifySchoolQuestion(question: string, previous?: SchoolIntell
   if (has(q, /previst|deveria|esperad|receb|caixa|arrecad|realizad/) && has(q, /receb|caixa|previst|deveria|arrecad/) && has(q, /mes|mensal|periodo|financeiro|receita|propina/)) return "monthly_finance";
   if (has(q, /mensalidad|propinas?/) && has(q, /vencid|atras|mais de|dias|antig|cobran/)) return "aged_tuitions";
   if (has(q, /alunos?|estudant/) && has(q, /document|processo/) && has(q, /falta|penden|incomplet|sem |ausent/)) return "missing_documents";
-  if (has(q, /reprov|retenc|transic|passar de classe/) && has(q, /turma|alunos?|risco|maior|quais|quant/)) return "official_failure_risk";
+  if (has(q, /reprov|retid|retenc|transic|passar de classe/) && has(q, /turma|alunos?|risco|maior|quais|quant/)) return "official_failure_risk";
   return null;
 }
 

@@ -15,7 +15,7 @@ Cada intenção tem três chaves de ambiente independentes: `KLASSE_AI_<NOME>=tr
 | Previsto vs. recebido | `MONTHLY_FINANCE` | Recusa fundamentada | Contrato de liquidação, isolamento financeiro por polo |
 | Mensalidades vencidas | `AGED_TUITIONS` | Recusa fundamentada | Vencimento individual, liquidação, RLS/polo |
 | Documentos em falta | `MISSING_DOCUMENTS` | Bloqueada por decisão de negócio | Obrigatoriedade por classe/tipo de aluno |
-| Risco oficial de reprovação | `OFFICIAL_FAILURE_RISK` | Bloqueada por decisão de negócio | Critério oficial RAA aplicável a cada escola |
+| Situação RAA por turma (sem prognóstico) | `OFFICIAL_FAILURE_RISK` | Recusa fundamentada (flag desligada) | RAA oficial já implementado; falta comprovar RLS, polo, custo e cobertura autenticada da consulta agregada |
 
 **Ativas:** nenhuma. A recusa é deliberada até à prova integral; CI unitário não substitui teste autenticado de Postgres/RLS. O catálogo não consulta dados reais quando desligado.
 
@@ -27,13 +27,13 @@ Cada intenção tem três chaves de ambiente independentes: `KLASSE_AI_<NOME>=tr
 
 1. **Matrícula incompleta:** «Quais estados do fluxo de matrícula contam como *pendente de conclusão* na sua escola, e a partir de que evento deixam de contar?»
 2. **Documento obrigatório:** «Para cada classe e tipo de aluno (novo, transferido, rematriculado), quais documentos são obrigatórios e em que prazo?»
-3. **Risco de reprovação:** «Qual resolução oficial RAA, versão e limiares aprovados pela escola determinam a classificação por turma e em que fase do ano letivo?»
+3. **RAA:** **não há decisão normativa nova a pedir.** A aprovação, progressão e retenção usam exclusivamente o Regulamento da Avaliação das Aprendizagens (RAA), Decreto Executivo n.º 04/2026, e o resolvedor canónico já implementado. O termo *risco futuro de reprovação* não é resultado oficial do RAA e não será inferido. Se a escola não configurou a política operacional existente do RAA, o resolvedor recusa; nenhuma nova escala ou limiar foi inventado.
 
 Estas definições devem ser guardadas por escola em configuração validada, com ausência = recusa. Não foi introduzido padrão de negócio inventado nem alteração do resolvedor académico.
 
 ## Isolamento e validação ainda bloqueados
 
-O snapshot de `escola_users` não contém `polo_id`, e as views de notas e turmas não expõem vínculo canónico polo↔turma. Não inferir por nome ou escola. Secretaria e outras funções de polo ficam recusadas; admin/direção só podem receber resultados após prova RLS. Não há CI E2E com todas as migrations e usuários de polos distintos; a infraestrutura de testes não comprova que toda a cadeia histórica de migrations seja reaplicável. Antes de ativar, criar e validar esse cenário com Postgres descartável e políticas existentes, sem modificar RLS em produção.
+O snapshot de `escola_users` não contém `polo_id`, e as views de notas e turmas não expõem vínculo canónico polo↔turma. A consulta de situação RAA também depende desse isolamento. Não inferir por nome ou escola. Secretaria e outras funções de polo ficam recusadas; admin/direção só podem receber resultados após prova RLS. Não há CI E2E com todas as migrations e usuários de polos distintos; a infraestrutura de testes não comprova que toda a cadeia histórica de migrations seja reaplicável. Antes de ativar, criar e validar esse cenário com Postgres descartável e políticas existentes, sem modificar RLS em produção.
 
 ## Gates
 

@@ -1,5 +1,7 @@
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { disabledIntelligenceReason } from "../intelligence-activation";
+import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
+import { summarizeOfficialRaaByTurma, type RaaEnrollmentDecision } from "../raa-official-summary";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { resolveAcademicYearScope, type AcademicYearScope } from "@/lib/academic-year/context";
@@ -16,6 +18,12 @@ import type { DataCopilotResponse, DataCopilotTool, ToolRunParams } from "../typ
 
 const MAX_CLASS_ROWS = 350;
 const MAX_GRADE_ROWS = 450;
+// RAA resolver is expensive (legal policy + academic evidence per enrolment).
+// Never extrapolate a sample into a school-wide classification.
+const MAX_RAA_ENROLLMENTS = 24;
+const RAA_BATCH_SIZE = 2;
+const RAA_MAX_PER_USER_10_MIN = 2;
+const RAA_MAX_PER_SCHOOL_10_MIN = 5;
 const MAX_PER_USER_MINUTE = 12;
 const MAX_PER_SCHOOL_MINUTE = 90;
 const PAGE_SIZE = 8;
@@ -68,13 +76,17 @@ export async function runSchoolIntelligence(params: ToolRunParams): Promise<Data
   if (intent === "missing_documents") return failure("Falta uma view validada dos documentos obrigatórios por aluno e ano letivo; os documentos emitidos não provam documentos em falta.", "documentos_emitidos / read-model de obrigatoriedade ausente");
   if (intent === "students_without_subject_grades") return failure("A view existente agrega notas pendentes por avaliação. Somá-las duplicaria alunos de uma mesma disciplina; falta uma view com alunos distintos por disciplina e período.", "vw_professor_pendencias");
   if (intent === "aged_tuitions") return failure("O radar disponível agrega devedores; não identifica cada mensalidade com vencimento superior ao limite. Não é seguro apresentar uma lista de mensalidades.", "vw_financeiro_inadimplencia_top_ano");
-  if (intent === "official_failure_risk") return failure("O radar pedagógico atual é heurístico; não é o resolvedor oficial RAA de progressão. Sem read-model oficial de classificação de reprovação por turma, não é possível classificar turmas por risco.", "raa-progression-server / vw_risco_pedagogico_aluno");
+  // Official RAA decisions are the only source of academic outcome; do not
+  // classify an unfinished assessment as predicted reprobation.
 
   // Only the selected session's authenticated user is used. No service role.
   const supabase = await supabaseServerTyped();
   const auth = await supabase.auth.getUser();
   if (!auth.data.user || auth.data.user.id !== params.userId) return failure("Sessão não autenticada.", "Supabase Auth");
-  const auditWindow = new Date(Date.now() - 60_000).toISOString();
+  // The legal resolver performs multiple canonical reads per enrolment.
+  // Its independent 10-minute budget is deliberately far tighter.
+  const isRaa = intent === "official_failure_risk";
+  const auditWindow = new Date(Date.now() - (isRaa ? 600_000 : 60_000)).toISOString();
   const [userRate, schoolRate] = await Promise.all([
     supabase.from("audit_logs").select("id", { count: "exact", head: true })
       .eq("escola_id", params.schoolId).eq("actor_id", auth.data.user.id)
@@ -85,7 +97,8 @@ export async function runSchoolIntelligence(params: ToolRunParams): Promise<Data
   if (userRate.error || schoolRate.error || userRate.count === null || schoolRate.count === null) {
     return failure("Não consegui verificar os limites de consultas; a consulta foi bloqueada.", "audit_logs");
   }
-  if (userRate.count >= MAX_PER_USER_MINUTE || schoolRate.count >= MAX_PER_SCHOOL_MINUTE) {
+  if (userRate.count >= (isRaa ? RAA_MAX_PER_USER_10_MIN : MAX_PER_USER_MINUTE) ||
+    schoolRate.count >= (isRaa ? RAA_MAX_PER_SCHOOL_10_MIN : MAX_PER_SCHOOL_MINUTE)) {
     return failure("Limite de consultas atingido. Aguarde antes de repetir a pergunta.", "audit_logs");
   }
   const startedAt = performance.now();
@@ -99,6 +112,8 @@ export async function runSchoolIntelligence(params: ToolRunParams): Promise<Data
     response = await availableSeats(supabase, params.schoolId, params.role, year, checkedFilters, signal);
   } else if (intent === "monthly_finance") {
     response = await monthlyFinance(supabase, params.schoolId, params.role, year, checkedFilters, signal);
+  } else if (intent === "official_failure_risk") {
+    response = await officialRaaStatusByTurma(supabase, params.schoolId, year, checkedFilters, signal);
   } else return failure("Consulta não disponível.", intent);
   // Only aggregate counts and safe parameter IDs appear in persistent audit.
   const aggregates = response.insight.evidence.flatMap(({ label, value }) =>
@@ -274,6 +289,98 @@ async function monthlyFinance(
     actions: openRadar ? [{ ...openRadar, label: "Abrir Financeiro" }] : [], provenance: { source: "monthly-finance · vw_financeiro_kpis_mes_ano", consultedAt: new Date().toISOString(),
       scope: `Escola autorizada · ano ${year.ano} · mês ${month}`, freshness: "partial",
       limitation: "View materializada: os lançamentos recentes podem aguardar atualização." },
+  } });
+}
+
+
+
+/**
+ * Read-only RAA summary. Unlike the pedagogical radar, it uses exactly the
+ * canonical progression resolver from the Secretaria's RAA endpoint.
+ * A resolved retention is a current legal decision, NOT a prediction.
+ */
+async function officialRaaStatusByTurma(
+  supabase: SupabaseClient<Database>, schoolId: string, year: AcademicYearScope,
+  filters: SchoolIntelligenceFilters, signal: AbortSignal,
+): Promise<DataCopilotResponse> {
+  const { data: classes, count: classCount, error: classesError } = await supabase
+    .from("vw_turmas_para_matricula")
+    .select("id,classe_nome,turma_nome", { count: "exact" })
+    .eq("escola_id", schoolId).eq("ano_letivo", year.ano)
+    .limit(MAX_CLASS_ROWS).abortSignal(signal);
+  if (classesError) throw classesError;
+  if (classCount === null || classCount > MAX_CLASS_ROWS) return failure(
+    "O catálogo de turmas excede o limite de verificação; indique uma classe.", "vw_turmas_para_matricula");
+  const selected = (classes ?? []).filter((cls) =>
+    (!filters.turmaId || cls.id === filters.turmaId) &&
+    (!filters.classNumber || new RegExp(`(^|[^0-9])${filters.classNumber}([^0-9]|$)`).test(cls.classe_nome ?? "")));
+  if (!selected.length) return failure("Não foi encontrada turma no âmbito e ano letivo selecionados.", "vw_turmas_para_matricula");
+  if (selected.some((cls) => !cls.id)) return failure("Existem turmas sem identificador validado.", "vw_turmas_para_matricula");
+  const turmaIds = selected.map((cls) => cls.id).filter((id): id is string => Boolean(id));
+  const { data: enrollmentRows, count: total, error } = await supabase
+    .from("matriculas")
+    .select("id,aluno_id,turma_id", { count: "exact" })
+    .eq("escola_id", schoolId).eq("session_id", year.id)
+    .in("turma_id", turmaIds).order("id", { ascending: true })
+    .limit(MAX_RAA_ENROLLMENTS).abortSignal(signal);
+  if (error) throw error;
+  if (total === null || total > MAX_RAA_ENROLLMENTS) return failure(
+    `Esta consulta envolve mais de ${MAX_RAA_ENROLLMENTS} matrículas. Indique uma turma ou classe menor; não é correto estimar uma escola inteira a partir de amostras.`,
+    "matriculas + resolveRaaProgressionForMatricula");
+  if (!enrollmentRows?.length) return failure("Não existem matrículas com decisões RAA neste âmbito.", "matriculas");
+  if (enrollmentRows.some((row) => !row.aluno_id || !row.turma_id)) return failure(
+    "Há matrículas sem aluno ou turma associados; não posso agregá-las.", "matriculas");
+  const enrollments = enrollmentRows.flatMap((row) =>
+    row.aluno_id && row.turma_id ? [{ matriculaId: row.id, alunoId: row.aluno_id, turmaId: row.turma_id }] : []);
+  if (enrollments.length !== total) return failure("Não foi possível verificar todas as matrículas do âmbito.", "matriculas");
+
+  const decisions: RaaEnrollmentDecision[] = [];
+  for (let offset = 0; offset < enrollments.length; offset += RAA_BATCH_SIZE) {
+    if (signal.aborted) return failure("Consulta RAA excedeu o tempo permitido; filtre por uma turma.", "resolveRaaProgressionForMatricula");
+    const batch = enrollments.slice(offset, offset + RAA_BATCH_SIZE);
+    try {
+      const resolved = await Promise.all(batch.map(async (enrollment) => {
+        // The same resolver powers /api/academico/raa/progressao; no derived
+        // grades, alternative formulas, SQL, provider calls or service key.
+        const result = await resolveRaaProgressionForMatricula(supabase, schoolId, {
+          id: enrollment.matriculaId, aluno_id: enrollment.alunoId, turma_id: enrollment.turmaId,
+        });
+        return { ...enrollment, decision: result.progression.decision };
+      }));
+      decisions.push(...resolved);
+    } catch (error) {
+      return failure(error instanceof RaaProgressionUnavailableError &&
+        error.code === "RAA_PROGRESSION_POLICY_NOT_CONFIGURED"
+        ? "A política de progressão RAA da escola ainda não está configurada no módulo académico."
+        : "O resolvedor oficial RAA não conseguiu validar todas as matrículas. Nenhum total parcial será apresentado.",
+        "resolveRaaProgressionForMatricula");
+    }
+  }
+  const summary = summarizeOfficialRaaByTurma(enrollments, decisions);
+  if (!summary.ok) return failure(summary.reason, "resolveRaaProgressionForMatricula");
+  const className = new Map(selected.map((cls) => [cls.id, `${safeDisplayText(cls.classe_nome)} · ${safeDisplayText(cls.turma_nome)}`]));
+  const details = summary.classes.map((cls) =>
+    `${className.get(cls.turmaId) ?? "Turma sem rótulo"}: ${cls.retenidos} retenções oficiais de ${cls.total} matrículas ` +
+    `(aproveitamento ${cls.retidosPorAproveitamento}, faltas ${cls.retidosPorFaltas}, indisciplina ${cls.retidosPorIndisciplina}); ` +
+    `${cls.pendentes} decisões pendentes, ${cls.emRecurso} em recurso, ${cls.inscricaoCondicional} inscrições condicionais.`);
+  const retained = summary.classes.reduce((sum, cls) => sum + cls.retenidos, 0);
+  const awaiting = summary.classes.reduce((sum, cls) => sum + cls.pendentes + cls.emRecurso + cls.inscricaoCondicional, 0);
+  return createDataCopilotResponse({ insight: {
+    diagnosis: `**O RAA não prevê probabilidades de reprovação.** Nas ${summary.classes.length} turmas consultadas, ` +
+      `há ${retained} decisões oficiais de retenção em ${total} matrículas.\n\n${details.join("\n")}`,
+    impact: `${awaiting} matrículas ainda têm situação pendente, em recurso ou condicional. ` +
+      "Não foram classificadas como reprovações e não foi projetado um risco futuro.",
+    recommendation: "Use a análise e o fechamento académico RAA oficiais para confirmar cada decisão. " +
+      "Uma decisão ainda pendente não equivale a retenção.",
+    evidence: [{ label: "Ano letivo", value: String(year.ano) },
+      { label: "Turmas com decisões consultadas", value: String(summary.classes.length) },
+      { label: "Matrículas verificadas", value: String(total) },
+      { label: "Retenções oficiais", value: String(retained) },
+      { label: "Decisões pendentes/recurso/condicionais", value: String(awaiting) }],
+    actions: [], provenance: { source: "RAA · resolveRaaProgressionForMatricula · resolve_raa_progression_for_matricula / resolve_estado_resultado",
+      consultedAt: new Date().toISOString(),
+      scope: `Escola autorizada · ano ${year.ano} · classe ${filters.classNumber ?? "todas"} · turma ${filters.turmaId ?? "todas"}`,
+      freshness: "live", limitation: "Situações oficiais atuais, sem classificação preditiva; sem visão por polo até validação do vínculo canónico." },
   } });
 }
 

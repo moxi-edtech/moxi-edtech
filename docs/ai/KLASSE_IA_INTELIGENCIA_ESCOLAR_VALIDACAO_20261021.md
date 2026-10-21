@@ -17,7 +17,7 @@ PR #214 empilhado sobre PR #212, sem merge, deploy ou migration. Reutiliza o `da
 | 7. Previsto e recebido | Montantes separados por mês/ano, caixa liquidado | `vw_financeiro_kpis_mes_ano` | Implementada para papéis organizacionais |
 | 8. Mensalidades vencidas há N dias | Recusa correta: falta detalhe por mensalidade | `vw_financeiro_inadimplencia_top_ano` | Lacuna documentada |
 | 9. Alunos sem documentos | Recusa correta: falta obrigatoriedade canónica | `documentos_emitidos` | Lacuna documentada |
-| 10. Risco de reprovação por turma | Recusa correta: radar heurístico não equivale ao resolvedor RAA | `raa-progression-server`, `vw_risco_pedagogico_aluno` | Lacuna documentada |
+| 10. Situação RAA por turma | Agregação implementada de decisões RAA oficiais (retenção, pendente, recurso, condicional); sem previsão heurística; recusa se turma > limite/sem cobertura ou RLS não comprovado | `resolveRaaProgressionForMatricula`, `resolve_raa_progression_for_matricula`, `matriculas` | Implementada em código, flag desligada até E2E RLS e prova de custo |
 
 ## Testes e limites do que foi provado
 
