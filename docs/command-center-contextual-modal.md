@@ -58,7 +58,8 @@ CommandPalette (cmdk + diálogo acessível)
 | Consulta/caching | `apps/web/src/hooks/useCourseContext.ts` | TanStack Query v5 |
 | API | `apps/web/src/app/api/escolas/[id]/command-center/cursos/[cursoId]/route.ts` | GET académico de leitura |
 | Agregação | `supabase/migrations/20271015100000_command_center_course_overview.sql` | Migração versionada, **não homologada** |
-| Modal próprio de classe, turma ou professor | Ainda não existente | Fallback na pesquisa |
+| Modal de turma | `TurmaContextView.tsx` + `useTurmaContext.ts` | Implementação na branch; homologação autenticada pendente |
+| Modal próprio de classe ou professor | Ainda não existente | Fallback na pesquisa |
 | Histórico/deep links do modal | Ainda não existente | Roadmap |
 
 **Constatação sobre o Supabase ligado (21/10/2026):** a RPC `command_center_course_overview` **não constava** no banco consultado. A rota poderá devolver **503** até ser instalada e testada no ambiente correto. A migração presente na branch não equivale a migração aplicada.
@@ -107,7 +108,7 @@ Selecionar uma classe mantém curso e ano, filtra turmas, atualiza breadcrumb `C
 
 ### 4.3 Turma — resumo e ação
 
-Selecionar turma acrescenta breadcrumb `Curso › Classe › Turma`, mostra alunos vigentes, capacidade e turno; há botão para abrir a página existente, preservando o ano letivo. **Hoje não existe lista de alunos paginada dentro desse modal.** A visão completa de turma, incluindo professores, disciplinas, ações e alunos, exige endpoint próprio.
+Selecionar turma a partir do curso abre a **visão contextual dedicada de turma** no mesmo modal, preservando o ano letivo e permitindo voltar ao curso. A vista mostra alunos matriculados **paginados em blocos de 20**, contagem exata das matrículas elegíveis, turno, capacidade, sala, disciplinas e professores vinculados. Selecionar aluno encaminha para a integração existente do Balcão, ou navegação canónica nos portais sem Balcão; há alternativa explícita para abrir a página da turma. **A conclusão depende de CI verde, testes DB/RLS e homologação autenticada.**
 
 ### 4.4 Aluno — manter o Balcão
 
@@ -228,13 +229,31 @@ A migration na branch usa `STABLE SECURITY INVOKER` e valida `auth.uid`, acesso 
 | Rota proposta | Conteúdo | Proteção |
 | --- | --- | --- |
 | `GET /api/escolas/:id/command-center/classes/:classeId` | Classe e turmas paginadas no ano | Académica |
-| `GET /api/escolas/:id/command-center/turmas/:turmaId` | Turma, professores, disciplinas, KPIs | Académica |
-| `GET /api/escolas/:id/command-center/turmas/:turmaId/alunos?cursor=...` | Alunos vigentes paginados | Académica + dados pessoais |
+| **Implementado na branch:** `GET /api/escolas/:id/command-center/turmas/:turmaId?page=N&ano_letivo_id=UUID` | Turma, disciplinas, professores e alunos paginados (20), contagem exata e `hasMore` | Académica; autorização por papel/escola/ano |
+| Eventual rota de alunos separada | Páginas por cursor, caso offset deixe de escalar | Reavaliar sob métricas, sem duplicar endpoint |
 | `GET /api/escolas/:id/command-center/professores/:professorId` | Alocações, turmas, carga | Académica |
 | `GET /api/escolas/:id/command-center/disciplinas/:disciplinaId` | Matriz/curso, turmas, docentes | Académica |
 | `GET /api/escolas/:id/command-center/financeiro/...` | Métricas de cobrança por competência | **Gate financeiro distinto** |
 
 Cada rota futura deve ter schema de entrada, ano, escola, papel, RLS, colunas mínimas, paginação, erros e testes diretos de manipulação de IDs.
+
+### 5.6 Contrato do explorador de turmas (implementado na branch, ainda não homologado)
+
+```http
+GET /api/escolas/{escolaId}/command-center/turmas/{turmaId}?ano_letivo_id={uuid}&page=1
+```
+
+- Autenticar utilizador, resolver escola, aplicar o gate K12, resolver ano letivo em modo `READ`; confirmar que a turma pertence à mesma escola/ano.
+- `page`: inteiro entre 1 e 10000; `pageSize`: 20 fixo no servidor. O frontend não escolhe a dimensão da página.
+- `data.turma`: `id,nome,turno,sala,classe,curso,capacidade,anoLetivo`.
+- `data.alunos`: `items[{id,nome,numeroChamada}],total,page,pageSize,hasMore`. Consulta `matriculas` e alunos por `!inner` sob escola/ano, com `count:exact`; filtra pessoas eliminadas, transferências/cancelamentos e contém apenas nomes/número de chamada.
+- `data.disciplinas`: `[{id,nome,professores:string[]}]`; `professores:string[]`; `disciplinasLimitadas:boolean` sinaliza limites nas vinculações, com fallback à página canónica.
+- Ano ativo: apenas matrícula `ativo` com flag `ativo=true`; ano encerrado: estados `ativo|concluido`, sem transferidos. Estes estados e o comportamento de RLS exigem homologação com dados históricos.
+- Respostas privadas e sem dados financeiros/notas/BI; 401/403/404 não devem ser repetidos automaticamente pelo `useTurmaContext`.
+- `turmaContextQueryKey`: `["command-center","turma",escolaId,turmaId,academicYearId,page]`; stale 30s, cache inativa 120s, cancelamento via AbortSignal e limpeza pelo modal.
+- Testar consulta direta por ID de outra escola, ano inexistente, utilizador sem papel, sessão encerrada, professor de outra escola e paginação acima de 50/100; a interface nunca deve transformar erro em lista vazia.
+
+**Nota de engenharia:** a versão atual usa paginação por offset e join PostgREST; só declarar “concluído” quando a coerência dos totais e a consulta do professor/disciplinas forem verificadas num ambiente autenticado. Para conjuntos muito grandes, avaliar paginação por cursor.
 
 ## 6. TanStack Query, cache, invalidação e Motion
 
@@ -296,7 +315,7 @@ O modal contextual atualmente tenta abrir `curso|classe|turma|professor` nos por
 | --- | --- | --- | --- |
 | **Curso** | Admin / Operações | **Vista inicial na branch** | Indicadores validados, classes/turmas completas, acesso a alunos |
 | **Classe** | Admin / Operações | Fallback | Turmas, vagas, matrícula, disciplinas, indicadores |
-| **Turma** | Secretaria / Admin / Operações | Fallback; aparece dentro de curso | Alunos paginados, docentes, disciplinas, operações |
+| **Turma** | Secretaria / Admin / Operações | **Vista dedicada na branch** | Homologar alunos paginados, docentes, disciplinas e ligação ao Balcão |
 | **Professor** | Admin / Operações | Fallback | Turmas, disciplinas, carga, alocações por ano |
 | **Aluno** | Secretaria / Financeiro / Operações / Professor / Aluno / Gestor | **Balcão existente**, conforme portal | Entrada contextual sem duplicar atendimento |
 | **Matrícula** | Secretaria / Operações | Navegação canónica | Estado, turma, ano e histórico corrigível |
@@ -402,8 +421,11 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 - [x] Mostrar resumo de turma e abrir página canónica.
 - [ ] Paginação dinâmica de turmas fora dos 100 primeiros registos.
 - [ ] Criar visão/endpoint dedicado de classe.
-- [ ] Criar visão/endpoint dedicado de turma.
-- [ ] Carregar alunos paginados e ligar cada aluno ao Balcão.
+- [x] Criar visão/endpoint dedicado de turma (código na branch; homologação pendente).
+- [x] Carregar alunos paginados (20 por página) e ligar a seleção de aluno ao Balcão existente, quando disponível.
+- [x] Mostrar disciplinas/professores do vínculo académico sem valores financeiros ou BI.
+- [ ] Testar turmas com 0, 1, 20, 21, 50+ e 100+ matrículas e respetivos estados.
+- [ ] Homologar disciplina/professor em vínculos regulares e legados, com professores de outras escolas excluídos.
 - [ ] Restaurar navegação/back/forward com deep link autorizado.
 - [ ] E2E do percurso completo sem perda de escola/ano.
 
@@ -454,7 +476,7 @@ O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `prod
 | P0 | Diferentes permissões para pesquisar, consultar e agir | Gates por entidade/ação e testes REST/RPC |
 | P0 | Recentes em `localStorage` por escola/portal, não utilizador | Minimizar e limpar por identidade/logout |
 | P1 | Vista de curso lista só até 100 turmas | Paginação server-side, não inferir vazio |
-| P1 | Classe/turma/professor ainda são fallback | Endpoints/vistas próprios |
+| P1 | Classe e professor ainda são fallback; turma necessita homologação | Endpoints próprios e validação do explorador de turma |
 | P1 | Breadcrumb não corresponde a Back/Forward real | Contrato seguro de deep link |
 | P1 | Retry automático não distingue 403 de falha transitória | Classificar status e evitar repetição inútil |
 | P1 | Cache não invalidado em todas as mutações escolares | Invalidação por tenant/entidade/ano |
