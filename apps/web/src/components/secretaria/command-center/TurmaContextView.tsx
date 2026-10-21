@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight, Loader2, RefreshCw, UsersRound } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
@@ -17,7 +17,6 @@ type Props = {
 
 export function TurmaContextView({ context, portal, onNavigate, onStudentSelect, onExploreProfessor }: Props) {
   const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [context.id, context.academicYearId, context.escolaId]);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
 
   function openExisting() {
