@@ -1,0 +1,84 @@
+name: KLASSE IA Usability Gate
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/ai/**'
+      - 'apps/web/src/lib/assistant/chat-presentation.ts'
+      - 'apps/web/src/lib/assistant/klasse-brain.ts'
+      - 'apps/web/src/lib/server/ai/provider-client.ts'
+      - 'apps/web/visual-harness/**'
+      - 'apps/web/scripts/visual/klasse-ai-usability.mjs'
+      - 'apps/web/tests/unit/assistant-chat-presentation.spec.ts'
+      - '.github/workflows/klasse-ai-usability.yml'
+permissions:
+  contents: read
+jobs:
+  quality:
+    name: Typecheck, lint, build and complete unit suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://fixture.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-public-key-no-real-session
+      AI_ENABLED: 'false'
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir apps/web typecheck
+      - run: pnpm --dir apps/web lint
+      - name: All unit contracts (fixtures only; no provider or DB)
+        run: node --test --import tsx apps/web/tests/unit/*.spec.ts
+      - name: Build Next.js without provider or deployment
+        run: pnpm --dir apps/web build
+  browser:
+    name: E2E, keyboard, scope isolation and responsive evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated Playwright fixture dependencies
+        run: |
+          mkdir -p /tmp/klasse-visual
+          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
+          /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start fixture with mocked auth and no real school API
+        env:
+          KLASSE_VISUAL_CHAT_MOCK_AUTH: '1'
+        run: |
+          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/klasse-visual.log 2>&1 &
+          for attempt in $(seq 1 45); do
+            curl -fsS http://127.0.0.1:6006/ > /dev/null && exit 0
+            sleep 2
+          done
+          tail -n 100 /tmp/klasse-visual.log
+          exit 1
+      - name: Interaction and captures at 5 resolutions × 3 zoom factors
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/klasse-ai-usability.mjs
+      - name: Browser diagnostics
+        if: failure()
+        run: tail -n 100 /tmp/klasse-visual.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: klasse-ai-usability-synthetic-screenshots
+          path: apps/web/visual-evidence/klasse-ai-usability/
+          retention-days: 14
+          if-no-files-found: warn

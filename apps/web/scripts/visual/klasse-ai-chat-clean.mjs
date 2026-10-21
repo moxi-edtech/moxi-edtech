@@ -45,14 +45,16 @@ try {
       await page.screenshot({ path:filename, fullPage:false });
       // Verify sending, data insight, evidence and navigation without touching a real school.
       await textarea.fill('Quais são os professores com notas pendentes?');
-      await textarea.press('Enter');
-      await dialog.getByText('Diagnóstico', {exact:true}).waitFor({timeout:12000});
-      await dialog.getByText('Docentes em atraso').waitFor();
+      if (cssWidth < 768) await dialog.getByRole('button',{name:'Enviar mensagem'}).click();
+      else await textarea.press('Enter');
+      await dialog.getByText(/2 de 8 docentes têm lançamentos/).waitFor({timeout:12000});
+      await dialog.getByText('Ver detalhes', {exact:true}).last().click();
+      await dialog.getByText('Fonte e filtros aplicados').waitFor();
       assert.equal(await dialog.getByLabel('Sugestões de consulta').count(), 0, 'suggestions should not crowd the ongoing conversation');
       await dialog.getByRole('button',{name:'Ajuda'}).click();
       await dialog.getByRole('button',{name:'Voltar ao assistente'}).waitFor();
       await dialog.getByRole('button',{name:'Voltar ao assistente'}).click();
-      await dialog.getByText('Diagnóstico', {exact:true}).waitFor();
+      await dialog.getByText(/2 de 8 docentes têm lançamentos/).waitFor();
       assert.deepEqual(pageErrors,[],`browser errors: ${pageErrors.join('; ')}`);
       results.push({ width,height,zoom,cssWidth,cssHeight,filename,metrics,passed:true });
       await page.close();

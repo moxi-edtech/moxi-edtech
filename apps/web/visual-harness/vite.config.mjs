@@ -6,6 +6,10 @@ export default {
   resolve: {
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
     alias: [
+      // Auth is simulated only for the chat usability suite. Other stories keep their original module.
+      ...(process.env.KLASSE_VISUAL_CHAT_MOCK_AUTH === "1" ? [
+        { find: "@/lib/supabaseClient", replacement: path.resolve(dir, "auth-fixture.ts") },
+      ] : []),
       { find: "next/navigation", replacement: path.resolve(dir, "next-navigation.ts") },
       { find: "next/link", replacement: path.resolve(dir, "next-link.tsx") },
       { find: "@", replacement: path.resolve(dir, "../src") },

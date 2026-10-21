@@ -449,7 +449,7 @@ export default function AiChatWidget({
     return () => {
       active = false;
     };
-  }, [schoolId, authRevision]);
+  }, [schoolId, authRevision, clearSensitiveSession]);
 
   // A mudança de escola invalida toda a conversa e qualquer proposta anterior.
   // Não reutilizar mensagens com dados de alunos entre tenants.
@@ -1230,8 +1230,8 @@ export default function AiChatWidget({
               <p className="mt-0.5 truncate text-xs font-normal text-slate-500">{contextName}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <button type="button" onClick={() => { setMessages([]); setFlow(null); setInputValue(""); setScopeNotice("Nova conversa iniciada neste contexto."); intelligenceConversationRef.current = null; queryEpochRef.current += 1; requestControllerRef.current?.abort(); pendingRef.current = false; setThinking(false); queryCache.clear(); }} aria-label="Nova conversa" className="rounded-lg px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
-                Nova conversa
+              <button type="button" onClick={() => { setMessages([]); setFlow(null); setInputValue(""); setScopeNotice("Nova conversa iniciada neste contexto."); intelligenceConversationRef.current = null; queryEpochRef.current += 1; requestControllerRef.current?.abort(); pendingRef.current = false; setThinking(false); queryCache.clear(); }} aria-label="Nova conversa" className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+                <RotateCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">Nova conversa</span>
               </button>
               <button ref={toggleExpandedRef} type="button" aria-label={expanded ? "Recolher conversa" : "Expandir conversa"} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
                 {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
