@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AlertCircle, ArrowUpRight, BookOpen, ChevronRight, GraduationCap, Loader2, RefreshCw, UsersRound } from "lucide-react";
 
@@ -31,11 +31,6 @@ export function CourseContextView({ context, portal, onNavigate }: Props) {
   const reducedMotion = useReducedMotion();
   const [classeId, setClasseId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setClasseId(null);
-    setTurmaId(null);
-  }, [context.id, context.escolaId, context.academicYearId]);
 
   const visibleTurmas = useMemo(
     () => (data?.turmas ?? []).filter((turma) => !classeId || turma.classeId === classeId),
