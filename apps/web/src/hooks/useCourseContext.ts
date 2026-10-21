@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
 
@@ -15,31 +15,43 @@ export type CourseOverview = {
 
 type Reply = { ok: boolean; data?: CourseOverview; error?: string };
 
-async function fetchCourse(url: string): Promise<CourseOverview> {
-  const response = await fetch(url, { credentials: "same-origin" });
+/** Every cache key includes the tenant, course and academic-year scope. */
+export function courseContextQueryKey(context: EntityContext) {
+  return ["command-center", "curso", context.escolaId, context.id, context.academicYearId] as const;
+}
+
+export function courseContextHref(context: EntityContext) {
+  const params = new URLSearchParams();
+  if (context.academicYearId) params.set(ACADEMIC_YEAR_PARAM, context.academicYearId);
+  const suffix = params.size ? `?${params.toString()}` : "";
+  return `/api/escolas/${encodeURIComponent(context.escolaId)}/command-center/cursos/${encodeURIComponent(context.id)}${suffix}`;
+}
+
+async function fetchCourse(url: string, signal: AbortSignal, expectedCourseId: string): Promise<CourseOverview> {
+  const response = await fetch(url, { credentials: "same-origin", cache: "no-store", signal });
   const reply = (await response.json().catch(() => null)) as Reply | null;
-  if (!response.ok || !reply?.ok || !reply.data) {
+  if (!response.ok || !reply?.ok || !reply.data || reply.data.curso?.id !== expectedCourseId) {
     throw new Error(reply?.error || "Não foi possível carregar este curso.");
   }
   return reply.data;
 }
 
-/** Scoped by tenant, entity and academic year; never cache across users after logout. */
+/** The parent dialog owns the QueryClient and clears its cache on close. */
 export function useCourseContext(context: EntityContext) {
-  const params = new URLSearchParams();
-  if (context.academicYearId) params.set(ACADEMIC_YEAR_PARAM, context.academicYearId);
-  const suffix = params.size ? `?${params.toString()}` : "";
-  const url = `/api/escolas/${encodeURIComponent(context.escolaId)}/command-center/cursos/${encodeURIComponent(context.id)}${suffix}`;
-  const result = useSWR<CourseOverview>(url, fetchCourse, {
-    revalidateOnFocus: false,
-    dedupingInterval: 10_000,
-    errorRetryCount: 1,
-    keepPreviousData: false,
+  const result = useQuery({
+    queryKey: courseContextQueryKey(context),
+    queryFn: ({ signal }) => fetchCourse(courseContextHref(context), signal, context.id),
+    staleTime: 45_000,
+    gcTime: 120_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
+
   return {
-    ...result,
+    data: result.data,
     error: result.error instanceof Error ? result.error.message : result.error ? "Falha ao carregar dados." : null,
-    loading: result.isLoading,
-    retry: () => result.mutate(),
+    loading: result.isPending,
+    refreshing: result.isFetching && !result.isPending,
+    retry: result.refetch,
   };
 }
