@@ -20,6 +20,7 @@ const requestSchema = z.object({
 
 // Hard cap prevents uncontrolled fan-out. The response marks partial results as incomplete.
 const MAX_ASSIGNMENTS = 500;
+const MAX_TURMAS_PER_READ = 200;
 
 type TurmaRow = {
   id: string; nome: string; turno: string | null; ano_letivo: number | null;
@@ -124,7 +125,7 @@ export async function GET(
     const direct = (directReply.data ?? []) as DirectLink[];
     const legacy = (legacyReply.data ?? []) as LegacyLink[];
     const schedule = (scheduleReply.data ?? []) as TimetableLink[];
-    const partial = [direct, legacy, schedule].some((items) => items.length > MAX_ASSIGNMENTS);
+    let partial = [direct, legacy, schedule].some((items) => items.length > MAX_ASSIGNMENTS);
     const directWindow = direct.slice(0, MAX_ASSIGNMENTS);
     const legacyWindow = legacy.slice(0, MAX_ASSIGNMENTS);
     const scheduleWindow = schedule.slice(0, MAX_ASSIGNMENTS);
@@ -135,7 +136,10 @@ export async function GET(
       ...scheduleWindow.map((item) => item.turma_id),
     ].filter(Boolean))];
 
-    if (!relatedTurmaIds.length) {
+    if (relatedTurmaIds.length > MAX_TURMAS_PER_READ) partial = true;
+    const requestedTurmaIds = relatedTurmaIds.slice(0, MAX_TURMAS_PER_READ);
+
+    if (!requestedTurmaIds.length) {
       return NextResponse.json({ ok: true, data: {
         professor: { id: professor.id, nome },
         anoLetivo: { id: year.id, ano: year.ano, historico: year.status === "CLOSED" },
@@ -148,7 +152,7 @@ export async function GET(
     const { data: turmaRows, error: turmaError } = await supabase.from("turmas")
       .select("id,nome,turno,ano_letivo,ano_letivo_id,classes(id,nome),cursos(id,nome)")
       .eq("escola_id", escolaId)
-      .in("id", relatedTurmaIds);
+      .in("id", requestedTurmaIds);
     if (turmaError) throw turmaError;
     const scoped = ((turmaRows ?? []) as unknown as TurmaRow[]).map((turma): ProfessorTurmaRow => ({
       id: turma.id,
