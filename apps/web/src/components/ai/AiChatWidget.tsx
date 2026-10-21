@@ -1040,7 +1040,7 @@ export default function AiChatWidget({
           setIsOpen((value) => !value);
         }}
         style={{ right: position.right, bottom: position.bottom }}
-        className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#1F6B3B] text-white shadow-md hover:bg-[#18572f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F6B3B] ${dragging ? "" : "transition-colors"}`}
+        className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#16A34A] text-white shadow-md hover:bg-[#15803D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16A34A] ${dragging ? "" : "transition-colors"}`}
         aria-label={isOpen ? "Fechar KLASSE IA" : "Abrir KLASSE IA"}
         aria-expanded={isOpen}
         aria-controls="klasse-ai-chat-panel"
