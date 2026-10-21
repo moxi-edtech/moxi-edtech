@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Check,
@@ -14,6 +14,10 @@ import {
   X,
   ExternalLink,
   MessageCircle,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  Square,
 } from "lucide-react";
 import { describeScreenContext, type AiWidgetContext } from "@/lib/assistant/screen-context";
 import type { SchoolIntelligenceConversation } from "@/lib/assistant/data-copilot/school-intelligence-contract";
@@ -22,6 +26,8 @@ import { getActionsForRole, ASSISTANT_ACTIONS } from "@/lib/assistant/action-reg
 import type { AssistantActionV2 } from "@/lib/assistant/actions-v2";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
 import { buildContextualPortalHref } from "@/lib/navigation";
+import { createClient } from "@/lib/supabaseClient";
+import { canSubmitChatKey, chatContextKey, presentChatResponse } from "@/lib/assistant/chat-presentation";
 
 export type { AiWidgetContext };
 
@@ -58,6 +64,9 @@ type Message = {
   actions?: AssistantActionV2[];
   mode?: string;
   insight?: InsightPayload;
+  retryQuery?: string;
+  interrupted?: boolean;
+  incomplete?: boolean;
 };
 
 type AssistantSuggestionPayload = {
@@ -66,6 +75,7 @@ type AssistantSuggestionPayload = {
 };
 
 type AssistantResponsePayload = {
+  ok?: boolean;
   answer?: string;
   links?: Array<{ label: string; href: string }>;
   actions?: AssistantActionV2[];
@@ -74,6 +84,7 @@ type AssistantResponsePayload = {
   operatingMode?: "help" | "data" | "action";
   insight?: InsightPayload;
   aiInsightId?: string;
+  interrupted?: boolean;
   fallbackReason?: "permission_denied" | "knowledge_not_found" | "provider_unavailable" | "data_unavailable";
   conversation?: SchoolIntelligenceConversation;
   clarification?: {
@@ -213,8 +224,17 @@ export default function AiChatWidget({
 }: AiChatWidgetProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const routeYearId = searchParams?.get("ano_letivo_id") ?? context?.academicYearId ?? null;
+  const routePoloId = searchParams?.get("polo_id") ?? null;
   const routeSchoolParam = schoolParam || schoolId;
   const [isOpen, setIsOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [visualWindow, setVisualWindow] = useState<{ top: number; height: number } | null>(null);
+  const [scopeNotice, setScopeNotice] = useState<string | null>(null);
+  const [liveAnnouncement, setLiveAnnouncement] = useState("");
+  const [authRevision, setAuthRevision] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -234,7 +254,17 @@ export default function AiChatWidget({
   const intelligenceConversationRef = useRef<SchoolIntelligenceConversation | null>(null);
   const queryEpochRef = useRef(0);
   const [activeAcademicYearId, setActiveAcademicYearId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [activePoloId, setActivePoloId] = useState<string | null>(null);
+  const [verifiedSchoolParam, setVerifiedSchoolParam] = useState<string | null>(null);
+  const scopeRef = useRef<string | null>(null);
+  const verifiedUserRef = useRef<string | null>(null);
+  const pendingRef = useRef(false);
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const toggleExpandedRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
 
   const [position, setPosition] = useState<{ right: number; bottom: number }>({ right: 24, bottom: 24 });
   const [dragging, setDragging] = useState(false);
@@ -253,6 +283,99 @@ export default function AiChatWidget({
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
+
+  useEffect(() => {
+    const update = () => {
+      setMobile(window.innerWidth < 768);
+      const viewport = window.visualViewport;
+      setVisualWindow({ top: viewport?.offsetTop ?? 0, height: viewport?.height ?? window.innerHeight });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  const clearSensitiveSession = useCallback(() => {
+    queryEpochRef.current += 1;
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    pendingRef.current = false;
+    intelligenceConversationRef.current = null;
+    queryCache.clear();
+    setMessages([]);
+    setInputValue("");
+    setFlow(null);
+    setScopeNotice(null);
+    setThinking(false);
+    setIsOpen(false);
+    setIsAllowed(false);
+    setVerifiedSchoolParam(null);
+    setSessionUserId(null);
+    setResolvedSchoolId(null);
+    setActiveAcademicYearId(null);
+    setActivePoloId(null);
+    scopeRef.current = null;
+  }, [queryCache]);
+
+  // Auth events are the existing product's source of truth. No polling and no new requests.
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUser = session?.user?.id ?? null;
+      if (event === "SIGNED_OUT") {
+        verifiedUserRef.current = null;
+        clearSensitiveSession();
+      } else if (nextUser && verifiedUserRef.current && nextUser !== verifiedUserRef.current) {
+        verifiedUserRef.current = nextUser;
+        clearSensitiveSession();
+        setCheckingAccess(true);
+        setAuthRevision((previous) => previous + 1);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [clearSensitiveSession]);
+
+  useEffect(() => {
+    if (!sessionUserId) return;
+    const key = `klasse_ai_expanded_${sessionUserId}`;
+    setExpanded(localStorage.getItem(key) === "true");
+  }, [sessionUserId]);
+
+  useEffect(() => {
+    if (sessionUserId) localStorage.setItem(`klasse_ai_expanded_${sessionUserId}`, String(expanded));
+  }, [expanded, sessionUserId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && expanded) {
+        event.preventDefault();
+        setExpanded(false);
+        toggleExpandedRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isOpen, expanded]);
+
+  useEffect(() => {
+    if (isOpen && expanded) closeRef.current?.focus();
+  }, [expanded, isOpen]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(128, Math.max(40, textarea.scrollHeight))}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 128 ? "auto" : "hidden";
+  }, [inputValue, isOpen, showHelp]);
+
 
   useEffect(() => {
     const savedOpen = localStorage.getItem(`klasse_ai_v3_open_${schoolId}`);
@@ -281,6 +404,9 @@ export default function AiChatWidget({
 
   useEffect(() => {
     let active = true;
+    setCheckingAccess(true);
+    setVerifiedSchoolParam(null);
+    setIsAllowed(false);
     async function checkAccess() {
       try {
         const res = await fetch(`/api/admin/ai/access?schoolId=${encodeURIComponent(schoolId)}`, { cache: "no-store" });
@@ -298,10 +424,17 @@ export default function AiChatWidget({
           return;
         }
 
+        const authenticatedId = typeof data.userId === "string" ? data.userId : null;
+        const authorized = Boolean(res.ok && json?.ok && data.allowed && authenticatedId);
+        if (verifiedUserRef.current && verifiedUserRef.current !== authenticatedId) {
+          clearSensitiveSession();
+        }
+        verifiedUserRef.current = authenticatedId;
         setResolvedSchoolId(typeof data.schoolId === "string" ? data.schoolId : null);
         setUserRole(roleStr);
-        setSessionUserId(typeof data.userId === "string" ? data.userId : null);
-        setIsAllowed(Boolean(res.ok && json?.ok && data.allowed));
+        setSessionUserId(authenticatedId);
+        setVerifiedSchoolParam(authorized ? schoolId : null);
+        setIsAllowed(authorized);
       } catch {
         if (active) {
           intelligenceConversationRef.current = null;
@@ -316,38 +449,53 @@ export default function AiChatWidget({
     return () => {
       active = false;
     };
-  }, [schoolId]);
+  }, [schoolId, authRevision]);
 
   // A mudança de escola invalida toda a conversa e qualquer proposta anterior.
   // Não reutilizar mensagens com dados de alunos entre tenants.
   useEffect(() => {
     queryEpochRef.current += 1;
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    pendingRef.current = false;
     intelligenceConversationRef.current = null;
     queryCache.clear();
     setMessages([]);
+    setInputValue("");
     setFlow(null);
     setResolvedSchoolId(null);
     setSessionUserId(null);
     setActiveAcademicYearId(null);
+    setActivePoloId(null);
+    setThinking(false);
+    scopeRef.current = null;
   }, [schoolId, queryCache]);
 
-  // The active academic year is read from the user's selected route, not guessed by the LLM.
+  // Never inherit previous-year or previous-polo filters. Next navigation refreshes these params.
   useEffect(() => {
-    const update = () => {
-      const value = new URLSearchParams(window.location.search).get("ano_letivo_id");
-      const valid = value && /^[a-f\d-]{36}$/i.test(value) ? value : null;
-      setActiveAcademicYearId((current) => {
-        if (current !== valid) {
-          intelligenceConversationRef.current = null;
-          queryEpochRef.current += 1;
-        }
-        return valid;
-      });
-    };
-    update();
-    window.addEventListener("popstate", update);
-    return () => window.removeEventListener("popstate", update);
-  }, [pathname]);
+    const validUuid = (value: string | null) => value && /^[a-f\d-]{36}$/i.test(value) ? value : null;
+    setActiveAcademicYearId(validUuid(routeYearId));
+    setActivePoloId(validUuid(routePoloId));
+  }, [pathname, routeYearId, routePoloId]);
+
+  useEffect(() => {
+    if (!sessionUserId || !isAllowed || verifiedSchoolParam !== schoolId) return;
+    const nextScope = chatContextKey(sessionUserId, effectiveSchoolId, activeAcademicYearId, activePoloId);
+    if (scopeRef.current && scopeRef.current !== nextScope) {
+      queryEpochRef.current += 1;
+      requestControllerRef.current?.abort();
+      requestControllerRef.current = null;
+      pendingRef.current = false;
+      intelligenceConversationRef.current = null;
+      queryCache.clear();
+      setMessages([]);
+      setInputValue("");
+      setFlow(null);
+      setThinking(false);
+      setScopeNotice(`Nova consulta: Escola ${routeSchoolParam}, ${activeAcademicYearId ? "ano letivo selecionado" : "ano letivo atual"}${activePoloId ? ", polo selecionado" : ""}.`);
+    }
+    scopeRef.current = nextScope;
+  }, [sessionUserId, isAllowed, verifiedSchoolParam, schoolId, effectiveSchoolId, activeAcademicYearId, activePoloId, routeSchoolParam, queryCache]);
 
   useEffect(() => {
     if (!isAllowed) return;
@@ -374,7 +522,8 @@ export default function AiChatWidget({
   }, [isAllowed, context, contextName]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const transcript = transcriptRef.current;
+    if (transcript) transcript.scrollTop = transcript.scrollHeight;
   }, [messages, thinking, showHelp]);
 
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -395,8 +544,8 @@ export default function AiChatWidget({
       const dy = point.clientY - dragStart.current.y;
       if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragMoved.current = true;
       const isMobile = window.innerWidth < 768;
-      const widgetWidth = isOpen ? (isMobile ? window.innerWidth - 28 : 360) : 42;
-      const widgetHeight = isOpen ? 500 : 42;
+      const widgetWidth = isOpen ? (isMobile ? window.innerWidth - 28 : 440) : 48;
+      const widgetHeight = isOpen ? 640 : 48;
       const minBottom = hasMobileNav && isMobile ? 82 : 14;
       setPosition({
         right: Math.max(14, Math.min(dragStart.current.right - dx, window.innerWidth - widgetWidth - 14)),
@@ -424,7 +573,7 @@ export default function AiChatWidget({
   }, [dragging, isOpen, hasMobileNav, schoolId]);
 
   function pushMessages(next: Message[]) {
-    setMessages((current) => [...current, ...next].slice(-10));
+    setMessages((current) => [...current, ...next].slice(-40));
   }
 
   function startFlow(id: FlowId) {
@@ -848,8 +997,7 @@ export default function AiChatWidget({
     }
     if (action.startsWith("retry_query:")) {
       const retryQuery = decodeURIComponent(action.replace("retry_query:", ""));
-      pushMessages([user(retryQuery)]);
-      void handleGeneralQuery(retryQuery);
+      void handleGeneralQuery(retryQuery, true);
       return;
     }
     if (action.startsWith("rewrite_mode:")) {
@@ -911,93 +1059,102 @@ export default function AiChatWidget({
     }
   }
 
-  async function handleGeneralQuery(text: string) {
+  function cancelCurrentQuery() {
+    requestControllerRef.current?.abort();
+  }
+
+  async function handleGeneralQuery(text: string, retry = false) {
+    // One request at a time. Repeated Enter and retry clicks cannot double-bill Supabase.
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     const requestEpoch = queryEpochRef.current;
     setThinking(true);
+    setLiveAnnouncement("Consulta iniciada.");
     const contextualQuery = intelligenceConversationRef.current ? text : resolveConversationalQuery(text, messages);
-
-    // Client-side local Cache logic for high performance & instant responses
-    const cacheKey = `${effectiveSchoolId}:${userRole}:${contextualQuery.toLowerCase().trim()}:${context?.module || "any"}`;
-    if (queryCache.has(cacheKey)) {
-      const cached = queryCache.get(cacheKey);
-      if (cached && cached.answer) {
-        pushMessages([
-          ai(cached.answer, {
-            links: cached.links,
-            actions: cached.actions,
-            mode: cached.operatingMode ?? cached.mode,
-            insight: cached.insight,
-            aiInsightId: cached.aiInsightId,
-            quickReplies: cached.clarification?.options.map((option) => ({ label: option.label, action: `clarification:${encodeURIComponent(option.value)}` }))
-              ?? cached.suggestions?.map((s) => ({ label: s.title, action: `suggestion:${s.key}` })),
-          }),
-        ]);
-        setThinking(false);
-        return;
-      }
-    }
+    const cacheKey = `${scopeRef.current}:${userRole}:${contextualQuery.toLowerCase().trim()}:${context?.module || "any"}`;
+    if (retry) setMessages((current) => current.filter((message) => message.retryQuery !== text));
 
     try {
-      const res = await fetch("/api/admin/ai/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          schoolId: effectiveSchoolId,
-          message: contextualQuery,
-          context: { ...context, academicYearId: activeAcademicYearId ?? context?.academicYearId },
-          conversation: intelligenceConversationRef.current &&
-            intelligenceConversationRef.current.userId === sessionUserId &&
-            intelligenceConversationRef.current.schoolId === effectiveSchoolId
-              ? intelligenceConversationRef.current : undefined,
-        }),
-        signal: AbortSignal.timeout(7_500),
-      });
-      const json = await res.json().catch(() => null);
-      if (requestEpoch !== queryEpochRef.current) return; // logout, school/year switch
-      if (!res.ok || !json?.ok) {
-        if (res.status === 401 || res.status === 403) intelligenceConversationRef.current = null;
-        throw new Error(json?.error || "Erro ao consultar assistente.");
+      // Reuse only the existing local fast-path cache; retry never fans out automatically.
+      let json: AssistantResponsePayload | null = !retry ? queryCache.get(cacheKey) ?? null : null;
+      if (!json) {
+        const res = await fetch("/api/admin/ai/assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            schoolId: effectiveSchoolId,
+            message: contextualQuery,
+            context: { ...context, academicYearId: activeAcademicYearId ?? context?.academicYearId },
+            conversation: intelligenceConversationRef.current &&
+              intelligenceConversationRef.current.userId === sessionUserId &&
+              intelligenceConversationRef.current.schoolId === effectiveSchoolId &&
+              intelligenceConversationRef.current.poloId === activePoloId &&
+              (!activeAcademicYearId || intelligenceConversationRef.current.filters.academicYearId === activeAcademicYearId)
+                ? intelligenceConversationRef.current : undefined,
+          }),
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(7_500)]),
+        });
+        json = await res.json().catch(() => null) as AssistantResponsePayload | null;
+        if (requestEpoch !== queryEpochRef.current) return;
+        if (!res.ok || !json?.ok) {
+          if (res.status === 401 || res.status === 403) {
+            intelligenceConversationRef.current = null;
+            throw new Error("Sem permissão para esta consulta. Confirme o acesso com a secretaria.");
+          }
+          if (res.status === 429) throw new Error("Limite de consultas atingido. Tente mais tarde.");
+          throw new Error("Não foi possível consultar a escola agora. Tente novamente.");
+        }
+        if (json.mode === "fast_path") queryCache.set(cacheKey, json);
       }
+      if (requestEpoch !== queryEpochRef.current || controller.signal.aborted) return;
       intelligenceConversationRef.current = json.conversation &&
-        json.conversation.userId === sessionUserId && json.conversation.schoolId === effectiveSchoolId
+        json.conversation.userId === sessionUserId &&
+        json.conversation.schoolId === effectiveSchoolId &&
+        json.conversation.poloId === activePoloId &&
+        (!activeAcademicYearId || json.conversation.filters.academicYearId === activeAcademicYearId)
           ? json.conversation : null;
-
-      if (json.mode === "fast_path") {
-        queryCache.set(cacheKey, json);
-      }
-
       pushMessages([
-        ai(json.answer, {
+        ai(json.answer ?? "Não há resposta disponível.", {
           links: json.links,
           actions: json.actions,
           mode: json.operatingMode ?? json.mode,
           insight: json.insight,
           aiInsightId: json.aiInsightId,
-          quickReplies: json.clarification?.options.map((option: { label: string; value: string }) => ({ label: option.label, action: `clarification:${encodeURIComponent(option.value)}` }))
-            ?? json.suggestions?.map((s: AssistantSuggestionPayload) => ({ label: s.title, action: `suggestion:${s.key}` }))
+          interrupted: json.interrupted,
+          retryQuery: json.interrupted || json.fallbackReason === "provider_unavailable" ? text : undefined,
+          quickReplies: json.clarification?.options.map((option) => ({ label: option.label, action: `clarification:${encodeURIComponent(option.value)}` }))
+            ?? json.suggestions?.map((suggestion) => ({ label: suggestion.title, action: `suggestion:${suggestion.key}` }))
             ?? (json.conversation?.intent === "teacher_grade_deadlines" ? [
               { label: "Ver lista de professores", action: `clarification:${encodeURIComponent("Quais são esses professores?")}` },
             ] : json.conversation?.intent === "teacher_pending_details" ? [
               { label: "Próxima página", action: `clarification:${encodeURIComponent("Próxima página")}` },
-            ] : (json.fallbackReason === "data_unavailable" || json.insight?.provenance?.freshness === "unknown") ? [
-              { label: "Tentar novamente", action: `retry_query:${encodeURIComponent(contextualQuery)}` },
             ] : undefined),
         }),
       ]);
-    } catch (err) {
+      setLiveAnnouncement(json.interrupted ? "Resposta incompleta. Pode tentar de novo." : "Consulta concluída. Nova resposta disponível.");
+    } catch (error) {
       if (requestEpoch !== queryEpochRef.current) return;
-      pushMessages([ai(`${errorMessage(err, "Erro ao obter resposta do assistente.")} A consulta não alterou dados. Pode tentar novamente.`, {
-        quickReplies: [{ label: "Tentar novamente", action: `retry_query:${encodeURIComponent(contextualQuery)}` }],
-      })]);
+      const cancelled = controller.signal.aborted;
+      const reason = cancelled
+        ? "Consulta interrompida. Nenhum resultado foi confirmado."
+        : error instanceof Error ? error.message : "A consulta falhou. Tente novamente.";
+      pushMessages([ai(reason, { interrupted: cancelled, retryQuery: text })]);
+      setLiveAnnouncement(cancelled ? "Consulta interrompida." : "Falha na consulta. Pode tentar de novo.");
     } finally {
-      setThinking(false);
+      if (requestControllerRef.current === controller) {
+        requestControllerRef.current = null;
+        pendingRef.current = false;
+        setThinking(false);
+      }
     }
   }
 
   function submitInput(e: React.FormEvent) {
     e.preventDefault();
     const text = inputValue.trim();
-    if (!text) return;
+    if (!text || thinking || pendingRef.current) return;
     setInputValue("");
     pushMessages([user(text)]);
 
@@ -1021,10 +1178,16 @@ export default function AiChatWidget({
     }
   }
 
-  if (checkingAccess || !isAllowed) return null;
+  if (checkingAccess || !isAllowed || !sessionUserId || verifiedSchoolParam !== schoolId) return null;
 
-  const mobile = typeof window !== "undefined" && window.innerWidth < 768;
-  const cardRight = mobile ? 14 : position.right;
+  const viewportTop = visualWindow?.top ?? 0;
+  const viewportHeight = visualWindow?.height ?? 640;
+  const cardRight = expanded ? (mobile ? 0 : 16) : mobile ? 14 : position.right;
+  const panelStyle: React.CSSProperties = mobile
+    ? { right: cardRight, top: viewportTop + (expanded ? 0 : 8), bottom: "auto", height: expanded ? viewportHeight : Math.max(220, viewportHeight - 20), maxHeight: viewportHeight - (expanded ? 0 : 16) }
+    : expanded
+      ? { right: 16, top: 16, bottom: 16, height: "auto", maxHeight: "calc(100dvh - 32px)" }
+      : { right: cardRight, bottom: position.bottom, maxHeight: `min(80dvh, calc(100dvh - ${position.bottom + 16}px))` };
 
   return (
     <>
@@ -1039,8 +1202,9 @@ export default function AiChatWidget({
           }
           setIsOpen((value) => !value);
         }}
-        style={{ right: position.right, bottom: position.bottom }}
+        style={{ right: position.right, bottom: position.bottom, visibility: isOpen && expanded ? "hidden" : "visible" }}
         className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#16A34A] text-white shadow-md hover:bg-[#15803D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16A34A] ${dragging ? "" : "transition-colors"}`}
+        ref={launcherRef}
         aria-label={isOpen ? "Fechar KLASSE IA" : "Abrir KLASSE IA"}
         aria-expanded={isOpen}
         aria-controls="klasse-ai-chat-panel"
@@ -1053,21 +1217,29 @@ export default function AiChatWidget({
           id="klasse-ai-chat-panel"
           role="dialog"
           aria-label="Conversa com o KLASSE IA"
-          style={{ right: cardRight, bottom: position.bottom, maxHeight: `min(80dvh, calc(100dvh - ${position.bottom + 16}px))` }}
-          className="fixed z-50 flex h-[640px] w-[min(440px,calc(100vw-28px))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10"
+          style={panelStyle}
+          className={`fixed z-50 flex min-h-0 flex-col overflow-hidden border border-slate-200 bg-white shadow-xl shadow-slate-900/10 ${expanded ? "w-full rounded-none md:w-[min(840px,calc(100vw-32px))] md:rounded-2xl" : "w-[min(440px,calc(100vw-28px))] rounded-2xl"}`}
         >
           <header
-            onMouseDown={handleDragStart}
-            onTouchStart={handleDragStart}
+            onMouseDown={expanded ? undefined : handleDragStart}
+            onTouchStart={expanded ? undefined : handleDragStart}
             className="flex cursor-grab select-none items-center justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4"
           >
             <div className="min-w-0">
               <h3 className="text-sm font-semibold tracking-tight text-slate-900">KLASSE IA</h3>
               <p className="mt-0.5 truncate text-xs font-normal text-slate-500">{contextName}</p>
             </div>
-            <button type="button" onClick={() => setIsOpen(false)} aria-label="Fechar conversa" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              <button type="button" onClick={() => { setMessages([]); setFlow(null); setInputValue(""); setScopeNotice("Nova conversa iniciada neste contexto."); intelligenceConversationRef.current = null; queryEpochRef.current += 1; requestControllerRef.current?.abort(); pendingRef.current = false; setThinking(false); queryCache.clear(); }} aria-label="Nova conversa" className="rounded-lg px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+                Nova conversa
+              </button>
+              <button ref={toggleExpandedRef} type="button" aria-label={expanded ? "Recolher conversa" : "Expandir conversa"} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+                {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
+              <button ref={closeRef} type="button" onClick={() => { setIsOpen(false); requestAnimationFrame(() => launcherRef.current?.focus()); }} aria-label="Fechar conversa" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </header>
 
           {showHelp ? (
@@ -1131,7 +1303,9 @@ export default function AiChatWidget({
             </section>
           ) : (
             <section className="flex min-h-0 flex-1 flex-col">
-              <div data-testid="klasse-ai-transcript" className="min-h-0 flex-1 overflow-y-auto bg-white px-4 py-5 sm:px-5">
+              <div aria-live="polite" aria-atomic="true" className="sr-only">{liveAnnouncement}</div>
+              <div ref={transcriptRef} data-testid="klasse-ai-transcript" className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5">
+                {scopeNotice ? <p role="status" className="mb-5 border-b border-slate-100 pb-3 text-xs text-slate-600">{scopeNotice}</p> : null}
                 {messages.length <= 1 && !thinking && actions.length > 0 ? (
                   <div className="mb-6 flex flex-wrap gap-2" aria-label="Sugestões de consulta">
                     {actions.slice(0, 3).map((act) => (
@@ -1156,46 +1330,117 @@ export default function AiChatWidget({
                           ? "w-full min-w-0 text-[13px] leading-6 text-slate-800"
                           : "max-w-[88%] min-w-0 rounded-2xl rounded-br-md bg-slate-100 px-4 py-3 text-[13px] leading-6 text-slate-800"}>
                           {isAi && message.insight ? (
-                            <div className="space-y-5">
-                              <p className="text-xs font-medium text-slate-500">Análise</p>
-                              <div>
-                                <p className="text-xs font-medium text-slate-500">Diagnóstico</p>
-                                <p className="mt-1.5 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-900">{message.insight.diagnosis}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-slate-500">Impacto</p>
-                                <p className="mt-1.5 whitespace-pre-wrap text-[13px] leading-6 text-slate-700">{message.insight.impact}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-slate-500">Próximo passo</p>
-                                <p className="mt-1.5 whitespace-pre-wrap text-[13px] leading-6 text-slate-900">{message.insight.recommendation}</p>
-                              </div>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-slate-100 py-4">
-                                {message.insight.evidence.slice(0, 4).map((item) => (
-                                  <div key={`${message.id}-${item.label}`} className="min-w-0">
-                                    <p className="text-[11px] text-slate-500">{item.label}</p>
-                                    <p className="mt-1 break-words text-sm font-semibold tabular-nums text-slate-900">{item.value}</p>
-                                  </div>
-                                ))}
-                              </div>
+                            <div className="space-y-3">
                               {message.insight.provenance ? (
-                                <div className="break-words text-[11px] leading-5 text-slate-500">
-                                  <p>
-                                    Fonte: <span className="font-semibold">{formatInsightSource(message.insight.provenance.source)}</span>
-                                    {" · "}{message.insight.provenance.scope}
-                                    {" · "}{message.insight.provenance.freshness === "live" ? "consulta ao vivo" : message.insight.provenance.freshness === "partial" ? "cobertura parcial" : "atualidade não confirmada"}
-                                    {" · Consultado "}{new Date(message.insight.provenance.consultedAt).toLocaleString("pt-AO", { timeZone: "Africa/Luanda", timeZoneName: "short" })}
+                                <>
+                                  <p className="whitespace-pre-wrap break-words text-sm font-medium leading-6 text-slate-900">
+                                    {presentChatResponse(message.insight.diagnosis).summary}
                                   </p>
-                                  {message.insight.provenance.limitation ? <p className="mt-2 text-slate-600">Limitação: {message.insight.provenance.limitation}</p> : null}
+                                  {message.insight.provenance.freshness !== "live" ? (
+                                    <p className="text-xs leading-5 text-slate-600">
+                                      {message.insight.provenance.freshness === "unknown"
+                                        ? "Dado indisponível ou não confirmado. Não utilize este resultado como total verificado."
+                                        : "Dados com cobertura parcial; confirme os limites em Ver detalhes."}
+                                    </p>
+                                  ) : null}
+                                  <p className="whitespace-pre-wrap text-[13px] leading-6 text-slate-700">
+                                    {presentChatResponse(message.insight.recommendation).summary}
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+                                    {message.insight.evidence.slice(0, 2).map((item) => (
+                                      <div key={`${message.id}-${item.label}`} className="min-w-0">
+                                        <p className="break-words text-[11px] leading-5 text-slate-600">{item.label}</p>
+                                        <p className="mt-1 break-words text-base font-semibold tabular-nums text-slate-900">{item.value}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </>
+                              ) : (
+                                <p className="text-sm text-slate-700">Fonte não disponibilizada. Não é possível confirmar os dados desta resposta.</p>
+                              )}
+                              <details className="group border-t border-slate-100 pt-2 text-xs text-slate-700">
+                                <summary className="cursor-pointer rounded-md py-2 font-medium text-slate-700 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">Ver detalhes</summary>
+                                <div className="space-y-4 pb-2 pt-3 leading-5">
+                                  {presentChatResponse(message.insight.diagnosis).details ? <p className="whitespace-pre-wrap break-words">{presentChatResponse(message.insight.diagnosis).details}</p> : null}
+                                  {presentChatResponse(message.insight.diagnosis).tables.map((table, tableIndex) => (
+                                    <div key={`${message.id}-insight-table-${tableIndex}`} className="max-w-full overflow-x-auto" tabIndex={0} aria-label="Tabela de indicadores; pode deslocar horizontalmente">
+                                      <table className="min-w-max border-collapse text-left text-xs">
+                                        <thead><tr>{table.headers.map((header, index) => <th key={index} scope="col" className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-900">{header}</th>)}</tr></thead>
+                                        <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, columnIndex) => <td key={columnIndex} className="border-b border-slate-100 px-3 py-2 tabular-nums">{cell}</td>)}</tr>)}</tbody>
+                                      </table>
+                                    </div>
+                                  ))}
+                                  <section>
+                                    <h4 className="font-semibold text-slate-900">Impacto</h4>
+                                    <p className="mt-1 whitespace-pre-wrap break-words">{message.insight.impact}</p>
+                                  </section>
+                                  <section>
+                                    <h4 className="font-semibold text-slate-900">Indicadores e unidades</h4>
+                                    <dl className="mt-2 grid grid-cols-2 gap-3">
+                                      {message.insight.evidence.map((item) => (
+                                        <div key={`${message.id}-detail-${item.label}`} className="min-w-0">
+                                          <dt className="break-words text-slate-600">{item.label}</dt>
+                                          <dd className="mt-1 break-words font-semibold tabular-nums text-slate-900">{item.value}</dd>
+                                        </div>
+                                      ))}
+                                    </dl>
+                                  </section>
+                                  <section>
+                                    <h4 className="font-semibold text-slate-900">Fonte e filtros aplicados</h4>
+                                    <p className="mt-1 break-words">Fonte: {message.insight.provenance ? formatInsightSource(message.insight.provenance.source) : "não disponibilizada"}</p>
+                                    <p className="mt-1 break-words">Filtros / âmbito: {message.insight.provenance?.scope ?? "não disponibilizados"}</p>
+                                    <p className="mt-1">Consulta: {message.insight.provenance ? new Date(message.insight.provenance.consultedAt).toLocaleString("pt-AO", { timeZone: "Africa/Luanda", timeZoneName: "short" }) : "sem horário"}</p>
+                                    <p className="mt-1">Cobertura: {message.insight.provenance?.freshness === "live" ? "consulta ao vivo" : message.insight.provenance?.freshness === "partial" ? "parcial" : "não confirmada"}</p>
+                                    {message.insight.provenance?.limitation ? <p className="mt-1">Limitação: {message.insight.provenance.limitation}</p> : null}
+                                  </section>
                                 </div>
-                              ) : null}
+                              </details>
                             </div>
                           ) : (
-                            <>
-                              {isAi && message.mode ? <p className="mb-2 text-xs font-medium text-slate-500">{message.mode === "action" ? "Preparando ação" : "Ajuda KLASSE"}</p> : null}
-                              <p className="whitespace-pre-wrap">{message.text}</p>
-                            </>
+                            <div className="space-y-2">
+                              {isAi && message.mode ? <p className="text-xs font-medium text-slate-600">{message.mode === "action" ? "Preparar ação" : "Ajuda KLASSE"}</p> : null}
+                              {(() => {
+                                const view = isAi ? presentChatResponse(message.text) : null;
+                                return view ? (
+                                  <>
+                                    <p className="whitespace-pre-wrap break-words">{view.summary}</p>
+                                    {view.tables.length && view.tables.every((table) => table.rows.length <= 3) ? (
+                                      <div className="max-w-full overflow-x-auto" tabIndex={0} aria-label="Tabela de resultados; pode deslocar horizontalmente">
+                                        {view.tables.map((table, tableIndex) => (
+                                          <table key={`${message.id}-table-${tableIndex}`} className="min-w-max border-collapse text-left text-xs">
+                                            <thead><tr>{table.headers.map((header, columnIndex) => <th key={`${tableIndex}-h-${columnIndex}`} scope="col" className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-900">{header}</th>)}</tr></thead>
+                                            <tbody>{table.rows.map((row, rowIndex) => <tr key={`${tableIndex}-${rowIndex}`}>{row.map((cell, columnIndex) => <td key={`${rowIndex}-${columnIndex}`} className="border-b border-slate-100 px-3 py-2 tabular-nums text-slate-800">{cell}</td>)}</tr>)}</tbody>
+                                          </table>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                    {view.details || view.tables.some((table) => table.rows.length > 3) ? (
+                                      <details className="group border-t border-slate-100 pt-2">
+                                        <summary className="cursor-pointer rounded-md py-2 text-xs font-medium text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">Ver detalhes</summary>
+                                        <div className="space-y-3 pt-2">
+                                          {view.details ? <p className="whitespace-pre-wrap break-words">{view.details}</p> : null}
+                                          {view.tables.filter((table) => table.rows.length > 3).map((table, tableIndex) => (
+                                            <div key={`${message.id}-longtable-${tableIndex}`} className="max-w-full overflow-x-auto" tabIndex={0} aria-label="Tabela extensa; pode deslocar horizontalmente">
+                                              <table className="min-w-max border-collapse text-left text-xs">
+                                                <thead><tr>{table.headers.map((header, index) => <th key={`h-${index}`} scope="col" className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-900">{header}</th>)}</tr></thead>
+                                                <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, colIndex) => <td key={colIndex} className="border-b border-slate-100 px-3 py-2 text-slate-800">{cell}</td>)}</tr>)}</tbody>
+                                              </table>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </details>
+                                    ) : null}
+                                  </>
+                                ) : <p className="whitespace-pre-wrap break-words">{message.text}</p>;
+                              })()}
+                              {message.interrupted ? <p className="text-xs font-medium text-amber-800">Resposta incompleta ou consulta interrompida.</p> : null}
+                            </div>
                           )}
+                          {isAi && message.retryQuery ? (
+                            <button type="button" onClick={() => void handleGeneralQuery(message.retryQuery!, true)} disabled={thinking} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+                              <RotateCcw className="h-3.5 w-3.5" /> Tentar de novo
+                            </button>
+                          ) : null}
 
                           {/* Rendering internal routes returned by the assistant */}
                           {isAi && (!message.actions || message.actions.length === 0) && message.links && message.links.length > 0 ? (
@@ -1289,30 +1534,38 @@ export default function AiChatWidget({
                     );
                   })}
                   {thinking ? (
-                    <p className="text-xs text-slate-500" role="status" aria-live="polite">A consultar os dados da escola…</p>
+                    <div className="flex items-center justify-between gap-3 text-xs text-slate-600" role="status">
+                      <span>{/nota|pauta|avaliaç/i.test(messages[messages.length - 1]?.text ?? "") ? "A consultar notas…" : "A consultar dados da escola…"}</span>
+                      {requestControllerRef.current ? (
+                        <button type="button" onClick={cancelCurrentQuery} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+                          <Square className="h-3 w-3" /> Cancelar consulta
+                        </button>
+                      ) : null}
+                    </div>
                   ) : null}
-                  <div ref={messagesEndRef} />
+
                 </div>
               </div>
 
               <form onSubmit={submitInput} className="shrink-0 border-t border-slate-100 bg-white px-4 pb-4 pt-3 sm:px-5">
                 <div className="flex items-end gap-2 rounded-xl border border-slate-200 bg-white p-2 transition-colors focus-within:border-[#1F6B3B] focus-within:ring-1 focus-within:ring-[#1F6B3B]/10">
                   <textarea
+                    ref={textareaRef}
                     aria-label="Mensagem para o KLASSE IA"
                     value={inputValue}
                     onChange={(event) => setInputValue(event.target.value)}
                     disabled={thinking}
-                    rows={2}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        submitInput(e);
+                    rows={1}
+                    onKeyDown={(event) => {
+                      if (canSubmitChatKey(event.nativeEvent, mobile)) {
+                        event.preventDefault();
+                        submitInput(event);
                       }
                     }}
                     className="max-h-32 min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 text-slate-900 placeholder:text-slate-400 outline-none disabled:opacity-50"
                     placeholder={flow ? "Escreva para este fluxo…" : "Escreva a sua pergunta…"}
                   />
-                  <button type="submit" aria-label="Enviar mensagem" disabled={thinking || !inputValue.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1F6B3B] text-white transition-colors hover:bg-[#18572f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F6B3B] disabled:bg-slate-100 disabled:text-slate-400">
+                  <button type="submit" aria-label="Enviar mensagem" disabled={thinking || pendingRef.current || !inputValue.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1F6B3B] text-white transition-colors hover:bg-[#18572f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F6B3B] disabled:bg-slate-100 disabled:text-slate-400">
                     <Send className="h-4 w-4" />
                   </button>
                 </div>
