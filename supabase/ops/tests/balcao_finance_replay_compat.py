@@ -396,6 +396,32 @@ assert tables.rstrip().endswith(");")
     tables + "\nALTER TABLE public.historico_transitado_anos ENABLE ROW LEVEL SECURITY;\n"
     "ALTER TABLE public.historico_transitado_notas ENABLE ROW LEVEL SECURITY;\n")
 print("STAGED-COMPAT original 2027 imported transcript tables before August backfill")
+# August 2026 guardian-access policies target 2027 achievement/catalogue and
+# family journal tables. Preserve the original three table definitions,
+# enable RLS immediately. The August guardian policies and 2027 student
+# policies then apply unchanged; no policy/permission bypass.
+learning_source = (root / "20270812170000_learning_platform_contracts.sql").read_text()
+learning_starts = [
+    "CREATE TABLE IF NOT EXISTS public.conquistas_catalogo (",
+    "CREATE TABLE IF NOT EXISTS public.aluno_conquistas (",
+    "CREATE TABLE IF NOT EXISTS public.diario_familiar_entries (",
+]
+learning_ends = [
+    "CREATE TABLE IF NOT EXISTS public.aluno_conquistas (",
+    "CREATE INDEX IF NOT EXISTS idx_aluno_conquistas_student",
+    "CREATE INDEX IF NOT EXISTS idx_diario_familiar_student_date",
+]
+learning_tables = []
+for begin, end in zip(learning_starts, learning_ends):
+    assert learning_source.count(begin) == 1 and learning_source.count(end) == 1
+    part = learning_source[learning_source.index(begin):learning_source.index(end,learning_source.index(begin))].strip()
+    assert part.endswith(");"),begin
+    learning_tables.append(part)
+(root / "20260812125000_ci_only_early_learning_visibility_tables.sql").write_text(
+    "\n".join(learning_tables) + "\n" +
+    "\n".join("ALTER TABLE public." + table + " ENABLE ROW LEVEL SECURITY;" for table in
+              ["conquistas_catalogo", "aluno_conquistas", "diario_familiar_entries"]) + "\n")
+print("STAGED-COMPAT 20260812125000_ci_only_early_learning_visibility_tables.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
