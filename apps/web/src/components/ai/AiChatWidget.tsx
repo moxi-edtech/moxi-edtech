@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { describeScreenContext, type AiWidgetContext } from "@/lib/assistant/screen-context";
+import { canUseOperationalCopilot } from "@/lib/roles/ai-roles";
 import { getActionsForRole, ASSISTANT_ACTIONS } from "@/lib/assistant/action-registry";
 import type { AssistantActionV2 } from "@/lib/assistant/actions-v2";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
@@ -298,7 +299,7 @@ export default function AiChatWidget({
         const roleStr = String(data.role ?? "").toLowerCase();
 
         // Block student, teacher, guardian profiles from viewing the assistant completely
-        if (!["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"].includes(roleStr)) {
+        if (!canUseOperationalCopilot(roleStr)) {
           setIsAllowed(false);
           setCheckingAccess(false);
           return;

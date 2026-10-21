@@ -7,6 +7,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { validateAiAccess, updateAiUsageLog } from "@/lib/server/ai/ai-guards";
 import { isFastPathQuery, processKlasseBrainQuery } from "@/lib/assistant/klasse-brain";
 import { hasAssistantPermission } from "@/lib/assistant/permission-registry";
+import { canUseOperationalCopilot } from "@/lib/roles/ai-roles";
 import type { AssistantResponse } from "@/lib/assistant/klasse-brain";
 import {
   upsertAiInsight,
@@ -151,8 +152,7 @@ export async function POST(req: Request) {
 
   const role = String(roleRes.papel ?? "").trim().toLowerCase();
   // Copiloto operacional limitado a Admin e Secretaria. Outros perfis mantêm os seus módulos próprios.
-  const operationalRoles = new Set(["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"]);
-  if (!operationalRoles.has(role)) {
+  if (!canUseOperationalCopilot(role)) {
     return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão para o copiloto operacional." }, { status: 403 }));
   }
   const operatingProfile = await resolveSchoolOperatingProfile(supabase, resolvedEscolaId);
