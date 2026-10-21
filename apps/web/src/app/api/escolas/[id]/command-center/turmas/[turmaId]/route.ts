@@ -88,7 +88,7 @@ export async function GET(
 
     // Historical READ includes concluded enrollments, but never transferred-out ones.
     // Active-year counts only include enrolled students who remain active.
-    const historic = year.status !== "ACTIVE";
+    const historic = year.status === "CLOSED";
     const { from: start, to: end } = turmaPageRange(parsed.data.page, PAGE_SIZE);
     const policy = turmaEnrollmentPolicy(historic);
 
@@ -143,6 +143,19 @@ export async function GET(
       }
     }
 
+    // Legacy assignments can exist without a turma_disciplinas row.
+    // Resolve names from the tenant-scoped catalogue before merging them.
+    const missingSubjectIds = [...new Set(assignments.map((a) => a.disciplina_id).filter(
+      (id): id is string => Boolean(id) && !disciplines.some((d) => d.curso_matriz?.disciplina_id === id),
+    ))];
+    const legacyNames = new Map<string, string>();
+    if (missingSubjectIds.length) {
+      const { data: catalog, error } = await supabase.from("disciplinas_catalogo")
+        .select("id,nome").eq("escola_id", escolaId).in("id", missingSubjectIds);
+      if (error) throw error;
+      for (const subject of catalog ?? []) legacyNames.set(subject.id, subject.nome);
+    }
+
     const subjectsById = new Map<string, { id: string; nome: string; professores: Set<string> }>();
     for (const d of disciplines) {
       const catalog = d.curso_matriz?.disciplinas_catalogo;
@@ -153,7 +166,9 @@ export async function GET(
     }
     for (const a of assignments) {
       const id = a.disciplina_id;
-      if (!id || !subjectsById.has(id) || !a.professor_id || !teachers.has(a.professor_id)) continue;
+      if (!id) continue;
+      if (!subjectsById.has(id) && legacyNames.has(id)) subjectsById.set(id, { id, nome: legacyNames.get(id)!, professores: new Set() });
+      if (!subjectsById.has(id) || !a.professor_id || !teachers.has(a.professor_id)) continue;
       subjectsById.get(id)!.professores.add(teachers.get(a.professor_id)!);
     }
 
