@@ -1,0 +1,47 @@
+# Disposable end-to-end financial/RLS validation. No remote Supabase credentials.
+name: Balcao Full Financial Integration
+on:
+  pull_request:
+    paths:
+      - "supabase/ops/tests/balcao_finance_full_*"
+      - ".github/workflows/balcao-finance-integrated.yml"
+      - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/command-center/**"
+      - "apps/web/src/features/financeiro/actions.ts"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-migration-finance:
+    name: Full Supabase migration chain and actual financial RLS
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      - name: Start disposable Supabase with ALL original migrations
+        run: |
+          supabase start --exclude studio,mailpit,storage-api,imgproxy,logflare,vector,edge-runtime,realtime,supavisor,postgres-meta
+      - name: Prove every version was applied, no selective bootstrap
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          expected=$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l | tr -d ' ')
+          applied=$(psql "$PGURL" -At -v ON_ERROR_STOP=1 -c 'select count(*) from supabase_migrations.schema_migrations')
+          echo "All local migrations: expected=$expected applied=$applied"
+          [ "$applied" -ge "$expected" ] || { echo "Migration chain incomplete: cannot claim RLS integration"; exit 1; }
+      - name: Real RLS and monthly payment/proof/approval/rejection/retry/receipt/balance
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_finance_full_migrations.sql
+      - name: Two independent real PostgreSQL sessions compete to validate same payment
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: bash supabase/ops/tests/balcao_finance_full_concurrency.sh
+      - name: Confirm zero paid branch or remote deployment
+        run: |
+          echo "Tests used only self-hosted ephemeral Postgres, source migrations and synthetic IDs."
