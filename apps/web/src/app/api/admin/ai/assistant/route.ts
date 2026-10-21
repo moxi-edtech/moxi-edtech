@@ -21,7 +21,7 @@ export const revalidate = 0;
 
 const assistantSchema = z.object({
   schoolId: z.string().trim().min(1),
-  message: z.string().trim().optional(),
+  message: z.string().trim().max(2000).optional(),
   intent: z.string().trim().optional(),
   context: z
     .object({
@@ -35,13 +35,13 @@ const assistantSchema = z.object({
         "classe_ai",
         "operacoes",
       ]),
-      page: z.string().optional(),
+      page: z.string().max(100).optional(),
       entityType: z
         .enum(["student", "guardian", "class", "teacher", "invoice", "notice", "none"])
         .optional(),
-      entityId: z.string().optional(),
-      capabilities: z.array(z.string()).optional(),
-      selectedCount: z.number().optional(),
+      entityId: z.string().uuid().optional(),
+      capabilities: z.array(z.string().max(64)).max(12).optional(),
+      selectedCount: z.number().int().min(0).max(1000).optional(),
       readonly: z.boolean().optional(),
     })
     .optional(),
@@ -150,6 +150,11 @@ export async function POST(req: Request) {
   }
 
   const role = String(roleRes.papel ?? "").trim().toLowerCase();
+  // Copiloto operacional limitado a Admin e Secretaria. Outros perfis mantêm os seus módulos próprios.
+  const operationalRoles = new Set(["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"]);
+  if (!operationalRoles.has(role)) {
+    return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão para o copiloto operacional." }, { status: 403 }));
+  }
   const operatingProfile = await resolveSchoolOperatingProfile(supabase, resolvedEscolaId);
 
   // Validate assistant view permission
@@ -237,7 +242,7 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Erro ao processar resposta do assistente.";
     await updateAiUsageLog(access.usageLogId, {
       status: "error",
-      inputPreview: query,
+      inputPreview: "[redigido: consulta administrativa]",
       outputPreview: null,
       errorMessage: message,
     });
