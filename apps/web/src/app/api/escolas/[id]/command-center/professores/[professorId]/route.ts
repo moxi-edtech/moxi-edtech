@@ -6,7 +6,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import {
-  belongsToProfessorAcademicYear, composeProfessorOverview,
+  belongsToProfessorAcademicYear, composeProfessorOverview, isPublishedTimetableVersion,
   type ProfessorAllocation, type ProfessorScheduleRow, type ProfessorTurmaRow,
 } from "@/lib/command-center/professor-explorer";
 
@@ -200,7 +200,7 @@ export async function GET(
     }
     const published = scheduleWindow.filter((s) =>
       scopedIds.has(s.turma_id) &&
-      Boolean(s.versao_id && versions.get(s.versao_id)?.status === "publicada") &&
+      isPublishedTimetableVersion(s.versao_id ? versions.get(s.versao_id)?.status : null) &&
       versions.get(s.versao_id!)?.turma_id === s.turma_id &&
       Boolean(s.slot_id),
     );
