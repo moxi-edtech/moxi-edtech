@@ -76,6 +76,7 @@ export default function BalcaoPageClient({
   const syncLocation = useCallback((params: {
     alunoId?: string | null;
     actionId?: BalcaoActionId;
+    historyMode?: "push" | "replace";
   }) => {
     const nextAlunoId = params.alunoId === undefined ? selectedAlunoId : params.alunoId;
     const nextAction = params.actionId ?? activeAction;
@@ -87,7 +88,15 @@ export default function BalcaoPageClient({
 
     const query = next.toString();
     const targetPath = pathname || "/secretaria/balcao";
-    router.replace(query ? `${targetPath}?${query}` : targetPath, { scroll: false });
+    const targetUrl = query ? `${targetPath}?${query}` : targetPath;
+    if (params.historyMode === "push" && typeof window !== "undefined") {
+      // Next.js App Router patches the native History API to synchronize
+      // useSearchParams without re-executing the authenticated server route.
+      // Back/Forward now return to each visited action, preserving student.
+      window.history.pushState(window.history.state, "", targetUrl);
+    } else {
+      router.replace(targetUrl, { scroll: false });
+    }
   }, [activeAction, pathname, router, searchParams, selectedAlunoId]);
 
   const handleCommandCenterSuccess = useCallback((originAction: BalcaoActionId, newAlunoId?: string) => {
@@ -111,7 +120,7 @@ export default function BalcaoPageClient({
     // Ao entrar na Matrícula, preservamos o atendimento para regressar,
     // sem apresentar esse aluno como o destinatário da nova inscrição.
     setActiveAction(actionId);
-    syncLocation({ alunoId: selectedAlunoId, actionId });
+    syncLocation({ alunoId: selectedAlunoId, actionId, historyMode: "push" });
   }, [activeAction, selectedAlunoId, syncLocation]);
 
   const handleSwitchStudent = useCallback(() => {
