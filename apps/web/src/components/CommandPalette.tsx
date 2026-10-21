@@ -302,7 +302,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
                 <Search className="h-8 w-8 text-slate-300" />
               </div>
               <p className="text-sm font-medium text-slate-500">
-                Nenhum resultado encontrado para "{query}"
+                Nenhum resultado encontrado para &ldquo;{query}&rdquo;
               </p>
             </Command.Empty>
 
@@ -354,6 +354,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
             <motion.section key={`${entityContext.type}:${entityContext.id}`} initial={reduceMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, y: -4 }} transition={{ duration: 0.17 }} aria-label="Visão contextual" className="min-h-64 p-4 sm:p-6">
               {entityContext.type === "curso" ? (
                 <CourseContextView
+                  key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`}
                   context={entityContext}
                   portal={portal}
                   onNavigate={(href) => {
