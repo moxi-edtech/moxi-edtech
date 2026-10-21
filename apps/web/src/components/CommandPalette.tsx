@@ -26,6 +26,7 @@ import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { createEntityContext, type EntityContext } from "@/lib/command-center/entity-context";
+import { CourseContextView } from "@/components/secretaria/command-center/CourseContextView";
 
 type Props = {
   escolaId?: string | null;
@@ -329,16 +330,29 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
             )}
           </Command.List>}
           {entityContext && (
-            <section aria-label="Visão contextual" className="min-h-64 p-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{entityContext.type}</p>
-              <h2 className="mt-2 text-xl font-semibold text-slate-900">{entityContext.label}</h2>
-              <p className="mt-3 text-sm text-slate-600">Exploração contextual em preparação. A pesquisa e as páginas existentes continuam disponíveis.</p>
-              <button type="button" className="mt-6 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => {
-                const target = results.find((item) => item.id === entityContext.id && item.type === entityContext.type) || recentResults.find((item) => item.id === entityContext.id && item.type === entityContext.type);
-                if (!target) return;
-                onOpenChange(false);
-                router.push(target.href);
-              }}><ExternalLink className="h-4 w-4" /> Abrir página existente</button>
+            <section aria-label="Visão contextual" className="min-h-64 p-4 sm:p-6">
+              {entityContext.type === "curso" ? (
+                <CourseContextView
+                  context={entityContext}
+                  portal={portal}
+                  onNavigate={(href) => {
+                    onOpenChange(false);
+                    router.push(href);
+                  }}
+                />
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{entityContext.type}</p>
+                  <h2 className="text-xl font-semibold text-slate-900">{entityContext.label}</h2>
+                  <p className="text-sm text-slate-600">A visão desta entidade será disponibilizada em seguida. A página existente permanece disponível.</p>
+                  <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => {
+                    const target = results.find((item) => item.id === entityContext.id && item.type === entityContext.type) || recentResults.find((item) => item.id === entityContext.id && item.type === entityContext.type);
+                    if (!target) return;
+                    onOpenChange(false);
+                    router.push(target.href);
+                  }}><ExternalLink className="h-4 w-4" /> Abrir página existente</button>
+                </div>
+              )}
             </section>
           )}
 
