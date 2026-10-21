@@ -312,6 +312,16 @@ assert "public.create_and_provision_escola_from_onboarding" in lint_sql
 assert "public.provisionar_escola_from_onboarding" in lint_sql
 (root / "20271231000002_ci_only_deferred_original_rpc_lint.sql").write_text(lint_sql)
 lint_path.write_text("BEGIN;\n-- REPLAY-ONLY: original RPC linter deferred until provisioning RPCs exist.\nCOMMIT;\n")
+# A separate July revert of that very same linter likewise targets the
+# not-yet-defined provisioning function. Its original ordering relative to
+# the first linter is preserved: run the exact forward then the exact revert.
+revert_path = root / "20260718125100_revert_failed_rpc_lint_batch_2.sql"
+revert_sql = revert_path.read_text()
+assert revert_sql.startswith("BEGIN;\n") and revert_sql.rstrip().endswith("COMMIT;")
+assert "public.provisionar_escola_from_onboarding" in revert_sql
+(root / "20271231000003_ci_only_deferred_original_rpc_lint_revert.sql").write_text(revert_sql)
+revert_path.write_text("BEGIN;\n-- REPLAY-ONLY: original RPC lint rollback runs after its 2027 provisioning RPC.\nCOMMIT;\n")
+print("STAGED-COMPAT deferred exact original RPC lint revert after forward")
 print("STAGED-COMPAT deferred original provisioning RPC linter until dependencies exist")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
