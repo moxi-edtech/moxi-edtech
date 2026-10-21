@@ -221,7 +221,10 @@ for snippet in (
 (root / "20260528122900_ci_only_early_modelo_cascade_columns.sql").write_text(
     "ALTER TABLE public.modelos_avaliacao ADD COLUMN IF NOT EXISTS curso_id uuid;\n"
     "ALTER TABLE public.curso_matriz ADD COLUMN IF NOT EXISTS modelo_excecao_id uuid;\n"
+    "ALTER TABLE public.notas ADD COLUMN IF NOT EXISTS is_isento boolean DEFAULT false;\n"
 )
+notas_later = (root / "20261201123000_isencao_notas_e_reabertura_pauta_auditada.sql").read_text()
+assert "ADD COLUMN IF NOT EXISTS is_isento boolean DEFAULT false" in notas_later
 print("STAGED-COMPAT 20260528122900_ci_only_early_modelo_cascade_columns.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
