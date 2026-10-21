@@ -141,7 +141,8 @@ async function teacherGrades(
   const scoped = (classes ?? []).filter((item) => !filters.classNumber ||
     new RegExp(`(^|[^0-9])${filters.classNumber}([^0-9]|$)`).test(item.classe_nome ?? ""));
   if (!scoped.length) return failure("Nenhuma turma encontrada no ano letivo e na classe escolhidos; não é possível inferir o total de docentes.", "vw_turmas_para_matricula");
-  const turmaIds = scoped.map((item) => item.id);
+  const turmaIds = scoped.map((item) => item.id).filter((id): id is string => Boolean(id));
+  if (turmaIds.length !== scoped.length) return failure("Existem turmas sem identificador válido na fonte canónica.", "vw_turmas_para_matricula");
   // Denominator comes from the canonical teacher↔class↔subject assignment table,
   // never from the materialized pendency view. A mismatch fails closed.
   const { data: assignments, count: assignmentCount, error: assignmentError } = await supabase
