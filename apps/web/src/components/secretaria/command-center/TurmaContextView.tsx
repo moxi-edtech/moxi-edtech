@@ -68,7 +68,7 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
         <div><p className="text-xs text-slate-500">Alunos no ano</p><strong className="text-xl tabular-nums text-slate-900">{alunos.total}</strong></div>
         <div><p className="text-xs text-slate-500">Capacidade</p><strong className="text-xl tabular-nums text-slate-900">{turma.capacidade ?? "—"}</strong></div>
         <div><p className="text-xs text-slate-500">Disciplinas</p><strong className="text-xl tabular-nums text-slate-900">{disciplinas.length}{data.disciplinasLimitadas ? "+" : ""}</strong></div>
-        <div><p className="text-xs text-slate-500">Professores vinculados</p><strong className="text-xl tabular-nums text-slate-900">{professores.length}</strong></div>
+        <div><p className="text-xs text-slate-500">Professores vinculados</p><strong className="text-xl tabular-nums text-slate-900">{data.professoresDetalhes?.length ?? professores.length}</strong></div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
@@ -108,27 +108,28 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
             {disciplinas.map((d) => (
               <div key={d.id} className="px-3 py-3">
                 <p className="font-medium text-slate-900">{d.nome}</p>
-                {d.professoresDetalhes?.length ? (
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {d.professoresDetalhes.map((teacher) => (
-                      <button type="button" key={teacher.id}
-                        onClick={() => onExploreProfessor({ id: teacher.id, label: teacher.nome, academicYearId: turma.anoLetivo.id })}
-                        className="rounded-md px-1.5 py-1 text-xs text-emerald-800 underline-offset-2 hover:bg-emerald-50 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600">
-                        {teacher.nome}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-1 text-xs text-slate-500">{d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}</p>
-                )}
+                <p className="mt-1 text-xs text-slate-500">{d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}</p>}
               </div>
             ))}
             {!disciplinas.length && <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>}
           </div>
           {data.disciplinasLimitadas && (
-            <p className="mt-2 flex gap-2 text-xs text-slate-600"><AlertCircle className="h-4 w-4 shrink-0" /> A lista apresenta apenas as primeiras 100 vinculações. Consulte a página da turma para ver o restante.</p>
+            <p className="mt-2 flex gap-2 text-xs text-slate-600"><AlertCircle className="h-4 w-4 shrink-0" /> Algumas vinculações excedem os limites desta visão. Consulte a página da turma para ver o restante.</p>
           )}
-          {professores.length > 0 && <p className="mt-3 text-xs text-slate-500">Professores identificados: {professores.join(", ")}</p>}
+          <h4 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Professores da turma</h4>
+          {data.professoresDetalhes?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {data.professoresDetalhes.map((teacher) => (
+                <button type="button" key={teacher.id}
+                  onClick={() => onExploreProfessor({ id: teacher.id, label: teacher.nome, academicYearId: turma.anoLetivo.id })}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-emerald-800 hover:border-emerald-200 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                  {teacher.nome}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">{professores.length ? professores.join(", ") : "Nenhum professor vinculado."}</p>
+          )}
         </section>
       </div>
       <p className="text-xs text-slate-500">
