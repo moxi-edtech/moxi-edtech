@@ -7,11 +7,13 @@ import { academicPedagogicalRiskTool } from "./tools/academic-pedagogical-risk";
 import { admissionsPendingTool } from "./tools/admissions-pending";
 import { financeRiskSummaryTool } from "./tools/finance-risk-summary";
 import { schoolDailyBriefingTool } from "./tools/school-daily-briefing";
+import { studentEnrollmentContextTool } from "./tools/student-enrollment-context";
 import type { DataCopilotResponse, DataCopilotTool, ToolRunParams } from "./types";
 import { canUseRecurringTuition } from "@/lib/school-profile/finance-capabilities";
 import { filterAssistantActionsV2ForProfile } from "../actions-v2";
 
 const DATA_COPILOT_TOOLS: readonly DataCopilotTool[] = [
+  studentEnrollmentContextTool,
   schoolDailyBriefingTool,
   financeDebtByClassTool,
   financeRiskSummaryTool,

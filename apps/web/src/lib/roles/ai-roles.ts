@@ -52,3 +52,10 @@ export const HELP_ADMIN_ROLES = [
   "direcao",
   "diretoria",
 ];
+
+// Operational copilot is narrower than the legacy assistant: no finance-only access.
+export const AI_OPERATIONAL_COPILOT_ROLES = AI_ACTIONS_SECRETARIA_ROLES;
+
+export function canUseOperationalCopilot(role: string): boolean {
+  return AI_OPERATIONAL_COPILOT_ROLES.includes(role.trim().toLowerCase());
+}

@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { describeScreenContext, type AiWidgetContext } from "@/lib/assistant/screen-context";
+import { canUseOperationalCopilot } from "@/lib/roles/ai-roles";
 import { getActionsForRole, ASSISTANT_ACTIONS } from "@/lib/assistant/action-registry";
 import type { AssistantActionV2 } from "@/lib/assistant/actions-v2";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
@@ -298,7 +299,7 @@ export default function AiChatWidget({
         const roleStr = String(data.role ?? "").toLowerCase();
 
         // Block student, teacher, guardian profiles from viewing the assistant completely
-        if (["aluno", "professor", "encarregado", "docente", "guardian"].includes(roleStr)) {
+        if (!canUseOperationalCopilot(roleStr)) {
           setIsAllowed(false);
           setCheckingAccess(false);
           return;
@@ -319,6 +320,14 @@ export default function AiChatWidget({
     };
   }, [schoolId]);
 
+  // A mudança de escola invalida toda a conversa e qualquer proposta anterior.
+  // Não reutilizar mensagens com dados de alunos entre tenants.
+  useEffect(() => {
+    setMessages([]);
+    setFlow(null);
+    setResolvedSchoolId(null);
+  }, [schoolId]);
+
   useEffect(() => {
     if (!isAllowed) return;
 
@@ -332,7 +341,9 @@ export default function AiChatWidget({
       greeting = `Olá! Estou no KLASSE e conheço esta área. Como posso ajudar? (${describeScreenContext(context)})`;
     }
 
-    setMessages([
+    // Preserve the conversation when navigating between admin/secretaria screens.
+    // Context updates affect new requests, not the existing chat transcript.
+    setMessages((previous) => previous.length > 0 ? previous : [
       ai(greeting, {
         quickReplies: [
           { label: "O que posso fazer nesta tela?", action: "screen_capabilities" },
