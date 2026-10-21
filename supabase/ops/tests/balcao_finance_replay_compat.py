@@ -287,6 +287,20 @@ for source_name, statements in crm_real_fk_sources.items():
         crm_stage += "\n" + statement + "\n"
 (root / "20260702113000_ci_only_early_crm_tables.sql").write_text(crm_stage)
 print("STAGED-COMPAT 20260702113000_ci_only_early_crm_tables.sql")
+# The 20260718 security hardening references 19 views and 8 tables that
+# do not all exist until multiple migrations in 2027. To preserve the EXACT
+# original ALTER VIEW, REVOKE, RLS and CREATE POLICY expressions, defer the
+# entire security transaction until the last original migration. This is a
+# temporary, isolated replay DB; integrated tests start ONLY after the
+# deferred original hardening succeeds. No object/policy is fabricated.
+security_source = root / "20260718123000_security_invoker_and_public_rls_hardening.sql"
+security_sql = security_source.read_text()
+assert security_sql.startswith("BEGIN;\n") and security_sql.rstrip().endswith("COMMIT;")
+assert security_sql.count("ALTER VIEW public.") == 19
+assert security_sql.count("ENABLE ROW LEVEL SECURITY;") == 8
+(root / "20271231000001_ci_only_deferred_original_security_hardening.sql").write_text(security_sql)
+security_source.write_text("BEGIN;\n-- REPLAY-ONLY: exact hardening SQL at 20271231000001 after all its dependencies.\nCOMMIT;\n")
+print("STAGED-COMPAT deferred unmodified original security hardening after its 2027 dependencies")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
