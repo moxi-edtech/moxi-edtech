@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { describeScreenContext, type AiWidgetContext } from "@/lib/assistant/screen-context";
 import type { SchoolIntelligenceConversation } from "@/lib/assistant/data-copilot/school-intelligence-contract";
-import { canUseOperationalCopilot } from "@/lib/roles/ai-roles";
+import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
 import { getActionsForRole, ASSISTANT_ACTIONS } from "@/lib/assistant/action-registry";
 import type { AssistantActionV2 } from "@/lib/assistant/actions-v2";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
@@ -416,7 +416,7 @@ export default function AiChatWidget({
         const roleStr = String(data.role ?? "").toLowerCase();
 
         // Block student, teacher, guardian profiles from viewing the assistant completely
-        if (!canUseOperationalCopilot(roleStr)) {
+        if (!AI_WIDGET_ROLES.includes(roleStr)) {
           intelligenceConversationRef.current = null;
           setSessionUserId(null);
           setIsAllowed(false);
