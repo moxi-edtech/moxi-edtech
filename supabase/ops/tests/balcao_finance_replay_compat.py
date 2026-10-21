@@ -245,6 +245,19 @@ assert "CREATE POLICY ai_school_settings_update" in ai_settings_metadata
 assert "CREATE OR REPLACE FUNCTION public.can_use_klasse_ai" in ai_settings_metadata
 (root / "20260626152000_ci_only_metadata_ai_school_settings.sql").write_text(ai_settings_metadata)
 print("STAGED-COMPAT 20260626152000_ci_only_metadata_ai_school_settings.sql (production READ-ONLY metadata)")
+# July onboarding functions compile against tables the repo creates only in
+# Dec 2026 and June 2027. Stage ONLY the original CREATE TABLE DDL with
+# immediate RLS and no policies until the original migration is replayed.
+early_onboarding = (
+    table_ddl("20261201180000_create_onboarding_requests.sql", "onboarding_requests",
+              "-- ── 2. Trigger") + "\n" +
+    table_ddl("20270621150000_create_onboarding_crm_architecture.sql", "onboarding_steps",
+              "-- 3. Create onboarding_uploads table") + "\n" +
+    table_ddl("20270621150000_create_onboarding_crm_architecture.sql", "onboarding_uploads",
+              "-- 4. Enable Row Level Security (RLS)")
+)
+(root / "20260701114500_ci_only_early_onboarding_tables.sql").write_text(early_onboarding)
+print("STAGED-COMPAT 20260701114500_ci_only_early_onboarding_tables.sql")
 print("STAGED-COMPAT 20271231000000_ci_only_attach_pautas_archive.sql")
 
 # Supabase migration tracking uses version as PRIMARY KEY. Six pairs in the
