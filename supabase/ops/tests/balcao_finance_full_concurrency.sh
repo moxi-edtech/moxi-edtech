@@ -22,10 +22,17 @@ set +e
 wait "$approve_pid"; approve_exit=$?
 wait "$reject_pid"; reject_exit=$?
 set -e
-if [[ $approve_exit -ne 0 || $reject_exit -ne 0 ]]; then
-  echo "An actual concurrent DB transaction failed (safe diagnostics, no real PII)"
-  tail -6 /tmp/balcao-finance-race-approve.log
-  tail -6 /tmp/balcao-finance-race-reject.log
+if [[ $approve_exit -ne 0 && $reject_exit -ne 0 ]]; then
+  echo "CONCURRENCY_NO_VALIDATOR_WON: both operations failed"
+  exit 1
+fi
+# Only one final outcome may be accepted. A second operation can be safely
+# rejected or report already-finalized; opposite successful transitions on
+# the very same payment are forbidden even if balance happens to match.
+if [[ $approve_exit -eq 0 && $reject_exit -eq 0 ]] &&
+   grep -Eq '\"status\": *\"approved\"' /tmp/balcao-finance-race-approve.log &&
+   grep -Eq '\"status\": *\"rejected\"' /tmp/balcao-finance-race-reject.log; then
+  echo "CONCURRENCY_P0: approve and reject BOTH succeeded on same proof"
   exit 1
 fi
 psql "$PGURL" -v ON_ERROR_STOP=1 <<'SQL'

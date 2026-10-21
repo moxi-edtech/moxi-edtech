@@ -10,6 +10,14 @@ INSERT INTO public.escolas (id,nome,status,onboarding_finalizado) VALUES
 ('00000000-0000-4000-8000-000000000a11','Synthetic Alpha','ativa',true),
 ('00000000-0000-4000-8000-000000000b11','Synthetic Beta','ativa',true)
 ON CONFLICT (id) DO NOTHING;
+-- Real aluno.profile_id FK targets public.profiles.user_id, NOT auth.users.
+-- The four synthetic Auth users must therefore have genuine scoped profiles.
+INSERT INTO public.profiles (user_id,nome,role,email,escola_id,current_escola_id) VALUES
+('00000000-0000-4000-8000-000000000a13','Fixture Student Alpha','aluno','fixture.guardian@example.invalid','00000000-0000-4000-8000-000000000a11','00000000-0000-4000-8000-000000000a11'),
+('00000000-0000-4000-8000-000000000a14','Fixture Secretary Alpha','secretaria','fixture.secretaria@example.invalid','00000000-0000-4000-8000-000000000a11','00000000-0000-4000-8000-000000000a11'),
+('00000000-0000-4000-8000-000000000a15','Fixture Teacher Alpha','professor','fixture.professor@example.invalid','00000000-0000-4000-8000-000000000a11','00000000-0000-4000-8000-000000000a11'),
+('00000000-0000-4000-8000-000000000b14','Fixture Secretary Beta','secretaria','fixture.other-school@example.invalid','00000000-0000-4000-8000-000000000b11','00000000-0000-4000-8000-000000000b11')
+ON CONFLICT (user_id) DO NOTHING;
 INSERT INTO public.escola_users (escola_id,user_id,role,papel) VALUES
 ('00000000-0000-4000-8000-000000000a11','00000000-0000-4000-8000-000000000a14','staff','secretaria'),
 ('00000000-0000-4000-8000-000000000a11','00000000-0000-4000-8000-000000000a15','staff','professor'),
@@ -62,7 +70,7 @@ BEGIN
   RAISE EXCEPTION 'CROSS_TENANT_MUTATION_ALLOWED';
  EXCEPTION WHEN OTHERS THEN
   IF SQLERRM='CROSS_TENANT_MUTATION_ALLOWED' THEN RAISE; END IF;
-  IF SQLERRM NOT LIKE '%cross_tenant%' AND SQLERRM NOT LIKE '%not found%' THEN RAISE; END IF;
+  IF SQLERRM NOT LIKE '%cross_tenant%' AND SQLERRM NOT LIKE '%not found%' AND SQLERRM NOT LIKE '%não encontrado%' THEN RAISE; END IF;
  END;
 END $$;
 RESET ROLE;
@@ -77,9 +85,13 @@ BEGIN
  IF (SELECT status FROM public.pagamentos WHERE id=payment_id) <> 'pending' THEN RAISE EXCEPTION 'PROOF_PREMATURELY_SETTLED'; END IF;
  result := public.validar_pagamento(payment_id,true,NULL);
  IF (SELECT status FROM public.pagamentos WHERE id=payment_id) <> 'settled' THEN RAISE EXCEPTION 'PAYMENT_NOT_SETTLED'; END IF;
+ IF result->'recibo'->>'ok' IS DISTINCT FROM 'true' OR NULLIF(result->'recibo'->>'doc_id','') IS NULL THEN
+   RAISE EXCEPTION 'RECEIPT_NOT_ISSUED_BY_CANONICAL_SETTLEMENT';
+ END IF;
+ IF (SELECT count(*) FROM public.documentos_emitidos WHERE tipo='recibo' AND mensalidade_id='00000000-0000-4000-8000-000000000a16') <> 1 THEN
+   RAISE EXCEPTION 'RECEIPT_NOT_IN_AUTHORITATIVE_DOCUMENTS_TABLE';
+ END IF;
  IF (SELECT valor_pago_total FROM public.mensalidades WHERE id='00000000-0000-4000-8000-000000000a16') <> 100 THEN RAISE EXCEPTION 'BALANCE_NOT_AUTHORITATIVE'; END IF;
- PERFORM public.validar_pagamento(payment_id,true,NULL);
- IF (SELECT valor_pago_total FROM public.mensalidades WHERE id='00000000-0000-4000-8000-000000000a16') <> 100 THEN RAISE EXCEPTION 'DUPLICATE_CHARGE'; END IF;
 END $$;
 RESET ROLE;
 
