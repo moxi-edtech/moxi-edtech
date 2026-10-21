@@ -14,6 +14,7 @@ type Props = {
   context: EntityContext;
   portal?: string;
   onExploreTurma: (turma: { id: string; label: string; academicYearId: string }) => void;
+  onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
   onNavigate: (href: string) => void;
 };
 
@@ -28,7 +29,7 @@ function Metric({ label, value, limited }: { label: string; value: number; limit
   );
 }
 
-export function ProfessorContextView({ context, portal, onExploreTurma, onNavigate }: Props) {
+export function ProfessorContextView({ context, portal, onExploreTurma, onExploreDisciplina, onNavigate }: Props) {
   const { data, error, status, loading, refreshing, retry } = useProfessorContext(context);
   if (loading) return (
     <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-600" role="status">
@@ -123,12 +124,17 @@ export function ProfessorContextView({ context, portal, onExploreTurma, onNaviga
           </h3>
           <div className="max-h-64 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
             {data.disciplinas.map((disciplina) => (
-              <div key={disciplina.id} className="flex items-center justify-between gap-3 px-3 py-3">
+              <button type="button" key={disciplina.id}
+                onClick={() => onExploreDisciplina({
+                  id: disciplina.id, label: disciplina.nome, academicYearId: data.anoLetivo.id,
+                })}
+                className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
                 <span className="font-medium text-slate-900">{disciplina.nome}</span>
-                <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                <span className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-slate-500">
                   {disciplina.turmas} {disciplina.turmas === 1 ? "turma" : "turmas"}
+                  <ChevronRight className="h-4 w-4" />
                 </span>
-              </div>
+              </button>
             ))}
             {!data.disciplinas.length && (
               <p className="px-3 py-5 text-slate-500">Nenhuma disciplina atribuída neste ano letivo.</p>
