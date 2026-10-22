@@ -12,6 +12,8 @@ import { useClasseContext } from "@/hooks/useClasseContext";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
+import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
+import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 
 type NextEntity = { id: string; label: string; academicYearId: string };
@@ -24,6 +26,7 @@ type Props = {
   onExploreDisciplina: (entity: NextEntity) => void;
   onExploreProfessor: (entity: NextEntity) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
+  onStudentAction: (action: ExplorerActionId, student: { id: string; label: string }) => void;
   initialPage?: number;
   initialScrollTop?: number;
   selectedStudentId?: string | null;
@@ -82,7 +85,7 @@ function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
 
 export function ClasseContextView({
   context, portal, onNavigate, onExploreCurso, onExploreTurma,
-  onExploreDisciplina, onExploreProfessor, onStudentSelect,
+  onExploreDisciplina, onExploreProfessor, onStudentSelect, onStudentAction,
   initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
@@ -341,9 +344,10 @@ export function ClasseContextView({
         {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {visibleStudents.map((aluno) => (
-            <button type="button" key={aluno.id}
+<div key={aluno.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-slate-100 px-2 py-1 last:border-0">
+            <button type="button"
               data-student-id={aluno.id} aria-current={selectedStudentId === aluno.id ? "true" : undefined} onClick={() => selectStudent({ id: aluno.id, label: aluno.nome })}
-              className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-slate-900">{aluno.nome}</span>
                 <span className="mt-1 block truncate text-xs text-slate-500">{aluno.turmaNome}</span>
@@ -356,6 +360,9 @@ export function ClasseContextView({
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
             </button>
+  <ExplorerStudentActions escolaId={context.escolaId} alunoId={aluno.id} alunoNome={aluno.nome}
+    onAction={(action) => onStudentAction(action, { id: aluno.id, label: aluno.nome })} />
+</div>
           ))}
           {!visibleStudents.length && !roster.loading && (
             <p className="px-3 py-5 text-slate-500">Sem alunos matriculados neste âmbito.</p>
