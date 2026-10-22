@@ -11,7 +11,6 @@ on:
       - 'apps/web/src/components/layout/klasse/Topbar.tsx'
       - 'apps/web/src/components/feedback/FeedbackSystem.tsx'
       - 'apps/web/visual-harness/operations-density-*'
-      - 'apps/web/visual-harness/main.tsx'
       - 'apps/web/scripts/visual/operations-density.mjs'
       - '.github/workflows/notebook-dashboard-layout.yml'
 
