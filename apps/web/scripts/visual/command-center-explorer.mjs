@@ -115,7 +115,7 @@ async function run(size, zoom) {
   if (size[0] === 390 && zoom === 1) await checkAutomatedAccessibility(page, "student-actions");
   await capture(page,size,zoom,"acoes-por-permissao");
   await page.getByRole("button", { name: "Fechar ações de Aluno Sintético 01" }).click();
-  await page.getByText("Aluno Sintético 01").click();
+  await page.locator('[data-student-id="00000000-0000-4000-8100-000000000001"]').click();
   await page.getByRole("dialog",{name:"Balcão sintético"}).waitFor();
   await capture(page,size,zoom,"balcao-sintetico");
   await page.getByRole("button",{name:"Voltar à turma"}).click();
