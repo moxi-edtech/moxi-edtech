@@ -23,7 +23,8 @@ import { Command } from "cmdk";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { useGlobalSearch, type MinimalSearchResult } from "@/hooks/useGlobalSearch";
+import { useGlobalSearch, clearRecentSearchSession, type MinimalSearchResult } from "@/hooks/useGlobalSearch";
+import { createClient } from "@/lib/supabaseClient";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -38,7 +39,10 @@ import { DisciplinaSearchResults } from "@/components/secretaria/command-center/
 import type { ContextualEntityType } from "@/lib/command-center/entity-context";
 import {
   consumeExplorerReturnContext,
+  clearExplorerReturnContext,
   saveExplorerReturnContext,
+  type ExplorerScope,
+  type ExplorerViewState,
 } from "@/lib/command-center/explorer-return-context";
 
 const ENTITY_LABELS: Record<ContextualEntityType, string> = {
@@ -103,16 +107,49 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
   const [contextTrail, setContextTrail] = React.useState<EntityContext[]>([]);
   const [courseClassId, setCourseClassId] = React.useState<string | null>(null);
   const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
-  const [viewState, setViewState] = React.useState<Record<string, { page: number; scrollTop: number; selectedStudentId: string | null }>>({});
+  const [viewState, setViewState] = React.useState<Record<string, ExplorerViewState>>({});
   const viewStateRef = React.useRef(viewState);
   React.useEffect(() => { viewStateRef.current = viewState; }, [viewState]);
-  const updateView = (key: string, next: { page: number; scrollTop: number; selectedStudentId: string | null }) => {
+  const updateView = (key: string, next: ExplorerViewState) => {
     viewStateRef.current = { ...viewStateRef.current, [key]: next };
     setViewState((prev) => {
       const old = prev[key];
       return old?.page === next.page && old?.scrollTop === next.scrollTop && old?.selectedStudentId === next.selectedStudentId ? prev : { ...prev, [key]: next };
     });
   };
+  const [sessionUserId, setSessionUserId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    let active = true;
+    const auth = createClient().auth;
+    void auth.getUser().then(({ data }) => {
+      if (active) setSessionUserId(data.user?.id ?? null);
+    }).catch(() => { if (active) setSessionUserId(null); });
+    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      const nextUserId = session?.user?.id ?? null;
+      setSessionUserId((previous) => {
+        if (previous && previous !== nextUserId) {
+          clearExplorerReturnContext();
+          clearRecentSearchSession();
+        }
+        return nextUserId;
+      });
+      if (event === "SIGNED_OUT") {
+        clearExplorerReturnContext();
+        clearRecentSearchSession();
+      }
+    });
+    return () => { active = false; subscription.unsubscribe(); };
+  }, []);
+  const getExplorerScope = React.useCallback((): ExplorerScope | null => {
+    if (!sessionUserId || !escolaId || typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return {
+      userId: sessionUserId, escolaId, portal: portal ?? "secretaria",
+      poloId: params.get("poloId") ?? params.get("polo_id"),
+      academicYearId: params.get(ACADEMIC_YEAR_PARAM),
+    };
+  }, [sessionUserId, escolaId, portal]);
   const reduceMotion = useReducedMotion();
   const [queryClient] = React.useState(() => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } }));
   const handleOpenChange = React.useCallback((next: boolean) => {
@@ -133,10 +170,13 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
     setCourseClassId(null);
     setCourseTurmaId(null);
     setViewState({});
+    clearExplorerReturnContext();
   }, [escolaId, portal, queryClient]);
   React.useEffect(() => {
-    if (!open || !restoreExplorerOnOpen || !escolaId) return;
-    const snap = consumeExplorerReturnContext(escolaId);
+    if (!open || !restoreExplorerOnOpen || !escolaId || !sessionUserId) return;
+    const scope = getExplorerScope();
+    if (!scope) return;
+    const snap = consumeExplorerReturnContext(scope);
     if (!snap) return;
     setEntityContext(snap.entityContext);
     setContextTrail(snap.contextTrail);
@@ -144,7 +184,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
     setCourseTurmaId(snap.courseTurmaId);
     setViewState(snap.viewState);
     void queryClient.invalidateQueries();
-  }, [open, restoreExplorerOnOpen, escolaId, queryClient]);
+  }, [open, restoreExplorerOnOpen, escolaId, queryClient, sessionUserId, getExplorerScope]);
   const { query, setQuery, results, loading, error: searchError, clearError, hasMore, loadMore, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, { portal });
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -188,7 +228,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
     }
     rememberResult(item);
     if (item.type === "aluno" && entityContext && escolaId && onStudentSelect && (portal === "operacoes" || portal === "secretaria")) {
-      saveExplorerReturnContext({ escolaId, entityContext, contextTrail, courseClassId, courseTurmaId, viewState: viewStateRef.current });
+      const scope = getExplorerScope();
+      if (scope) saveExplorerReturnContext({ scope, escolaId, entityContext, contextTrail, courseClassId, courseTurmaId, viewState: viewStateRef.current });
     }
     runCommand(() => {
       setQuery("");
@@ -198,7 +239,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
       }
       router.push(href);
     });
-  }, [contextTrail, courseClassId, courseTurmaId, entityContext, escolaId, escolaParam, onStudentSelect, portal, rememberResult, router, runCommand, setQuery]);
+  }, [contextTrail, courseClassId, courseTurmaId, entityContext, escolaId, escolaParam, onStudentSelect, portal, rememberResult, router, runCommand, setQuery, getExplorerScope]);
   const staticActions = React.useMemo(() => {
     const actions = [{ id: "dashboard", label: "Ir para o painel", icon: LayoutDashboard, onSelect: () => router.push(buildPortalHref(escolaParam, portal === "admin" ? "/admin/dashboard" : portal === "operacoes" ? "/operacoes/dashboard" : "/dashboard")) }];
     if (portal === "financeiro" || portal === "admin" || portal === "operacoes") actions.push({ id: "pagamentos", label: "Ver pagamentos", icon: CreditCard, onSelect: () => router.push(buildPortalHref(escolaParam, portal === "operacoes" ? "/operacoes/recebimentos" : "/financeiro/pagamentos")) });
