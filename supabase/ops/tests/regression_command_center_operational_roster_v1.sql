@@ -118,7 +118,7 @@ BEGIN
       END IF;
       IF item.total_filtrado <> 55 THEN RAISE EXCEPTION 'Wrong total'; END IF;
     END LOOP;
-    IF v_rows <> CASE WHEN v_page=3 THEN 15 ELSE 20 END THEN
+    IF v_rows <> (CASE WHEN v_page=3 THEN 15 ELSE 20 END) THEN
       RAISE EXCEPTION 'Unstable priority page length';
     END IF;
   END LOOP;
