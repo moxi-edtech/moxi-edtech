@@ -189,7 +189,7 @@ export default function QuickActionsSection({
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 min-[1280px]:grid-cols-5">
         {actions.map((action) => (
           <AcaoRapidaCard
             key={action.key}

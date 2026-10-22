@@ -133,10 +133,10 @@ export default function Sidebar({
         "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-slate-950 text-slate-100 flex flex-col",
         "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-x-hidden"
       )}
-      style={{ width: collapsed ? "80px" : "256px" }}
+      style={{ width: collapsed ? "80px" : "clamp(208px, 16vw, 256px)" }}
     >
       {/* Header / Brand */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800/80">
+      <div className="flex items-center justify-between border-b border-slate-800/80 px-3 py-4 min-[1700px]:px-4">
         <Link href={homeHref} className="flex items-center gap-3 min-w-0" aria-label="Ir para a home do portal">
           <div className="h-10 w-10 rounded-xl bg-amber/15 ring-1 ring-amber/30 flex items-center justify-center">
             <Image

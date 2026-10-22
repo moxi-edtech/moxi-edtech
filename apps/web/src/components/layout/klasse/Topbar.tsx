@@ -54,7 +54,7 @@ export default function Topbar({
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
       <div className="h-16 flex items-center gap-4 px-4">
         {/* Search */}
-        <div className="hidden md:flex w-[420px]">
+        <div className="hidden min-w-0 md:flex md:w-[clamp(230px,27vw,420px)]">
           <CommandPalette
             escolaId={escolaId}
             portal={portal}

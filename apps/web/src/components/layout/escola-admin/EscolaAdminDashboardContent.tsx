@@ -326,16 +326,16 @@ export default function EscolaAdminDashboardContent({
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="space-y-8 pb-12"
+      className="space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12"
     >
 
       {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black leading-none tracking-tight text-slate-900">
+          <h1 className="text-2xl font-black leading-none tracking-tight text-slate-900 min-[1700px]:text-3xl">
             {dashboardTitle}
           </h1>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2 min-[1700px]:flex-nowrap">
             <p className="text-sm font-medium text-slate-500">{saudacao}</p>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5">
@@ -402,8 +402,8 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
       {hasMovimentoReceita && (
-        <motion.section variants={itemVariants} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
-          <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-8 relative z-10">
+        <motion.section variants={itemVariants} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md min-[1700px]:p-6">
+          <div className="relative z-10 mb-5 flex flex-col items-start justify-between gap-4 min-[1700px]:mb-8 min-[1700px]:gap-6 md:flex-row">
             <div className="space-y-4 flex-1">
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recebido no Mês (Caixa)</p>
@@ -513,7 +513,7 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 6. FINANCE CARDS (admin) — em operações vive no hub ──────────────── */}
       {!isOperacoes && (
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="grid gap-4 min-[1280px]:grid-cols-2 min-[1700px]:gap-6">
         <FinanceCard
           iconBg="bg-emerald-50 text-emerald"
           icon={<Wallet className="h-4 w-4" />}
@@ -580,8 +580,8 @@ export default function EscolaAdminDashboardContent({
       )}
 
       {/* ── 8. BOTTOM GRID (gestão) ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
-        <div className="space-y-8 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-5 min-[1280px]:grid-cols-3 min-[1280px]:items-start min-[1700px]:gap-8">
+        <div className="space-y-5 min-[1280px]:col-span-2 min-[1700px]:space-y-8">
           <motion.div variants={itemVariants}>
             <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
           </motion.div>
@@ -589,7 +589,7 @@ export default function EscolaAdminDashboardContent({
             <NoticesSection escolaId={escolaId} notices={notices} portalBase={portalBase} />
           </motion.div>
         </div>
-        <div className="space-y-8">
+        <div className="space-y-5 min-[1700px]:space-y-8">
           <motion.div variants={itemVariants}>
             <PostWizardChecklist
               setupStatus={setupStatus}

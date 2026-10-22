@@ -178,7 +178,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
   const isOperacoes = portalBase === "operacoes";
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+    <section className={`rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md ${isOperacoes ? "p-4 min-[1700px]:p-5" : "p-5"}`}>
       {isOperacoes ? (
         // Versão discreta (só operações): sem o selo escuro do cabeçalho, título
         // em minúsculas e um ponto de estado em vez de um bloco de cor.

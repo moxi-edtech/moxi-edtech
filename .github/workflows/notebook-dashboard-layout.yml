@@ -1,0 +1,48 @@
+name: Notebook Dashboard Layout
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/dashboard/KpiCard.tsx'
+      - 'apps/web/src/components/layout/escola-admin/**'
+      - 'apps/web/src/components/layout/operacoes/OperacoesPainelHub.tsx'
+      - 'apps/web/src/components/layout/operacoes/OperacoesDashboard.tsx'
+      - 'apps/web/src/components/layout/klasse/Sidebar.tsx'
+      - 'apps/web/src/components/layout/klasse/Topbar.tsx'
+      - '.github/workflows/notebook-dashboard-layout.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  web-layout-contracts:
+    name: Dashboard TypeScript and focused ESLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Web TypeScript
+        run: pnpm -C apps/web typecheck
+      - name: Lint affected dashboard components
+        run: |
+          pnpm -C apps/web exec eslint \
+            src/components/dashboard/KpiCard.tsx \
+            src/components/layout/escola-admin/ChartsSection.tsx \
+            src/components/layout/escola-admin/EscolaAdminDashboard.tsx \
+            src/components/layout/escola-admin/EscolaAdminDashboardContent.tsx \
+            src/components/layout/escola-admin/KpiSection.tsx \
+            src/components/layout/escola-admin/QuickActionsSection.tsx \
+            src/components/layout/escola-admin/OperationalFeedSection.tsx \
+            src/components/layout/operacoes/OperacoesPainelHub.tsx \
+            src/components/layout/klasse/Sidebar.tsx \
+            src/components/layout/klasse/Topbar.tsx \
+            --max-warnings 10000
