@@ -112,7 +112,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: All web unit contracts (auth, Balcão, finance, portal, Operations)
-        run: node --test --test-concurrency=4 --import tsx apps/web/tests/unit/*.spec.ts apps/web/tests/unit/*.spec.tsx apps/web/tests/unit/*.spec.mjs
+        run: |
+          cd apps/web
+          node --test --test-concurrency=4 --import tsx tests/unit/*.spec.ts tests/unit/*.spec.tsx tests/unit/*.spec.mjs
       - name: Production Next.js build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
