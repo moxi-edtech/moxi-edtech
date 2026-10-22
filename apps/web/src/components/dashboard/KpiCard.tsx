@@ -104,7 +104,7 @@ export function KpiCard({
             <Icon className={compact && responsiveDensity ? "h-4 w-4" : compact ? "h-4.5 w-4.5" : responsiveDensity ? "h-4 w-4 min-[1700px]:h-5 min-[1700px]:w-5" : "h-5 w-5"} />
           </div>
           {href && (
-            <div className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-tighter text-emerald opacity-0 transition-opacity group-hover:opacity-100">
+            <div className={`flex items-center gap-0.5 font-bold uppercase tracking-tighter text-emerald opacity-0 transition-opacity group-hover:opacity-100 ${responsiveDensity ? "text-[11px]" : "text-[10px]"}`}>
               Ver Detalhes <ArrowRight className="h-2.5 w-2.5" />
             </div>
           )}
