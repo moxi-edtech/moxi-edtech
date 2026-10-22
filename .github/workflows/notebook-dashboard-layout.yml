@@ -115,7 +115,9 @@ jobs:
         run: |
           cd apps/web
           node --test --test-concurrency=4 --import tsx tests/unit/*.spec.ts tests/unit/*.spec.tsx tests/unit/*.spec.mjs
-      - name: Production Next.js build
+      - name: Production Next.js build (isolated fixture environment)
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_SUPABASE_URL: "https://fixture.invalid"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "fixture-only-not-real"
         run: pnpm -C apps/web build
