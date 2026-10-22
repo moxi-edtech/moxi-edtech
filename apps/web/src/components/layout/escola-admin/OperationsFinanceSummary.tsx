@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle } from "lucide-react";
+import { Info } from "lucide-react";
 
 type Props = {
   recebido: number;
@@ -32,7 +32,7 @@ export default function OperationsFinanceSummary({
           <p className="operations-eyebrow">Recebido no mês (caixa)</p>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <strong className="operations-cash-value text-slate-900">{formatMoney(recebido)}</strong>
-            <span className="text-sm text-slate-600">de {formatMoney(previsto)} previstos</span>
+            <span className="text-sm text-slate-600">{previsto > 0 ? `de ${formatMoney(previsto)} previstos` : "sem previsão definida"}</span>
           </div>
         </div>
         <div className="operations-progress-result">
@@ -49,8 +49,8 @@ export default function OperationsFinanceSummary({
       </div>
 
       {acimaDaMeta && (
-        <p className="operations-finance-note flex items-start gap-2 text-xs text-amber-800">
-          <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className="operations-finance-note flex items-start gap-2 text-xs text-slate-600">
+          <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
           Recebimentos podem incluir propinas de meses anteriores ou adiantamentos.
         </p>
       )}
