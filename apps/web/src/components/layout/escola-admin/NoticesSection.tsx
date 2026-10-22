@@ -131,7 +131,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
   });
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm min-[1700px]:p-6">
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="mb-5 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
