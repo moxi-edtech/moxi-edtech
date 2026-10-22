@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   GraduationCap, Loader2, RefreshCw, UsersRound,
@@ -21,6 +21,10 @@ type Props = {
   onExploreDisciplina: (entity: NextEntity) => void;
   onExploreProfessor: (entity: NextEntity) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
+  initialPage?: number;
+  initialScrollTop?: number;
+  selectedStudentId?: string | null;
+  onViewChange?: (state: { page: number; scrollTop: number; selectedStudentId: string | null }) => void;
 };
 
 const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
@@ -73,8 +77,25 @@ function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
 export function ClasseContextView({
   context, portal, onNavigate, onExploreCurso, onExploreTurma,
   onExploreDisciplina, onExploreProfessor, onStudentSelect,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, onViewChange,
 }: Props) {
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const currentScroll = useRef(initialScrollTop);
+  const currentStudent = useRef(selectedStudentId);
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = initialScrollTop;
+  }, [initialScrollTop]);
+  useEffect(() => {
+    onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current });
+  }, [page]);
+  const selectStudent = (student: { id: string; label: string }) => {
+    currentStudent.current = student.id;
+    onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: student.id });
+    onStudentSelect(student);
+  };
   const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
 
   if (loading) return (
@@ -108,7 +129,7 @@ export function ClasseContextView({
   const turmasSemAlunos = turmas.filter((t) => t.alunos === 0).length;
 
   return (
-    <div className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current }); }} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
@@ -274,7 +295,7 @@ export function ClasseContextView({
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {alunos.items.map((aluno) => (
             <button type="button" key={aluno.id}
-              onClick={() => onStudentSelect({ id: aluno.id, label: aluno.nome })}
+              data-student-id={aluno.id} aria-current={selectedStudentId === aluno.id ? "true" : undefined} onClick={() => selectStudent({ id: aluno.id, label: aluno.nome })}
               className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-slate-900">{aluno.nome}</span>
