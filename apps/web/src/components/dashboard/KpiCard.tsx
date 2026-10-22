@@ -67,11 +67,11 @@ export function KpiCard({
     <>
       <div className="flex items-start justify-between relative z-10">
         <div className={compact ? "space-y-0.5" : "space-y-1"}>
-          <span className={`font-bold uppercase tracking-widest text-slate-400 ${compact ? "text-[10px]" : "text-[11px]"}`}>
+          <span className={`font-bold uppercase tracking-widest text-slate-400 ${compact && responsiveDensity ? "text-xs" : compact ? "text-[10px]" : "text-[11px]"}`}>
             {label}
           </span>
           <div className={`flex items-baseline ${compact ? "gap-1.5" : "gap-2"}`}>
-            <span className={`${compact ? "text-[26px]" : "text-2xl"} font-black tracking-tight ${styles.value}`}>
+            <span className={`${compact && responsiveDensity ? "text-2xl" : compact ? "text-[26px]" : "text-2xl"} font-black tracking-tight ${styles.value}`}>
               {value ?? "—"}
             </span>
             {trend && (
@@ -92,16 +92,16 @@ export function KpiCard({
             )}
           </div>
           {description && (
-            <p className={`text-slate-400 font-medium leading-none ${compact ? "text-[9px]" : "text-[10px]"}`}>
+            <p className={`text-slate-400 font-medium leading-none ${compact && responsiveDensity ? "text-xs" : compact ? "text-[9px]" : "text-[10px]"}`}>
               {description}
             </p>
           )}
         </div>
         <div className={`flex flex-col items-end ${compact ? "gap-1.5" : "gap-2"}`}>
           <div
-            className={`${compact ? "h-9 w-9 rounded-lg shadow-sm" : responsiveDensity ? "h-9 w-9 rounded-lg shadow-sm min-[1700px]:h-10 min-[1700px]:w-10" : "h-10 w-10 rounded-lg shadow-sm"} flex items-center justify-center ${styles.icon}`}
+            className={`${compact && responsiveDensity ? "h-8 w-8 rounded-lg" : compact ? "h-9 w-9 rounded-lg shadow-sm" : responsiveDensity ? "h-9 w-9 rounded-lg shadow-sm min-[1700px]:h-10 min-[1700px]:w-10" : "h-10 w-10 rounded-lg shadow-sm"} flex items-center justify-center ${styles.icon}`}
           >
-            <Icon className={compact ? "h-4.5 w-4.5" : responsiveDensity ? "h-4 w-4 min-[1700px]:h-5 min-[1700px]:w-5" : "h-5 w-5"} />
+            <Icon className={compact && responsiveDensity ? "h-4 w-4" : compact ? "h-4.5 w-4.5" : responsiveDensity ? "h-4 w-4 min-[1700px]:h-5 min-[1700px]:w-5" : "h-5 w-5"} />
           </div>
           {href && (
             <div className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-tighter text-emerald opacity-0 transition-opacity group-hover:opacity-100">
@@ -129,8 +129,10 @@ export function KpiCard({
     </>
   );
 
-  const containerClasses = `group relative min-w-0 overflow-hidden border flex flex-col justify-between transition ${
-    compact
+  const containerClasses = `group relative min-w-0 overflow-hidden border flex flex-col justify-between transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2B6044] ${
+    compact && responsiveDensity
+      ? "min-h-[92px] rounded-xl p-3 shadow-sm hover:shadow-md"
+      : compact
       ? "min-h-[112px] rounded-xl p-4 shadow-sm hover:shadow-md"
        : responsiveDensity
         ? "min-h-[116px] rounded-xl p-4 shadow-sm hover:shadow-md min-[1700px]:min-h-[132px] min-[1700px]:p-5"
@@ -144,7 +146,7 @@ export function KpiCard({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <Link href={href} className={containerClasses}>
+        <Link href={href} data-testid={compact && responsiveDensity ? "operations-kpi-card" : undefined} className={containerClasses}>
           {Content}
         </Link>
       </motion.div>
