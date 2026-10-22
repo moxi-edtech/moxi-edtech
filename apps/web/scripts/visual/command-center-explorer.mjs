@@ -26,6 +26,24 @@ async function capture(page, size, zoom, state) {
   reports.push({ width: size[0], height: size[1], zoom, state, file, overflow: layout.fullWidth-layout.width });
 }
 
+/** Automated WCAG 2.0/2.1 A/AA subset on the real contextual component,
+ * with wholly fictional records. No certification or screen-reader claim. */
+async function checkAutomatedAccessibility(page, state) {
+  const axePath = process.env.AXE_CORE_FILE;
+  if (!axePath) return;
+  await page.addScriptTag({ path: axePath });
+  const violations = await page.evaluate(async () => {
+    const results = await window.axe.run(document, {
+      runOnly: { type: "tag", values: ["wcag2a","wcag2aa","wcag21a","wcag21aa"] },
+    });
+    return results.violations.map((rule) => ({
+      id: rule.id, impact: rule.impact, nodes: rule.nodes.length,
+      selectors: rule.nodes.map((node) => node.target.join(" ")).slice(0, 4),
+    }));
+  });
+  assert.deepEqual(violations, [], `Automated accessibility failures in ${state}: ${JSON.stringify(violations)}`);
+}
+
 async function run(size, zoom) {
   const width = Math.floor(size[0] / zoom);
   const height = Math.floor(size[1] / zoom);
@@ -41,6 +59,7 @@ async function run(size, zoom) {
 
   await reset();
   await capture(page,size,zoom,"lista");
+  if (size[0] === 390 && zoom === 1) await checkAutomatedAccessibility(page, "turma-lista");
   assert.equal(await page.getByText("55").first().isVisible(),true);
   await capture(page,size,zoom,"lotacao-55-50");
   const filter = page.getByRole("combobox", { name: "Situação verificada" });
@@ -93,6 +112,7 @@ async function run(size, zoom) {
   await reset();
   await page.getByRole("button", { name: "Ações de Aluno Sintético 01" }).click();
   await page.getByRole("button", { name: "Abrir Emitir documento" }).waitFor();
+  if (size[0] === 390 && zoom === 1) await checkAutomatedAccessibility(page, "student-actions");
   await capture(page,size,zoom,"acoes-por-permissao");
   await page.getByRole("button", { name: "Fechar ações de Aluno Sintético 01" }).click();
   await page.getByText("Aluno Sintético 01").click();
