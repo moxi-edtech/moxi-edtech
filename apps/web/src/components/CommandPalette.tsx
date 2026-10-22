@@ -146,7 +146,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
     setRestoreStudentFocus(true);
     setOpen(true);
   }, [studentWorkspaceClosedVersion, queryClient]);
-  const { query, setQuery, results, loading, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
+  const { query, setQuery, results, loading, error: searchError, retry: retrySearch, hasMore, loadMore, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
     portal,
   });
 
@@ -333,7 +333,21 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                 <ArrowLeft className="h-4 w-4" />
                 {contextTrail.length ? BACK_LABELS[contextTrail[contextTrail.length - 1].type] : "Voltar à pesquisa"}
               </button>
-              <span className="truncate text-sm font-semibold text-slate-900">{entityContext.label}</span>
+              <nav aria-label="Percurso de exploração" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm">
+                {contextTrail.map((step, index) => (
+                  <React.Fragment key={`${step.type}:${step.id}:${index}`}>
+                    <button type="button" className="shrink-0 rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100"
+                      onClick={() => { setEntityContext(step); setContextTrail((trail) => trail.slice(0, index)); setRestoreStudentFocus(false); }}>
+                      {step.label}
+                    </button>
+                    <span aria-hidden="true" className="text-slate-400">/</span>
+                  </React.Fragment>
+                ))}
+                <span aria-current="page" className="truncate font-semibold text-slate-900">{entityContext.label}</span>
+              </nav>
+              <button type="button" aria-label="Fechar explorador" title="Fechar explorador"
+                className="shrink-0 rounded-xl p-2 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-amber"
+                onClick={() => onOpenChange(false)}><X className="h-4 w-4" /></button>
             </div>
           )}
           {!entityContext && <div className="flex items-center border-b border-slate-100 px-4 py-3">
@@ -364,7 +378,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                 </span>
               </div>
             )}
-            {!(query.trim().length >= 2 && (portal === "admin" || portal === "operacoes")) && (
+            {!loading && !searchError && query.trim().length >= 2 && !results.length && !(portal === "admin" || portal === "operacoes") && (
             <Command.Empty className="flex flex-col items-center justify-center py-12 text-center">
               <div className="rounded-full bg-slate-50 p-4 mb-4">
                 <Search className="h-8 w-8 text-slate-300" />
@@ -375,6 +389,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
             </Command.Empty>
             )}
 
+            {searchError && <div role="alert" className="mx-3 my-4 flex items-center justify-between gap-3 rounded-xl border border-rose-200 p-3 text-sm text-rose-800"><span>Não foi possível pesquisar. Tente novamente.</span><button type="button" onClick={retrySearch} className="rounded-xl border border-rose-200 px-3 py-2 font-semibold">Tentar novamente</button></div>}
             {query.length === 0 && (
               <>
               {recentResults.length > 0 && (
@@ -417,6 +432,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                 ))}
               </Command.Group>
             )}
+            {hasMore && !searchError && <div className="p-3 text-center"><button type="button" disabled={loading} onClick={() => void loadMore()} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50">Ver mais resultados</button></div>}
             <DisciplinaSearchResults
               escolaId={escolaId}
               academicYearId={new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get(ACADEMIC_YEAR_PARAM)}
@@ -455,6 +471,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                     });
                   }}
                   onExploreTurma={(turma) => {
+                    setTurmaPage(1);
+                    turmaScrollTop.current = 0;
+                    setSelectedStudentId(null);
                     setCourseTurmaId(turma.id);
                     setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
@@ -475,6 +494,12 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                   key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`}
                   context={entityContext}
                   portal={portal}
+                  initialPage={turmaPage}
+                  onPageChange={setTurmaPage}
+                  initialScrollTop={turmaScrollTop.current}
+                  onScrollTopChange={(value) => { turmaScrollTop.current = value; }}
+                  selectedStudentId={selectedStudentId}
+                  restoreStudentFocus={restoreStudentFocus}
                   onNavigate={(href) => {
                     onOpenChange(false);
                     router.push(href);
@@ -517,6 +542,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                   context={entityContext}
                   portal={portal}
                   onExploreTurma={(turma) => {
+                    setTurmaPage(1);
+                    turmaScrollTop.current = 0;
+                    setSelectedStudentId(null);
                     setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
                       type: "turma",
@@ -550,6 +578,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                     });
                   }}
                   onExploreTurma={(turma) => {
+                    setTurmaPage(1);
+                    turmaScrollTop.current = 0;
+                    setSelectedStudentId(null);
                     setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
                       type: "turma", id: turma.id, label: turma.label,
@@ -582,6 +613,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                     });
                   }}
                   onExploreTurma={(turma) => {
+                    setTurmaPage(1);
+                    turmaScrollTop.current = 0;
+                    setSelectedStudentId(null);
                     setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
                       type: "turma", id: turma.id, label: turma.label,
@@ -631,12 +665,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
 
           <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3">
             <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium">
-              <span className="flex items-center gap-1">
-                <kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">↑↓</kbd> Navegar
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">↵</kbd> Selecionar
-              </span>
+              {!entityContext && <><span className="flex items-center gap-1"><kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">↑↓</kbd> Navegar</span><span className="flex items-center gap-1"><kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">↵</kbd> Selecionar</span></>}
+              {entityContext && <span>Selecione uma entidade ou volte à pesquisa</span>
             </div>
             <div className="text-[10px] font-bold text-slate-300 tracking-widest uppercase">
               KLASSE Command Center
