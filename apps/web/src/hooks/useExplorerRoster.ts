@@ -24,11 +24,12 @@ type RosterReply = {
   cursor: Cursor | null;
 };
 
-export function useExplorerRoster(context: EntityContext, type: "turma" | "classe", search: string) {
+export type RosterSort = "nome_asc" | "nome_desc";
+export function useExplorerRoster(context: EntityContext, type: "turma" | "classe", search: string, sort: RosterSort = "nome_asc") {
   const debounced = useDebounce(search.trim(), 300);
-  const enabled = debounced.length >= 2;
+  const enabled = debounced.length >= 2 || (sort !== "nome_asc" && debounced.length === 0);
   const query = useInfiniteQuery({
-    queryKey: ["command-center", "roster", context.escolaId, context.id, context.academicYearId, type, debounced],
+    queryKey: ["command-center", "roster", context.escolaId, context.id, context.academicYearId, type, debounced, sort],
     initialPageParam: null as Cursor | null,
     enabled,
     staleTime: 15_000,
@@ -37,7 +38,7 @@ export function useExplorerRoster(context: EntityContext, type: "turma" | "class
     retry: 1,
     queryFn: async ({ pageParam, signal }) => {
       const params = new URLSearchParams({
-        type, entityId: context.id, q: debounced, size: "20",
+        type, entityId: context.id, q: debounced, size: "20", sort,
       });
       if (context.academicYearId) params.set(ACADEMIC_YEAR_PARAM, context.academicYearId);
       if (pageParam) {
@@ -62,6 +63,7 @@ export function useExplorerRoster(context: EntityContext, type: "turma" | "class
     loading: enabled && query.isPending,
     refreshing: query.isFetching,
     error: query.error instanceof Error ? query.error.message : null,
+    sorting: sort,
     items: query.data?.pages.flatMap((page) => page.items) ?? [],
     total: query.data?.pages[0]?.total ?? 0,
     hasMore: Boolean(query.hasNextPage),
