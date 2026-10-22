@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -69,7 +70,7 @@ function noStore(body: unknown, status = 200) {
  * year: that is a valid empty state. Never use the client-supplied class name
  * or global search result as proof of authorization.
  */
-export async function GET(
+async function readExplorer(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; classeId: string }> },
 ) {
@@ -297,7 +298,14 @@ export async function GET(
     if (error instanceof AcademicYearContextError) return noStore(
       { ok: false, error: error.message }, error.status,
     );
-    console.error("[command-center/classe] read failed", error instanceof Error ? error.message : "unexpected");
     return noStore({ ok: false, error: "Não foi possível carregar esta classe." }, 500);
   }
+}
+
+/** Stable envelope and PII-free correlation across success, 4xx and 5xx. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string; classeId: string }> },
+) {
+  return withExplorerObservability("classe", () => readExplorer(req, context));
 }
