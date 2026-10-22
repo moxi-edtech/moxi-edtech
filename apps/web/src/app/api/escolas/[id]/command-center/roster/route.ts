@@ -88,7 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }, status);
     }
     const items = (data ?? []).slice(0, input.size);
-    const last = items.at(-1);
+    const last = items[items.length - 1];
     return response({
       ok: true,
       items: items.map((item) => ({
