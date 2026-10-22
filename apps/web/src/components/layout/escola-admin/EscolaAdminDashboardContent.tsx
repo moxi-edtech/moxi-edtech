@@ -15,8 +15,6 @@ import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
 import OperacoesPainelHub from "@/components/layout/operacoes/OperacoesPainelHub";
 import { EstadoVitalBanner } from "./EstadoVitalBanner";
-import OperationsFinanceSummary from "./OperationsFinanceSummary";
-import "./operations-density.css";
 import RadarFinanceiroCard from "./RadarFinanceiroCard";
 import SecaoLabel from "@/components/shared/SecaoLabel";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
@@ -328,12 +326,11 @@ export default function EscolaAdminDashboardContent({
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      data-operations-dashboard={isOperacoes ? "" : undefined}
-      className={isOperacoes ? "operations-dashboard" : "space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12"}
+      className="space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12"
     >
 
       {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
-      <motion.div variants={itemVariants} className={isOperacoes ? "operations-head flex items-start justify-between gap-3" : "flex items-start justify-between gap-4"}>
+      <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black leading-none tracking-tight text-slate-900 min-[1700px]:text-3xl">
             {dashboardTitle}
@@ -343,7 +340,7 @@ export default function EscolaAdminDashboardContent({
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
-                <span className={isOperacoes ? "text-[11px] font-semibold uppercase tracking-wide text-emerald" : "text-[9px] font-black uppercase tracking-[0.2em] text-emerald"}>Live</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald">Live</span>
               </div>
               <button
                 onClick={handleRefresh}
@@ -361,34 +358,22 @@ export default function EscolaAdminDashboardContent({
         </div>
       </motion.div>
 
-      {/* Estado académico + radar: uma superfície de contexto operacional, sem cartões vazios. */}
-      {isOperacoes ? (
-        <div data-testid="operations-overview" className="operations-status">
-          {estadoVital && <EstadoVitalBanner estado={estadoVital} inline />}
-          <RadarOperacional
-            alerts={radarAlerts}
-            role="secretaria"
-            variant="inline"
-            onAction={handleRadarAction}
-          />
-        </div>
-      ) : (
-        <>
-          {estadoVital && (
-            <motion.div variants={itemVariants}>
-              <EstadoVitalBanner estado={estadoVital} />
-            </motion.div>
-          )}
-          <motion.div variants={itemVariants}>
-            <RadarOperacional
-              alerts={radarAlerts}
-              role="admin"
-              variant="default"
-              onAction={handleRadarAction}
-            />
-          </motion.div>
-        </>
+      {/* ── 1.1 ESTADO VITAL (Organismo Vivo) ────────────────────────────────── */}
+      {estadoVital && (
+        <motion.div variants={itemVariants}>
+          <EstadoVitalBanner estado={estadoVital} />
+        </motion.div>
       )}
+
+      {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
+      <motion.div variants={itemVariants}>
+        <RadarOperacional
+          alerts={radarAlerts}
+          role={mode === "operacoes" ? "secretaria" : "admin"}
+          variant={mode === "operacoes" ? "compact" : "default"}
+          onAction={handleRadarAction}
+        />
+      </motion.div>
 
       <PricingConfigurationModal
         open={pricingModalOpen}
@@ -416,21 +401,7 @@ export default function EscolaAdminDashboardContent({
       </motion.div>
 
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
-      {hasMovimentoReceita && (isOperacoes ? (
-        <OperationsFinanceSummary
-          recebido={realizadoReceita}
-          previsto={previstoReceita}
-          liquidadoCompetencia={pagoCompetencia}
-          mensalidades={caixaMensalidades}
-          dividasAnteriores={caixaDividasAnteriores}
-          servicos={caixaServicos}
-          percentualCaixa={displayPercentualReceita}
-          percentualCompetencia={percentualCompetencia}
-          pacingTarget={dynamicPacingTarget}
-          acimaDaMeta={isAcimaDaMeta}
-          formatMoney={(value) => moeda.format(value)}
-        />
-      ) : (
+      {hasMovimentoReceita && (
         <motion.section variants={itemVariants} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md min-[1700px]:p-6">
           <div className="relative z-10 mb-5 flex flex-col items-start justify-between gap-4 min-[1700px]:mb-8 min-[1700px]:gap-6 md:flex-row">
             <div className="space-y-4 flex-1">
@@ -525,7 +496,7 @@ export default function EscolaAdminDashboardContent({
             <p>100% Meta Final</p>
           </div>
         </motion.section>
-      ))}
+      )}
 
       {/* ── 5. CHARTS (admin) — em operações abre no hub ─────────────────────── */}
       {!isOperacoes && (

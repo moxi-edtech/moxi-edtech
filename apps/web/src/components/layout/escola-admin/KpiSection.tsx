@@ -73,12 +73,12 @@ export default function KpiSection({
 
   // Keep the loading skeleton in the same column structure as the final KPIs.
   const gridClasses = mode === "operacoes"
-    ? "operations-kpi-grid"
+    ? "grid grid-cols-2 gap-3 xl:grid-cols-4"
     : "grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4";
 
   if (error) {
     return (
-      <div role="alert" data-testid="operations-kpi-error" className="flex items-center gap-2 p-4 text-sm text-red-700 bg-red-50 rounded-xl border border-red-100 font-medium">
+      <div className="flex items-center gap-2 p-4 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100 font-medium">
         <AlertCircle className="w-4 h-4 flex-shrink-0" />
         Não foi possível carregar os indicadores.
       </div>
@@ -87,7 +87,7 @@ export default function KpiSection({
 
   if (loading) {
     return (
-      <div data-testid="operations-kpi-loading" className={gridClasses}>
+      <div className={gridClasses}>
         {Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)}
       </div>
     );
@@ -198,7 +198,7 @@ export default function KpiSection({
       ];
 
   return (
-    <div data-testid={mode === "operacoes" ? "operations-kpi-grid" : undefined} className={gridClasses}>
+    <div className={gridClasses}>
       {kpis.map((kpi) => (
         <KpiCard
           key={kpi.label}
@@ -211,7 +211,7 @@ export default function KpiSection({
           chartData={kpi.chartData}
           description={kpi.description}
           compact={mode === "operacoes"}
-          responsiveDensity
+          responsiveDensity={mode === "admin"}
         />
       ))}
     </div>

@@ -9,9 +9,6 @@ on:
       - 'apps/web/src/components/layout/operacoes/OperacoesDashboard.tsx'
       - 'apps/web/src/components/layout/klasse/Sidebar.tsx'
       - 'apps/web/src/components/layout/klasse/Topbar.tsx'
-      - 'apps/web/src/components/feedback/FeedbackSystem.tsx'
-      - 'apps/web/visual-harness/operations-density-*'
-      - 'apps/web/scripts/visual/operations-density.mjs'
       - '.github/workflows/notebook-dashboard-layout.yml'
 
 permissions:
@@ -45,79 +42,7 @@ jobs:
             src/components/layout/escola-admin/KpiSection.tsx \
             src/components/layout/escola-admin/QuickActionsSection.tsx \
             src/components/layout/escola-admin/OperationalFeedSection.tsx \
-            src/components/layout/escola-admin/EstadoVitalBanner.tsx \
-            src/components/layout/escola-admin/OperationsFinanceSummary.tsx \
-            src/components/feedback/FeedbackSystem.tsx \
             src/components/layout/operacoes/OperacoesPainelHub.tsx \
             src/components/layout/klasse/Sidebar.tsx \
             src/components/layout/klasse/Topbar.tsx \
             --max-warnings 10000
-
-  operations-responsive-browser:
-    name: Synthetic operations layout 8 viewports x 3 zooms x 5 states
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Install existing isolated Vite and Playwright test runner
-        run: |
-          mkdir -p /tmp/klasse-visual
-          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
-          /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
-      - name: Start real React components with synthetic records
-        run: |
-          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/klasse-operations-visual.log 2>&1 &
-          for attempt in $(seq 1 50); do
-            if curl -fsS http://127.0.0.1:6006/ >/dev/null; then exit 0; fi
-            sleep 2
-          done
-          tail -n 100 /tmp/klasse-operations-visual.log
-          exit 1
-      - name: Playwright visual contracts twice (flakiness gate)
-        env:
-          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
-          LAYOUT_REPEATS: "2"
-        run: node apps/web/scripts/visual/operations-density.mjs
-      - name: Browser diagnostics on failure
-        if: failure()
-        run: tail -n 140 /tmp/klasse-operations-visual.log
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: operations-dashboard-layout-evidence
-          path: apps/web/visual-evidence/operations-density/
-          retention-days: 7
-          if-no-files-found: warn
-
-  dashboard-full-suite:
-    name: Full web unit tests and production build
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: All web unit contracts (auth, Balcão, finance, portal, Operations)
-        run: |
-          cd apps/web
-          node --test --test-concurrency=4 --import tsx tests/unit/*.spec.ts tests/unit/*.spec.tsx tests/unit/*.spec.mjs
-      - name: Production Next.js build (isolated fixture environment)
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
-          NEXT_PUBLIC_SUPABASE_URL: "https://fixture.invalid"
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: "fixture-only-not-real"
-        run: pnpm -C apps/web build

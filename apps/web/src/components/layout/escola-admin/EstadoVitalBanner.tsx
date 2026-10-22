@@ -14,7 +14,7 @@ type EstadoVital = {
   fase_operacional: 'PRE_INICIO' | 'REGULAR' | 'EXAMES' | 'POS_ENCERRAMENTO';
 };
 
-export function EstadoVitalBanner({ estado, inline = false }: { estado: EstadoVital | null; inline?: boolean }) {
+export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
   if (!estado) return null;
 
   const isExames = estado.fase_operacional === 'EXAMES';
@@ -25,22 +25,22 @@ export function EstadoVitalBanner({ estado, inline = false }: { estado: EstadoVi
     : isExames ? 'Exames' : 'Aulas';
 
   return (
-    <div data-testid="status-academic" className={inline ? "flex flex-wrap items-center justify-between gap-x-4 gap-y-2" : "flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}>
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       {/* Lado Esquerdo: Título e Status Resumido */}
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex items-center gap-3">
         <div className="rounded-xl border border-slate-100 bg-slate-50 p-2 text-slate-500">
           <Activity className="h-4 w-4" />
         </div>
         <div>
-          <p className={inline ? "text-[11px] font-bold uppercase tracking-wide text-slate-600" : "text-[10px] font-black uppercase tracking-widest text-slate-400"}>Estado Académico</p>
-          <p className="text-xs font-semibold text-slate-700 mt-0.5">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Estado Académico</p>
+          <p className="text-xs font-bold text-slate-700 mt-0.5">
             {estado.evento_hoje_nome ? `Hoje: ${estado.evento_hoje_nome}` : 'Operação regular'}
           </p>
         </div>
       </div>
 
       {/* Lado Direito: As 4 Métricas em Formato Inline Minimalista */}
-      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
         {/* Metrica 1 */}
         <div className="flex items-center gap-1.5">
           <Calendar className="h-3.5 w-3.5 text-slate-400" />
@@ -60,7 +60,7 @@ export function EstadoVitalBanner({ estado, inline = false }: { estado: EstadoVi
         {/* Metrica 3 (Fase como Pill suave) */}
         <div className="flex items-center gap-1.5">
           <span className="text-slate-400 font-medium">Fase:</span>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
             isExames ? 'bg-amber-50 text-amber-700 border border-amber-100/50' : 'bg-emerald-50 text-emerald-700 border border-emerald-100/50'
           }`}>
             {isBloqueado && !isBoundary ? 'Interrupção' : faseLabel}
@@ -70,7 +70,7 @@ export function EstadoVitalBanner({ estado, inline = false }: { estado: EstadoVi
         {/* Metrica 4 (Status Diário como Pill suave) */}
         <div className="flex items-center gap-1.5">
           <span className="text-slate-400 font-medium">Diário:</span>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
             isBloqueado ? 'bg-rose-50 text-rose-700 border border-rose-100/50' : 'bg-emerald-50 text-emerald-700 border border-emerald-100/50'
           }`}>
             {isBloqueado ? 'Bloqueado' : 'Liberado'}
