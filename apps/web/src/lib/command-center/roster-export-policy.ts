@@ -1,8 +1,9 @@
+import type { Role } from "@/lib/authz";
 /** Padrão: exportação proibida. As regras são declaradas por escola no servidor. */
 export type RosterExportPolicy = {
   enabled: boolean;
   maxRows: number;
-  roles: string[];
+  roles: Role[];
 };
 
 export const DEFAULT_ROSTER_EXPORT_POLICY: Readonly<RosterExportPolicy> = Object.freeze({
@@ -15,7 +16,7 @@ export function safeCsvCell(value: string | number | null | undefined): string {
   const source = String(value ?? "");
   // Excel/LibreOffice can interpret formula prefixes even after whitespace.
   const safe = /^[\s\u0000-\u001f]*[=+@-]/u.test(source) ? "'" + source : source;
-  return '"' + safe.replaceAll('"', '""') + '"';
+  return '"' + safe.replace(/"/g, '""') + '"';
 }
 
 export type MinimalExportRow = {
@@ -61,14 +62,14 @@ export function resolveRosterExportPolicy(
     const entry: unknown = (all as Record<string, unknown>)[escolaId];
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return DEFAULT_ROSTER_EXPORT_POLICY;
     const row = entry as Record<string, unknown>;
-    const allowed = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "admin_secretaria"];
+    const allowed: Role[] = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "admin_secretaria"];
     if (row.enabled !== true || !Number.isInteger(row.maxRows) ||
         typeof row.maxRows !== "number" || row.maxRows < 1 || row.maxRows > 200 ||
         !Array.isArray(row.roles) || !row.roles.length ||
         !row.roles.every((role) => typeof role === "string" && allowed.includes(role))) {
       return DEFAULT_ROSTER_EXPORT_POLICY;
     }
-    return { enabled: true, maxRows: row.maxRows, roles: row.roles as string[] };
+    return { enabled: true, maxRows: row.maxRows, roles: row.roles as Role[] };
   } catch {
     return DEFAULT_ROSTER_EXPORT_POLICY;
   }
