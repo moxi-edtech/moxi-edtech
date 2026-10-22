@@ -8,6 +8,10 @@ import {
 
 type Reply = { ok: boolean; error?: string; actions?: Record<ExplorerActionId, boolean> };
 
+/** Native modal dialog keeps six operations in the viewport even at 150% zoom.
+ * The browser provides keyboard focus containment; Esc closes without
+ * navigating, and the opener receives focus again.
+ */
 export function ExplorerStudentActions({
   escolaId, alunoId, alunoNome, onAction,
 }: {
@@ -18,7 +22,22 @@ export function ExplorerStudentActions({
   const [reply, setReply] = useState<Reply | null>(null);
   const [loading, setLoading] = useState(false);
   const controller = useRef<AbortController | null>(null);
-  useEffect(() => () => controller.current?.abort(), []);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const openerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (expanded && !dialog.open) dialog.showModal();
+    if (!expanded && dialog.open) {
+      dialog.close();
+      openerRef.current?.focus({ preventScroll: true });
+    }
+  }, [expanded]);
+  useEffect(() => () => {
+    controller.current?.abort();
+    if (dialogRef.current?.open) dialogRef.current.close();
+  }, []);
 
   async function toggle() {
     if (expanded) { setExpanded(false); return; }
@@ -41,27 +60,42 @@ export function ExplorerStudentActions({
       if (!abort.signal.aborted) setReply({
         ok: false, error: "Não foi possível verificar as permissões. Tente novamente.",
       });
-    } finally { if (!abort.signal.aborted) setLoading(false); }
+    } finally {
+      if (!abort.signal.aborted) setLoading(false);
+    }
   }
 
   return (
-    <div className="min-w-0 shrink-0 text-right">
-      <button type="button" onClick={() => void toggle()} aria-expanded={expanded}
-        aria-label={`Ações de ${alunoNome}`}
+    <div className="shrink-0">
+      <button ref={openerRef} type="button" onClick={() => void toggle()} aria-haspopup="dialog"
+        aria-expanded={expanded} aria-label={`Ações de ${alunoNome}`}
         className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-700">
-        {expanded ? "Fechar" : "Ações"}
+        Ações
       </button>
-      {expanded && (
-        <div role="group" aria-label={`Operações do aluno ${alunoNome}`}
-          className="mt-2 flex max-w-72 flex-wrap justify-end gap-2">
-          {loading && <p role="status" className="text-xs text-slate-600">A verificar permissões…</p>}
-          {!loading && (!reply?.ok || !reply.actions) && (
-            <p role="alert" className="text-xs text-rose-700">
-              {reply?.error || "As permissões não estão disponíveis."}
-            </p>
-          )}
-          {!loading && reply?.ok && reply.actions &&
-            EXPLORER_STUDENT_ACTION_IDS.map((id) => {
+      <dialog ref={dialogRef} aria-label={`Operações de ${alunoNome}`}
+        onCancel={(event) => { event.preventDefault(); setExpanded(false); }}
+        className="w-[min(94vw,450px)] max-h-[min(85dvh,660px)] rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-xl backdrop:bg-slate-900/40">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold">Operações do aluno</h3>
+            <p className="mt-1 break-words text-sm text-slate-700">{alunoNome}</p>
+          </div>
+          <button type="button" onClick={() => setExpanded(false)}
+            aria-label={`Fechar ações de ${alunoNome}`}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-700">
+            Fechar
+          </button>
+        </div>
+        {loading && <p role="status" className="text-sm text-slate-700">A verificar permissões…</p>}
+        {!loading && (!reply?.ok || !reply.actions) && (
+          <p role="alert" className="text-sm text-rose-700">
+            {reply?.error || "As permissões não estão disponíveis."}
+          </p>
+        )}
+        {!loading && reply?.ok && reply.actions && (
+          <div role="group" aria-label="Ações autorizadas"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {EXPLORER_STUDENT_ACTION_IDS.map((id) => {
               const available = reply.actions?.[id] === true;
               const action = getBalcaoAction(id);
               return (
@@ -69,13 +103,17 @@ export function ExplorerStudentActions({
                   title={available ? action.description : "Sem permissão neste perfil"}
                   aria-label={available ? `Abrir ${action.label}` : `${action.label}: sem permissão`}
                   onClick={() => onAction(id)}
-                  className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
-                  {action.shortLabel}
+                  className="rounded-lg border border-slate-200 px-3 py-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
+                  {action.label}
                 </button>
               );
             })}
-        </div>
-      )}
+          </div>
+        )}
+        <p className="mt-4 text-xs text-slate-600">
+          Cada módulo confirma novamente a permissão e a situação do aluno antes de guardar alterações.
+        </p>
+      </dialog>
     </div>
   );
 }
