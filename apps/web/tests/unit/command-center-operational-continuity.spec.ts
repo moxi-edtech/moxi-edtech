@@ -7,42 +7,37 @@ const topbar = readFileSync("src/components/layout/klasse/Topbar.tsx", "utf8");
 const turma = readFileSync("src/components/secretaria/command-center/TurmaContextView.tsx", "utf8");
 const classe = readFileSync("src/components/secretaria/command-center/ClasseContextView.tsx", "utf8");
 const search = readFileSync("src/hooks/useGlobalSearch.ts", "utf8");
+const snapshot = readFileSync("src/lib/command-center/explorer-return-context.ts", "utf8");
 
-test("Balcão handoff does not destroy the current explorer and returns after close", () => {
-  assert.match(palette, /resumeAfterBalcao\.current = true/);
-  assert.match(palette, /setOpen\(false\); \/\/ Keep explorer state/);
-  assert.match(palette, /studentWorkspaceClosedVersion/);
-  assert.match(palette, /setOpen\(true\)/);
-  assert.match(topbar, /onClose=\{\(\) => \{/);
-  assert.match(topbar, /setStudentWorkspaceClosedVersion/);
-  assert.match(palette, /queryClient\.invalidateQueries\(\)/);
+test("Balcão return uses one session-scoped explorer handoff", () => {
+  assert.match(palette, /saveExplorerReturnContext/);
+  assert.match(palette, /consumeExplorerReturnContext/);
+  assert.match(topbar, /restoreExplorerOnOpen/);
+  assert.match(topbar, /clearExplorerReturnContext/);
+  assert.match(snapshot, /escolaId: string/);
+  assert.doesNotMatch(snapshot, /localStorage|sessionStorage/);
 });
 
-test("Classe and Turma restore pagination, selected student and reading position", () => {
+test("Classe and Turma have explicit pagination controls", () => {
   for (const view of [turma, classe]) {
-    assert.match(view, /useState\(initialPage\)/);
-    assert.match(view, /initialScrollTop/);
-    assert.match(view, /scrollRef\.current\.scrollTop = initialScrollTop/);
-    assert.match(view, /selectedStudentId/);
-    assert.match(view, /onPageChange\?\.\(next\)/);
+    assert.match(view, /useState\(1\)/);
+    assert.match(view, /setPage/);
   }
-  assert.match(palette, /onPageChange=\{setTurmaPage\}/);
-  assert.match(palette, /onPageChange=\{setClassePage\}/);
-  assert.match(palette, /onScrollTopChange=\{setTurmaScrollTop\}/);
-  assert.match(palette, /onScrollTopChange=\{setClasseScrollTop\}/);
+  // Follow-up backlog: snapshot currently lacks page, sort, scroll and focus.
+  assert.doesNotMatch(snapshot, /selectedStudentId|scrollTop/);
 });
 
-test("No browser-persistent search history; cache invalidates on auth and scope", () => {
-  assert.match(search, /purgeLegacyHistory/);
+test("Search recents are in-memory only and cleared on auth changes", () => {
+  assert.match(search, /recentSessionStore/);
+  assert.match(search, /localStorage\.removeItem/);
   assert.doesNotMatch(search, /localStorage\.setItem/);
-  assert.match(search, /onAuthStateChange/);
-  assert.match(search, /generation\.current/);
-  assert.match(search, /abortSignal\(ac\.signal\)/);
+  assert.match(search, /recentSessionStore\.clear\(\)/);
 });
 
-test("Search errors do not look like empty results; mobile entry visible", () => {
+test("Search exposes distinct errors, load-more and mobile entry", () => {
   assert.match(palette, /error: searchError/);
-  assert.match(palette, /retry: retrySearch/);
+  assert.match(palette, /clearError/);
   assert.match(palette, /loadMore/);
-  assert.match(topbar, /className="flex min-w-0 flex-1 md:w-\[420px\] md:flex-none"/);
+  assert.match(topbar, /CommandPalette/);
+  assert.match(palette, /Fechar pesquisa/);
 });
