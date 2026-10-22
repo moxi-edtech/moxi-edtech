@@ -1,0 +1,45 @@
+name: Command Center Full Local Migration Replay
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*command_center_search_role_authorization.sql'
+      - '.github/workflows/command-center-full-migration-replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unlinked-local-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      # No Supabase project credentials, DB URLs or production secret values.
+      SUPABASE_ACCESS_TOKEN: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Verify local-only CLI and refuse linked environments
+        run: |
+          set -euo pipefail
+          test ! -e supabase/.temp/project-ref
+          supabase --version
+          supabase db reset --help | grep -- '--no-seed'
+      - name: Start disposable complete Supabase stack
+        run: supabase start
+      - name: Replay ALL migrations twice, without data seed
+        run: |
+          set -euo pipefail
+          supabase db reset --local --no-seed
+          supabase db reset --local --no-seed
+      - name: Verify RPC source, grants, RLS catalog and migration history
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          psql "$PGURL" -v ON_ERROR_STOP=1 -Atc "SELECT coalesce(prosecdef,false), count(*) OVER() FROM pg_proc WHERE oid='public.search_global_entities(uuid,text,text[],integer,double precision,timestamptz,timestamptz,uuid)'::regprocedure;"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM supabase_migrations.schema_migrations;"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -Atc "SELECT schemaname, tablename, policyname FROM pg_policies WHERE schemaname='public' ORDER BY tablename, policyname LIMIT 100;"
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup || true

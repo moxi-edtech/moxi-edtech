@@ -128,6 +128,7 @@ export function ClasseContextView({
   const href = `${base}${base.includes("?") ? "&" : "?"}${new URLSearchParams({
     [ACADEMIC_YEAR_PARAM]: anoLetivo.id,
   })}`;
+  const returnWarning = Boolean(selectedStudentId && !alunos.items.some((student) => student.id === selectedStudentId));
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   const open = (entity: { id: string; nome: string }, onExplore: (next: NextEntity) => void) =>
     onExplore({ id: entity.id, label: entity.nome, academicYearId: anoLetivo.id });
@@ -137,6 +138,11 @@ export function ClasseContextView({
 
   return (
     <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current }); }} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+      {returnWarning && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          O aluno atendido já não consta desta página. A lista foi actualizada; confirme a matrícula e a turma antes de continuar.
+        </p>
+      )}
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">

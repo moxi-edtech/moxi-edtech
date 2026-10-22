@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { useDebounce } from "./useDebounce";
 import { buildPortalHref } from "@/lib/navigation";
@@ -112,6 +112,16 @@ const SEARCH_CACHE_TTL_MS = 45_000;
 const SEARCH_CACHE_MAX_AGE_MS = 5 * 60_000;
 const RECENT_RESULTS_LIMIT = 6;
 const searchCache = new Map<string, CacheEntry>();
+const SEARCH_CACHE_LIMIT = 50;
+function storeCachedSearch(key: string, entry: CacheEntry) {
+  searchCache.delete(key);
+  searchCache.set(key, entry);
+  while (searchCache.size > SEARCH_CACHE_LIMIT) {
+    const oldest = searchCache.keys().next().value;
+    if (oldest === undefined) break;
+    searchCache.delete(oldest);
+  }
+}
 
 /** In-memory recent results scoped by escola+portal for this tab/session only. */
 const recentSessionStore = new Map<string, RecentEntry[]>();
@@ -390,6 +400,35 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   }, [types, portal]);
 
   const supabase = useMemo(() => createClient(), []);
+  const generationRef = useRef(0);
+  const pagingAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    // Invalidate in-flight RPC as soon as the operator changes the query/scope,
+    // rather than waiting for the debounce to complete.
+    generationRef.current += 1;
+    pagingAbortRef.current?.abort();
+    return () => { generationRef.current += 1; pagingAbortRef.current?.abort(); };
+  }, [effectiveQuery, escolaId, portal, resolvedTypes]);
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" || event === "SIGNED_IN" || event === "USER_UPDATED") {
+        generationRef.current += 1;
+        pagingAbortRef.current?.abort();
+        searchCache.clear();
+        recentSessionStore.clear();
+        setResults([]);
+        setLoading(false);
+        setCursor(null);
+        setHasMore(false);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+  useEffect(() => {
+    searchCache.clear();
+    recentSessionStore.clear();
+    pagingAbortRef.current?.abort();
+  }, [escolaId, portal]);
 
   const cacheKey = useMemo(
     () => `${escolaId || "none"}:${portal || "default"}:${resolvedTypes.join("|")}:${effectiveQuery.toLowerCase()}`,
@@ -454,6 +493,9 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     }
 
     const ac = new AbortController();
+    const generation = ++generationRef.current;
+    const isCurrent = () => !ac.signal.aborted && generationRef.current === generation;
+    pagingAbortRef.current?.abort();
     setLoading(!hasUsableCache);
 
     const limit = Math.min(8, 50);
@@ -493,12 +535,13 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
 
       const items = payload.map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
 
+      if (!isCurrent()) return;
       setResults(items);
       setCursor(null);
       setHasMore(false);
       setError(null);
 
-      searchCache.set(debouncedCacheKey, {
+      storeCachedSearch(debouncedCacheKey, {
         ts: now,
         data: payload,
         cursor: null,
@@ -516,7 +559,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         p_cursor_updated_at: pageCursor?.updated_at ?? undefined,
         p_cursor_created_at: pageCursor?.created_at ?? undefined,
         p_cursor_id: pageCursor?.id ?? undefined,
-      });
+      }).abortSignal(ac.signal);
 
       if (rpcError) {
         if (!append && isMissingGlobalSearchRpcError(rpcError)) {
@@ -526,6 +569,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         throw rpcError;
       }
 
+      if (!isCurrent()) return;
       const payload = ((data as SearchResult[]) ?? []);
       const nextCursor = payload.length === limit ? toCursor(payload[payload.length - 1]) : null;
       const items = payload.map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
@@ -536,7 +580,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       setError(null);
 
       if (!append) {
-        searchCache.set(debouncedCacheKey, {
+        storeCachedSearch(debouncedCacheKey, {
           ts: now,
           data: payload,
           cursor: nextCursor,
@@ -550,15 +594,14 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         if (cached && now - cached.ts < SEARCH_CACHE_TTL_MS) return;
         await fetchPage(null, false);
       } catch (err: unknown) {
-        if (!isAbortError(err) && !(err instanceof TypeError && ac.signal.aborted)) {
-          console.error("[GlobalSearch] Erro na busca:", err);
+        if (isCurrent() && !isAbortError(err)) {
           setResults([]);
           setCursor(null);
           setHasMore(false);
           setError("Não foi possível concluir a pesquisa. Tente novamente.");
         }
       } finally {
-        if (!ac.signal.aborted) setLoading(false);
+        if (isCurrent()) setLoading(false);
       }
     })();
 
@@ -566,7 +609,12 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal, intent]);
 
   const loadMore = async () => {
-    if (!cursor || loading || !escolaId || debouncedQuery.length < 2) return;
+    if (!cursor || loading || !escolaId || debouncedQuery.length < 2 || effectiveQuery !== debouncedQuery) return;
+    const generation = generationRef.current;
+    const ac = new AbortController();
+    pagingAbortRef.current?.abort();
+    pagingAbortRef.current = ac;
+    const isCurrent = () => !ac.signal.aborted && generationRef.current === generation;
     setLoading(true);
     setError(null);
     try {
@@ -580,9 +628,10 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         p_cursor_updated_at: cursor.updated_at,
         p_cursor_created_at: cursor.created_at,
         p_cursor_id: cursor.id,
-      });
+      }).abortSignal(ac.signal);
 
       if (rpcError) throw rpcError;
+      if (!isCurrent()) return;
 
       const payload = ((data as SearchResult[]) ?? []);
       const nextCursor = payload.length === limit
@@ -600,12 +649,12 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       setCursor(nextCursor);
       setHasMore(Boolean(nextCursor));
     } catch (err: unknown) {
-      if (!isAbortError(err)) {
-        console.error("[GlobalSearch] Erro ao carregar mais:", err);
+      if (isCurrent() && !isAbortError(err)) {
         setError("Não foi possível carregar mais resultados.");
       }
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
+      if (pagingAbortRef.current === ac) pagingAbortRef.current = null;
     }
   };
 
