@@ -94,7 +94,7 @@ async function run(size, zoom) {
   await page.getByRole("button", { name: "Ações de Aluno Sintético 01" }).click();
   await page.getByRole("button", { name: "Abrir Emitir documento" }).waitFor();
   await capture(page,size,zoom,"acoes-por-permissao");
-  await page.getByRole("button", { name: "Fechar" }).first().click();
+  await page.getByRole("button", { name: "Ações de Aluno Sintético 01" }).click();
   await page.getByText("Aluno Sintético 01").click();
   await page.getByRole("dialog",{name:"Balcão sintético"}).waitFor();
   await capture(page,size,zoom,"balcao-sintetico");
