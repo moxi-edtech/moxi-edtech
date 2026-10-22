@@ -108,6 +108,7 @@ async function readRosterExport(req: NextRequest, { params }: { params: Promise<
       userId: user.id, escolaId, type: input.type, entityId: input.entityId,
       count: rows.length, hasSearch: Boolean(input.query.trim()), exportedAt: timestamp,
       filter: input.filter, sort: input.sort,
+      purposeCode: policy.purposeCode, retentionDays: policy.retentionDays,
     });
     // Falha de auditoria bloqueia o ficheiro: nunca exportar e registar "depois".
     const { error: auditError } = await supabase.from("audit_logs").insert({

@@ -13,16 +13,16 @@ test("P1 export stays off without an explicit per-school scoped policy", () => {
   assert.strictEqual(resolveRosterExportPolicy(school, undefined), DEFAULT_ROSTER_EXPORT_POLICY);
   assert.equal(resolveRosterExportPolicy(school, "{}").enabled, false);
   assert.equal(resolveRosterExportPolicy(school, JSON.stringify({
-    [school]: { enabled: true, maxRows: 1000, roles: ["secretaria"] },
+    [school]: { enabled: true, maxRows: 1000, roles: ["secretaria"], purposeCode: "secretaria_atendimento", retentionDays: 30 },
   })).enabled, false);
   assert.equal(resolveRosterExportPolicy(school, JSON.stringify({
-    [school]: { enabled: true, maxRows: 50, roles: ["aluno"] },
+    [school]: { enabled: true, maxRows: 50, roles: ["aluno"], purposeCode: "secretaria_atendimento", retentionDays: 30 },
   })).enabled, false);
   assert.equal(resolveRosterExportPolicy(school, JSON.stringify({
-    [school]: { enabled: true, maxRows: 50, roles: ["secretaria"] },
+    [school]: { enabled: true, maxRows: 50, roles: ["secretaria"], purposeCode: "secretaria_atendimento", retentionDays: 30 },
   })).enabled, true);
   assert.equal(resolveRosterExportPolicy("other-school", JSON.stringify({
-    [school]: { enabled: true, maxRows: 50, roles: ["secretaria"] },
+    [school]: { enabled: true, maxRows: 50, roles: ["secretaria"], purposeCode: "secretaria_atendimento", retentionDays: 30 },
   })).enabled, false);
 });
 
@@ -74,6 +74,7 @@ test("P1 audit stores filter and purpose, never the query or the exported studen
     userId: "test-user", escolaId: "test-school", type: "classe", entityId: "test-class",
     count: 2, hasSearch: true, exportedAt: "2026-10-22T00:00:00Z",
     filter: "propinas_vencidas", sort: "pendencias_primeiro",
+    purposeCode: "secretaria_atendimento", retentionDays: 30,
   });
   assert.equal(meta.purpose_code, "secretaria_atendimento");
   assert.equal(meta.filter_code, "propinas_vencidas");

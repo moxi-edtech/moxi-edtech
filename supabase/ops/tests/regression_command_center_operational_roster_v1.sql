@@ -30,7 +30,7 @@ BEGIN
   ON CONFLICT(scope,key) DO UPDATE SET count=public.public_rate_limits.count+1
   RETURNING count INTO v_count;
   RETURN jsonb_build_object('allowed',v_count <= p_limit);
-END $$;
+END; $$;
 GRANT SELECT ON public.candidaturas,public.candidaturas_status_log,public.mensalidades TO authenticated;
 ALTER TABLE public.candidaturas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.candidaturas_status_log ENABLE ROW LEVEL SECURITY;
@@ -118,7 +118,7 @@ BEGIN
       END IF;
       IF item.total_filtrado <> 55 THEN RAISE EXCEPTION 'Wrong total'; END IF;
     END LOOP;
-    IF v_rows <> CASE WHEN v_page=3 THEN 15 ELSE 20 END THEN
+    IF v_rows <> (CASE WHEN v_page=3 THEN 15 ELSE 20 END) THEN
       RAISE EXCEPTION 'Unstable priority page length';
     END IF;
   END LOOP;
@@ -134,7 +134,7 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN forbidden:=true;
   END;
   IF NOT forbidden THEN RAISE EXCEPTION 'Cross-school access permitted'; END IF;
-END $$;
+END; $$;
 
 -- Exercise shared 30/minute counter, and verify the 31st query returns a
 -- COMMIT-safe sentinel instead of raising and rolling back the counter.
@@ -149,7 +149,7 @@ BEGIN
     IF rec.rate_limited THEN blocked:=blocked+1; END IF;
   END LOOP;
   IF blocked<1 THEN RAISE EXCEPTION 'Distributed throttle did not deny any request'; END IF;
-END $$;
+END; $$;
 
 RESET ROLE;
 SELECT count AS fixture_shared_requests FROM public.public_rate_limits

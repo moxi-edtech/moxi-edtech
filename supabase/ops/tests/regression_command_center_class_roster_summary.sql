@@ -2,7 +2,21 @@
 \timing on
 -- Disposable PostgreSQL fixture. NOT a substitute for a full Supabase migration replay.
 CREATE SCHEMA auth;
-CREATE ROLE authenticated NOLOGIN;
+-- Roles are PostgreSQL-cluster global; each disposable database in the
+-- same CI service must be able to provision its own schema without collisions.
+DO $roles$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
+    CREATE ROLE anon NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN
+    CREATE ROLE service_role NOLOGIN;
+  END IF;
+END;
+$roles$;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE
 AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 CREATE TABLE public.escola_users (escola_id uuid NOT NULL, user_id uuid NOT NULL);

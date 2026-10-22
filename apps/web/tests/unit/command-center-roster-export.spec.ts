@@ -16,7 +16,7 @@ test("Exportação negada por padrão e isolada por escola", () => {
   assert.equal(DEFAULT_ROSTER_EXPORT_POLICY.enabled, false);
   assert.deepEqual(resolveRosterExportPolicy(schoolA, undefined), DEFAULT_ROSTER_EXPORT_POLICY);
   const configuration = JSON.stringify({ [schoolA]: {
-    enabled: true, maxRows: 50, roles: ["secretaria"],
+    enabled: true, maxRows: 50, roles: ["secretaria"], purposeCode: "secretaria_atendimento", retentionDays: 30,
   } });
   assert.equal(resolveRosterExportPolicy(schoolA, configuration).enabled, true);
   assert.deepEqual(resolveRosterExportPolicy(schoolB, configuration), DEFAULT_ROSTER_EXPORT_POLICY);

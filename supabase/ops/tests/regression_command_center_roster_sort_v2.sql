@@ -57,7 +57,7 @@ BEGIN
         last_id := item.aluno_id;
         IF item.total_filtrado <> 55 THEN RAISE EXCEPTION 'Incorrect total'; END IF;
       END LOOP;
-      IF page_items <> CASE WHEN page_no=3 THEN 15 ELSE 20 END THEN
+      IF page_items <> (CASE WHEN page_no=3 THEN 15 ELSE 20 END) THEN
         RAISE EXCEPTION 'Unexpected page length % (page %, %)', page_items, page_no, direction;
       END IF;
     END LOOP;
@@ -91,7 +91,7 @@ BEGIN
     RAISE EXCEPTION 'Unsupported status ordering was accepted';
   EXCEPTION WHEN invalid_parameter_value THEN NULL;
   END;
-END $$;
+END; $$;
 
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT * FROM public.command_center_roster_keyset_v2(

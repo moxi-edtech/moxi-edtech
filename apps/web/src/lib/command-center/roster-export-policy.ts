@@ -4,6 +4,8 @@ export type RosterExportPolicy = {
   enabled: boolean;
   maxRows: number;
   roles: Role[];
+  purposeCode?: string;
+  retentionDays?: number;
 };
 
 export const DEFAULT_ROSTER_EXPORT_POLICY: Readonly<RosterExportPolicy> = Object.freeze({
@@ -41,6 +43,8 @@ export function rosterExportAudit(input: {
   count: number;
   hasSearch: boolean;
   exportedAt: string;
+  purposeCode?: string;
+  retentionDays?: number;
   filter?: "todos" | "documentos_sinalizados" | "propinas_vencidas";
   sort?: "nome_asc" | "nome_desc" | "pendencias_primeiro";
 }) {
@@ -51,7 +55,10 @@ export function rosterExportAudit(input: {
     filter_code: input.filter ?? "todos",
     sort_code: input.sort === "nome_desc" ? "Z_A"
       : input.sort === "pendencias_primeiro" ? "PENDING_FIRST" : "A_Z",
-    purpose_code: "secretaria_atendimento", created_at: input.exportedAt,
+    purpose_code: input.purposeCode ?? "NOT_CONFIGURED",
+    retention_until: input.retentionDays == null ? null
+      : new Date(Date.parse(input.exportedAt) + input.retentionDays * 86_400_000).toISOString(),
+    created_at: input.exportedAt,
   };
 }
 
@@ -68,13 +75,23 @@ export function resolveRosterExportPolicy(
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return DEFAULT_ROSTER_EXPORT_POLICY;
     const row = entry as Record<string, unknown>;
     const allowed: readonly string[] = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "admin_secretaria"];
+    // O job histórico elimina logs aos 30 dias. A configuração por escola
+    // só pode reter 1..30 dias (nunca mais do que o máximo institucional).
+    // Um job aditivo específico elimina exportações antes dos 30 dias.
+    if (typeof row.purposeCode !== "string" ||
+        !/^[a-z][a-z0-9_]{2,47}$/.test(row.purposeCode) ||
+        !Number.isInteger(row.retentionDays) || typeof row.retentionDays !== "number" ||
+        row.retentionDays < 1 || row.retentionDays > 30) {
+      return DEFAULT_ROSTER_EXPORT_POLICY;
+    }
     if (row.enabled !== true || !Number.isInteger(row.maxRows) ||
         typeof row.maxRows !== "number" || row.maxRows < 1 || row.maxRows > 200 ||
         !Array.isArray(row.roles) || !row.roles.length ||
         !row.roles.every((role) => typeof role === "string" && allowed.includes(role))) {
       return DEFAULT_ROSTER_EXPORT_POLICY;
     }
-    return { enabled: true, maxRows: row.maxRows, roles: row.roles as Role[] };
+    return { enabled: true, maxRows: row.maxRows, roles: row.roles as Role[],
+      purposeCode: row.purposeCode, retentionDays: row.retentionDays };
   } catch {
     return DEFAULT_ROSTER_EXPORT_POLICY;
   }
