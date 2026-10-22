@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   Loader2, RefreshCw, UsersRound,
@@ -68,10 +68,10 @@ export function TurmaContextView({
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const roster = useExplorerRoster(context, "turma", searchTerm);
   const searchActive = searchTerm.trim().length >= 2;
-  const view = (selected: string | null = currentStudent.current): ExplorerViewState => ({
+  const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
     page, scrollTop: currentScroll.current, selectedStudentId: selected,
     search: searchTerm, filter: "ativo", sort: "nome",
-  });
+  }), [page, searchTerm]);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
@@ -90,7 +90,7 @@ export function TurmaContextView({
   }, [loading, page]);
   useEffect(() => {
     onViewChangeRef.current?.(view());
-  }, [page]);
+  }, [page, view]);
   const selectStudent = (student: { id: string; label: string }) => {
     currentStudent.current = student.id;
     onViewChangeRef.current?.(view(student.id));
