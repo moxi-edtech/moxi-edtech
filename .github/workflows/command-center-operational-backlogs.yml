@@ -53,9 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           psql "$PGURL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE cc_finance_fixture;'
-          psql "postgresql://postgres:postgres@127.0.0.1:5432/cc_finance_fixture" -v ON_ERROR_STOP=1 \\
-            -f supabase/ops/tests/regression_command_center_finance_scope.sql \\
-            | tee /tmp/command-center-finance-sql.txt
+          psql "postgresql://postgres:postgres@127.0.0.1:5432/cc_finance_fixture" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_command_center_finance_scope.sql | tee /tmp/command-center-finance-sql.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
