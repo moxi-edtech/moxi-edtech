@@ -1,0 +1,63 @@
+name: Finance Validator P0 — Disposable PostgreSQL
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*fix_validar_pagamento_idempotency.sql'
+      - 'supabase/ops/tests/finance_validator_targeted_*'
+      - 'scripts/ci/verify_finance_validator_function.py'
+      - '.github/workflows/finance-validator-idempotency.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  finance-idempotency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: klasse_finance_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d klasse_finance_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_finance_test
+      PGCONNECT_TIMEOUT: '10'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client only (no external Supabase project)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Guard canonical function/fiscal contract unchanged except P0 states
+        run: python3 scripts/ci/verify_finance_validator_function.py
+      - name: Create strictly synthetic tenant-scoped PostgreSQL contract
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_targeted_bootstrap.sql
+      - name: Apply real finance validator production migration to disposable DB
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271015110000_fix_validar_pagamento_idempotency.sql
+      - name: Real SQL function + actor guards + RLS contract + idempotency + receipts
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_targeted_regression.sql
+      - name: Three races — real parallel PostgreSQL sessions and strict invariants
+        run: bash supabase/ops/tests/finance_validator_targeted_concurrency.sh
+      - name: Verify RLS was not bypassed in test schema
+        run: |
+          psql "$PGURL" -X -At -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE obj text;
+          BEGIN
+            FOREACH obj IN ARRAY ARRAY['pagamentos','mensalidades','pagamento_intents','documentos_emitidos','servico_pedidos']
+            LOOP
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_class WHERE oid=('public.'||obj)::regclass
+                AND relrowsecurity
+              ) THEN RAISE EXCEPTION 'RLS_NOT_ENABLED %',obj; END IF;
+            END LOOP;
+          END $$;
+          SQL
