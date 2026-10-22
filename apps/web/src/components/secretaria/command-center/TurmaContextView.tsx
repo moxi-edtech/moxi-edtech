@@ -185,7 +185,16 @@ export function TurmaContextView({
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
 
-      {disciplinasSemProfessor > 0 && (
+      {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
+        <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+          <span>Lotação excedida em {occupancy.overcapacity} alunos. Fonte: capacidade registada da turma e matrículas activas deste ano.</span>
+          <button type="button" onClick={openExisting} className="font-semibold underline focus-visible:outline-2 focus-visible:outline-emerald-600">
+            Abrir gestão da turma
+          </button>
+        </div>
+      )}
+
+      {!data.disciplinasLimitadas && disciplinasSemProfessor > 0 && (
         <p className="text-xs text-slate-600">
           {disciplinasSemProfessor === 1
             ? "1 disciplina sem professor vinculado nesta visão."
