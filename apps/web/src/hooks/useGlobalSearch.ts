@@ -107,7 +107,7 @@ type GlobalSearchOptions = {
 const SEARCH_CACHE_TTL_MS = 45_000;
 const SEARCH_CACHE_MAX_AGE_MS = 5 * 60_000;
 const RECENT_RESULTS_LIMIT = 6;
-const searchCache = new Map<string, CacheEntry>();
+// Cache is owned by the mounted search instance, never shared across logins or portals.
 
 function toRecentEntry(result: MinimalSearchResult): RecentEntry {
   return {
@@ -128,39 +128,16 @@ function recentStorageKey(escolaId: string | null | undefined, portal: PortalKey
   return `klasse:global-search:recent:${escolaId || "global"}:${portal || "default"}`;
 }
 
-function readRecentEntries(escolaId: string | null | undefined, portal: PortalKey | undefined): RecentEntry[] {
-  if (typeof window === "undefined" || !escolaId) return [];
-
+// Legacy browser history may contain process/BI identifiers from older releases.
+function purgeLegacyHistory() {
+  if (typeof window === "undefined") return;
   try {
-    const raw = window.localStorage.getItem(recentStorageKey(escolaId, portal));
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .filter((item): item is RecentEntry => Boolean(item?.id && item?.label && item?.type && item?.href))
-      .sort((a, b) => b.lastUsedAt - a.lastUsedAt)
-      .slice(0, RECENT_RESULTS_LIMIT);
+    for (let index = window.localStorage.length - 1; index >= 0; index--) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith("klasse:global-search:recent:")) window.localStorage.removeItem(key);
+    }
   } catch {
-    return [];
-  }
-}
-
-function writeRecentEntry(
-  escolaId: string | null | undefined,
-  portal: PortalKey | undefined,
-  result: MinimalSearchResult,
-) {
-  if (typeof window === "undefined" || !escolaId) return;
-
-  const next = [
-    toRecentEntry(result),
-    ...readRecentEntries(escolaId, portal).filter((item) => item.id !== result.id || item.type !== result.type),
-  ].slice(0, RECENT_RESULTS_LIMIT);
-
-  try {
-    window.localStorage.setItem(recentStorageKey(escolaId, portal), JSON.stringify(next));
-  } catch {
-    // localStorage can fail in private browsing or quota pressure; search remains functional.
+    // Storage disabled: never block searches.
   }
 }
 
@@ -314,7 +291,6 @@ function isMissingGlobalSearchRpcError(error: {
     error?.status === 404 ||
     error?.code === "PGRST202" ||
     error?.code === "42883" ||
-    message.includes("search_global_entities") ||
     message.includes("search_alunos_global_min") ||
     message.includes("similarity")
   );
@@ -360,6 +336,10 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [recentResults, setRecentResults] = useState<MinimalSearchResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const searchCache = useMemo(() => new Map<string, CacheEntry>(), []);
+  const recentMemory = useMemo(() => new Map<string, RecentEntry[]>(), []);
   const transformQuery = options?.transformQuery;
   const portal = options?.portal;
   const types = options?.types;
@@ -390,17 +370,47 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   );
 
   const refreshRecentResults = useCallback(() => {
-    setRecentResults(readRecentEntries(escolaId, portal).map((item) => mapRecentToMinimalResult(portal, escolaId, item)));
-  }, [escolaId, portal]);
+    const entries = recentMemory.get(recentStorageKey(escolaId, portal)) ?? [];
+    setRecentResults(entries.map((item) => mapRecentToMinimalResult(portal, escolaId, item)));
+  }, [escolaId, portal, recentMemory]);
 
   const rememberResult = useCallback((result: MinimalSearchResult) => {
-    writeRecentEntry(escolaId, portal, result);
+    if (!escolaId) return;
+    const key = recentStorageKey(escolaId, portal);
+    const stored = recentMemory.get(key) ?? [];
+    recentMemory.set(key, [
+      toRecentEntry({ ...result, highlight: null }), // no BI/process number in recents
+      ...stored.filter((item) => item.id !== result.id || item.type !== result.type),
+    ].slice(0, RECENT_RESULTS_LIMIT));
     refreshRecentResults();
-  }, [escolaId, portal, refreshRecentResults]);
+  }, [escolaId, portal, recentMemory, refreshRecentResults]);
 
   useEffect(() => {
-    refreshRecentResults();
-  }, [refreshRecentResults]);
+    purgeLegacyHistory();
+    searchCache.clear();
+    recentMemory.clear();
+    setRecentResults([]);
+  }, [escolaId, portal, searchCache, recentMemory]);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" || event === "SIGNED_IN") {
+        searchCache.clear();
+        recentMemory.clear();
+        setResults([]);
+        setRecentResults([]);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase, searchCache, recentMemory]);
+
+  useEffect(() => { refreshRecentResults(); }, [refreshRecentResults]);
+
+  const retry = useCallback(() => {
+    searchCache.delete(debouncedCacheKey);
+    setError(null);
+    setRetryVersion((value) => value + 1);
+  }, [searchCache, debouncedCacheKey]);
 
   useEffect(() => {
     const q = effectiveQuery.trim();
@@ -426,6 +436,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
 
     setCursor(null);
     setHasMore(false);
+    setError(null);
 
     const cached = searchCache.get(debouncedCacheKey);
     const now = Date.now();
@@ -542,6 +553,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         // "Failed to fetch" in some runtimes; it is not an application error.
         if (!isAbortError(err) && !(err instanceof TypeError && ac.signal.aborted)) {
           console.error("[GlobalSearch] Erro na busca:", err);
+          setError("Não foi possível realizar a pesquisa.");
           setResults([]);
           setCursor(null);
           setHasMore(false);
@@ -552,7 +564,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     })();
 
     return () => ac.abort();
-  }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal, intent]);
+  }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal, intent, searchCache, retryVersion]);
 
   const loadMore = async () => {
     if (!cursor || loading || !escolaId || debouncedQuery.length < 2) return;
@@ -592,11 +604,12 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     } catch (err: unknown) {
       if (!isAbortError(err)) {
         console.error("[GlobalSearch] Erro ao carregar mais:", err);
+        setError("Não foi possível carregar mais resultados.");
       }
     } finally {
       if (!ac.signal.aborted) setLoading(false);
     }
   };
 
-  return { query, setQuery, results, loading, hasMore, loadMore, detectedIntent: intent, recentResults, rememberResult };
+  return { query, setQuery, results, loading, error, retry, hasMore, loadMore, detectedIntent: intent, recentResults, rememberResult };
 }
