@@ -8,6 +8,9 @@ import {
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
 import { buildPortalHref } from "@/lib/navigation";
+import { useExplorerRoster } from "@/hooks/useExplorerRoster";
+import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
+import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 import { useTurmaContext } from "@/hooks/useTurmaContext";
 
 type Props = {
@@ -18,7 +21,8 @@ type Props = {
   initialPage?: number;
   initialScrollTop?: number;
   selectedStudentId?: string | null;
-  onViewChange?: (state: { page: number; scrollTop: number; selectedStudentId: string | null }) => void;
+  initialSearch?: string;
+  onViewChange?: (state: ExplorerViewState) => void;
   onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
   onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
   onExploreClasse: (classe: { id: string; label: string; academicYearId: string }) => void;
@@ -58,9 +62,16 @@ function Metric({
 
 export function TurmaContextView({
   context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina, onExploreClasse,
-  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, onViewChange,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const roster = useExplorerRoster(context, "turma", searchTerm);
+  const searchActive = searchTerm.trim().length >= 2;
+  const view = (selected: string | null = currentStudent.current): ExplorerViewState => ({
+    page, scrollTop: currentScroll.current, selectedStudentId: selected,
+    search: searchTerm, filter: "ativo", sort: "nome",
+  });
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
@@ -78,11 +89,11 @@ export function TurmaContextView({
     }
   }, [loading, page]);
   useEffect(() => {
-    onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current });
+    onViewChangeRef.current?.(view());
   }, [page]);
   const selectStudent = (student: { id: string; label: string }) => {
     currentStudent.current = student.id;
-    onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: student.id });
+    onViewChangeRef.current?.(view(student.id));
     onStudentSelect(student);
   };
 
@@ -115,7 +126,9 @@ export function TurmaContextView({
   );
 
   const { turma, alunos, disciplinas, professores } = data;
-  const returnWarning = Boolean(selectedStudentId && !alunos.items.some((student) => student.id === selectedStudentId));
+  const visibleStudents = searchActive ? roster.items : alunos.items;
+  const returnWarning = Boolean(selectedStudentId && (!searchActive || (!roster.loading && !roster.refreshing)) &&
+    !visibleStudents.some((student) => student.id === selectedStudentId));
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   const occupancy = occupancyFromCapacity(turma.capacidade, alunos.total);
   const disciplinasSemProfessor = disciplinas.filter((d) => !d.professores.length).length;
@@ -180,6 +193,10 @@ export function TurmaContextView({
         </p>
       )}
 
+      <ExplorerRosterControls value={searchTerm} onChange={(next) => {
+        setSearchTerm(next);
+        onViewChangeRef.current?.({ ...view(), search: next });
+      }} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <section className="min-w-0" aria-labelledby="turma-alunos-heading">
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -187,11 +204,14 @@ export function TurmaContextView({
               <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
             </h3>
             <span className="text-xs text-slate-500" aria-live="polite">
-              {refreshing ? "A atualizar…" : `${alunos.total} no total`}
+              {searchActive ? `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} no total`}
             </span>
           </div>
+          {searchActive && (roster.loading || roster.refreshing) && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
+          {searchActive && roster.error && <p role="alert" className="my-2 text-xs text-rose-700">{roster.error} <button type="button" onClick={() => void roster.retry()} className="underline">Tentar novamente</button></p>}
+          {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-            {alunos.items.map((student) => (
+            {visibleStudents.map((student) => (
               <button type="button" key={student.id}
                 data-student-id={student.id} aria-current={selectedStudentId === student.id ? "true" : undefined} onClick={() => selectStudent({ id: student.id, label: student.nome })}
                 className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
@@ -200,11 +220,11 @@ export function TurmaContextView({
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
             ))}
-            {!alunos.items.length && (
+            {!visibleStudents.length && !roster.loading && (
               <p className="px-3 py-5 text-slate-500">Nenhum aluno matriculado neste âmbito.</p>
             )}
           </div>
-          <div className="mt-3 flex items-center justify-between gap-2">
+          {!searchActive && <div className="mt-3 flex items-center justify-between gap-2">
             <span className="text-xs tabular-nums text-slate-500" aria-live="polite">
               Página {alunos.page} de {pages}
             </span>
@@ -220,7 +240,8 @@ export function TurmaContextView({
                 Seguinte <ChevronRight className="h-4 w-4" aria-hidden />
               </button>
             </div>
-          </div>
+          </div>}
+          {searchActive && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
         </section>
 
         <section className="min-w-0" aria-labelledby="turma-disciplinas-heading">
