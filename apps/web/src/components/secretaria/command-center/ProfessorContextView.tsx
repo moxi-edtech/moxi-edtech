@@ -66,7 +66,7 @@ export function ProfessorContextView({
   const semHorario = data.horarios.length === 0;
 
   return (
-    <div className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
@@ -144,7 +144,7 @@ export function ProfessorContextView({
           <h3 id="professor-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
             <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Disciplinas
           </h3>
-          <div className="max-h-64 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+          <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
             {data.disciplinas.map((disciplina) => (
               <button type="button" key={disciplina.id}
                 onClick={() => onExploreDisciplina({
@@ -169,7 +169,7 @@ export function ProfessorContextView({
         <h3 id="professor-horario-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
           <CalendarDays className="h-4 w-4 text-emerald-700" aria-hidden /> Horário publicado
         </h3>
-        <div className="max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+        <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
           {data.horarios.map((aula, i) => (
             <div key={`${aula.turmaId}:${aula.diaSemana}:${aula.inicio}:${i}`}
               className="flex flex-wrap items-center justify-between gap-3 px-3 py-3">
