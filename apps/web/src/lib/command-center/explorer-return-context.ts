@@ -10,13 +10,14 @@ export type ExplorerReturnSnapshot = {
   contextTrail: EntityContext[];
   courseClassId: string | null;
   courseTurmaId: string | null;
+  viewState: Record<string, { page: number; scrollTop: number; selectedStudentId: string | null }>;
   savedAt: number;
 };
 
 let snapshot: ExplorerReturnSnapshot | null = null;
 
 export function saveExplorerReturnContext(next: Omit<ExplorerReturnSnapshot, "savedAt">) {
-  snapshot = { ...next, savedAt: Date.now() };
+  snapshot = { ...next, viewState: { ...next.viewState }, savedAt: Date.now() };
 }
 
 export function peekExplorerReturnContext(escolaId: string | null | undefined): ExplorerReturnSnapshot | null {
