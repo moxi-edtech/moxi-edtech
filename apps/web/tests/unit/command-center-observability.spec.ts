@@ -8,6 +8,7 @@ test("successful contextual response includes one correlation ID and no-store", 
   assert.equal(result.status, 200);
   assert.match(result.headers.get("X-Correlation-ID") ?? "", /^[0-9a-f-]{36}$/i);
   assert.equal(result.headers.get("Cache-Control"), "private, no-store");
+  assert.match(result.headers.get("Server-Timing") ?? "", /^cc;dur=\d+(?:\.\d+)?$/);
   assert.deepEqual(await result.json(), { ok: true, data: { fixture: true } });
 });
 
@@ -39,4 +40,14 @@ test("unhandled failure returns safe 500 with correlation ID", async () => {
   const payload = await result.json();
   assert.equal(payload.requestId, result.headers.get("X-Correlation-ID"));
   assert.doesNotMatch(JSON.stringify(payload), /unsafe internal name/);
+});
+
+test("failure timing is available without exposing SQL or student identifiers", async () => {
+  const result = await withExplorerObservability("roster-search", async () => {
+    throw new Error("sensitive student record");
+  });
+  assert.equal(result.status, 500);
+  assert.match(result.headers.get("Server-Timing") ?? "", /^cc;dur=\d+(?:\.\d+)?$/);
+  const body = await result.json();
+  assert.doesNotMatch(JSON.stringify(body), /sensitive student record/);
 });
