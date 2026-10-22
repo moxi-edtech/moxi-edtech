@@ -43,7 +43,7 @@ async function run(size, zoom) {
   await capture(page,size,zoom,"lista");
   assert.equal(await page.getByText("55").first().isVisible(),true);
   await capture(page,size,zoom,"lotacao-55-50");
-  assert.equal(await page.getByText("Matrículas activas").isVisible(),true);
+  assert.equal(await page.getByText("Matrículas activas").first().isVisible(),true);
   await capture(page,size,zoom,"filtro-activo");
 
   await input().fill("Aluno Sintético 55");
