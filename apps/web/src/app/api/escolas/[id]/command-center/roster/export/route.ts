@@ -70,7 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       });
       if (rows.length > policy.maxRows) return deny("Limite de linhas excedido. Reduza a selecção.", 413);
       if (received.length < Math.min(50, policy.maxRows - rows.length + received.length + 1)) break;
-      const last = received.at(-1);
+      const last = received[received.length - 1];
       if (!last) break;
       cursor = { name: last.cursor_name, id: last.aluno_id };
     }
