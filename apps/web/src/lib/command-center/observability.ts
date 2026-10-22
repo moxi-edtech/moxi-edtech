@@ -24,6 +24,25 @@ const FALLBACK_ERRORS: Record<number, string> = {
   503: "Este serviço está temporariamente indisponível.",
 };
 
+// Only these static business-code messages can cross the error boundary. Never
+// relay raw SQL, user input, document numbers or untrusted exception messages.
+const SAFE_BUSINESS_FAILURES: Record<string, {
+  route: ExplorerRouteName; status: number; message: string;
+}> = {
+  EXPORT_DISABLED: {
+    route: "roster-export", status: 403,
+    message: "Exportação de listas desactivada nesta escola. Solicite autorização à administração.",
+  },
+  POLO_SCOPE_UNDEFINED: {
+    route: "roster-search", status: 403,
+    message: "A consulta por polo ainda não está disponível. Solicite à administração a definição dos acessos por polo.",
+  },
+  HISTORIC_ROSTER_UNAVAILABLE: {
+    route: "roster-search", status: 409,
+    message: "A pesquisa de matrículas históricas aguarda homologação. Escolha um ano letivo activo.",
+  },
+};
+
 function codeForStatus(status: number): string {
   return ERROR_CODES[status] ?? (status >= 500 ? "INTERNAL_ERROR" : "REQUEST_FAILED");
 }
@@ -46,7 +65,12 @@ export async function withExplorerObservability(
       return new Response(result.body, { status: result.status, headers });
     }
 
-    const code = codeForStatus(result.status);
+    const body = await result.clone().json().catch(() => null) as { code?: unknown } | null;
+    const claimedCode = typeof body?.code === "string" ? body.code : "";
+    const safe = Object.hasOwn(SAFE_BUSINESS_FAILURES, claimedCode)
+      ? SAFE_BUSINESS_FAILURES[claimedCode] : undefined;
+    const match = safe?.route === route && safe.status === result.status ? safe : null;
+    const code = match ? claimedCode : codeForStatus(result.status);
     console[result.status >= 500 ? "error" : "warn"](
       "[command-center] request rejected", { route, code, status: result.status, requestId },
     );
@@ -55,7 +79,7 @@ export async function withExplorerObservability(
     // The error message is a small, status-specific human-readable contract.
     return NextResponse.json({
       ok: false,
-      error: FALLBACK_ERRORS[result.status] ?? "Não foi possível concluir esta consulta.",
+      error: match?.message ?? FALLBACK_ERRORS[result.status] ?? "Não foi possível concluir esta consulta.",
       code,
       requestId,
     }, { status: result.status, headers });
