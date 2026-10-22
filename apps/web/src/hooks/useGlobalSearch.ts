@@ -165,7 +165,7 @@ function writeRecentEntry(
 }
 
 const PORTAL_TYPES: Record<PortalKey, string[]> = {
-  secretaria: ["aluno", "matricula", "turma", "documento", "candidatura"],
+  secretaria: ["aluno", "matricula", "turma", "documento", "candidatura", "professor", "classe", "curso"],
   financeiro: ["aluno", "mensalidade", "pagamento", "recibo"],
   admin: ["turma", "professor", "classe", "curso", "usuario"],
   operacoes: ["aluno", "matricula", "turma", "documento", "candidatura", "professor", "classe", "curso", "usuario"],
