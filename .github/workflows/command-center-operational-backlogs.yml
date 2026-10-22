@@ -7,6 +7,12 @@ on:
       - 'apps/web/src/hooks/useExplorerRoster.ts'
       - 'apps/web/src/types/supabase-augment.ts'
       - 'supabase/migrations/*command_center_operational*'
+      - 'supabase/migrations/*command_center_finance_audit_gates.sql'
+      - 'supabase/ops/rollback_command_center_finance_audit_gates.sql'
+      - 'supabase/ops/tests/regression_command_center_finance_scope.sql'
+      - 'apps/web/src/lib/command-center/academic-rules.ts'
+      - 'apps/web/src/lib/command-center/roster-export-policy.ts'
+      - 'apps/web/tests/unit/command-center-school-policies.spec.ts'
       - 'supabase/ops/tests/regression_command_center_operational*'
       - 'apps/web/tests/unit/command-center-operational-backlogs.spec.ts'
       - '.github/workflows/command-center-operational-backlogs.yml'
@@ -40,6 +46,20 @@ jobs:
           psql "$PGURL" -v ON_ERROR_STOP=1 \
             -f supabase/ops/tests/regression_command_center_operational_roster_v1.sql \
             | tee /tmp/command-center-operational-sql.txt
+      - name: Finance scope, retention TTL, apply/reapply/reverse against independent disposable database
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE cc_finance_fixture;'
+          psql "postgresql://postgres:postgres@127.0.0.1:5432/cc_finance_fixture" -v ON_ERROR_STOP=1 \\
+            -f supabase/ops/tests/regression_command_center_finance_scope.sql \\
+            | tee /tmp/command-center-finance-sql.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: command-center-finance-sql-fixture
+          path: /tmp/command-center-finance-sql.txt
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -71,3 +91,4 @@ jobs:
             src/components/secretaria/command-center/TurmaContextView.tsx \
             src/hooks/useExplorerRoster.ts --max-warnings 0
       - run: pnpm -C apps/web exec tsx --test tests/unit/command-center-operational-backlogs.spec.ts
+      - run: pnpm -C apps/web exec tsx --test tests/unit/command-center-school-policies.spec.ts
