@@ -108,7 +108,7 @@ export function CourseContextView({
   }
 
   return (
-    <div className="max-h-[min(68vh,680px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
@@ -161,7 +161,7 @@ export function CourseContextView({
           <h3 id="curso-classes-heading" className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 font-semibold text-[#1F6B3B]">
             <BookOpen className="h-4 w-4" aria-hidden /> Classes do curso
           </h3>
-          <div className="max-h-64 overflow-y-auto p-2">
+          <div className=" p-2">
             <button type="button"
               onClick={() => { setClasseId(null); setTurmaId(null); onClasseChange?.(null); onTurmaChange?.(null); }}
               aria-pressed={!classeId}
@@ -202,7 +202,7 @@ export function CourseContextView({
             <GraduationCap className="h-4 w-4" aria-hidden />
             {selectedClasse ? `Turmas · ${selectedClasse.nome}` : "Turmas do curso"}
           </h3>
-          <div className="max-h-64 overflow-y-auto p-2">
+          <div className=" p-2">
             {visibleTurmas.map((turma) => (
               <button type="button" key={turma.id}
                 onClick={() => exploreTurmaDirect(turma)}
