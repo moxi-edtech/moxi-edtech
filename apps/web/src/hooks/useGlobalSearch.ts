@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { useDebounce } from "./useDebounce";
 import { buildPortalHref } from "@/lib/navigation";
@@ -339,6 +339,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   const [error, setError] = useState<string | null>(null);
   const [retryVersion, setRetryVersion] = useState(0);
   const searchCache = useMemo(() => new Map<string, CacheEntry>(), []);
+  const generation = useRef(0);
   const recentMemory = useMemo(() => new Map<string, RecentEntry[]>(), []);
   const transformQuery = options?.transformQuery;
   const portal = options?.portal;
@@ -395,6 +396,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT" || event === "SIGNED_IN") {
+        generation.current += 1;
         searchCache.clear();
         recentMemory.clear();
         setResults([]);
@@ -417,7 +419,12 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     if (!escolaId || q.length < 2) return;
 
     const cached = searchCache.get(cacheKey);
-    if (!cached) return;
+    if (!cached) {
+      setResults([]);
+      setCursor(null);
+      setHasMore(false);
+      return;
+    }
 
     setResults(cached.data.map((item) => mapToMinimalResult(portal, escolaId, item, intent)));
     setCursor(cached.cursor);
@@ -451,6 +458,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     }
 
     const ac = new AbortController();
+    const requestGeneration = ++generation.current;
     setLoading(!hasUsableCache);
 
     const limit = Math.min(8, 50);
@@ -516,7 +524,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
           p_cursor_id: pageCursor?.id ?? undefined,
         }).abortSignal(ac.signal);
 
-      if (ac.signal.aborted) return;
+      if (ac.signal.aborted || requestGeneration !== generation.current) return;
       if (error) {
         if (!append && isMissingGlobalSearchRpcError(error)) {
           await fetchFallback();
@@ -552,7 +560,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         // A pesquisa pode ser cancelada quando o utilizador continua a
         // escrever ou quando o componente desmonta. Browsers report this as
         // "Failed to fetch" in some runtimes; it is not an application error.
-        if (!isAbortError(err) && !(err instanceof TypeError && ac.signal.aborted)) {
+        if (requestGeneration === generation.current && !isAbortError(err) && !ac.signal.aborted) {
           console.error("[GlobalSearch] Erro na busca:", err);
           setError("Não foi possível realizar a pesquisa.");
           setResults([]);
@@ -560,17 +568,18 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
           setHasMore(false);
         }
       } finally {
-        if (!ac.signal.aborted) setLoading(false);
+        if (!ac.signal.aborted && requestGeneration === generation.current) setLoading(false);
       }
     })();
 
-    return () => ac.abort();
+    return () => { ac.abort(); generation.current += 1; };
   }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal, intent, searchCache, retryVersion]);
 
   const loadMore = async () => {
     if (!cursor || loading || !escolaId || debouncedQuery.length < 2) return;
     setLoading(true);
     const ac = new AbortController();
+    const requestGeneration = generation.current;
     try {
       const { data, error } = await supabase.rpc(
         "search_global_entities",
@@ -585,6 +594,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
           p_cursor_id: cursor.id,
         }).abortSignal(ac.signal);
 
+      if (requestGeneration !== generation.current || ac.signal.aborted) return;
       if (error) throw error;
 
       const payload = ((data as SearchResult[]) ?? []);
@@ -603,12 +613,12 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       setCursor(nextCursor);
       setHasMore(Boolean(nextCursor));
     } catch (err: unknown) {
-      if (!isAbortError(err)) {
+      if (requestGeneration === generation.current && !isAbortError(err)) {
         console.error("[GlobalSearch] Erro ao carregar mais:", err);
         setError("Não foi possível carregar mais resultados.");
       }
     } finally {
-      if (!ac.signal.aborted) setLoading(false);
+      if (!ac.signal.aborted && requestGeneration === generation.current) setLoading(false);
     }
   };
 
