@@ -67,7 +67,7 @@ export async function withExplorerObservability(
 
     const body = await result.clone().json().catch(() => null) as { code?: unknown } | null;
     const claimedCode = typeof body?.code === "string" ? body.code : "";
-    const safe = Object.hasOwn(SAFE_BUSINESS_FAILURES, claimedCode)
+    const safe = Object.prototype.hasOwnProperty.call(SAFE_BUSINESS_FAILURES, claimedCode)
       ? SAFE_BUSINESS_FAILURES[claimedCode] : undefined;
     const match = safe?.route === route && safe.status === result.status ? safe : null;
     const code = match ? claimedCode : codeForStatus(result.status);
