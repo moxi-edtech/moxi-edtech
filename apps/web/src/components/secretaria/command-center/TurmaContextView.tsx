@@ -10,6 +10,8 @@ import type { EntityContext } from "@/lib/command-center/entity-context";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
+import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
+import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 import { useTurmaContext } from "@/hooks/useTurmaContext";
 
@@ -18,6 +20,7 @@ type Props = {
   portal?: string;
   onNavigate: (href: string) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
+  onStudentAction: (action: ExplorerActionId, student: { id: string; label: string }) => void;
   initialPage?: number;
   initialScrollTop?: number;
   selectedStudentId?: string | null;
@@ -63,7 +66,7 @@ function Metric({
 }
 
 export function TurmaContextView({
-  context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina, onExploreClasse,
+  context, portal, onNavigate, onStudentSelect, onStudentAction, onExploreProfessor, onExploreDisciplina, onExploreClasse,
   initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
@@ -235,9 +238,10 @@ export function TurmaContextView({
           {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
             {visibleStudents.map((student) => (
-              <button type="button" key={student.id}
+<div key={student.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-slate-100 px-2 py-1 last:border-0">
+              <button type="button"
                 data-student-id={student.id} aria-current={selectedStudentId === student.id ? "true" : undefined} onClick={() => selectStudent({ id: student.id, label: student.nome })}
-                className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+                className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
                 <span className="w-8 shrink-0 text-xs tabular-nums text-slate-500">{student.numeroChamada ?? "—"}</span>
                 <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{student.nome}</span>
                 {searchActive && "documentosSinalizados" in student && student.documentosSinalizados === true && (
@@ -248,6 +252,9 @@ export function TurmaContextView({
                 )}
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
+  <ExplorerStudentActions escolaId={context.escolaId} alunoId={student.id} alunoNome={student.nome}
+    onAction={(action) => onStudentAction(action, { id: student.id, label: student.nome })} />
+</div>
             ))}
             {!visibleStudents.length && !roster.loading && (
               <p className="px-3 py-5 text-slate-500">Nenhum aluno matriculado neste âmbito.</p>
