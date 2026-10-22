@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -40,7 +41,7 @@ type DisciplineRow = {
  * Never delegate authorization to the global-search result.
  * A 404 also covers a turma belonging to another school or academic year.
  */
-export async function GET(
+async function readExplorer(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; turmaId: string }> },
 ) {
@@ -231,7 +232,14 @@ export async function GET(
     if (cause instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: cause.message }, { status: cause.status });
     }
-    console.error("[command-center/turma] read failed", describeTurmaReadFailure(cause));
     return NextResponse.json({ ok: false, error: "Não foi possível carregar esta turma." }, { status: 500 });
   }
+}
+
+/** Stable envelope and PII-free correlation across success, 4xx and 5xx. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string; turmaId: string }> },
+) {
+  return withExplorerObservability("turma", () => readExplorer(req, context));
 }
