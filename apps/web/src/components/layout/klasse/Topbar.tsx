@@ -50,7 +50,7 @@ export default function Topbar({
   useEffect(() => {
     setSelectedSearchStudent(null);
     setRestoreExplorerOnOpen(false);
-    clearExplorerReturnContext(escolaId);
+    clearExplorerReturnContext();
   }, [escolaId]);
 
   const userInitial =
