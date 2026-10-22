@@ -6,7 +6,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
-import { describeTurmaReadFailure, TURMA_DISCIPLINAS_SELECT, turmaEnrollmentPolicy, turmaPageRange } from "@/lib/command-center/turma-explorer-policy";
+import { TURMA_DISCIPLINAS_SELECT, turmaEnrollmentPolicy, turmaPageRange } from "@/lib/command-center/turma-explorer-policy";
 
 export const dynamic = "force-dynamic";
 
