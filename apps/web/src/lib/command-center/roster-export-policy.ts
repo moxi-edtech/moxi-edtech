@@ -48,7 +48,9 @@ export function rosterExportAudit(input: {
     actor_id: input.userId, escola_id: input.escolaId,
     entity_type: input.type, entity_id: input.entityId,
     row_count: input.count, search_applied: input.hasSearch,
-    filter_code: input.filter ?? "todos", sort_code: input.sort ?? "nome_asc",
+    filter_code: input.filter ?? "todos",
+    sort_code: input.sort === "nome_desc" ? "Z_A"
+      : input.sort === "pendencias_primeiro" ? "PENDING_FIRST" : "A_Z",
     purpose_code: "secretaria_atendimento", created_at: input.exportedAt,
   };
 }
