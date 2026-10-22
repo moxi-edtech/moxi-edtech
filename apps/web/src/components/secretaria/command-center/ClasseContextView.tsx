@@ -87,6 +87,18 @@ export function ClasseContextView({
   const onViewChangeRef = useRef(onViewChange);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
   const restoreScroll = useRef(initialScrollTop);
+  const [returnWarning, setReturnWarning] = useState(false);
+  const pendingReturnCheck = useRef(selectedStudentId);
+  useEffect(() => {
+    if (loading || !data || !pendingReturnCheck.current) return;
+    const originalStudentId = pendingReturnCheck.current;
+    pendingReturnCheck.current = null;
+    if (!data.alunos.items.some((student) => student.id === originalStudentId)) {
+      currentStudent.current = null;
+      onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: null });
+      setReturnWarning(true);
+    }
+  }, [loading, data, page]);
   useEffect(() => {
     if (loading || !scrollRef.current) return;
     scrollRef.current.scrollTop = restoreScroll.current;
@@ -137,6 +149,11 @@ export function ClasseContextView({
 
   return (
     <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current }); }} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+      {returnWarning && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          O aluno atendido já não consta desta página. A lista foi actualizada; confirme a matrícula e a turma antes de continuar.
+        </p>
+      )}
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
