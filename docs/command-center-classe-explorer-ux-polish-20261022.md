@@ -1,41 +1,49 @@
-# Polimento UX — Explorador de Classe (Command Center)
+# Polimento UX — Exploradores do Command Center (KLASSE)
 
 **Registo:** 22/10/2026 · **Âmbito:** apenas frontend · **Branch:** `polish/classe-explorer-ux-20261022`
 
-Complemento pontual à [auditoria dos exploradores](./command-center-exploradores-auditoria-20261022.md). **Não** altera API, SQL, RLS nem banco de dados.
+Complemento à [auditoria dos exploradores](./command-center-exploradores-auditoria-20261022.md).
+**Não** altera API, SQL, RLS nem banco de dados.
 
-## Ficheiro alterado
+## Ficheiros alterados
 
-- `apps/web/src/components/secretaria/command-center/ClasseContextView.tsx`
-
-## O que foi feito (UI/UX)
-
-| Achado da auditoria | Alteração no explorador de Classe |
+| Explorador | Ficheiro |
 | --- | --- |
-| **DATA-01** — «Vagas totais definidas» confundia capacidade com vagas disponíveis | Indicadores separados: **Alunos matriculados**, **Capacidade**, **Vagas disponíveis**. Capacidade desconhecida mostra «Não definida» (nunca zero inventado). **Excedente de lotação** só aparece quando ocupação > capacidade. |
-| Ocupação por turma | Cada linha de turma mostra alunos · capacidade · vagas / lotada / excedente, calculado no cliente a partir dos dados já devolvidos pela API. |
-| Turmas sem alunos | Indicador leve «Sem alunos neste ano» e resumo no topo, sem inventar pendências de docente/horário. |
-| **LINK-01** — CTA genérico | Rótulo **Abrir gestão académica** (destino real: módulo de configurações). `title` explica que não executa alterações no explorador. |
-| Acessibilidade leve | `aria-labelledby` nas secções, `aria-live` na contagem/paginação de alunos, `aria-hidden` em ícones decorativos, `focus-visible` consistente. |
-| Linguagem | Rótulos em português de Angola alinhados ao glossário da auditoria (`turma`, `classe`, `matrícula`, `ano letivo`). |
+| **Classe** | `apps/web/src/components/secretaria/command-center/ClasseContextView.tsx` |
+| **Turma** | `apps/web/src/components/secretaria/command-center/TurmaContextView.tsx` |
+| **Curso** | `apps/web/src/components/secretaria/command-center/CourseContextView.tsx` |
+| **Disciplina** | `apps/web/src/components/secretaria/command-center/DisciplinaContextView.tsx` |
+| **Professor** | `apps/web/src/components/secretaria/command-center/ProfessorContextView.tsx` |
 
-## O que **não** foi feito (fora de escopo desta branch)
+## Mapa auditoria → alteração
 
-- Nenhuma migration, RPC, RLS ou endpoint.
-- Continuidade P0 Turma → Balcão → Turma (UX-00) — tratada noutro trabalho.
-- SEC-01 / PRIV-01 / PRIV-02.
-- Pesquisa de aluno no escopo da classe no banco (paginação SQL).
-- Virtualização de listas ou redesign do design system de Metric.
-- Breadcrumb global do modal (BREAD-01) e scroll único do shell (SCROLL-01) — partilhados com os outros exploradores.
+| ID | Onde | O que mudou na UI |
+| --- | --- | --- |
+| **DATA-01** | Classe, Turma, Curso | Capacidade ≠ vagas. Indicadores separados: alunos, capacidade, vagas disponíveis; excedente só quando ocupação > capacidade; «Não definida» quando capacidade ausente (nunca zero inventado). |
+| **NAV-02** | Curso | Clique na linha da turma abre **directamente** o contexto da turma; «Abrir página» permanece secundário. |
+| **LINK-01** | Classe, Disciplina, Professor, Turma | CTAs honestos: «Abrir gestão académica», «Abrir gestão de professores», «Abrir página da turma» + `title` que descreve o destino real. |
+| Estados verificáveis | Classe, Turma, Disciplina, Professor | Turmas sem alunos; disciplinas/turmas sem professor; professor sem atribuição vs sem horário publicado (distintos). Sem inventar pendências de fontes não confiáveis. |
+| A11y leve | Todos | `aria-labelledby` nas secções, `aria-live` em paginação/contagens, `aria-hidden` em ícones, `focus-visible` consistente. |
+| Linguagem | Todos | Rótulos PT-AO alinhados (`turma`, `classe`, `matrícula`, `ano letivo`). |
 
-## Critério de verificação manual
+## O que **não** foi feito (fora de escopo)
 
-1. Abrir uma classe com turmas de capacidade mista: métricas de capacidade/vagas coerentes; turmas sem capacidade não forçam vagas = 0.
-2. Classe com turma lotada ou com excedente: rótulos «Lotada» / «Excedente N» visíveis.
-3. CTA «Abrir gestão académica» leva ao módulo de configurações com o ano letivo preservado.
-4. Paginação de alunos anuncia a página actual; foco visível nos botões.
+- Continuidade P0 Turma → Balcão → Turma (**UX-00**) — PR #234 / outro trabalho.
+- **SEC-01** / **PRIV-01** / **PRIV-02** (autorização RPC, recentes).
+- Paginação/pesquisa de alunos no SQL; virtualização de listas.
+- Breadcrumb global do modal (**BREAD-01**) e scroll único do shell (**SCROLL-01**).
+- Redesign do design system de Metric (**DS-01**).
+- Mobile Command Palette (**MOB-01**).
+
+## Critérios de verificação manual
+
+1. **Classe / Turma:** capacidade mista → vagas coerentes; sem capacidade → «Não definida»; lotada / excedente legíveis.
+2. **Curso:** um clique na turma abre o explorador de turma; ocupação na linha; «Abrir página» separado.
+3. **Disciplina:** turmas sem docente assinaladas; CTA abre gestão, não promete atribuição.
+4. **Professor:** sem atribuição ≠ sem horário publicado; CTA abre gestão de professores.
+5. Teclado: foco visível; paginação de alunos anuncia página actual.
 
 ## Relação com PRs abertas
 
 - Auditoria documental: PR #233.
-- Pacote operacional P0 (continuidade + SEC): PR #234 — pode absorver ou reaplicar este polimento de Classe se a branch divergir.
+- Pacote operacional P0 (continuidade + SEC): PR #234 — pode reaplicar ou absorver este polimento se divergir.
