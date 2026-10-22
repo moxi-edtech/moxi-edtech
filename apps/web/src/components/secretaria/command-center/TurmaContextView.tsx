@@ -10,6 +10,7 @@ import type { EntityContext } from "@/lib/command-center/entity-context";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
+import { ExplorerRosterExportButton } from "@/components/secretaria/command-center/ExplorerRosterExportButton";
 import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
 import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
@@ -223,6 +224,9 @@ export function TurmaContextView({
         setSearchTerm(next);
         onViewChangeRef.current?.({ ...view(), search: next });
       }} />
+        <ExplorerRosterExportButton escolaId={context.escolaId} entityId={context.id}
+          type="turma" yearId={context.academicYearId}
+          query={searchTerm} filter={rosterFilter} sort={rosterSort} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <section className="min-w-0" aria-labelledby="turma-alunos-heading">
           <div className="mb-2 flex items-center justify-between gap-2">
