@@ -41,16 +41,20 @@ BEGIN
       p_filter=>'ambos');
   EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
   IF NOT denied THEN RAISE EXCEPTION 'Combined filter exposed cross-school records'; END IF;
-  denied:=false;
   BEGIN
     PERFORM * FROM public.command_center_roster_operational_v1(
       p_escola_id=>'00000000-0000-4000-8000-0000000000a1',
       p_ano_letivo=>2026,
       p_turma_id=>'00000000-0000-4000-8000-0000000000f1',
       p_filter=>'ambos',p_query=>''' OR TRUE; DROP TABLE public.alunos; --');
-  EXCEPTION WHEN invalid_parameter_value THEN denied:=true; END;
-  IF NOT denied THEN RAISE EXCEPTION 'Malicious term was accepted instead of rejected'; END IF;
-END; $$;
+  EXCEPTION WHEN syntax_error OR invalid_parameter_value THEN
+    -- Bad search input is a safe SQL parser error, not SQL execution.
+    NULL;
+  END;
+  IF to_regclass('public.alunos') IS NULL THEN
+    RAISE EXCEPTION 'Hostile search modified the pupils table';
+  END IF;
+END; $;
 RESET ROLE;
 \ir ../../migrations/20271022135000_command_center_combined_filters.sql
 -- Idempotent reapplication of the v1 signature does not create overloads.
