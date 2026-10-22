@@ -66,7 +66,7 @@ export function TurmaContextView({
   const currentScroll = useRef(initialScrollTop);
   const currentStudent = useRef(selectedStudentId);
   const onViewChangeRef = useRef(onViewChange);
-  onViewChangeRef.current = onViewChange;
+  useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
   const restoreScroll = useRef(initialScrollTop);
   useEffect(() => {
     if (loading || !scrollRef.current) return;
