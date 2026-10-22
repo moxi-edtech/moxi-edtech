@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -43,7 +44,7 @@ function first<T>(value: T | T[] | null): T | null {
  * Academic read-only detail. Search result, URL, client role and teacher name
  * are never treated as authorization. No BI, email, payroll, contacts or grades.
  */
-export async function GET(
+async function readExplorer(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; professorId: string }> },
 ) {
@@ -255,9 +256,16 @@ export async function GET(
     if (error instanceof AcademicYearContextError) return NextResponse.json(
       { ok: false, error: error.message }, { status: error.status },
     );
-    console.error("[command-center/professor] read failed", error instanceof Error ? error.message : "unexpected");
     return NextResponse.json(
       { ok: false, error: "Não foi possível carregar o professor." }, { status: 500 },
     );
   }
+}
+
+/** Stable envelope and PII-free correlation across success, 4xx and 5xx. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string; professorId: string }> },
+) {
+  return withExplorerObservability("professor", () => readExplorer(req, context));
 }
