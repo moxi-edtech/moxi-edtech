@@ -54,7 +54,7 @@ BEGIN
   IF to_regclass('public.alunos') IS NULL THEN
     RAISE EXCEPTION 'Hostile search modified the pupils table';
   END IF;
-END; $;
+END; $$;
 RESET ROLE;
 \ir ../../migrations/20271022135000_command_center_combined_filters.sql
 -- Idempotent reapplication of the v1 signature does not create overloads.
