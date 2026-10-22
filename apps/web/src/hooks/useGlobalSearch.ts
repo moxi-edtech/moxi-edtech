@@ -353,6 +353,8 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     return next.trim().replace(/\s+/g, " ");
   }, [normalizedQuery, transformQuery]);
   const debouncedQuery = useDebounce(effectiveQuery, 300);
+  // Invalidate requests as soon as context/term changes, even before debounce completes.
+  useEffect(() => { generation.current += 1; }, [escolaId, portal, effectiveQuery]);
   const resolvedTypes = useMemo(() => {
     if (types && types.length > 0) return types;
     if (portal && PORTAL_TYPES[portal]) return PORTAL_TYPES[portal];
