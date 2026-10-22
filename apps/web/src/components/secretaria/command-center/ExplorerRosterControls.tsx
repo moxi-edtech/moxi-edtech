@@ -46,6 +46,7 @@ export function ExplorerRosterControls({
             <option value="todos">Todos os activos</option>
             <option value="documentos_sinalizados">Documentos sinalizados</option>
             <option value="propinas_vencidas">Propinas vencidas</option>
+            <option value="ambos">Documentos e propinas</option>
             <option value="matricula_incompleta" disabled>Matrícula incompleta · por configurar</option>
           </select>
         </div>
