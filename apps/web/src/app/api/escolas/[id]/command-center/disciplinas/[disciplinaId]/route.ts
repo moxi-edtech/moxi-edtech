@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -58,7 +59,7 @@ function first<T>(value: T | T[] | null): T | null {
  * Academic subject explorer: course curriculum is a reference; teacher/turma
  * assignments are validated against the *selected* year. No grades or payments.
  */
-export async function GET(
+async function readExplorer(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; disciplinaId: string }> },
 ) {
@@ -242,9 +243,16 @@ export async function GET(
     if (error instanceof AcademicYearContextError) return NextResponse.json(
       { ok: false, error: error.message }, { status: error.status },
     );
-    console.error("[command-center/disciplina] read failed", error instanceof Error ? error.message : "unexpected");
     return NextResponse.json(
       { ok: false, error: "Não foi possível carregar esta disciplina." }, { status: 500 },
     );
   }
+}
+
+/** Stable envelope and PII-free correlation across success, 4xx and 5xx. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string; disciplinaId: string }> },
+) {
+  return withExplorerObservability("disciplina", () => readExplorer(req, context));
 }
