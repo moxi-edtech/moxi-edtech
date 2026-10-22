@@ -1,6 +1,6 @@
 # Command Center / Balcão — documentação de produto
 
-**Última revisão:** 22/10/2026 · **Estado:** código em PRs de revisão, sem homologação funcional completa.
+**Última revisão:** 22/10/2026 · **Estado:** P1/P2 em branches de revisão, sem homologação funcional completa. **CC-001 (replay de migrations) pertence à frente paralela do proprietário e não é objectivo desta execução.**
 
 ## Por onde começar
 
@@ -9,6 +9,13 @@
 3. **[PR 1: segurança e continuidade](pr1-security-continuity-gates.md)** — retorno do Balcão, privacidade da sessão e replay SQL histórico.
 4. **[PR 3: acções e exportação](pr3-actions-export-decisions.md)** — política de exportação por escola, desactivada por omissão.
 5. **[PR 4: desempenho e observabilidade](../performance/command-center-20261022.md)** — consultas, contagens, erros, capturas de fixture e limitações dos benchmarks.
+
+## P1 e P2 — aprimoramentos activos
+
+- **[PR #240 — ordenação completa e protecção das pesquisas](https://github.com/moxi-edtech/moxi-edtech/pull/240):** nome A–Z/Z–A antes de paginar, cursores determinísticos, throttle por operador/escola com memória local limitada; **não é protecção distribuída**. SQL numa nova migration opcional, sem aplicação de produção.
+- **PR P2 — acessibilidade, desempenho de memória e observabilidade auxiliar:** um único scroll contextual, navegação por teclado, 40 vistas/24 breadcrumbs guardados no máximo, correlação em três endpoints auxiliares e Playwright com ordenação.
+
+Filtros documental/financeiro e prioridade operacional permanecem indisponíveis sem dados canónicos/definição de negócio; exportação permanece desactivada. Estas entregas não reabrem CC-001.
 
 ## Roteiro de PRs empilhadas
 

@@ -6,6 +6,8 @@
 
 > **Importante:** «CI verde» significa que os workflows **configurados** passaram naquele commit. Não significa que o fluxo completo esteja pronto, que as policies reais tenham sido testadas ou que uma migration esteja instalada. Os PRs continuam **draft**; merge, deploy e mudanças de produção não foram autorizados.
 
+> **Escopo de trabalho acordado:** este ciclo trata **exclusivamente P1 e P2**. **CC-001 (replay/reconstrução histórica)** foi assumido pelo proprietário em frente paralela e deixa de ser requisito de execução para os ajustes P1/P2 aqui descritos. Homologação de migrations/RLS reais mantém-se um *gate de release*, nunca autorização para mexer em produção.
+
 ## 1. Estado auditável das PRs
 
 | Frente | PR / HEAD conferido | CI no próprio HEAD | O que a CI prova | O que não prova |
@@ -28,9 +30,11 @@
 - **#238:** guarda da posição de navegação; sobrelotação com fonte verificável; contrato de exportação CSV mínimo, neutralização de fórmulas, limite e auditoria obrigatória **com exportação desactivada por omissão**. As seis acções contextuais por capacidade/permissão ainda carecem de prova ponta a ponta.
 - **#239:** resumo de Classe no PostgreSQL em vez de carregar até 3.000 matrículas em lotes de 500; IDs de correlação nos cinco endpoints contextuais; limite de memória; suite sintética de **5 resoluções × 3 escalas × 9 estados (135 capturas)**, utilizando o componente real de Turma com endpoints simulados, **não o Balcão real autenticado**.
 
+**Aprimoramentos posteriores (P1/P2, branches próprias):** [PR #240](https://github.com/moxi-edtech/moxi-edtech/pull/240) adiciona ordenação **A–Z e Z–A no servidor**, cursor estável e limite de buscas por utilizador/escola, por instância; **não** afirma rate limit distribuído. A frente P2 estende a correlação aos endpoints auxiliares, reduz scroll aninhado, testa o percurso por teclado e limita o cache contextual a 40 vistas e 24 breadcrumbs. Os testes e os HEADs destas frentes devem ser conferidos antes de considerar concluídos.
+
 **Evolução do requisito, ainda incompleta:** a Secretaria deve localizar e operar sobre o **universo completo** por Turma e Classe; a versão presente ainda **não** inclui a combinação homologada de filtros documental/matrícula/financeiro, ordenação de pendências e acções por permissão.
 
-## 3. Blocker comprovado do replay histórico (P0)
+## 3. Trabalho paralelo do proprietário — apenas contexto histórico (CC-001)
 
 No workflow de Supabase **desligado de qualquer projecto**, o arranque em PostgreSQL 17 e início do replay aconteceram. A execução [39811867508](https://github.com/moxi-edtech/moxi-edtech/actions/runs/39811867508) falhou na migration preexistente:
 
@@ -41,7 +45,7 @@ UPDATE public.pagamentos AS p SET aluno_id = m.aluno_id
 FROM public.mensalidades AS m WHERE p.aluno_id IS NULL;
 ```
 
-O erro antecede as migrations propostas para o Command Center. **Não** prova defeito nas novas migrations, mas impede provar que toda a história e as RLS reais se instalam correctamente a partir do zero. O teste PostgreSQL de fixture que passa **não cobre** todas as migrations instaladas no projecto.
+Esta frente **não será executada** nas PRs P1/P2; a validação estrutural será entregue pelo proprietário em paralelo. O erro antecede as migrations propostas para o Command Center. **Não** prova defeito nas novas migrations, mas impede provar que toda a história e as RLS reais se instalam correctamente a partir do zero. O teste PostgreSQL de fixture que passa **não cobre** todas as migrations instaladas no projecto.
 
 **Política de correcção:** verificar, em **leitura**, o catálogo/histórico de migrations efectivamente instalados, construir uma baseline estrutural fiel num ambiente descartável e reconciliar o ponto de origem com PR independente. Não editar migrations já aplicadas, não criar remendo retroactivo que altere a verdade de produção, não tocar na base de produção.
 
@@ -51,13 +55,12 @@ Estados usados: **Pendente** (não concluído); **Parcial** (há implementação
 
 | ID | Prioridade | Backlog e critério de aceite | Estado | Dependência / referência |
 | --- | --- | --- | --- | --- |
-| **CC-001** | **P0** | Reconstruir **todas** as migrations e policies reais numa réplica estrutural descartável; documentar origem, divergências, apply/reapply/rollback seguro, dois replays limpos e regressões SQL, sem alterar ficheiro já aplicado. | **Bloqueado — falha reproduzida** | Migration `20260202011000`; #236; baseline actual verificada |
-| **CC-002** | **P0** | Autorização **na base** por Admin Geral, Director, Secretaria e papel negado: escola A nunca lê B; tentativas de leitura e escrita negadas; verificar a migration da #234 sem enfraquecer RLS ou fiscal. | **Parcial** | CC-001, #234, #236 |
-| **CC-003** | **P0** | Modelo canónico de **polos**: provar vínculo operador↔polo↔turma/matrícula no DB e aplicar a todas as consultas e caches; se ausente, **negar** em vez de mostrar alunos de outro polo. E2E dois polos. | **Bloqueado — relação canónica não demonstrada** | Decisão de modelação/autorização |
-| **CC-004** | **P0** | E2E com GoTrue/contas fictícias criadas pelos testes: **3 atendimentos seguidos**, dois utilizadores/escolas/polos, todos os perfis, sessão expirada e rascunho preservado; sem dados reais nos artefactos. | **Pendente** | CC-001–003, #213/#236 |
-| **CC-005** | **P0** | Revalidar retorno após **transferência, cancelamento, trancamento ou eliminação** consultando pertença/estado canónicos: diferenciar aluno fora da página de aluno efectivamente fora da turma, limpar selecção inválida e explicar próximo passo. | **Parcial** | #236, permissões de leitura |
-| **CC-006** | **P0** | Reconciliar PR **#235** e conflitos dos ficheiros partilhados com **#213/#216**, fluxo de IA e guarda financeira **#232**; **reempilhar #237→#238→#239** sobre os HEADs actuais, preservar rascunhos, CI verde final de cada um. | **Pendente — stack defasado** | #234–#239; sem merge |
-| **CC-007** | **P0** | Demonstrar ausência de fuga de contexto no logout/expiração, incluindo cache React Query, recentes, retorno, formulário e sessão; retorno ao login sem perda silenciosa de rascunho. | **Parcial** | #236, #213; CC-004 |
+| **CC-002** | **P0 (fora do ciclo P1/P2)** | Autorização **na base** por Admin Geral, Director, Secretaria e papel negado: escola A nunca lê B; tentativas de leitura e escrita negadas; verificar a migration da #234 sem enfraquecer RLS ou fiscal. | **Parcial** | CC-001, #234, #236 |
+| **CC-003** | **P0 (fora do ciclo P1/P2)** | Modelo canónico de **polos**: provar vínculo operador↔polo↔turma/matrícula no DB e aplicar a todas as consultas e caches; se ausente, **negar** em vez de mostrar alunos de outro polo. E2E dois polos. | **Bloqueado — relação canónica não demonstrada** | Decisão de modelação/autorização |
+| **CC-004** | **P0 (fora do ciclo P1/P2)** | E2E com GoTrue/contas fictícias criadas pelos testes: **3 atendimentos seguidos**, dois utilizadores/escolas/polos, todos os perfis, sessão expirada e rascunho preservado; sem dados reais nos artefactos. | **Pendente** | CC-001–003, #213/#236 |
+| **CC-005** | **P0 (fora do ciclo P1/P2)** | Revalidar retorno após **transferência, cancelamento, trancamento ou eliminação** consultando pertença/estado canónicos: diferenciar aluno fora da página de aluno efectivamente fora da turma, limpar selecção inválida e explicar próximo passo. | **Parcial** | #236, permissões de leitura |
+| **CC-006** | **P0 (fora do ciclo P1/P2)** | Reconciliar PR **#235** e conflitos dos ficheiros partilhados com **#213/#216**, fluxo de IA e guarda financeira **#232**; **reempilhar #237→#238→#239** sobre os HEADs actuais, preservar rascunhos, CI verde final de cada um. | **Pendente — stack defasado** | #234–#239; sem merge |
+| **CC-007** | **P0 (fora do ciclo P1/P2)** | Demonstrar ausência de fuga de contexto no logout/expiração, incluindo cache React Query, recentes, retorno, formulário e sessão; retorno ao login sem perda silenciosa de rascunho. | **Parcial** | #236, #213; CC-004 |
 | **CC-008** | **P1** | Definir por escola os estados canónicos de **documento em falta** e **matrícula incompleta**; só habilitar filtros quando regra + consulta SQL + teste de permissão existirem; manter indisponíveis com explicação até lá. | **Decisão + implementação** | Produto, #237 |
 | **CC-009** | **P1** | Implementar pesquisa/filtros combinados e **ordenação operacional** («pendências primeiro» somente se estado válido), com cursor estável, desempate por ID, total exacto e testes sem duplicações/omissões. | **Parcial** | CC-008, #237 |
 | **CC-010** | **P1** | Homologar filtro de **pendência financeira** sobre dívida canónica; nunca interpretar «aprovado pela Secretaria» como «liquidado». Testar concessão/negação com casos sintéticos. | **Decisão + implementação** | Contratos fiscais/financeiros inalterados; #232 |
@@ -72,7 +75,7 @@ Estados usados: **Pendente** (não concluído); **Parcial** (há implementação
 | **CC-019** | **P2** | Homologar capturas, em **cada PR**, para lista, resultado, filtro, vazio, erro, carregamento, 55/50/5, retorno real de Balcão, nas 5 dimensões × 3 zooms; distinguir story sintética de E2E completo. | **Parcial: 135 capturas sintéticas na #239** | #239; CC-004 |
 | **CC-020** | **P2** | Ensaiar sessão longa (dia de atendimento), limites do cache, memória/heap, retentivas de formulários e ausência de polling acrescido. | **Parcial: limites em código, não ensaio longo** | #213, #216, #239 |
 
-**Ordem de execução:** CC-001 → CC-002/003 → CC-004/005/007 → CC-006 (reempilhar depois das correcções) → CC-008/009/010/011/012/013/014 → CC-015/016 → CC-017/018/019/020. Actividades não dependentes podem ser preparadas em paralelo, nunca promovidas prematuramente.
+**Ordem de execução desta frente:** CC-009 e CC-014 (ordenação estável e controlo de pesquisa) → CC-017, CC-018 e CC-020 (observabilidade, acessibilidade e limites de memória) → CC-015/016/019 (evidência/medições) → CC-008/010/011/012/013, condicionados às regras de negócio/capabilities documentadas. **CC-001 está fora deste plano**, a cargo do proprietário. Não efectuar merge ou deploy antes da homologação separada.
 
 ## 5. Perguntas exactas de produto — não inventar regras
 

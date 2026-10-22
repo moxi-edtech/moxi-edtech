@@ -63,7 +63,7 @@ export function DisciplinaContextView({
   const turmasSemProfessor = turmas.filter((t) => !t.professores.length).length;
 
   return (
-    <div className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
@@ -135,7 +135,7 @@ export function DisciplinaContextView({
           <h3 id="disciplina-turmas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
             <GraduationCap className="h-4 w-4 text-emerald-700" aria-hidden /> Turmas
           </h3>
-          <div className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+          <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
             {turmas.map((turma) => (
               <button type="button" key={turma.id}
                 onClick={() => onExploreTurma({
@@ -172,7 +172,7 @@ export function DisciplinaContextView({
         <p className="mb-2 text-xs text-slate-500">
           Referência do currículo da escola. Consta na matriz ≠ atribuída à turma ≠ tem docente neste ano.
         </p>
-        <div className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+        <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
           {curriculo.map((item, index) => (
             <div key={`${item.cursoId ?? ""}:${item.classeId ?? ""}:${index}`}
               className="flex flex-wrap items-start justify-between gap-2 px-3 py-3">

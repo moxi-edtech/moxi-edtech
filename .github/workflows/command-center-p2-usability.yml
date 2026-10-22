@@ -1,0 +1,44 @@
+name: Command Center P2 Usability and Memory
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/components/CommandPalette.tsx'
+      - 'apps/web/src/components/secretaria/command-center/**'
+      - 'apps/web/src/lib/command-center/explorer-return-context.ts'
+      - 'apps/web/src/lib/command-center/observability.ts'
+      - 'apps/web/src/app/api/escolas/**/command-center/**'
+      - 'apps/web/tests/unit/command-center-p2-contracts.spec.ts'
+      - '.github/workflows/command-center-p2-usability.yml'
+permissions:
+  contents: read
+jobs:
+  p2-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C apps/web typecheck
+      - name: Lint P2 contract changes
+        run: |
+          pnpm -C apps/web exec eslint \
+            src/components/CommandPalette.tsx \
+            src/components/secretaria/command-center/CourseContextView.tsx \
+            src/components/secretaria/command-center/TurmaContextView.tsx \
+            src/components/secretaria/command-center/ClasseContextView.tsx \
+            src/components/secretaria/command-center/ProfessorContextView.tsx \
+            src/components/secretaria/command-center/DisciplinaContextView.tsx \
+            src/lib/command-center/explorer-return-context.ts \
+            src/lib/command-center/observability.ts \
+            "src/app/api/escolas/[id]/command-center/roster/route.ts" \
+            "src/app/api/escolas/[id]/command-center/roster/export/route.ts" \
+            "src/app/api/escolas/[id]/command-center/disciplinas/route.ts" \
+            tests/unit/command-center-p2-contracts.spec.ts --max-warnings 0
+      - run: pnpm -C apps/web exec tsx --test tests/unit/command-center-p2-contracts.spec.ts

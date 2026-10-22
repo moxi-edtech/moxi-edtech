@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -23,7 +24,7 @@ const response = (data: unknown, status = 200) =>
   NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
 
 /** A read-only service. Filtering, counting and keyset ordering happen before LIMIT in SQL. */
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: escolaIdParam } = await params;
   const u = new URL(req.url);
   const parsed = schema.safeParse({
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (input.poloId) {
     return response({
       ok: false,
+      code: "POLO_SCOPE_UNDEFINED",
       error: "A listagem por polo está indisponível até existir uma relação de polo verificada nos dados canónicos.",
     }, 403);
   }
@@ -77,7 +79,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // The contract deliberately disables historic/filter-specific rosters
     // until status semantics and school-specific documentary/financial rules are signed off.
     if (year.status === "CLOSED") return response({
-      ok: false, error: "Pesquisa histórica indisponível até homologar os estados de matrícula.",
+      ok: false, code: "HISTORIC_ROSTER_UNAVAILABLE",
+      error: "Pesquisa histórica indisponível até homologar os estados de matrícula.",
     }, 409);
 
     const { data, error } = await supabase.rpc("command_center_roster_keyset_v2", {
@@ -117,4 +120,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     return response({ ok: false, error: "Falha de consulta. Tente novamente." }, 500);
   }
+}
+
+/** Contract: correlation on every success and failure, without private payloads in logs. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  return withExplorerObservability("roster-search", () => readRoster(req, context));
 }
