@@ -48,8 +48,12 @@ export function ExplorerStudentActions({
     const abort = new AbortController();
     controller.current = abort;
     try {
+      const locationSearch = new URLSearchParams(window.location.search);
+      const polo = locationSearch.get("poloId") ?? locationSearch.get("polo_id");
+      const params = new URLSearchParams({ alunoId });
+      if (polo) params.set("poloId", polo);
       const response = await fetch(
-        `/api/escolas/${encodeURIComponent(escolaId)}/command-center/student-capabilities?alunoId=${encodeURIComponent(alunoId)}`,
+        `/api/escolas/${encodeURIComponent(escolaId)}/command-center/student-capabilities?${params}`,
         { signal: abort.signal, cache: "no-store", credentials: "same-origin" },
       );
       if (abort.signal.aborted) return;
