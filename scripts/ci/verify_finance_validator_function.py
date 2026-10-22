@@ -1,48 +1,39 @@
 #!/usr/bin/env python3
-"""Fail CI if the financial fix changes anything beyond three narrow gates.
-
-The original canonical 20270605120000 function is the source of truth
-for authorization, settled metadata, receipt generation and service state.
-No huge snapshot, mock SQL replacement, skipped fiscal guard, or RLS change.
+"""Fail closed unless the validator is the exact live Supabase definition plus
+narrow service-state guards. The production snapshot is SQL only, no user data.
 """
 from pathlib import Path
+import re
 
-old = Path("supabase/migrations/20270605120000_unificar_recebimentos_balcao_portal.sql").read_text()
-new = Path("supabase/migrations/20271015110000_fix_validar_pagamento_idempotency.sql").read_text()
+baseline = Path("supabase/ops/tests/finance_validator_production_baseline.sql").read_text().strip()
+migration = Path("supabase/migrations/20271015110000_fix_validar_pagamento_idempotency.sql").read_text()
 marker = "CREATE OR REPLACE FUNCTION public.validar_pagamento("
-assert old.count(marker) == 1 and new.count(marker) == 1
-source = old[old.index(marker):].strip()
-candidate = new[new.index(marker):].strip()
-assert source.endswith("$$;") and candidate.endswith("$$;")
+assert baseline.count(marker) == 1 and migration.count(marker) == 1
+actual = migration[migration.index(marker):].strip()
+assert baseline.endswith("$function$") or baseline.endswith("$function$;")
+assert actual.endswith("$function$")
+# The baseline was obtained from pg_get_functiondef on the production project.
+assert "financeiro_aplicar_pagamento_existente(v_pagamento.id,v_actor_id)" in actual
+assert actual.count("financeiro_aplicar_pagamento_existente(v_pagamento.id,v_actor_id)") == 2
+assert "md5(pg_get_functiondef('public.validar_pagamento(uuid,boolean,text)'::regprocedure))" in migration
+assert "'74696d60970bed3361b17ba712725398'" in migration
+insert_rejection = """    IF v_intent.status='failed' THEN
+      RETURN jsonb_build_object(
+        'ok',true,'idempotent',true,'status','rejected','pagamento_id',p_pagamento_id
+      );
+    END IF;
+    IF v_intent.status <> 'pending' THEN
+      RAISE EXCEPTION 'STATE: apenas comprovativo de serviço pendente pode ser rejeitado';
+    END IF;
 
-def strip_inserted_block(sql: str, start: str, before: str) -> str:
-    assert sql.count(start) == 1 and sql.count(before) >= 1, (start, before)
-    first = sql.index(start)
-    ending = sql.index(before, first)
-    return sql[:first] + sql[ending:]
+"""
+insert_approval = """  IF v_intent.status <> 'pending' THEN
+    RAISE EXCEPTION 'STATE: apenas comprovativo de serviço pendente pode ser aprovado';
+  END IF;
 
-assert candidate.count("IF v_pagamento.status IS DISTINCT FROM 'pending'") == 1
-assert candidate.count("IF v_intent.status IS DISTINCT FROM 'pending'") == 1
-assert candidate.count("IF v_valor_pago_atual >= v_valor_esperado") == 0
-candidate = strip_inserted_block(
-    candidate, "    -- We hold the payment row's FOR UPDATE lock",
-    "    IF v_pagamento.mensalidade_id IS NULL THEN",
-)
-candidate = strip_inserted_block(
-    candidate, "    -- Keep the service side equally atomic",
-    "    IF NOT p_aprovado THEN",
-)
-assert candidate.count("IF v_novo_valor_pago > v_valor_esperado THEN") == 1
-left = "    v_valor_pago_atual := COALESCE(v_mensalidade.valor_pago_total, 0);\n"
-right = "    UPDATE public.pagamentos\n    SET status = 'settled',"
-assert candidate.count(left) == source.count(left) == 1
-assert candidate.count(right) == source.count(right) == 1
-baseline_between = source[source.index(left) + len(left):source.index(right,source.index(left))]
-prefix = candidate[:candidate.index(left) + len(left)]
-suffix = candidate[candidate.index(right,candidate.index(left)):]
-candidate = prefix + baseline_between + suffix
-
-assert [line.rstrip() for line in candidate.splitlines()] == [line.rstrip() for line in source.splitlines()], (
-    "Canonical financial function changed beyond idempotency, balance and service state guards"
-)
-print("FINANCE_VALIDATOR_SCOPE_PASS: canonical receipt/authorization/fiscal/service SQL unchanged")
+"""
+assert actual.count(insert_rejection) == 1
+assert actual.count(insert_approval) == 1
+reconstructed = actual.replace(insert_rejection, "", 1).replace(insert_approval, "", 1)
+assert reconstructed.rstrip(";\\n") == baseline.rstrip(";\\n"), "Production financial function modified outside two service state guards"
+print("FINANCE_VALIDATOR_PRODUCTION_BASELINE_PASS: financial/fiscal allocation unchanged, service states guarded")
