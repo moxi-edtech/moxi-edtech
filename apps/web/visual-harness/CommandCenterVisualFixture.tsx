@@ -38,9 +38,11 @@ export function installCommandCenterVisualMocks() {
       const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
       const results = students.filter((student) =>
         normalize(`${student.nome} ${student.numero}`).includes(normalize(q)));
+      const ordered = url.searchParams.get("sort") === "nome_desc"
+        ? [...results].reverse() : results;
       const index = url.searchParams.has("cursorId")
-        ? results.findIndex((s) => s.id === url.searchParams.get("cursorId")) + 1 : 0;
-      const page = results.slice(index, index + 20);
+        ? ordered.findIndex((s) => s.id === url.searchParams.get("cursorId")) + 1 : 0;
+      const page = ordered.slice(index, index + 20);
       return Promise.resolve(json({ ok: true,
         items: page, total: results.length, size: 20,
         hasMore: index + page.length < results.length,
