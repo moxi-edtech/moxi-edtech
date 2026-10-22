@@ -17,6 +17,7 @@ import {
   Bookmark,
   ArrowLeft,
   ExternalLink,
+  X,
 } from "lucide-react";
 import { Command } from "cmdk";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -48,6 +49,7 @@ type Props = {
   escolaId?: string | null;
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
   onStudentSelect?: (student: { id: string; label: string }) => void;
+  studentWorkspaceClosedVersion?: number;
 };
 
 // Cada item é uma única opção de teclado/clique, sem botões de ação aninhados.
@@ -90,7 +92,7 @@ function SearchResultRow({ item, onSelect }: { item: MinimalSearchResult; onSele
   );
 }
 
-export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
+export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorkspaceClosedVersion = 0 }: Props) {
   const router = useRouter();
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -100,6 +102,11 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
   const [contextTrail, setContextTrail] = React.useState<EntityContext[]>([]);
   const [courseClassId, setCourseClassId] = React.useState<string | null>(null);
   const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
+  const [turmaPage, setTurmaPage] = React.useState(1);
+  const [selectedStudentId, setSelectedStudentId] = React.useState<string | null>(null);
+  const turmaScrollTop = React.useRef(0);
+  const resumeAfterBalcao = React.useRef(false);
+  const [restoreStudentFocus, setRestoreStudentFocus] = React.useState(false);
   const reduceMotion = useReducedMotion();
   // Only this palette owns the cache. Do not leak data between school/user sessions.
   const [queryClient] = React.useState(() => new QueryClient({
@@ -112,6 +119,11 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
       setContextTrail([]);
       setCourseClassId(null);
       setCourseTurmaId(null);
+      setTurmaPage(1);
+      setSelectedStudentId(null);
+      turmaScrollTop.current = 0;
+      resumeAfterBalcao.current = false;
+      setRestoreStudentFocus(false);
       queryClient.clear();
     }
   }, [queryClient]);
@@ -121,7 +133,19 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     setContextTrail([]);
     setCourseClassId(null);
     setCourseTurmaId(null);
+    setTurmaPage(1);
+    setSelectedStudentId(null);
+    turmaScrollTop.current = 0;
+    resumeAfterBalcao.current = false;
+    setRestoreStudentFocus(false);
   }, [escolaId, portal, queryClient]);
+  React.useEffect(() => {
+    if (!studentWorkspaceClosedVersion || !resumeAfterBalcao.current) return;
+    resumeAfterBalcao.current = false;
+    void queryClient.invalidateQueries();
+    setRestoreStudentFocus(true);
+    setOpen(true);
+  }, [studentWorkspaceClosedVersion, queryClient]);
   const { query, setQuery, results, loading, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
     portal,
   });
@@ -138,7 +162,11 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
         setEntityContext(null);
         setContextTrail([]);
         setCourseClassId(null);
-      setCourseTurmaId(null);
+        setCourseTurmaId(null);
+        setTurmaPage(1);
+        setSelectedStudentId(null);
+        turmaScrollTop.current = 0;
+        resumeAfterBalcao.current = false;
       }
     };
 
@@ -195,16 +223,20 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
     }
 
     rememberResult(item);
-    runCommand(() => {
-      setQuery("");
-      if (item.type === "aluno" && escolaId && onStudentSelect && (portal === "operacoes" || portal === "secretaria")) {
-        // O aluno abre o Balcão em modal; a página atual mantém o seu estado.
-        onStudentSelect({ id: item.id, label: item.label });
-        return;
+    if (item.type === "aluno" && escolaId && onStudentSelect && (portal === "operacoes" || portal === "secretaria")) {
+      if (entityContext) {
+        resumeAfterBalcao.current = true;
+        setSelectedStudentId(item.id);
+        setRestoreStudentFocus(false);
+        setOpen(false); // Keep explorer state without nesting Balcão dialogs.
+      } else {
+        onOpenChange(false);
       }
-      router.push(href);
-    });
-  }, [escolaId, escolaParam, onStudentSelect, portal, rememberResult, router, runCommand, setQuery]);
+      onStudentSelect({ id: item.id, label: item.label });
+      return;
+    }
+    runCommand(() => { setQuery(""); router.push(href); });
+  }, [entityContext, escolaId, escolaParam, onOpenChange, onStudentSelect, portal, rememberResult, router, runCommand, setQuery]);
 
   const staticActions = React.useMemo(() => {
     const actions = [
@@ -269,11 +301,11 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => { setRestoreStudentFocus(false); setOpen(true); }}
         className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/10"
       >
         <Search className="h-4 w-4 text-slate-400 group-hover:text-slate-500" />
-        <span className="flex-1 text-left">Buscar ou digitar ação...</span>
+        <span className="flex-1 truncate text-left">{entityContext ? `Continuar · ${entityContext.label}` : "Buscar ou digitar ação..."}</span>
         <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-mono text-[10px] font-medium text-slate-400 opacity-100 sm:flex">
           <span className="text-xs">⌘</span>K
         </kbd>
@@ -283,7 +315,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect }: Props) {
       <Command.Dialog
         open={open}
         onOpenChange={onOpenChange}
-        label="Global Command Menu"
+        label="Pesquisar e explorar o KLASSE"
         shouldFilter={false}
         className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]"
       >
