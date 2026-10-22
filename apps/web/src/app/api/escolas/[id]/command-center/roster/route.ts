@@ -50,6 +50,7 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
   if (input.poloId) {
     return response({
       ok: false,
+      code: "POLO_SCOPE_UNDEFINED",
       error: "A listagem por polo está indisponível até existir uma relação de polo verificada nos dados canónicos.",
     }, 403);
   }
