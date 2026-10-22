@@ -57,3 +57,17 @@ Não publicar regressões como “optimizadas” apenas por mudar o código. As 
 2. Aprovar a estratégia de scoping de polos e as permissões RLS reais. Não alargar acesso para fazer o teste passar.
 3. Após homologação, autorizar a migração versionada num pipeline separado. **Nenhuma aplicação nesta PR.**
 4. Autorizar merge e deploy explicitamente, somente depois de testes reais e métricas.
+
+
+## Actualização de acompanhamento (22/10/2026)
+
+O **backlog oficial de aceite do Command Center** está em
+[estado e backlog das PRs #234–#239](../command-center/estado-backlog-20261022.md).
+Este documento de desempenho permanece como evidência técnica da PR #239, **não** como declaração de produto concluído.
+
+- Na revisão, a PR #239 em `26b3c4b` apresentou **12/12 workflows aprovados**; a suite visual com fixture entregou as capturas em cinco resoluções e três escalas. Ver [workflow visual](https://github.com/moxi-edtech/moxi-edtech/actions/runs/39812303330) e [SQL de fixture](https://github.com/moxi-edtech/moxi-edtech/actions/runs/39812302860). Novos commits exclusivamente documentais exigem conferência posterior de HEAD/checks.
+- A PR #236 apresentou **6/7 checks aprovados**, mas [replay histórico falhou](https://github.com/moxi-edtech/moxi-edtech/actions/runs/39811867508) em `20260202011000_backfill_pagamentos_aluno_id.sql` (coluna `pagamentos.aluno_id` inexistente naquele ponto). Não se concluiu a validação da sequência integral com RLS real.
+- Os indicadores de tempo/bytes medidos em PostgreSQL de **fixture** são evidência local; o orçamento de requisições/hora continua um **modelo**, sem equivalência com telemetria autenticada de Supabase/Next.js.
+- **Bloqueios críticos antes de integração:** restaurar a baseline fiel e executar replay; Auth/E2E/RLS com 3 atendimentos, 2 escolas, 2 polos, perfis e sessão expirada; reconciliar branches empilhadas; medir carga real comparável; resolver decisões de filtros/exportação.
+- Nenhuma destas validações autoriza por si só `supabase db push`, `supabase migration up`, merge ou deploy.
+
