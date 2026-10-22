@@ -15,7 +15,7 @@ DECLARE
   denied boolean := false;
 BEGIN
   -- Exactly ONE pupil has both independent confirmed signals.
-  SELECT count(*),max(aluno_id),max(total_filtrado)::integer
+  SELECT count(*),min(aluno_id::text)::uuid,max(total_filtrado)::integer
   INTO n,first_id,total
   FROM public.command_center_roster_operational_v1(
      p_escola_id=>'00000000-0000-4000-8000-0000000000a1',
