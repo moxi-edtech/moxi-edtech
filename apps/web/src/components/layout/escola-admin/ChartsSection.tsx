@@ -71,14 +71,14 @@ function ChartCard({
 }) {
   return (
     <div className={`min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md`}>
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 min-[1700px]:px-5 min-[1700px]:py-4">
         <div className={`p-2 rounded-lg ${iconBg}`}>{icon}</div>
         <div>
           <h3 className="text-sm font-bold text-slate-900">{title}</h3>
           <p className="text-xs text-slate-400">{subtitle}</p>
         </div>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4 min-[1700px]:p-5">{children}</div>
     </div>
   );
 }
@@ -143,7 +143,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
   const isOperacoes = mode === "operacoes";
 
   return (
-    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-5">
+    <div className="grid min-w-0 grid-cols-1 gap-4 min-[1280px]:grid-cols-2 min-[1700px]:gap-5">
 
       {/* Matrículas por mês */}
       <ChartCard
@@ -153,7 +153,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
         subtitle={isOperacoes ? "Ritmo operacional do ano letivo" : "Evolução do ano letivo"}
         isOperacoes={isOperacoes}
       >
-        <div className="h-56 min-w-0">
+        <div className="h-48 min-w-0 min-[1700px]:h-56">
           {hasLineData ? (
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={lineData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
@@ -211,7 +211,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
             </button>
           </div>
         </div>
-        <div className="h-56 min-w-0">
+        <div className="h-48 min-w-0 min-[1700px]:h-56">
           {resumo ? (
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={barData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
