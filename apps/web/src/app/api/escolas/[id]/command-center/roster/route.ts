@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -23,7 +24,7 @@ const response = (data: unknown, status = 200) =>
   NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
 
 /** A read-only service. Filtering, counting and keyset ordering happen before LIMIT in SQL. */
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: escolaIdParam } = await params;
   const u = new URL(req.url);
   const parsed = schema.safeParse({
@@ -117,4 +118,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     return response({ ok: false, error: "Falha de consulta. Tente novamente." }, 500);
   }
+}
+
+/** Contract: correlation on every success and failure, without private payloads in logs. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  return withExplorerObservability("roster-search", () => readRoster(req, context));
 }
