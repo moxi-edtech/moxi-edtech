@@ -96,3 +96,24 @@ jobs:
           path: apps/web/visual-evidence/operations-density/
           retention-days: 7
           if-no-files-found: warn
+
+  dashboard-full-suite:
+    name: Full web unit tests and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: All web unit contracts (auth, Balcão, finance, portal, Operations)
+        run: pnpm -C apps/web exec node --test --test-concurrency=4 --import tsx tests/unit/*.spec.ts tests/unit/*.spec.tsx tests/unit/*.spec.mjs
+      - name: Production Next.js build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: pnpm -C apps/web build
