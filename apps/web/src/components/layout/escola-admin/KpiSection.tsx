@@ -71,6 +71,11 @@ export default function KpiSection({
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
 
+  // Keep the loading skeleton in the same column structure as the final KPIs.
+  const gridClasses = mode === "operacoes"
+    ? "grid grid-cols-2 gap-3 xl:grid-cols-4"
+    : "grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4";
+
   if (error) {
     return (
       <div className="flex items-center gap-2 p-4 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100 font-medium">
@@ -82,7 +87,7 @@ export default function KpiSection({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4">
+      <div className={gridClasses}>
         {Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)}
       </div>
     );
@@ -191,11 +196,6 @@ export default function KpiSection({
           description: "Cobrança da competência",
         },
       ];
-
-  const gridClasses =
-    mode === "operacoes"
-      ? "grid grid-cols-2 gap-3 xl:grid-cols-4"
-      : "grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4";
 
   return (
     <div className={gridClasses}>
