@@ -48,3 +48,30 @@ test("Search exposes distinct errors, load-more and mobile entry", () => {
   assert.match(topbar, /CommandPalette/);
   assert.match(palette, /Fechar pesquisa/);
 });
+
+test("P0 session scope rejects another user, school, polo, year or portal", () => {
+  assert.match(snapshot, /sameExplorerScope/);
+  for (const key of ["userId", "escolaId", "poloId", "academicYearId", "portal"]) {
+    assert.match(snapshot, new RegExp(`a\\.${key} === b\\.${key}`));
+  }
+  assert.match(palette, /getExplorerScope/);
+  assert.match(palette, /sessionUserId/);
+  assert.match(snapshot, /MAX_AGE_MS/);
+});
+
+test("P0 search cancellation rejects obsolete responses and bounds memory", () => {
+  assert.match(search, /generationRef/);
+  assert.match(search, /abortSignal\(ac\.signal\)/);
+  assert.match(search, /if \(!isCurrent\(\)\) return/);
+  assert.match(search, /pagingAbortRef\.current\?\.abort\(\)/);
+  assert.match(search, /SEARCH_CACHE_LIMIT/);
+  assert.match(search, /recentSessionStore\.clear\(\)/);
+});
+
+test("P0 missing pupil selection produces an actionable, accessible notice", () => {
+  for (const view of [turma, classe]) {
+    assert.match(view, /pendingReturnCheck/);
+    assert.match(view, /setReturnWarning\(true\)/);
+    assert.match(view, /role="status"/);
+  }
+});
