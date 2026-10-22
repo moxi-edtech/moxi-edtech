@@ -90,7 +90,11 @@ type CacheEntry = {
   hasMore: boolean;
 };
 
-type RecentEntry = SearchResult & {
+/** PRIV-01/02: only identifiers + display name; never BI/processo. Session memory only. */
+type RecentEntry = {
+  id: string;
+  label: string;
+  type: string;
   href: string;
   intent?: SearchIntent;
   lastUsedAt: number;
@@ -109,40 +113,31 @@ const SEARCH_CACHE_MAX_AGE_MS = 5 * 60_000;
 const RECENT_RESULTS_LIMIT = 6;
 const searchCache = new Map<string, CacheEntry>();
 
-function toRecentEntry(result: MinimalSearchResult): RecentEntry {
-  return {
-    id: result.id,
-    label: result.label,
-    type: result.type,
-    highlight: result.highlight,
-    score: 0,
-    updated_at: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-    href: result.href,
-    intent: result.intent,
-    lastUsedAt: Date.now(),
-  };
+/** In-memory recent results scoped by escola+portal for this tab/session only. */
+const recentSessionStore = new Map<string, RecentEntry[]>();
+
+function recentKey(escolaId: string | null | undefined, portal: PortalKey | undefined) {
+  return `${escolaId || "global"}:${portal || "default"}`;
 }
 
-function recentStorageKey(escolaId: string | null | undefined, portal: PortalKey | undefined) {
+function legacyLocalStorageKey(escolaId: string | null | undefined, portal: PortalKey | undefined) {
   return `klasse:global-search:recent:${escolaId || "global"}:${portal || "default"}`;
 }
 
-function readRecentEntries(escolaId: string | null | undefined, portal: PortalKey | undefined): RecentEntry[] {
-  if (typeof window === "undefined" || !escolaId) return [];
-
+function scrubLegacyLocalStorage(escolaId: string | null | undefined, portal: PortalKey | undefined) {
+  if (typeof window === "undefined") return;
   try {
-    const raw = window.localStorage.getItem(recentStorageKey(escolaId, portal));
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .filter((item): item is RecentEntry => Boolean(item?.id && item?.label && item?.type && item?.href))
-      .sort((a, b) => b.lastUsedAt - a.lastUsedAt)
-      .slice(0, RECENT_RESULTS_LIMIT);
+    window.localStorage.removeItem(legacyLocalStorageKey(escolaId, portal));
   } catch {
-    return [];
+    // ignore
   }
+}
+
+function readRecentEntries(escolaId: string | null | undefined, portal: PortalKey | undefined): RecentEntry[] {
+  if (!escolaId) return [];
+  scrubLegacyLocalStorage(escolaId, portal);
+  const list = recentSessionStore.get(recentKey(escolaId, portal)) ?? [];
+  return [...list].sort((a, b) => b.lastUsedAt - a.lastUsedAt).slice(0, RECENT_RESULTS_LIMIT);
 }
 
 function writeRecentEntry(
@@ -150,22 +145,35 @@ function writeRecentEntry(
   portal: PortalKey | undefined,
   result: MinimalSearchResult,
 ) {
-  if (typeof window === "undefined" || !escolaId) return;
-
+  if (!escolaId) return;
+  scrubLegacyLocalStorage(escolaId, portal);
+  const entry: RecentEntry = {
+    id: result.id,
+    label: result.label,
+    type: result.type,
+    href: result.href,
+    intent: result.intent,
+    lastUsedAt: Date.now(),
+  };
+  const key = recentKey(escolaId, portal);
   const next = [
-    toRecentEntry(result),
+    entry,
     ...readRecentEntries(escolaId, portal).filter((item) => item.id !== result.id || item.type !== result.type),
   ].slice(0, RECENT_RESULTS_LIMIT);
+  recentSessionStore.set(key, next);
+}
 
-  try {
-    window.localStorage.setItem(recentStorageKey(escolaId, portal), JSON.stringify(next));
-  } catch {
-    // localStorage can fail in private browsing or quota pressure; search remains functional.
+export function clearRecentSearchSession(escolaId?: string | null, portal?: PortalKey) {
+  if (escolaId) {
+    recentSessionStore.delete(recentKey(escolaId, portal));
+    scrubLegacyLocalStorage(escolaId, portal);
+    return;
   }
+  recentSessionStore.clear();
 }
 
 const PORTAL_TYPES: Record<PortalKey, string[]> = {
-  secretaria: ["aluno", "matricula", "turma", "documento", "candidatura"],
+  secretaria: ["aluno", "matricula", "turma", "documento", "candidatura", "classe", "curso", "professor"],
   financeiro: ["aluno", "mensalidade", "pagamento", "recibo"],
   admin: ["turma", "professor", "classe", "curso", "usuario"],
   operacoes: ["aluno", "matricula", "turma", "documento", "candidatura", "professor", "classe", "curso", "usuario"],
@@ -179,12 +187,11 @@ function resolveHref(
   portal: PortalKey | undefined,
   escolaId: string | null | undefined,
   item: { id: string; label: string; type: string },
-  intent?: SearchIntent
+  intent?: SearchIntent,
 ) {
   const basePortal = portal || "secretaria";
   const escolaParam = escolaId ?? null;
 
-  // Prioridade para intenção detectada
   if (intent === "financeiro") {
     if (item.type === "aluno" || item.type === "matricula") {
       return buildPortalHref(escolaParam, `/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`);
@@ -192,7 +199,10 @@ function resolveHref(
   }
 
   if (intent === "documentos" && item.type === "aluno") {
-    return buildPortalHref(escolaParam, basePortal === "operacoes" ? `/operacoes/documentos?alunoId=${item.id}` : `/secretaria/documentos?alunoId=${item.id}`);
+    return buildPortalHref(
+      escolaParam,
+      basePortal === "operacoes" ? `/operacoes/documentos?alunoId=${item.id}` : `/secretaria/documentos?alunoId=${item.id}`,
+    );
   }
 
   if (basePortal === "professor") {
@@ -346,7 +356,7 @@ function mapRecentToMinimalResult(
     id: item.id,
     label: item.label,
     type: item.type,
-    highlight: item.highlight,
+    highlight: null,
     href: item.href || resolveHref(portal, escolaId, item, item.intent),
     intent: item.intent,
     actions: resolveStudentActions(portal, escolaId, item),
@@ -357,6 +367,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<MinimalSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [recentResults, setRecentResults] = useState<MinimalSearchResult[]>([]);
@@ -390,7 +401,9 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   );
 
   const refreshRecentResults = useCallback(() => {
-    setRecentResults(readRecentEntries(escolaId, portal).map((item) => mapRecentToMinimalResult(portal, escolaId, item)));
+    setRecentResults(
+      readRecentEntries(escolaId, portal).map((item) => mapRecentToMinimalResult(portal, escolaId, item)),
+    );
   }, [escolaId, portal]);
 
   const rememberResult = useCallback((result: MinimalSearchResult) => {
@@ -419,6 +432,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     if (!escolaId || !q || q.length < 2) {
       setResults([]);
       setLoading(false);
+      setError(null);
       setCursor(null);
       setHasMore(false);
       return;
@@ -426,6 +440,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
 
     setCursor(null);
     setHasMore(false);
+    setError(null);
 
     const cached = searchCache.get(debouncedCacheKey);
     const now = Date.now();
@@ -433,7 +448,6 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
 
     if (cached && hasUsableCache) {
       const items = (cached.data ?? []).map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
-
       setResults(items);
       setCursor(cached.cursor);
       setHasMore(cached.hasMore);
@@ -471,7 +485,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         id: row.id,
         label: row.nome_completo || row.nome || "Aluno",
         type: "aluno",
-        highlight: row.nome_completo || row.nome || null,
+        highlight: null,
         score: 0,
         updated_at: row.updated_at || row.created_at || new Date().toISOString(),
         created_at: row.created_at || new Date().toISOString(),
@@ -482,6 +496,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       setResults(items);
       setCursor(null);
       setHasMore(false);
+      setError(null);
 
       searchCache.set(debouncedCacheKey, {
         ts: now,
@@ -492,25 +507,23 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     };
 
     const fetchPage = async (pageCursor: Cursor | null, append: boolean) => {
-      const { data, error } = await supabase.rpc(
-        "search_global_entities",
-        {
-          p_escola_id: escolaId,
-          p_query: q,
-          p_types: resolvedTypes,
-          p_limit: limit,
-          p_cursor_score: pageCursor?.score ?? undefined,
-          p_cursor_updated_at: pageCursor?.updated_at ?? undefined,
-          p_cursor_created_at: pageCursor?.created_at ?? undefined,
-          p_cursor_id: pageCursor?.id ?? undefined,
-        });
+      const { data, error: rpcError } = await supabase.rpc("search_global_entities", {
+        p_escola_id: escolaId,
+        p_query: q,
+        p_types: resolvedTypes,
+        p_limit: limit,
+        p_cursor_score: pageCursor?.score ?? undefined,
+        p_cursor_updated_at: pageCursor?.updated_at ?? undefined,
+        p_cursor_created_at: pageCursor?.created_at ?? undefined,
+        p_cursor_id: pageCursor?.id ?? undefined,
+      });
 
-      if (error) {
-        if (!append && isMissingGlobalSearchRpcError(error)) {
+      if (rpcError) {
+        if (!append && isMissingGlobalSearchRpcError(rpcError)) {
           await fetchFallback();
           return;
         }
-        throw error;
+        throw rpcError;
       }
 
       const payload = ((data as SearchResult[]) ?? []);
@@ -520,6 +533,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       setResults((prev) => (append ? [...prev, ...items] : items));
       setCursor(nextCursor);
       setHasMore(Boolean(nextCursor));
+      setError(null);
 
       if (!append) {
         searchCache.set(debouncedCacheKey, {
@@ -536,15 +550,12 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         if (cached && now - cached.ts < SEARCH_CACHE_TTL_MS) return;
         await fetchPage(null, false);
       } catch (err: unknown) {
-        // ignore abort
-        // A pesquisa pode ser cancelada quando o utilizador continua a
-        // escrever ou quando o componente desmonta. Browsers report this as
-        // "Failed to fetch" in some runtimes; it is not an application error.
         if (!isAbortError(err) && !(err instanceof TypeError && ac.signal.aborted)) {
           console.error("[GlobalSearch] Erro na busca:", err);
           setResults([]);
           setCursor(null);
           setHasMore(false);
+          setError("Não foi possível concluir a pesquisa. Tente novamente.");
         }
       } finally {
         if (!ac.signal.aborted) setLoading(false);
@@ -557,25 +568,24 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   const loadMore = async () => {
     if (!cursor || loading || !escolaId || debouncedQuery.length < 2) return;
     setLoading(true);
-    const ac = new AbortController();
+    setError(null);
     try {
-      const { data, error } = await supabase.rpc(
-        "search_global_entities",
-        {
-          p_escola_id: escolaId,
-          p_query: debouncedQuery,
-          p_types: resolvedTypes,
-          p_limit: Math.min(8, 50),
-          p_cursor_score: cursor.score,
-          p_cursor_updated_at: cursor.updated_at,
-          p_cursor_created_at: cursor.created_at,
-          p_cursor_id: cursor.id,
-        });
+      const limit = Math.min(8, 50);
+      const { data, error: rpcError } = await supabase.rpc("search_global_entities", {
+        p_escola_id: escolaId,
+        p_query: debouncedQuery,
+        p_types: resolvedTypes,
+        p_limit: limit,
+        p_cursor_score: cursor.score,
+        p_cursor_updated_at: cursor.updated_at,
+        p_cursor_created_at: cursor.created_at,
+        p_cursor_id: cursor.id,
+      });
 
-      if (error) throw error;
+      if (rpcError) throw rpcError;
 
       const payload = ((data as SearchResult[]) ?? []);
-      const nextCursor = payload.length === Math.min(8, 50)
+      const nextCursor = payload.length === limit
         ? {
             score: payload[payload.length - 1].score,
             updated_at: payload[payload.length - 1].updated_at,
@@ -592,11 +602,26 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     } catch (err: unknown) {
       if (!isAbortError(err)) {
         console.error("[GlobalSearch] Erro ao carregar mais:", err);
+        setError("Não foi possível carregar mais resultados.");
       }
     } finally {
-      if (!ac.signal.aborted) setLoading(false);
+      setLoading(false);
     }
   };
 
-  return { query, setQuery, results, loading, hasMore, loadMore, detectedIntent: intent, recentResults, rememberResult };
+  const clearError = useCallback(() => setError(null), []);
+
+  return {
+    query,
+    setQuery,
+    results,
+    loading,
+    error,
+    clearError,
+    hasMore,
+    loadMore,
+    detectedIntent: intent,
+    recentResults,
+    rememberResult,
+  };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, Settings } from "lucide-react";
+import { ChevronDown, Search, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
 import { BalcaoWorkspace } from "@/components/secretaria/BalcaoWorkspace";
@@ -38,96 +38,133 @@ export default function Topbar({
   portal,
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [selectedSearchStudent, setSelectedSearchStudent] = useState<{ id: string; label: string; schoolId: string } | null>(null);
-  // Nunca manter um aluno em contexto quando a escola/tenant é alterada.
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [selectedSearchStudent, setSelectedSearchStudent] = useState<{
+    id: string;
+    label: string;
+    schoolId: string;
+  } | null>(null);
+
   useEffect(() => {
     setSelectedSearchStudent(null);
   }, [escolaId]);
+
   const userInitial =
     (userName || portalSubtitle || "U")
       .trim()
       .charAt(0)
       .toUpperCase() || "U";
 
+  const palette = (
+    <CommandPalette
+      escolaId={escolaId}
+      portal={portal}
+      onStudentSelect={(student) => {
+        if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
+      }}
+    />
+  );
+
   return (
     <>
-    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-      <div className="h-16 flex items-center gap-4 px-4">
-        {/* Search */}
-        <div className="hidden md:flex w-[420px]">
-          <CommandPalette
-            escolaId={escolaId}
-            portal={portal}
-            onStudentSelect={(student) => {
-              if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
-            }}
-          />
-        </div>
+      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
+        <div className="flex h-16 items-center gap-3 px-3 sm:gap-4 sm:px-4">
+          {/* Desktop: full search field */}
+          <div className="hidden w-[420px] md:flex">{palette}</div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <ModuleSwitcherInner escolaId={escolaId} escolaParam={escolaParam} />
-          <NotificacoesDropdown />
-          <LockScreenButton
-            iconOnly
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
-          />
-
-          <div className="relative">
+          {/* MOB-01: mobile entry — same CommandPalette instance pattern via icon trigger */}
+          <div className="md:hidden">
             <button
-              onClick={() => setMenuOpen((prev) => !prev)}
-              className={cn(
-                "flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 h-10",
-                "hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/20"
-              )}
-              aria-label={`Menu do usuário - ${portalTitle}`}
+              type="button"
+              onClick={() => setMobileSearchOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+              aria-label="Pesquisar ou abrir Command Center"
             >
-              <div className="h-7 w-7 rounded-full bg-emerald/15 ring-1 ring-emerald/25 flex items-center justify-center">
-                <span className="text-[11px] font-bold text-emerald-900">{userInitial}</span>
-              </div>
-              <div className="hidden sm:block text-left leading-4">
-                <div className="text-sm font-medium text-slate-900">{portalTitle}</div>
-                <div className="text-xs text-slate-500">{userName || portalSubtitle}</div>
-              </div>
-              <ChevronDown className="h-4 w-4 text-slate-500" />
+              <Search className="h-5 w-5" aria-hidden />
             </button>
+          </div>
 
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white shadow-lg p-2 space-y-0.5">
-                <LockScreenButton className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50" />
-                
-                <button
-                  onClick={() => {
-                    requestSessionConfig();
-                    setMenuOpen(false);
-                  }}
-                  className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Settings className="h-4 w-4 text-slate-400" />
-                  Preferências de Sessão
-                </button>
+          <div className="ml-auto flex items-center gap-2">
+            <ModuleSwitcherInner escolaId={escolaId} escolaParam={escolaParam} />
+            <NotificacoesDropdown />
+            <LockScreenButton
+              iconOnly
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+            />
 
-                <div className="my-1 border-t border-slate-100" />
-                
-                <SignOutButton
-                  label="Sair"
-                  className="w-full justify-start gap-2 text-slate-700 hover:bg-slate-50 py-1.5"
-                  variant="ghost"
-                />
-              </div>
-            )}
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((prev) => !prev)}
+                className={cn(
+                  "flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3",
+                  "hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/20",
+                )}
+                aria-label={`Menu do usuário - ${portalTitle}`}
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald/15 ring-1 ring-emerald/25">
+                  <span className="text-[11px] font-bold text-emerald-900">{userInitial}</span>
+                </div>
+                <div className="hidden text-left leading-4 sm:block">
+                  <div className="text-sm font-medium text-slate-900">{portalTitle}</div>
+                  <div className="text-xs text-slate-500">{userName || portalSubtitle}</div>
+                </div>
+                <ChevronDown className="h-4 w-4 text-slate-500" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                  <LockScreenButton className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50" />
+
+                  <button
+                    onClick={() => {
+                      requestSessionConfig();
+                      setMenuOpen(false);
+                    }}
+                    className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Settings className="h-4 w-4 text-slate-400" />
+                    Preferências de Sessão
+                  </button>
+
+                  <div className="my-1 border-t border-slate-100" />
+
+                  <SignOutButton
+                    label="Sair"
+                    className="w-full justify-start gap-2 py-1.5 text-slate-700 hover:bg-slate-50"
+                    variant="ghost"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
-    {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
-      <BalcaoWorkspace
-        key={`${escolaId}:${selectedSearchStudent.id}`}
-        open
-        escolaId={escolaId}
-        aluno={selectedSearchStudent}
-        onClose={() => setSelectedSearchStudent(null)}
-      />
-    ) : null}
+
+        {/* Mobile search sheet: full-width palette trigger that opens the same dialog */}
+        {mobileSearchOpen && (
+          <div className="border-t border-slate-100 px-3 py-2 md:hidden">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">{palette}</div>
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(false)}
+                className="shrink-0 rounded-lg px-2 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        )}
+      </header>
+
+      {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
+        <BalcaoWorkspace
+          key={`${escolaId}:${selectedSearchStudent.id}`}
+          open
+          escolaId={escolaId}
+          aluno={selectedSearchStudent}
+          onClose={() => setSelectedSearchStudent(null)}
+        />
+      ) : null}
     </>
   );
 }
