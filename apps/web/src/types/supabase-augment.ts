@@ -885,6 +885,18 @@ export type DBWithRPC = Omit<Database, "public"> & {
       };
     };
     Functions: Database["public"]["Functions"] & {
+      command_center_class_roster_summary: {
+        Args: {
+          p_escola_id: string;
+          p_classe_id: string;
+          p_ano_letivo_id: string;
+          p_ano_letivo: number;
+          p_historico?: boolean;
+          p_page?: number;
+          p_page_size?: number;
+        };
+        Returns: Json;
+      };
       command_center_roster_keyset: {
         Args: {
           p_escola_id: string;
