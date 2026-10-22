@@ -82,6 +82,7 @@ export function CourseContextView({ context, portal, onNavigate, onExploreTurma,
     <div className="max-h-[min(68vh,680px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
+          <h2 className="text-lg font-semibold text-slate-900">{data.curso.nome}</h2>
           <p className="text-xs text-slate-500">{data.curso.codigo || "Curso"} · Ano letivo {data.anoLetivo.ano}</p>
           {data.curso.descricao && <p className="mt-1 max-w-2xl text-sm text-slate-600">{data.curso.descricao}</p>}
         </div>
@@ -114,7 +115,7 @@ export function CourseContextView({ context, portal, onNavigate, onExploreTurma,
             <BookOpen className="h-4 w-4" /> Classes do curso
           </h3>
           <div className="max-h-64 overflow-y-auto p-2">
-            <button type="button" onClick={() => { setClasseId(null); setTurmaId(null); }} aria-pressed={!classeId}
+            <button type="button" onClick={() => selectClasse(null)} aria-pressed={!classeId}
               className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${!classeId ? "bg-slate-100 font-semibold" : ""}`}>
               Todas as classes <span className="text-xs tabular-nums text-slate-500">{data.stats.turmas} turmas</span>
             </button>
@@ -145,8 +146,8 @@ export function CourseContextView({ context, portal, onNavigate, onExploreTurma,
           </h3>
           <div className="max-h-64 overflow-y-auto p-2">
             {visibleTurmas.map((turma) => (
-              <button type="button" key={turma.id} onClick={() => { setTurmaId(turma.id); onTurmaChange?.(turma.id); }} aria-pressed={turmaId === turma.id}
-                className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${turmaId === turma.id ? "bg-slate-100" : ""}`}>
+              <button type="button" key={turma.id} onClick={() => onExploreTurma({ id: turma.id, label: turma.nome, academicYearId: data.anoLetivo.id })} aria-label={`Explorar turma ${turma.nome}`}
+                className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-slate-50">
                 <span className="min-w-0 truncate font-medium">{turma.nome}</span>
                 <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums text-slate-500">
                   <UsersRound className="h-3.5 w-3.5" /> {turma.alunos} <ChevronRight className="h-4 w-4" />
