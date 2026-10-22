@@ -204,3 +204,40 @@ O Command Center deve ser **camada de orientação contextual**, não outro dash
 **Aprovado como direção de produto:** explorador como camada de orientação contextual, leitura segura, pendências verificadas e atalhos para módulos existentes. **Não aprovado/implementado por esta documentação:** nova API, nova migration, alteração de RBAC/RLS, alterações visuais ou deploy.
 
 **Próxima release:** não agregar novos widgets antes de fechar UX-00, SEC-01, PRIV-01/PRIV-02, MOB-01 e os fluxos críticos da Fase 1. **A experiência principal é atender vários alunos sem reconstruir a navegação; é um requisito funcional de release, não um refinamento estético.** O desenho da permissão por tipo deve ser validado no banco antes de afirmar que não existe exposição.
+
+## 9. Execução de engenharia de 22/10/2026 — implementação P0/P1 em PR separada
+
+**Implementação:** [PR #234 — continuidade do explorador e segurança da pesquisa](https://github.com/moxi-edtech/moxi-edtech/pull/234), branch `feat/command-center-operational-p0-20261022`, a partir da `main` `25aeb549`. **Documentação:** esta [PR #233](https://github.com/moxi-edtech/moxi-edtech/pull/233) permanece separada. A PR #231 continua dependência de reconciliação (a PR #234 inclui a ampliação da pesquisa de entidades na Secretaria).
+
+**Convenções:** `CÓDIGO` = alterado e versionado; `TESTE SINTÉTICO` = validado em fixture/CI, **não** homologação real; `PENDENTE` = não implementado ou não validado. Nenhum dos estados equivale automaticamente a `PRODUÇÃO`.
+
+### Entregas versionadas
+
+- **UX-00 / NAV-04 (CÓDIGO):** preservação do contexto de Turma/Classe ao passar um aluno ao Balcão modal existente; sinal de fecho do Balcão na Topbar reabre o explorador; estado de página, aluno selecionado e scroll por Turma/Classe é guardado no componente principal. Após o fecho do Balcão ocorre invalidação de queries; nenhuma autorização nasce do contexto de retorno.
+- **MOB-01 (CÓDIGO):** entrada da pesquisa deixa de estar oculta em ecrãs abaixo de `md`. Responsividade real ainda por validar.
+- **PRIV-01/PRIV-02 (CÓDIGO):** eliminação da escrita de recentes em `localStorage`; limpeza dos `klasse:global-search:recent:*` legados; recentes limitados à memória da instância, sem `highlight` (BI/processo); cache de resultados isolada por instância e invalidada em troca de sessão/escola/portal; gerações de pesquisa e `abortSignal` impedem que respostas obsoletas se sobreponham.
+- **SRCH-01/SRCH-02 (CÓDIGO):** `Ver mais resultados`, erro visível distinto de vazio e `Tentar novamente` no modal; regresso do professor à vista contextual em Secretaria via tipos pesquisáveis.
+- **NAV-02/NAV-03/BREAD-01 (CÓDIGO):** turma selecionada diretamente a partir da linha no Curso; `Todas as classes` sincroniza callback; percurso contextual com breadcrumb e botão fechar.
+- **DATA-01 (CÓDIGO):** capacidade definida, alunos, vagas disponíveis e excedente diferenciados na Turma; Classe deixa de chamar `Vagas` ao agregado de capacidades.
+- **SEC-01 (CÓDIGO + TESTE SINTÉTICO):** migração `supabase/migrations/20271022130000_command_center_search_role_authorization.sql`, com allowlist por papéis de `escola_users` na RPC `SECURITY DEFINER`, `deny by default` para tipos nulos, desconhecidos ou mistos e manutenção do escopo por escola. CI `Command Center Search Authorization` aplica a migração em PostgreSQL 17 descartável com dados fictícios e valida Secretaria, Financeiro, Professor, Administração e dois tenants. **Não foi aplicada ao Supabase de produção.** O acesso amplo a alunos por Professor/Aluno é negado até haver regra de visibilidade individual/por turma.
+- **Testes de regressão (CÓDIGO):** `apps/web/tests/unit/command-center-operational-continuity.spec.ts` e `supabase/ops/tests/regression_command_center_search_authorization.sql`, integrados em workflows GitHub Actions. Os testes estáticos de continuidade não substituem E2E.
+
+### Backlog vivo pós-implementação
+
+| Prioridade | ID | Estado | Próxima entrega / critério de aceite |
+| --- | --- | --- | --- |
+| **P0-SEC** | SEC-01 | **CÓDIGO + TESTE SINTÉTICO; NÃO APLICADO** | Provar a matriz com sessões autenticadas reais (Admin, Secretaria, Financeiro, Professor, Aluno, sem acesso) e duas escolas; conferir compatibilidade com perfis `profiles` sem vínculo em `escola_users`; aplicar migração pelo pipeline só depois dos gates, reconfirmar `pg_proc`, grants e advisors. |
+| **P0-UX** | UX-00 | **CÓDIGO; E2E PENDENTE** | Homologar três atendimentos consecutivos numa Turma com 45+ alunos, sem perda de filtro, página, scroll e foco; cobrir aluno transferido/cancelado, ausência no lote, troca de escola e sessão expirada. |
+| **P0-PRIV** | PRIV-01/02 | **CÓDIGO; BROWSER PENDENTE** | Testar duas contas seguidas no mesmo navegador, incluindo recuperação de armazenamento legado; confirmar que BI/processo não aparecem no armazenamento nem em caches persistentes. |
+| **P1** | NAV-01 | **CÓDIGO; PR #231 A RECONCILIAR** | Evitar duplicar commits da #231 e testar clique/Enter/fallback de Professor, Classe e Curso na Secretaria com permissões reais. |
+| **P1** | MOB-01, A11Y-01, KBD-01 | **PARCIAL** | E2E desktop/mobile: foco inicial, Escape, Tab/Shift+Tab, regresso ao disparador, leitor de ecrã e teclado virtual; todos os atalhos mostrados devem funcionar na vista onde aparecem. |
+| **P1** | NAV-04, BREAD-01, SCROLL-01 | **PARCIAL** | Completar pilha com estados por entidade e scroll ao navegar Professor/Disciplina, reduzir scroll aninhado em Classe/Curso e verificar breadcrumb sem contexto duplicado. |
+| **P1** | SRCH-01/02 | **CÓDIGO; REGRESSÃO E2E PENDENTE** | Cobrir 0/8/9/50+ resultados, homónimos, falha RPC, timeout, mudanças rápidas de query, paginação e sucessivas pesquisas. |
+| **P1** | LINK-01 | **PENDENTE** | Inventariar e testar cada CTA até à operação real; renomear atalhos genéricos para não prometer navegação direta inexistente. |
+| **P1** | DATA-01 | **PARCIAL** | Verificar contagens e limites históricos/cancelados/transferidos; documentar capacidade nula, zero, lotação completa e excedente nas cinco vistas. |
+| **P1** | PRINT-01 | **PENDENTE** | Pesquisa, filtros e ordenação server-side em Turma/Classe; especificar impressão/exportação com RBAC, escopo de escola, minimização de PII e auditoria antes de habilitar. |
+| **P2** | PERF-01 | **PENDENTE** | Migrar agregação de 3.000 matrículas da Classe para SQL/paginação no banco; comparar `EXPLAIN`, p95 e payload. |
+| **P2** | OBS-01 | **PENDENTE** | Uniformizar erros PostgREST das cinco rotas e IDs de correlação sem expor informação sensível. |
+| **P2** | DS-01, LANG-01, MOTION-01 | **PENDENTE** | Reutilizar Metric existente, glossário PT-AO e medir impacto de transições antes de alterá-las. |
+
+**Gates para merge/publicação:** CI relevante verde no **HEAD** da PR #234, SQL testado sinteticamente, autorização com sessões reais e duas escolas, testes do ciclo do Balcão e mobile/teclado. A aplicação da migração de segurança e o deployment exigem coordenação para evitar alterar o contrato SQL em produção antes do frontend. Não confundir merge da documentação com deploy do produto.
