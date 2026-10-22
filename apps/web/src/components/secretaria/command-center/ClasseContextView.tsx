@@ -12,6 +12,7 @@ import { useClasseContext } from "@/hooks/useClasseContext";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
+import { ExplorerRosterExportButton } from "@/components/secretaria/command-center/ExplorerRosterExportButton";
 import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
 import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
@@ -331,6 +332,9 @@ export function ClasseContextView({
           setSearchTerm(next);
           onViewChangeRef.current?.({ ...view(), search: next });
         }} />
+        <ExplorerRosterExportButton escolaId={context.escolaId} entityId={context.id}
+          type="classe" yearId={context.academicYearId}
+          query={searchTerm} filter={rosterFilter} sort={rosterSort} />
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 id="classe-alunos-heading" className="flex items-center gap-2 font-semibold text-slate-900">
             <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
