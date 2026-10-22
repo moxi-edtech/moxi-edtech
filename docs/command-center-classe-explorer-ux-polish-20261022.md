@@ -60,3 +60,9 @@ A implementação de UX da branch `polish/classe-explorer-ux-20261022` foi incor
 | DS-01, LANG-01, MOTION-01, OBS-01 | Pendente | Pendente | Consistência, glossário PT-AO, latência e correlação |
 
 **Não homologado ≠ entregue em produção.** Nenhuma alteração de banco deve ser aplicada apenas porque o frontend foi consolidado.
+
+### UX-00 — implementação de retorno contextual
+
+O snapshot efémero inclui agora estado por explorador (`tipo:id`): página, posição de leitura e aluno selecionado. Turma e Classe restauram a página ao remontar, scroll após carregamento e foco na linha do aluno quando ainda existir na página. O estado é consumido ao regressar do Balcão e o cache contextual é invalidado. Sem persistência em `localStorage`.
+
+**Verificação pendente:** executar CI no HEAD e homologar com 45+ alunos, três atendimentos, mudança de turma/ano e escola, sessão expirada, ordenação e filtros quando existirem. O mecanismo não implementa filtros/ordenação ainda indisponíveis na UI. Não marcar como homologado antes desses testes.
