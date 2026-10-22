@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -23,7 +24,7 @@ const deny = (reason: string, status: number) =>
   });
 
 /** Exportação opcional e auditada; RLS e autorização são reavaliadas em cada pedido. */
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function readRosterExport(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const q = new URL(req.url).searchParams;
   const result = inputSchema.safeParse({
@@ -99,4 +100,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   } catch {
     return deny("Não foi possível concluir a exportação.", 500);
   }
+}
+
+/** Contract: correlation on every success and failure, without private payloads in logs. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  return withExplorerObservability("roster-export", () => readRosterExport(req, context));
 }
