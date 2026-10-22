@@ -347,10 +347,10 @@ export function ClasseContextView({
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-slate-900">{aluno.nome}</span>
                 <span className="mt-1 block truncate text-xs text-slate-500">{aluno.turmaNome}</span>
-                {searchActive && "documentosSinalizados" in aluno && aluno.documentosSinalizados && (
+                {searchActive && "documentosSinalizados" in aluno && aluno.documentosSinalizados === true && (
                   <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">Documentos sinalizados</span>
                 )}
-                {searchActive && "propinasVencidas" in aluno && aluno.propinasVencidas && (
+                {searchActive && "propinasVencidas" in aluno && aluno.propinasVencidas === true && (
                   <span className="rounded border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] text-orange-950">Propina vencida</span>
                 )}
               </span>
