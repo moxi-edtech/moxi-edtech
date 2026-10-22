@@ -20,6 +20,8 @@ type KpiCardProps = {
   description?: string;
   href?: string;
   compact?: boolean;
+  /** Compact layout for laptop-sized dashboard viewports; desktop styling remains unchanged. */
+  responsiveDensity?: boolean;
 };
 
 export function KpiCard({
@@ -32,6 +34,7 @@ export function KpiCard({
   description,
   href,
   compact = false,
+  responsiveDensity = false,
 }: KpiCardProps) {
   const styles = {
     default: {
@@ -96,9 +99,9 @@ export function KpiCard({
         </div>
         <div className={`flex flex-col items-end ${compact ? "gap-1.5" : "gap-2"}`}>
           <div
-            className={`${compact ? "h-9 w-9 rounded-lg shadow-sm" : "h-10 w-10 rounded-lg shadow-sm"} flex items-center justify-center ${styles.icon}`}
+            className={`${compact ? "h-9 w-9 rounded-lg shadow-sm" : responsiveDensity ? "h-9 w-9 rounded-lg shadow-sm min-[1700px]:h-10 min-[1700px]:w-10" : "h-10 w-10 rounded-lg shadow-sm"} flex items-center justify-center ${styles.icon}`}
           >
-            <Icon className={compact ? "h-4.5 w-4.5" : "h-5 w-5"} />
+            <Icon className={compact ? "h-4.5 w-4.5" : responsiveDensity ? "h-4 w-4 min-[1700px]:h-5 min-[1700px]:w-5" : "h-5 w-5"} />
           </div>
           {href && (
             <div className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-tighter text-emerald opacity-0 transition-opacity group-hover:opacity-100">
@@ -129,7 +132,9 @@ export function KpiCard({
   const containerClasses = `group relative min-w-0 overflow-hidden border flex flex-col justify-between transition ${
     compact
       ? "min-h-[112px] rounded-xl p-4 shadow-sm hover:shadow-md"
-      : "min-h-[132px] rounded-xl p-5 hover:shadow-md shadow-sm"
+       : responsiveDensity
+        ? "min-h-[116px] rounded-xl p-4 shadow-sm hover:shadow-md min-[1700px]:min-h-[132px] min-[1700px]:p-5"
+        : "min-h-[132px] rounded-xl p-5 hover:shadow-md shadow-sm"
   } ${styles.box}`;
 
   if (href) {
