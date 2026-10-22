@@ -90,7 +90,7 @@ try {
               if (!req.url().startsWith(base) && !req.url().startsWith("data:")) errors.push("external request blocked: "+new URL(req.url()).hostname);
             });
             await page.clock.install({time:fixedTime});
-            await page.goto(`${base}/?story=operations-density&state=${state}&baseline=${baseline?"1":"0"}`,{waitUntil:"domcontentloaded"});
+            await page.goto(`${base}/operations-density.html?state=${state}&baseline=${baseline?"1":"0"}`,{waitUntil:"domcontentloaded"});
             await page.locator(baseline?".fixture-before-dashboard":'[data-operations-dashboard]').waitFor({timeout:20000});
             await page.evaluate(async z=>{ document.documentElement.style.zoom=String(z); await document.fonts.ready; },zoom);
             await page.locator('[data-testid="operations-kpi-grid"],[data-testid="operations-kpi-loading"],[data-testid="operations-kpi-error"]').first().waitFor({timeout:10000});
