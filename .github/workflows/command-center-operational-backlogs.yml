@@ -1,0 +1,71 @@
+name: Command Center Operational Backlogs
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/app/api/escolas/**/command-center/**'
+      - 'apps/web/src/components/secretaria/command-center/**'
+      - 'apps/web/src/hooks/useExplorerRoster.ts'
+      - 'apps/web/src/types/supabase-augment.ts'
+      - 'supabase/migrations/*command_center_operational*'
+      - 'supabase/ops/tests/regression_command_center_operational*'
+      - 'apps/web/tests/unit/command-center-operational-backlogs.spec.ts'
+      - '.github/workflows/command-center-operational-backlogs.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sql-operational:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify filters, school RLS, keyset priority and distributed rate counter on synthetic fixtures
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 \
+            -f supabase/ops/tests/regression_command_center_operational_roster_v1.sql \
+            | tee /tmp/command-center-operational-sql.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: command-center-operational-explain-fixture
+          path: /tmp/command-center-operational-sql.txt
+          retention-days: 14
+  web-operational:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C apps/web typecheck
+      - name: lint
+        run: |
+          pnpm -C apps/web exec eslint \
+            "src/app/api/escolas/[id]/command-center/roster/route.ts" \
+            "src/app/api/escolas/[id]/command-center/roster/export/route.ts" \
+            src/components/secretaria/command-center/ExplorerRosterControls.tsx \
+            src/components/secretaria/command-center/ClasseContextView.tsx \
+            src/components/secretaria/command-center/TurmaContextView.tsx \
+            src/hooks/useExplorerRoster.ts --max-warnings 0
+      - run: pnpm -C apps/web exec tsx --test tests/unit/command-center-operational-backlogs.spec.ts
