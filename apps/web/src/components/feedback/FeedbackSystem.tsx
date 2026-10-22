@@ -657,7 +657,7 @@ export function RadarOperacional({
   onAction?: (alert: OperationalAlert) => void
   variant?: "default" | "compact" | "inline"
 }) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(variant === "inline")
   const critical = alerts.filter((a) => a.severity === "critical")
   const warnings = alerts.filter((a) => a.severity === "warning")
   const infos = alerts.filter((a) => a.severity === "info")
