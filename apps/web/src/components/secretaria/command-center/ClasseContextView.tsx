@@ -87,18 +87,6 @@ export function ClasseContextView({
   const onViewChangeRef = useRef(onViewChange);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
   const restoreScroll = useRef(initialScrollTop);
-  const [returnWarning, setReturnWarning] = useState(false);
-  const pendingReturnCheck = useRef(selectedStudentId);
-  useEffect(() => {
-    if (loading || !data || !pendingReturnCheck.current) return;
-    const originalStudentId = pendingReturnCheck.current;
-    pendingReturnCheck.current = null;
-    if (!data.alunos.items.some((student) => student.id === originalStudentId)) {
-      currentStudent.current = null;
-      onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: null });
-      setReturnWarning(true);
-    }
-  }, [loading, data, page]);
   useEffect(() => {
     if (loading || !scrollRef.current) return;
     scrollRef.current.scrollTop = restoreScroll.current;
@@ -140,6 +128,7 @@ export function ClasseContextView({
   const href = `${base}${base.includes("?") ? "&" : "?"}${new URLSearchParams({
     [ACADEMIC_YEAR_PARAM]: anoLetivo.id,
   })}`;
+  const returnWarning = Boolean(selectedStudentId && !alunos.items.some((student) => student.id === selectedStudentId));
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   const open = (entity: { id: string; nome: string }, onExplore: (next: NextEntity) => void) =>
     onExplore({ id: entity.id, label: entity.nome, academicYearId: anoLetivo.id });
