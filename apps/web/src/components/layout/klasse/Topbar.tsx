@@ -39,6 +39,7 @@ export default function Topbar({
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedSearchStudent, setSelectedSearchStudent] = useState<{ id: string; label: string; schoolId: string } | null>(null);
+  const [studentWorkspaceClosedVersion, setStudentWorkspaceClosedVersion] = useState(0);
   // Nunca manter um aluno em contexto quando a escola/tenant é alterada.
   useEffect(() => {
     setSelectedSearchStudent(null);
@@ -54,10 +55,11 @@ export default function Topbar({
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
       <div className="h-16 flex items-center gap-4 px-4">
         {/* Search */}
-        <div className="hidden md:flex w-[420px]">
+        <div className="flex min-w-0 flex-1 md:w-[420px] md:flex-none">
           <CommandPalette
             escolaId={escolaId}
             portal={portal}
+            studentWorkspaceClosedVersion={studentWorkspaceClosedVersion}
             onStudentSelect={(student) => {
               if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
             }}
@@ -125,7 +127,10 @@ export default function Topbar({
         open
         escolaId={escolaId}
         aluno={selectedSearchStudent}
-        onClose={() => setSelectedSearchStudent(null)}
+        onClose={() => {
+          setSelectedSearchStudent(null);
+          setStudentWorkspaceClosedVersion((value) => value + 1);
+        }}
       />
     ) : null}
     </>
