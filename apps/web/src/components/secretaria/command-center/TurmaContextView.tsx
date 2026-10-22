@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   Loader2, RefreshCw, UsersRound,
@@ -15,6 +15,10 @@ type Props = {
   portal?: string;
   onNavigate: (href: string) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
+  initialPage?: number;
+  initialScrollTop?: number;
+  selectedStudentId?: string | null;
+  onViewChange?: (state: { page: number; scrollTop: number; selectedStudentId: string | null }) => void;
   onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
   onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
   onExploreClasse: (classe: { id: string; label: string; academicYearId: string }) => void;
@@ -54,8 +58,25 @@ function Metric({
 
 export function TurmaContextView({
   context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina, onExploreClasse,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, onViewChange,
 }: Props) {
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const currentScroll = useRef(initialScrollTop);
+  const currentStudent = useRef(selectedStudentId);
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = initialScrollTop;
+  }, [initialScrollTop]);
+  useEffect(() => {
+    onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current });
+  }, [page]);
+  const selectStudent = (student: { id: string; label: string }) => {
+    currentStudent.current = student.id;
+    onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: student.id });
+    onStudentSelect(student);
+  };
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
 
   function openExisting() {
@@ -92,7 +113,7 @@ export function TurmaContextView({
   const disciplinasSemProfessor = disciplinas.filter((d) => !d.professores.length).length;
 
   return (
-    <div className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current }); }} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
@@ -159,7 +180,7 @@ export function TurmaContextView({
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
             {alunos.items.map((student) => (
               <button type="button" key={student.id}
-                onClick={() => onStudentSelect({ id: student.id, label: student.nome })}
+                data-student-id={student.id} aria-current={selectedStudentId === student.id ? "true" : undefined} onClick={() => selectStudent({ id: student.id, label: student.nome })}
                 className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
                 <span className="w-8 shrink-0 text-xs tabular-nums text-slate-500">{student.numeroChamada ?? "—"}</span>
                 <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{student.nome}</span>
