@@ -23,8 +23,15 @@ test("Classe and Turma have explicit pagination controls", () => {
     assert.match(view, /useState\(1\)/);
     assert.match(view, /setPage/);
   }
-  // Follow-up backlog: snapshot currently lacks page, sort, scroll and focus.
-  assert.doesNotMatch(snapshot, /selectedStudentId|scrollTop/);
+  assert.match(snapshot, /selectedStudentId/);
+  assert.match(snapshot, /scrollTop/);
+  assert.match(palette, /viewState: viewStateRef.current/);
+  for (const view of [turma, classe]) {
+    assert.match(view, /initialPage/);
+    assert.match(view, /initialScrollTop/);
+    assert.match(view, /onViewChange/);
+    assert.match(view, /data-student-id/);
+  }
 });
 
 test("Search recents are in-memory only and cleared on auth changes", () => {
