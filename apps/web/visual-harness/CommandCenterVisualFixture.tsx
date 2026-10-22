@@ -15,6 +15,9 @@ const students = Array.from({ length: 55 }, (_, i) => ({
   turmaId: TURMA_ID,
   turmaNome: "10.ª A",
   numero: `2026/${String(i + 1).padStart(4, "0")}`,
+  documentosSinalizados: [1,4].includes(i+1),
+  propinasVencidas: [2,4].includes(i+1),
+  pendenciasCount: (Number([1,4].includes(i+1)) + Number([2,4].includes(i+1))),
 }));
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -27,6 +30,15 @@ export function installCommandCenterVisualMocks() {
     if (!raw.includes("/command-center/")) return oldFetch(input, init);
     const url = new URL(raw, location.origin);
     if (!url.pathname.includes(SCHOOL_ID)) return Promise.resolve(json({ ok: false, error: "Sem acesso." }, 403));
+    if (url.pathname.includes("/student-capabilities")) return Promise.resolve(json({
+      ok: true, actions: {
+        enrollment: true, reenrollment: true, payment: true,
+        document: true, profile: true, grade: true,
+      },
+    }));
+    if (url.pathname.includes("/roster/export")) return Promise.resolve(json({
+      ok: false, error: "Exportação não autorizada nesta escola sintética.",
+    },403));
     if (url.pathname.includes("/roster")) {
       const q = (url.searchParams.get("q") ?? "").toLocaleLowerCase("pt");
       if (q === "demora") {
@@ -36,17 +48,28 @@ export function installCommandCenterVisualMocks() {
       }
       if (q === "erro") return Promise.resolve(json({ ok: false, error: "Falha sintética" }, 503));
       const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const filter = url.searchParams.get("filter") ?? "todos";
       const results = students.filter((student) =>
-        normalize(`${student.nome} ${student.numero}`).includes(normalize(q)));
-      const ordered = url.searchParams.get("sort") === "nome_desc"
-        ? [...results].reverse() : results;
+        normalize(`${student.nome} ${student.numero}`).includes(normalize(q)) &&
+        (filter === "todos" ||
+         (filter === "documentos_sinalizados" && student.documentosSinalizados) ||
+         (filter === "propinas_vencidas" && student.propinasVencidas)));
+      const sort = url.searchParams.get("sort");
+      const ordered = sort === "nome_desc" ? [...results].reverse()
+        : sort === "pendencias_primeiro"
+          ? [...results].sort((a,b) => b.pendenciasCount-a.pendenciasCount || a.nome.localeCompare(b.nome))
+          : results;
       const index = url.searchParams.has("cursorId")
         ? ordered.findIndex((s) => s.id === url.searchParams.get("cursorId")) + 1 : 0;
       const page = ordered.slice(index, index + 20);
       return Promise.resolve(json({ ok: true,
         items: page, total: results.length, size: 20,
         hasMore: index + page.length < results.length,
-        cursor: page.length ? { id: page[page.length - 1].id, name: normalize(page[page.length - 1].nome) } : null,
+        cursor: page.length ? {
+          id: page[page.length - 1].id,
+          name: normalize(page[page.length - 1].nome),
+          priority: page[page.length - 1].pendenciasCount,
+        } : null,
       }));
     }
     if (url.pathname.includes("/turmas/")) {
@@ -80,7 +103,7 @@ export default function CommandCenterVisualFixture() {
   }));
   const [selected, setSelected] = useState<{ id: string; label: string } | null>(null);
   const [view, setView] = useState<ExplorerViewState>({
-    page: 1, scrollTop: 0, selectedStudentId: null, search: "", filter: "ativo", sort: "nome",
+    page: 1, scrollTop: 0, selectedStudentId: null, search: "", filter: "todos", sort: "nome_asc",
   });
   const [returned, setReturned] = useState(false);
   return <main className="mx-auto min-h-screen w-full max-w-5xl overflow-x-clip bg-slate-50 px-3 py-5 text-slate-900 sm:px-5">
@@ -106,7 +129,10 @@ export default function CommandCenterVisualFixture() {
           <TurmaContextView context={context} portal="secretaria"
             initialPage={view.page} initialScrollTop={view.scrollTop}
             selectedStudentId={view.selectedStudentId} initialSearch={view.search}
+            initialFilter={view.filter === "documentos_sinalizados" ? "documentos_sinalizados" : view.filter === "propinas_vencidas" ? "propinas_vencidas" : "todos"}
+            initialSort={view.sort === "pendencias_primeiro" ? "pendencias_primeiro" : view.sort === "nome_desc" ? "nome_desc" : "nome_asc"}
             onViewChange={setView} onStudentSelect={setSelected}
+            onStudentAction={(_action, student) => setSelected(student)}
             onNavigate={() => undefined} onExploreClasse={() => undefined}
             onExploreProfessor={() => undefined} onExploreDisciplina={() => undefined} />
         </div>
