@@ -28,7 +28,7 @@ type RosterReply = {
 };
 
 export type RosterSort = "nome_asc" | "nome_desc" | "pendencias_primeiro";
-export type RosterFilter = "todos" | "documentos_sinalizados" | "propinas_vencidas";
+export type RosterFilter = "todos" | "documentos_sinalizados" | "propinas_vencidas" | "ambos";
 export function useExplorerRoster(context: EntityContext, type: "turma" | "classe", search: string, sort: RosterSort = "nome_asc", filter: RosterFilter = "todos") {
   const debounced = useDebounce(search.trim(), 300);
   const enabled = (debounced.length === 0 || debounced.length >= 2)
