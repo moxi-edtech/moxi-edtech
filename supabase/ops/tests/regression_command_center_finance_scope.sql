@@ -6,6 +6,14 @@ RESET ROLE;
 CREATE TABLE public.audit_logs (
   id uuid PRIMARY KEY, acao text NOT NULL, details jsonb NOT NULL
 );
+-- Versioned canonical enrollment order is identical to the billing guard:
+-- data_inicio_financeiro/data_matricula/created_at, not arbitrary UUID order.
+ALTER TABLE public.matriculas
+  ADD COLUMN data_inicio_financeiro date,
+  ADD COLUMN data_matricula date,
+  ADD COLUMN created_at timestamptz DEFAULT now();
+UPDATE public.matriculas SET data_inicio_financeiro='2026-01-01';
+
 \ir ../../migrations/20271022134000_command_center_finance_audit_gates.sql
 -- Reapplication must succeed without touching existing finance triggers/RLS.
 \ir ../../migrations/20271022134000_command_center_finance_audit_gates.sql
@@ -25,6 +33,8 @@ INSERT INTO public.matriculas VALUES
  '00000000-0000-4000-8000-000000000026',2026,
  '00000000-0000-4000-8000-0000000000f1',
  '00000000-0000-4000-8100-000000000008',8,'ativo',true);
+UPDATE public.matriculas SET data_inicio_financeiro='2026-09-01'
+WHERE id='00000000-0000-4000-8299-000000000008';
 INSERT INTO public.mensalidades
 VALUES ('00000000-0000-4000-8500-000000000008','00000000-0000-4000-8000-0000000000a1',
 '00000000-0000-4000-8100-000000000008',
