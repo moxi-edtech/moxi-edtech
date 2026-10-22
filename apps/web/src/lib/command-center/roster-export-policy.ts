@@ -48,3 +48,28 @@ export function rosterExportAudit(input: {
     created_at: input.exportedAt,
   };
 }
+
+/** Só configuração explícita por escola activa exportação; erro na configuração = negar. */
+export function resolveRosterExportPolicy(
+  escolaId: string,
+  json: string | undefined,
+): RosterExportPolicy {
+  if (!json) return DEFAULT_ROSTER_EXPORT_POLICY;
+  try {
+    const all: unknown = JSON.parse(json);
+    if (!all || typeof all !== "object" || Array.isArray(all)) return DEFAULT_ROSTER_EXPORT_POLICY;
+    const entry: unknown = (all as Record<string, unknown>)[escolaId];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return DEFAULT_ROSTER_EXPORT_POLICY;
+    const row = entry as Record<string, unknown>;
+    const allowed = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "admin_secretaria"];
+    if (row.enabled !== true || !Number.isInteger(row.maxRows) ||
+        typeof row.maxRows !== "number" || row.maxRows < 1 || row.maxRows > 200 ||
+        !Array.isArray(row.roles) || !row.roles.length ||
+        !row.roles.every((role) => typeof role === "string" && allowed.includes(role))) {
+      return DEFAULT_ROSTER_EXPORT_POLICY;
+    }
+    return { enabled: true, maxRows: row.maxRows, roles: row.roles as string[] };
+  } catch {
+    return DEFAULT_ROSTER_EXPORT_POLICY;
+  }
+}
