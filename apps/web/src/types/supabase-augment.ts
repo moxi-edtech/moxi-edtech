@@ -910,7 +910,7 @@ export type DBWithRPC = Omit<Database, "public"> & {
           p_limit?: number;
           p_polo_id?: string | null;
           p_sort?: "nome_asc" | "nome_desc" | "pendencias_primeiro";
-          p_filter?: "todos" | "documentos_sinalizados" | "propinas_vencidas";
+          p_filter?: "todos" | "documentos_sinalizados" | "propinas_vencidas" | "ambos";
         };
         Returns: Array<{
           aluno_id: string | null;
