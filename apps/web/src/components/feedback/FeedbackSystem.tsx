@@ -591,7 +591,7 @@ function RadarCompacto({
               <div className="flex items-center gap-1.5">
                 <AlertCircle className="h-3.5 w-3.5 text-slate-400" />
                 <span className="font-medium text-slate-400">Crítico:</span>
-                <span className="rounded-full border border-rose-100/50 bg-rose-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-rose-700">
+                <span className="rounded-full border border-rose-100/50 bg-rose-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-rose-700">
                   {critical.length}
                 </span>
               </div>
@@ -600,7 +600,7 @@ function RadarCompacto({
               <div className="flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 text-slate-400" />
                 <span className="font-medium text-slate-400">Alerta:</span>
-                <span className="rounded-full border border-amber-100/50 bg-amber-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-700">
+                <span className="rounded-full border border-amber-100/50 bg-amber-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-700">
                   {warnings.length}
                 </span>
               </div>
@@ -609,7 +609,7 @@ function RadarCompacto({
               <div className="flex items-center gap-1.5">
                 <Info className="h-3.5 w-3.5 text-slate-400" />
                 <span className="font-medium text-slate-400">Info:</span>
-                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   {infos.length}
                 </span>
               </div>
