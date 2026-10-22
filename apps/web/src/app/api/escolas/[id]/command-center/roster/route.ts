@@ -4,6 +4,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
+import { allowRosterRequest } from "@/lib/command-center/roster-rate-limit";
 
 export const dynamic = "force-dynamic";
 const schema = z.object({
@@ -16,6 +17,7 @@ const schema = z.object({
   cursorName: z.string().max(200).nullable(),
   cursorId: z.string().uuid().nullable(),
   size: z.coerce.number().int().min(1).max(25).default(20),
+  sort: z.enum(["nome_asc", "nome_desc"]).default("nome_asc"),
 });
 const response = (data: unknown, status = 200) =>
   NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
@@ -34,6 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     cursorName: u.searchParams.get("cursorName"),
     cursorId: u.searchParams.get("cursorId"),
     size: u.searchParams.get("size") ?? "20",
+    sort: u.searchParams.get("sort") ?? "nome_asc",
   });
   if (!parsed.success) return response({ ok: false, error: "Parâmetros inválidos." }, 400);
   const input = parsed.data;
@@ -61,6 +64,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
     });
     if (permission.error) return permission.error;
+    const budget = allowRosterRequest(user.id, escolaId);
+    if (!budget.allowed) return NextResponse.json({
+      ok: false, error: "Muitas pesquisas seguidas. Aguarde um pouco e tente novamente.",
+    }, { status: 429, headers: {
+      "Cache-Control": "private, no-store",
+      "Retry-After": String(budget.retryAfterSeconds),
+    } });
     const year = await resolveAcademicYearScope(supabase, {
       escolaId, requestedAcademicYearId: input.yearId, operation: "READ",
     });
@@ -70,7 +80,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       ok: false, error: "Pesquisa histórica indisponível até homologar os estados de matrícula.",
     }, 409);
 
-    const { data, error } = await supabase.rpc("command_center_roster_keyset", {
+    const { data, error } = await supabase.rpc("command_center_roster_keyset_v2", {
       p_escola_id: escolaId,
       p_ano_letivo: year.ano,
       p_turma_id: input.type === "turma" ? input.entityId : null,
@@ -80,6 +90,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       p_cursor_id: input.cursorId,
       p_limit: input.size + 1,
       p_polo_id: null,
+      p_sort: input.sort,
     });
     if (error) {
       const status = error.code === "42501" ? 403 : error.code === "22023" ? 400 : 500;
