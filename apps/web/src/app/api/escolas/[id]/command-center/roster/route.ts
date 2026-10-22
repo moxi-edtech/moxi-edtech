@@ -79,7 +79,8 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
     // The contract deliberately disables historic/filter-specific rosters
     // until status semantics and school-specific documentary/financial rules are signed off.
     if (year.status === "CLOSED") return response({
-      ok: false, error: "Pesquisa histórica indisponível até homologar os estados de matrícula.",
+      ok: false, code: "HISTORIC_ROSTER_UNAVAILABLE",
+      error: "Pesquisa histórica indisponível até homologar os estados de matrícula.",
     }, 409);
 
     const { data, error } = await supabase.rpc("command_center_roster_keyset_v2", {
