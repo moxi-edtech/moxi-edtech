@@ -333,11 +333,11 @@ export default function AppShell({
 
   const topbarLabels = navRole ? TOPBAR_LABELS[navRole] : null;
   const isPrintView = safePathname.includes("/print");
-  const aiAccessRole = navRole === "operacoes"
-    ? userRole === "operacoes"
-      ? "admin_financeiro"
-      : (userRole || inferredRole || "admin")
-    : navRole;
+  // Operations is a portal, not an authorization role. The client-side
+  // profile can be normalized differently from the school membership role;
+  // never use it to hide the launcher. /api/admin/ai/access remains the
+  // authoritative server-side permission and school-feature gate.
+  const aiAccessRole = navRole === "operacoes" ? "admin" : navRole;
   const shouldRenderAiWidget = Boolean(
     navEscolaId &&
     aiAccessRole &&

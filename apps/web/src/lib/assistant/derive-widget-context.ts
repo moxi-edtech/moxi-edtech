@@ -41,6 +41,14 @@ export function deriveWidgetContext(pathname: string): AiWidgetContext {
       entityType: pathname.includes("/alunos") ? "student" : "none",
     };
   }
+  // O Balcão pertence funcionalmente à Secretaria, mesmo sob /operacoes.
+  // Não inferir um aluno individual apenas a partir da rota.
+  if (pathname.includes("/operacoes/alunos") || pathname.includes("/operacoes/matriculas")) {
+    return { module: "secretaria", page: pathname.includes("/operacoes/alunos") ? "alunos" : "matriculas", entityType: "none" };
+  }
+  if (pathname.includes("/operacoes/balcao")) {
+    return { module: "secretaria", page: "balcao", entityType: "none" };
+  }
   if (pathname.includes("/operacoes")) {
     return { module: "operacoes", page: "operacoes", entityType: "none" };
   }

@@ -39,7 +39,9 @@ export const admissionsPendingTool: DataCopilotTool = {
 
     if (error) throw error;
 
-    const counts = data as AdmissionsCountsRow | null;
+    // A ausência da view não é evidência de que não existem pendências.
+    if (!data) return null;
+    const counts = data as AdmissionsCountsRow;
     const submitted = Number(counts?.submetida_total ?? 0);
     const underReview = Number(counts?.em_analise_total ?? 0);
     const expiring = Number(counts?.expirando_24h_total ?? 0);

@@ -7,6 +7,7 @@ export type AiProviderResult = {
   tokensInput: number | null;
   tokensOutput: number | null;
   fallbackUsed?: boolean;
+  interrupted?: boolean;
 };
 
 type ProviderOptions = {
@@ -120,6 +121,9 @@ async function callConfiguredProvider(options: ProviderOptions, config: Provider
     model,
     tokensInput: data?.usage?.prompt_tokens ?? data?.usageMetadata?.promptTokenCount ?? null,
     tokensOutput: data?.usage?.completion_tokens ?? data?.usageMetadata?.candidatesTokenCount ?? null,
+    interrupted: provider === "deepseek"
+      ? data?.choices?.[0]?.finish_reason === "length"
+      : data?.candidates?.[0]?.finishReason === "MAX_TOKENS",
   };
 }
 

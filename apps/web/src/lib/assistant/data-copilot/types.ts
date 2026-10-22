@@ -1,5 +1,6 @@
 import type { AssistantActionV2 } from "../actions-v2";
 import type { AiWidgetContext } from "../screen-context";
+import type { SchoolIntelligenceConversation } from "./school-intelligence-contract";
 import type { SchoolOperatingProfile } from "@/lib/school-profile/types";
 
 export type DataCopilotModule = "financeiro" | "secretaria" | "academico" | "direcao";
@@ -38,12 +39,15 @@ export type DataCopilotResponse = {
   operatingMode: "data";
   answer: string;
   insight: InsightAnswer;
+  conversation?: SchoolIntelligenceConversation;
   actions?: AssistantActionV2[];
   links?: Array<{ label: string; href: string }>;
 };
 
 export type ToolRunParams = {
   schoolId: string;
+  userId?: string;
+  conversation?: unknown;
   role: string;
   query: string;
   context?: AiWidgetContext;

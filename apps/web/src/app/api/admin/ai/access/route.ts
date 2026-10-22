@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     process.env.AI_ENABLED !== "false" &&
     !settingsRes.error &&
     Boolean(settingsRes.data?.enabled);
-  const allowed = enabled && Boolean(hasRoleRes.data);
+  const allowed = enabled && Boolean(hasRoleRes.data) && AI_WIDGET_ROLES.includes(role);
 
   return withNoStore(
     NextResponse.json({

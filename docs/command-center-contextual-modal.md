@@ -1,0 +1,639 @@
+# KLASSE — Command Center: Modal de Visões Contextuais
+
+**Especificação oficial de produto e engenharia · v1.1 · atualização pós-release em 21/10/2026**
+
+| Propriedade | Definição |
+| --- | --- |
+| Status | **Implementação publicada em produção; homologação autenticada pendente** |
+| Implementação | `main` · release de integração [#229](https://github.com/moxi-edtech/moxi-edtech/pull/229) |
+| Origem | [Auditoria e plano — Issue #224](https://github.com/moxi-edtech/moxi-edtech/issues/224) |
+| Referência de pesquisa | [Global Search — roadmap](./global-search-roadmap.md) |
+| Publicação | **Publicada em https://app.klasse.ao · deployment Vercel READY · SHA `9398232a79534e24ac4a34cfc9c2ddcb912fc65e`** |
+
+> **Convenção do roadmap:** `[x]` = implementação **identificada no código desta branch** ou decisão tomada, **não** significa teste passado, aplicação da migração, merge ou deploy. `[ ]` = trabalho, verificação ou homologação pendente. Uma fase só é concluída quando passar no respetivo gate.
+
+## 0. Registo de release e estado verificado — 21/10/2026
+
+**Esta secção prevalece sobre as descrições históricas de “branch”, “proposta”, “não instalada” ou “futura” que permaneçam abaixo como registo do desenvolvimento.** A documentação conserva requisitos e hipóteses anteriores para rastreabilidade; estes não devem ser confundidos com o estado de produção.
+
+| Marco | Estado e evidência |
+| --- | --- |
+| Base Curso/Turma | [PR #225](https://github.com/moxi-edtech/moxi-edtech/pull/225), integrada |
+| Professor | [PR #226](https://github.com/moxi-edtech/moxi-edtech/pull/226), integrada na cadeia |
+| Disciplina | [PR #227](https://github.com/moxi-edtech/moxi-edtech/pull/227), integrada na cadeia |
+| Classe | [PR #228](https://github.com/moxi-edtech/moxi-edtech/pull/228), integrada na cadeia |
+| Consolidação na `main` | [PR #229](https://github.com/moxi-edtech/moxi-edtech/pull/229), merge SHA `9398232a79534e24ac4a34cfc9c2ddcb912fc65e` |
+| CI da integração | **6/6 checks verdes** antes do merge, incluindo TypeScript, ESLint, testes e build Next.js |
+| Supabase | RPC `command_center_course_overview(uuid,uuid,uuid)` aplicada e confirmada por consulta a `pg_proc` |
+| Vercel | Deployment `dpl_rCYzbgCtcgmZqERn7fRtWbSyJRFV`, estado **READY**, commit correspondente ao merge; alias `app.klasse.ao` |
+| Erros de runtime | Consulta da Vercel na janela de 15 minutos pós-deploy sem erros reportados; **não equivale** a homologação funcional |
+| Homologação autenticada | **Pendente**: não há evidência de navegação completa com sessões reais e múltiplos papéis |
+
+### O que está implementado e publicado
+
+- **Curso:** resumo, indicadores académicos, classes e turmas no ano selecionado.
+- **Classe:** visão própria, curso associado, turmas, alunos distintos paginados, disciplinas, professores, capacidade condicionada à disponibilidade dos dados; classes reutilizadas entre anos seguem o ano efetivo da turma.
+- **Turma:** visão contextual, alunos paginados (20 por página), professores, disciplinas e ligação ao Balcão.
+- **Professor:** contexto académico e ligações a turmas e disciplinas.
+- **Disciplina:** pesquisa contextual, professores, turmas e relações curriculares.
+- **Navegação:** `Curso → Classe → Turma → Aluno/Balcão` e relações entre Professor, Disciplina, Turma e Classe, sem criar um segundo Balcão.
+- **Proteção prevista no código:** autenticação, escopo de escola/ano, papéis K12, consulta privada e RLS; a sua **eficácia em sessão real ainda exige comprovação**.
+
+### Gates de homologação ainda abertos
+
+- [ ] Executar testes autenticados por perfil (Admin, Operações e perfis sem permissão), incluindo 401/403/404.
+- [ ] Validar RLS e isolamento entre duas escolas com IDs de entidades arbitrários; impedir leitura por mudança manual de `escolaId` e `ano_letivo_id`.
+- [ ] Conferir contagens e políticas de matrículas atuais/históricas, canceladas, transferidas e duplicadas; classes reutilizadas entre anos.
+- [ ] Exercitar paginação (20/21/50+ alunos), limites/avisos de listas parciais e turmas/classes com grande volume.
+- [ ] Verificar navegação cruzada, regresso ao contexto, foco, Escape, teclado e mobile com sessão real.
+- [ ] Verificar métricas e erros de runtime numa janela representativa após a publicação.
+
+**Política de estado:** `CI verde` = validação automatizada; `READY` = deployment concluído; `homologado` = testes autenticados e dados reais comprovados. Estes estados são independentes. A release está **publicada, mas ainda não homologada ponta a ponta**.
+
+## 1. Visão, limites e experiência pretendida
+
+O Command Center é a **entrada única para pesquisar, explorar e agir**. Em vez de criar um painel paralelo, estendemos o `CommandPalette` existente: o utilizador escreve, seleciona uma entidade, e o mesmo modal abre a respetiva visão contextual. A pesquisa continua acessível por clique ou **Ctrl/Cmd+K**. O utilizador deve conseguir seguir o contexto sem perder escola, ano letivo ou informação já digitada.
+
+**Princípios:**
+
+1. **Pesquisa → contexto → ação**, sem navegação desnecessária.
+2. **Modal único** para pesquisa e exploração; não introduzir outro Command Center ou modais aninhados.
+3. **Curso → Classe → Turma → Aluno** é a trajetória-alvo. O aluno mantém a integração com o **Balcão existente**, não uma ficha concorrente.
+4. **Indicadores corretos e verificáveis**, agregados no PostgreSQL; proibir contagem a partir de listas limitadas ou números fixos.
+5. **Menor privilégio:** ser encontrado na pesquisa não confere autorização para detalhes, notas, documentos ou dados financeiros.
+6. **UX contida:** espaço, legibilidade, transições curtas, foco/teclado, sem painéis decorativos ou animações complexas.
+7. **Preservar a experiência atual** da Topbar, Command Palette, Balcão e ações escolares.
+
+**Definição de entrega:** contrato de dados correto, autorização no endpoint e no Supabase, estados completos, testes unitários + DB/RLS + E2E autenticados, CI verde e homologação. Commit isolado não conta como conclusão.
+
+## 2. Arquitetura e inventário da implementação
+
+~~~text
+Topbar / Ctrl+K
+    │
+    ▼
+CommandPalette (cmdk + diálogo acessível)
+    ├── useGlobalSearch ──► search_global_entities (Supabase)
+    ├── Aluno ────────────► Balcão atual / página canónica
+    ├── Outras entidades ─► visão contextual autorizada ou fallback
+    └── Curso ────────────► CourseContextView
+                                 │
+                          useCourseContext (TanStack Query)
+                                 │
+                          GET /api/escolas/:id/command-center/cursos/:cursoId
+                                 │
+                    Auth → Escola → Papel → Ano letivo
+                                 │
+                      command_center_course_overview (RPC)
+~~~
+
+| Camada | Fonte de verdade | Estado na branch |
+| --- | --- | --- |
+| Pesquisa e modal | `apps/web/src/components/CommandPalette.tsx` | Modal de pesquisa estendido |
+| Pesquisa global | `apps/web/src/hooks/useGlobalSearch.ts` | Já existe; RPC, debounce, cache e recentes |
+| Contexto da entidade | `apps/web/src/lib/command-center/entity-context.ts` | Tipado para curso, classe, turma e professor |
+| Visão do curso | `apps/web/src/components/secretaria/command-center/CourseContextView.tsx` | KPIs, classes, turmas e breadcrumb inicial |
+| Consulta/caching | `apps/web/src/hooks/useCourseContext.ts` | TanStack Query v5 |
+| API | `apps/web/src/app/api/escolas/[id]/command-center/cursos/[cursoId]/route.ts` | GET académico de leitura |
+| Agregação | `supabase/migrations/20271015100000_command_center_course_overview.sql` | Migração versionada, **não homologada** |
+| Modal de turma | `TurmaContextView.tsx` + `useTurmaContext.ts` | Implementação na branch; homologação autenticada pendente |
+| Modal de professor | `ProfessorContextView.tsx` + `useProfessorContext.ts` | Código implementado na PR empilhada sobre #225; homologação pendente |
+| Modal de disciplina | `DisciplinaContextView.tsx` + `useDisciplinaContext.ts` | Implementado na nova PR sobre #226; CI e homologação pendentes |
+| Pesquisa de disciplinas | `DisciplinaSearchResults.tsx` e endpoint próprio autorizado | Admin/Operações; sem alterar a RPC global nesta fase |
+| Modal de classe | `ClasseContextView.tsx` + `useClasseContext.ts` + endpoint | Código implementado na PR #228 empilhada sobre #227; homologação pendente |
+| Histórico/deep links do modal | Ainda não existente | Roadmap |
+
+**Estado do Supabase em 21/10/2026:** a RPC `command_center_course_overview(uuid,uuid,uuid)` foi aplicada via migração e a sua presença confirmada em `pg_proc`. Isto **não substitui** testes autenticados de RLS, grants e contagens reais.
+
+## 3. Estados oficiais do modal
+
+| Estado | O que aparece | Transições e comportamento |
+| --- | --- | --- |
+| `closed` | Nada; página atual intacta | Topbar ou Cmd/Ctrl+K abre o modal |
+| `search.idle` | Campo vazio, ações frequentes e recentes | Escrever → `search.loading`; selecionar recente → detalhe autorizado |
+| `search.loading` | Termo digitado, indicador discreto | Debounce; continuar a escrever cancela/torna obsoleta a busca anterior |
+| `search.results` | Resultados identificados por tipo, nome e informação auxiliar | Enter/clique seleciona; setas navegam sem ações aninhadas |
+| `search.empty` | Sem correspondências no escopo | Corrigir ou limpar termo; não inventar resultados |
+| `search.error` | Falha de pesquisa, texto preservado | Retry explícito **a completar** |
+| `context.loading` | Título da entidade e estado de leitura | Consulta autorizada; cancelamento ao fechar/trocar |
+| `context.ready` | KPIs e dados permitidos | Selecionar classe/turma ou aceder a ação canónica |
+| `context.empty` | Entidade válida sem dados no ano | Zero só quando comprovado, distinguindo vazio de erro |
+| `context.error` | Rede/RPC/contexto indisponível | Mensagem + retry; **nunca** inventar KPIs |
+| `context.forbidden` | Falha 401/403 | Não mostrar dados parciais nem cache de outra sessão |
+| `context.refreshing` | Revalidação de dados visíveis | Indicação discreta; sem flicker nem troca de contexto (pendente) |
+| `context.fallback` | Tipo ainda sem visão própria | Identificação, voltar à pesquisa e página existente |
+
+**Regra de fecho:** Escape, clique fora ou botão de fechar encerram o modal, limpando seleção/contexto e cache privada. Abertura posterior começa pela pesquisa. **Voltar à pesquisa** conserva o termo, resultados e intenção da pesquisa atual enquanto o diálogo continua aberto.
+
+**Teclado/acessibilidade:** foco inicial no campo, `↑↓` e Enter, Escape previsível, foco devolvido ao disparador, `aria-label`, `aria-live` para carregamento, contraste, mobile e `prefers-reduced-motion`. Os comportamentos são requisitos de homologação, não testes já comprovados.
+
+**Sessão:** mudança de escola, ano, portal ou utilizador nunca pode mostrar payload anterior. A branch limpa o cache do `QueryClient` ao fechar ou mudar escola/portal; logout/login e recentes da pesquisa ainda precisam de auditoria.
+
+## 4. Percurso Curso → Classe → Turma → Aluno
+
+### 4.1 Curso — visão inicial
+
+Selecionar `curso` no resultado de Admin ou Operações cria contexto contendo `id`, `escolaId` e `academicYearId`. O modal expande-se e solicita o overview académico:
+
+- Nome, código, nível, descrição, estado e ano letivo.
+- **Indicadores**: classes, turmas ativas e alunos matriculados no escopo.
+- Classes com número de turmas/alunos; turmas com nome, turno, capacidade e alunos.
+- Estados de carregamento, ausência de dados, falha e lista parcial.
+- **Sem indicadores financeiros na primeira versão**.
+
+A visão de curso existe na branch; exatidão das contagens e integração autenticada continuam por homologar.
+
+### 4.2 Classe — seleção no mesmo modal
+
+Selecionar uma classe mantém curso e ano, filtra turmas, atualiza breadcrumb `Curso › Classe` e permite alternar sem nova pesquisa. **Hoje a filtragem é local** na lista recebida do curso (até 100 turmas). Se turmas da classe estiverem fora do lote, **não concluir que a classe está vazia**. A vista e a paginação dedicadas de classe são futuras.
+
+### 4.3 Turma — resumo e ação
+
+Selecionar turma a partir do curso abre a **visão contextual dedicada de turma** no mesmo modal, preservando o ano letivo e permitindo voltar ao curso. A vista mostra alunos matriculados **paginados em blocos de 20**, contagem exata das matrículas elegíveis, turno, capacidade, sala, disciplinas e professores vinculados. Selecionar aluno encaminha para a integração existente do Balcão, ou navegação canónica nos portais sem Balcão; há alternativa explícita para abrir a página da turma. **A conclusão depende de CI verde, testes DB/RLS e homologação autenticada.**
+
+### 4.4 Aluno — manter o Balcão
+
+A trajetória-alvo termina no aluno, mas o **Balcão é o workspace operacional existente**. A navegação deve abrir o aluno em contexto, com confirmação quando houver trabalho não guardado; não deve criar segundo perfil ou duplicar operações. Dados financeiros, notas e documentos só aparecem com as regras e permissões já exigidas por esses domínios.
+
+### 4.5 Navegação futura / deep links
+
+**Estado atual:** `classeId` e `turmaId` são locais ao `CourseContextView`; o Back/Forward do navegador **não** reproduz o percurso. **Contrato-alvo:** serializar tipo/id da entidade, escola, ano e contexto pai em URL ou estado navegável; validar tudo no servidor ao restaurar; regresso por breadcrumb, seleção de outra entidade e refresh sem contexto incorreto. Não introduzir URL pública que contorne autorização.
+
+~~~text
+Pesquisa → Curso → Classe → Turma → Aluno/Balcão
+  ▲         ▲       ▲        │
+  └── voltar à pesquisa     └── página canónica quando necessário
+~~~
+
+## 5. Contratos técnicos
+
+### 5.1 Pesquisa
+
+**RPC existente:**
+
+~~~text
+public.search_global_entities(
+  p_escola_id, p_query, p_types, p_limit,
+  p_cursor_score, p_cursor_updated_at, p_cursor_created_at, p_cursor_id
+)
+~~~
+
+Campos consumidos: `id`, `type`, `label`, `highlight`, `score`, `updated_at`, `created_at`. O frontend associa `href`, intenção (`financeiro|academico|perfil|documentos`) e ações aplicáveis. `useGlobalSearch` seleciona os tipos conforme portal. **Resultados da pesquisa não são autorização para ler detalhes**.
+
+### 5.2 Contrato da entidade
+
+~~~ts
+type ContextualEntityType = "curso" | "classe" | "turma" | "professor";
+
+type EntityContext = Readonly<{
+  type: ContextualEntityType;
+  id: string;
+  escolaId: string;
+  label: string;
+  academicYearId: string | null;
+}>;
+~~~
+
+`label` e `href` são apresentação/navegação, **nunca** fonte de permissão. A inclusão de outros tipos no union requer visão real e gate correspondente.
+
+### 5.3 Endpoint de curso (implementado no código)
+
+~~~http
+GET /api/escolas/{escolaId}/command-center/cursos/{cursoId}?ano_letivo_id={uuid}
+~~~
+
+Parâmetros: `cursoId` UUID obrigatório; `ano_letivo_id` UUID opcional (resolvido para ano ativo quando ausente). Ano histórico válido usa modo `READ`. Fluxo da rota:
+
+1. `createRouteClient()` + `auth.getUser()` — sessão autenticada.
+2. `resolveEscolaIdForUser` — escola permitida.
+3. `requireRoleInSchool({ productContext: "k12", roles: [...] })` — whitelist de papéis.
+4. `resolveAcademicYearScope(..., operation: "READ")` — escola e ano.
+5. RPC `command_center_course_overview`.
+6. Resposta privada `Cache-Control: private, no-store`.
+
+**Sucesso — contrato atual:**
+
+~~~ts
+type CourseOverview = {
+  curso: {
+    id: string; nome: string; codigo: string | null;
+    nivel: string | null; descricao: string | null; status: string | null;
+  };
+  anoLetivo: { id: string; ano: number; ativo: boolean };
+  stats: { classes: number; turmas: number; alunos: number };
+  classes: Array<{ id: string; nome: string; turmas: number; alunos: number }>;
+  turmas: Array<{
+    id: string; nome: string; classeId: string | null;
+    turno: string | null; capacidade: number | null; alunos: number;
+  }>;
+  turmasLimitadas: boolean;
+};
+type Success = { ok: true; data: CourseOverview };
+type ErrorReply = { ok?: false; error: string; reason?: string };
+~~~
+
+A rota de autorização pode devolver um JSON de erro próprio sem `ok:false`; o frontend tem de respeitar **HTTP status**.
+
+| Status | Significado | UX obrigatória |
+| --- | --- | --- |
+| `200` | Leitura válida | Mostrar dados da entidade/ano corretos |
+| `400` | Parâmetros inválidos | Sem retry automático |
+| `401` | Sessão ausente | Limpar dados privados; autenticação |
+| `403` | Escola/papel não autorizado | Ocultar dados; não fazer fallback inseguro |
+| `404` | Curso/ano fora do escopo ou inexistente | “Não encontrado”; não substituir por zero |
+| `409` | Contexto de ano ativo sem configuração | Mostrar erro de configuração |
+| `503` | RPC ou contexto indisponível | Mensagem e retry manual |
+| `500` | Falha não prevista | Erro controlado e observabilidade |
+
+### 5.4 Contrato Supabase — RPC de curso
+
+~~~sql
+public.command_center_course_overview(
+  p_escola_id uuid, p_curso_id uuid, p_ano_letivo_id uuid
+) returns jsonb
+~~~
+
+A migration na branch usa `STABLE SECURITY INVOKER` e valida `auth.uid`, acesso à escola e papel dentro da função, além do gate da API. Restringe `EXECUTE` de `PUBLIC/anon` e concede a `authenticated/service_role`. **A instalação, RLS, grants e contagens reais estão pendentes de testes**.
+
+**Invariantes obrigatórias:**
+
+- Entidade e ano pertencem à mesma escola; jamais admitir consulta cruzada manipulando IDs.
+- Somente classes/turmas válidas do curso e ano; contemplar vínculos legados apenas com regra explícita.
+- `alunos` é contagem **distinta**, com matrícula vigente e pessoa não eliminada; transferências, cancelamentos e rematrículas não podem duplicar ou aumentar indevidamente o total.
+- Agregados vêm do banco e são **independentes da lista de até 100 turmas**. `turmasLimitadas=true` exige UX de paginação.
+- Histórico exige contrato próprio de status e leitura; o uso de `status = "ativo"` na migration é **hipótese a validar**, não verdade certificada.
+- Falha de read model nunca deve retornar `200` com zeros fictícios.
+- Não misturar valores emitidos, pagos, cancelados, vencidos ou em dívida; **sem financeiro até nova autorização**.
+
+### 5.5 APIs de entidades — estado pós-release
+
+| Rota proposta | Conteúdo | Proteção |
+| --- | --- | --- |
+| **Implementada:** `GET /api/escolas/:id/command-center/classes/:classeId` | Classe, turmas e alunos paginados no ano | Académica |
+| **Implementada na main:** `GET /api/escolas/:id/command-center/turmas/:turmaId?page=N&ano_letivo_id=UUID` | Turma, disciplinas, professores e alunos paginados (20), contagem exata e `hasMore` | Académica; autorização por papel/escola/ano |
+| Eventual rota de alunos separada | Páginas por cursor, caso offset deixe de escalar | Reavaliar sob métricas, sem duplicar endpoint |
+| **Implementada:** `GET /api/escolas/:id/command-center/professores/:professorId` | Alocações, turmas, carga | Académica |
+| **Implementada:** `GET /api/escolas/:id/command-center/disciplinas/:disciplinaId` | Matriz/curso, turmas, docentes | Académica |
+| `GET /api/escolas/:id/command-center/financeiro/...` | Métricas de cobrança por competência | **Gate financeiro distinto** |
+
+Cada rota futura deve ter schema de entrada, ano, escola, papel, RLS, colunas mínimas, paginação, erros e testes diretos de manipulação de IDs.
+
+### 5.6 Contrato do explorador de turmas (implementado na branch, ainda não homologado)
+
+```http
+GET /api/escolas/{escolaId}/command-center/turmas/{turmaId}?ano_letivo_id={uuid}&page=1
+```
+
+- Autenticar utilizador, resolver escola, aplicar o gate K12, resolver ano letivo em modo `READ`; confirmar que a turma pertence à mesma escola/ano.
+- `page`: inteiro entre 1 e 10000; `pageSize`: 20 fixo no servidor. O frontend não escolhe a dimensão da página.
+- `data.turma`: `id,nome,turno,sala,classe,curso,capacidade,anoLetivo`.
+- `data.alunos`: `items[{id,nome,numeroChamada}],total,page,pageSize,hasMore`. Consulta `matriculas` e alunos por `!inner` sob escola/ano, com `count:exact`; filtra pessoas eliminadas, transferências/cancelamentos e contém apenas nomes/número de chamada.
+- `data.disciplinas`: `[{id,nome,professores:string[]}]`; `professores:string[]`; `disciplinasLimitadas:boolean` sinaliza limites nas vinculações, com fallback à página canónica.
+- Ano ativo: apenas matrícula `ativo` com flag `ativo=true`; ano encerrado: estados `ativo|concluido`, sem transferidos. Estes estados e o comportamento de RLS exigem homologação com dados históricos.
+- Respostas privadas e sem dados financeiros/notas/BI; 401/403/404 não devem ser repetidos automaticamente pelo `useTurmaContext`.
+- `turmaContextQueryKey`: `["command-center","turma",escolaId,turmaId,academicYearId,page]`; stale 30s, cache inativa 120s, cancelamento via AbortSignal e limpeza pelo modal.
+- Testar consulta direta por ID de outra escola, ano inexistente, utilizador sem papel, sessão encerrada, professor de outra escola e paginação acima de 50/100; a interface nunca deve transformar erro em lista vazia.
+
+**Nota de engenharia:** a versão atual usa paginação por offset e join PostgREST; só declarar “concluído” quando a coerência dos totais e a consulta do professor/disciplinas forem verificadas num ambiente autenticado. Para conjuntos muito grandes, avaliar paginação por cursor.
+
+### 5.7 Contrato de professor — implementado na main; homologação autenticada pendente
+
+**GET:** `/api/escolas/{escolaId}/command-center/professores/{professorId}?ano_letivo_id={uuid}`
+
+A identidade da pesquisa usa `vw_search_professores.id = professores.id`, não `profiles.user_id`. A API valida a sessão, resolve a escola, exige os papéis K12 da leitura académica e resolve o ano letivo em `READ`. Revalida professor e todas as suas turmas no escopo de escola/ano, sem confiar no resultado da pesquisa.
+
+| Campo de resposta | Contrato |
+| --- | --- |
+| `professor` | `{id,nome}`, com fallback de `profiles.nome` para `professores.apelido` sem expor email ou BI |
+| `anoLetivo` | `{id,ano,historico}` |
+| `turmas` | `[{id,nome,turno,classeNome,cursoNome,disciplinas:[{id,nome}]}]`, apenas vínculos do professor e ano |
+| `disciplinas` | `[{id,nome,turmas}]`, deduplicadas por ID académico |
+| `horarios` | `[{turmaId,turmaNome,disciplinaNome,diaSemana,inicio,fim}]`, só de versões `publicada` e slots não intervalos |
+| `stats` | `turmas,disciplinas,aulasPublicadas` (sem derivar alunos distintos de listas limitadas) |
+| `limitado` | Verdadeiro quando vínculos ultrapassam 500 por origem ou 200 turmas por consulta; indicadores marcados como parciais |
+
+**Origens:** `turma_disciplinas` (canónica), `turma_disciplinas_professores` (legado), `quadro_horarios` com `horario_versoes.status='publicada'` (aulas publicadas), `horario_slots` e `disciplinas_catalogo` da mesma escola. Turmas com `ano_letivo_id` explícito não podem ser atribuídas a outro ano apenas por coincidência do número `ano_letivo`.
+
+**TanStack Query:** chave `['command-center','professor',escolaId,professorId,academicYearId]`; fetch não persistido, cancelável, stale 30 s, gc 120 s, retry apenas de falhas transitórias. Erro nunca vira contagem zero. Cache privado limpo no fecho/mudança de escola.
+
+**Navegação:** pesquisa → professor → turma → professor, com regresso no mesmo modal, sem alterar páginas. A rota de turma passa IDs de professores autorizados para criar os links, não apenas nomes.
+
+**Fora do escopo:** emails, contactos, BI, remuneração, saldos, notas, chamadas e contagem de alunos distintos não agregada. **Aceite pendente:** testes RLS e GET autenticado, turmas de outro ano, professor de outra escola, draft/arquivado, origem legada, limite de 500, E2E de navegação, foco e Escape.
+
+### 5.8 Contrato de disciplina — implementado na main; homologação autenticada pendente
+
+**Pesquisa dentro do mesmo Command Palette:**
+
+```http
+GET /api/escolas/{escolaId}/command-center/disciplinas?q=Matemática&ano_letivo_id={uuid}
+```
+
+- Disponível nos portais **Admin e Operações**. `q` normalizada e sanitizada, mínimo 2, máximo 100 caracteres e no máximo 8 resultados. Busca apenas `disciplinas_catalogo` da escola autorizada por `nome/sigla`.
+- Retorna `{ok:true,items:[{id,type:'disciplina',label,highlight,academicYearId}],anoLetivoId}` ou falha HTTP explícita. A descoberta não autoriza consultar o detalhe.
+- Pesquisa e cache usam TanStack Query dentro do `QueryClientProvider` **local** do modal. O `search_global_entities` não foi modificado: o grupo "Disciplinas" compartilha a lista cmdk, mas usa API separada por enquanto.
+- `disciplinaSearchQueryKey`: `['command-center','disciplina-search',escolaId,academicYearId,query]`; cancelamento `AbortSignal`, 300 ms debounce, TTL fresco 30 s e retry só em erros transitórios. Testar acessibilidade, erro, sem resultados e seleção com teclado.
+
+**GET do detalhe:**
+
+```http
+GET /api/escolas/{escolaId}/command-center/disciplinas/{disciplinaId}?ano_letivo_id={uuid}
+```
+
+- Revalida sessão, escola, papel K12, ano letivo READ e identidade em `disciplinas_catalogo`; `400/401/403/404/409/500` têm estados distintos e não viram dados vazios artificiais.
+- `disciplina`: `id,nome,sigla,area,isCore,isAvaliavel,cargaHorariaReferencia` (sem notas, identificadores pessoais ou dados financeiros).
+- `anoLetivo`: `id,ano,historico`.
+- `professores`: `[{id,nome,turmas}]`; `turmas`: `[{id,nome,turno,classeNome,cursoNome,professores:[{id,nome}]}]`, ambos isolados por ano/escola e com deduplicação.
+- `curriculo`: `[{cursoId,cursoNome,classeId,classeNome,cargaHorariaSemanal,obrigatoria}]`, uma **referência curricular**, não um indicador de aulas ministradas no ano. Classes vinculadas a outro ano são excluídas.
+- `stats`: `professores,turmas,cursos,classes`; estes contadores só são completos enquanto `limitado=false`. Limites explícitos (300 matrizes, 500 vinculações/fonte e 200 turmas) produzem **`limitado=true`** e um aviso visível.
+- `turma_disciplinas` via `curso_matriz.disciplina_id`, `turma_disciplinas_professores.disciplina_id` e `quadro_horarios.disciplina_id` são as três origens. Horários só formam vínculos quando `horario_versoes.status='publicada'` e a versão pertence à mesma turma/escola. Rascunhos ou versões arquivadas não contam.
+- `disciplinaContextQueryKey`: `['command-center','disciplina',escolaId,disciplinaId,academicYearId]`; fetch privado `cache:no-store`, abort, stale 30 s, gc 120 s.
+- Trajeto principal: pesquisar Disciplina → escolher Professor → escolher Turma → voltar ao Professor/Disciplina; rota revalida cada contexto, sem confiar nos resultados da pesquisa.
+- Não inclui contagem de alunos distintos, cálculos de notas nem autorizações financeiras. Próximos gates: CI, permissões RLS, testes autenticados por escola/ano e homologação mobile/teclado.
+
+### 5.9 Contrato de classe — implementado na main; CI verde e homologação autenticada pendente
+
+```http
+GET /api/escolas/{escolaId}/command-center/classes/{classeId}?ano_letivo_id={uuid}&page=1
+```
+
+- A busca global de **Classe** já existe em Admin e Operações; o ID da pesquisa não concede permissão ao detalhe. Resolver `auth.getUser`, escola, papel K12 e `resolveAcademicYearScope(READ)` antes de carregar a classe e vínculos de turmas. IDs de outra escola devem resultar em 403 ou 404.
+- `classes.ano_letivo_id` **não é exclusivo**: a auditoria do banco em 21/10 encontrou **seis turmas** associadas a classes com `ano_letivo_id` diferente. Aceitar a classe se existir turma efetiva no ano consultado; para não haver mistura, filtrar `turmas` por ID de ano ou por ano numérico apenas quando o ID for nulo. Classe explicitamente atribuída a outro ano e sem turma nesse ano recebe 404.
+- `data.classe = {id,nome,numero,cargaHorariaSemanal,curso:{id,nome,codigo}|null}`.
+- `data.anoLetivo = {id,ano,historico}`.
+- `data.turmas = [{id,nome,turno,sala,capacidade,alunos,professores,disciplinas}]` ordenadas por nome/ID, no máximo 200; o frontend liga diretamente à rota contextual de Turma.
+- `data.alunos = {items:[{id,nome,turmaId,turmaNome,numeroChamada}],total,page,pageSize:20,hasMore}`, unificados por `aluno_id` mesmo se a matrícula se repetir em duas turmas. A lista só apresenta a página selecionada; clique segue para o Balcão existente.
+- Filtro de matrícula: escola, `session_id=ano_letivo_id`, `ano_letivo=ano`, turmas do ano, `alunos.deleted_at IS NULL` e RLS. Ano ativo: status `ativo`, flag `ativo=true`. Histórico: status `ativo|concluido` sem exigir flag ativo. Excluir `pendente`, transferido e cancelado.
+- `data.disciplinas = [{id,nome,cargaHorariaSemanal,obrigatoria,turmas,naMatriz}]` — as disciplinas da matriz curricular são referência, não prova de aulas, enquanto vínculos efetivos vêm de `turma_disciplinas`, `turma_disciplinas_professores` e horários com versão `publicada`.
+- `data.professores = [{id,nome,turmas,disciplinas}]`, deduplicados por ID; perfis eliminados e de outra escola não entram.
+- `data.stats = {alunos,turmas,capacidade,disciplinas,professores}`: alunos são **distintos**, capacidade representa soma somente quando todas as turmas têm capacidade definida (`null` nos outros casos); sem sugerir taxa de ocupação baseada em números parciais.
+- `limitado=true` em resposta incompleta (máximo 200 turmas, 3.000 matrículas paginadas internamente, 300 linhas de matriz, 500 alocações por origem, 900 horários), com aviso e sufixo `+` nos indicadores conhecidos.
+- `classeContextQueryKey = ['command-center','classe',escolaId,classeId,academicYearId,page]`; QueryClient isolado à palette, fetch com AbortSignal, stale 30 s, gc 120 s, 30 s de retenção lógica; sem retry automático de erros permanentes.
+- Navegação: Curso → Classe → Turma → Aluno/Balcão, além de Classe → Professor/Disciplina e retorno via pilha do mesmo modal. Nunca adicionar nova página de atendimento, notas ou financeiro.
+- **Gate pendente**: teste autenticado cross-tenant (inclusive IDs arbitrários), ano antigo, classes reutilizadas, ausência de turmas, 20/21/50+ alunos, transferência, 2 matrículas por aluno, RLS, teclado, foco, Escape, performance e compatibilidade mobile.
+
+## 6. TanStack Query, cache, invalidação e Motion
+
+O hook `useCourseContext` está na branch e utiliza este contrato:
+
+~~~ts
+const queryKey = [
+  "command-center", "curso",
+  context.escolaId, context.id, context.academicYearId
+];
+
+useQuery({
+  queryKey,
+  queryFn: ({ signal }) => fetch(courseUrl, {
+    credentials: "same-origin", cache: "no-store", signal
+  }),
+  staleTime: 45_000,
+  gcTime: 120_000,
+  retry: 1,
+  refetchOnWindowFocus: false
+});
+~~~
+
+**Significados:** `staleTime=45s` permite reuso fresco enquanto o modal está ativo; `gcTime=120s` gere o descarte de queries inativas, não assegura dados atualizados. `AbortSignal` cancela requests obsoletos. O `QueryClientProvider` pertence ao `CommandPalette`, não a uma cache persistida; **fecho do modal, troca de escola e portal limpam o cache**. O hook devolve `data`, `error`, `loading`, `refreshing` e `retry`.
+
+**Ainda a implementar ou testar:**
+
+- Retry apenas para falhas transitórias; **401/403/404 não devem repetir automaticamente**.
+- Invalidação após matrícula, transferência, rematrícula, alteração de curso/turma, mudança de ano.
+- Limpeza por troca de utilizador no mesmo navegador, inclusive login/logout e pesquisa recente.
+- Renderização segura de `refreshing`, sem mostrar dados de outra escola/ano.
+- Contratos de queryKey para classe, turma, professor e disciplina.
+- Performance p50/p95 real — **não declarar SLA atingido sem medição**.
+
+**Cache distinto de pesquisa:** `useGlobalSearch` mantém cache em memória (TTL de pesquisa) e **resultados recentes em `localStorage` segmentados por escola/portal, não por utilizador**. Isto é dívida de privacidade: restringir/limpar na troca de sessão e não persistir informação pessoal desnecessária.
+
+**Motion:** `AnimatePresence`, `motion` e `useReducedMotion` já estão presentes na branch; usar transições de ~120–170 ms entre pesquisa/contexto e seleção de turma. A animação nunca deve atrasar carregamento ou movimentar foco inesperadamente.
+
+## 7. Pesquisa: todas as entidades e portais
+
+**Matriz retirada do código `PORTAL_TYPES` do `useGlobalSearch`**. Ser pesquisável **não significa** ter um modal próprio nem permissão para ler todos os campos.
+
+| Portal | Tipos pesquisáveis hoje |
+| --- | --- |
+| **Secretaria** | `aluno`, `matricula`, `turma`, `documento`, `candidatura` |
+| **Financeiro** | `aluno`, `mensalidade`, `pagamento`, `recibo` |
+| **Admin** | `turma`, `professor`, `classe`, `curso`, `usuario` |
+| **Operações** | `aluno`, `matricula`, `turma`, `documento`, `candidatura`, `professor`, `classe`, `curso`, `usuario` |
+| **Professor** | `aluno` |
+| **Aluno** | `aluno` |
+| **Gestor** | `aluno` |
+| **Superadmin** | `usuario` |
+
+O modal contextual atualmente tenta abrir `curso|classe|turma|professor` nos portais `admin|operacoes|secretaria`. Contudo, **a pesquisa da Secretaria ainda não oferece curso/classe/professor por padrão**. Qualquer alteração nessa cobertura deve passar pela revisão de permissões.
+
+### 7.1 Catálogo de evolução por entidade
+
+| Entidade | Pesquisa hoje | Modal próprio hoje | Evolução |
+| --- | --- | --- | --- |
+| **Curso** | Admin / Operações | **Vista inicial na branch** | Indicadores validados, classes/turmas completas, acesso a alunos |
+| **Classe** | Admin / Operações | **Vista própria na PR #228** | Curso, turmas, alunos distintos, vagas, disciplinas, professores e acesso ao Balcão |
+| **Turma** | Secretaria / Admin / Operações | **Vista dedicada na branch** | Homologar alunos paginados, docentes, disciplinas e ligação ao Balcão |
+| **Professor** | Admin / Operações | **Vista dedicada na PR empilhada** | Turmas, disciplinas, horários publicados por ano; homologação pendente |
+| **Aluno** | Secretaria / Financeiro / Operações / Professor / Aluno / Gestor | **Balcão existente**, conforme portal | Entrada contextual sem duplicar atendimento |
+| **Matrícula** | Secretaria / Operações | Navegação canónica | Estado, turma, ano e histórico corrigível |
+| **Documento** | Secretaria / Operações | Navegação canónica | Tipo, validade, descarga autorizada |
+| **Candidatura** | Secretaria / Operações | Navegação canónica | Protocolo, estado e ações autorizadas |
+| **Mensalidade** | Financeiro | Navegação canónica | Competência, estado, pagamentos e dívida |
+| **Pagamento** | Financeiro | Navegação canónica | Método, estado, conciliação, recibo |
+| **Recibo** | Financeiro | Navegação canónica | Documento fiscal e ações permitidas |
+| **Utilizador** | Admin / Operações / Superadmin | Navegação canónica | Papel, vínculo, escola e gestão autorizada |
+| **Disciplina** | **Admin / Operações (endpoint próprio na PR)** | **Visão dedicada na PR empilhada** | Professores, turmas e matriz curricular por ano; homologação pendente |
+| **Avaliação / pauta** | **Ainda não pesquisável** | Não | Publicação, notas e períodos |
+| **Ano letivo / período** | **Ainda não pesquisável** | Não | Navegação temporal, leitura histórica |
+| **Sala / instalação** | **Ainda não pesquisável** | Não | Ocupação e alocação, se existir modelo consolidado |
+| **Cobrança / dívida** | **Não é tipo autónomo** | Não | Financeiro por competência e permissão |
+
+**Critérios para adicionar tipo:** problema concreto, fonte de dados estável, pesquisa indexada, endpoint com gate, dados mínimos, navegação/fallback, estado vazio, testes cross-tenant. Prioridade após curso: **Classe → Turma → Professor → Disciplina**. O aluno mantém o Balcão; financeiro tem trilha própria.
+
+## 8. Segurança: fronteiras de autorização
+
+### 8.1 Fluxo de confiança
+
+~~~text
+UI/resultado de pesquisa (não confiável)
+   → endpoint HTTP autenticado
+   → resolver escola + ano letivo
+   → capacidade/papel apropriado
+   → RLS e gate interno na RPC
+   → payload mínimo, sem exposição fora do escopo
+~~~
+
+O GET de curso na branch exige sessão, escola e `requireRoleInSchool` com `productContext:"k12"` e papéis: `admin`, `admin_escola`, `staff_admin`, `diretor`, `secretaria`, `admin_secretaria`, `secretaria_financeiro`, `admin_financeiro`. A migration repete o gate no banco. **Esta lista não autoriza automaticamente ver dados financeiros, pessoais ou notas.**
+
+| Domínio | Regra |
+| --- | --- |
+| Identificação académica básica | Tenant e ano, papel e relação autorizados |
+| Aluno, matrícula, documentos | Permissão académica e minimização de dados pessoais |
+| Notas, avaliações, boletim | Acesso pedagógico, estado de publicação e regras de taxa |
+| Propinas, saldos, dívida, recibos | **Capacidade financeira dedicada** e read models próprios |
+| Professores | Turmas e disciplinas por vínculo; ocultar dados pessoais dispensáveis |
+| Utilizadores | Permissão administrativa dedicada |
+| Ano letivo histórico | Leitura histórica explícita; nunca escrita implícita |
+| Ações | Autorização própria a cada operação; nunca depender só do botão oculto |
+
+**Obrigatório antes da entrega:** testar sessão anónima, escola A/B, troca de role, IDs arbitrários, dois anos letivos, logout/login sem troca de escola, consulta direta ao REST/RPC, `SECURITY INVOKER`/RLS e grants. `service_role` jamais no frontend; não confiar em `user_metadata`.
+
+**Supabase conectado, inspeção em 21/10/2026:** `search_global_entities`, `user_has_role_in_school` e `has_access_to_escola_fast` foram encontradas com `EXECUTE` a `anon` negado; `command_center_course_overview` não estava instalada. Isto **não** é teste completo de isolamento/RLS.
+
+## 9. Roadmap oficial — checklist de execução
+
+**Como marcar:** subitem `[x]` apenas com artefacto verificável na branch. Para concluir uma fase, anexar PR, SHA, logs de teste/CI, homologação e confirmação do gate. Atualizar este ficheiro na mesma PR da entrega.
+
+### Fase 0 — Decisões e auditoria
+- [x] Auditar Command Center, pesquisa e modelos académicos (issue #224).
+- [x] Escolher modal único com `cmdk`, sem novo painel.
+- [x] Criar branch de trabalho a partir da `main`.
+- [x] Publicar esta especificação oficial com matriz de entidades e roadmap.
+- [ ] Validar contratos de matrícula, transferência, status e ano histórico.
+- [ ] Aprovar matriz de capacidades por papel e domínio.
+
+**Gate:** arquitetura e autorização acordadas.
+
+### Fase 1 — Modal e fluxo de pesquisa
+- [x] Estender `CommandPalette`, mantendo Topbar e `Ctrl/Cmd+K`.
+- [x] Criar `EntityContext` e fallback para classe/turma/professor.
+- [x] Seleção contextual de curso com retorno à pesquisa.
+- [x] Manter encaminhamento existente de aluno/Balcão.
+- [x] Adicionar transição discreta com reduced motion.
+- [ ] Testar teclado, foco, Escape, mobile, leitor de ecrã e seleção múltipla.
+- [ ] Implementar UX completa de falhas na pesquisa e fallback estável.
+- [ ] Validar troca de aluno com trabalho não guardado.
+
+**Gate:** pesquisa e Balcão sem regressão.
+
+### Fase 2 — API, Supabase e correção de indicadores
+- [x] Criar rota GET de overview do curso no código.
+- [x] Versionar a migration da RPC de contagem académica.
+- [x] Incluir gates HTTP e SQL de acesso/escola/papel/ano.
+- [ ] Rever SQL com o contrato canónico de matrículas e histórico.
+- [ ] Aplicar e testar a migration **em homologação**, nunca diretamente em produção.
+- [ ] Testar >50 alunos e >100 turmas; cancelamentos, transferências e re-matrículas.
+- [ ] Confirmar ano letivo histórico, classes legadas, idempotência das contagens.
+- [ ] Testar PII/roles/escola A→B/ano A→B, REST/RPC diretos.
+- [ ] Analisar planos SQL e índices; provar precisão sem truncamento.
+
+**Gate:** valores corretos e isolamento validado no banco.
+
+### Fase 3 — TanStack Query e performance
+- [x] Adicionar TanStack Query v5 e lockfile na branch.
+- [x] Criar `useCourseContext` com queryKey por escola/curso/ano.
+- [x] Criar QueryClient local, limpar no fecho e na troca escola/portal.
+- [x] Adotar retry limitado, abort e cache de curta duração (valores iniciais).
+- [ ] Rodar instalação congelada, TypeScript, lint, build e testes.
+- [ ] Ajustar retry por HTTP status e impedir cache 401/403.
+- [ ] Invalidar ao matricular/transferir/rematricular e trocar ano.
+- [ ] Limpar recentes sensíveis ao trocar utilizador/logout.
+- [ ] Medir p50/p95 sob escala real e validar revalidação visual.
+
+**Gate:** sem vazamento/cross-session, sem stale incorreto, desempenho medido.
+
+### Fase 4 — Exploração Curso → Classe → Turma → Aluno
+- [x] Exibir KPIs, classes, turmas e limites da lista no modal de curso.
+- [x] Filtrar turmas por classe no modal e mostrar breadcrumb.
+- [x] Mostrar resumo de turma e abrir página canónica.
+- [ ] Paginação dinâmica de turmas fora dos 100 primeiros registos.
+- [x] Criar visão/endpoint dedicado de classe na PR #228, com escola/ano/papel e contratos de UI.
+- [x] Conectar Curso → Classe, Turma → Classe, Disciplina → Classe e Classe → Curso/Turma/Disciplina/Professor/Aluno.
+- [x] Deduplicar alunos por `aluno_id` e reutilizar a política de matrículas ativas/históricas da turma.
+- [x] Mostrar capacidade apenas se todas as turmas têm valor definido; não confundir faltas de dados com vagas reais.
+- [x] Compatibilizar classes reutilizadas entre anos: turmas do ano prevalecem sobre `classes.ano_letivo_id` obsoleto.
+- [ ] Homologar classe com mais de 3.000 matrículas e mais de 200 turmas (resultado parcial sinalizado).
+- [x] Criar visão/endpoint dedicado de turma (código na branch; homologação pendente).
+- [x] Carregar alunos paginados (20 por página) e ligar a seleção de aluno ao Balcão existente, quando disponível.
+- [x] Mostrar disciplinas/professores do vínculo académico sem valores financeiros ou BI.
+- [ ] Testar turmas com 0, 1, 20, 21, 50+ e 100+ matrículas e respetivos estados.
+- [ ] Homologar disciplina/professor em vínculos regulares e legados, com professores de outras escolas excluídos.
+- [ ] Restaurar navegação/back/forward com deep link autorizado.
+- [ ] E2E do percurso completo sem perda de escola/ano.
+
+**Gate:** exploração sem falsas listas vazias nem paginação enganosa.
+
+### Fase 5 — Professor, disciplina e pedagogia
+- [x] Auditar vínculos diretos, legados e de horários publicados no Supabase.
+- [x] Criar endpoint académico de professor com escola, papel e ano em modo READ.
+- [x] Criar vista dedicada: turmas, disciplinas, horários publicados e estados.
+- [x] Integrar navegação Professor → Turma e Turma → Professor, com pilha de regresso no mesmo modal.
+- [x] Consolidar vínculos por identificador sem duplicar turma, disciplina nem slot.
+- [x] Criar testes unitários de ano, deduplicação, cache e status publicado.
+- [ ] Homologar identidade e permissões com sessão autenticada; testar escola A/B e papéis.
+- [ ] Homologar professor com várias turmas/escolas/anos, perfis apagados e vínculos legados.
+- [ ] Validar typecheck, lint, build, testes e CI verde para a PR empilhada.
+- [ ] Definir agregação exata de alunos distintos do professor no PostgreSQL.
+- [x] Adicionar disciplinas à pesquisa do modal de Admin/Operações via rota autenticada, sem alteração da RPC global.
+- [x] Criar explorador de disciplinas: professores, turmas e referência da matriz curricular por ano.
+- [x] Implementar navegação Disciplina → Professor → Turma, e retorno pelo histórico contextual.
+- [x] Consolidar alocações diretas, legadas e horários **publicados**, com deduplicação por ID.
+- [x] Criar testes unitários de filtros de ano, chaves TanStack Query, duplicados e busca segura.
+- [ ] Verificar índice seletivo/custo da pesquisa de disciplinas e performance p50/p95.
+- [ ] Homologar endpoints com sessão real, RLS, turma e professor de outra escola, ano histórico e limites.
+- [ ] Confirmar CI completamente verde (TypeScript, lint, build, contratos), revisão e smoke autenticado.
+- [ ] Integrar notas/avaliações apenas com regras de publicação/permissão.
+
+**Gate:** dados pedagógicos autorizados, CI verde e homologação. Itens marcados significam código versionado, não produção.
+
+### Fase 6 — Restantes entidades e finanças
+- [ ] Matrícula e candidatura: estados e ações autorizadas.
+- [ ] Documento: validade e acesso seguro a ficheiros.
+- [ ] Utilizador: vínculos e gestão autorizada.
+- [ ] Mensalidade, pagamento e recibo: consultas específicas e auditoria.
+- [ ] Conceituar métricas emitido/pago/parcial/cancelado/vencido/dívida.
+- [ ] Implementar role/capacidade financeira **separada** da académica.
+- [ ] Validar conciliação, competência e testes financeiros integrados.
+- [ ] Rever possibilidade de ano letivo, avaliação, pauta e instalações como entidades.
+
+**Gate:** cada tipo tem autorização, fonte confiável e testes.
+
+### Fase 7 — Qualidade, segurança e entrega
+- [ ] Unit tests: contratos, queryKeys, estados, retry, troca de sessão.
+- [ ] DB/RLS: >50/>100, multi-tenant, anos, transferências, papéis.
+- [ ] E2E autenticado desktop/mobile: pesquisar → curso → classe → turma → aluno.
+- [ ] E2E Balcão, teclado/foco/Escape, mudança de aluno e logout.
+- [ ] Typecheck + lint + build + suíte relevante com CI concluído e verde.
+- [ ] Homologação de negócio e UX com dados representativos.
+- [ ] Validar deployment SQL, grants, segurança e observabilidade sem PII.
+- [ ] Abrir/revisar PR, anexar evidências e aprovar merge.
+- [ ] Deploy controlado **somente quando autorizado** e smoke em produção.
+- [ ] Atualizar este checklist, versão e histórico com provas.
+
+**Gate:** CI e homologação concluídos; nenhuma tarefa pendente mascarada.
+
+## 10. Riscos e decisões abertas
+
+| Prioridade | Risco / diferença entre objetivo e realidade | Resolução |
+| --- | --- | --- |
+| P0 | RPC de curso instalada; validação autenticada de grants, RLS e contagens ainda não realizada | Executar testes com papéis reais e cenários cross-tenant |
+| P0 | Status `ativo` da migration pode excluir históricos válidos | Auditar estados canónicos, transferências e duplicados |
+| P0 | Diferentes permissões para pesquisar, consultar e agir | Gates por entidade/ação e testes REST/RPC |
+| P0 | Recentes em `localStorage` por escola/portal, não utilizador | Minimizar e limpar por identidade/logout |
+| P1 | Vista de curso lista só até 100 turmas | Paginação server-side, não inferir vazio |
+| P1 | Classe, professor, turma e disciplina requerem homologação autenticada | Verificar no browser/REST as quatro entidades, RLS e ano antes da promoção |
+| P1 | Pesquisa de disciplinas em endpoint paralelo até integração no RPC | Validar latência e decidir eventual unificação sem expor tipos a outros portais |
+| P1 | Breadcrumb não corresponde a Back/Forward real | Contrato seguro de deep link |
+| P1 | Retry automático não distingue 403 de falha transitória | Classificar status e evitar repetição inútil |
+| P1 | Cache não invalidado em todas as mutações escolares | Invalidação por tenant/entidade/ano |
+| P2 | Foco/acessibilidade e animações ainda não homologados | Testes E2E e reduced motion |
+
+## 11. Governança e histórico
+
+**Este ficheiro é a fonte de verdade para o roadmap do modal contextual.** Sempre que uma PR concluir trabalho, atualizar checklist e registar:
+
+- Link da PR e commit.
+- Escopo implementado, incluindo permissão/ano/entidade.
+- Testes executados e resultado do CI (não apenas “testar depois”).
+- Ambiente de homologação e resultado; release apenas após autorização.
+- Decisões/contratos alterados e riscos remanescentes.
+
+| Data | Evento | Evidência |
+| --- | --- | --- |
+| 21/10/2026 | Auditoria do Command Center e plano | [Issue #224](https://github.com/moxi-edtech/moxi-edtech/issues/224) |
+| 21/10/2026 | Decisão: modal da pesquisa como explorador contextual | Branch `feat/command-center-contextual-modal-foundation-20261021` |
+| 21/10/2026 | Fundação de curso, API, migration, TanStack Query e Motion identificados na branch | Código versionado; **testes/CI/RLS/homologação ainda não atestados** |
+| 21/10/2026 | Especificação oficial ampliada e checklist por fase | Este documento |
+
+---
+
+**Regra final:** *Entidade pesquisável* ≠ *visão contextual pronta* ≠ *utilizador autorizado* ≠ *funcionalidade em produção*.

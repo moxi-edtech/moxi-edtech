@@ -118,3 +118,16 @@ test("comportamento actual documentado: /admin/notas cai em dashboard", () => {
     page: "admin",
   });
 });
+
+
+test("copiloto reconhece as operações de secretaria no superportal", () => {
+  for (const [suffix, page] of [
+    ["/operacoes/alunos", "alunos"],
+    ["/operacoes/matriculas", "matriculas"],
+    ["/operacoes/balcao", "balcao"],
+  ] as const) {
+    assert.deepEqual(deriveWidgetContext(path(suffix)), {
+      module: "secretaria", page, entityType: "none",
+    });
+  }
+});

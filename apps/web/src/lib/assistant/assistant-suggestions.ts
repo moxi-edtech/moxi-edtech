@@ -100,7 +100,7 @@ export const ASSISTANT_SUGGESTIONS: AssistantSuggestion[] = [
     key: "student_new",
     title: "Cadastrar novo aluno",
     module: "secretaria",
-    pages: ["alunos", "secretaria"],
+    pages: ["alunos", "secretaria", "balcao", "matriculas"],
     roles: SECRETARIA_ROLES,
     riskLevel: "low",
     actionType: "navigate",
@@ -110,7 +110,7 @@ export const ASSISTANT_SUGGESTIONS: AssistantSuggestion[] = [
     key: "student_summary",
     title: "Gerar resumo da ficha",
     module: "secretaria",
-    pages: ["alunos"],
+    pages: ["alunos", "balcao"],
     roles: SECRETARIA_ROLES,
     requiredFeatures: ["summary"],
     riskLevel: "low",
@@ -176,6 +176,8 @@ export function describeContext(context?: AiWidgetContext) {
   if (context?.module === "financeiro" && context.page === "radar") return "Radar Financeiro";
   if (context?.module === "financeiro") return "Financeiro";
   if (context?.module === "secretaria" && context.page === "alunos") return "Alunos";
+  if (context?.module === "secretaria" && context.page === "balcao") return "Balcão";
+  if (context?.module === "secretaria" && context.page === "matriculas") return "Matrículas";
   if (context?.module === "secretaria") return "Secretaria";
   if (context?.module === "comunicacao") return "Comunicação";
   if (context?.module === "whatsapp") return "Central WhatsApp";
