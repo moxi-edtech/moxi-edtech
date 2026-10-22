@@ -39,6 +39,7 @@ import { DisciplinaSearchResults } from "@/components/secretaria/command-center/
 import type { ContextualEntityType } from "@/lib/command-center/entity-context";
 import {
   consumeExplorerReturnContext,
+  retainExplorerViewState,
   clearExplorerReturnContext,
   saveExplorerReturnContext,
   type ExplorerScope,
@@ -112,11 +113,10 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
   const contextualScrollRef = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => { viewStateRef.current = viewState; }, [viewState]);
   const updateView = (key: string, next: ExplorerViewState) => {
-    viewStateRef.current = { ...viewStateRef.current, [key]: next };
-    setViewState((prev) => {
-      const old = prev[key];
-      return old?.page === next.page && old?.scrollTop === next.scrollTop && old?.selectedStudentId === next.selectedStudentId && old?.search === next.search && old?.filter === next.filter && old?.sort === next.sort ? prev : { ...prev, [key]: next };
-    });
+    const current = retainExplorerViewState(viewStateRef.current, key, next);
+    if (current === viewStateRef.current) return;
+    viewStateRef.current = current;
+    setViewState(current);
   };
   const [sessionUserId, setSessionUserId] = React.useState<string | null>(null);
   React.useEffect(() => {
