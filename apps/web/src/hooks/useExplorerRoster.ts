@@ -44,7 +44,7 @@ export function useExplorerRoster(context: EntityContext, type: "turma" | "class
         params.set("cursorName", pageParam.name);
         params.set("cursorId", pageParam.id);
       }
-      const poloId = new URLSearchParams(window.location.search).get("poloId");
+      const poloId = new URLSearchParams(window.location.search).get("poloId") ?? new URLSearchParams(window.location.search).get("polo_id");
       if (poloId) params.set("poloId", poloId);
       const reply = await fetch(
         `/api/escolas/${encodeURIComponent(context.escolaId)}/command-center/roster?${params}`,
