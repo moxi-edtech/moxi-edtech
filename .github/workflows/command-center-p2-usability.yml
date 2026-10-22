@@ -8,6 +8,7 @@ on:
       - 'apps/web/src/lib/command-center/observability.ts'
       - 'apps/web/src/app/api/escolas/**/command-center/**'
       - 'apps/web/tests/unit/command-center-p2-contracts.spec.ts'
+      - 'apps/web/tests/unit/command-center-functional-ux.spec.ts'
       - '.github/workflows/command-center-p2-usability.yml'
 permissions:
   contents: read
@@ -41,4 +42,4 @@ jobs:
             "src/app/api/escolas/[id]/command-center/roster/export/route.ts" \
             "src/app/api/escolas/[id]/command-center/disciplinas/route.ts" \
             tests/unit/command-center-p2-contracts.spec.ts --max-warnings 0
-      - run: pnpm -C apps/web exec tsx --test tests/unit/command-center-p2-contracts.spec.ts
+      - run: pnpm -C apps/web exec tsx --test tests/unit/command-center-p2-contracts.spec.ts tests/unit/command-center-functional-ux.spec.ts
