@@ -240,10 +240,10 @@ export function TurmaContextView({
                 className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
                 <span className="w-8 shrink-0 text-xs tabular-nums text-slate-500">{student.numeroChamada ?? "—"}</span>
                 <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{student.nome}</span>
-                {searchActive && "documentosSinalizados" in student && student.documentosSinalizados && (
+                {searchActive && "documentosSinalizados" in student && student.documentosSinalizados === true && (
                   <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">Documentos sinalizados</span>
                 )}
-                {searchActive && "propinasVencidas" in student && student.propinasVencidas && (
+                {searchActive && "propinasVencidas" in student && student.propinasVencidas === true && (
                   <span className="rounded border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] text-orange-950">Propina vencida</span>
                 )}
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
