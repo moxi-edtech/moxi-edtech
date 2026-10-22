@@ -15,6 +15,11 @@ const inputs = z.object({
 async function readCapabilities(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const u = new URL(req.url);
+  // O vínculo canónico polo↔operador/turma ainda não existe no catálogo instalado.
+  // Pedidos de um polo específico falham fechados, sem expor capacidades globais.
+  if (u.searchParams.has("poloId") || u.searchParams.has("polo_id")) {
+    return NextResponse.json({ ok: false, error: "O acesso por polo está indisponível. Solicite a configuração à administração." }, { status: 403 });
+  }
   const parsed = inputs.safeParse({ escolaId: id, alunoId: u.searchParams.get("alunoId") });
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Parâmetros inválidos." }, { status: 400 });
   const supabase = await createRouteClient();
