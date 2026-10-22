@@ -43,6 +43,7 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: |
+          set -euo pipefail
           psql "$PGURL" -v ON_ERROR_STOP=1 \
             -f supabase/ops/tests/regression_command_center_operational_roster_v1.sql \
             | tee /tmp/command-center-operational-sql.txt
@@ -50,6 +51,7 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: |
+          set -euo pipefail
           psql "$PGURL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE cc_finance_fixture;'
           psql "postgresql://postgres:postgres@127.0.0.1:5432/cc_finance_fixture" -v ON_ERROR_STOP=1 \\
             -f supabase/ops/tests/regression_command_center_finance_scope.sql \\
