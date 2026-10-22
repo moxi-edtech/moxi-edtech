@@ -80,6 +80,11 @@ async function run(size, zoom) {
   await capture(page,size,zoom,"ordenacao-z-a");
   await sort.selectOption("pendencias_primeiro");
   await page.getByText("55 encontrados").waitFor();
+  await page.waitForFunction(
+    () => document.querySelector("[data-student-id]")?.getAttribute("data-student-id") ===
+      "00000000-0000-4000-8100-000000000004",
+    null, { timeout: 10_000 },
+  );
   const firstPriorityId = await page.locator("[data-student-id]").first().getAttribute("data-student-id");
   assert.equal(firstPriorityId, "00000000-0000-4000-8100-000000000004");
   await capture(page,size,zoom,"pendencias-primeiro");
