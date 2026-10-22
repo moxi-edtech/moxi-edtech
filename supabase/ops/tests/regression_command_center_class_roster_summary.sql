@@ -3,6 +3,8 @@
 -- Disposable PostgreSQL fixture. NOT a substitute for a full Supabase migration replay.
 CREATE SCHEMA auth;
 CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE service_role NOLOGIN;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE
 AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 CREATE TABLE public.escola_users (escola_id uuid NOT NULL, user_id uuid NOT NULL);
