@@ -335,7 +335,7 @@ export default function EscolaAdminDashboardContent({
           <h1 className="text-2xl font-black leading-none tracking-tight text-slate-900 min-[1700px]:text-3xl">
             {dashboardTitle}
           </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2 min-[1700px]:flex-nowrap">
             <p className="text-sm font-medium text-slate-500">{saudacao}</p>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5">
