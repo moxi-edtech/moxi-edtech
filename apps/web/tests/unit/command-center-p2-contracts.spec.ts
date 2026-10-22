@@ -53,3 +53,18 @@ test("P2: auxiliary API errors have stable non-PII correlation codes", async () 
     assert.doesNotMatch(JSON.stringify(body),/private synthetic query value/);
   }
 });
+
+test("P2: export disabled explains next step but never relays arbitrary backend text", async () => {
+  const blocked=await withExplorerObservability("roster-export",async()=>
+    Response.json({ok:false,code:"EXPORT_DISABLED",error:"sensitive internal detail"},{status:403}));
+  const body=await blocked.json();
+  assert.equal(body.code,"EXPORT_DISABLED");
+  assert.match(body.error,/Solicite autorização/);
+  assert.doesNotMatch(JSON.stringify(body),/sensitive internal detail/);
+
+  const forged=await withExplorerObservability("disciplina-search",async()=>
+    Response.json({ok:false,code:"EXPORT_DISABLED",error:"sensitive internal detail"},{status:403}));
+  const forgedBody=await forged.json();
+  assert.equal(forgedBody.code,"FORBIDDEN");
+  assert.doesNotMatch(JSON.stringify(forgedBody),/sensitive internal detail/);
+});
