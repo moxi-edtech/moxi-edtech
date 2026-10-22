@@ -539,6 +539,7 @@ function RadarCompacto({
   onAction,
   collapsed,
   onToggle,
+  inline = false,
 }: {
   role: "secretaria" | "admin"
   critical: OperationalAlert[]
@@ -548,6 +549,7 @@ function RadarCompacto({
   onAction?: (alert: OperationalAlert) => void
   collapsed: boolean
   onToggle: () => void
+  inline?: boolean
 }) {
   const total = critical.length + warnings.length + infos.length
   const limpo = !loading && total === 0
@@ -560,11 +562,11 @@ function RadarCompacto({
         ? `${warnings.length} alerta${warnings.length > 1 ? "s" : ""} por resolver`
         : infos.length > 0
           ? `${infos.length} informaç${infos.length > 1 ? "ões" : "ão"}`
-          : "Sem pendências no radar"
+          : inline ? "Sem pendências" : "Sem pendências no radar"
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+    <div data-testid="status-radar" className={inline ? "min-w-0" : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex items-center gap-3">
           <div
             className={`rounded-xl border p-2 ${
@@ -576,10 +578,10 @@ function RadarCompacto({
             {limpo ? <CheckCircle2 className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <p className={inline ? "text-[11px] font-bold uppercase tracking-wide text-slate-600" : "text-[10px] font-black uppercase tracking-widest text-slate-400"}>
               {role === "admin" ? "Cockpit de Gestão" : "Radar Operacional"}
             </p>
-            <p className="text-xs font-bold text-slate-700 mt-0.5">{subline}</p>
+            <p className="text-xs font-bold text-slate-700 mt-0.5">{inline && total > 0 ? "Requer atenção" : subline}</p>
           </div>
         </div>
 
@@ -616,7 +618,7 @@ function RadarCompacto({
               type="button"
               aria-expanded={!collapsed}
               onClick={onToggle}
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition-colors hover:text-slate-600"
+              className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-semibold text-slate-700 transition-colors hover:text-slate-900"
             >
               {collapsed ? "Ver alertas" : "Ocultar"}
               <ChevronDown
@@ -653,14 +655,14 @@ export function RadarOperacional({
   loading?: boolean
   role?: "secretaria" | "admin"
   onAction?: (alert: OperationalAlert) => void
-  variant?: "default" | "compact"
+  variant?: "default" | "compact" | "inline"
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const critical = alerts.filter((a) => a.severity === "critical")
   const warnings = alerts.filter((a) => a.severity === "warning")
   const infos = alerts.filter((a) => a.severity === "info")
 
-  if (variant === "compact") {
+  if (variant === "compact" || variant === "inline") {
     return (
       <RadarCompacto
         role={role}
@@ -671,6 +673,7 @@ export function RadarOperacional({
         onAction={onAction}
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
+        inline={variant === "inline"}
       />
     )
   }
