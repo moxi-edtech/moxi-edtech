@@ -62,7 +62,7 @@ export function resolveRosterExportPolicy(
     const entry: unknown = (all as Record<string, unknown>)[escolaId];
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return DEFAULT_ROSTER_EXPORT_POLICY;
     const row = entry as Record<string, unknown>;
-    const allowed: Role[] = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "admin_secretaria"];
+    const allowed: readonly string[] = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "admin_secretaria"];
     if (row.enabled !== true || !Number.isInteger(row.maxRows) ||
         typeof row.maxRows !== "number" || row.maxRows < 1 || row.maxRows > 200 ||
         !Array.isArray(row.roles) || !row.roles.length ||
