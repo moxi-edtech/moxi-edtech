@@ -42,6 +42,8 @@ async function measure(page, viewport, zoom, state, baseline) {
         const node = walker.currentNode, value = node.textContent?.trim() || "";
         if (!value) continue;
         const el = node.parentElement; if(!el)continue;
+        // Tailwind sr-only deliberately clips text for screen readers; it is not visual overflow.
+        if (el.closest(".sr-only")) continue;
         const style=getComputedStyle(el);
         if(style.display==="none"||style.visibility==="hidden"||style.opacity==="0")continue;
         let ancestor=el.parentElement, hidden=false;
@@ -122,5 +124,9 @@ try {
 }finally{await browser.close();}
 const report={synthetic:true,zoomMethod:"CSS zoom (page document root); browser context stays deviceScaleFactor=1",repeats,viewports,zoomLevels,states,baseline:"isolated reproduction of previous layout geometry; not historical live capture",measurements,failures};
 await writeFile(`${folder}/measurements.json`,JSON.stringify(report,null,2));
+for(const [width,height] of viewports){
+  const rows=measurements.filter(m=>m.viewport===`${width}x${height}`&&m.zoom===1&&m.state==="pending");
+  for(const m of rows)console.log("MEASURE",JSON.stringify({viewport:m.viewport,layout:m.baseline?"before":"after",width:m.availableWidth,columns:m.columns,kpiBottom:m.kpiBottom,financeTop:m.financeTop,visibleBlocks:m.visibleBlocks,overflow:m.overflow}));
+}
 if(failures.length){console.error("Operations density layout checks FAILED:",failures.slice(0,35).join("\n"));process.exitCode=1;}
 else console.log(`PASS operations density: ${measurements.length} synthetic screenshots, ${repeats} runs, 0 layout failures. Fold and columns verified.`);
