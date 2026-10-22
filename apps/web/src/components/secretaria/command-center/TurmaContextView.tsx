@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight, Loader2, RefreshCw, UsersRound } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
@@ -15,11 +15,30 @@ type Props = {
   onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
   onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
   onExploreClasse: (classe: { id: string; label: string; academicYearId: string }) => void;
+  initialPage?: number;
+  onPageChange?: (page: number) => void;
+  initialScrollTop?: number;
+  onScrollTopChange?: (top: number) => void;
+  selectedStudentId?: string | null;
+  restoreStudentFocus?: boolean;
 };
 
-export function TurmaContextView({ context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina, onExploreClasse }: Props) {
-  const [page, setPage] = useState(1);
+export function TurmaContextView({ context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina, onExploreClasse, initialPage = 1, onPageChange, initialScrollTop = 0, onScrollTopChange, selectedStudentId, restoreStudentFocus = false }: Props) {
+  const [page, setPage] = useState(initialPage);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
+  useEffect(() => {
+    if (loading || !data || !scrollRef.current) return;
+    scrollRef.current.scrollTop = initialScrollTop;
+    if (restoreStudentFocus && selectedStudentId) {
+      const selected = Array.from(scrollRef.current.querySelectorAll<HTMLButtonElement>("button[data-student-id]"))
+        .find((node) => node.dataset.studentId === selectedStudentId);
+      selected?.focus({ preventScroll: true });
+    }
+    // This restoration runs when the context view remounts after a Balcão handoff.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context.id, loading]);
+  const updatePage = (next: number) => { setPage(next); onPageChange?.(next); };
 
   function openExisting() {
     const base = portal === "admin" ? "/admin/turmas" : portal === "secretaria" ? "/secretaria/turmas" : "/operacoes/turmas";
@@ -49,7 +68,7 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
   const { turma, alunos, disciplinas, professores } = data;
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   return (
-    <div className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div ref={scrollRef} onScroll={(event) => onScrollTopChange?.(event.currentTarget.scrollTop)} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
@@ -75,7 +94,9 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
 
       <div className="flex flex-wrap gap-5 border-y border-slate-100 py-4">
         <div><p className="text-xs text-slate-500">Alunos no ano</p><strong className="text-xl tabular-nums text-slate-900">{alunos.total}</strong></div>
-        <div><p className="text-xs text-slate-500">Capacidade</p><strong className="text-xl tabular-nums text-slate-900">{turma.capacidade ?? "—"}</strong></div>
+        <div><p className="text-xs text-slate-500">Capacidade definida</p><strong className="text-xl tabular-nums text-slate-900">{turma.capacidade ?? "Não definida"}</strong></div>
+        <div><p className="text-xs text-slate-500">Vagas disponíveis</p><strong className="text-xl tabular-nums text-slate-900">{turma.capacidade == null ? "—" : Math.max(0, turma.capacidade - alunos.total)}</strong></div>
+        {turma.capacidade != null && alunos.total > turma.capacidade && <div role="status"><p className="text-xs text-rose-700">Excedente</p><strong className="text-xl tabular-nums text-rose-800">{alunos.total - turma.capacidade}</strong></div>}
         <div><p className="text-xs text-slate-500">Disciplinas</p><strong className="text-xl tabular-nums text-slate-900">{disciplinas.length}{data.disciplinasLimitadas ? "+" : ""}</strong></div>
         <div><p className="text-xs text-slate-500">Professores vinculados</p><strong className="text-xl tabular-nums text-slate-900">{data.professoresDetalhes?.length ?? professores.length}</strong></div>
       </div>
@@ -88,7 +109,7 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
           </div>
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
             {alunos.items.map((student) => (
-              <button type="button" key={student.id} onClick={() => onStudentSelect({ id: student.id, label: student.nome })}
+              <button type="button" key={student.id} data-student-id={student.id} aria-current={selectedStudentId === student.id ? "true" : undefined} onClick={() => onStudentSelect({ id: student.id, label: student.nome })}
                 className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
                 <span className="w-8 shrink-0 text-xs tabular-nums text-slate-500">{student.numeroChamada ?? "—"}</span>
                 <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{student.nome}</span>
@@ -100,11 +121,11 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
           <div className="mt-3 flex items-center justify-between gap-2">
             <span className="text-xs tabular-nums text-slate-500">Página {alunos.page} de {pages}</span>
             <div className="flex gap-2">
-              <button type="button" disabled={page <= 1 || refreshing} onClick={() => setPage((p) => Math.max(1, p - 1))}
+              <button type="button" disabled={page <= 1 || refreshing} onClick={() => updatePage(Math.max(1, page - 1))}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40">
                 <ChevronLeft className="h-4 w-4" /> Anterior
               </button>
-              <button type="button" disabled={!alunos.hasMore || refreshing} onClick={() => setPage((p) => p + 1)}
+              <button type="button" disabled={!alunos.hasMore || refreshing} onClick={() => updatePage(page + 1)}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40">
                 Seguinte <ChevronRight className="h-4 w-4" />
               </button>
@@ -113,7 +134,7 @@ export function TurmaContextView({ context, portal, onNavigate, onStudentSelect,
         </section>
         <section className="min-w-0">
           <h3 className="mb-2 flex items-center gap-2 font-semibold text-slate-900"><BookOpen className="h-4 w-4 text-emerald-700" /> Disciplinas e professores</h3>
-          <div className="max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
             {disciplinas.map((d) => (
               <div key={d.id} className="px-3 py-3">
                 <button type="button"
