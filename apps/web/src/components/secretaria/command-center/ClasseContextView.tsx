@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   GraduationCap, Loader2, RefreshCw, UsersRound,
@@ -21,6 +21,12 @@ type Props = {
   onExploreDisciplina: (entity: NextEntity) => void;
   onExploreProfessor: (entity: NextEntity) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
+  initialPage?: number;
+  onPageChange?: (page: number) => void;
+  initialScrollTop?: number;
+  onScrollTopChange?: (top: number) => void;
+  selectedStudentId?: string | null;
+  restoreStudentFocus?: boolean;
 };
 
 function Metric({ label, value, limited }: {
@@ -40,9 +46,23 @@ function Metric({ label, value, limited }: {
 export function ClasseContextView({
   context, portal, onNavigate, onExploreCurso, onExploreTurma,
   onExploreDisciplina, onExploreProfessor, onStudentSelect,
+  initialPage = 1, onPageChange, initialScrollTop = 0, onScrollTopChange, selectedStudentId, restoreStudentFocus = false,
 }: Props) {
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
+  useEffect(() => {
+    if (loading || !data || !scrollRef.current) return;
+    scrollRef.current.scrollTop = initialScrollTop;
+    if (restoreStudentFocus && selectedStudentId) {
+      const selected = Array.from(scrollRef.current.querySelectorAll<HTMLButtonElement>("button[data-student-id]"))
+        .find((node) => node.dataset.studentId === selectedStudentId);
+      selected?.focus({ preventScroll: true });
+    }
+    // The view remounts after returning from the Balcão or navigating the trail.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context.id, loading]);
+  const updatePage = (next: number) => { setPage(next); onPageChange?.(next); };
 
   if (loading) return (
     <div role="status" className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-600">
@@ -72,7 +92,7 @@ export function ClasseContextView({
     onExplore({ id: entity.id, label: entity.nome, academicYearId: anoLetivo.id });
 
   return (
-    <div className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div ref={scrollRef} onScroll={(event) => onScrollTopChange?.(event.currentTarget.scrollTop)} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
@@ -196,7 +216,7 @@ export function ClasseContextView({
         </div>
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {alunos.items.map((aluno) => (
-            <button type="button" key={aluno.id}
+            <button type="button" key={aluno.id} data-student-id={aluno.id} aria-current={selectedStudentId === aluno.id ? "true" : undefined}
               onClick={() => onStudentSelect({ id: aluno.id, label: aluno.nome })}
               className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
               <span className="min-w-0 flex-1">
@@ -213,12 +233,12 @@ export function ClasseContextView({
             <span className="text-xs tabular-nums text-slate-500">Página {alunos.page} de {pages}</span>
             <div className="flex gap-2">
               <button type="button" disabled={page <= 1 || refreshing}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => updatePage(Math.max(1, page - 1))}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40">
                 <ChevronLeft className="h-4 w-4" /> Anterior
               </button>
               <button type="button" disabled={!alunos.hasMore || refreshing}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => updatePage(page + 1)}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40">
                 Seguinte <ChevronRight className="h-4 w-4" />
               </button>
