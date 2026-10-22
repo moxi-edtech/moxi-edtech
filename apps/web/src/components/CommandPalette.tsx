@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Command } from "cmdk";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabaseClient";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useGlobalSearch, type MinimalSearchResult } from "@/hooks/useGlobalSearch";
@@ -131,6 +132,13 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
       queryClient.clear();
     }
   }, [queryClient]);
+  React.useEffect(() => {
+    const client = createClient();
+    const { data: { subscription } } = client.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" || event === "SIGNED_IN") onOpenChange(false);
+    });
+    return () => subscription.unsubscribe();
+  }, [onOpenChange]);
   React.useEffect(() => {
     queryClient.clear();
     setEntityContext(null);
