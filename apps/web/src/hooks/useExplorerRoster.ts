@@ -5,7 +5,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import type { EntityContext } from "@/lib/command-center/entity-context";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
-type Cursor = { name: string; id: string };
+type Cursor = { name: string; id: string; priority: number };
 export type RosterStudent = {
   id: string;
   nome: string;
@@ -13,6 +13,9 @@ export type RosterStudent = {
   turmaId: string;
   turmaNome: string;
   numeroChamada: number | null;
+  documentosSinalizados: boolean;
+  propinasVencidas: boolean;
+  pendenciasCount: number;
 };
 type RosterReply = {
   ok: boolean;
@@ -24,12 +27,14 @@ type RosterReply = {
   cursor: Cursor | null;
 };
 
-export type RosterSort = "nome_asc" | "nome_desc";
-export function useExplorerRoster(context: EntityContext, type: "turma" | "classe", search: string, sort: RosterSort = "nome_asc") {
+export type RosterSort = "nome_asc" | "nome_desc" | "pendencias_primeiro";
+export type RosterFilter = "todos" | "documentos_sinalizados" | "propinas_vencidas";
+export function useExplorerRoster(context: EntityContext, type: "turma" | "classe", search: string, sort: RosterSort = "nome_asc", filter: RosterFilter = "todos") {
   const debounced = useDebounce(search.trim(), 300);
-  const enabled = debounced.length >= 2 || (sort !== "nome_asc" && debounced.length === 0);
+  const enabled = (debounced.length === 0 || debounced.length >= 2)
+    && (debounced.length >= 2 || sort !== "nome_asc" || filter !== "todos");
   const query = useInfiniteQuery({
-    queryKey: ["command-center", "roster", context.escolaId, context.id, context.academicYearId, type, debounced, sort],
+    queryKey: ["command-center", "roster", context.escolaId, context.id, context.academicYearId, type, debounced, sort, filter],
     initialPageParam: null as Cursor | null,
     enabled,
     staleTime: 15_000,
@@ -38,12 +43,13 @@ export function useExplorerRoster(context: EntityContext, type: "turma" | "class
     retry: 1,
     queryFn: async ({ pageParam, signal }) => {
       const params = new URLSearchParams({
-        type, entityId: context.id, q: debounced, size: "20", sort,
+        type, entityId: context.id, q: debounced, size: "20", sort, filter,
       });
       if (context.academicYearId) params.set(ACADEMIC_YEAR_PARAM, context.academicYearId);
       if (pageParam) {
         params.set("cursorName", pageParam.name);
         params.set("cursorId", pageParam.id);
+        if (sort === "pendencias_primeiro") params.set("cursorPriority", String(pageParam.priority));
       }
       const poloId = new URLSearchParams(window.location.search).get("poloId") ?? new URLSearchParams(window.location.search).get("polo_id");
       if (poloId) params.set("poloId", poloId);
@@ -64,6 +70,7 @@ export function useExplorerRoster(context: EntityContext, type: "turma" | "class
     refreshing: query.isFetching,
     error: query.error instanceof Error ? query.error.message : null,
     sorting: sort,
+    filtering: filter,
     items: query.data?.pages.flatMap((page) => page.items) ?? [],
     total: query.data?.pages[0]?.total ?? 0,
     hasMore: Boolean(query.hasNextPage),

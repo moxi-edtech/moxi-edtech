@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export type ExplorerRouteName =
   | "curso" | "classe" | "turma" | "professor" | "disciplina"
-  | "roster-search" | "roster-export" | "disciplina-search";
+  | "roster-search" | "roster-export" | "disciplina-search" | "student-capabilities";
 
 const ERROR_CODES: Record<number, string> = {
   400: "INVALID_REQUEST",
@@ -56,11 +56,20 @@ export async function withExplorerObservability(
   execute: () => Promise<Response>,
 ): Promise<Response> {
   const requestId = crypto.randomUUID();
+  const startedAt = performance.now();
+  const attachTiming = (headers: Headers) => {
+    const durationMs = Math.max(0, performance.now() - startedAt);
+    // Expose aggregate endpoint timing to browser RUM without adding an
+    // external request, background polling or a student identifier.
+    headers.set("Server-Timing", `cc;dur=${durationMs.toFixed(1)}`);
+    return durationMs;
+  };
   try {
     const result = await execute();
     const headers = new Headers(result.headers);
     headers.set("X-Correlation-ID", requestId);
     headers.set("Cache-Control", "private, no-store");
+    attachTiming(headers);
     if (result.ok) {
       return new Response(result.body, { status: result.status, headers });
     }
@@ -87,11 +96,13 @@ export async function withExplorerObservability(
     console.error("[command-center] unexpected read failure", {
       route, code: "INTERNAL_ERROR", status: 500, requestId,
     });
+    const headers = new Headers({ "X-Correlation-ID": requestId, "Cache-Control": "private, no-store" });
+    attachTiming(headers);
     return NextResponse.json({
       ok: false,
       error: "Ocorreu um problema ao consultar os dados. Tente novamente.",
       code: "INTERNAL_ERROR",
       requestId,
-    }, { status: 500, headers: { "X-Correlation-ID": requestId, "Cache-Control": "private, no-store" } });
+    }, { status: 500, headers });
   }
 }

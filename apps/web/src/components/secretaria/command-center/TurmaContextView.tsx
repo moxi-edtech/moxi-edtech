@@ -8,8 +8,11 @@ import {
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
 import { buildPortalHref } from "@/lib/navigation";
-import { useExplorerRoster, type RosterSort } from "@/hooks/useExplorerRoster";
+import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
+import { ExplorerRosterExportButton } from "@/components/secretaria/command-center/ExplorerRosterExportButton";
+import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
+import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 import { useTurmaContext } from "@/hooks/useTurmaContext";
 
@@ -18,11 +21,13 @@ type Props = {
   portal?: string;
   onNavigate: (href: string) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
+  onStudentAction: (action: ExplorerActionId, student: { id: string; label: string }) => void;
   initialPage?: number;
   initialScrollTop?: number;
   selectedStudentId?: string | null;
   initialSearch?: string;
   initialSort?: RosterSort;
+  initialFilter?: RosterFilter;
   onViewChange?: (state: ExplorerViewState) => void;
   onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
   onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
@@ -62,18 +67,20 @@ function Metric({
 }
 
 export function TurmaContextView({
-  context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina, onExploreClasse,
-  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", onViewChange,
+  context, portal, onNavigate, onStudentSelect, onStudentAction, onExploreProfessor, onExploreDisciplina, onExploreClasse,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [rosterSort, setRosterSort] = useState<RosterSort>(initialSort);
-  const roster = useExplorerRoster(context, "turma", searchTerm, rosterSort);
-  const searchActive = searchTerm.trim().length >= 2 || (rosterSort !== "nome_asc" && searchTerm.trim().length === 0);
+  const [rosterFilter, setRosterFilter] = useState<RosterFilter>(initialFilter);
+  const roster = useExplorerRoster(context, "turma", searchTerm, rosterSort, rosterFilter);
+  const searchActive = searchTerm.trim().length >= 2 ||
+    (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos"));
   const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
     page, scrollTop: currentScroll.current, selectedStudentId: selected,
-    search: searchTerm, filter: "ativo", sort: rosterSort,
-  }), [page, searchTerm, rosterSort]);
+    search: searchTerm, filter: rosterFilter, sort: rosterSort,
+  }), [page, searchTerm, rosterSort, rosterFilter]);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
@@ -204,7 +211,11 @@ export function TurmaContextView({
         </p>
       )}
 
-      <ExplorerRosterControls value={searchTerm} sort={rosterSort}
+      <ExplorerRosterControls value={searchTerm} sort={rosterSort} filter={rosterFilter}
+        onFilterChange={(next) => {
+          setRosterFilter(next);
+          onViewChangeRef.current?.({ ...view(), filter: next });
+        }}
         onSortChange={(next) => {
           setRosterSort(next);
           onViewChangeRef.current?.({ ...view(), sort: next });
@@ -213,6 +224,9 @@ export function TurmaContextView({
         setSearchTerm(next);
         onViewChangeRef.current?.({ ...view(), search: next });
       }} />
+        <ExplorerRosterExportButton escolaId={context.escolaId} entityId={context.id}
+          type="turma" yearId={context.academicYearId}
+          query={searchTerm} filter={rosterFilter} sort={rosterSort} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <section className="min-w-0" aria-labelledby="turma-alunos-heading">
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -228,13 +242,23 @@ export function TurmaContextView({
           {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
             {visibleStudents.map((student) => (
-              <button type="button" key={student.id}
+<div key={student.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-slate-100 px-2 py-1 last:border-0">
+              <button type="button"
                 data-student-id={student.id} aria-current={selectedStudentId === student.id ? "true" : undefined} onClick={() => selectStudent({ id: student.id, label: student.nome })}
-                className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+                className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
                 <span className="w-8 shrink-0 text-xs tabular-nums text-slate-500">{student.numeroChamada ?? "—"}</span>
                 <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{student.nome}</span>
+                {searchActive && "documentosSinalizados" in student && student.documentosSinalizados === true && (
+                  <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">Documentos sinalizados</span>
+                )}
+                {searchActive && "propinasVencidas" in student && student.propinasVencidas === true && (
+                  <span className="rounded border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] text-orange-950">Propina vencida</span>
+                )}
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
+  <ExplorerStudentActions escolaId={context.escolaId} alunoId={student.id} alunoNome={student.nome}
+    onAction={(action) => onStudentAction(action, { id: student.id, label: student.nome })} />
+</div>
             ))}
             {!visibleStudents.length && !roster.loading && (
               <p className="px-3 py-5 text-slate-500">Nenhum aluno matriculado neste âmbito.</p>
@@ -311,7 +335,7 @@ export function TurmaContextView({
       </div>
 
       <p className="text-xs text-slate-500">
-        Apenas dados académicos. As operações financeiras, notas e documentos permanecem nos seus módulos autorizados.
+        Os marcadores representam apenas pendências comprovadas, sem mostrar montantes. Pagamentos, notas e documentos continuam nos módulos autorizados.
       </p>
     </div>
   );

@@ -41,12 +41,17 @@ export function rosterExportAudit(input: {
   count: number;
   hasSearch: boolean;
   exportedAt: string;
+  filter?: "todos" | "documentos_sinalizados" | "propinas_vencidas";
+  sort?: "nome_asc" | "nome_desc" | "pendencias_primeiro";
 }) {
   return {
     actor_id: input.userId, escola_id: input.escolaId,
     entity_type: input.type, entity_id: input.entityId,
     row_count: input.count, search_applied: input.hasSearch,
-    created_at: input.exportedAt,
+    filter_code: input.filter ?? "todos",
+    sort_code: input.sort === "nome_desc" ? "Z_A"
+      : input.sort === "pendencias_primeiro" ? "PENDING_FIRST" : "A_Z",
+    purpose_code: "secretaria_atendimento", created_at: input.exportedAt,
   };
 }
 

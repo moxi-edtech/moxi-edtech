@@ -10,8 +10,11 @@ import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
 import { useClasseContext } from "@/hooks/useClasseContext";
 import { buildPortalHref } from "@/lib/navigation";
-import { useExplorerRoster, type RosterSort } from "@/hooks/useExplorerRoster";
+import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
+import { ExplorerRosterExportButton } from "@/components/secretaria/command-center/ExplorerRosterExportButton";
+import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
+import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 
 type NextEntity = { id: string; label: string; academicYearId: string };
@@ -24,11 +27,13 @@ type Props = {
   onExploreDisciplina: (entity: NextEntity) => void;
   onExploreProfessor: (entity: NextEntity) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
+  onStudentAction: (action: ExplorerActionId, student: { id: string; label: string }) => void;
   initialPage?: number;
   initialScrollTop?: number;
   selectedStudentId?: string | null;
   initialSearch?: string;
   initialSort?: RosterSort;
+  initialFilter?: RosterFilter;
   onViewChange?: (state: ExplorerViewState) => void;
 };
 
@@ -81,18 +86,20 @@ function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
 
 export function ClasseContextView({
   context, portal, onNavigate, onExploreCurso, onExploreTurma,
-  onExploreDisciplina, onExploreProfessor, onStudentSelect,
-  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", onViewChange,
+  onExploreDisciplina, onExploreProfessor, onStudentSelect, onStudentAction,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [rosterSort, setRosterSort] = useState<RosterSort>(initialSort);
-  const roster = useExplorerRoster(context, "classe", searchTerm, rosterSort);
-  const searchActive = searchTerm.trim().length >= 2 || (rosterSort !== "nome_asc" && searchTerm.trim().length === 0);
+  const [rosterFilter, setRosterFilter] = useState<RosterFilter>(initialFilter);
+  const roster = useExplorerRoster(context, "classe", searchTerm, rosterSort, rosterFilter);
+  const searchActive = searchTerm.trim().length >= 2 ||
+    (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos"));
   const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
     page, scrollTop: currentScroll.current, selectedStudentId: selected,
-    search: searchTerm, filter: "ativo", sort: rosterSort,
-  }), [page, searchTerm, rosterSort]);
+    search: searchTerm, filter: rosterFilter, sort: rosterSort,
+  }), [page, searchTerm, rosterSort, rosterFilter]);
   const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
@@ -312,7 +319,11 @@ export function ClasseContextView({
       </section>
 
       <section className="min-w-0" aria-labelledby="classe-alunos-heading">
-        <ExplorerRosterControls value={searchTerm} sort={rosterSort}
+        <ExplorerRosterControls value={searchTerm} sort={rosterSort} filter={rosterFilter}
+        onFilterChange={(next) => {
+          setRosterFilter(next);
+          onViewChangeRef.current?.({ ...view(), filter: next });
+        }}
         onSortChange={(next) => {
           setRosterSort(next);
           onViewChangeRef.current?.({ ...view(), sort: next });
@@ -321,6 +332,9 @@ export function ClasseContextView({
           setSearchTerm(next);
           onViewChangeRef.current?.({ ...view(), search: next });
         }} />
+        <ExplorerRosterExportButton escolaId={context.escolaId} entityId={context.id}
+          type="classe" yearId={context.academicYearId}
+          query={searchTerm} filter={rosterFilter} sort={rosterSort} />
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 id="classe-alunos-heading" className="flex items-center gap-2 font-semibold text-slate-900">
             <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
@@ -334,15 +348,25 @@ export function ClasseContextView({
         {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {visibleStudents.map((aluno) => (
-            <button type="button" key={aluno.id}
+<div key={aluno.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-slate-100 px-2 py-1 last:border-0">
+            <button type="button"
               data-student-id={aluno.id} aria-current={selectedStudentId === aluno.id ? "true" : undefined} onClick={() => selectStudent({ id: aluno.id, label: aluno.nome })}
-              className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-slate-900">{aluno.nome}</span>
                 <span className="mt-1 block truncate text-xs text-slate-500">{aluno.turmaNome}</span>
+                {searchActive && "documentosSinalizados" in aluno && aluno.documentosSinalizados === true && (
+                  <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">Documentos sinalizados</span>
+                )}
+                {searchActive && "propinasVencidas" in aluno && aluno.propinasVencidas === true && (
+                  <span className="rounded border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] text-orange-950">Propina vencida</span>
+                )}
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
             </button>
+  <ExplorerStudentActions escolaId={context.escolaId} alunoId={aluno.id} alunoNome={aluno.nome}
+    onAction={(action) => onStudentAction(action, { id: aluno.id, label: aluno.nome })} />
+</div>
           ))}
           {!visibleStudents.length && !roster.loading && (
             <p className="px-3 py-5 text-slate-500">Sem alunos matriculados neste âmbito.</p>
@@ -371,7 +395,7 @@ export function ClasseContextView({
       </section>
       <p className="text-xs text-slate-500">
         Apenas alunos ativos no ano atual ou concluídos no histórico, excluindo cancelados e transferidos.
-        O Balcão mantém as ações existentes; nenhum dado financeiro é carregado aqui.
+        O Balcão mantém as ações existentes. Os marcadores financeiros indicam só a existência de propinas vencidas, sem expor valores.
       </p>
     </div>
   );
