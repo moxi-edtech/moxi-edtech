@@ -42,3 +42,21 @@ Sem API, SQL, RLS ou banco. Complemento à [auditoria](./command-center-explorad
 2. Mobile: ícone lupa abre pesquisa.
 3. Recentes não sobrevivem a novo separador.
 4. Capacidade mista → vagas / excedente legíveis.
+
+## Consolidação com PR #234 — backlog único (22/10/2026)
+
+A implementação de UX da branch `polish/classe-explorer-ux-20261022` foi incorporada por ficheiro na branch `feat/command-center-operational-p0-20261022`, que também mantém a migração SQL e os testes de segurança. A PR #235 foi aberta apenas para diagnóstico do conflito; **a PR #234 é a frente integradora**.
+
+| ID | Código | Validação | Próximo gate |
+| --- | --- | --- | --- |
+| UX-00 | Integrado do polish | Pendente E2E autenticado | 3 atendimentos consecutivos; página/filtro/scroll/foco; escola/ano alterados |
+| DATA-01, NAV-02, LINK-01 | Integrados do polish | CI pendente | Conferir dados e destinos por papel |
+| PRIV-01/02 | Integrados do polish | CI pendente | Logout/login em computador partilhado; BI/processo ausentes |
+| MOB-01, SRCH-01/02 | Integrados do polish | CI pendente | Mobile real, paginação, erro, retry e resultados obsoletos |
+| BREAD-01, A11Y-01, KBD-01 | Integrados do polish | CI pendente | Teclado, foco, Escape, leitores de ecrã |
+| SEC-01 | Migration versionada em PR #234 | Teste sintético criado; teste autenticado pendente | Perfis e duas escolas, RPC direta; aplicar via rollout controlado |
+| PERF-01 | Pendente | Pendente | Paginação/agregação SQL e medição p95 |
+| PRINT-01 | Pendente | Pendente | Export autorizado e auditado |
+| DS-01, LANG-01, MOTION-01, OBS-01 | Pendente | Pendente | Consistência, glossário PT-AO, latência e correlação |
+
+**Não homologado ≠ entregue em produção.** Nenhuma alteração de banco deve ser aplicada apenas porque o frontend foi consolidado.
