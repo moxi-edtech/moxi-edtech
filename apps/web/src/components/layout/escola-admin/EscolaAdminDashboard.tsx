@@ -14,7 +14,7 @@ export default function EscolaAdminDashboard({
   mode = "admin",
 }: Props) {
   return (
-    <div className="p-8 max-w-6xl mx-auto w-full space-y-8">
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-0 min-[1700px]:space-y-8 min-[1700px]:p-8">
       <EscolaAdminDashboardData escolaId={escolaId} escolaNome={escolaNome} mode={mode} />
     </div>
   );
