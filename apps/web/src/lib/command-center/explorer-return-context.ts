@@ -30,6 +30,32 @@ export type ExplorerReturnSnapshot = {
 };
 
 const MAX_AGE_MS = 10 * 60_000;
+export const MAX_EXPLORER_VIEWS = 40;
+const MAX_CONTEXT_TRAIL = 24;
+
+/** Recent per-entity UI state only; bounded even when a secretary changes views all day. */
+export function retainExplorerViewState(
+  previous: Record<string, ExplorerViewState>,
+  key: string,
+  next: ExplorerViewState,
+): Record<string, ExplorerViewState> {
+  const old = previous[key];
+  if (old && old.page === next.page && old.scrollTop === next.scrollTop &&
+      old.selectedStudentId === next.selectedStudentId && old.search === next.search &&
+      old.filter === next.filter && old.sort === next.sort) {
+    return previous;
+  }
+  const updated = { ...previous };
+  delete updated[key];
+  updated[key] = { ...next };
+  while (Object.keys(updated).length > MAX_EXPLORER_VIEWS) {
+    const oldest = Object.keys(updated)[0];
+    if (!oldest) break;
+    delete updated[oldest];
+  }
+  return updated;
+}
+
 let snapshot: ExplorerReturnSnapshot | null = null;
 
 export function sameExplorerScope(a: ExplorerScope, b: ExplorerScope): boolean {
@@ -48,8 +74,8 @@ export function saveExplorerReturnContext(next: Omit<ExplorerReturnSnapshot, "sa
   snapshot = {
     ...next,
     scope: { ...next.scope },
-    contextTrail: [...next.contextTrail],
-    viewState: Object.fromEntries(Object.entries(next.viewState).map(([key, state]) => [key, { ...state }])),
+    contextTrail: next.contextTrail.slice(-MAX_CONTEXT_TRAIL),
+    viewState: Object.fromEntries(Object.entries(next.viewState).slice(-MAX_EXPLORER_VIEWS).map(([key, state]) => [key, { ...state }])),
     savedAt: Date.now(),
   };
 }
