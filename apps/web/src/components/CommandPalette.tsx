@@ -104,7 +104,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
   const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
   const [turmaPage, setTurmaPage] = React.useState(1);
   const [selectedStudentId, setSelectedStudentId] = React.useState<string | null>(null);
-  const turmaScrollTop = React.useRef(0);
+  const [turmaScrollTop, setTurmaScrollTop] = React.useState(0);
   const resumeAfterBalcao = React.useRef(false);
   const [restoreStudentFocus, setRestoreStudentFocus] = React.useState(false);
   const reduceMotion = useReducedMotion();
@@ -121,7 +121,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
       setCourseTurmaId(null);
       setTurmaPage(1);
       setSelectedStudentId(null);
-      turmaScrollTop.current = 0;
+      setTurmaScrollTop(0);
       resumeAfterBalcao.current = false;
       setRestoreStudentFocus(false);
       queryClient.clear();
@@ -135,7 +135,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
     setCourseTurmaId(null);
     setTurmaPage(1);
     setSelectedStudentId(null);
-    turmaScrollTop.current = 0;
+    setTurmaScrollTop(0);
     resumeAfterBalcao.current = false;
     setRestoreStudentFocus(false);
   }, [escolaId, portal, queryClient]);
@@ -165,7 +165,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
         setCourseTurmaId(null);
         setTurmaPage(1);
         setSelectedStudentId(null);
-        turmaScrollTop.current = 0;
+        setTurmaScrollTop(0);
         resumeAfterBalcao.current = false;
       }
     };
@@ -472,7 +472,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                   }}
                   onExploreTurma={(turma) => {
                     setTurmaPage(1);
-                    turmaScrollTop.current = 0;
+                    setTurmaScrollTop(0);
                     setSelectedStudentId(null);
                     setCourseTurmaId(turma.id);
                     setContextTrail((trail) => [...trail, entityContext]);
@@ -496,8 +496,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                   portal={portal}
                   initialPage={turmaPage}
                   onPageChange={setTurmaPage}
-                  initialScrollTop={turmaScrollTop.current}
-                  onScrollTopChange={(value) => { turmaScrollTop.current = value; }}
+                  initialScrollTop={turmaScrollTop}
+                  onScrollTopChange={setTurmaScrollTop}
                   selectedStudentId={selectedStudentId}
                   restoreStudentFocus={restoreStudentFocus}
                   onNavigate={(href) => {
@@ -543,7 +543,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                   portal={portal}
                   onExploreTurma={(turma) => {
                     setTurmaPage(1);
-                    turmaScrollTop.current = 0;
+                    setTurmaScrollTop(0);
                     setSelectedStudentId(null);
                     setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
@@ -579,7 +579,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                   }}
                   onExploreTurma={(turma) => {
                     setTurmaPage(1);
-                    turmaScrollTop.current = 0;
+                    setTurmaScrollTop(0);
                     setSelectedStudentId(null);
                     setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
@@ -614,7 +614,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                   }}
                   onExploreTurma={(turma) => {
                     setTurmaPage(1);
-                    turmaScrollTop.current = 0;
+                    setTurmaScrollTop(0);
                     setSelectedStudentId(null);
                     setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
