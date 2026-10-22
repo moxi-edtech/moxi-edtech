@@ -8,7 +8,7 @@ import {
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
 import { buildPortalHref } from "@/lib/navigation";
-import { useExplorerRoster } from "@/hooks/useExplorerRoster";
+import { useExplorerRoster, type RosterSort } from "@/hooks/useExplorerRoster";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 import { useTurmaContext } from "@/hooks/useTurmaContext";
@@ -22,6 +22,7 @@ type Props = {
   initialScrollTop?: number;
   selectedStudentId?: string | null;
   initialSearch?: string;
+  initialSort?: RosterSort;
   onViewChange?: (state: ExplorerViewState) => void;
   onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
   onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
@@ -62,16 +63,17 @@ function Metric({
 
 export function TurmaContextView({
   context, portal, onNavigate, onStudentSelect, onExploreProfessor, onExploreDisciplina, onExploreClasse,
-  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", onViewChange,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
-  const roster = useExplorerRoster(context, "turma", searchTerm);
-  const searchActive = searchTerm.trim().length >= 2;
+  const [rosterSort, setRosterSort] = useState<RosterSort>(initialSort);
+  const roster = useExplorerRoster(context, "turma", searchTerm, rosterSort);
+  const searchActive = searchTerm.trim().length >= 2 || (rosterSort !== "nome_asc" && searchTerm.trim().length === 0);
   const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
     page, scrollTop: currentScroll.current, selectedStudentId: selected,
-    search: searchTerm, filter: "ativo", sort: "nome",
-  }), [page, searchTerm]);
+    search: searchTerm, filter: "ativo", sort: rosterSort,
+  }), [page, searchTerm, rosterSort]);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
@@ -134,7 +136,7 @@ export function TurmaContextView({
   const disciplinasSemProfessor = disciplinas.filter((d) => !d.professores.length).length;
 
   return (
-    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current }); }} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.(view()); }} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           O aluno atendido já não consta desta página. A lista foi actualizada; confirme a matrícula e a turma antes de continuar.
@@ -202,7 +204,12 @@ export function TurmaContextView({
         </p>
       )}
 
-      <ExplorerRosterControls value={searchTerm} onChange={(next) => {
+      <ExplorerRosterControls value={searchTerm} sort={rosterSort}
+        onSortChange={(next) => {
+          setRosterSort(next);
+          onViewChangeRef.current?.({ ...view(), sort: next });
+        }}
+        onChange={(next) => {
         setSearchTerm(next);
         onViewChangeRef.current?.({ ...view(), search: next });
       }} />
