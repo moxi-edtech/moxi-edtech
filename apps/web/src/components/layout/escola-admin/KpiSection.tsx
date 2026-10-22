@@ -82,7 +82,7 @@ export default function KpiSection({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4">
         {Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)}
       </div>
     );
@@ -195,7 +195,7 @@ export default function KpiSection({
   const gridClasses =
     mode === "operacoes"
       ? "grid grid-cols-2 gap-3 xl:grid-cols-4"
-      : "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4";
+      : "grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4";
 
   return (
     <div className={gridClasses}>
@@ -211,6 +211,7 @@ export default function KpiSection({
           chartData={kpi.chartData}
           description={kpi.description}
           compact={mode === "operacoes"}
+          responsiveDensity={mode === "admin"}
         />
       ))}
     </div>
