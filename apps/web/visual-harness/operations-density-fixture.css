@@ -1,0 +1,19 @@
+/* Isolated synthetic shell used for viewport measurements only. No real tenant assets. */
+.fixture-operations-shell { display:flex; min-height:100vh; background:#f8fafc; color:#0f172a; font-family:Manrope,system-ui,sans-serif; }
+.fixture-sidebar { width:clamp(208px,16vw,256px); flex:0 0 auto; padding:18px 12px; color:white; background:#020617; }
+.fixture-sidebar strong { display:block; font-size:18px; }
+.fixture-sidebar small { display:block; font-size:12px; }
+.fixture-sidebar p { padding:10px; font-size:14px; color:#cbd5e1; }
+.fixture-sidebar .fixture-sidebar-active { background:#0a2821; border-radius:12px; color:white; margin-top:22px; }
+.fixture-right { min-width:0; flex:1; }
+.fixture-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; height:64px; background:white; border-bottom:1px solid #e2e8f0; padding:0 16px; font-size:14px; }
+.fixture-year { display:flex; justify-content:flex-end; align-items:center; height:52px; border-bottom:1px solid #e2e8f0; padding-right:20px; font-size:13px; }
+.fixture-main { padding:24px; }
+.fixture-main > * { max-width:1152px; margin:0 auto; }
+.fixture-before-dashboard { display:flex; flex-direction:column; gap:20px; padding-bottom:24px; }
+.fixture-before-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.fixture-before-finance { min-height:280px; }
+.fixture-before-finance > * { min-height:280px; }
+.fixture-following-content { padding-top:16px; }
+@media (min-width:1280px) { .fixture-before-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:767px) { .fixture-sidebar { display:none; } .fixture-main { padding:12px; } .fixture-topbar { height:54px; } .fixture-year { height:44px; } }

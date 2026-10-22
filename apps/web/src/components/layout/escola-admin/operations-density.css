@@ -1,0 +1,90 @@
+/*
+ * Operational dashboard only. Native CSS container queries run in Chrome 105+
+ * and use the actual CONTENT width after AppShell/sidebar have taken their share.
+ * No global zoom, no changes to the shared shell.
+ */
+.operations-dashboard {
+  container: operations / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 24px;
+}
+.operations-dashboard > * { min-width: 0; }
+.operations-dashboard .operations-head { min-width: 0; }
+.operations-dashboard .operations-head h1 { font-size: clamp(21px, 1.7vw, 25px); line-height: 1.15; }
+.operations-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 16px;
+  min-width: 0;
+  padding: 10px 14px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+.operations-status > * { min-width: 0; }
+.operations-status [data-testid="status-academic"],
+.operations-status [data-testid="status-radar"] {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  min-width: 0;
+}
+.operations-status [data-testid="status-academic"] > div,
+.operations-status [data-testid="status-radar"] > div { min-width: 0; }
+.operations-kpi-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.operations-kpi-grid > * { min-width: 0; }
+.operations-kpi-grid [data-testid="operations-kpi-card"] {
+  min-width: 0;
+}
+.operations-finance { min-width: 0; }
+.operations-finance-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px 16px;
+}
+.operations-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #64748b; }
+.operations-cash-value { font-size: clamp(20px, 2vw, 26px); font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.operations-progress-result { display: flex; flex-direction: column; align-items: end; white-space: nowrap; }
+.operations-finance-breakdown {
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  margin: 10px 0; color: #475569; font-size: 12px; line-height: 1.5;
+}
+.operations-finance-breakdown strong { color: #1e293b; font-weight: 700; font-variant-numeric: tabular-nums; }
+.operations-finance-note { margin: 5px 0 8px; }
+.operations-progress { position: relative; margin-top: 6px; }
+.operations-target-marker {
+  position: absolute; top: -2px; height: 12px; width: 2px;
+  background: #64748b;
+}
+.operations-dashboard a:focus-visible,
+.operations-dashboard button:focus-visible,
+.operations-dashboard summary:focus-visible { outline: 3px solid #2B6044; outline-offset: 3px; }
+@container operations (min-width: 500px) {
+  .operations-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container operations (min-width: 870px) {
+  .operations-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@container operations (min-width: 1040px) {
+  .operations-status { grid-template-columns: minmax(0, 1.9fr) minmax(0, .9fr); }
+  .operations-finance-breakdown { gap: 8px 20px; }
+}
+@media (max-width: 575px) {
+  .operations-status { padding: 10px; }
+  .operations-finance { padding: 12px; }
+  .operations-finance-breakdown { display: grid; grid-template-columns: 1fr; }
+  .operations-progress-result { align-items: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .operations-dashboard *, .operations-dashboard *::before, .operations-dashboard *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
