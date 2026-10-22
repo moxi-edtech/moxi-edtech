@@ -37,25 +37,41 @@ async function run(size, zoom) {
     await page.getByRole("heading", { name: "10.ª A" }).waitFor();
     await page.getByText("Excedente de lotação").waitFor();
   };
-  const input = () => page.getByRole("searchbox", { name: "Procurar aluno nesta lista" });
+  const input = () => page.getByRole("searchbox", { name: "Nome ou processo" });
 
   await reset();
   await capture(page,size,zoom,"lista");
   assert.equal(await page.getByText("55").first().isVisible(),true);
   await capture(page,size,zoom,"lotacao-55-50");
-  assert.equal(await page.getByText("Matrículas activas").first().isVisible(),true);
+  const filter = page.getByRole("combobox", { name: "Situação verificada" });
+  assert.equal(await filter.isVisible(),true);
   await capture(page,size,zoom,"filtro-activo");
 
   const sort = page.getByRole("combobox", { name: "Ordenar alunos" });
   await input().focus();
   await page.keyboard.press("Tab");
+  assert.equal(await filter.evaluate(element => element === document.activeElement), true,
+    "Canonical filter must be keyboard reachable after search");
+  await page.keyboard.press("Tab");
   assert.equal(await sort.evaluate(element => element === document.activeElement), true,
-    "Sort must be keyboard reachable after search");
+    "Sort must be keyboard reachable after filter");
   await sort.selectOption("nome_desc");
   await page.getByText("55 encontrados").waitFor();
   await page.getByText("Aluno Sintético 55").first().waitFor();
   await capture(page,size,zoom,"ordenacao-z-a");
+  await sort.selectOption("pendencias_primeiro");
+  await page.getByText("55 encontrados").waitFor();
+  const firstPriorityId = await page.locator("[data-student-id]").first().getAttribute("data-student-id");
+  assert.equal(firstPriorityId, "00000000-0000-4000-8100-000000000004");
+  await capture(page,size,zoom,"pendencias-primeiro");
   await sort.selectOption("nome_asc");
+  await filter.selectOption("documentos_sinalizados");
+  await page.getByText("2 encontrados").waitFor();
+  await capture(page,size,zoom,"documentos-sinalizados");
+  await filter.selectOption("propinas_vencidas");
+  await page.getByText("2 encontrados").waitFor();
+  await capture(page,size,zoom,"propinas-vencidas");
+  await filter.selectOption("todos");
 
 
   await input().fill("Aluno Sintético 55");
@@ -75,6 +91,10 @@ async function run(size, zoom) {
   await capture(page,size,zoom,"carregando");
 
   await reset();
+  await page.getByRole("button", { name: "Ações de Aluno Sintético 01" }).click();
+  await page.getByRole("button", { name: "Abrir Emitir documento" }).waitFor();
+  await capture(page,size,zoom,"acoes-por-permissao");
+  await page.getByRole("button", { name: "Fechar" }).first().click();
   await page.getByText("Aluno Sintético 01").click();
   await page.getByRole("dialog",{name:"Balcão sintético"}).waitFor();
   await capture(page,size,zoom,"balcao-sintetico");
