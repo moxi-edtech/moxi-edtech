@@ -16,7 +16,6 @@ import {
   Zap,
   Bookmark,
   ArrowLeft,
-  ExternalLink,
   X,
   RefreshCw,
 } from "lucide-react";
