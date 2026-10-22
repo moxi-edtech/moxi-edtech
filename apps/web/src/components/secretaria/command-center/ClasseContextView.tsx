@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   GraduationCap, Loader2, RefreshCw, UsersRound,
@@ -21,52 +21,65 @@ type Props = {
   onExploreDisciplina: (entity: NextEntity) => void;
   onExploreProfessor: (entity: NextEntity) => void;
   onStudentSelect: (student: { id: string; label: string }) => void;
-  initialPage?: number;
-  onPageChange?: (page: number) => void;
-  initialScrollTop?: number;
-  onScrollTopChange?: (top: number) => void;
-  selectedStudentId?: string | null;
-  restoreStudentFocus?: boolean;
 };
 
-function Metric({ label, value, limited }: {
-  label: string; value: number | null; limited?: boolean;
+const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
+
+/** Capacidade registada ≠ vagas disponíveis. Null = não definida (nunca zero inventado). */
+function occupancyFromCapacity(capacity: number | null, enrolled: number) {
+  if (capacity == null) {
+    return { available: null as number | null, overcapacity: null as number | null };
+  }
+  return {
+    available: Math.max(capacity - enrolled, 0),
+    overcapacity: Math.max(enrolled - capacity, 0),
+  };
+}
+
+function Metric({
+  label, value, limited, hint,
+}: {
+  label: string;
+  value: number | null;
+  limited?: boolean;
+  hint?: string;
 }) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-        {value == null ? "—" : new Intl.NumberFormat("pt-AO").format(value)}
+        {value == null ? "Não definida" : numberPt(value)}
         {limited && value != null ? "+" : ""}
       </p>
+      {hint ? <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p> : null}
     </div>
   );
+}
+
+function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
+  if (capacidade == null) {
+    return `${alunos} ${alunos === 1 ? "aluno" : "alunos"} · Capacidade não definida`;
+  }
+  const { available, overcapacity } = occupancyFromCapacity(capacidade, alunos);
+  if (overcapacity && overcapacity > 0) {
+    return `${alunos} ${alunos === 1 ? "aluno" : "alunos"} · Capacidade ${capacidade} · Excedente ${overcapacity}`;
+  }
+  if (available === 0) {
+    return `${alunos} ${alunos === 1 ? "aluno" : "alunos"} · Capacidade ${capacidade} · Lotada`;
+  }
+  return `${alunos} ${alunos === 1 ? "aluno" : "alunos"} · Capacidade ${capacidade} · ${available} ${available === 1 ? "vaga" : "vagas"}`;
 }
 
 export function ClasseContextView({
   context, portal, onNavigate, onExploreCurso, onExploreTurma,
   onExploreDisciplina, onExploreProfessor, onStudentSelect,
-  initialPage = 1, onPageChange, initialScrollTop = 0, onScrollTopChange, selectedStudentId, restoreStudentFocus = false,
 }: Props) {
-  const [page, setPage] = useState(initialPage);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
   const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
-  useEffect(() => {
-    if (loading || !data || !scrollRef.current) return;
-    scrollRef.current.scrollTop = initialScrollTop;
-    if (restoreStudentFocus && selectedStudentId) {
-      const selected = Array.from(scrollRef.current.querySelectorAll<HTMLButtonElement>("button[data-student-id]"))
-        .find((node) => node.dataset.studentId === selectedStudentId);
-      selected?.focus({ preventScroll: true });
-    }
-    // The view remounts after returning from the Balcão or navigating the trail.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context.id, loading]);
-  const updatePage = (next: number) => { setPage(next); onPageChange?.(next); };
 
   if (loading) return (
     <div role="status" className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-600">
-      <Loader2 className="h-4 w-4 animate-spin" /> A carregar a classe…
+      <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> A carregar a classe…
     </div>
   );
   if (error || !data) return (
@@ -74,8 +87,8 @@ export function ClasseContextView({
       <p className="text-rose-700">{error || "Não foi possível carregar esta classe."}</p>
       {status !== 401 && status !== 403 && status !== 404 && (
         <button type="button" onClick={() => void retry()}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
-          <RefreshCw className="h-4 w-4" /> Tentar novamente
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+          <RefreshCw className="h-4 w-4" aria-hidden /> Tentar novamente
         </button>
       )}
     </div>
@@ -91,8 +104,11 @@ export function ClasseContextView({
   const open = (entity: { id: string; nome: string }, onExplore: (next: NextEntity) => void) =>
     onExplore({ id: entity.id, label: entity.nome, academicYearId: anoLetivo.id });
 
+  const classOccupancy = occupancyFromCapacity(stats.capacidade, stats.alunos);
+  const turmasSemAlunos = turmas.filter((t) => t.alunos === 0).length;
+
   return (
-    <div ref={scrollRef} onScroll={(event) => onScrollTopChange?.(event.currentTarget.scrollTop)} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">
@@ -102,70 +118,105 @@ export function ClasseContextView({
           {classe.curso && (
             <button type="button" onClick={() => open(classe.curso!, onExploreCurso)}
               className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-800 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600">
-              {classe.curso.nome} <ChevronRight className="h-3.5 w-3.5" />
+              {classe.curso.nome} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </button>
           )}
         </div>
         <button type="button" onClick={() => onNavigate(href)}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
-          Gestão académica <ArrowUpRight className="h-4 w-4" />
+          title="Abre o módulo de gestão académica (configurações). Não executa alterações neste explorador."
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+          Abrir gestão académica <ArrowUpRight className="h-4 w-4" aria-hidden />
         </button>
       </header>
 
       <section aria-label="Indicadores da classe" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <Metric label="Alunos distintos" value={stats.alunos} limited={limitado} />
+        <Metric label="Alunos matriculados" value={stats.alunos} limited={limitado} />
         <Metric label="Turmas do ano" value={stats.turmas} limited={limitado} />
-        <Metric label="Capacidade total definida" value={stats.capacidade} limited={limitado} />
+        <Metric
+          label="Capacidade"
+          value={stats.capacidade}
+          limited={limitado}
+          hint={stats.capacidade == null ? "Soma só quando todas as turmas têm capacidade definida" : undefined}
+        />
+        <Metric
+          label="Vagas disponíveis"
+          value={classOccupancy.available}
+          limited={limitado}
+          hint={stats.capacidade == null ? "Indisponível sem capacidade completa" : undefined}
+        />
+        {classOccupancy.overcapacity != null && classOccupancy.overcapacity > 0 && (
+          <Metric
+            label="Excedente de lotação"
+            value={classOccupancy.overcapacity}
+            hint="Alunos acima da capacidade registada"
+          />
+        )}
         <Metric label="Disciplinas" value={stats.disciplinas} limited={limitado} />
         <Metric label="Professores" value={stats.professores} limited={limitado} />
-        {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
+        {refreshing && (
+          <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>
+        )}
       </section>
 
       {stats.capacidade === null && (
-        <p className="text-xs text-slate-500">A capacidade total não é calculada quando uma ou mais turmas não têm capacidade definida.</p>
+        <p className="text-xs text-slate-500">
+          A capacidade total e as vagas disponíveis não são calculadas quando uma ou mais turmas
+          não têm capacidade definida. Capacidade desconhecida não é tratada como zero.
+        </p>
       )}
       {limitado && (
         <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
           Os vínculos excedem o limite de consulta. As contagens são parciais e não representam o total da classe.
+        </p>
+      )}
+      {turmasSemAlunos > 0 && (
+        <p className="text-xs text-slate-600">
+          {turmasSemAlunos === 1
+            ? "1 turma sem alunos matriculados neste ano."
+            : `${turmasSemAlunos} turmas sem alunos matriculados neste ano.`}
         </p>
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <section className="min-w-0">
-          <h3 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
-            <GraduationCap className="h-4 w-4 text-emerald-700" /> Turmas
+        <section className="min-w-0" aria-labelledby="classe-turmas-heading">
+          <h3 id="classe-turmas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+            <GraduationCap className="h-4 w-4 text-emerald-700" aria-hidden /> Turmas
           </h3>
           <div className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
             {turmas.map((turma) => (
               <button type="button" key={turma.id}
                 onClick={() => open(turma, onExploreTurma)}
-                className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-slate-900">{turma.nome}</span>
                   <span className="mt-1 block text-xs text-slate-500">
                     {[turma.turno, turma.sala ? `Sala ${turma.sala}` : null].filter(Boolean).join(" · ") || "Turno não informado"}
                   </span>
                   <span className="mt-1 block text-xs tabular-nums text-slate-600">
-                    {turma.alunos} {turma.alunos === 1 ? "aluno" : "alunos"} ·
-                    {" "}{turma.capacidade == null ? "Capacidade não definida" : `Capacidade ${turma.capacidade}`}
+                    {turmaOccupancyLabel(turma.alunos, turma.capacidade)}
                   </span>
+                  {turma.alunos === 0 && (
+                    <span className="mt-1 block text-[11px] text-amber-800">Sem alunos neste ano</span>
+                  )}
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
             ))}
-            {!turmas.length && <p className="px-3 py-5 text-slate-500">Nenhuma turma vinculada à classe neste ano letivo.</p>}
+            {!turmas.length && (
+              <p className="px-3 py-5 text-slate-500">Nenhuma turma vinculada à classe neste ano letivo.</p>
+            )}
           </div>
         </section>
-        <section className="min-w-0">
-          <h3 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
-            <BookOpen className="h-4 w-4 text-emerald-700" /> Disciplinas
+        <section className="min-w-0" aria-labelledby="classe-disciplinas-heading">
+          <h3 id="classe-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+            <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Disciplinas
           </h3>
           <div className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
             {disciplinas.map((disciplina) => (
               <button type="button" key={disciplina.id}
                 onClick={() => open(disciplina, onExploreDisciplina)}
-                className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-slate-900">{disciplina.nome}</span>
                   <span className="mt-1 block text-xs text-slate-500">
@@ -176,10 +227,12 @@ export function ClasseContextView({
                 <span className="shrink-0 text-xs tabular-nums text-slate-500">
                   {disciplina.turmas} {disciplina.turmas === 1 ? "turma" : "turmas"}
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
             ))}
-            {!disciplinas.length && <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>}
+            {!disciplinas.length && (
+              <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>
+            )}
           </div>
           <p className="mt-2 text-xs text-slate-500">
             Matriz curricular é referência; não implica professor ou turma atribuídos neste ano.
@@ -187,60 +240,68 @@ export function ClasseContextView({
         </section>
       </div>
 
-      <section className="min-w-0">
-        <h3 className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
-          <UsersRound className="h-4 w-4 text-emerald-700" /> Professores das turmas
+      <section className="min-w-0" aria-labelledby="classe-professores-heading">
+        <h3 id="classe-professores-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+          <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Professores das turmas
         </h3>
         <div className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
           {professores.map((professor) => (
             <button type="button" key={professor.id}
               onClick={() => open(professor, onExploreProfessor)}
-              className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+              className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
               <span className="truncate font-medium text-slate-900">{professor.nome}</span>
               <span className="shrink-0 text-xs text-slate-500">
                 {professor.turmas} {professor.turmas === 1 ? "turma" : "turmas"}
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
             </button>
           ))}
-          {!professores.length && <p className="px-3 py-5 text-slate-500">Nenhum professor atribuído às turmas deste ano.</p>}
+          {!professores.length && (
+            <p className="px-3 py-5 text-slate-500">Nenhum professor atribuído às turmas deste ano.</p>
+          )}
         </div>
       </section>
 
-      <section className="min-w-0">
+      <section className="min-w-0" aria-labelledby="classe-alunos-heading">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="flex items-center gap-2 font-semibold text-slate-900">
-            <UsersRound className="h-4 w-4 text-emerald-700" /> Alunos
+          <h3 id="classe-alunos-heading" className="flex items-center gap-2 font-semibold text-slate-900">
+            <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
           </h3>
-          <span className="text-xs text-slate-500">{alunos.total} distintos</span>
+          <span className="text-xs text-slate-500" aria-live="polite">
+            {refreshing ? "A atualizar…" : `${alunos.total} distintos`}
+          </span>
         </div>
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {alunos.items.map((aluno) => (
-            <button type="button" key={aluno.id} data-student-id={aluno.id} aria-current={selectedStudentId === aluno.id ? "true" : undefined}
+            <button type="button" key={aluno.id}
               onClick={() => onStudentSelect({ id: aluno.id, label: aluno.nome })}
-              className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+              className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-slate-900">{aluno.nome}</span>
                 <span className="mt-1 block truncate text-xs text-slate-500">{aluno.turmaNome}</span>
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
             </button>
           ))}
-          {!alunos.items.length && <p className="px-3 py-5 text-slate-500">Sem alunos matriculados neste âmbito.</p>}
+          {!alunos.items.length && (
+            <p className="px-3 py-5 text-slate-500">Sem alunos matriculados neste âmbito.</p>
+          )}
         </div>
         {alunos.total > alunos.pageSize && (
           <div className="mt-3 flex items-center justify-between gap-2">
-            <span className="text-xs tabular-nums text-slate-500">Página {alunos.page} de {pages}</span>
+            <span className="text-xs tabular-nums text-slate-500" aria-live="polite">
+              Página {alunos.page} de {pages}
+            </span>
             <div className="flex gap-2">
               <button type="button" disabled={page <= 1 || refreshing}
-                onClick={() => updatePage(Math.max(1, page - 1))}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40">
-                <ChevronLeft className="h-4 w-4" /> Anterior
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                <ChevronLeft className="h-4 w-4" aria-hidden /> Anterior
               </button>
               <button type="button" disabled={!alunos.hasMore || refreshing}
-                onClick={() => updatePage(page + 1)}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40">
-                Seguinte <ChevronRight className="h-4 w-4" />
+                onClick={() => setPage((p) => p + 1)}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                Seguinte <ChevronRight className="h-4 w-4" aria-hidden />
               </button>
             </div>
           </div>
