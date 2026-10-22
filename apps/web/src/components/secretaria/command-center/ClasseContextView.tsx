@@ -10,6 +10,9 @@ import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
 import { useClasseContext } from "@/hooks/useClasseContext";
 import { buildPortalHref } from "@/lib/navigation";
+import { useExplorerRoster } from "@/hooks/useExplorerRoster";
+import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
+import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 
 type NextEntity = { id: string; label: string; academicYearId: string };
 type Props = {
@@ -24,7 +27,8 @@ type Props = {
   initialPage?: number;
   initialScrollTop?: number;
   selectedStudentId?: string | null;
-  onViewChange?: (state: { page: number; scrollTop: number; selectedStudentId: string | null }) => void;
+  initialSearch?: string;
+  onViewChange?: (state: ExplorerViewState) => void;
 };
 
 const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
@@ -77,9 +81,16 @@ function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
 export function ClasseContextView({
   context, portal, onNavigate, onExploreCurso, onExploreTurma,
   onExploreDisciplina, onExploreProfessor, onStudentSelect,
-  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, onViewChange,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const roster = useExplorerRoster(context, "classe", searchTerm);
+  const searchActive = searchTerm.trim().length >= 2;
+  const view = (selected: string | null = currentStudent.current): ExplorerViewState => ({
+    page, scrollTop: currentScroll.current, selectedStudentId: selected,
+    search: searchTerm, filter: "ativo", sort: "nome",
+  });
   const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
@@ -97,11 +108,11 @@ export function ClasseContextView({
     }
   }, [loading, page]);
   useEffect(() => {
-    onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current });
+    onViewChangeRef.current?.(view());
   }, [page]);
   const selectStudent = (student: { id: string; label: string }) => {
     currentStudent.current = student.id;
-    onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: student.id });
+    onViewChangeRef.current?.(view(student.id));
     onStudentSelect(student);
   };
 
@@ -128,7 +139,9 @@ export function ClasseContextView({
   const href = `${base}${base.includes("?") ? "&" : "?"}${new URLSearchParams({
     [ACADEMIC_YEAR_PARAM]: anoLetivo.id,
   })}`;
-  const returnWarning = Boolean(selectedStudentId && !alunos.items.some((student) => student.id === selectedStudentId));
+  const visibleStudents = searchActive ? roster.items : alunos.items;
+  const returnWarning = Boolean(selectedStudentId && (!searchActive || (!roster.loading && !roster.refreshing)) &&
+    !visibleStudents.some((student) => student.id === selectedStudentId));
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   const open = (entity: { id: string; nome: string }, onExplore: (next: NextEntity) => void) =>
     onExplore({ id: entity.id, label: entity.nome, academicYearId: anoLetivo.id });
@@ -297,16 +310,23 @@ export function ClasseContextView({
       </section>
 
       <section className="min-w-0" aria-labelledby="classe-alunos-heading">
+        <ExplorerRosterControls value={searchTerm} onChange={(next) => {
+          setSearchTerm(next);
+          onViewChangeRef.current?.({ ...view(), search: next });
+        }} />
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 id="classe-alunos-heading" className="flex items-center gap-2 font-semibold text-slate-900">
             <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
           </h3>
           <span className="text-xs text-slate-500" aria-live="polite">
-            {refreshing ? "A atualizar…" : `${alunos.total} distintos`}
+            {searchActive ? `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} distintos`}
           </span>
         </div>
+        {searchActive && (roster.loading || roster.refreshing) && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
+        {searchActive && roster.error && <p role="alert" className="my-2 text-xs text-rose-700">{roster.error} <button type="button" onClick={() => void roster.retry()} className="underline">Tentar novamente</button></p>}
+        {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-          {alunos.items.map((aluno) => (
+          {visibleStudents.map((aluno) => (
             <button type="button" key={aluno.id}
               data-student-id={aluno.id} aria-current={selectedStudentId === aluno.id ? "true" : undefined} onClick={() => selectStudent({ id: aluno.id, label: aluno.nome })}
               className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
@@ -317,11 +337,11 @@ export function ClasseContextView({
               <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
             </button>
           ))}
-          {!alunos.items.length && (
+          {!visibleStudents.length && !roster.loading && (
             <p className="px-3 py-5 text-slate-500">Sem alunos matriculados neste âmbito.</p>
           )}
         </div>
-        {alunos.total > alunos.pageSize && (
+        {!searchActive && alunos.total > alunos.pageSize && (
           <div className="mt-3 flex items-center justify-between gap-2">
             <span className="text-xs tabular-nums text-slate-500" aria-live="polite">
               Página {alunos.page} de {pages}
@@ -340,6 +360,7 @@ export function ClasseContextView({
             </div>
           </div>
         )}
+        {searchActive && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
       </section>
       <p className="text-xs text-slate-500">
         Apenas alunos ativos no ano atual ou concluídos no histórico, excluindo cancelados e transferidos.
