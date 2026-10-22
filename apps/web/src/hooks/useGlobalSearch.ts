@@ -142,7 +142,7 @@ function purgeLegacyHistory() {
 }
 
 const PORTAL_TYPES: Record<PortalKey, string[]> = {
-  secretaria: ["aluno", "matricula", "turma", "documento", "candidatura"],
+  secretaria: ["aluno", "matricula", "turma", "documento", "candidatura", "professor", "classe", "curso"],
   financeiro: ["aluno", "mensalidade", "pagamento", "recibo"],
   admin: ["turma", "professor", "classe", "curso", "usuario"],
   operacoes: ["aluno", "matricula", "turma", "documento", "candidatura", "professor", "classe", "curso", "usuario"],
@@ -514,8 +514,9 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
           p_cursor_updated_at: pageCursor?.updated_at ?? undefined,
           p_cursor_created_at: pageCursor?.created_at ?? undefined,
           p_cursor_id: pageCursor?.id ?? undefined,
-        });
+        }).abortSignal(ac.signal);
 
+      if (ac.signal.aborted) return;
       if (error) {
         if (!append && isMissingGlobalSearchRpcError(error)) {
           await fetchFallback();
@@ -582,7 +583,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
           p_cursor_updated_at: cursor.updated_at,
           p_cursor_created_at: cursor.created_at,
           p_cursor_id: cursor.id,
-        });
+        }).abortSignal(ac.signal);
 
       if (error) throw error;
 
