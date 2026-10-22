@@ -29,7 +29,7 @@ PLAYWRIGHT_MODULE=/tmp/klasse-visual/node_modules/playwright/index.mjs LAYOUT_RE
 
 Fixture independente: `apps/web/visual-harness/operations-density.html`, sem importar a cena global `main.tsx` (também tocada por PRs #213, #216 e #239). Conflito resolvido por **entrada isolada**, sem sobrescrever trabalho alheio.
 
-Matriz: 1280×720, 1366×768, 1440×900, 1536×864, 1920×1080, 2560×1440, 768×1024, 390×844. Zoom 100%, 125%, 150%. Estados: pendências, limpo, sem dados, carregando, erro. Relógio fixo: 2026-10-22 09:00 UTC. Fontes prontas antes da captura. Asserções de overflow da página, colunas por largura do contêiner, cards sem sobreposição, texto visível ≥ 11px, controlos interativos ≥30px e dobra de 1366×768/1440×900: fundo dos KPIs até H−12 e início financeiro até H−36.
+Matriz: 1280×720, 1366×768, 1440×900, 1536×864, 1920×1080, 2560×1440, 768×1024, 390×844. Zoom 100%, 125%, 150%. Estados: pendências, limpo, sem dados, carregando, erro. Relógio fixo: 2026-10-22 09:00 UTC. Fontes prontas antes da captura. Asserções de overflow da página, colunas por largura do contêiner, cards sem sobreposição, texto visível ≥ 11px, controlos interativos ≥44px em mobile/768px e ≥32px em desktop e dobra de 1366×768/1440×900: fundo dos KPIs até H−12 e início financeiro até H−36.
 
 ## Baseline / depois — fixture sintética, Chrome a 100%
 
