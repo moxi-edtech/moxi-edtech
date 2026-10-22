@@ -103,6 +103,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
   const [courseClassId, setCourseClassId] = React.useState<string | null>(null);
   const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
   const [turmaPage, setTurmaPage] = React.useState(1);
+  const [classePage, setClassePage] = React.useState(1);
+  const [classeScrollTop, setClasseScrollTop] = React.useState(0);
   const [selectedStudentId, setSelectedStudentId] = React.useState<string | null>(null);
   const [turmaScrollTop, setTurmaScrollTop] = React.useState(0);
   const resumeAfterBalcao = React.useRef(false);
@@ -120,6 +122,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
       setCourseClassId(null);
       setCourseTurmaId(null);
       setTurmaPage(1);
+      setClassePage(1);
+      setClasseScrollTop(0);
       setSelectedStudentId(null);
       setTurmaScrollTop(0);
       resumeAfterBalcao.current = false;
@@ -134,6 +138,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
     setCourseClassId(null);
     setCourseTurmaId(null);
     setTurmaPage(1);
+    setClassePage(1);
+    setClasseScrollTop(0);
     setSelectedStudentId(null);
     setTurmaScrollTop(0);
     resumeAfterBalcao.current = false;
@@ -463,6 +469,8 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                   onClasseChange={setCourseClassId}
                   onTurmaChange={setCourseTurmaId}
                   onExploreClasse={(classe) => {
+                    setClassePage(1);
+                    setClasseScrollTop(0);
                     setCourseClassId(classe.id);
                     setContextTrail((trail) => [...trail, entityContext]);
                     setEntityContext({
@@ -601,6 +609,12 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
                 />
               ) : entityContext.type === "classe" ? (
                 <ClasseContextView
+                  initialPage={classePage}
+                  onPageChange={setClassePage}
+                  initialScrollTop={classeScrollTop}
+                  onScrollTopChange={setClasseScrollTop}
+                  selectedStudentId={selectedStudentId}
+                  restoreStudentFocus={restoreStudentFocus}
                   key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`}
                   context={entityContext}
                   portal={portal}
