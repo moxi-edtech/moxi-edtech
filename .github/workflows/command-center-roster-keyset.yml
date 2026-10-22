@@ -1,0 +1,42 @@
+name: Command Center Roster Keyset SQL
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*command_center_roster_keyset.sql'
+      - 'supabase/ops/tests/regression_command_center_roster_keyset.sql'
+      - '.github/workflows/command-center-roster-keyset.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixture-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test 55 fictional records, cross-school RLS, accents, injection and cursor
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 \
+            -f supabase/ops/tests/regression_command_center_roster_keyset.sql \
+            | tee /tmp/cc-roster-keyset-test.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cc-keyset-sql-fixture
+          path: /tmp/cc-roster-keyset-test.log
+          retention-days: 14
