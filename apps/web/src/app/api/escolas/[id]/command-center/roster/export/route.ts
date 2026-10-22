@@ -17,7 +17,7 @@ const inputSchema = z.object({
   yearId: z.string().uuid().nullable(),
   poloId: z.string().uuid().nullable(),
   query: z.string().max(90),
-  filter: z.enum(["todos", "documentos_sinalizados", "propinas_vencidas"]),
+  filter: z.enum(["todos", "documentos_sinalizados", "propinas_vencidas", "ambos"]),
   sort: z.enum(["nome_asc", "nome_desc", "pendencias_primeiro"]),
 });
 const deny = (reason: string, status: number) =>

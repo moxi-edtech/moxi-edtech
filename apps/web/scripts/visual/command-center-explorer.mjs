@@ -59,7 +59,7 @@ async function run(size, zoom) {
 
   await reset();
   await capture(page,size,zoom,"lista");
-  if (size[0] === 390 && zoom === 1) await checkAutomatedAccessibility(page, "turma-lista");
+  await checkAutomatedAccessibility(page, "turma-lista");
   assert.equal(await page.getByText("55").first().isVisible(),true);
   await capture(page,size,zoom,"lotacao-55-50");
   const filter = page.getByRole("combobox", { name: "Situação verificada" });
@@ -95,6 +95,9 @@ async function run(size, zoom) {
   await filter.selectOption("propinas_vencidas");
   await page.getByText("2 encontrados").waitFor();
   await capture(page,size,zoom,"propinas-vencidas");
+  await filter.selectOption("ambos");
+  await page.getByText("1 encontrados").waitFor();
+  await capture(page,size,zoom,"documentos-e-propinas");
   await filter.selectOption("todos");
 
 
@@ -117,7 +120,7 @@ async function run(size, zoom) {
   await reset();
   await page.getByRole("button", { name: "Ações de Aluno Sintético 01" }).click();
   await page.getByRole("button", { name: "Abrir Emitir documento" }).waitFor();
-  if (size[0] === 390 && zoom === 1) await checkAutomatedAccessibility(page, "student-actions");
+  await checkAutomatedAccessibility(page, "student-actions");
   await capture(page,size,zoom,"acoes-por-permissao");
   await page.getByRole("button", { name: "Fechar ações de Aluno Sintético 01" }).click();
   await page.locator('[data-student-id="00000000-0000-4000-8100-000000000001"]').click();

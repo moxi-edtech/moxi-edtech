@@ -45,7 +45,7 @@ export function rosterExportAudit(input: {
   exportedAt: string;
   purposeCode?: string;
   retentionDays?: number;
-  filter?: "todos" | "documentos_sinalizados" | "propinas_vencidas";
+  filter?: "todos" | "documentos_sinalizados" | "propinas_vencidas" | "ambos";
   sort?: "nome_asc" | "nome_desc" | "pendencias_primeiro";
 }) {
   return {
