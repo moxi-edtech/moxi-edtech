@@ -326,7 +326,7 @@ export default function EscolaAdminDashboardContent({
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12"
+      className="space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12" style={isOperacoes ? { containerType: "inline-size" } : undefined}
     >
 
       {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
@@ -358,22 +358,23 @@ export default function EscolaAdminDashboardContent({
         </div>
       </motion.div>
 
-      {/* ── 1.1 ESTADO VITAL (Organismo Vivo) ────────────────────────────────── */}
-      {estadoVital && (
-        <motion.div variants={itemVariants}>
-          <EstadoVitalBanner estado={estadoVital} />
+      {/* Na secretaria, contexto e pendências formam uma única região de leitura.
+          Não alteramos os componentes, os links ou o modo Administração. */}
+      <div className={isOperacoes ? "operations-context-grid" : "contents"}>
+        {estadoVital && (
+          <motion.div variants={itemVariants} className="min-w-0">
+            <EstadoVitalBanner estado={estadoVital} />
+          </motion.div>
+        )}
+        <motion.div variants={itemVariants} className="min-w-0">
+          <RadarOperacional
+            alerts={radarAlerts}
+            role={isOperacoes ? "secretaria" : "admin"}
+            variant={isOperacoes ? "compact" : "default"}
+            onAction={handleRadarAction}
+          />
         </motion.div>
-      )}
-
-      {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
-      <motion.div variants={itemVariants}>
-        <RadarOperacional
-          alerts={radarAlerts}
-          role={mode === "operacoes" ? "secretaria" : "admin"}
-          variant={mode === "operacoes" ? "compact" : "default"}
-          onAction={handleRadarAction}
-        />
-      </motion.div>
+      </div>
 
       <PricingConfigurationModal
         open={pricingModalOpen}
@@ -402,7 +403,7 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
       {hasMovimentoReceita && (
-        <motion.section variants={itemVariants} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md min-[1700px]:p-6">
+        <motion.section variants={itemVariants} className="relative min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md min-[1700px]:p-6">
           <div className="relative z-10 mb-5 flex flex-col items-start justify-between gap-4 min-[1700px]:mb-8 min-[1700px]:gap-6 md:flex-row">
             <div className="space-y-4 flex-1">
               <div className="space-y-1">

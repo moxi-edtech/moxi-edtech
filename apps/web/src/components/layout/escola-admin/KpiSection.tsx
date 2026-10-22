@@ -73,7 +73,7 @@ export default function KpiSection({
 
   // Keep the loading skeleton in the same column structure as the final KPIs.
   const gridClasses = mode === "operacoes"
-    ? "grid grid-cols-2 gap-3 xl:grid-cols-4"
+    ? "operations-kpi-grid grid gap-3"
     : "grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4";
 
   if (error) {
