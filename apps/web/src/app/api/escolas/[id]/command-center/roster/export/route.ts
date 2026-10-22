@@ -34,7 +34,10 @@ async function readRosterExport(req: NextRequest, { params }: { params: Promise<
   if (!result.success) return deny("Parâmetros inválidos.", 400);
   const input = result.data;
   const policy = resolveRosterExportPolicy(input.schoolId, process.env.KLASSE_CC_ROSTER_EXPORT_POLICY_JSON);
-  if (!policy.enabled) return deny("Exportação desactivada para esta escola. Solicite autorização à administração.", 403);
+  if (!policy.enabled) return NextResponse.json({
+    ok: false, code: "EXPORT_DISABLED",
+    error: "Exportação desactivada para esta escola. Solicite autorização à administração.",
+  }, { status: 403, headers: { "Cache-Control": "private, no-store" } });
   if (input.poloId) return deny("Exportação por polo indisponível sem escopo canónico verificado.", 403);
   if (input.query.trim() && input.query.trim().length < 2) return deny("Introduza pelo menos dois caracteres.", 400);
   try {
