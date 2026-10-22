@@ -10,6 +10,7 @@ on:
       - 'supabase/ops/tests/regression_command_center_operational*'
       - 'apps/web/tests/unit/command-center-operational-backlogs.spec.ts'
       - '.github/workflows/command-center-operational-backlogs.yml'
+      - 'apps/web/scripts/performance/command-center-authenticated-budget.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -58,6 +59,7 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: node --check apps/web/scripts/performance/command-center-authenticated-budget.mjs
       - run: pnpm -C apps/web typecheck
       - name: lint
         run: |
