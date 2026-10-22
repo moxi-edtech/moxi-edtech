@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const q = new URL(req.url).searchParams;
   const result = inputSchema.safeParse({
     schoolId: id, type: q.get("type"), entityId: q.get("entityId"),
-    yearId: q.get("ano_letivo_id"), poloId: q.get("poloId"), query: q.get("q") ?? "",
+    yearId: q.get("ano_letivo_id"), poloId: q.get("poloId") ?? q.get("polo_id"), query: q.get("q") ?? "",
   });
   if (!result.success) return deny("Parâmetros inválidos.", 400);
   const input = result.data;
