@@ -103,6 +103,15 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
   const [contextTrail, setContextTrail] = React.useState<EntityContext[]>([]);
   const [courseClassId, setCourseClassId] = React.useState<string | null>(null);
   const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
+  const [viewState, setViewState] = React.useState<Record<string, { page: number; scrollTop: number; selectedStudentId: string | null }>>({});
+  const viewStateRef = React.useRef(viewState);
+  viewStateRef.current = viewState;
+  const updateView = (key: string, next: { page: number; scrollTop: number; selectedStudentId: string | null }) => {
+    setViewState((prev) => {
+      const old = prev[key];
+      return old?.page === next.page && old?.scrollTop === next.scrollTop && old?.selectedStudentId === next.selectedStudentId ? prev : { ...prev, [key]: next };
+    });
+  };
   const reduceMotion = useReducedMotion();
   const [queryClient] = React.useState(() => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } }));
   const handleOpenChange = React.useCallback((next: boolean) => {
@@ -112,6 +121,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
       setContextTrail([]);
       setCourseClassId(null);
       setCourseTurmaId(null);
+    setViewState({});
       queryClient.clear();
     }
   }, [queryClient, setOpen]);
@@ -121,6 +131,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
     setContextTrail([]);
     setCourseClassId(null);
     setCourseTurmaId(null);
+    setViewState({});
   }, [escolaId, portal, queryClient]);
   React.useEffect(() => {
     if (!open || !restoreExplorerOnOpen || !escolaId) return;
@@ -130,7 +141,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
     setContextTrail(snap.contextTrail);
     setCourseClassId(snap.courseClassId);
     setCourseTurmaId(snap.courseTurmaId);
-  }, [open, restoreExplorerOnOpen, escolaId]);
+    setViewState(snap.viewState);
+    void queryClient.invalidateQueries();
+  }, [open, restoreExplorerOnOpen, escolaId, queryClient]);
   const { query, setQuery, results, loading, error: searchError, clearError, hasMore, loadMore, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, { portal });
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -141,6 +154,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
         setContextTrail([]);
         setCourseClassId(null);
         setCourseTurmaId(null);
+    setViewState({});
       }
     };
     document.addEventListener("keydown", down);
@@ -167,12 +181,13 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
       setContextTrail([]);
       setCourseClassId(null);
       setCourseTurmaId(null);
+    setViewState({});
       setEntityContext(context);
       return;
     }
     rememberResult(item);
     if (item.type === "aluno" && entityContext && escolaId && onStudentSelect && (portal === "operacoes" || portal === "secretaria")) {
-      saveExplorerReturnContext({ escolaId, entityContext, contextTrail, courseClassId, courseTurmaId });
+      saveExplorerReturnContext({ escolaId, entityContext, contextTrail, courseClassId, courseTurmaId, viewState: viewStateRef.current });
     }
     runCommand(() => {
       setQuery("");
@@ -298,7 +313,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                     <CourseContextView key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "c"}`} context={entityContext} portal={portal} initialClasseId={courseClassId} initialTurmaId={courseTurmaId} onClasseChange={setCourseClassId} onTurmaChange={setCourseTurmaId} onExploreClasse={(c) => { setCourseClassId(c.id); pushEntity({ type: "classe", id: c.id, label: c.label, escolaId: entityContext.escolaId, academicYearId: c.academicYearId }); }} onExploreTurma={(t) => { setCourseTurmaId(t.id); pushEntity({ type: "turma", id: t.id, label: t.label, escolaId: entityContext.escolaId, academicYearId: t.academicYearId }); }} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} />
                   )}
                   {entityContext.type === "turma" && (
-                    <TurmaContextView key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "c"}`} context={entityContext} portal={portal} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} onStudentSelect={(s) => selectResult({ id: s.id, label: s.label, type: "aluno", highlight: null, href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(s.id)}`), actions: [] })} onExploreProfessor={(p) => pushEntity({ type: "professor", id: p.id, label: p.label, escolaId: entityContext.escolaId, academicYearId: p.academicYearId })} onExploreDisciplina={(d) => pushEntity({ type: "disciplina", id: d.id, label: d.label, escolaId: entityContext.escolaId, academicYearId: d.academicYearId })} onExploreClasse={(c) => pushEntity({ type: "classe", id: c.id, label: c.label, escolaId: entityContext.escolaId, academicYearId: c.academicYearId })} />
+                    <TurmaContextView key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "c"}`} initialPage={viewState[`${entityContext.type}:${entityContext.id}`]?.page ?? 1} initialScrollTop={viewState[`${entityContext.type}:${entityContext.id}`]?.scrollTop ?? 0} selectedStudentId={viewState[`${entityContext.type}:${entityContext.id}`]?.selectedStudentId ?? null} onViewChange={(state) => updateView(`${entityContext.type}:${entityContext.id}`, state)} context={entityContext} portal={portal} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} onStudentSelect={(s) => selectResult({ id: s.id, label: s.label, type: "aluno", highlight: null, href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(s.id)}`), actions: [] })} onExploreProfessor={(p) => pushEntity({ type: "professor", id: p.id, label: p.label, escolaId: entityContext.escolaId, academicYearId: p.academicYearId })} onExploreDisciplina={(d) => pushEntity({ type: "disciplina", id: d.id, label: d.label, escolaId: entityContext.escolaId, academicYearId: d.academicYearId })} onExploreClasse={(c) => pushEntity({ type: "classe", id: c.id, label: c.label, escolaId: entityContext.escolaId, academicYearId: c.academicYearId })} />
                   )}
                   {entityContext.type === "professor" && (
                     <ProfessorContextView context={entityContext} portal={portal} onExploreTurma={(t) => pushEntity({ type: "turma", id: t.id, label: t.label, escolaId: entityContext.escolaId, academicYearId: t.academicYearId })} onExploreDisciplina={(d) => pushEntity({ type: "disciplina", id: d.id, label: d.label, escolaId: entityContext.escolaId, academicYearId: d.academicYearId })} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} />
@@ -307,7 +322,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                     <DisciplinaContextView context={entityContext} portal={portal} onExploreProfessor={(p) => pushEntity({ type: "professor", id: p.id, label: p.label, escolaId: entityContext.escolaId, academicYearId: p.academicYearId })} onExploreTurma={(t) => pushEntity({ type: "turma", id: t.id, label: t.label, escolaId: entityContext.escolaId, academicYearId: t.academicYearId })} onExploreClasse={(c) => pushEntity({ type: "classe", id: c.id, label: c.label, escolaId: entityContext.escolaId, academicYearId: c.academicYearId })} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} />
                   )}
                   {entityContext.type === "classe" && (
-                    <ClasseContextView key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "c"}`} context={entityContext} portal={portal} onExploreCurso={(c) => pushEntity({ type: "curso", id: c.id, label: c.label, escolaId: entityContext.escolaId, academicYearId: c.academicYearId })} onExploreTurma={(t) => pushEntity({ type: "turma", id: t.id, label: t.label, escolaId: entityContext.escolaId, academicYearId: t.academicYearId })} onExploreDisciplina={(d) => pushEntity({ type: "disciplina", id: d.id, label: d.label, escolaId: entityContext.escolaId, academicYearId: d.academicYearId })} onExploreProfessor={(p) => pushEntity({ type: "professor", id: p.id, label: p.label, escolaId: entityContext.escolaId, academicYearId: p.academicYearId })} onStudentSelect={(s) => selectResult({ id: s.id, label: s.label, type: "aluno", highlight: null, href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(s.id)}`), actions: [] })} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} />
+                    <ClasseContextView key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "c"}`} initialPage={viewState[`${entityContext.type}:${entityContext.id}`]?.page ?? 1} initialScrollTop={viewState[`${entityContext.type}:${entityContext.id}`]?.scrollTop ?? 0} selectedStudentId={viewState[`${entityContext.type}:${entityContext.id}`]?.selectedStudentId ?? null} onViewChange={(state) => updateView(`${entityContext.type}:${entityContext.id}`, state)} context={entityContext} portal={portal} onExploreCurso={(c) => pushEntity({ type: "curso", id: c.id, label: c.label, escolaId: entityContext.escolaId, academicYearId: c.academicYearId })} onExploreTurma={(t) => pushEntity({ type: "turma", id: t.id, label: t.label, escolaId: entityContext.escolaId, academicYearId: t.academicYearId })} onExploreDisciplina={(d) => pushEntity({ type: "disciplina", id: d.id, label: d.label, escolaId: entityContext.escolaId, academicYearId: d.academicYearId })} onExploreProfessor={(p) => pushEntity({ type: "professor", id: p.id, label: p.label, escolaId: entityContext.escolaId, academicYearId: p.academicYearId })} onStudentSelect={(s) => selectResult({ id: s.id, label: s.label, type: "aluno", highlight: null, href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(s.id)}`), actions: [] })} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} />
                   )}
                 </motion.section>
               )}
