@@ -38,7 +38,7 @@ export default function Topbar({
   portal,
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedSearchStudent, setSelectedSearchStudent] = useState<{
     id: string;
     label: string;
@@ -55,33 +55,43 @@ export default function Topbar({
       .charAt(0)
       .toUpperCase() || "U";
 
-  const palette = (
-    <CommandPalette
-      escolaId={escolaId}
-      portal={portal}
-      onStudentSelect={(student) => {
-        if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
-      }}
-    />
-  );
-
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <div className="flex h-16 items-center gap-3 px-3 sm:gap-4 sm:px-4">
-          {/* Desktop: full search field */}
-          <div className="hidden w-[420px] md:flex">{palette}</div>
+          {/* Desktop: full trigger + dialog */}
+          <div className="hidden w-[420px] md:flex">
+            <CommandPalette
+              escolaId={escolaId}
+              portal={portal}
+              open={paletteOpen}
+              onOpenChange={setPaletteOpen}
+              onStudentSelect={(student) => {
+                if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
+              }}
+            />
+          </div>
 
-          {/* MOB-01: mobile entry — same CommandPalette instance pattern via icon trigger */}
+          {/* MOB-01: same dialog, icon opens controlled state */}
           <div className="md:hidden">
             <button
               type="button"
-              onClick={() => setMobileSearchOpen(true)}
+              onClick={() => setPaletteOpen(true)}
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
               aria-label="Pesquisar ou abrir Command Center"
             >
               <Search className="h-5 w-5" aria-hidden />
             </button>
+            <CommandPalette
+              escolaId={escolaId}
+              portal={portal}
+              open={paletteOpen}
+              onOpenChange={setPaletteOpen}
+              hideTrigger
+              onStudentSelect={(student) => {
+                if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
+              }}
+            />
           </div>
 
           <div className="ml-auto flex items-center gap-2">
@@ -138,22 +148,6 @@ export default function Topbar({
             </div>
           </div>
         </div>
-
-        {/* Mobile search sheet: full-width palette trigger that opens the same dialog */}
-        {mobileSearchOpen && (
-          <div className="border-t border-slate-100 px-3 py-2 md:hidden">
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">{palette}</div>
-              <button
-                type="button"
-                onClick={() => setMobileSearchOpen(false)}
-                className="shrink-0 rounded-lg px-2 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        )}
       </header>
 
       {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (

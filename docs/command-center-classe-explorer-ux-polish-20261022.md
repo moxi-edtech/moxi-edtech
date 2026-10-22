@@ -1,49 +1,50 @@
-# Polimento UX — Exploradores do Command Center (KLASSE)
+# Polimento UX — Exploradores e shell do Command Center (KLASSE)
 
 **Registo:** 22/10/2026 · **Âmbito:** apenas frontend · **Branch:** `polish/classe-explorer-ux-20261022`
 
 Complemento à [auditoria dos exploradores](./command-center-exploradores-auditoria-20261022.md).
 **Não** altera API, SQL, RLS nem banco de dados.
 
-## Ficheiros alterados
+## Ficheiros
 
-| Explorador | Ficheiro |
-| --- | --- |
-| **Classe** | `apps/web/src/components/secretaria/command-center/ClasseContextView.tsx` |
-| **Turma** | `apps/web/src/components/secretaria/command-center/TurmaContextView.tsx` |
-| **Curso** | `apps/web/src/components/secretaria/command-center/CourseContextView.tsx` |
-| **Disciplina** | `apps/web/src/components/secretaria/command-center/DisciplinaContextView.tsx` |
-| **Professor** | `apps/web/src/components/secretaria/command-center/ProfessorContextView.tsx` |
+### Exploradores (métricas, CTAs, ocupação)
+- `ClasseContextView.tsx`, `TurmaContextView.tsx`, `CourseContextView.tsx`
+- `DisciplinaContextView.tsx`, `ProfessorContextView.tsx`
+
+### Shell / pesquisa / privacidade / mobile
+- `hooks/useGlobalSearch.ts` — PRIV-01/02, SRCH-01/02
+- `components/CommandPalette.tsx` — BREAD-01, A11Y fechar, SRCH UI, KBD rodapé
+- `components/layout/klasse/Topbar.tsx` — MOB-01
 
 ## Mapa auditoria → alteração
 
-| ID | Onde | O que mudou na UI |
-| --- | --- | --- |
-| **DATA-01** | Classe, Turma, Curso | Capacidade ≠ vagas. Indicadores separados: alunos, capacidade, vagas disponíveis; excedente só quando ocupação > capacidade; «Não definida» quando capacidade ausente (nunca zero inventado). |
-| **NAV-02** | Curso | Clique na linha da turma abre **directamente** o contexto da turma; «Abrir página» permanece secundário. |
-| **LINK-01** | Classe, Disciplina, Professor, Turma | CTAs honestos: «Abrir gestão académica», «Abrir gestão de professores», «Abrir página da turma» + `title` que descreve o destino real. |
-| Estados verificáveis | Classe, Turma, Disciplina, Professor | Turmas sem alunos; disciplinas/turmas sem professor; professor sem atribuição vs sem horário publicado (distintos). Sem inventar pendências de fontes não confiáveis. |
-| A11y leve | Todos | `aria-labelledby` nas secções, `aria-live` em paginação/contagens, `aria-hidden` em ícones, `focus-visible` consistente. |
-| Linguagem | Todos | Rótulos PT-AO alinhados (`turma`, `classe`, `matrícula`, `ano letivo`). |
+| ID | Estado nesta branch |
+| --- | --- |
+| **DATA-01** | Capacidade ≠ vagas nos exploradores Classe/Turma/Curso |
+| **NAV-02** | Curso: clique na turma abre contexto |
+| **LINK-01** | CTAs honestos nos exploradores |
+| **PRIV-01 / PRIV-02** | Recentes só em memória de sessão; sem BI/processo; limpa chave legada do `localStorage` |
+| **MOB-01** | Ícone de pesquisa no mobile abre o mesmo CommandPalette (controlado) |
+| **SRCH-01** | Botão «Ver mais resultados» quando `hasMore` |
+| **SRCH-02** | Estado de erro distinto de lista vazia + retry |
+| **BREAD-01** | Breadcrumb `Pesquisa / … / actual` com navegação por passo |
+| **A11Y-01** (parcial) | Botão fechar explícito na pesquisa e no contexto |
+| **KBD-01** (parcial) | Rodapé só anuncia Esc / ⌘K / setas quando aplicável |
+| **SCROLL-01** (parcial) | Vista contextual com `max-h` e um scroll principal |
+| **UX-00** | Ainda incompleto: handoff Balcão não restaura página/filtro/scroll da turma |
+| **SEC-01** | Fora de escopo (banco) |
 
-## O que **não** foi feito (fora de escopo)
+## Pendente sem backend (próximos passos front)
 
-- Continuidade P0 Turma → Balcão → Turma (**UX-00**) — PR #234 / outro trabalho.
-- **SEC-01** / **PRIV-01** / **PRIV-02** (autorização RPC, recentes).
-- Paginação/pesquisa de alunos no SQL; virtualização de listas.
-- Breadcrumb global do modal (**BREAD-01**) e scroll único do shell (**SCROLL-01**).
-- Redesign do design system de Metric (**DS-01**).
-- Mobile Command Palette (**MOB-01**).
+1. **UX-00 completo:** `returnContext` em sessão ao abrir aluno do explorador; ao fechar o Balcão, reabrir CommandPalette na mesma turma/página.
+2. **NAV-03:** sincronizar «Todas as classes» com callbacks do palette.
+3. **A11Y-01 completo:** focus trap / foco inicial formal no dialog (cmdk cobre parte).
+4. **DS-01:** componente `Metric` partilhado.
 
-## Critérios de verificação manual
+## Verificação rápida
 
-1. **Classe / Turma:** capacidade mista → vagas coerentes; sem capacidade → «Não definida»; lotada / excedente legíveis.
-2. **Curso:** um clique na turma abre o explorador de turma; ocupação na linha; «Abrir página» separado.
-3. **Disciplina:** turmas sem docente assinaladas; CTA abre gestão, não promete atribuição.
-4. **Professor:** sem atribuição ≠ sem horário publicado; CTA abre gestão de professores.
-5. Teclado: foco visível; paginação de alunos anuncia página actual.
-
-## Relação com PRs abertas
-
-- Auditoria documental: PR #233.
-- Pacote operacional P0 (continuidade + SEC): PR #234 — pode reaplicar ou absorver este polimento se divergir.
+1. Mobile: ícone de lupa abre pesquisa; desktop mantém campo.
+2. Recentes: não sobrevivem a novo separador / outro utilizador no mesmo browser após fechar a aba.
+3. Pesquisa com erro de rede: mensagem + retry, não lista vazia silenciosa.
+4. Mais de 8 resultados: «Ver mais resultados».
+5. Navegação Curso → Classe → Turma: breadcrumb permite voltar a qualquer passo.
