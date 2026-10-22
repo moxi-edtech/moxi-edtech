@@ -5,8 +5,6 @@ import TransferForm from "../src/components/secretaria/TransferForm";
 import AiChatWidget from "../src/components/ai/AiChatWidget";
 import { createRoot } from "react-dom/client";
 import "./fixture.css";
-import OperationsDensityFixture from "./operations-density-fixture";
-import "./operations-density-fixture.css";
 import "../src/app/globals.css";
 import {
   DocumentosPendentes, DocumentosRejeitados, NotasPagas, ProfessorComTurmas, DashboardClean, DashboardPending, DashboardRejected, DashboardRematricula, DashboardOverdue, DashboardEmpty, DashboardApproved, GradePaid, GradeUnpaid, GradePending, GradeRejected, GradeEmpty, NoticeInformativo, NoticeAtencao, NoticeCritico, NoticeSucesso, NoticeRematricula, NoticeFinanceiro,
@@ -177,7 +175,6 @@ if (target && name === "school-intelligence") {
     </main>;
   }
   createRoot(target).render(<ChatFixture />);
-} else if (target && name === "operations-density") createRoot(target).render(<OperationsDensityFixture state={(new URLSearchParams(window.location.search).get("state") || "pending") as "pending" | "clean" | "empty" | "loading" | "error"} baseline={new URLSearchParams(window.location.search).get("baseline") === "1"} />);
-else if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
+} else if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
 else if (target && Scene) createRoot(target).render(<>{Scene()}</>);
 else if (target) target.textContent = "Visual fixture not found";
