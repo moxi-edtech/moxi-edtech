@@ -17,8 +17,10 @@ const schema = z.object({
   search: z.string().max(90).default(""),
   cursorName: z.string().max(200).nullable(),
   cursorId: z.string().uuid().nullable(),
+  cursorPriority: z.coerce.number().int().min(0).max(2).nullable(),
   size: z.coerce.number().int().min(1).max(25).default(20),
-  sort: z.enum(["nome_asc", "nome_desc"]).default("nome_asc"),
+  sort: z.enum(["nome_asc", "nome_desc", "pendencias_primeiro"]).default("nome_asc"),
+  filter: z.enum(["todos", "documentos_sinalizados", "propinas_vencidas"]).default("todos"),
 });
 const response = (data: unknown, status = 200) =>
   NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
@@ -36,13 +38,18 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
     search: u.searchParams.get("q") ?? "",
     cursorName: u.searchParams.get("cursorName"),
     cursorId: u.searchParams.get("cursorId"),
+    cursorPriority: u.searchParams.get("cursorPriority"),
     size: u.searchParams.get("size") ?? "20",
     sort: u.searchParams.get("sort") ?? "nome_asc",
+    filter: u.searchParams.get("filter") ?? "todos",
   });
   if (!parsed.success) return response({ ok: false, error: "Parâmetros inválidos." }, 400);
   const input = parsed.data;
   if ((input.cursorId === null) !== (input.cursorName === null)) {
     return response({ ok: false, error: "Cursor incompleto." }, 400);
+  }
+  if (input.sort === "pendencias_primeiro" && input.cursorId && input.cursorPriority === null) {
+    return response({ ok: false, error: "Cursor de pendências incompleto." }, 400);
   }
   if (input.search.trim() && input.search.trim().length < 2) {
     return response({ ok: false, error: "Introduza pelo menos dois caracteres." }, 400);
@@ -76,14 +83,13 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
     const year = await resolveAcademicYearScope(supabase, {
       escolaId, requestedAcademicYearId: input.yearId, operation: "READ",
     });
-    // The contract deliberately disables historic/filter-specific rosters
-    // until status semantics and school-specific documentary/financial rules are signed off.
+    // Historical enrolments remain gated; current-year verified signals do not infer final matriculation states.
     if (year.status === "CLOSED") return response({
       ok: false, code: "HISTORIC_ROSTER_UNAVAILABLE",
       error: "Pesquisa histórica indisponível até homologar os estados de matrícula.",
     }, 409);
 
-    const { data, error } = await supabase.rpc("command_center_roster_keyset_v2", {
+    const { data, error } = await supabase.rpc("command_center_roster_operational_v1", {
       p_escola_id: escolaId,
       p_ano_letivo: year.ano,
       p_turma_id: input.type === "turma" ? input.entityId : null,
@@ -91,9 +97,11 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
       p_query: input.search.trim() || null,
       p_cursor_name: input.cursorName,
       p_cursor_id: input.cursorId,
+      p_cursor_priority: input.cursorPriority,
       p_limit: input.size + 1,
       p_polo_id: null,
       p_sort: input.sort,
+      p_filter: input.filter,
     });
     if (error) {
       const status = error.code === "42501" ? 403 : error.code === "22023" ? 400 : 500;
@@ -101,17 +109,28 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
         ok: false, error: status === 403 ? "Sem autorização para consultar esta lista." : "Não foi possível carregar a lista. Tente novamente.",
       }, status);
     }
-    const items = (data ?? []).slice(0, input.size);
+    if (data?.[0]?.rate_limited) return NextResponse.json({
+      ok: false, error: "Limite de pesquisas atingido. Aguarde um minuto e tente novamente.",
+      code: "RATE_LIMITED",
+    }, { status: 429, headers: {
+      "Cache-Control": "private, no-store", "Retry-After": "60",
+    } });
+    const items = (data ?? []).filter((item) => Boolean(item.aluno_id)).slice(0, input.size);
     const last = items[items.length - 1];
     return response({
       ok: true,
       items: items.map((item) => ({
-        id: item.aluno_id, nome: item.nome, numero: item.numero_processo,
-        turmaId: item.turma_id, turmaNome: item.turma_nome, numeroChamada: item.numero_chamada,
+        id: item.aluno_id, nome: item.nome ?? "Aluno", numero: item.numero_processo,
+        turmaId: item.turma_id, turmaNome: item.turma_nome ?? "Turma", numeroChamada: item.numero_chamada,
+        documentosSinalizados: item.documentos_sinalizados,
+        propinasVencidas: item.propinas_vencidas,
+        pendenciasCount: item.pendencias_count,
       })),
       total: data?.[0]?.total_filtrado ?? 0,
       hasMore: (data?.length ?? 0) > input.size,
-      cursor: last ? { name: last.cursor_name, id: last.aluno_id } : null,
+      cursor: last ? { name: last.cursor_name, id: last.aluno_id, priority: last.pendencias_count } : null,
+      filter: input.filter,
+      sort: input.sort,
       size: input.size,
     });
   } catch (cause) {
