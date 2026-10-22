@@ -38,3 +38,18 @@ Os workflows de contratos, visual e regressão do Command Center continuam obrig
 6. Autorizar separadamente e em ordem a aplicação das migrations versionadas, integração das branches empilhadas e deploy. **Esta PR não autoriza nenhuma dessas acções.**
 
 Não alterar histórico aplicado ou o motor de pagamentos/fiscalidade para que um teste passe.
+
+## Instrumentação de performance e ensaio autenticado (preparados, não executados em produção)
+
+- Todas as rotas cobertas por `withExplorerObservability` respondem com `Server-Timing: cc;dur=...` e `X-Correlation-ID` sem guardar identificadores, nomes ou montantes em logs, e sem gerar chamadas adicionais.
+- `apps/web/scripts/performance/command-center-authenticated-budget.mjs` mede, em ambiente descartável com uma sessão de teste previamente criada, p50/p95 de até 12 GETs autorizados, bytes de resposta, número de requisições e p95 do tempo de servidor. Nunca guarda o payload, nome ou cookie em ficheiro/saída.
+- Execução manual apenas após criar a réplica e credenciais fictícias, por exemplo:
+
+```bash
+KLASSE_CC_BENCHMARK_URL=http://127.0.0.1:3000 \\
+KLASSE_CC_BENCHMARK_COOKIE="<cookie-de-conta-ficticia>" \\
+KLASSE_CC_BENCHMARK_PATH="/api/escolas/<uuid-ficticio>/command-center/roster?type=turma&entityId=<uuid-ficticio>&q=teste" \\
+node apps/web/scripts/performance/command-center-authenticated-budget.mjs
+```
+
+O script recusa `app.klasse.ao` e quaisquer subdomínios de produção, assim como hosts remotos sem autorização explícita; o limite de 12 repetições respeita o orçamento de 30/min por operador. **A presença do script não significa que as medições reais já foram feitas.** Um benchmark comparável deve ser executado antes e depois no mesmo ambiente autenticado, com idêntico volume de dados e sem reutilizar uma sessão expirada. O ensaio humano de 8 horas e a inspeção com leitor de ecrã continuam pendentes.
