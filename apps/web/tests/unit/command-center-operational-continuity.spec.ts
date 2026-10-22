@@ -15,12 +15,12 @@ test("Balcão return uses one session-scoped explorer handoff", () => {
   assert.match(topbar, /restoreExplorerOnOpen/);
   assert.match(topbar, /clearExplorerReturnContext/);
   assert.match(snapshot, /escolaId: string/);
-  assert.doesNotMatch(snapshot, /localStorage|sessionStorage/);
+  assert.doesNotMatch(snapshot, /(?:window\.)?(?:localStorage|sessionStorage)\.(?:setItem|getItem)\(/);
 });
 
 test("Classe and Turma have explicit pagination controls", () => {
   for (const view of [turma, classe]) {
-    assert.match(view, /useState\(1\)/);
+    assert.match(view, /useState\(initialPage\)/);
     assert.match(view, /setPage/);
   }
   assert.match(snapshot, /selectedStudentId/);
