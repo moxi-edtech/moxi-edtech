@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export type ExplorerRouteName =
   | "curso" | "classe" | "turma" | "professor" | "disciplina"
-  | "roster-search" | "roster-export" | "disciplina-search";
+  | "roster-search" | "roster-export" | "disciplina-search" | "student-capabilities";
 
 const ERROR_CODES: Record<number, string> = {
   400: "INVALID_REQUEST",
