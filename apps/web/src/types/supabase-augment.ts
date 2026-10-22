@@ -897,6 +897,30 @@ export type DBWithRPC = Omit<Database, "public"> & {
         };
         Returns: Json;
       };
+      command_center_roster_keyset_v2: {
+        Args: {
+          p_escola_id: string;
+          p_ano_letivo: number;
+          p_turma_id?: string | null;
+          p_classe_id?: string | null;
+          p_query?: string | null;
+          p_cursor_name?: string | null;
+          p_cursor_id?: string | null;
+          p_limit?: number;
+          p_polo_id?: string | null;
+          p_sort?: "nome_asc" | "nome_desc";
+        };
+        Returns: Array<{
+          aluno_id: string;
+          nome: string;
+          numero_processo: string | null;
+          turma_id: string;
+          turma_nome: string;
+          numero_chamada: number | null;
+          total_filtrado: number;
+          cursor_name: string;
+        }>;
+      };
       command_center_roster_keyset: {
         Args: {
           p_escola_id: string;
