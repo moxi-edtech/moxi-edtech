@@ -61,6 +61,7 @@ export function TurmaContextView({
   initialPage = 1, initialScrollTop = 0, selectedStudentId = null, onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
+  const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
   const currentStudent = useRef(selectedStudentId);
@@ -84,7 +85,6 @@ export function TurmaContextView({
     onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: student.id });
     onStudentSelect(student);
   };
-  const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
 
   function openExisting() {
     const base = portal === "admin" ? "/admin/turmas"
