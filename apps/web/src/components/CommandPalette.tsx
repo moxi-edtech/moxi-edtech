@@ -666,7 +666,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, studentWorks
           <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3">
             <div className="flex items-center gap-4 text-[10px] text-slate-400 font-medium">
               {!entityContext && <><span className="flex items-center gap-1"><kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">↑↓</kbd> Navegar</span><span className="flex items-center gap-1"><kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">↵</kbd> Selecionar</span></>}
-              {entityContext && <span>Selecione uma entidade ou volte à pesquisa</span>
+              {entityContext && <span>Selecione uma entidade ou volte à pesquisa</span>}
             </div>
             <div className="text-[10px] font-bold text-slate-300 tracking-widest uppercase">
               KLASSE Command Center
