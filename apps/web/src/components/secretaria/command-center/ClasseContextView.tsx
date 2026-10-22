@@ -152,7 +152,7 @@ export function ClasseContextView({
   const turmasSemAlunos = turmas.filter((t) => t.alunos === 0).length;
 
   return (
-    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.(view()); }} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.(view()); }} className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           O aluno atendido já não consta desta página. A lista foi actualizada; confirme a matrícula e a turma antes de continuar.
@@ -232,7 +232,7 @@ export function ClasseContextView({
           <h3 id="classe-turmas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
             <GraduationCap className="h-4 w-4 text-emerald-700" aria-hidden /> Turmas
           </h3>
-          <div className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+          <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
             {turmas.map((turma) => (
               <button type="button" key={turma.id}
                 onClick={() => open(turma, onExploreTurma)}
@@ -261,7 +261,7 @@ export function ClasseContextView({
           <h3 id="classe-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
             <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Disciplinas
           </h3>
-          <div className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+          <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
             {disciplinas.map((disciplina) => (
               <button type="button" key={disciplina.id}
                 onClick={() => open(disciplina, onExploreDisciplina)}
@@ -293,7 +293,7 @@ export function ClasseContextView({
         <h3 id="classe-professores-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
           <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Professores das turmas
         </h3>
-        <div className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+        <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
           {professores.map((professor) => (
             <button type="button" key={professor.id}
               onClick={() => open(professor, onExploreProfessor)}
