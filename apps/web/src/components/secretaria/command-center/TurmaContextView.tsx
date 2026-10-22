@@ -136,7 +136,7 @@ export function TurmaContextView({
   const disciplinasSemProfessor = disciplinas.filter((d) => !d.professores.length).length;
 
   return (
-    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.(view()); }} className="max-h-[min(70vh,720px)] space-y-5 overflow-y-auto px-1 pb-3 text-sm">
+    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.(view()); }} className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           O aluno atendido já não consta desta página. A lista foi actualizada; confirme a matrícula e a turma antes de continuar.
@@ -264,7 +264,7 @@ export function TurmaContextView({
           <h3 id="turma-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
             <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Disciplinas e professores
           </h3>
-          <div className="max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+          <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
             {disciplinas.map((d) => (
               <div key={d.id} className="px-3 py-3">
                 <button type="button"
