@@ -1,0 +1,56 @@
+name: Command Center Visual Fixtures
+on:
+  pull_request:
+    paths:
+      - 'apps/web/visual-harness/CommandCenterVisualFixture.tsx'
+      - 'apps/web/visual-harness/main.tsx'
+      - 'apps/web/src/components/secretaria/command-center/**'
+      - 'apps/web/scripts/visual/command-center-explorer.mjs'
+      - '.github/workflows/command-center-visual-fixtures.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated Playwright and Vite (CI only)
+        run: |
+          mkdir -p /tmp/klasse-visual
+          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
+          /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start real explorer React component in isolated fixture server
+        run: |
+          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/klasse-cc-visual.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:6006/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 80 /tmp/klasse-cc-visual.log
+          exit 1
+      - name: Validate JSX build
+        run: |
+          curl --fail-with-body --silent --show-error http://127.0.0.1:6006/main.tsx > /tmp/klasse-cc-main.js || { tail -n 120 /tmp/klasse-cc-visual.log; exit 1; }
+      - name: Verify 5 widths x 3 zooms x 9 states, record captures
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/command-center-explorer.mjs
+      - name: Diagnostics on failure
+        if: failure()
+        run: tail -n 120 /tmp/klasse-cc-visual.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: command-center-visual-5x3-synthetic
+          path: apps/web/visual-evidence/command-center-explorer/
+          retention-days: 14
+          if-no-files-found: warn

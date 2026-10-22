@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { emitFixtureAuth } from "./auth-fixture";
+import CommandCenterVisualFixture, { installCommandCenterVisualMocks } from "./CommandCenterVisualFixture";
 import { canUseOperationalCopilot } from "../src/lib/roles/ai-roles";
 import TransferForm from "../src/components/secretaria/TransferForm";
 import AiChatWidget from "../src/components/ai/AiChatWidget";
@@ -56,6 +57,7 @@ const fixtureModes: Record<string, NonNullable<Window["__klasseVisualFixture"]>>
   "notice-finance": "notice-finance",
 };
 window.__klasseVisualFixture = fixtureModes[name] ?? "pending";
+if (name === "command-center-explorer") installCommandCenterVisualMocks();
 if (name === "class-transfer") {
   const originalFetch = window.fetch.bind(window);
   window.fetch = async (input, init) => {
@@ -175,6 +177,7 @@ if (target && name === "school-intelligence") {
     </main>;
   }
   createRoot(target).render(<ChatFixture />);
-} else if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
+} else if (target && name === "command-center-explorer") createRoot(target).render(<CommandCenterVisualFixture />);
+else if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
 else if (target && Scene) createRoot(target).render(<>{Scene()}</>);
 else if (target) target.textContent = "Visual fixture not found";
