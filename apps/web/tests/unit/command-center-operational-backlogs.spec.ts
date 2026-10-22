@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  DEFAULT_ROSTER_EXPORT_POLICY, resolveRosterExportPolicy, serializeRosterCsv,
+  DEFAULT_ROSTER_EXPORT_POLICY, resolveRosterExportPolicy, serializeRosterCsv, rosterExportAudit,
 } from "../../src/lib/command-center/roster-export-policy";
+import { resolveExplorerStudentCapabilities } from "../../src/lib/command-center/student-capabilities";
 import {
   BALCAO_ACTION_REGISTRY, buildBalcaoActionHref, getStudentBalcaoActions,
 } from "../../src/lib/balcao/action-registry";
@@ -51,4 +52,31 @@ test("P1 six existing operations are routed through one Balcão registry", () =>
     assert.equal(href.includes("alunoId="), id !== "enrollment");
     assert.ok(BALCAO_ACTION_REGISTRY[item!.id].label);
   }
+});
+
+test("P1 school role controls the six operations without granting by portal alone", () => {
+  const secretary = resolveExplorerStudentCapabilities("secretaria");
+  assert.equal(secretary.enrollment, true);
+  assert.equal(secretary.document, true);
+  assert.equal(secretary.grade, true);
+  assert.equal(secretary.payment, false);
+
+  const financial = resolveExplorerStudentCapabilities("financeiro");
+  assert.equal(financial.payment, true);
+  assert.equal(financial.enrollment, false);
+  const denied = resolveExplorerStudentCapabilities("unknown");
+  assert.equal(Object.values(denied).some(Boolean), false);
+  assert.equal(Object.values(resolveExplorerStudentCapabilities(null, true)).every(Boolean), true);
+});
+
+test("P1 audit stores filter and purpose, never the query or the exported student data", () => {
+  const meta = rosterExportAudit({
+    userId: "test-user", escolaId: "test-school", type: "classe", entityId: "test-class",
+    count: 2, hasSearch: true, exportedAt: "2026-10-22T00:00:00Z",
+    filter: "propinas_vencidas", sort: "pendencias_primeiro",
+  });
+  assert.equal(meta.purpose_code, "secretaria_atendimento");
+  assert.equal(meta.filter_code, "propinas_vencidas");
+  assert.equal(meta.sort_code, "pendencias_primeiro");
+  assert.doesNotMatch(JSON.stringify(meta), /Aluno Sintético|valor_pago_total|numero_processo/i);
 });
