@@ -32,3 +32,33 @@ gh run list --repo moxi-edtech/moxi-edtech --branch feat/cc-p0-session-continuit
 
 **Gate de produção:** aprovação humana e migração em pipeline; nenhum comando de `db push`, `migration up` ou deploy deve ser executado nesta tarefa.
 
+
+## Resultado do replay integral descartável — blocker real de histórico
+
+Em GitHub Actions, workflow **Command Center Full Local Migration Replay**, execução
+[39811144909](https://github.com/moxi-edtech/moxi-edtech/actions/runs/39811144909),
+a stack Supabase local arrancou em PostgreSQL 17, sem ligação à produção
+e sem dados reais. O replay foi efectivamente iniciado e parou na migration
+**`20260202011000_backfill_pagamentos_aluno_id.sql`**, antes das novas migrations:
+
+```text
+ERROR: column p.aluno_id does not exist (SQLSTATE 42703)
+UPDATE public.pagamentos AS p SET aluno_id = m.aluno_id
+FROM public.mensalidades AS m WHERE p.aluno_id IS NULL
+```
+
+A baseline anterior não possui a coluna exigida pela migration. A equipa
+não deve adulterar ficheiros já aplicados, criar uma migration retroactiva
+ou tocar em produção para fazer um CI passar. A reprodução completa,
+reaplicação e reversão sobre políticas RLS reais ficam bloqueadas até
+existir uma **baseline estrutural verificada do banco actual** e um
+procedimento de replay consistente com a história de migrações.
+
+O teste isolado da autorização de pesquisa da PR #234 passou em PostgreSQL
+17 com RLS de fixture. **Não substitui o replay integral.**
+
+**Passo técnico gated:** obter apenas esquema/catálogo e histórico de
+migrações de produção em modo read-only, reconciliar a baseline
+num ambiente descartável, criar PR independente de correcção de história
+sem editar migrations aplicadas, executar dois resets, testes de
+políticas verdadeiras e rever as diferenças antes de autorizar merge.
