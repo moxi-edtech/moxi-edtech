@@ -62,7 +62,7 @@ async function measure(page, viewport, zoom, state, baseline) {
         const style=getComputedStyle(control);
         if(style.display==="none"||style.visibility==="hidden")continue;
         const r=control.getBoundingClientRect();
-        if(r.width>0&&r.height>0&&r.height<30) targets.push({text:(control.textContent||"").slice(0,24),height:Math.round(r.height)});
+        if(r.width>0&&r.height>0&&r.height<(viewport[0]<=768?44:32)) targets.push({text:(control.textContent||"").slice(0,24),height:Math.round(r.height)});
       }
       for(let i=0;i<rectangles.length;i++)for(let j=i+1;j<rectangles.length;j++){
         const a=rectangles[i],b=rectangles[j];
