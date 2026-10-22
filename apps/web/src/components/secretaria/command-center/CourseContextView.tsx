@@ -146,7 +146,7 @@ export function CourseContextView({ context, portal, onNavigate, onExploreTurma,
           </h3>
           <div className="max-h-64 overflow-y-auto p-2">
             {visibleTurmas.map((turma) => (
-              <button type="button" key={turma.id} onClick={() => onExploreTurma({ id: turma.id, label: turma.nome, academicYearId: data.anoLetivo.id })} aria-label={`Explorar turma ${turma.nome}`}
+              <button type="button" key={turma.id} onClick={() => { setTurmaId(turma.id); onTurmaChange?.(turma.id); onExploreTurma({ id: turma.id, label: turma.nome, academicYearId: data.anoLetivo.id }); }} aria-label={`Explorar turma ${turma.nome}`}
                 className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-slate-50">
                 <span className="min-w-0 truncate font-medium">{turma.nome}</span>
                 <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums text-slate-500">
