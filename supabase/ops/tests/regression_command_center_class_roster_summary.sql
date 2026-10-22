@@ -148,7 +148,7 @@ FROM (
   WHERE m.escola_id='00000000-0000-4000-8000-0000000000a1'
   ORDER BY m.id LIMIT 500
 ) data;
-DO $
+DO $$
 DECLARE
   samples double precision[] := '{}';
   tick timestamptz;
@@ -165,5 +165,5 @@ BEGIN
   END LOOP;
   SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY sample) INTO p95 FROM unnest(samples) sample;
   RAISE NOTICE 'SQL-fixture p95 milliseconds / 30 runs: %', p95;
-END $;
+END $$;
 \timing off
