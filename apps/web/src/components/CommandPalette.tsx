@@ -105,8 +105,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
   const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
   const [viewState, setViewState] = React.useState<Record<string, { page: number; scrollTop: number; selectedStudentId: string | null }>>({});
   const viewStateRef = React.useRef(viewState);
-  viewStateRef.current = viewState;
+  React.useEffect(() => { viewStateRef.current = viewState; }, [viewState]);
   const updateView = (key: string, next: { page: number; scrollTop: number; selectedStudentId: string | null }) => {
+    viewStateRef.current = { ...viewStateRef.current, [key]: next };
     setViewState((prev) => {
       const old = prev[key];
       return old?.page === next.page && old?.scrollTop === next.scrollTop && old?.selectedStudentId === next.selectedStudentId ? prev : { ...prev, [key]: next };
