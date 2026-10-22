@@ -70,7 +70,8 @@ test("P0 search cancellation rejects obsolete responses and bounds memory", () =
 
 test("P0 missing pupil selection produces an actionable, accessible notice", () => {
   for (const view of [turma, classe]) {
-    assert.match(view, /selectedStudentId && !alunos\.items\.some/);
+    assert.match(view, /selectedStudentId &&/);
+    assert.match(view, /!visibleStudents\.some/);
     assert.match(view, /returnWarning &&/);
     assert.match(view, /role="status"/);
   }
