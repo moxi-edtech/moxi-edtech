@@ -9,6 +9,7 @@ import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
 import { ModuleSwitcherInner } from "@/components/layout/klasse/ModuleSwitcher";
 import LockScreenButton from "@/components/session/LockScreenButton";
 import { requestSessionConfig } from "@/components/session/SessionLockProvider";
+import { clearExplorerReturnContext } from "@/lib/command-center/explorer-return-context";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -39,6 +40,7 @@ export default function Topbar({
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [restoreExplorerOnOpen, setRestoreExplorerOnOpen] = useState(false);
   const [selectedSearchStudent, setSelectedSearchStudent] = useState<{
     id: string;
     label: string;
@@ -47,6 +49,8 @@ export default function Topbar({
 
   useEffect(() => {
     setSelectedSearchStudent(null);
+    setRestoreExplorerOnOpen(false);
+    clearExplorerReturnContext(escolaId);
   }, [escolaId]);
 
   const userInitial =
@@ -59,26 +63,30 @@ export default function Topbar({
     <>
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <div className="flex h-16 items-center gap-3 px-3 sm:gap-4 sm:px-4">
-          {/* Desktop trigger */}
           <div className="hidden w-[420px] md:block">
             <button
               type="button"
-              onClick={() => setPaletteOpen(true)}
+              onClick={() => {
+                setRestoreExplorerOnOpen(false);
+                setPaletteOpen(true);
+              }}
               className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/10"
             >
               <Search className="h-4 w-4 text-slate-400 group-hover:text-slate-500" aria-hidden />
               <span className="flex-1 text-left">Pesquisar ou digitar acção...</span>
-              <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-mono text-[10px] font-medium text-slate-400 sm:flex">
+              <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-mono text-[10px] font-medium text-slate-400 opacity-100 sm:flex">
                 <span className="text-xs">⌘</span>K
               </kbd>
             </button>
           </div>
 
-          {/* MOB-01: mobile entry */}
           <div className="md:hidden">
             <button
               type="button"
-              onClick={() => setPaletteOpen(true)}
+              onClick={() => {
+                setRestoreExplorerOnOpen(false);
+                setPaletteOpen(true);
+              }}
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
               aria-label="Pesquisar ou abrir Command Center"
             >
@@ -86,13 +94,16 @@ export default function Topbar({
             </button>
           </div>
 
-          {/* Single CommandPalette instance for all breakpoints */}
           <CommandPalette
             escolaId={escolaId}
             portal={portal}
             open={paletteOpen}
-            onOpenChange={setPaletteOpen}
+            onOpenChange={(next) => {
+              setPaletteOpen(next);
+              if (!next) setRestoreExplorerOnOpen(false);
+            }}
             hideTrigger
+            restoreExplorerOnOpen={restoreExplorerOnOpen}
             onStudentSelect={(student) => {
               if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
             }}
@@ -160,7 +171,12 @@ export default function Topbar({
           open
           escolaId={escolaId}
           aluno={selectedSearchStudent}
-          onClose={() => setSelectedSearchStudent(null)}
+          onClose={() => {
+            setSelectedSearchStudent(null);
+            // UX-00: reabrir explorador se havia contexto guardado ao sair para o Balcão
+            setRestoreExplorerOnOpen(true);
+            setPaletteOpen(true);
+          }}
         />
       ) : null}
     </>
