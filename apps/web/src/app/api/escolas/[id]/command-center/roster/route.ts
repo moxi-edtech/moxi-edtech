@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     type: u.searchParams.get("type"),
     entityId: u.searchParams.get("entityId"),
     yearId: u.searchParams.get("ano_letivo_id"),
-    poloId: u.searchParams.get("poloId"),
+    poloId: u.searchParams.get("poloId") ?? u.searchParams.get("polo_id"),
     search: u.searchParams.get("q") ?? "",
     cursorName: u.searchParams.get("cursorName"),
     cursorId: u.searchParams.get("cursorId"),
