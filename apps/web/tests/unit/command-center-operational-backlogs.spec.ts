@@ -77,6 +77,6 @@ test("P1 audit stores filter and purpose, never the query or the exported studen
   });
   assert.equal(meta.purpose_code, "secretaria_atendimento");
   assert.equal(meta.filter_code, "propinas_vencidas");
-  assert.equal(meta.sort_code, "pendencias_primeiro");
+  assert.equal(meta.sort_code, "PENDING_FIRST");
   assert.doesNotMatch(JSON.stringify(meta), /Aluno Sintético|valor_pago_total|numero_processo/i);
 });
