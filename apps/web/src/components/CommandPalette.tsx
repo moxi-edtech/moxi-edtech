@@ -109,6 +109,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
   const [courseTurmaId, setCourseTurmaId] = React.useState<string | null>(null);
   const [viewState, setViewState] = React.useState<Record<string, ExplorerViewState>>({});
   const viewStateRef = React.useRef(viewState);
+  const contextualScrollRef = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => { viewStateRef.current = viewState; }, [viewState]);
   const updateView = (key: string, next: ExplorerViewState) => {
     viewStateRef.current = { ...viewStateRef.current, [key]: next };
@@ -150,6 +151,11 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
       academicYearId: params.get(ACADEMIC_YEAR_PARAM),
     };
   }, [sessionUserId, escolaId, portal]);
+  React.useEffect(() => {
+    if (!entityContext || !contextualScrollRef.current) return;
+    const key = `${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`;
+    contextualScrollRef.current.scrollTop = viewStateRef.current[key]?.scrollTop ?? 0;
+  }, [entityContext]);
   const reduceMotion = useReducedMotion();
   const [queryClient] = React.useState(() => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } }));
   const handleOpenChange = React.useCallback((next: boolean) => {
@@ -350,7 +356,12 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                 </motion.div>
               )}
               {entityContext && (
-                <motion.section key={`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`} initial={reduceMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, y: -4 }} transition={{ duration: 0.17 }} aria-label="Visão contextual" className="min-h-64 max-h-[min(70vh,720px)] overflow-y-auto p-4 sm:p-6">
+                <motion.section key={`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`} ref={contextualScrollRef} onScroll={(event) => {
+                  if (event.currentTarget !== event.target || !entityContext) return;
+                  const key = `${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`;
+                  const prev = viewStateRef.current[key] ?? { page: 1, scrollTop: 0, selectedStudentId: null };
+                  updateView(key, { ...prev, scrollTop: event.currentTarget.scrollTop });
+                }} initial={reduceMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, y: -4 }} transition={{ duration: 0.17 }} aria-label="Visão contextual" className="min-h-64 max-h-[min(70vh,720px)] overflow-y-auto p-4 sm:p-6">
                   {entityContext.type === "curso" && (
                     <CourseContextView key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "c"}`} context={entityContext} portal={portal} initialClasseId={courseClassId} initialTurmaId={courseTurmaId} onClasseChange={setCourseClassId} onTurmaChange={setCourseTurmaId} onExploreClasse={(c) => { setCourseClassId(c.id); pushEntity({ type: "classe", id: c.id, label: c.label, escolaId: entityContext.escolaId, academicYearId: c.academicYearId }); }} onExploreTurma={(t) => { setCourseTurmaId(t.id); pushEntity({ type: "turma", id: t.id, label: t.label, escolaId: entityContext.escolaId, academicYearId: t.academicYearId }); }} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} />
                   )}
