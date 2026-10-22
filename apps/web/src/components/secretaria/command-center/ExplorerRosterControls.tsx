@@ -46,6 +46,7 @@ export function ExplorerRosterControls({
             <option value="todos">Todos os activos</option>
             <option value="documentos_sinalizados">Documentos sinalizados</option>
             <option value="propinas_vencidas">Propinas vencidas</option>
+            <option value="matricula_incompleta" disabled>Matrícula incompleta · por configurar</option>
           </select>
         </div>
         <div>
@@ -64,7 +65,7 @@ export function ExplorerRosterControls({
       <p id="cc-roster-filter-note" className="text-xs text-slate-600">
         A pesquisa começa com dois caracteres. Documentos: sinalização explícita da Secretaria na candidatura.
         Propinas: saldo vencido, sem confundir comprovativos com pagamentos liquidados.
-        A ordenação é aplicada antes da paginação. Matrículas incompletas aguardam contrato próprio.
+        A ordenação é aplicada antes da paginação. O filtro de matrícula incompleta está indisponível: a escola deve aprovar os documentos obrigatórios e os estados académicos por classe e tipo de aluno.
       </p>
     </fieldset>
   );
