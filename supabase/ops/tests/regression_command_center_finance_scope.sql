@@ -85,7 +85,7 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN forbidden := true;
   END;
   IF NOT forbidden THEN RAISE EXCEPTION 'Unprivileged audit purge exposed'; END IF;
-END; $;
+END; $$;
 
 RESET ROLE;
 INSERT INTO public.audit_logs VALUES
@@ -111,7 +111,7 @@ BEGIN
   IF d<>1 OR (SELECT count(*) FROM public.audit_logs)<>2 THEN
     RAISE EXCEPTION 'Audit expiry removed wrong records: %',d;
   END IF;
-END; $;
+END; $$;
 
 -- Prove apply + reapply and reverse only on the disposable database.
 \ir ../rollback_command_center_finance_audit_gates.sql
@@ -120,7 +120,7 @@ BEGIN
   IF to_regprocedure('public.cleanup_command_center_export_audits()') IS NOT NULL THEN
     RAISE EXCEPTION 'Rollback must remove ONLY newly introduced cleanup function';
   END IF;
-END; $;
+END; $$;
 \ir ../../migrations/20271022134000_command_center_finance_audit_gates.sql
 EXPLAIN (ANALYZE,BUFFERS)
 SELECT * FROM public.command_center_roster_operational_v1(
