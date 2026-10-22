@@ -85,9 +85,16 @@ export function ClasseContextView({
   const currentStudent = useRef(selectedStudentId);
   const onViewChangeRef = useRef(onViewChange);
   onViewChangeRef.current = onViewChange;
+  const restoreScroll = useRef(initialScrollTop);
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = initialScrollTop;
-  }, [initialScrollTop]);
+    if (loading || !scrollRef.current) return;
+    scrollRef.current.scrollTop = restoreScroll.current;
+    const selected = currentStudent.current;
+    if (selected) {
+      const row = Array.from(scrollRef.current.querySelectorAll<HTMLElement>("[data-student-id]")).find((item) => item.dataset.studentId === selected);
+      if (row) row.focus({ preventScroll: true });
+    }
+  }, [loading, page]);
   useEffect(() => {
     onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: currentStudent.current });
   }, [page]);
