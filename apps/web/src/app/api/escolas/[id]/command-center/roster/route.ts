@@ -20,7 +20,7 @@ const schema = z.object({
   cursorPriority: z.coerce.number().int().min(0).max(2).nullable(),
   size: z.coerce.number().int().min(1).max(25).default(20),
   sort: z.enum(["nome_asc", "nome_desc", "pendencias_primeiro"]).default("nome_asc"),
-  filter: z.enum(["todos", "documentos_sinalizados", "propinas_vencidas"]).default("todos"),
+  filter: z.enum(["todos", "documentos_sinalizados", "propinas_vencidas", "ambos"]).default("todos"),
 });
 const response = (data: unknown, status = 200) =>
   NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
