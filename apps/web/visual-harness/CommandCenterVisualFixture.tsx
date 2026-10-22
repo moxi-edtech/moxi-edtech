@@ -53,7 +53,8 @@ export function installCommandCenterVisualMocks() {
         normalize(`${student.nome} ${student.numero}`).includes(normalize(q)) &&
         (filter === "todos" ||
          (filter === "documentos_sinalizados" && student.documentosSinalizados) ||
-         (filter === "propinas_vencidas" && student.propinasVencidas)));
+         (filter === "propinas_vencidas" && student.propinasVencidas) ||
+         (filter === "ambos" && student.documentosSinalizados && student.propinasVencidas)));;
       const sort = url.searchParams.get("sort");
       const ordered = sort === "nome_desc" ? [...results].reverse()
         : sort === "pendencias_primeiro"
