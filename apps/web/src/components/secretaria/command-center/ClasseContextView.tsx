@@ -95,7 +95,7 @@ export function ClasseContextView({
       <section aria-label="Indicadores da classe" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
         <Metric label="Alunos distintos" value={stats.alunos} limited={limitado} />
         <Metric label="Turmas do ano" value={stats.turmas} limited={limitado} />
-        <Metric label="Vagas totais definidas" value={stats.capacidade} limited={limitado} />
+        <Metric label="Capacidade total definida" value={stats.capacidade} limited={limitado} />
         <Metric label="Disciplinas" value={stats.disciplinas} limited={limitado} />
         <Metric label="Professores" value={stats.professores} limited={limitado} />
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
