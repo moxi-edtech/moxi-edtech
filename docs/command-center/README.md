@@ -13,9 +13,10 @@
 ## P1 e P2 — aprimoramentos activos
 
 - **[PR #240 — ordenação completa e protecção das pesquisas](https://github.com/moxi-edtech/moxi-edtech/pull/240):** nome A–Z/Z–A antes de paginar, cursores determinísticos, throttle por operador/escola com memória local limitada; **não é protecção distribuída**. SQL numa nova migration opcional, sem aplicação de produção.
-- **PR P2 — acessibilidade, desempenho de memória e observabilidade auxiliar:** um único scroll contextual, navegação por teclado, 40 vistas/24 breadcrumbs guardados no máximo, correlação em três endpoints auxiliares e Playwright com ordenação.
+- **[PR #241 — P2 acessibilidade e observabilidade](https://github.com/moxi-edtech/moxi-edtech/pull/241):** scroll contextual único, teclado, 40 vistas e 24 breadcrumbs retidos, erros correlacionados e testes sintéticos.
+- **[PR #243 — backlogs operacionais P1/P2](https://github.com/moxi-edtech/moxi-edtech/pull/243):** [contratos, dados canónicos, ações existentes e gates](pr5-backlogs-operational-20261022.md). Filtros de sinalização documental e de propina realmente vencida, prioridade estável, limitador partilhado, acesso a seis operações por capacidade e CSV auditado, **OFF até aprovação por escola**.
 
-Filtros documental/financeiro e prioridade operacional permanecem indisponíveis sem dados canónicos/definição de negócio; exportação permanece desactivada. Estas entregas não reabrem CC-001.
+O filtro de matrícula incompleta, documentos obrigatórios por escola, exportação habilitada e medições reais/AA completas continuam dependentes de decisão e homologação. Estas PRs não reabrem CC-001.
 
 ## Roteiro de PRs empilhadas
 
