@@ -111,6 +111,7 @@ type GlobalSearchOptions = {
 const SEARCH_CACHE_TTL_MS = 45_000;
 const SEARCH_CACHE_MAX_AGE_MS = 5 * 60_000;
 const RECENT_RESULTS_LIMIT = 6;
+const RECENT_SCOPE_LIMIT = 12;
 const searchCache = new Map<string, CacheEntry>();
 const SEARCH_CACHE_LIMIT = 50;
 function storeCachedSearch(key: string, entry: CacheEntry) {
@@ -170,7 +171,13 @@ function writeRecentEntry(
     entry,
     ...readRecentEntries(escolaId, portal).filter((item) => item.id !== result.id || item.type !== result.type),
   ].slice(0, RECENT_RESULTS_LIMIT);
+  recentSessionStore.delete(key);
   recentSessionStore.set(key, next);
+  while (recentSessionStore.size > RECENT_SCOPE_LIMIT) {
+    const oldest = recentSessionStore.keys().next().value;
+    if (oldest === undefined) break;
+    recentSessionStore.delete(oldest);
+  }
 }
 
 export function clearRecentSearchSession(escolaId?: string | null, portal?: PortalKey) {
