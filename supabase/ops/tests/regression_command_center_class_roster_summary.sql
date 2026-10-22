@@ -130,4 +130,40 @@ SELECT count(DISTINCT m.aluno_id) FROM public.matriculas m
 WHERE m.escola_id = '00000000-0000-4000-8000-0000000000a1'
   AND m.session_id = '00000000-0000-4000-8000-000000000026'
   AND m.status = 'ativo' AND m.ativo IS TRUE;
+
+-- The following numbers are measurements on synthetic RLS fixtures only.
+-- New RPC query plan, runtime distribution (30 executions) and JSON size.
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT public.command_center_class_roster_summary(
+    '00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000c1',
+    '00000000-0000-4000-8000-000000000026', 2026,false,1,20);
+SELECT pg_column_size(public.command_center_class_roster_summary(
+    '00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000c1',
+    '00000000-0000-4000-8000-000000000026', 2026,false,1,20)) AS fixture_new_response_bytes;
+SELECT pg_column_size(coalesce(jsonb_agg(to_jsonb(data)), '[]'::jsonb)) AS fixture_bulk_response_bytes
+FROM (
+  SELECT a.id, a.nome, a.nome_completo, m.turma_id, m.numero_chamada
+  FROM public.matriculas m
+  JOIN public.alunos a ON a.id=m.aluno_id AND a.escola_id=m.escola_id
+  WHERE m.escola_id='00000000-0000-4000-8000-0000000000a1'
+  ORDER BY m.id LIMIT 500
+) data;
+DO $
+DECLARE
+  samples double precision[] := '{}';
+  tick timestamptz;
+  v jsonb;
+  i integer;
+  p95 double precision;
+BEGIN
+  FOR i IN 1..30 LOOP
+    tick := clock_timestamp();
+    SELECT public.command_center_class_roster_summary(
+      '00000000-0000-4000-8000-0000000000a1','00000000-0000-4000-8000-0000000000c1',
+      '00000000-0000-4000-8000-000000000026',2026,false,1,20) INTO v;
+    samples := array_append(samples, extract(epoch FROM (clock_timestamp()-tick)) * 1000);
+  END LOOP;
+  SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY sample) INTO p95 FROM unnest(samples) sample;
+  RAISE NOTICE 'SQL-fixture p95 milliseconds / 30 runs: %', p95;
+END $;
 \timing off
