@@ -417,6 +417,9 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         searchCache.clear();
         recentSessionStore.clear();
         setResults([]);
+        setLoading(false);
+        setCursor(null);
+        setHasMore(false);
       }
     });
     return () => subscription.unsubscribe();
@@ -628,6 +631,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       }).abortSignal(ac.signal);
 
       if (rpcError) throw rpcError;
+      if (!isCurrent()) return;
 
       const payload = ((data as SearchResult[]) ?? []);
       const nextCursor = payload.length === limit
