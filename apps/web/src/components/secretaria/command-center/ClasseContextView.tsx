@@ -80,6 +80,7 @@ export function ClasseContextView({
   initialPage = 1, initialScrollTop = 0, selectedStudentId = null, onViewChange,
 }: Props) {
   const [page, setPage] = useState(initialPage);
+  const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
   const currentStudent = useRef(selectedStudentId);
@@ -103,7 +104,6 @@ export function ClasseContextView({
     onViewChangeRef.current?.({ page, scrollTop: currentScroll.current, selectedStudentId: student.id });
     onStudentSelect(student);
   };
-  const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
 
   if (loading) return (
     <div role="status" className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-600">
