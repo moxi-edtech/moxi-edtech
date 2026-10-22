@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   GraduationCap, Loader2, RefreshCw, UsersRound,
@@ -87,10 +87,10 @@ export function ClasseContextView({
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const roster = useExplorerRoster(context, "classe", searchTerm);
   const searchActive = searchTerm.trim().length >= 2;
-  const view = (selected: string | null = currentStudent.current): ExplorerViewState => ({
+  const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
     page, scrollTop: currentScroll.current, selectedStudentId: selected,
     search: searchTerm, filter: "ativo", sort: "nome",
-  });
+  }), [page, searchTerm]);
   const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
@@ -109,7 +109,7 @@ export function ClasseContextView({
   }, [loading, page]);
   useEffect(() => {
     onViewChangeRef.current?.(view());
-  }, [page]);
+  }, [page, view]);
   const selectStudent = (student: { id: string; label: string }) => {
     currentStudent.current = student.id;
     onViewChangeRef.current?.(view(student.id));
