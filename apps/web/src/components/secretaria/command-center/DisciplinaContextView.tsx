@@ -154,7 +154,7 @@ export function DisciplinaContextView({
                     {turma.vinculoTurma ? "Atribuição registada à turma"
                       : turma.horarioPublicado ? "Apenas horário publicado confirmado" : "Vínculo a verificar"}
                     {turma.horarioPublicado ? " · Horário publicado" : " · Horário não confirmado"}
-                    {turma.docenteVinculado ? " · Vínculo docente" : " · Docente não confirmado"}
+                    {turma.docenteVinculado ? " · Docente formalmente vinculado" : turma.docenteEmHorario ? " · Docente apenas no horário publicado" : " · Docente não confirmado"}
                   </span>
                   {turma.professores.length ? (
                     <span className="mt-1 block truncate text-xs text-slate-600">
