@@ -3,6 +3,7 @@
 **Estado:** implementação inicial em branch isolada, sem merge na main e sem deploy.
 **Data de referência:** 23/10/2026. **Ámbito:** Curso, Classe, Turma, Professor e Disciplina.
 **Fonte de verdade:** código da main de origem (99cdcd20), contratos das rotas e estrutura corrente do Supabase; todos os números abaixo são fotografias agregadas, não invariantes.
+**Decisão posterior e prevalecente (23/10/2026):** [currículo por ano letivo e versão, sem segunda lista de matrizes inativas](./DECISAO-ESCOPO-CURRICULAR.md). A implementação corrente da PR #261 **ainda não reflete integralmente esta decisão**; manter draft.
 **Principais ficheiros:** apps/web/src/components/secretaria/command-center/*ContextView.tsx, apps/web/src/lib/command-center/, apps/web/src/app/api/escolas/[id]/command-center/ e apps/web/src/hooks/.
 
 ## 1. Objetivo de produto
@@ -44,7 +45,7 @@ Não redesenhar tudo com cartões iguais. A estrutura base e semântica devem se
 | Curso–Classe | classes.curso_id + turmas do ano | classes.ano_letivo_id não é exclusiva: uma classe pode ser reutilizada em anos seguintes |
 | Classe–Turma | turmas.classe_id e ano_letivo_id | A turma efetivamente vinculada ao ano prevalece sobre a data de criação da classe; validar escola e curso |
 | Curso–Turma | turmas.curso_id | Não inferir curso a partir do nome de turma ou de uma classe de outra escola |
-| Curso/Classe–Disciplina | curso_matriz.disciplina_id, curso_id, classe_id, ativo | Previsto no currículo ≠ atribuído a uma turma; só registos ativos são currículo vigente |
+| Curso/Classe–Disciplina | curso_curriculos (escola, ano UUID, versão, status) → curso_matriz por curso_curriculo_id | Não resolver o currículo só por ativo de curso_matriz: linha publicada pode estar inativa; a versão/ano são determinantes. Previsto ≠ atribuído à turma |
 | Turma–Disciplina | turma_disciplinas via curso_matriz_id | Podem existir vínculos históricos para matrizes hoje inativas; conservar e classificar, não apagar |
 | Turma–Docente | turma_disciplinas.professor_id e turma_disciplinas_professores | Professor de uma disciplina numa turma não deve ser atribuído a todas as turmas onde a disciplina exista |
 | Horário publicado | quadro_horarios + horario_versoes.status=publicada | A versão draft/arquivada não comprova atividade letiva atual |
@@ -57,10 +58,10 @@ Não redesenhar tudo com cartões iguais. A estrutura base e semântica devem se
 2. **Atribuída à turma:** existe associação da disciplina à turma, não prova professor.
 3. **Professor atribuído:** vínculo docente verificado; não prova aula ministrada.
 4. **Horário publicado:** a aula aparece em versão publicada, não prova presença.
-5. **Matriz inativa:** não rotular automaticamente como disciplina vigente; manter visível nos anos históricos, com proveniência.
+5. **Linha de matriz inativa:** não confundir com uma versão histórica curricular. Preservar a prova e o acesso de auditoria; **não criar segunda lista de matrizes inativas na vista operacional**. Consultar currículo do ano/versão selecionados.
 6. **Não confirmado:** dados incompletos ou fontes não relacionadas; não traduzir automaticamente para ausência de relação.
 
-**Implementação inicial:** academic-relations.ts centraliza ano, reutilização de classe, fusão de estados de matriz e nomenclatura de evidência. Interfaces preservam vínculos históricos; o explorador de Turma passa a qualificar explicitamente matriz inativa. Nenhuma operação escreve no Supabase.
+**Implementação inicial:** academic-relations.ts centraliza ano, reutilização de classe, fusão de estados de matriz e nomenclatura de evidência. Interfaces preservam vínculos históricos; o explorador de Turma passa a qualificar explicitamente matriz inativa. Nenhuma operação escreve no Supabase. **Por rever antes do merge:** a vista Disciplina e respetiva rota ainda separam currículo ativo/inativo sem resolver a versão de curso_curriculos; ver decisão vinculada.
 
 ## 4. Fotografia do Supabase (consultas apenas de leitura)
 
@@ -70,6 +71,8 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 - 32 classes aparecem com turmas em mais de um ano.
 - 6 turmas estão num ano diferente do ano registado na sua classe. Todas estas ocorrências estavam em anos **inativos**.
 - 146 vínculos turma–matriz apontam a linhas de matriz **inativa**, também em anos inativos.
+- **Nova confirmação por ano/versão:** 309 linhas inativas: 259 associadas a currículos de 2025 e 50 a 2026; 218 pertencem a currículos `published` e 91 a `archived`. Ao agrupar por escola/disciplina/curso/classe **e ano letivo**, há 50 combinações mistas no mesmo ano e 218 combinações que só têm linha inativa naquele ano. Logo, a correspondência ativa que aparece ao ignorar o ano **não** autoriza inferir duplicidade curricular.
+- **Alerta de integridade, sem correção automática:** 486 vínculos entre turmas e matrizes de currículos com `ano_letivo_id` diferente; 50 desses links envolvem linhas inativas. Exigem reconciliação por escola, ano e versão antes de tratar como anomalia ou legado válido.
 - 1 referência direta a professor não resolve uma entidade de professor; no ano inativo.
 - 6 combinações disciplina/classe têm metadados pedagógicos diferentes em linhas ativas e inativas da matriz. A rota de Classe já filtra as inativas: **não** afirmar que ambas aparecem hoje nessa interface.
 - Não se verificaram divergências de escola nas relações turma–classe/matrícula–turma, nem divergência curso-turma-classe, nem matrícula ativa duplicada entre turmas do mesmo ano, segundo os critérios consultados.
@@ -89,7 +92,7 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 
 **Professor:** matriz Turma × Disciplina × Tipo de vínculo e agenda legível por dia. Separar “vínculo”, “horário publicado” e histórico; conflitos de horário só após regra de choque por dia/slot/ano e dados completos.
 
-**Disciplina:** cobertura com Curso > Classe > Turma e estados “na matriz”, “atribuída”, “docente”, “horário publicado”. A falta de professor numa lista truncada não pode originar alerta definitivo. Evitar inferir cobertura a partir de mera existência no catálogo.
+**Disciplina:** cobertura com Curso > Classe > Turma e estados “na matriz”, “atribuída”, “docente”, “horário publicado”. A matriz visível respeita **o currículo versionado do ano selecionado**, sem painel paralelo de linhas inativas. A falta de professor numa lista truncada não pode originar alerta definitivo. Evitar inferir cobertura a partir de mera existência no catálogo.
 
 **Responsividade:** funcionamento em notebooks 1280–1440px com zoom 100–150%; painel central sem scroll duplo; mobile com colunas empilhadas; fluxo de teclado/aria-current, foco restaurado, sem avatares ilustrados e sem mais um painel global. Tokens semânticos compatíveis com eventual Light/Dark Mode, mas **sem implementar tema nesta branch**.
 
@@ -102,7 +105,7 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 | EX-003 | P0 | Bloqueio explícito da pesquisa histórica operacional | Nenhum pedido à RPC rejeitada em ano fechado; paginação histórica mantém-se disponível |
 | EX-004 | P0 | Redesign operacional de Turma | Ação sobre 3 alunos consecutivos e retorno com scroll/página/pesquisa/foco sem perder sessão |
 | EX-005 | P1 | Prova de reutilização Classe em Curso/Disciplina | Se há turma elegível no ano, Classe aparece no contexto correto sem perturbar histórico |
-| EX-006 | P1 | Matriz vigente vs vínculo histórico em Turma | Inativas continuam consultáveis no histórico, com indicador explícito; não contam como currículo vigente |
+| EX-006 | P1 | Escopo curricular por ano letivo e versão, sem listas duplicadas | Disciplina usa curso_curriculos.ano_letivo_id/version/status para resolver o conjunto; não apresenta curriculoHistorico operacional; vínculos históricos permanecem auditáveis sem falsificar cobertura do ano |
 | EX-007 | P1 | Pesquisa/paginação Curso além de 100 turmas | Sem lista incompleta disfarçada de vazio; totais e janelas calculados no servidor |
 | EX-008 | P1 | Redesign Classe e Curso | Ações e relações em contexto, sem duplicação de cartões, contagens comparáveis |
 | EX-009 | P1 | Professor: matriz atribuições e agenda | Sem atribuições presumidas nem horários não publicados |
@@ -127,15 +130,17 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 - EX-002: ExplorerMetric reutilizado nos cinco exploradores, com valor acessível, parcial e desconhecido.
 - EX-003: indicadores de histórico, lista histórica paginada e procura operacional não disparada quando o ano está fechado (as ações abertas noutros módulos continuam sujeitas a revalidação).
 - EX-005 (parcial): no explorador Disciplina, turmas efetivas no ano confirmam classes reutilizadas. Curso exige ajuste próprio na RPC instalada, planeado para um incremento separado com migration e replay setorial.
-- EX-006 (parcial): atributo de atividade da matriz propagado até a visão de Turma sem eliminar vínculos históricos.
+- EX-006 (parcial, **a rever**): atributo de atividade da matriz propagado até a visão de Turma sem eliminar vínculos históricos. **Nova decisão:** usar o currículo versionado do ano, sem segunda lista de matrizes inativas; a implementação atual ainda não está conforme.
 - Testes novos para invariantes; restantes EX-004/007–014 continuam trabalho futuro nesta mesma branch.
 
 A implementação deste primeiro incremento **não** constitui o redesign completo e **não** deve ser enviada à main ou à produção antes de testes de integração, smoke autenticado e revisão de produto.
 
-### Incremento de correção: vínculos históricos e resultados parciais (23/10/2026)
+### Incremento já codado: vínculos históricos e resultados parciais (23/10/2026)
+
+> **Nota de substituição de contrato (23/10/2026):** a opção de expor `curriculoHistorico` numa segunda secção era uma etapa provisória e **não é a direção aprovada**. O [documento de decisão](./DECISAO-ESCOPO-CURRICULAR.md) prevalece. Manter este registo apenas como histórico técnico do código ainda existente na PR #261; retirar a apresentação duplicada na implementação posterior, sem apagar vínculos.
 
 - **Estado do vínculo e estado da matriz são independentes.** A evidência de atribuição à turma, professor e horário publicado prevalece na classificação operacional; uma matriz atualmente inativa fica sinalizada separadamente. Num ano CLOSED, **não inferir** que estivesse inativa nesse ano.
-- **Disciplina:** a rota devolve separadamente `curriculo` (matriz atualmente ativa) e `curriculoHistorico` (referência atualmente inativa). Os indicadores de Cursos/Classes na matriz usam apenas a primeira coleção; referências inativas são mostradas apenas ao consultar histórico.
+- **Disciplina — implementação provisória, a substituir:** hoje a rota devolve `curriculo` e `curriculoHistorico` com base em `curso_matriz.ativo`; isso **não representa corretamente o currículo histórico por ano/versão**. O explorador deve passar a resolver `curso_curriculos` e exibir uma única matriz do contexto selecionado. Nenhum dado deve ser apagado.
 - **Turma:** exibe o vínculo preservado e o aviso de matriz inativa em campos separados, mesmo que haja professor atribuído.
 - **Resultados limitados:** indicadores são limites inferiores, nunca totais exatos; Curso/Classe/Turma/Professor/Disciplina não anunciam ausência comprovada quando faltam registos por truncagem. “Professor não encontrado nos vínculos consultados” não equivale a “sem professor”.
 - **Testes de regressão:** cobrem prioridade de evidência, estado de matriz em ano CLOSED, coexistência de linhas ativas/inativas, totais apenas de matrizes ativas, zero parcial e mensagens de ausência. É necessária validação de CI e homologação autenticada antes da integração.
@@ -147,7 +152,7 @@ A implementação deste primeiro incremento **não** constitui o redesign comple
 2. Curso → Classe → Turma → aluno → Balcão → retorno; repetir com três alunos e diferentes filtros/páginas.
 3. Um curso com >100 turmas: mostrar contagem real, limite da lista, acesso ao resto quando implementado.
 4. Classe reutilizada em dois anos e com turma atual; metadados do ano antigo não escondem a relação atual.
-5. Matriz ativa/inativa com mesmo curso/classe/disciplina, professor órfão histórico e horário draft/publicado.
+5. Duas versões de currículo (mesmo curso/classe/disciplina) em anos distintos ou no mesmo ano; published/archived com linha `ativo=false`, professor órfão e horário draft/publicado. Conferir versão do ano, sem mostrar lista duplicada.
 6. Ano CLOSED: nenhum pedido à pesquisa operacional (409 esperado da API); lista histórica e paginação continuam.
 7. Nulos: capacidade desconhecida, professor ainda não atribuído, horário não publicado e resposta parcial — sem estados inventados.
 8. Rede lenta, 401/403/404/409, 429, troca de portal/escola e cancelamento de requisições pendentes.
@@ -162,4 +167,5 @@ A implementação deste primeiro incremento **não** constitui o redesign comple
 - Hook de roster: apps/web/src/hooks/useExplorerRoster.ts
 - Auditoria original: docs/command-center-exploradores-auditoria-20261022.md
 - Contexto/modal: docs/command-center-contextual-modal.md
+- Decisão de produto obrigatória: docs/command-center/explorers-redesign/DECISAO-ESCOPO-CURRICULAR.md
 - Estado de release: docs/command-center/estado-atual-20261023.md (na PR documental #260; integrar com cuidado)
