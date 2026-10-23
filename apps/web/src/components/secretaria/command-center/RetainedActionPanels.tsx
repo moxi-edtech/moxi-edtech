@@ -61,13 +61,27 @@ export function RetainedActionPanels({
     });
   }, []);
 
+  // Enrollment is a new application each time it is entered. Discard its
+  // previous draft status when leaving, without touching student-bound tabs.
+  useEffect(() => {
+    if (activeAction === "enrollment") return;
+    setActionStatuses(current => {
+      if (!current.enrollment) return current;
+      const next = { ...current };
+      delete next.enrollment;
+      return next;
+    });
+  }, [activeAction]);
+
   const summary = useMemo(() => {
-    const reports = Object.values(actionStatuses);
+    const reports = Object.entries(actionStatuses)
+      .filter(([action]) => action !== "enrollment" || activeAction === "enrollment")
+      .map(([, report]) => report);
     return {
       dirty: reports.some(report => report?.dirty),
       submitting: reports.some(report => report?.submitting),
     };
-  }, [actionStatuses]);
+  }, [actionStatuses, activeAction]);
 
   useEffect(() => { onUnsavedChange?.(summary.dirty); }, [summary.dirty, onUnsavedChange]);
   useEffect(() => { onSubmittingChange?.(summary.submitting); }, [summary.submitting, onSubmittingChange]);
@@ -88,7 +102,7 @@ export function RetainedActionPanels({
   const mounted = visited.includes(activeAction) ? visited : [...visited, activeAction];
   return (
     <>
-      {mounted.map(action => (
+      {mounted.filter(action => action !== "enrollment" || activeAction === "enrollment").map(action => (
         <ActionSlot key={action} action={action} active={action === activeAction}
           contextSignature={contextSignature} renderAction={renderAction} onStatus={onStatus} />
       ))}
