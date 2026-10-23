@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   GraduationCap, Loader2, RefreshCw, UsersRound,
@@ -37,6 +37,8 @@ type Props = {
   initialSort?: RosterSort;
   initialFilter?: RosterFilter;
   onViewChange?: (state: ExplorerViewState) => void;
+  /** The surrounding palette owns the only scrollable viewport. */
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 };
 
 /** Capacidade registada ≠ vagas disponíveis. Null = não definida (nunca zero inventado). */
@@ -67,7 +69,7 @@ function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
 export function ClasseContextView({
   context, portal, onNavigate, onExploreCurso, onExploreTurma,
   onExploreDisciplina, onExploreProfessor, onStudentSelect, onStudentAction,
-  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange, scrollContainerRef,
 }: Props) {
   const [page, setPage] = useState(initialPage);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
@@ -77,25 +79,36 @@ export function ClasseContextView({
   const roster = useExplorerRoster(context, "classe", searchTerm, rosterSort, rosterFilter, data?.anoLetivo.historico === false);
   const searchActive = data?.anoLetivo.historico === false && (searchTerm.trim().length >= 2 ||
     (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos")));
-  const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
-    page, scrollTop: currentScroll.current, selectedStudentId: selected,
-    search: searchTerm, filter: rosterFilter, sort: rosterSort,
-  }), [page, searchTerm, rosterSort, rosterFilter]);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const currentScroll = useRef(initialScrollTop);
+  const scrollRestored = useRef(false);
   const currentStudent = useRef(selectedStudentId);
   const onViewChangeRef = useRef(onViewChange);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
-  const restoreScroll = useRef(initialScrollTop);
+  const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
+    page,
+    scrollTop: scrollRestored.current
+      ? scrollContainerRef?.current?.scrollTop ?? initialScrollTop
+      : initialScrollTop,
+    selectedStudentId: selected,
+    search: searchTerm, filter: rosterFilter, sort: rosterSort,
+  }), [page, initialScrollTop, scrollContainerRef, searchTerm, rosterSort, rosterFilter]);
+  // Restore after the list has loaded, never into an unscrollable inner div.
   useEffect(() => {
-    if (loading || !scrollRef.current) return;
-    scrollRef.current.scrollTop = restoreScroll.current;
-    const selected = currentStudent.current;
-    if (selected) {
-      const row = Array.from(scrollRef.current.querySelectorAll<HTMLElement>("[data-student-id]")).find((item) => item.dataset.studentId === selected);
-      if (row) row.focus({ preventScroll: true });
-    }
-  }, [loading, page]);
+    const container = scrollContainerRef?.current;
+    if (loading || !container || scrollRestored.current ||
+        (searchActive && (!roster.querySettled || roster.loading || roster.refreshing))) return;
+    const frame = requestAnimationFrame(() => {
+      if (!container.isConnected || scrollRestored.current) return;
+      container.scrollTop = initialScrollTop;
+      scrollRestored.current = true;
+      if (currentStudent.current) {
+        const row = Array.from(container.querySelectorAll<HTMLElement>("[data-student-id]"))
+          .find((item) => item.dataset.studentId === currentStudent.current);
+        row?.focus({ preventScroll: true });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loading, scrollContainerRef, initialScrollTop,
+    searchActive, roster.querySettled, roster.loading, roster.refreshing]);
   useEffect(() => {
     onViewChangeRef.current?.(view());
   }, [page, view]);
@@ -128,8 +141,12 @@ export function ClasseContextView({
   const href = `${base}${base.includes("?") ? "&" : "?"}${new URLSearchParams({
     [ACADEMIC_YEAR_PARAM]: anoLetivo.id,
   })}`;
-  const visibleStudents = searchActive ? roster.items : alunos.items;
-  const returnWarning = Boolean(selectedStudentId && (!searchActive || (!roster.loading && !roster.refreshing)) &&
+  const rosterBusy = searchActive && (!roster.querySettled || roster.loading || roster.refreshing);
+  const rosterReady = searchActive && !rosterBusy && !roster.error;
+  const visibleStudents = searchActive
+    ? roster.querySettled ? roster.items : []
+    : alunos.items;
+  const returnWarning = Boolean(selectedStudentId && (!searchActive || rosterReady) &&
     !visibleStudents.some((student) => student.id === selectedStudentId));
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   const open = (entity: { id: string; nome: string }, onExplore: (next: NextEntity) => void) =>
@@ -139,10 +156,10 @@ export function ClasseContextView({
   const turmasSemAlunos = turmas.filter((t) => t.alunos === 0).length;
 
   return (
-    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.(view()); }} className="min-w-0 space-y-5 px-1 pb-3 text-sm">
+    <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          O aluno atendido já não consta desta página. A lista foi actualizada; confirme a matrícula e a turma antes de continuar.
+          O aluno selecionado não está nesta página ou nos filtros atuais. A seleção foi preservada; confirme a turma antes de continuar o atendimento.
         </p>
       )}
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -336,10 +353,10 @@ export function ClasseContextView({
             <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
           </h3>
           <span className="text-xs text-slate-500" aria-live="polite">
-            {searchActive ? `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} distintos`}
+            {searchActive ? rosterBusy ? "A pesquisar…" : roster.error ? "Pesquisa indisponível" : `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} distintos`}
           </span>
         </div>
-        {searchActive && (roster.loading || roster.refreshing) && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
+        {rosterBusy && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
         {searchActive && roster.error && <p role="alert" className="my-2 text-xs text-rose-700">{roster.error} <button type="button" onClick={() => void roster.retry()} className="underline">Tentar novamente</button></p>}
         {!anoLetivo.historico && roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
@@ -364,7 +381,7 @@ export function ClasseContextView({
     onAction={(action) => onStudentAction(action, { id: aluno.id, label: aluno.nome })} />
 </div>
           ))}
-          {!visibleStudents.length && !roster.loading && !(searchActive && (roster.error || roster.refreshing)) && (
+          {!visibleStudents.length && !rosterBusy && !(searchActive && roster.error) && (
             <p className="px-3 py-5 text-slate-500">
               {searchActive ? "Nenhum aluno encontrado nos filtros selecionados."
                 : alunos.total > 0 ? "Nenhum aluno nesta página; consulte outra página."
@@ -391,7 +408,7 @@ export function ClasseContextView({
             </div>
           </div>
         )}
-        {searchActive && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
+        {rosterReady && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
       </section>
       <p className="text-xs text-slate-500">
         Apenas alunos ativos no ano atual ou concluídos no histórico, excluindo cancelados e transferidos.
