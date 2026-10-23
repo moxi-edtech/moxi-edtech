@@ -19,7 +19,7 @@ type Props = {
   onSuccess?: () => void;
 };
 
-export function BalcaoWorkspace({
+function ScopedBalcaoWorkspace({
   open,
   escolaId,
   aluno,
@@ -30,8 +30,15 @@ export function BalcaoWorkspace({
   // Selecionar "Nova matrícula" muda a operação, nunca o aluno em atendimento.
   const [selectedStudent, setSelectedStudent] = useState<Student>(aluno);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);
+  // Após uma operação gravada no servidor, invalidar apenas o painel de leitura.
+  const [refreshRevision, setRefreshRevision] = useState(0);
   const [switchingStudent, setSwitchingStudent] = useState(false);
-  const [academicYearId, setAcademicYearId] = useState<string | null>(null);
+  // Old asynchronous academic-context responses must never be used after
+  // switching school or closing the modal.
+  const [yearResult, setYearResult] = useState<{ scope: string; id: string | null }>({
+    scope: escolaId, id: null,
+  });
+  const academicYearId = open && yearResult.scope === escolaId ? yearResult.id : null;
   const { student: studentContext, subtitle } = useCommandCenterStudent(
     selectedStudent.id, academicYearId, selectedStudent.label,
   );
@@ -39,31 +46,24 @@ export function BalcaoWorkspace({
   const completedEnrollmentRef = useRef(false);
   const studentRequestRef = useRef(0);
 
-  useEffect(() => {
-    setSelectedStudent(aluno);
-    setActiveAction(actionId);
-    completedEnrollmentRef.current = false;
-    setSwitchingStudent(false);
-  }, [actionId, aluno.id, aluno.label]);
-
   useEffect(() => () => {
     studentRequestRef.current += 1;
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    setAcademicYearId(null);
     if (!open) return () => controller.abort();
     void fetch("/api/academic-context", { cache: "no-store", signal: controller.signal })
       .then(async (response) => response.ok ? response.json() : null)
       .then((payload) => {
-        if (!controller.signal.aborted) setAcademicYearId(
-          payload?.ok && typeof payload.context?.anoLetivoId === "string"
+        if (!controller.signal.aborted) setYearResult({
+          scope: escolaId,
+          id: payload?.ok && typeof payload.context?.anoLetivoId === "string"
             ? payload.context.anoLetivoId : null,
-        );
+        });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setAcademicYearId(null);
+        if (!controller.signal.aborted) setYearResult({ scope: escolaId, id: null });
       });
     return () => controller.abort();
   }, [escolaId, open]);
@@ -108,6 +108,7 @@ export function BalcaoWorkspace({
   }, [confirmLeavingEnrollment, onClose]);
 
   const handleSuccess = useCallback((newAlunoId?: string) => {
+    setRefreshRevision((value) => value + 1);
     if (activeAction === "enrollment" && newAlunoId) {
       completedEnrollmentRef.current = true;
       // Só depois do backend confirmar a matrícula mudamos para o aluno criado.
@@ -149,7 +150,7 @@ export function BalcaoWorkspace({
         />
       ) : (
         <CommandCenterPanel
-          key={selectedStudent.id}
+          key={`${selectedStudent.id}:${refreshRevision}`}
           escolaId={escolaId}
           inModal
           alunoId={activeAction === "enrollment" ? null : selectedStudent.id}
@@ -162,6 +163,15 @@ export function BalcaoWorkspace({
       )}
     </CommandCenterShell>
   );
+}
+
+/** Changing the selected external pupil remounts the entire operation.
+ * Drafts within the SAME pupil continue to be preserved in this component.
+ * No reset-of-props effect or previously loaded learner data is carried over. */
+export function BalcaoWorkspace(props: Props) {
+  const key = [props.escolaId, props.aluno.id, props.aluno.label,
+    props.actionId ?? "desk"].join(":");
+  return <ScopedBalcaoWorkspace key={key} {...props} />;
 }
 
 export default BalcaoWorkspace;

@@ -19,6 +19,8 @@ type TopbarProps = {
   portalTitle?: string;
   portalSubtitle?: string;
   userName?: string | null;
+  userScope?: string | null;
+  poloScope?: string;
   contextLabel?: string;
   escolaNome?: string | null;
   planoNome?: string | null;
@@ -27,10 +29,12 @@ type TopbarProps = {
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
-export default function Topbar({
+function ScopedTopbar({
   portalTitle = "Portal",
   portalSubtitle = "MoxiNexa",
   userName,
+  userScope,
+  poloScope = "-",
   contextLabel: _contextLabel = "Dashboard",
   escolaNome: _escolaNome,
   planoNome: _planoNome,
@@ -47,11 +51,9 @@ export default function Topbar({
     schoolId: string;
   } | null>(null);
 
-  useEffect(() => {
-    setSelectedSearchStudent(null);
-    setRestoreExplorerOnOpen(false);
-    clearExplorerReturnContext();
-  }, [escolaId]);
+  // A scope switch unmounts this keyed instance. The React states are
+  // initialised afresh, rather than synchronously reset in an effect.
+  useEffect(() => () => clearExplorerReturnContext(), []);
 
   const userInitial =
     (userName || portalSubtitle || "U")
@@ -63,7 +65,7 @@ export default function Topbar({
     <>
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <div className="flex h-16 items-center gap-3 px-3 sm:gap-4 sm:px-4">
-          <div className="hidden w-[420px] md:block">
+          <div className="hidden min-w-0 md:block md:w-[clamp(230px,27vw,420px)]">
             <button
               type="button"
               onClick={() => {
@@ -167,7 +169,7 @@ export default function Topbar({
 
       {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
         <BalcaoWorkspace
-          key={`${escolaId}:${selectedSearchStudent.id}`}
+          key={`${userScope ?? "sem-actor"}:${escolaId}:${poloScope}:${selectedSearchStudent.id}`}
           open
           escolaId={escolaId}
           aluno={selectedSearchStudent}
@@ -181,4 +183,13 @@ export default function Topbar({
       ) : null}
     </>
   );
+}
+
+
+/** Isolation boundary for a logged-in operator and a school/polo. Unlike an
+ * effect-driven reset, remounting guarantees no earlier student's UI state
+ * survives a tenant/role change before the first paint. */
+export default function Topbar(props: TopbarProps) {
+  const scope = [props.userScope ?? "-", props.escolaId ?? "-", props.poloScope ?? "-"].join(":");
+  return <ScopedTopbar key={scope} {...props} />;
 }
