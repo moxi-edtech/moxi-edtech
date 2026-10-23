@@ -120,7 +120,7 @@ BEGIN
   SELECT CASE
     WHEN count(*)>0 AND count(*)=count(tp.polo_id)
        AND count(DISTINCT tp.polo_id)=1
-    THEN min(tp.polo_id)
+    THEN min(tp.polo_id::text)::uuid
     ELSE NULL::uuid END INTO v_polo
   FROM public.matriculas m
   LEFT JOIN public.escola_turma_polos tp
