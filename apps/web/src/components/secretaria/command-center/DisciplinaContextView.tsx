@@ -44,7 +44,7 @@ export function DisciplinaContextView({
     </div>
   );
 
-  const { disciplina, anoLetivo, stats, professores, turmas, curriculo, curriculoHistorico, limitado } = data;
+  const { disciplina, anoLetivo, stats, professores, turmas, curriculo, limitado } = data;
   const page = buildPortalHref(
     context.escolaId,
     portal === "admin" ? "/admin/configuracoes" : "/operacoes/configuracoes",
@@ -77,8 +77,8 @@ export function DisciplinaContextView({
       <section aria-label="Indicadores da disciplina" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
         <ExplorerMetric label="Professores vinculados" value={stats.professores} partial={limitado} />
         <ExplorerMetric label="Turmas no ano" value={stats.turmas} partial={limitado} />
-        <ExplorerMetric label="Cursos na matriz" value={stats.cursos} partial={limitado} />
-        <ExplorerMetric label="Classes na matriz" value={stats.classes} partial={limitado} />
+        <ExplorerMetric label="Cursos no currículo" value={stats.cursos} partial={limitado} />
+        <ExplorerMetric label="Classes no currículo" value={stats.classes} partial={limitado} />
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
 
@@ -169,11 +169,11 @@ export function DisciplinaContextView({
           <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Matriz curricular
         </h3>
         <p className="mb-2 text-xs text-slate-500">
-          Referência do currículo da escola. Consta na matriz ≠ atribuída à turma ≠ tem docente neste ano.
+          Versão publicada do currículo do ano selecionado. Consta na matriz ≠ atribuída à turma ≠ tem docente neste ano.
         </p>
         <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
-          {curriculo.map((item, index) => (
-            <div key={`${item.cursoId ?? ""}:${item.classeId ?? ""}:${index}`}
+          {curriculo.map((item) => (
+            <div key={item.id}
               className="flex flex-wrap items-start justify-between gap-2 px-3 py-3">
               {item.classeId && item.classeNome ? (
                 <button type="button"
@@ -189,40 +189,26 @@ export function DisciplinaContextView({
                   {item.cursoNome || "Matriz curricular"}
                 </span>
               )}
-              <span className="text-xs text-slate-500">
-                {item.hasOtherActivityVersion ? "Matriz ativa · também existe referência inativa · " : ""}
-                {item.cargaHorariaSemanal != null
-                  ? `${item.cargaHorariaSemanal} h/semana`
-                  : "Carga não definida"}
+              <span className="text-right text-xs text-slate-500">
+                <span className="block">
+                  {item.cargaHorariaSemanal != null
+                    ? `${item.cargaHorariaSemanal} h/semana`
+                    : "Carga não definida"}
+                  {" · "}Versão {item.curriculoVersao}
+                </span>
+                {item.ativo === false && (
+                  <span className="mt-1 block text-amber-800">
+                    Linha inativa atualmente · estado no ano não comprovado
+                  </span>
+                )}
               </span>
             </div>
           ))}
           {!curriculo.length && (
-            <p className="px-3 py-5 text-slate-500">{limitado ? "Sem matriz ativa identificada no recorte consultado; consulta parcial." : "Sem associação curricular ativa disponível neste escopo."}</p>
+            <p className="px-3 py-5 text-slate-500">{limitado ? "Currículo publicado não confirmado no recorte consultado; consulta parcial." : "Sem associação na versão curricular publicada deste ano."}</p>
           )}
         </div>
       </section>
-
-      {anoLetivo.historico && curriculoHistorico.length > 0 && (
-        <section className="min-w-0" aria-labelledby="disciplina-matriz-historica-heading">
-          <h3 id="disciplina-matriz-historica-heading" className="mb-2 text-sm font-semibold text-slate-900">
-            Referências de matriz atualmente inativa
-          </h3>
-          <p className="mb-2 text-xs text-amber-900">
-            Os vínculos foram preservados. A matriz está inativa hoje; isso não prova que estivesse inativa no ano consultado.
-            Estes registos não entram nos totais de matriz ativa.
-          </p>
-          <div className="divide-y divide-slate-100 rounded-xl border border-amber-200">
-            {curriculoHistorico.map((item, index) => (
-              <div key={item.id ?? `${item.cursoId ?? ""}:${item.classeId ?? ""}:${index}`} className="px-3 py-3 text-xs text-slate-700">
-                {[item.cursoNome, item.classeNome].filter(Boolean).join(" · ") || "Referência curricular"}
-                {item.hasOtherActivityVersion ? " · Outra linha da matriz está ativa para esta combinação" : " · Sem linha ativa correspondente no recorte"}
-                {item.id ? ` · Registo ${item.id.slice(0, 8)}` : ""}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       <p className="text-xs text-slate-500">
         Dados exclusivamente académicos. Não são apresentados notas, dados pessoais, pagamentos ou remunerações.
