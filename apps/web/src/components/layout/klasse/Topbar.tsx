@@ -63,7 +63,7 @@ export default function Topbar({
     <>
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <div className="flex h-16 items-center gap-3 px-3 sm:gap-4 sm:px-4">
-          <div className="hidden w-[420px] md:block">
+          <div className="hidden min-w-0 md:block md:w-[clamp(230px,27vw,420px)]">
             <button
               type="button"
               onClick={() => {
