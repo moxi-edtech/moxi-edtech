@@ -147,3 +147,36 @@ test("EX-006: incomplete explorer lists never claim verified absence of links", 
   assert.match(curso, /data\.turmasLimitadas\s*\?/);
   assert.match(route, /ativo: row\.ativo/);
 });
+
+
+test("EX-006: current and inactive matrix references remain separately identified", () => {
+  const overview = composeDisciplinaOverview({
+    academicYear: { id: "year", ano: 2026 },
+    turmas: [], assignments: [], teachers: [],
+    curriculum: [
+      { id: "current", cursoId: "course", cursoNome: "Curso", classeId: "class", classeNome: "Classe", cargaHorariaSemanal: 2, obrigatoria: true, ativo: true },
+      { id: "older", cursoId: "course", cursoNome: "Curso", classeId: "class", classeNome: "Classe", cargaHorariaSemanal: 3, obrigatoria: true, ativo: false },
+    ],
+  });
+  assert.equal(overview.curriculo[0]?.id, "current");
+  assert.equal(overview.curriculoHistorico[0]?.id, "older");
+  assert.equal(overview.curriculo[0]?.hasOtherActivityVersion, true);
+  assert.equal(overview.curriculoHistorico[0]?.hasOtherActivityVersion, true);
+  assert.equal(overview.stats.cursos, 1);
+  assert.equal(overview.stats.classes, 1);
+});
+
+test("EX-006: orphan and unavailable teacher identities preserve assignment evidence", () => {
+  const overview = composeDisciplinaOverview({
+    academicYear: { id: "year", ano: 2026 },
+    turmas: [{ id: "turma", nome: "Turma", turno: null, classeNome: null, cursoNome: null, anoLetivo: 2026, anoLetivoId: "year" }],
+    assignments: [{ turmaId: "turma", professorId: "orphan" }, { turmaId: "turma", professorId: "deleted-profile" }],
+    teachers: [{ id: "deleted-profile", nome: "Professor com perfil desativado" }],
+    curriculum: [],
+  });
+  assert.equal(overview.stats.professores, 2);
+  assert.equal(overview.turmas[0]?.professores.length, 2);
+  assert.equal(overview.unresolvedTeacherLinks, 1);
+  assert.match(overview.turmas[0]?.professores.find((p) => p.id === "orphan")?.nome ?? "", /identidade indisponível/);
+  assert.equal(overview.professores.find((p) => p.id === "deleted-profile")?.nome, "Professor com perfil desativado");
+});
