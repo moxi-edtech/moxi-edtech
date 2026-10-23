@@ -132,7 +132,7 @@ test("student selection opens the existing modal workspace instead of navigating
   const shell = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterShell.tsx", "utf8");
 
   assert.match(palette, /onStudentSelect\(\{ id: item\.id, label: item\.label \}\)/);
-  assert.match(palette, /portal === "operacoes" \|\| portal === "secretaria"/);
+  assert.match(palette, /resolveCommandCenterSelection/);
   assert.match(topbar, /<BalcaoWorkspace/);
   assert.match(topbar, /onStudentSelect=\{\(student\) =>/);
   assert.match(topbar, /schoolId: escolaId/);

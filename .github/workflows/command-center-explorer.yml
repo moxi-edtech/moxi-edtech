@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'apps/web/src/components/CommandPalette.tsx'
+      - 'apps/web/src/components/layout/klasse/Topbar.tsx'
+      - 'apps/web/src/hooks/useGlobalSearch.ts'
+      - 'apps/web/tests/unit/command-center-person-selection.spec.ts'
       - 'apps/web/src/components/secretaria/command-center/**'
       - 'apps/web/src/hooks/useCourseContext.ts'
       - 'apps/web/src/hooks/useTurmaContext.ts'
@@ -45,6 +48,10 @@ jobs:
         run: |
           pnpm -C apps/web exec eslint \
             src/components/CommandPalette.tsx \
+            src/components/layout/klasse/Topbar.tsx \
+            src/components/secretaria/command-center/CommandCenterShell.tsx \
+            src/hooks/useGlobalSearch.ts \
+            tests/unit/command-center-person-selection.spec.ts \
             src/components/secretaria/command-center/CourseContextView.tsx \
             src/components/secretaria/command-center/TurmaContextView.tsx \
             src/components/secretaria/command-center/ProfessorContextView.tsx \
@@ -68,5 +75,5 @@ jobs:
             tests/unit/classe-contextual-explorer.spec.ts \
             tests/unit/command-center-operational-continuity.spec.ts --max-warnings 0
       - name: Unit contracts
-        run: pnpm -C apps/web exec tsx --test tests/unit/turma-explorer-policy.spec.ts tests/unit/professor-contextual-explorer.spec.ts tests/unit/disciplina-contextual-explorer.spec.ts tests/unit/classe-contextual-explorer.spec.ts tests/unit/command-center-operational-continuity.spec.ts
+        run: pnpm -C apps/web exec tsx --test tests/unit/turma-explorer-policy.spec.ts tests/unit/professor-contextual-explorer.spec.ts tests/unit/disciplina-contextual-explorer.spec.ts tests/unit/classe-contextual-explorer.spec.ts tests/unit/command-center-operational-continuity.spec.ts tests/unit/command-center-person-selection.spec.ts
       - run: pnpm -C apps/web build

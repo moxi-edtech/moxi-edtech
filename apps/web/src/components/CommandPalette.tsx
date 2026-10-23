@@ -31,6 +31,7 @@ import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { createEntityContext, type EntityContext } from "@/lib/command-center/entity-context";
+import { resolveCommandCenterSelection } from "@/lib/command-center/person-selection";
 import { CourseContextView } from "@/components/secretaria/command-center/CourseContextView";
 import { ClasseContextView } from "@/components/secretaria/command-center/ClasseContextView";
 import { TurmaContextView } from "@/components/secretaria/command-center/TurmaContextView";
@@ -210,8 +211,13 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
   }, [queryClient, setOpen]);
   const runCommand = React.useCallback((command: () => unknown) => { handleOpenChange(false); command(); }, [handleOpenChange]);
   const selectResult = React.useCallback((item: MinimalSearchResult) => {
+    const selection = resolveCommandCenterSelection(item.type, portal, {
+      hasSchoolScope: Boolean(escolaId),
+      hasStudentModal: Boolean(onStudentSelect),
+    });
+
     let href = item.href;
-    if (item.type === "aluno" && escolaParam && (portal === "secretaria" || portal === "operacoes")) {
+    if (item.type === "aluno" && escolaParam && selection === "student-modal") {
       const currentPath = window.location.pathname;
       const currentParams = new URLSearchParams(window.location.search);
       if (currentPath.endsWith("/secretaria/balcao")) {
@@ -223,30 +229,45 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
       const academicYearId = new URL(item.href, window.location.origin).searchParams.get(ACADEMIC_YEAR_PARAM) || currentParams.get(ACADEMIC_YEAR_PARAM);
       if (academicYearId) href += `${href.includes("?") ? "&" : "?"}${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(academicYearId)}`;
     }
-    const context = createEntityContext(item, escolaId, new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM));
-    if (context && (portal === "admin" || portal === "operacoes" || portal === "secretaria")) {
-      rememberResult(item);
-      setContextTrail([]);
-      setCourseClassId(null);
-      setCourseTurmaId(null);
-    setViewState({});
-      setEntityContext(context);
-      return;
+
+    if (selection === "context") {
+      const context = createEntityContext(
+        item, escolaId, new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM),
+      );
+      if (context) {
+        rememberResult(item);
+        setContextTrail([]);
+        setCourseClassId(null);
+        setCourseTurmaId(null);
+        setViewState({});
+        setEntityContext(context);
+        setOpen(true);
+        return;
+      }
     }
+
     rememberResult(item);
-    if (item.type === "aluno" && entityContext && escolaId && onStudentSelect && (portal === "operacoes" || portal === "secretaria")) {
-      const scope = getExplorerScope();
-      if (scope) saveExplorerReturnContext({ scope, escolaId, entityContext, contextTrail, courseClassId, courseTurmaId, viewState: viewStateRef.current });
+    if (selection === "student-modal" && onStudentSelect && escolaId) {
+      if (entityContext) {
+        const scope = getExplorerScope();
+        if (scope) saveExplorerReturnContext({
+          scope, escolaId, entityContext, contextTrail, courseClassId, courseTurmaId,
+          viewState: viewStateRef.current,
+        });
+      }
+      // Preserve the existing Balcao modal rather than navigating to its page.
+      // Close cmdk before opening the higher-layer modal, avoiding two focus traps.
+      handleOpenChange(false);
+      setQuery("");
+      onStudentSelect({ id: item.id, label: item.label });
+      return;
     }
     runCommand(() => {
       setQuery("");
-      if (item.type === "aluno" && escolaId && onStudentSelect && (portal === "operacoes" || portal === "secretaria")) {
-        onStudentSelect({ id: item.id, label: item.label });
-        return;
-      }
       router.push(href);
     });
-  }, [contextTrail, courseClassId, courseTurmaId, entityContext, escolaId, escolaParam, onStudentSelect, portal, rememberResult, router, runCommand, setQuery, getExplorerScope]);
+  }, [contextTrail, courseClassId, courseTurmaId, entityContext, escolaId, escolaParam, onStudentSelect,
+    portal, rememberResult, router, runCommand, setQuery, getExplorerScope, handleOpenChange, setOpen]);
   /** Open the existing operation, not a duplicate form. Snapshot only UI
    * context; the destination re-checks authorization, year and eligibility. */
   const openStudentAction = React.useCallback((
@@ -280,7 +301,12 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
     if (portal === "admin" || portal === "operacoes") actions.push({ id: "config", label: "Configurações da escola", icon: Settings, onSelect: () => router.push(buildPortalHref(escolaParam, portal === "operacoes" ? "/operacoes/configuracoes" : "/admin/configuracoes")) });
     return actions;
   }, [portal, escolaParam, router]);
-  const pushEntity = (next: EntityContext) => { setContextTrail((t) => [...t, entityContext!]); setEntityContext(next); };
+  const pushEntity = (next: EntityContext) => {
+    setContextTrail((trail) => entityContext ? [...trail, entityContext] : trail);
+    setEntityContext(next);
+    // Nested Professor/Turma/Class selections must keep the existing explorer dialog open.
+    setOpen(true);
+  };
   const year = () => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get(ACADEMIC_YEAR_PARAM);
   return (
     <>

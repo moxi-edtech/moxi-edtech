@@ -120,7 +120,7 @@ export function CommandCenterShell({
   if (variant === "modal") {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:p-5"
+        className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:p-5"
         role="dialog"
         aria-modal="true"
         aria-label={`KLASSE · Central de atendimento — ${activeAction === "enrollment" ? "Nova matrícula" : student?.label || "Atendimento"}`}

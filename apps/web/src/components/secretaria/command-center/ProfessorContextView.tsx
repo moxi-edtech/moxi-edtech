@@ -44,6 +44,7 @@ export function ProfessorContextView({
 
   if (error || !data) return (
     <div className="space-y-3 p-3 text-sm" role="alert">
+      <h2 className="text-lg font-semibold text-slate-900">Professor · {context.label}</h2>
       <p className="text-rose-700">{error || "Não foi possível carregar o professor."}</p>
       {status !== 401 && status !== 403 && status !== 404 && (
         <button type="button" onClick={() => void retry()}
