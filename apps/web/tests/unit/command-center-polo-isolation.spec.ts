@@ -20,10 +20,10 @@ test("CC-003 database migration gives staff access but retains tenant/polo guard
   assert.match(sql,/financeiro/);
   assert.doesNotMatch(sql,/['"]professor['"]\s*,?\s*['"]aluno['"]/);
  }
- assert.match(roster,/has_access_to_escola_fast\\(p_escola_id\\)/);
+ assert.match(roster,/has_access_to_escola_fast\(p_escola_id\)/);
  assert.match(roster,/p_polo_id IS NOT NULL/);
- assert.match(search,/has_access_to_escola_fast\\(p_escola_id\\)/);
- assert.match(search,/where not \\(requested.kind = any\\(v_allowed_types\\)\\)/);
+ assert.match(search,/has_access_to_escola_fast\(p_escola_id\)/);
+ assert.match(search,/where not \(requested.kind = any\(v_allowed_types\)\)/);
 });
 test("CC-003 every Command Center reader checks role-bound scope", () => {
  for (const path of ["roster/route.ts","roster/export/route.ts","student-capabilities/route.ts","cursos/[cursoId]/route.ts","classes/[classeId]/route.ts","turmas/[turmaId]/route.ts","professores/[professorId]/route.ts","disciplinas/route.ts","disciplinas/[disciplinaId]/route.ts"]) {
