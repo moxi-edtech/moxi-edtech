@@ -19,6 +19,8 @@ type TopbarProps = {
   portalTitle?: string;
   portalSubtitle?: string;
   userName?: string | null;
+  userScope?: string | null;
+  poloScope?: string;
   contextLabel?: string;
   escolaNome?: string | null;
   planoNome?: string | null;
@@ -31,6 +33,8 @@ export default function Topbar({
   portalTitle = "Portal",
   portalSubtitle = "MoxiNexa",
   userName,
+  userScope,
+  poloScope = "-",
   contextLabel: _contextLabel = "Dashboard",
   escolaNome: _escolaNome,
   planoNome: _planoNome,
@@ -51,7 +55,7 @@ export default function Topbar({
     setSelectedSearchStudent(null);
     setRestoreExplorerOnOpen(false);
     clearExplorerReturnContext();
-  }, [escolaId]);
+  }, [escolaId, userScope, poloScope]);
 
   const userInitial =
     (userName || portalSubtitle || "U")
@@ -167,7 +171,7 @@ export default function Topbar({
 
       {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
         <BalcaoWorkspace
-          key={`${escolaId}:${selectedSearchStudent.id}`}
+          key={`${userScope ?? "sem-actor"}:${escolaId}:${poloScope}:${selectedSearchStudent.id}`}
           open
           escolaId={escolaId}
           aluno={selectedSearchStudent}
