@@ -28,7 +28,7 @@ export default function ThemeToggle({ className, iconOnly = true }: ThemeToggleP
       <button
         type="button"
         className={cn(
-          "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600",
+          "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground",
           className,
         )}
         aria-label="Alternar tema"
@@ -46,11 +46,9 @@ export default function ThemeToggle({ className, iconOnly = true }: ThemeToggleP
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-slate-600 transition",
-        "hover:bg-slate-50 hover:text-slate-900",
+        "inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card text-muted-foreground transition",
+        "hover:bg-muted hover:text-foreground",
         "focus:outline-none focus:ring-4 focus:ring-amber/20",
-        "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
-        "dark:hover:bg-slate-800 dark:hover:text-white",
         iconOnly ? "h-10 w-10" : "h-10 px-3 text-sm font-medium",
         className,
       )}
