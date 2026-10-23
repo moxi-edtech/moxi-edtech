@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronRight, GraduationCap,
@@ -64,10 +64,10 @@ export function CourseContextView({
     setSelection({ contextKey, classeId, turmaId: id });
   }
 
-  const visibleTurmas = useMemo(
-    () => (data?.turmas ?? []).filter((turma) => !classeId || turma.classeId === classeId),
-    [data, classeId],
-  );
+  // This bounded, already fetched list is cheap to filter; React Compiler can
+  // derive it safely without manual memoization of a contextual selection.
+  const visibleTurmas = (data?.turmas ?? []).filter((turma) =>
+    !classeId || turma.classeId === classeId);
   const selectedTurma = data?.turmas.find((turma) =>
     turma.id === turmaId && (!classeId || turma.classeId === classeId));
   const selectedClasse = data?.classes.find((classe) => classe.id === classeId);
