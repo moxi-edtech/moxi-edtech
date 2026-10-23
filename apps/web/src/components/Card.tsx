@@ -1,11 +1,11 @@
 export function Card({ title, value, icon: Icon }: { title: string; value: string; icon: any; }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <div className="rounded-xl border border-border bg-card text-card-foreground p-4 shadow-sm transition hover:shadow-md">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <Icon className="h-6 w-6 text-gray-400" />
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <Icon className="h-6 w-6 text-muted-foreground" />
       </div>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
