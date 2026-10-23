@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Search, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -168,7 +169,7 @@ function ScopedTopbar({
         </div>
       </header>
 
-      {userScope && escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
+      {typeof document !== "undefined" && userScope && escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria" || portal === "admin") ? createPortal(
         <BalcaoWorkspace
           key={`${userScope}:${escolaId}:${poloScope}:${selectedSearchStudent.id}`}
           userScope={userScope}
@@ -182,7 +183,8 @@ function ScopedTopbar({
             setRestoreExplorerOnOpen(true);
             setPaletteOpen(true);
           }}
-        />
+        />,
+        document.body,
       ) : null}
     </>
   );
