@@ -20,6 +20,8 @@ export type DisciplinaCurriculumRow = {
   classeNome: string | null;
   cargaHorariaSemanal: number | null;
   obrigatoria: boolean | null;
+  /** Current database activity: NOT a snapshot of the historical year. */
+  ativo?: boolean | null;
 };
 
 /** Never extrapolate across years from a legacy numeric year when an ID is present. */
@@ -79,20 +81,26 @@ export function composeDisciplinaOverview(input: {
     turmas: ids.size,
   })).sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id));
 
-  // Course curriculum is a *reference*, not an indicator of teaching in this year.
-  const uniqueCurriculum = new Map<string, DisciplinaCurriculumRow>();
+  // Keep currently inactive matrices visible as historical references; never
+  // count them as the active curriculum or infer their state in the selected year.
+  const activeCurriculum = new Map<string, DisciplinaCurriculumRow>();
+  const inactiveCurriculum = new Map<string, DisciplinaCurriculumRow>();
   for (const row of input.curriculum) {
     if (!row.cursoId && !row.classeId) continue;
     const key = [row.cursoId ?? "", row.classeId ?? ""].join(":");
-    if (!uniqueCurriculum.has(key)) uniqueCurriculum.set(key, row);
+    const bucket = row.ativo === false ? inactiveCurriculum : activeCurriculum;
+    if (!bucket.has(key)) bucket.set(key, row);
   }
-  const curriculo = [...uniqueCurriculum.values()].sort((a, b) =>
+  const byCourseAndClass = (a: DisciplinaCurriculumRow, b: DisciplinaCurriculumRow) =>
     (a.cursoNome ?? "").localeCompare(b.cursoNome ?? "", "pt") ||
-    (a.classeNome ?? "").localeCompare(b.classeNome ?? "", "pt"));
+    (a.classeNome ?? "").localeCompare(b.classeNome ?? "", "pt");
+  const curriculo = [...activeCurriculum.values()].sort(byCourseAndClass);
+  const curriculoHistorico = [...inactiveCurriculum.values()].sort(byCourseAndClass);
   return {
     professores,
     turmas,
     curriculo,
+    curriculoHistorico,
     stats: {
       professores: professores.length,
       turmas: turmas.length,
