@@ -198,7 +198,7 @@ test("modal and page show the same full student dossier, with editing secondary"
   const inline = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx", "utf8");
   const fullPage = readFileSync("apps/web/src/components/aluno/AlunoPerfilPage.tsx", "utf8");
   assert.doesNotMatch(panel, /profileDossier/, "the same interactive dossier must render regardless of entry point");
-  assert.match(panel, /<CommandCenterStudentDossier[\s\S]*?refreshKey=\{profileRefreshKey\}/);
+  assert.match(panel, /<CommandCenterStudentDossier[\s\S]*?refreshKey=\{profileRefreshKey \+ refreshRevision\}/);
   const standalone = readFileSync("apps/web/src/app/secretaria/balcao/BalcaoPageClient.tsx", "utf8");
   assert.doesNotMatch(standalone, /profileDossier=\{/, "standalone view must not bypass the interactive dossier");
   assert.match(panel, /<CommandCenterStudentDossier/);
