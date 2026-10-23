@@ -1,0 +1,25 @@
+name: Next.js Route Segment Integrity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  route-parameter-contract:
+    name: Prevent production dynamic-route 500s
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Dynamic route checker unit regressions
+        run: node --test scripts/check-next-route-segments.test.mjs
+      - name: Reject Next.js segment name collisions before deployment
+        run: node scripts/check-next-route-segments.mjs
