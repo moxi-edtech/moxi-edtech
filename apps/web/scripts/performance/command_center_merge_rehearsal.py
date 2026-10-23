@@ -49,6 +49,57 @@ def inspect(left,right):
        "unknownConflict":not conflicts and result.returncode!=0,
     }
 
+def reconcile_balcao_tree(tree, label):
+    """Narrow, explicit semantic resolution only in the disposable merge tree.
+
+    Reconnect the existing telemetry hook from the concurrent Balcão PR and
+    preserve the originating action in success callbacks. No mock or no-op.
+    This does NOT write source files into either GitHub PR.
+    """
+    path="apps/web/src/components/secretaria/BalcaoWorkspace.tsx"
+    original=git("show",tree+":"+path,check=True).stdout
+    content=original
+    hook="const { markNavigationStart } = useBalcaoTelemetry(activeAction);"
+    if "markNavigationStart();" in content and hook not in content:
+        marker="  const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);"
+        if content.count(marker)!=1 or "import { useBalcaoTelemetry }" not in content:
+            raise RuntimeError("Balcão navigation hook cannot be reconciled safely")
+        content=content.replace(marker,marker+"\n  "+hook)
+    two_arg="handleSuccess(panelAction, newAlunoId)"
+    if two_arg in content and "const handleSuccess = useCallback((newAlunoId?: string) => {" in content:
+        content=content.replace(
+            "const handleSuccess = useCallback((newAlunoId?: string) => {",
+            "const handleSuccess = useCallback((originAction: BalcaoActionId, newAlunoId?: string) => {"
+        )
+        content=content.replace(
+            'if (activeAction === "enrollment" && newAlunoId) {',
+            'if (originAction === "enrollment" && newAlunoId) {'
+        )
+        content=content.replace(
+            '}, [activeAction, onSuccess]);', '}, [onSuccess]);'
+        )
+    if content==original:
+        return tree,[]
+    import tempfile
+    result=subprocess.run(["git","hash-object","-w","--stdin"],input=content,
+                          text=True,capture_output=True)
+    if result.returncode:
+        raise RuntimeError("Cannot hash synthetic Balcão integration")
+    blob=result.stdout.strip()
+    with tempfile.TemporaryDirectory(prefix="cc-integration-index-") as temp:
+        env={**os.environ,"GIT_INDEX_FILE":temp+"/index"}
+        for args in [
+            ["git","read-tree",tree],
+            ["git","update-index","--add","--cacheinfo","100644,"+blob+","+path],
+        ]:
+            res=subprocess.run(args,env=env,text=True,capture_output=True)
+            if res.returncode:
+                raise RuntimeError("Cannot reconcile synthetic index")
+        result=subprocess.run(["git","write-tree"],env=env,text=True,capture_output=True)
+        if result.returncode:
+            raise RuntimeError("Cannot build verified synthetic tree")
+        return result.stdout.strip(),["BalcaoWorkspace: real telemetry hook + correct success origin"]
+
 independent=[]
 for label,ref in [("command-center-C",CC_REF),*branches]:
     if git("rev-parse","--verify",ref).returncode:
@@ -80,11 +131,15 @@ for label,ref in [("main",BASE_REF),*branches]:
         mode="simulation_ours_REQUIRES_REVIEW"
     else:
         tree=status["tree"]
+    # Resolve only the diagnosed semantic interactions in a temporary tree.
+    # Source PRs still require reviewed, explicit integration later.
+    tree, semanticResolutions = reconcile_balcao_tree(tree,label)
     if not re.fullmatch(r"[0-9a-f]{40}",tree or ""):
         raise RuntimeError("No complete tree returned for "+label)
     commit=git("-c","commit.gpgsign=false","commit-tree",tree,"-p",current,"-p",other,"-m","Synthetic disposable integration",check=True).stdout.strip()
     steps.append({"name":label,"conflictFiles":status["conflictFiles"],
-                  "simulatedResolution":mode,"commit":commit[:12]})
+                  "simulatedResolution":mode, "semanticResolutions":semanticResolutions,
+                  "commit":commit[:12]})
     current=commit
 
 report={
