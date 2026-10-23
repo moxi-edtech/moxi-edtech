@@ -45,7 +45,8 @@ test("dirty input, receipts and checkout selections survive tab switches and are
   assert.match(draft,/JSON.stringify\(value\) !== JSON.stringify\(baseline\)/);
   assert.match(retained,/beforeunload/);
   assert.match(modal,/hasUnsavedWorkRef\.current/);
-  assert.match(modal,/hasUnsavedWorkRef\.current && !window\.confirm/);
+  assert.match(modal,/activeAction === "enrollment" \? otherTabsDirty : hasUnsavedWorkRef\.current/);
+  assert.match(modal,/const enrollmentDirty = Boolean\(actionDraftStatuses\.enrollment\?\.dirty\)/);
   assert.match(page,/activeAction === "enrollment" && unsavedWorkRef\.current/);
   assert.match(page,/if \(unsavedWorkRef\.current && !window\.confirm/);
   assert.match(page,/unsavedWorkRef\.current/);
