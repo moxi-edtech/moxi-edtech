@@ -33,6 +33,7 @@ branches=[
 ]
 known_conflicts={
  "apps/web/src/components/layout/klasse/Topbar.tsx",
+ "apps/web/src/components/secretaria/BalcaoWorkspace.tsx",
  "apps/web/visual-harness/main.tsx",
  "apps/web/src/hooks/useGlobalSearch.ts",
 }

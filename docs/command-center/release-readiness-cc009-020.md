@@ -22,6 +22,7 @@ Não misturar alterações de produção de branches sem gates de revisão. O ro
 | Conflito conhecido | Decisão no Command Center | Gate de integração real |
 | --- | --- | --- |
 | `Topbar.tsx` (main/#213/#247/CC) | Preservar largura responsiva `clamp(230px,27vw,420px)`, pesquisa modal e descarte do contexto nas mudanças do utilizador/escola/polo. Evitar encolher tipografia. | Reconciliar com `userScope` e `poloScope` do Balcão #213, manter guarda do modal antes de integrar |
+| `BalcaoWorkspace.tsx` (Balcão #213/CC) | Nesta branch, mudança de aluno externo desmonta o estado antigo por chave, sem efeitos que façam reset assíncrono; `academicYearId` só passa se pertencer ao escopo actual. | Conciliar os guards de `userScope`/`poloScope`, rascunhos e matrícula retidos do #213; nunca descartar sem confirmação. |
 | `visual-harness/main.tsx` (Balcão #216 e CC/IA) | Preservar o registo actual de portais, Command Center e IA; testar Balcão #216 separadamente. | Separar fixtures do Balcão num módulo próprio, importá-lo na mesma entrada Vite, sem suprimir testes existentes |
 | `useGlobalSearch.ts` (professor #231 e CC) | A branch CC já inclui `professor`, `classe` e `curso` no portal Secretaria; manter ordenação, privacidade e resultados de professor no modal | Confirmar a equivalência da intenção da #231 e não duplicar resultados/atalhos |
 | Financeiro #232 | Sem conflito textual na simulação; o motor de cobrança e estados não foram reescritos | Aplicar correção de idempotência em primeiro lugar e revalidar as leituras financeiras |
