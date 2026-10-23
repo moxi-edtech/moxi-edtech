@@ -45,6 +45,7 @@ O utilizador deve poder:
 | `ThemeProvider`             | ❌     | Não existe no root layout                               |
 | Componente de toggle        | ❌     | Não existe                                              |
 | Substituição de cores fixas | ⚠️     | Muitos componentes usam `bg-slate-950`, `text-slate-100`, etc. |
+| Testes de tema              | ❌     | Não existem testes relacionados com tema                |
 
 ---
 
@@ -128,6 +129,10 @@ apps/web/
 │       │   └── ThemeProvider.tsx   ← novo
 │       └── theme/
 │           └── ThemeToggle.tsx     ← novo
+├── tests/
+│   ├── unit/
+│   │   └── theme-toggle.spec.ts    ← novo (unitário)
+│   └── theme-switcher.e2e.ts       ← novo (Playwright)
 └── package.json                    ← adicionar next-themes
 ```
 
@@ -142,10 +147,98 @@ apps/web/
 - [ ] Cores de marca (verde e dourado) continuam legíveis e consistentes
 - [ ] Funciona em desktop e mobile (Capacitor)
 - [ ] Não quebra o padrão de Graciosidade (estado explícito + feedback)
+- [ ] Testes unitários e E2E passam
 
 ---
 
-## 7. Riscos e mitigação
+## 7. Testes
+
+### Estado atual da infraestrutura de testes
+
+| Tipo              | Situação                                      |
+|-------------------|-----------------------------------------------|
+| Unitários         | Existem em `apps/web/tests/unit/` (poucos)    |
+| E2E (Playwright)  | Configurado (`playwright.config.ts`)          |
+| Script `test`     | Placeholder (`echo 'No tests configured'`)    |
+| Testes de tema    | **Não existem**                               |
+
+### Testes a implementar
+
+#### 7.1 Unitário — `ThemeToggle`
+
+**Ficheiro:** `apps/web/tests/unit/theme-toggle.spec.ts`
+
+**Cenários:**
+
+| # | Cenário                                      | Esperado                                              |
+|---|----------------------------------------------|-------------------------------------------------------|
+| 1 | Renderiza o botão de toggle                  | Botão visível com `aria-label` adequado               |
+| 2 | Clique alterna de `light` → `dark`           | `setTheme("dark")` é chamado                          |
+| 3 | Clique alterna de `dark` → `light`           | `setTheme("light")` é chamado                         |
+| 4 | Não renderiza ícone antes de `mounted`       | Evita hydration mismatch (retorna `null` inicialmente)|
+
+**Notas técnicas:**
+- Mockar `useTheme` do `next-themes`
+- Usar runner existente: `node --test --import tsx`
+
+#### 7.2 E2E — Playwright
+
+**Ficheiro:** `apps/web/tests/theme-switcher.e2e.ts`
+
+**Cenários:**
+
+| # | Cenário                                              | Esperado                                                                 |
+|---|------------------------------------------------------|--------------------------------------------------------------------------|
+| 1 | Página carrega com tema claro por defeito            | `<html>` **não** contém a classe `dark`                                  |
+| 2 | Clicar no toggle ativa o tema escuro                 | `<html>` passa a ter a classe `dark`                                     |
+| 3 | Clicar novamente volta ao tema claro                 | Classe `dark` é removida do `<html>`                                     |
+| 4 | Preferência persiste após refresh                    | Após `page.reload()`, o tema escolhido mantém-se                         |
+| 5 | Preferência persiste em nova navegação               | Navegar para outra rota e voltar mantém o tema                           |
+| 6 | Sem flash de tema (FOUC)                             | Ao carregar com tema `dark` guardado, a classe `dark` está presente desde o primeiro paint |
+
+**Exemplo de asserções principais:**
+
+```ts
+// Alternar para dark
+await page.getByRole('button', { name: /tema|theme|alternar/i }).click()
+await expect(page.locator('html')).toHaveClass(/dark/)
+
+// Persistência
+await page.reload()
+await expect(page.locator('html')).toHaveClass(/dark/)
+```
+
+#### 7.3 Checklist manual (aceitação visual)
+
+Páginas prioritárias a validar nos dois temas:
+
+- [ ] Dashboard principal
+- [ ] Shell (sidebar + header)
+- [ ] Secretaria — lista de alunos / matrículas
+- [ ] Financeiro — dashboard e lançamentos
+- [ ] Pauta do professor
+- [ ] Wizard de importação (`/migracao/alunos`)
+- [ ] Login / ativação de acesso
+
+**Verificar em cada página:**
+- Contraste de texto legível
+- Bordas e cards consistentes
+- Ícones e estados ativos (dourado) visíveis
+- Sem cores “quebradas” (texto branco em fundo branco, etc.)
+
+#### 7.4 Comandos sugeridos
+
+```bash
+# Unitário (quando implementado)
+pnpm -C apps/web test:unit:theme
+
+# E2E Playwright
+pnpm -C apps/web exec playwright test tests/theme-switcher.e2e.ts
+```
+
+---
+
+## 8. Riscos e mitigação
 
 | Risco                                      | Mitigação                                              |
 |--------------------------------------------|--------------------------------------------------------|
@@ -153,20 +246,23 @@ apps/web/
 | Flash de tema (FOUC)                       | Usar `next-themes` + `suppressHydrationWarning`        |
 | Quebra visual em páginas legadas           | Implementar primeiro no shell e expandir gradualmente  |
 | Conflito com estilos de impressão / PDF    | Manter temas apenas na UI; PDFs usam estilos próprios  |
+| Testes frágeis por seletores de UI         | Preferir `getByRole` + `aria-label` estável            |
 
 ---
 
-## 8. Referências
+## 9. Referências
 
 - Design Tokens oficiais: `docs/design-tokens.md`
 - Padrão de produto (Graciosidade): `docs/product/graciosidade.md`
 - shadcn/ui + CSS Variables: documentação oficial
 - next-themes: https://github.com/pacocoursey/next-themes
+- Playwright: https://playwright.dev
 
 ---
 
-## 9. Histórico
+## 10. Histórico
 
 | Data       | Autor     | Alteração                                      |
 |------------|-----------|------------------------------------------------|
 | 2026-10-23 | Grok      | Criação inicial da documentação na branch      |
+| 2026-10-23 | Grok      | Adicionada secção completa de testes           |
