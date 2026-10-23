@@ -22,7 +22,11 @@ for (const [name, original] of Object.entries(baseline.perTab)){
   assert.ok(current.requests.median<=reqCap, name+": repeated navigation calls exceeded fixture budget");
   assert.ok(current.timeMs.median <= original.timeMs.median*1.65+30,
     name+": p50 paint regressed beyond noise tolerance");
-  assert.ok(current.commits.median<=Math.max(4,original.commits.median+1),
+  // Nova matrícula now mounts a clean wizard on each entry instead of
+  // reusing the previous candidate. Permit the single extra fixture commit
+  // needed for initialization, without relaxing any other tab's budget.
+  const commitBudget=Math.max(4,original.commits.median+1)+(name==="Matrícula"?1:0);
+  assert.ok(current.commits.median<=commitBudget,
     name+": React commits increased significantly");
   statuses.push(name+": "+original.requests.median+" -> "+current.requests.median+" median HTTP");
 }
