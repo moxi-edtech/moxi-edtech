@@ -30,6 +30,8 @@ function ScopedBalcaoWorkspace({
   // Selecionar "Nova matrícula" muda a operação, nunca o aluno em atendimento.
   const [selectedStudent, setSelectedStudent] = useState<Student>(aluno);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);
+  // Após uma operação gravada no servidor, invalidar apenas o painel de leitura.
+  const [refreshRevision, setRefreshRevision] = useState(0);
   const [switchingStudent, setSwitchingStudent] = useState(false);
   // Old asynchronous academic-context responses must never be used after
   // switching school or closing the modal.
@@ -106,6 +108,7 @@ function ScopedBalcaoWorkspace({
   }, [confirmLeavingEnrollment, onClose]);
 
   const handleSuccess = useCallback((newAlunoId?: string) => {
+    setRefreshRevision((value) => value + 1);
     if (activeAction === "enrollment" && newAlunoId) {
       completedEnrollmentRef.current = true;
       // Só depois do backend confirmar a matrícula mudamos para o aluno criado.
@@ -147,7 +150,7 @@ function ScopedBalcaoWorkspace({
         />
       ) : (
         <CommandCenterPanel
-          key={selectedStudent.id}
+          key={`${selectedStudent.id}:${refreshRevision}`}
           escolaId={escolaId}
           inModal
           alunoId={activeAction === "enrollment" ? null : selectedStudent.id}
