@@ -286,6 +286,8 @@ if (name === "school-intelligence") {
     return originalFetch(input, init);
   };
 }
+const Scene = stories[name]?.render;
+const target = document.getElementById("root");
 if (target && name === "school-intelligence") {
   function ChatFixture() {
     const [school, setSchool] = useState(fixtureSchool);
@@ -358,8 +360,6 @@ function BalcaoFinancialRefreshFixture(){
   </main>;
 }
 
-const Scene = stories[name]?.render;
-const target = document.getElementById("root");
 if (target && name === "balcao-financial-refresh") createRoot(target).render(<FeedbackProvider><BalcaoFinancialRefreshFixture /></FeedbackProvider>);
 else if (target && name === "school-intelligence") { /* Mounted above with synthetic auth. */ }
 else if (target && name === "command-center-explorer") createRoot(target).render(<CommandCenterVisualFixture />);
