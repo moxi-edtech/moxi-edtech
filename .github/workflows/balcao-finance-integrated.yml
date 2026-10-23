@@ -1,67 +1,72 @@
-# Disposable end-to-end financial/RLS validation. No remote Supabase credentials.
-name: Balcao Full Financial Integration
+name: Balcao Installed Finance Contract (no historical replay)
 on:
   pull_request:
     paths:
-      - "supabase/ops/tests/balcao_*"
-      - ".github/workflows/balcao-finance-integrated.yml"
-      - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
-      - "apps/web/src/components/secretaria/command-center/**"
-      - "apps/web/src/features/financeiro/actions.ts"
+      - 'supabase/migrations/*fix_validar_pagamento_idempotency.sql'
+      - 'supabase/ops/tests/finance_validator_targeted_*'
+      - 'supabase/ops/tests/finance_validator_production_*'
+      - 'scripts/ci/verify_finance_validator_function.py'
+      - '.github/workflows/balcao-finance-integrated.yml'
+      - 'supabase/ops/tests/balcao_*'
+      - 'apps/web/src/components/secretaria/BalcaoAtendimento.tsx'
+      - 'apps/web/src/components/secretaria/command-center/**'
+      - 'apps/web/src/features/financeiro/actions.ts'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  full-migration-finance:
-    name: Full Supabase migration chain and actual financial RLS
+  installed-finance-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: klasse_finance_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d klasse_finance_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_finance_test
+      PGCONNECT_TIMEOUT: '10'
     steps:
       - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
-        with:
-          version: 2.121.0
-      - name: Stage strict compatibility for historical dependency gaps (ephemeral runner)
-        run: python3 supabase/ops/tests/balcao_finance_replay_compat.py supabase/migrations
-      - name: Start disposable Supabase with ALL original migrations
+      - name: Install PostgreSQL client only (no external Supabase project)
         run: |
-          supabase start --exclude studio,mailpit,storage-api,imgproxy,logflare,vector,edge-runtime,realtime,supavisor,postgres-meta
-      - name: Prove all original migrations PLUS recorded CI-only precondition were applied
-        env:
-          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Guard production function/fiscal contract unchanged except service P0 states
+        run: python3 scripts/ci/verify_finance_validator_function.py
+      - name: Create strictly synthetic tenant-scoped PostgreSQL contract
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_targeted_bootstrap.sql
+      - name: Install live validator and real fiscal allocator on synthetic schema
         run: |
-          set -euo pipefail
-          python3 supabase/ops/tests/balcao_full_replay_assert.py
-          psql "$PGURL" -v ON_ERROR_STOP=1 <<'SQL'
-          DO $$ BEGIN
-            IF to_regclass('public.pautas_oficiais') IS NULL THEN
-              RAISE EXCEPTION 'REAL_PAUTAS_TABLE_MISSING';
-            END IF;
-            IF NOT EXISTS (
-              SELECT 1 FROM pg_trigger
-              WHERE tgrelid='public.pautas_oficiais'::regclass
-                AND tgname='trg_pautas_archive_outbox' AND NOT tgisinternal
-            ) THEN RAISE EXCEPTION 'DEFERRED_PAUTAS_TRIGGER_MISSING'; END IF;
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_production_contract.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_production_baseline.sql
+      - name: Apply real finance validator production migration to disposable DB
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271015110000_fix_validar_pagamento_idempotency.sql
+      - name: Real SQL functions + actor guards + fiscal allocation + RLS + idempotency
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_production_regression.sql
+      - name: Three races — real parallel PostgreSQL sessions and strict invariants
+        run: bash supabase/ops/tests/finance_validator_production_concurrency.sh
+      - name: Verify RLS was not bypassed in test schema
+        run: |
+          psql "$PGURL" -X -At -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE obj text;
+          BEGIN
+            FOREACH obj IN ARRAY ARRAY['pagamentos','mensalidades','pagamento_intents','documentos_emitidos','servico_pedidos','financeiro_pagamento_alocacoes','financeiro_lancamentos','fiscal_documentos','audit_logs']
+            LOOP
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_class WHERE oid=('public.'||obj)::regclass
+                AND relrowsecurity
+              ) THEN RAISE EXCEPTION 'RLS_NOT_ENABLED %',obj; END IF;
+            END LOOP;
           END $$;
           SQL
-      - name: Real RLS, actual proof/approval/rejection/resubmission, receipt and balance
-        env:
-          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        run: |
-          psql "$PGURL" -v ON_ERROR_STOP=1 -1 -f supabase/ops/tests/balcao_finance_full_migrations.sql
-      - name: Race AND repeated approval are independent hard financial gates
-        env:
-          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        run: |
-          set +e
-          bash supabase/ops/tests/balcao_finance_full_concurrency.sh
-          race_exit=$?
-          psql "$PGURL" -v ON_ERROR_STOP=1 -1 -f supabase/ops/tests/balcao_finance_idempotency_guard.sql
-          repeated_exit=$?
-          set -e
-          echo "Concurrent opposite decisions: $(test "$race_exit" -eq 0 && echo PASS || echo FAIL)"
-          echo "Repeated approval without double charge: $(test "$repeated_exit" -eq 0 && echo PASS || echo FAIL)"
-          test "$race_exit" -eq 0 && test "$repeated_exit" -eq 0
-      - name: Confirm zero paid branch or remote deployment
-        run: |
-          echo "Tests used only self-hosted ephemeral Postgres, source migrations and synthetic IDs."

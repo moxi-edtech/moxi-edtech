@@ -30,3 +30,25 @@ Fifth failed replay (run 39635536263): migration `20260227180000_automate_archiv
 - **Cobertura e limitação:** a primeira parte do fluxo é transacional e passou no banco parcialmente migrado; `balcao_finance_idempotency_guard.sql` é um gate separado para impedir que a falha impeça os restantes cenários de serem executados. Nem o replay completo nem um E2E com sessão Auth real e interface Next.js estão aprovados. A simulação JWT via `SET ROLE authenticated` + `request.jwt.claims` executa RPCs e políticas reais, mas NÃO testa a emissão da sessão Auth HTTP.
 
 **Ação que exige autorização de escopo:** reparar a função financeira canónica numa PR própria, com transição atómica limitada a `pending`, idempotência de aprovação e rejeição, contabilidade única da liquidação e teste de concorrência. O pedido original proíbe mudanças no motor financeiro; por isso **não se alterou** essa função nem se relaxou o teste para obter verde. Sem uma correção autorizada, a PR #213 NÃO deve ser mesclada nem distribuída como homologada.
+
+
+## 2026-10-23 — gate coerente com Supabase instalado
+
+O histórico completo em supabase/migrations não reproduz o banco de produção
+e falhava por pré-condições ausentes em migrações antigas
+(portal_user_can_access_aluno(uuid)), antes de alcançar o teste financeiro.
+O workflow balcao-finance-integrated.yml passa a testar, num PostgreSQL 17
+descartável, as funções reais validar_pagamento e
+financeiro_aplicar_pagamento_existente, com contratos de colunas/enums
+verificados contra o Supabase instalado, políticas RLS sintéticas de duas escolas
+e corridas independentes com transições opostas. Também valida o fingerprint
+da função de origem, para impedir que o SQL histórico substitua o motor atual.
+
+Limite: esta réplica é setorial, não um dump estrutural integral nem testes
+HTTP autenticados no GoTrue real. Não é certificação fiscal em produção.
+Não executar migrações históricas na base real para tentar reparar o CI.
+
+O budget do Vite continua documentado, mas deixa de comparar como regressão
+o tamanho da fixture geral, que inclui módulos posteriores de IA/Command Center.
+O CI continua a medir transferências sintéticas e exigir o limite de bytes do
+bundle otimizado Next.js da rota do Balcão na build de produção.
