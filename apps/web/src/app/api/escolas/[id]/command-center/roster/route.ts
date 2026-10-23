@@ -70,7 +70,7 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
     const permission = await requireRoleInSchool({
       supabase, escolaId, productContext: "k12",
       roles: ["admin", "admin_escola", "staff_admin", "diretor",
-        "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
+        "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro", "financeiro"],
     });
     if (permission.error) return permission.error;
     const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
