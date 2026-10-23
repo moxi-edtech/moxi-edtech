@@ -1,16 +1,18 @@
 # Command Center / Balcão — documentação de produto
 
-**Última revisão:** 22/10/2026 · **Estado:** P1/P2 em branches de revisão, sem homologação funcional completa. **CC-001 (replay de migrations) pertence à frente paralela do proprietário e não é objectivo desta execução.**
+**Última revisão: 23/10/2026.** A consolidação do Command Center [#252](https://github.com/moxi-edtech/moxi-edtech/pull/252) e a integração do Workspace/Balcão [#253](https://github.com/moxi-edtech/moxi-edtech/pull/253) estão na `main`. O deployment do merge #253 está **READY**. As **11 migrations** do Command Center foram instaladas no Supabase; **nenhuma escola tem isolamento por polo ativado**. O CI verde não substitui homologação autenticada.
+
+> **Leia primeiro:** [Estado atual, implementação, implantação e pendências — 23/10/2026](estado-atual-20261023.md). Os roteiros de PRs abaixo são **históricos de 22/10** e não descrevem branches ainda pendentes.
 
 ## Por onde começar
 
-1. **[Estado verificado e backlog priorizado](estado-backlog-20261022.md)** — fonte de verdade de acompanhamento: o que já existe, o que falta, bloqueios confirmados, critérios de aceite, dependências e decisões de produto.
+1. **[Backlog histórico em 22/10](estado-backlog-20261022.md)** — retrato anterior à consolidação; o que já existe, o que falta, bloqueios confirmados, critérios de aceite, dependências e decisões de produto.
 2. **[Graciosidade no KLASSE](../product/graciosidade.md)** — norma obrigatória de contexto, clareza, recuperação e separação entre estados intermediários e confirmação persistida.
 3. **[PR 1: segurança e continuidade](pr1-security-continuity-gates.md)** — retorno do Balcão, privacidade da sessão e replay SQL histórico.
 4. **[PR 3: acções e exportação](pr3-actions-export-decisions.md)** — política de exportação por escola, desactivada por omissão.
 5. **[PR 4: desempenho e observabilidade](../performance/command-center-20261022.md)** — consultas, contagens, erros, capturas de fixture e limitações dos benchmarks.
 
-## P1 e P2 — aprimoramentos activos
+## P1 e P2 — histórico das frentes de implementação
 
 - **[PR #240 — ordenação completa e protecção das pesquisas](https://github.com/moxi-edtech/moxi-edtech/pull/240):** nome A–Z/Z–A antes de paginar, cursores determinísticos, throttle por operador/escola com memória local limitada; **não é protecção distribuída**. SQL numa nova migration opcional, sem aplicação de produção.
 - **[PR #241 — P2 acessibilidade e observabilidade](https://github.com/moxi-edtech/moxi-edtech/pull/241):** scroll contextual único, teclado, 40 vistas e 24 breadcrumbs retidos, erros correlacionados e testes sintéticos.
@@ -18,7 +20,7 @@
 
 O filtro de matrícula incompleta, documentos obrigatórios por escola, exportação habilitada e medições reais/AA completas continuam dependentes de decisão e homologação. Estas PRs não reabrem CC-001.
 
-## Roteiro de PRs empilhadas
+## Roteiro histórico de PRs empilhadas (pré-#252)
 
 ```text
 main
@@ -29,7 +31,7 @@ main
                 └── #239  performance/observabilidade/visual (12/12 no HEAD conferido)
 ```
 
-**Atenção:** esse diagrama representa a relação **pretendida**. As bases reais das PRs superiores ainda apontam a commits anteriores das branches inferiores e precisam ser reconciliadas antes do aceite. Os checks mencionados são os observados nos commits listados no [estado verificado](estado-backlog-20261022.md), antes de commits exclusivamente documentais.
+**Atenção:** esse diagrama é histórico e foi superado pelo merge #252; representa a relação **pretendida** à data. As bases reais das PRs superiores ainda apontam a commits anteriores das branches inferiores e precisam ser reconciliadas antes do aceite. Os checks mencionados são os observados nos commits listados no [estado verificado](estado-backlog-20261022.md), antes de commits exclusivamente documentais.
 
 ## Restrições
 
@@ -37,4 +39,4 @@ main
 - Nenhuma migration de produção deve ser executada para resolver o replay, e nenhuma migration já aplicada pode ser alterada.
 - Não alterar ou contornar RLS, guards fiscais, estado académico ou a separação «aprovado pela Secretaria» / «liquidado».
 - Exportação bloqueada por defeito e filtragem por polo recusada enquanto a relação canónica não estiver comprovada.
-- Sem merge na `main`, sem deploy manual e sem activar políticas/funcionalidades gated sem autorização explícita.
+- Merges #252 e #253 e deployment já ocorreram; **não** ativar políticas/funcionalidades gated sem autorização explícita e homologação.

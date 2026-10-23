@@ -1,5 +1,7 @@
 # KLASSE — Auditoria e evolução operacional dos exploradores do Command Center
 
+> **Atualização de estado — 23/10/2026:** esta auditoria é um retrato de 22/10, **não o estado atual do código**. A cadeia de exploradores foi consolidada pela [PR #252](https://github.com/moxi-edtech/moxi-edtech/pull/252), e a continuidade com o Balcão foi reconciliada na [PR #253](https://github.com/moxi-edtech/moxi-edtech/pull/253), ambas integradas na `main`. O deployment da #253 está READY; as 11 migrations do Command Center estão instaladas e a política opt-in de polo não está ativada em nenhuma escola. **Continuam pendentes as provas manuais/autenticadas descritas aqui.** Consulte [o estado atualizado](./command-center/estado-atual-20261023.md) antes de usar as classificações históricas de risco.
+
 **Registo:** 22/10/2026 · **Tipo:** auditoria de produto, engenharia, segurança e plano de evolução · **Estado:** documentação; implementação e homologação pendentes.
 
 **Direção consolidada (auditoria técnica + auditoria ergonómica do Claude):** o explorador só cumpre a sua função quando a pessoa consegue passar da pesquisa à operação e regressar ao mesmo ponto, sem refazer o percurso. **P0-UX (continuidade de trabalho)** e **P0-SEC (autorização e privacidade)** são gates independentes e igualmente bloqueantes. Não lançar melhorias cosméticas à frente destes gates.
