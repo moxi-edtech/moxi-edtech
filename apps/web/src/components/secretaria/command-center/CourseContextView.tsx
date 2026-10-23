@@ -40,20 +40,37 @@ export function CourseContextView({
 }: Props) {
   const { data, error, loading, retry } = useCourseContext(context);
   const reducedMotion = useReducedMotion();
-  const [classeId, setClasseId] = useState<string | null>(initialClasseId ?? null);
+  // Selection belongs to a specific school/course/year. A mounted explorer may
+  // receive a different context without remounting; never reuse the old filter.
+  const contextKey = [context.escolaId, context.id, context.academicYearId ?? ""].join(":");
+  const [selection, setSelection] = useState(() => ({
+    contextKey, classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null,
+  }));
+  const scopedSelection = selection.contextKey === contextKey ? selection : {
+    contextKey, classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null,
+  };
+  // An initial filter may reference a class/turma no longer valid in this year.
+  // Ignore it rather than claiming the selected course has no turmas.
+  const classeId = data && !data.classes.some((c) => c.id === scopedSelection.classeId)
+    ? null : scopedSelection.classeId;
+  const turmaId = data && !data.turmas.some((t) => t.id === scopedSelection.turmaId)
+    ? null : scopedSelection.turmaId;
+
   function selectClasse(id: string | null) {
-    setClasseId(id);
+    setSelection({ contextKey, classeId: id, turmaId: null });
     onClasseChange?.(id);
-    setTurmaId(null);
     onTurmaChange?.(null);
   }
-  const [turmaId, setTurmaId] = useState<string | null>(initialTurmaId ?? null);
+  function setTurmaId(id: string | null) {
+    setSelection({ contextKey, classeId, turmaId: id });
+  }
 
   const visibleTurmas = useMemo(
     () => (data?.turmas ?? []).filter((turma) => !classeId || turma.classeId === classeId),
     [data, classeId],
   );
-  const selectedTurma = data?.turmas.find((turma) => turma.id === turmaId);
+  const selectedTurma = data?.turmas.find((turma) =>
+    turma.id === turmaId && (!classeId || turma.classeId === classeId));
   const selectedClasse = data?.classes.find((classe) => classe.id === classeId);
 
   function openTurmaPage(id: string) {
@@ -151,7 +168,7 @@ export function CourseContextView({
           </h3>
           <div className=" p-2">
             <button type="button"
-              onClick={() => { setClasseId(null); setTurmaId(null); onClasseChange?.(null); onTurmaChange?.(null); }}
+              onClick={() => selectClasse(null)}
               aria-pressed={!classeId}
               className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600 ${!classeId ? "bg-slate-100 font-semibold" : ""}`}>
               Todas as classes
