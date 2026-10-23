@@ -60,15 +60,17 @@ Dos 146 vínculos para linhas inativas, os 146 estão em turmas de **2025** (ano
 4. Relacionar Turma/Professor/Disciplina somente com provas de `escola_id`, `ano_letivo_id`, IDs canónicos e vínculo efetivo. Se a FK da turma aponta para matriz de outro ano, **manter o vínculo e sinalizar inconsistência para auditoria**; não apresentá-lo como cobertura comprovada do ano solicitado.
 5. Manter o resultado `limitado/parcial` enquanto houver truncamento ou fontes não reconciliadas. Falta de perfil docente apenas altera a identificação exibida, não a evidência do vínculo.
 
-## Implementação pendente (PR #261)
+## Implementação EX-006 na PR #261
 
-A base atual da PR #261 ainda compõe `curriculo` e `curriculoHistorico` a partir de `curso_matriz.ativo` e mostra uma secção inativa na vista de Disciplina. **Esse comportamento está supersedido por esta decisão, mas não foi removido neste commit documental.**
+**Alinhamento codado diretamente no GitHub; CI completa e homologação autenticada pendentes.**
 
-- **EX-006 (reorientar):** adaptar API, compositor, tipos e vista Disciplina ao escopo `curso_curriculos` + ano letivo + versão. Remover a lista operacional de matrizes inativas; manter proveniência para gestão/auditoria. Não apagar dados.
-- **EX-005/EX-010:** aplicar a mesma regra a Curso/Classe e à cobertura por turma, sem quebrar a reutilização de classes.
-- **Auditoria de vínculos entre anos:** investigar 486 ligações com matriz curricular de ano diferente, segmentadas por escola, ano e estado, em ambiente controlado; definir se são legados válidos ou relações inconsistentes antes de qualquer correção.
-- **Testes obrigatórios:** matrizes de 2025 vs 2026 com mesma combinação; dois currículos/versões no mesmo ano; `published` com linha `ativo=false`; currículo `archived`; turmas com vínculo a matriz de ano distinto; identidade docente ausente; truncagem; escola A/B e RLS; navegação histórica autenticada.
-- **Gates:** testes unitários + integração de contrato + CI + smoke autenticado. Não promover a PR nem publicar até substituir a semântica antiga e validar com os dados atuais.
+- A rota de Disciplina consulta `curso_curriculos` por escola, ano letivo UUID e `status=published` antes de consultar `curso_matriz` pelas FKs `curso_curriculo_id`.
+- Não mistura versões de anos diferentes nem versões arquivadas. Duas versões publicadas para o mesmo curso/classe/ano causam erro 409, sem escolha silenciosa.
+- O compositor e a vista devolvem uma única coleção `curriculo`, com `curriculoId` e `curriculoVersao`. Linhas atualmente inativas de um currículo publicado aparecem **na mesma coleção**, qualificadas como estado atual, sem inventar histórico.
+- Classes reutilizadas são reconhecidas pela publicação curricular do ano; atribuições reais de docentes e turmas permanecem consultáveis, sem migração de dados.
+- Consultas truncadas ou inconsistentes continuam marcadas como parciais.
+
+**Gates restantes:** CI, testes de integração autenticados, revisão multi-escola/anos, auditoria separada das 486 relações entre anos e verificação dos restantes exploradores. Sem merge ou deploy até homologação.
 
 ## Não objetivos
 
@@ -77,4 +79,4 @@ A base atual da PR #261 ainda compõe `curriculo` e `curriculoHistorico` a parti
 - Migrar/reapontar automaticamente qualquer uma das 486 associações.
 - Corrigir dados diretamente em produção como consequência desta decisão.
 
-**Relação com a documentação anterior:** esta decisão prevalece sobre a proposta de duas listas `curriculo`/`curriculoHistorico` descrita no README da fundação. O README deve apontar para esta decisão enquanto a implementação é reconciliada.
+**Relação com a documentação anterior:** esta decisão prevalece sobre a proposta de duas listas `curriculo`/`curriculoHistorico` descrita no README da fundação. O README aponta para esta decisão. O alinhamento da vista Disciplina está codado, mas os gates de integração permanecem.
