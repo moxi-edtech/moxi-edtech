@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ matriculaId: string }> },
 ) {
-  const { id } = await params;
-  if (!z.string().uuid().safeParse(id).success) {
+  const { matriculaId } = await params;
+  if (!z.string().uuid().safeParse(matriculaId).success) {
     return NextResponse.json({ ok: false, error: "Matrícula inválida." }, { status: 400 });
   }
   const supabase = await supabaseServer();
@@ -30,7 +30,7 @@ export async function GET(
   });
   const { data, error: queryError } = await supabase.from("matriculas")
     .select("id, turma_id, ano_letivo, session_id")
-    .eq("id", id).eq("escola_id", escolaId).maybeSingle();
+    .eq("id", matriculaId).eq("escola_id", escolaId).maybeSingle();
   if (queryError) return NextResponse.json({ ok: false, error: "Falha ao carregar matrícula." }, { status: 500 });
   if (!data || !data.turma_id || !data.ano_letivo) {
     return NextResponse.json({ ok: false, error: "Matrícula sem turma ou ano letivo válido." }, { status: 404 });
