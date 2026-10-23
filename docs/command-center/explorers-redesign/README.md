@@ -132,6 +132,15 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 
 A implementação deste primeiro incremento **não** constitui o redesign completo e **não** deve ser enviada à main ou à produção antes de testes de integração, smoke autenticado e revisão de produto.
 
+### Incremento de correção: vínculos históricos e resultados parciais (23/10/2026)
+
+- **Estado do vínculo e estado da matriz são independentes.** A evidência de atribuição à turma, professor e horário publicado prevalece na classificação operacional; uma matriz atualmente inativa fica sinalizada separadamente. Num ano CLOSED, **não inferir** que estivesse inativa nesse ano.
+- **Disciplina:** a rota devolve separadamente `curriculo` (matriz atualmente ativa) e `curriculoHistorico` (referência atualmente inativa). Os indicadores de Cursos/Classes na matriz usam apenas a primeira coleção; referências inativas são mostradas apenas ao consultar histórico.
+- **Turma:** exibe o vínculo preservado e o aviso de matriz inativa em campos separados, mesmo que haja professor atribuído.
+- **Resultados limitados:** indicadores são limites inferiores, nunca totais exatos; Curso/Classe/Turma/Professor/Disciplina não anunciam ausência comprovada quando faltam registos por truncagem. “Professor não encontrado nos vínculos consultados” não equivale a “sem professor”.
+- **Testes de regressão:** cobrem prioridade de evidência, estado de matriz em ano CLOSED, coexistência de linhas ativas/inativas, totais apenas de matrizes ativas, zero parcial e mensagens de ausência. É necessária validação de CI e homologação autenticada antes da integração.
+- **Não resolvido neste incremento:** paginação de Curso e cobertura completa no servidor; os limites de consulta continuam existindo e devem continuar explícitos.
+
 ## 8. Homologação obrigatória antes de integrar
 
 1. Escolas A/B e atores Secretaria, Direção, professor e operador sem permissão: não permitir acesso cruzado.
