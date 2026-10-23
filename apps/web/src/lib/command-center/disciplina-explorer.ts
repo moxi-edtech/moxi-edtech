@@ -13,18 +13,48 @@ export type DisciplinaTurmaRow = {
 
 export type DisciplinaTeacher = { id: string; nome: string };
 export type DisciplinaAssignment = { turmaId: string; professorId: string | null };
+export type PublishedCourseCurriculum = {
+  id: string;
+  cursoId: string;
+  classeId: string | null;
+  anoLetivoId: string;
+  version: number;
+  status: string;
+};
+
+export class PublishedCurriculumConflictError extends Error {
+  constructor() {
+    super("Múltiplas versões curriculares publicadas no mesmo âmbito.");
+    this.name = "PublishedCurriculumConflictError";
+  }
+}
+
+/** Never select an archived or cross-year version, nor silently choose a conflicting publication. */
+export function indexPublishedCurricula(
+  versions: PublishedCourseCurriculum[], yearId: string,
+): Map<string, PublishedCourseCurriculum> {
+  const selected = new Map<string, PublishedCourseCurriculum>();
+  for (const version of versions) {
+    if (version.anoLetivoId !== yearId || version.status !== "published") continue;
+    const key = [version.cursoId, version.classeId ?? ""].join(":");
+    if (selected.has(key)) throw new PublishedCurriculumConflictError();
+    selected.set(key, version);
+  }
+  return selected;
+}
+
 export type DisciplinaCurriculumRow = {
-  id?: string;
+  id: string;
+  curriculoId: string;
+  curriculoVersao: number;
   cursoId: string | null;
   cursoNome: string | null;
   classeId: string | null;
   classeNome: string | null;
   cargaHorariaSemanal: number | null;
   obrigatoria: boolean | null;
-  /** Current database activity: NOT a snapshot of the historical year. */
-  ativo?: boolean | null;
-  /** A separate older/current row may exist for the same Curso/Classe. */
-  hasOtherActivityVersion?: boolean;
+  /** Current activity, not a historical snapshot. */
+  ativo: boolean | null;
 };
 
 /** Never extrapolate across years from a legacy numeric year when an ID is present. */
@@ -86,33 +116,17 @@ export function composeDisciplinaOverview(input: {
     turmas: ids.size,
   })).sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id));
 
-  // Keep currently inactive matrices visible as historical references; never
-  // count them as the active curriculum or infer their state in the selected year.
-  const activeCurriculum = new Map<string, DisciplinaCurriculumRow>();
-  const inactiveCurriculum = new Map<string, DisciplinaCurriculumRow>();
-  const seenActivities = new Map<string, Set<boolean>>();
-  for (const row of input.curriculum) {
-    if (!row.cursoId && !row.classeId) continue;
-    const key = [row.cursoId ?? "", row.classeId ?? ""].join(":");
-    const bucket = row.ativo === false ? inactiveCurriculum : activeCurriculum;
-    if (!seenActivities.has(key)) seenActivities.set(key, new Set());
-    if (row.ativo !== null && row.ativo !== undefined) seenActivities.get(key)!.add(row.ativo);
-    if (!bucket.has(key)) bucket.set(key, row);
-  }
-  const byCourseAndClass = (a: DisciplinaCurriculumRow, b: DisciplinaCurriculumRow) =>
+  // The API supplies only the published curriculum for the selected academic year.
+  // Inactive rows in that version remain inline, never in a fictitious history list.
+  const curriculo = [...input.curriculum].sort((a, b) =>
     (a.cursoNome ?? "").localeCompare(b.cursoNome ?? "", "pt") ||
-    (a.classeNome ?? "").localeCompare(b.classeNome ?? "", "pt");
-  const withVersionContext = (rows: Map<string, DisciplinaCurriculumRow>) =>
-    [...rows.entries()].map(([key, row]) => ({
-      ...row, hasOtherActivityVersion: (seenActivities.get(key)?.size ?? 0) > 1,
-    })).sort(byCourseAndClass);
-  const curriculo = withVersionContext(activeCurriculum);
-  const curriculoHistorico = withVersionContext(inactiveCurriculum);
+    (a.classeNome ?? "").localeCompare(b.classeNome ?? "", "pt") ||
+    a.id.localeCompare(b.id));
+
   return {
     professores,
     turmas,
     curriculo,
-    curriculoHistorico,
     unresolvedTeacherLinks: unresolvedTeacherIds.size,
     stats: {
       professores: professores.length,
