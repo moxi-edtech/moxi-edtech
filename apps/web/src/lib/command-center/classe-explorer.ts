@@ -1,4 +1,4 @@
-import { belongsToProfessorAcademicYear } from "./professor-explorer";
+import { isClassInAcademicYear, isEntityInAcademicYear } from "./academic-relations";
 import { turmaEnrollmentPolicy } from "./turma-explorer-policy";
 
 export type ClasseTurma = {
@@ -36,7 +36,7 @@ export function isClasseTurmaInYear(
   turma: Pick<ClasseTurma, "anoLetivo" | "anoLetivoId">,
   year: { id: string; ano: number },
 ) {
-  return belongsToProfessorAcademicYear(turma, year);
+  return isEntityInAcademicYear(turma, year);
 }
 
 /**
@@ -48,9 +48,7 @@ export function isClasseAvailableInYear(
   resolvedAnoLetivoId: string,
   eligibleTurmas: readonly Pick<ClasseTurma, "id">[],
 ) {
-  return !classeAnoLetivoId ||
-    classeAnoLetivoId === resolvedAnoLetivoId ||
-    eligibleTurmas.length > 0;
+  return isClassInAcademicYear(classeAnoLetivoId, resolvedAnoLetivoId, eligibleTurmas.length);
 }
 
 export function classeEnrollmentStatuses(historical: boolean) {

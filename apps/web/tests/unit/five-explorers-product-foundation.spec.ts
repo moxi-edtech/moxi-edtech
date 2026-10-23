@@ -1,0 +1,90 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import {
+  isEntityInAcademicYear, isClassInAcademicYear, mergeCurriculumActivity,
+  academicLinkState, ACADEMIC_LINK_LABELS,
+} from "../../src/lib/command-center/academic-relations";
+import { ExplorerMetric } from "../../src/components/secretaria/command-center/ExplorerMetric";
+import { ExplorerHistoricalScopeNotice } from "../../src/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
+import { TURMA_DISCIPLINAS_SELECT } from "../../src/lib/command-center/turma-explorer-policy";
+
+test("EX-001: canonical year UUID wins over equal legacy numeric year", () => {
+  assert.equal(isEntityInAcademicYear({ anoLetivoId: "year-b", anoLetivo: 2026 }, { id: "year-a", ano: 2026 }), false);
+  assert.equal(isEntityInAcademicYear({ anoLetivoId: "year-a", anoLetivo: 2025 }, { id: "year-a", ano: 2026 }), true);
+  assert.equal(isEntityInAcademicYear({ anoLetivoId: null, anoLetivo: 2026 }, { id: "year-a", ano: 2026 }), true);
+  assert.equal(isEntityInAcademicYear({ anoLetivoId: null, anoLetivo: null }, { id: "year-a", ano: 2026 }), false);
+});
+
+test("EX-001: reused class is eligible through an actual correctly scoped turma", () => {
+  assert.equal(isClassInAcademicYear("old-year", "current-year", 0), false);
+  assert.equal(isClassInAcademicYear("old-year", "current-year", 1), true);
+  assert.equal(isClassInAcademicYear("current-year", "current-year", 0), true);
+  assert.equal(isClassInAcademicYear(null, "current-year", 0), true);
+});
+
+test("EX-001: active curriculum wins over duplicate inactive rows; missing is unknown", () => {
+  assert.equal(mergeCurriculumActivity(null, null), null);
+  assert.equal(mergeCurriculumActivity(null, false), false);
+  assert.equal(mergeCurriculumActivity(false, true), true);
+  assert.equal(mergeCurriculumActivity(true, false), true);
+});
+
+test("EX-001: matrix, allocated teacher and published schedule are distinct levels", () => {
+  const base = {
+    curriculumActive: true,
+    assignedToTurma: false,
+    teacherAssigned: false,
+    schedulePublished: false,
+    historicalYear: false,
+  };
+  assert.equal(academicLinkState(base), "curriculum-only");
+  assert.equal(academicLinkState({ ...base, assignedToTurma: true }), "turma-assigned");
+  assert.equal(academicLinkState({ ...base, teacherAssigned: true }), "teacher-assigned");
+  assert.equal(academicLinkState({ ...base, schedulePublished: true }), "published");
+  assert.equal(academicLinkState({ ...base, curriculumActive: false, historicalYear: true, teacherAssigned: true }), "inactive-matrix");
+  assert.equal(academicLinkState({ ...base, curriculumActive: null }), "unconfirmed");
+  assert.match(ACADEMIC_LINK_LABELS["inactive-matrix"], /inativa/);
+});
+
+test("EX-002: metric semantics distinguish undefined capacity, totals and partial", () => {
+  const empty = renderToStaticMarkup(createElement(ExplorerMetric, { label: "Capacidade", value: null }));
+  assert.match(empty, /Capacidade: não definida/);
+  assert.doesNotMatch(empty, />0</);
+  const exact = renderToStaticMarkup(createElement(ExplorerMetric, { label: "Alunos", value: 0 }));
+  assert.match(exact, /Alunos: 0/);
+  const partial = renderToStaticMarkup(createElement(ExplorerMetric, { label: "Turmas", value: 100, partial: true }));
+  assert.match(partial, /contagem parcial/);
+});
+
+test("EX-003: historic notice explains actual read-only capability, never promising unavailable search", () => {
+  const html = renderToStaticMarkup(createElement(ExplorerHistoricalScopeNotice, { roster: true }));
+  assert.match(html, /Histórico/);
+  assert.match(html, /pesquisa operacional/);
+  assert.match(html, /listagem histórica por páginas/);
+});
+
+test("EX-003: both rosters await known non-historic year before calling operational search", () => {
+  const hook = readFileSync("src/hooks/useExplorerRoster.ts", "utf8");
+  const classe = readFileSync("src/components/secretaria/command-center/ClasseContextView.tsx", "utf8");
+  const turma = readFileSync("src/components/secretaria/command-center/TurmaContextView.tsx", "utf8");
+  assert.match(hook, /enabledForYear &&/);
+  assert.match(classe, /data\?\.anoLetivo\.historico === false/);
+  assert.match(turma, /data\?\.turma\.anoLetivo\.historico === false/);
+  assert.match(classe, /!\s*anoLetivo\.historico && \(/);
+  assert.match(turma, /!\s*turma\.anoLetivo\.historico && \(/);
+});
+
+test("EX-005/006: scoped class reuse and curricular activity have provenance in APIs", () => {
+  const disciplinaRoute = readFileSync("src/app/api/escolas/[id]/command-center/disciplinas/[disciplinaId]/route.ts", "utf8");
+  const turmaRoute = readFileSync("src/app/api/escolas/[id]/command-center/turmas/[turmaId]/route.ts", "utf8");
+  assert.match(disciplinaRoute, /classUsageReply/);
+  assert.match(disciplinaRoute, /isClassInAcademicYear/);
+  assert.match(disciplinaRoute, /eq\("ano_letivo_id", year\.id\)/);
+  assert.match(TURMA_DISCIPLINAS_SELECT, /curso_matriz\(id,disciplina_id,ativo,/);
+  assert.match(TURMA_DISCIPLINAS_SELECT, /!curso_matriz_disciplina_id_fkey/);
+  assert.match(turmaRoute, /mergeCurriculumActivity/);
+  assert.match(turmaRoute, /curriculumActive: d\.curriculumActive/);
+});

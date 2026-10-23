@@ -1,4 +1,4 @@
-import { belongsToProfessorAcademicYear } from "./professor-explorer";
+import { isEntityInAcademicYear } from "./academic-relations";
 
 /** Rows have already been school-scoped by the authenticated API. */
 export type DisciplinaTurmaRow = {
@@ -27,7 +27,7 @@ export function isDisciplinaTurmaInYear(
   turma: Pick<DisciplinaTurmaRow, "anoLetivo" | "anoLetivoId">,
   academicYear: { id: string; ano: number },
 ) {
-  return belongsToProfessorAcademicYear(turma, academicYear);
+  return isEntityInAcademicYear(turma, academicYear);
 }
 
 export function composeDisciplinaOverview(input: {

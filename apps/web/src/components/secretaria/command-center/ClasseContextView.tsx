@@ -8,6 +8,8 @@ import {
 
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
+import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { useClasseContext } from "@/hooks/useClasseContext";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
@@ -37,8 +39,6 @@ type Props = {
   onViewChange?: (state: ExplorerViewState) => void;
 };
 
-const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
-
 /** Capacidade registada ≠ vagas disponíveis. Null = não definida (nunca zero inventado). */
 function occupancyFromCapacity(capacity: number | null, enrolled: number) {
   if (capacity == null) {
@@ -48,26 +48,6 @@ function occupancyFromCapacity(capacity: number | null, enrolled: number) {
     available: Math.max(capacity - enrolled, 0),
     overcapacity: Math.max(enrolled - capacity, 0),
   };
-}
-
-function Metric({
-  label, value, limited, hint,
-}: {
-  label: string;
-  value: number | null;
-  limited?: boolean;
-  hint?: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-        {value == null ? "Não definida" : numberPt(value)}
-        {limited && value != null ? "+" : ""}
-      </p>
-      {hint ? <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p> : null}
-    </div>
-  );
 }
 
 function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
@@ -93,14 +73,14 @@ export function ClasseContextView({
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [rosterSort, setRosterSort] = useState<RosterSort>(initialSort);
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>(initialFilter);
-  const roster = useExplorerRoster(context, "classe", searchTerm, rosterSort, rosterFilter);
-  const searchActive = searchTerm.trim().length >= 2 ||
-    (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos"));
+  const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
+  const roster = useExplorerRoster(context, "classe", searchTerm, rosterSort, rosterFilter, data?.anoLetivo.historico === false);
+  const searchActive = data?.anoLetivo.historico === false && (searchTerm.trim().length >= 2 ||
+    (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos")));
   const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
     page, scrollTop: currentScroll.current, selectedStudentId: selected,
     search: searchTerm, filter: rosterFilter, sort: rosterSort,
   }), [page, searchTerm, rosterSort, rosterFilter]);
-  const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentScroll = useRef(initialScrollTop);
   const currentStudent = useRef(selectedStudentId);
@@ -185,30 +165,32 @@ export function ClasseContextView({
         </button>
       </header>
 
+      {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice roster />}
+
       <section aria-label="Indicadores da classe" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <Metric label="Alunos matriculados" value={stats.alunos} limited={limitado} />
-        <Metric label="Turmas do ano" value={stats.turmas} limited={limitado} />
-        <Metric
+        <ExplorerMetric label="Alunos matriculados" value={stats.alunos} partial={limitado} />
+        <ExplorerMetric label="Turmas do ano" value={stats.turmas} partial={limitado} />
+        <ExplorerMetric
           label="Capacidade"
           value={stats.capacidade}
-          limited={limitado}
+          partial={limitado}
           hint={stats.capacidade == null ? "Soma só quando todas as turmas têm capacidade definida" : undefined}
         />
-        <Metric
+        <ExplorerMetric
           label="Vagas disponíveis"
           value={classOccupancy.available}
-          limited={limitado}
+          partial={limitado}
           hint={stats.capacidade == null ? "Indisponível sem capacidade completa" : undefined}
         />
         {classOccupancy.overcapacity != null && classOccupancy.overcapacity > 0 && (
-          <Metric
+          <ExplorerMetric
             label="Excedente de lotação"
             value={classOccupancy.overcapacity}
             hint="Alunos acima da capacidade registada"
           />
         )}
-        <Metric label="Disciplinas" value={stats.disciplinas} limited={limitado} />
-        <Metric label="Professores" value={stats.professores} limited={limitado} />
+        <ExplorerMetric label="Disciplinas" value={stats.disciplinas} partial={limitado} />
+        <ExplorerMetric label="Professores" value={stats.professores} partial={limitado} />
         {refreshing && (
           <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>
         )}
@@ -319,22 +301,36 @@ export function ClasseContextView({
       </section>
 
       <section className="min-w-0" aria-labelledby="classe-alunos-heading">
-        <ExplorerRosterControls value={searchTerm} sort={rosterSort} filter={rosterFilter}
-        onFilterChange={(next) => {
-          setRosterFilter(next);
-          onViewChangeRef.current?.({ ...view(), filter: next });
-        }}
-        onSortChange={(next) => {
-          setRosterSort(next);
-          onViewChangeRef.current?.({ ...view(), sort: next });
-        }}
-        onChange={(next) => {
-          setSearchTerm(next);
-          onViewChangeRef.current?.({ ...view(), search: next });
-        }} />
-        <ExplorerRosterExportButton escolaId={context.escolaId} entityId={context.id}
-          type="classe" yearId={context.academicYearId}
-          query={searchTerm} filter={rosterFilter} sort={rosterSort} />
+        {!anoLetivo.historico && (
+          <>
+            <ExplorerRosterControls
+              value={searchTerm}
+              sort={rosterSort}
+              filter={rosterFilter}
+              onFilterChange={(next) => {
+                setRosterFilter(next);
+                onViewChangeRef.current?.({ ...view(), filter: next });
+              }}
+              onSortChange={(next) => {
+                setRosterSort(next);
+                onViewChangeRef.current?.({ ...view(), sort: next });
+              }}
+              onChange={(next) => {
+                setSearchTerm(next);
+                onViewChangeRef.current?.({ ...view(), search: next });
+              }}
+            />
+            <ExplorerRosterExportButton
+              escolaId={context.escolaId}
+              entityId={context.id}
+              type="classe"
+              yearId={context.academicYearId}
+              query={searchTerm}
+              filter={rosterFilter}
+              sort={rosterSort}
+            />
+          </>
+        )}
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 id="classe-alunos-heading" className="flex items-center gap-2 font-semibold text-slate-900">
             <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
@@ -345,7 +341,7 @@ export function ClasseContextView({
         </div>
         {searchActive && (roster.loading || roster.refreshing) && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
         {searchActive && roster.error && <p role="alert" className="my-2 text-xs text-rose-700">{roster.error} <button type="button" onClick={() => void roster.retry()} className="underline">Tentar novamente</button></p>}
-        {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
+        {!anoLetivo.historico && roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {visibleStudents.map((aluno) => (
 <div key={aluno.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-slate-100 px-2 py-1 last:border-0">

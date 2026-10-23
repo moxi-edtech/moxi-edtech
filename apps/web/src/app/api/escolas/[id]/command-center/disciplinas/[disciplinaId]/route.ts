@@ -12,6 +12,7 @@ import {
   type DisciplinaAssignment, type DisciplinaCurriculumRow, type DisciplinaTeacher,
   type DisciplinaTurmaRow,
 } from "@/lib/command-center/disciplina-explorer";
+import { isClassInAcademicYear } from "@/lib/command-center/academic-relations";
 
 export const dynamic = "force-dynamic";
 
@@ -166,7 +167,9 @@ async function readExplorer(
     const relatedTurmaIds = [...new Set(links.map((row) => row.turmaId).filter(Boolean))];
     if (relatedTurmaIds.length > MAX_TURMAS) limitado = true;
     const requestedTurmaIds = relatedTurmaIds.slice(0, MAX_TURMAS);
-    const [turmasReply, coursesReply, classesReply] = await Promise.all([
+    const relevantClassIds = [...new Set(relevantMatrix
+      .map((row) => row.classe_id).filter((id): id is string => Boolean(id)))];
+    const [turmasReply, coursesReply, classesReply, classUsageReply] = await Promise.all([
       requestedTurmaIds.length
         ? supabase.from("turmas")
           .select("id,nome,turno,ano_letivo,ano_letivo_id,classes(id,nome),cursos(id,nome)")
@@ -182,10 +185,21 @@ async function readExplorer(
           .in("id", [...new Set(relevantMatrix.map((row) => row.classe_id)
             .filter((id): id is string => Boolean(id)))])
         : Promise.resolve({ data: [] as Array<{ id: string; nome: string; ano_letivo_id: string | null }>, error: null }),
+      // A class may be reused across years even if its creation-year UUID is old.
+      // A school-scoped turma in the requested year confirms current relevance.
+      relevantClassIds.length
+        ? supabase.from("turmas").select("classe_id")
+          .eq("escola_id", escolaId).eq("ano_letivo_id", year.id)
+          .in("classe_id", relevantClassIds).limit(MAX_TURMAS + 1)
+        : Promise.resolve({ data: [] as Array<{ classe_id: string | null }>, error: null }),
     ]);
     if (turmasReply.error) throw turmasReply.error;
     if (coursesReply.error) throw coursesReply.error;
     if (classesReply.error) throw classesReply.error;
+    if (classUsageReply.error) throw classUsageReply.error;
+    const usedClasses = new Set((classUsageReply.data ?? [])
+      .map((row) => row.classe_id).filter((id): id is string => Boolean(id)));
+    if ((classUsageReply.data ?? []).length > MAX_TURMAS) limitado = true;
 
     const turmas: DisciplinaTurmaRow[] = ((turmasReply.data ?? []) as unknown as TurmaRow[])
       .map((row) => ({
@@ -214,7 +228,9 @@ async function readExplorer(
 
     const courses = new Map((coursesReply.data ?? []).map((row) => [row.id, row.nome] as const));
     const classes = new Map((classesReply.data ?? [])
-      .filter((row) => !row.ano_letivo_id || row.ano_letivo_id === year.id)
+      .filter((row) => isClassInAcademicYear(
+        row.ano_letivo_id, year.id, usedClasses.has(row.id) ? 1 : 0,
+      ))
       .map((row) => [row.id, row.nome] as const));
     const curriculo: DisciplinaCurriculumRow[] = relevantMatrix
       .filter((row) => row.ativo !== false && (!row.classe_id || classes.has(row.classe_id)))

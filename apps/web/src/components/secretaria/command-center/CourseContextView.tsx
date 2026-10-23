@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
 import { buildPortalHref } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useCourseContext } from "@/hooks/useCourseContext";
@@ -23,19 +24,6 @@ type Props = {
   onClasseChange?: (id: string | null) => void;
   onTurmaChange?: (id: string | null) => void;
 };
-
-const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
-
-function Metric({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4">
-      <span className="text-xs text-slate-500">{label}</span>
-      <p className="mt-1 font-sora text-2xl font-semibold tabular-nums text-[#1F6B3B]">
-        {numberPt(value)}
-      </p>
-    </div>
-  );
-}
 
 function turmaOccupancyHint(alunos: number, capacidade: number | null | undefined) {
   if (capacidade == null) return `${alunos} alunos · Capacidade não definida`;
@@ -125,9 +113,9 @@ export function CourseContextView({
       </header>
 
       <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-3 sm:gap-3">
-        <Metric label="Alunos matriculados" value={data.stats.alunos} />
-        <Metric label="Turmas ativas" value={data.stats.turmas} />
-        <Metric label="Classes" value={data.stats.classes} />
+        <ExplorerMetric label="Alunos matriculados" value={data.stats.alunos} />
+        <ExplorerMetric label="Turmas ativas" value={data.stats.turmas} />
+        <ExplorerMetric label="Classes" value={data.stats.classes} />
       </div>
 
       <nav aria-label="Navegação contextual" className="flex flex-wrap items-center gap-1 text-xs text-slate-600">

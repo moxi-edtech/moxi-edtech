@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
+import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
 import { useDisciplinaContext } from "@/hooks/useDisciplinaContext";
 
@@ -17,19 +19,6 @@ type Props = {
   onExploreTurma: (turma: { id: string; label: string; academicYearId: string }) => void;
   onExploreClasse: (classe: { id: string; label: string; academicYearId: string }) => void;
 };
-
-const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
-
-function Metric({ label, value, parcial }: { label: string; value: number; parcial: boolean }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-        {numberPt(value)}{parcial ? "+" : ""}
-      </p>
-    </div>
-  );
-}
 
 export function DisciplinaContextView({
   context, portal, onNavigate, onExploreProfessor, onExploreTurma, onExploreClasse,
@@ -82,11 +71,13 @@ export function DisciplinaContextView({
         </button>
       </header>
 
+            {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice />}
+
       <section aria-label="Indicadores da disciplina" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <Metric label="Professores vinculados" value={stats.professores} parcial={limitado} />
-        <Metric label="Turmas no ano" value={stats.turmas} parcial={limitado} />
-        <Metric label="Cursos na matriz" value={stats.cursos} parcial={limitado} />
-        <Metric label="Classes na matriz" value={stats.classes} parcial={limitado} />
+        <ExplorerMetric label="Professores vinculados" value={stats.professores} partial={limitado} />
+        <ExplorerMetric label="Turmas no ano" value={stats.turmas} partial={limitado} />
+        <ExplorerMetric label="Cursos na matriz" value={stats.cursos} partial={limitado} />
+        <ExplorerMetric label="Classes na matriz" value={stats.classes} partial={limitado} />
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
 
