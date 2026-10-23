@@ -177,7 +177,8 @@ test("EX-006: orphan and unavailable teacher identities preserve assignment evid
     teachers: [{ id: "deleted-profile", nome: "Professor com perfil desativado" }],
     curriculum: [],
   });
-  assert.equal(overview.stats.professores, 2);
+  assert.equal(overview.stats.professores, 1);
+  assert.equal(overview.professores.length, 1);
   assert.equal(overview.turmas[0]?.professores.length, 2);
   assert.equal(overview.unresolvedTeacherLinks, 1);
   assert.match(overview.turmas[0]?.professores.find((p) => p.id === "orphan")?.nome ?? "", /identidade indisponível/);
