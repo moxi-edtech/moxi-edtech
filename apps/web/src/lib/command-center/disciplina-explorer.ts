@@ -11,7 +11,7 @@ export type DisciplinaTurmaRow = {
   anoLetivoId: string | null;
 };
 
-export type DisciplinaTeacher = { id: string; nome: string };
+export type DisciplinaTeacher = { id: string; nome: string; identityAvailable?: boolean };
 export type DisciplinaAssignment = { turmaId: string; professorId: string | null };
 export type PublishedCourseCurriculum = {
   id: string;
@@ -85,7 +85,8 @@ export function composeDisciplinaOverview(input: {
     if (!assignmentsByTurma.has(row.turmaId)) assignmentsByTurma.set(row.turmaId, new Set());
     if (row.professorId) {
       assignmentsByTurma.get(row.turmaId)!.add(row.professorId);
-      if (!teacherMap.has(row.professorId)) unresolvedTeacherIds.add(row.professorId);
+      if (teacherMap.get(row.professorId)?.identityAvailable === false ||
+          !teacherMap.has(row.professorId)) unresolvedTeacherIds.add(row.professorId);
     }
   }
 
@@ -97,7 +98,9 @@ export function composeDisciplinaOverview(input: {
       turno: turma.turno,
       classeNome: turma.classeNome,
       cursoNome: turma.cursoNome,
-      professores: [...ids].map((id) => teacherMap.get(id) ?? { id, nome: "Professor com vínculo registado · identidade indisponível" })
+      professores: [...ids].map((id) => teacherMap.get(id) ?? {
+        id, nome: "Professor com vínculo registado · identidade indisponível", identityAvailable: false,
+      })
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id)),
     };
   }).sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id));
@@ -113,7 +116,7 @@ export function composeDisciplinaOverview(input: {
   // Unresolved professor IDs remain attached to their turmas as evidence,
   // but must not be counted as verified identities or linked to an unavailable profile.
   const professores = [...teacherTurmas.entries()]
-    .filter(([id]) => teacherMap.has(id))
+    .filter(([id]) => teacherMap.has(id) && teacherMap.get(id)?.identityAvailable !== false)
     .map(([id, ids]) => ({
       id,
       nome: teacherMap.get(id)!.nome,
