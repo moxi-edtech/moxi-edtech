@@ -67,4 +67,7 @@ test("leaving enrollment unmounts its form without losing other student tabs", (
   assert.match(retained, /delete next\.enrollment/);
   assert.match(workspace, /const \[selectedStudent, setSelectedStudent\] = useState<Student>\(aluno\)/);
   assert.match(workspace, /setActiveAction\(next\)/);
+  assert.match(workspace, /const enrollmentDirty = Boolean\(actionDraftStatuses\.enrollment\?\.dirty\)/);
+  assert.match(workspace, /!enrollmentDirty/);
+  assert.match(workspace, /const otherTabsDirty = Object\.entries\(actionDraftStatuses\)/);
 });
