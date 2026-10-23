@@ -14,6 +14,7 @@ export type DisciplinaOverview = {
   };
   anoLetivo: { id: string; ano: number; historico: boolean };
   stats: { professores: number; turmas: number; cursos: number; classes: number };
+  unresolvedTeacherLinks: number;
   professores: Array<{ id: string; nome: string; turmas: number }>;
   turmas: Array<{
     id: string; nome: string; turno: string | null;
@@ -21,10 +22,12 @@ export type DisciplinaOverview = {
     professores: Array<{ id: string; nome: string }>;
   }>;
   curriculo: Array<{
+    id?: string;
     cursoId: string | null; cursoNome: string | null;
     classeId: string | null; classeNome: string | null;
     cargaHorariaSemanal: number | null; obrigatoria: boolean | null;
     ativo?: boolean | null;
+    hasOtherActivityVersion?: boolean;
   }>;
   /** Matrix rows inactive today; not necessarily inactive in the selected year. */
   curriculoHistorico: DisciplinaOverview["curriculo"];
