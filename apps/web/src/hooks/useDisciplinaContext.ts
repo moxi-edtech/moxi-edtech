@@ -21,16 +21,14 @@ export type DisciplinaOverview = {
     classeNome: string | null; cursoNome: string | null;
     professores: Array<{ id: string; nome: string }>;
   }>;
+  /** Published curriculum of the selected academic year. */
   curriculo: Array<{
-    id?: string;
+    id: string; curriculoId: string; curriculoVersao: number;
     cursoId: string | null; cursoNome: string | null;
     classeId: string | null; classeNome: string | null;
     cargaHorariaSemanal: number | null; obrigatoria: boolean | null;
-    ativo?: boolean | null;
-    hasOtherActivityVersion?: boolean;
+    ativo: boolean | null;
   }>;
-  /** Matrix rows inactive today; not necessarily inactive in the selected year. */
-  curriculoHistorico: DisciplinaOverview["curriculo"];
   limitado: boolean;
 };
 
