@@ -72,10 +72,10 @@ export function DisciplinaContextView({
         </button>
       </header>
 
-            {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice />}
+      {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice />}
 
       <section aria-label="Indicadores da disciplina" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <ExplorerMetric label="Professores vinculados" value={stats.professores} partial={limitado} />
+        <ExplorerMetric label="Professores identificados" value={stats.professores} partial={limitado} />
         <ExplorerMetric label="Turmas no ano" value={stats.turmas} partial={limitado} />
         <ExplorerMetric label="Cursos no currículo" value={stats.cursos} partial={limitado} />
         <ExplorerMetric label="Classes no currículo" value={stats.classes} partial={limitado} />
@@ -98,15 +98,15 @@ export function DisciplinaContextView({
 
       {data.unresolvedTeacherLinks > 0 && (
         <p role="status" className="text-xs text-amber-900">
-          Existem {data.unresolvedTeacherLinks} referências docentes com identidade indisponível.
-          O vínculo académico permanece registado; confirme a identidade na gestão autorizada.
+          Existem {data.unresolvedTeacherLinks} {data.unresolvedTeacherLinks === 1 ? "identidade docente indisponível" : "identidades docentes indisponíveis"}.
+          Os vínculos académicos permanecem registados; confirme as identidades na gestão autorizada.
         </p>
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="min-w-0" aria-labelledby="disciplina-professores-heading">
           <h3 id="disciplina-professores-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
-            <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Professores
+            <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Professores identificados
           </h3>
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
             {professores.map((professor) => (
@@ -125,7 +125,11 @@ export function DisciplinaContextView({
               </button>
             ))}
             {!professores.length && (
-              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhum professor identificado no recorte consultado; a lista é parcial." : "Nenhum professor vinculado neste ano letivo."}</p>
+              <p className="px-3 py-5 text-slate-500">{data.unresolvedTeacherLinks > 0
+                ? "Existem vínculos docentes registados, mas algumas identidades não estão disponíveis."
+                : limitado
+                  ? "Nenhum professor identificado no recorte consultado; a lista é parcial."
+                  : "Nenhum professor vinculado neste ano letivo."}</p>
             )}
           </div>
         </section>
