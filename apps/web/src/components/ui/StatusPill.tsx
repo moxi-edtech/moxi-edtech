@@ -6,12 +6,12 @@ function classesFor(status: string, variant: Variant): string {
   const s = status.toLowerCase();
   if (variant === "financeiro") {
     if (s === "pago" || s === "em_dia") return "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20";
-    if (s.includes("atras") || s === "inadimplente") return "bg-rose-50 text-rose-700 border-rose-200";
+    if (s.includes("atras") || s === "inadimplente") return "bg-rose-500/10 text-rose-700 border-rose-500/20 dark:text-rose-400";
     return "bg-[#E3B23C]/10 text-[#E3B23C] border-[#E3B23C]/30";
   }
 
   if (s === "ativo") return "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20";
-  if (s === "arquivado" || s === "inativo") return "bg-slate-100 text-slate-500 border-slate-200";
+  if (s === "arquivado" || s === "inativo") return "bg-muted text-muted-foreground border-border";
   return "bg-[#E3B23C]/10 text-[#E3B23C] border-[#E3B23C]/30";
 }
 
