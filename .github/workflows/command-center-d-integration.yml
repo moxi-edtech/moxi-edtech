@@ -57,6 +57,7 @@ jobs:
           pnpm -C apps/web exec eslint src/components/layout/klasse/Topbar.tsx src/hooks/useGlobalSearch.ts src/components/CommandPalette.tsx src/components/secretaria/BalcaoWorkspace.tsx --max-warnings 0
       - name: Complete unit test directory (not the no-op package test script)
         run: |
+          set -euo pipefail
           cd "$RUNNER_TEMP/cc-composite/apps/web"
           pnpm exec tsx --test tests/unit/*.spec.ts | tee /tmp/cc-d-all-unit-tests.txt
         shell: bash
