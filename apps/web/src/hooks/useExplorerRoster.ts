@@ -31,6 +31,9 @@ export type RosterSort = "nome_asc" | "nome_desc" | "pendencias_primeiro";
 export type RosterFilter = "todos" | "documentos_sinalizados" | "propinas_vencidas" | "ambos";
 export function useExplorerRoster(context: EntityContext, type: "turma" | "classe", search: string, sort: RosterSort = "nome_asc", filter: RosterFilter = "todos", enabledForYear = true) {
   const debounced = useDebounce(search.trim(), 300);
+  // While debounce is pending, cached results still describe the prior search.
+  // Callers must not display them as if they answered the current input.
+  const querySettled = debounced === search.trim();
   const enabled = enabledForYear && (debounced.length === 0 || debounced.length >= 2)
     && (debounced.length >= 2 || sort !== "nome_asc" || filter !== "todos");
   const query = useInfiniteQuery({
@@ -65,6 +68,7 @@ export function useExplorerRoster(context: EntityContext, type: "turma" | "class
   });
   return {
     enabled,
+    querySettled,
     waitingForMinimum: search.trim().length > 0 && search.trim().length < 2,
     loading: enabled && query.isPending,
     refreshing: query.isFetching,
