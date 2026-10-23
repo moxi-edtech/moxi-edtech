@@ -6,6 +6,7 @@ import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 import SessionLockProvider from "@/components/session/SessionLockProvider";
 import { UserRoleProvider } from "@/components/auth/UserRoleProvider";
 import SWRProvider from "@/components/providers/SWRProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 const shouldLoadGoogleFonts = process.env.NEXT_FONT_GOOGLE_FONTS_DISABLE !== "1";
 
@@ -47,15 +48,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
       </head>
       <body className="h-full" style={{ fontFamily: shouldLoadGoogleFonts ? "Sora, sans-serif" : "sans-serif" }}>
-        <ServiceWorkerRegister />
-        <OfflineSyncRegister />
-        <FeedbackProvider>
-          <SWRProvider>
-            <UserRoleProvider>
-              <SessionLockProvider>{children}</SessionLockProvider>
-            </UserRoleProvider>
-          </SWRProvider>
-        </FeedbackProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ServiceWorkerRegister />
+          <OfflineSyncRegister />
+          <FeedbackProvider>
+            <SWRProvider>
+              <UserRoleProvider>
+                <SessionLockProvider>{children}</SessionLockProvider>
+              </UserRoleProvider>
+            </SWRProvider>
+          </FeedbackProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
