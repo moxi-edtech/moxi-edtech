@@ -247,6 +247,10 @@ async function readExplorer(
           nome: profile?.deleted_at
             ? "Professor com perfil desativado"
             : profile?.nome?.trim() || teacher.apelido?.trim() || "Professor com identidade indisponível",
+          // A visible alias is useful context, but does not prove the profile
+          // can be safely opened when it is hidden/deleted.
+          identityAvailable: Boolean(profile && !profile.deleted_at &&
+            (profile.nome?.trim() || teacher.apelido?.trim())),
         });
       }
     }
