@@ -4,8 +4,8 @@ import {readFileSync} from "node:fs";
 import {isCommandCenterWholeSchoolRole,hasRequestedPoloScope} from "../../src/lib/command-center/school-wide-scope";
 
 test("CC-003 school-wide access has strict institutional role whitelist", () => {
- for (const role of ["admin","admin_escola","staff_admin","diretor"]) assert.equal(isCommandCenterWholeSchoolRole(role),true);
- for (const role of ["secretaria","admin_secretaria","secretaria_financeiro","admin_financeiro","financeiro","professor","aluno","staff","administrador","super_admin",null,undefined,""]) assert.equal(isCommandCenterWholeSchoolRole(role),false);
+ for (const role of ["admin","admin_escola","staff_admin","diretor","secretaria","admin_secretaria","secretaria_financeiro","admin_financeiro","financeiro"]) assert.equal(isCommandCenterWholeSchoolRole(role),true);
+ for (const role of ["professor","aluno","staff","administrador","super_admin",null,undefined,""]) assert.equal(isCommandCenterWholeSchoolRole(role),false);
 });
 test("CC-003 explicit polo never becomes school wildcard", () => {
  for (const query of ["polo_id=","polo_id=invalid","poloId=invalid","poloId=abc&foo=1"]) assert.equal(hasRequestedPoloScope("https://test.invalid/?"+query),true);
