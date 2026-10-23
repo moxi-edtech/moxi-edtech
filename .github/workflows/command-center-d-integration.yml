@@ -62,6 +62,9 @@ jobs:
           pnpm exec tsx --test tests/unit/*.spec.ts | tee /tmp/cc-d-all-unit-tests.txt
         shell: bash
       - name: Combined Next.js production build (disposable only)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://fixture.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-public-key-no-real-session
         run: |
           cd "$RUNNER_TEMP/cc-composite"
           pnpm -C apps/web build
