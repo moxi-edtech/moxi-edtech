@@ -25,7 +25,7 @@ export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
     : isExames ? 'Exames' : 'Aulas';
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="operations-academic-banner flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       {/* Lado Esquerdo: Título e Status Resumido */}
       <div className="flex items-center gap-3">
         <div className="rounded-xl border border-slate-100 bg-slate-50 p-2 text-slate-500">
@@ -39,8 +39,8 @@ export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
         </div>
       </div>
 
-      {/* Lado Direito: As 4 Métricas em Formato Inline Minimalista */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+      {/* Metadados refluem conforme a largura do cartão */}
+      <div className="operations-academic-metrics text-xs">
         {/* Metrica 1 */}
         <div className="flex items-center gap-1.5">
           <Calendar className="h-3.5 w-3.5 text-slate-400" />
