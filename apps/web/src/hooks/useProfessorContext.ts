@@ -14,6 +14,13 @@ export type ProfessorOverview = {
     disciplinas: Array<{ id: string; nome: string }>;
   }>;
   disciplinas: Array<{ id: string; nome: string; turmas: number }>;
+  atribuicoes: Array<{
+    turmaId: string; turmaNome: string;
+    cursoNome: string | null; classeNome: string | null;
+    disciplinaId: string; disciplinaNome: string;
+    evidencia: "atribuicao_registada";
+  }>;
+  unresolvedDisciplineLinks: number;
   horarios: Array<{
     turmaId: string; turmaNome: string; disciplinaNome: string | null;
     diaSemana: number; inicio: string; fim: string;
