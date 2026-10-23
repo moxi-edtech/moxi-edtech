@@ -94,6 +94,7 @@ export default function AppShell({
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [planoNome, setPlanoNome] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userScope, setUserScope] = useState<string | null>(null);
   const [_status, setStatus] = useState<string | null>(null);
 
   const safePathname = pathname ?? "";
@@ -263,13 +264,29 @@ export default function AppShell({
 
   useEffect(() => {
     let cancelled = false;
+    let authVersion = 0;
+    const supabase = createClient();
+    // Clear the actor boundary immediately on SIGNED_OUT/SIGNED_IN,
+    // rather than keying sensitive UI by an optional, never-passed prop.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (cancelled) return;
+        if (event === "SIGNED_OUT" || event === "SIGNED_IN" || event === "USER_UPDATED") {
+          authVersion += 1;
+          setUserScope(session?.user.id ?? null);
+          if (event === "SIGNED_OUT") setUserName(null);
+        }
+      },
+    );
     const load = async () => {
-      const supabase = createClient();
+      const requestVersion = authVersion;
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (cancelled || requestVersion !== authVersion) return;
+      setUserScope(user?.id ?? null);
       if (!user) {
-        if (!cancelled) setUserName(null);
+        setUserName(null);
         return;
       }
 
@@ -285,12 +302,15 @@ export default function AppShell({
         user.email ||
         null;
 
-      if (!cancelled) setUserName(resolvedName ? String(resolvedName) : null);
+      if (!cancelled && requestVersion === authVersion) {
+        setUserName(resolvedName ? String(resolvedName) : null);
+      }
     };
 
-    load();
+    void load();
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -375,6 +395,7 @@ export default function AppShell({
             portalTitle={topbarLabels?.title}
             portalSubtitle={topbarLabels?.subtitle}
             userName={userName}
+            userScope={userScope}
             contextLabel="Dashboard"
             escolaNome={displayedEscolaNome}
             planoNome={displayedPlanoNome}
