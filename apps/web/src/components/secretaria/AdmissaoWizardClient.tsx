@@ -1,6 +1,7 @@
 // apps/web/src/components/secretaria/AdmissaoWizardClient.tsx
 "use client";
 
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Archive, Check, Edit3, ExternalLink, RefreshCw, Save } from "lucide-react";
@@ -70,17 +71,24 @@ type LocalDraftCache = {
   };
 };
 
+// Tab-scoped, user + polo + school isolated, expired and removed on logout.
+// The legacy unscoped localStorage key is intentionally discarded, not read.
+// Server-side candidature drafts remain the authoritative recovery mechanism.
 const LOCAL_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
-const getDraftKey = (escolaId: string) => `admissao:draft:${escolaId}`;
+const getDraftKey = (escolaId: string, draftScope?: string | null) =>
+  draftScope ? `klasse:admissao:draft:${draftScope}:${escolaId}` : null;
 
-const readLocalDraft = (escolaId: string): LocalDraftCache | null => {
+const readLocalDraft = (escolaId: string, draftScope?: string | null): LocalDraftCache | null => {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(getDraftKey(escolaId));
+    window.localStorage.removeItem(`admissao:draft:${escolaId}`);
+    const key = getDraftKey(escolaId, draftScope);
+    if (!key) return null; // never read another user's unscoped private draft
+    const raw = window.sessionStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as LocalDraftCache;
     if (!parsed?.updatedAt || Date.now() - parsed.updatedAt > LOCAL_DRAFT_TTL_MS) {
-      window.localStorage.removeItem(getDraftKey(escolaId));
+      window.sessionStorage.removeItem(key);
       return null;
     }
     return parsed;
@@ -89,11 +97,17 @@ const readLocalDraft = (escolaId: string): LocalDraftCache | null => {
   }
 };
 
-const writeLocalDraft = (escolaId: string, patch: Partial<LocalDraftCache>) => {
+const writeLocalDraft = (escolaId: string, patch: Partial<LocalDraftCache>, draftScope?: string | null) => {
   if (typeof window === "undefined") return;
-  const current = readLocalDraft(escolaId) ?? { updatedAt: Date.now() };
-  const next = { ...current, ...patch, updatedAt: Date.now() };
-  window.localStorage.setItem(getDraftKey(escolaId), JSON.stringify(next));
+  const key = getDraftKey(escolaId, draftScope);
+  if (!key) return;
+  try {
+    const current = readLocalDraft(escolaId, draftScope) ?? { updatedAt: Date.now() };
+    const next = { ...current, ...patch, updatedAt: Date.now() };
+    window.sessionStorage.setItem(key, JSON.stringify(next));
+  } catch {
+    // Failed ephemeral recovery storage must never block canonical autosave.
+  }
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -272,8 +286,9 @@ function Step1Identificacao(props: {
   initialData: CandidaturaDraft | null;
   hydrated: boolean;
   canEditDraft: boolean;
+  draftScope?: string | null;
 }) {
-  const { onNext, escolaId, candidaturaId, setCandidaturaId, initialData, hydrated, canEditDraft } = props;
+  const { draftScope, onNext, escolaId, candidaturaId, setCandidaturaId, initialData, hydrated, canEditDraft } = props;
 
   const [form, setForm] = useState<DraftIdentificacao>({
     nome_candidato: "",
@@ -299,6 +314,8 @@ function Step1Identificacao(props: {
     mesmo_que_encarregado: false,
   });
 
+  const initialFormSnapshot = useRef(form).current;
+  const [persistedForm, setPersistedForm] = useState<DraftIdentificacao | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -307,11 +324,14 @@ function Step1Identificacao(props: {
   const [familySuggestion, setFamilySuggestion] = useState<{ id: string; nome: string; membros: string[] } | null>(null);
   const [familyLookupLoading, setFamilyLookupLoading] = useState(false);
   const debouncedResponsiblePhone = useDebouncedValue(form.responsavel_contato ?? "", 500);
+  useBalcaoDraftForm("enrollment.identification", form, persistedForm ?? initialFormSnapshot, {
+    submitting: saving, enabled: hydrated && canEditDraft,
+  });
 
   // hydrate initial
   useEffect(() => {
     if (!initialData) return;
-    setForm({
+    const hydratedForm: DraftIdentificacao = {
       nome_candidato: initialData.nome_candidato ?? "",
       telefone: initialData.dados_candidato?.telefone ?? "",
       bi_numero: initialData.dados_candidato?.bi_numero ?? "",
@@ -339,7 +359,9 @@ function Step1Identificacao(props: {
       responsavel_financeiro_nif: initialData.dados_candidato?.responsavel_financeiro_nif ?? "",
       mesmo_que_encarregado: Boolean(initialData.dados_candidato?.mesmo_que_encarregado),
       agregado_familiar_id: initialData.dados_candidato?.agregado_familiar_id ?? "",
-    });
+    };
+    setForm(hydratedForm);
+    setPersistedForm(hydratedForm);
   }, [initialData]);
 
   useEffect(() => {
@@ -371,7 +393,7 @@ function Step1Identificacao(props: {
 
   useEffect(() => {
     if (!hydrated || initialData || !isUuid(escolaId)) return;
-    const cached = readLocalDraft(escolaId);
+    const cached = readLocalDraft(escolaId, draftScope);
     if (cached?.identificacao) {
       setForm((prev) => ({ ...prev, ...cached.identificacao }));
       const hasAny = Object.values(cached.identificacao).some(
@@ -384,7 +406,7 @@ function Step1Identificacao(props: {
     if (!candidaturaId && cached?.candidaturaId && isUuid(String(cached.candidaturaId))) {
       setCandidaturaId(String(cached.candidaturaId));
     }
-  }, [hydrated, initialData, escolaId, candidaturaId, setCandidaturaId]);
+  }, [hydrated, initialData, escolaId, draftScope, candidaturaId, setCandidaturaId]);
 
   const debouncedForm = useDebouncedValue(form, 650);
 
@@ -534,10 +556,11 @@ function Step1Identificacao(props: {
         setCandidaturaId(resp.data.candidatura_id);
       }
 
+      setPersistedForm(form);
       setLastSavedAt(Date.now());
       return { ok: true as const };
     },
-    [canAutosave, canEditDraft, escolaId, payload, setCandidaturaId]
+    [canAutosave, canEditDraft, escolaId, payload, form, setCandidaturaId]
   );
 
   // autosave on debounced form change
@@ -552,8 +575,8 @@ function Step1Identificacao(props: {
     writeLocalDraft(escolaId, {
       candidaturaId,
       identificacao: debouncedForm,
-    });
-  }, [debouncedForm, hydrated, escolaId, candidaturaId]);
+    }, draftScope);
+  }, [debouncedForm, hydrated, escolaId, draftScope, candidaturaId]);
 
   const normalizePhone = (value: string) => {
     const trimmed = value.trim();
@@ -975,8 +998,10 @@ function Step2FitAcademico(props: {
   initialData: CandidaturaDraft | null;
   canEditDraft: boolean;
   hydrated: boolean;
+  draftScope?: string | null;
 }) {
   const {
+    draftScope,
     onBack,
     onNext,
     escolaId,
@@ -1004,20 +1029,26 @@ function Step2FitAcademico(props: {
 
   const [loadingCfg, setLoadingCfg] = useState(false);
   const [loadingVagas, setLoadingVagas] = useState(false);
+  const [persistedFit, setPersistedFit] = useState<typeof sel | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localRestored, setLocalRestored] = useState(false);
+  useBalcaoDraftForm("enrollment.academic", sel, persistedFit ?? {
+    cursoId: "", classeId: "", turmaId: "", percentagemDesconto: 0, motivoDesconto: "",
+  }, { submitting: saving, enabled: hydrated && canEditDraft });
 
   // hydrate initial
   useEffect(() => {
     if (!initialData) return;
-    setSel({
+    const hydratedFit = {
       cursoId: initialData.curso_id ?? "",
       classeId: initialData.classe_id ?? "",
       turmaId: initialData.turma_preferencial_id ?? "",
       percentagemDesconto: initialData.percentagem_desconto ?? 0,
       motivoDesconto: initialData.motivo_desconto ?? "",
-    });
+    };
+    setSel(hydratedFit);
+    setPersistedFit(hydratedFit);
     setCursoId(initialData.curso_id ?? null);
     setClasseId(initialData.classe_id ?? null);
     if (initialData.turma_preferencial_id) {
@@ -1027,7 +1058,7 @@ function Step2FitAcademico(props: {
 
   useEffect(() => {
     if (!hydrated || initialData || !isUuid(escolaId)) return;
-    const cached = readLocalDraft(escolaId);
+    const cached = readLocalDraft(escolaId, draftScope);
     if (cached?.fit) {
       setSel((prev) => ({
         ...prev,
@@ -1043,7 +1074,7 @@ function Step2FitAcademico(props: {
       if (cached.fit?.classeId) setClasseId(cached.fit.classeId);
       if (cached.fit?.turmaId) setTurmaId(cached.fit.turmaId);
     }
-  }, [hydrated, initialData, escolaId, setClasseId, setCursoId, setTurmaId]);
+  }, [hydrated, initialData, escolaId, draftScope, setClasseId, setCursoId, setTurmaId]);
 
   // load cursos/classes
   useEffect(() => {
@@ -1157,9 +1188,17 @@ function Step2FitAcademico(props: {
 
       if (!resp.ok) {
         setError(resp.error);
+      } else {
+        setPersistedFit(current => ({ ...current ?? sel, ...{
+          cursoId: patch.curso_id ?? sel.cursoId,
+          classeId: patch.classe_id ?? sel.classeId,
+          turmaId: patch.turma_preferencial_id ?? sel.turmaId,
+          percentagemDesconto: patch.percentagem_desconto ?? sel.percentagemDesconto,
+          motivoDesconto: patch.motivo_desconto ?? sel.motivoDesconto,
+        }}));
       }
     },
-    [escolaId, candidaturaId, canEditDraft]
+    [escolaId, candidaturaId, canEditDraft, sel]
   );
 
   const onSelectCurso = (cursoId: string) => {
@@ -1214,8 +1253,8 @@ function Step2FitAcademico(props: {
         percentagemDesconto: sel.percentagemDesconto,
         motivoDesconto: sel.motivoDesconto,
       },
-    });
-  }, [hydrated, escolaId, candidaturaId, sel.cursoId, sel.classeId, sel.turmaId, sel.percentagemDesconto, sel.motivoDesconto]);
+    }, draftScope);
+  }, [hydrated, escolaId, draftScope, candidaturaId, sel.cursoId, sel.classeId, sel.turmaId, sel.percentagemDesconto, sel.motivoDesconto]);
 
   const classesFromTurmas = useMemo(() => {
     const map = new Map<string, RefItem>();
@@ -2532,6 +2571,7 @@ export default function AdmissaoWizardClient({
   initialCandidaturaId,
   embedded = false,
   modalContext = false,
+  draftScope,
   onSuccess,
   onActionChange,
 }: {
@@ -2540,6 +2580,7 @@ export default function AdmissaoWizardClient({
   initialCandidaturaId?: string | null;
   embedded?: boolean;
   modalContext?: boolean;
+  draftScope?: string | null;
   onSuccess?: (alunoId?: string) => void;
   onActionChange?: (actionId: BalcaoActionId) => void;
 }) {
@@ -2725,9 +2766,9 @@ export default function AdmissaoWizardClient({
         throw new Error(json?.error ?? "Falha ao excluir rascunho.");
       }
       setDraftItems((prev) => prev.filter((item) => item.id !== id));
-      const cached = readLocalDraft(escolaId);
+      const cached = readLocalDraft(escolaId, draftScope);
       if (cached?.candidaturaId === id) {
-        writeLocalDraft(escolaId, { candidaturaId: null, identificacao: {}, fit: {} });
+        writeLocalDraft(escolaId, { candidaturaId: null, identificacao: {}, fit: {} }, draftScope);
       }
       success("Rascunho excluído", "O registo foi removido com sucesso.");
     } catch (err: any) {
@@ -2755,7 +2796,7 @@ export default function AdmissaoWizardClient({
         throw new Error(json?.error ?? "Falha ao excluir rascunhos.");
       }
       setDraftItems([]);
-      writeLocalDraft(escolaId, { candidaturaId: null, identificacao: {}, fit: {} });
+      writeLocalDraft(escolaId, { candidaturaId: null, identificacao: {}, fit: {} }, draftScope);
       success("Rascunhos limpos", "Todos os rascunhos foram removidos com sucesso.");
     } catch (err: any) {
       setDraftsError(err.message || "Falha ao excluir rascunhos.");
@@ -2987,6 +3028,7 @@ export default function AdmissaoWizardClient({
         )}
         {step === 1 ? (
           <Step1Identificacao
+            draftScope={draftScope}
             onNext={() => setStep(2)}
             escolaId={escolaId}
             candidaturaId={candidaturaId}
@@ -2997,6 +3039,7 @@ export default function AdmissaoWizardClient({
           />
         ) : step === 2 ? (
           <Step2FitAcademico
+            draftScope={draftScope}
             onBack={() => setStep(1)}
             onNext={() => setStep(3)}
             escolaId={escolaId}

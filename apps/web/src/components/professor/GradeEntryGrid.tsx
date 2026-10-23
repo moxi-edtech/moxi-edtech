@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState"
 import {
   createColumnHelper,
   flexRender,
@@ -113,6 +114,7 @@ export function GradeEntryGrid({
   notaCorte = 10,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
+  const [savedRows, setSavedRows] = useState<StudentGradeRow[]>(initialData)
   const dataRef = useRef<StudentGradeRow[]>(initialData)
   const [isSaving, setIsSaving] = useState(false)
   const [showPasteModal, setShowPasteModal] = useState(false)
@@ -139,6 +141,10 @@ export function GradeEntryGrid({
     }
   }, [gradeInputs, pasteColumn])
 
+  const normalizedGrades = (rows: StudentGradeRow[]) => rows.map(({ id, mac1, npp1, npt1, is_isento }) =>
+    ({ id, mac1, npp1, npt1, is_isento: Boolean(is_isento) }));
+  useBalcaoDraftForm("grade", normalizedGrades(data), normalizedGrades(savedRows), { submitting: isSaving, enabled: !readOnly });
+
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const pendingIdsRef = useRef<Set<string>>(new Set())
   const savingRef = useRef(false)
@@ -147,6 +153,7 @@ export function GradeEntryGrid({
 
   useEffect(() => {
     setData(initialData)
+    setSavedRows(initialData)
     dataRef.current = initialData
   }, [initialData])
 
@@ -213,6 +220,7 @@ export function GradeEntryGrid({
 
         try {
           await onSave(payload)
+          setSavedRows(previous => previous.map(row => payload.find(next => next.id === row.id) ?? row))
           setData((prev) =>
             prev.map((row) =>
               ids.includes(row.id) && !pendingIdsRef.current.has(row.id)

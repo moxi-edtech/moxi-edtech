@@ -30,3 +30,13 @@ test("switching to no student cannot leak the previous student's identifier", ()
   assert.equal(reset.has("alunoId"), false);
   assert.equal(reset.has(RETURN_STUDENT_PARAM), false);
 });
+
+test("native History API is used only for action changes, not every student refresh", async () => {
+  const { readFileSync } = await import("node:fs");
+  const page = readFileSync("src/app/secretaria/balcao/BalcaoPageClient.tsx", "utf8");
+  assert.match(page, /window\.history\.pushState\(window\.history\.state, "", targetUrl\)/);
+  assert.match(page, /historyMode: "push"/);
+  assert.match(page, /router\.replace\(targetUrl, \{ scroll: false \}\)/);
+  assert.match(page, /setSelectedAlunoId\(locationStudentId\)/);
+  assert.match(page, /setActiveAction\(queryAction\)/);
+});

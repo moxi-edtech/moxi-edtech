@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import Link from "next/link";
 import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 import BalcaoAtendimento, { type AlunoDossier } from "@/components/secretaria/BalcaoAtendimento";
 import { CommandCenterPanel } from "@/components/secretaria/command-center/CommandCenterPanel";
+import { RetainedActionPanels } from "@/components/secretaria/command-center/RetainedActionPanels";
 import { CommandCenterShell } from "@/components/secretaria/command-center/CommandCenterShell";
 import { useCommandCenterStudent } from "@/components/secretaria/command-center/useCommandCenterStudent";
 import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
@@ -27,13 +28,11 @@ function parseAction(value: string | null): BalcaoActionId {
 export default function BalcaoPageClient({
   escolaId,
   escolaParam,
-  profileAlunoId,
-  profileDossier,
+  userScope,
 }: {
   escolaId: string;
   escolaParam: string;
-  profileAlunoId: string | null;
-  profileDossier: ReactNode;
+  userScope: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -50,6 +49,11 @@ export default function BalcaoPageClient({
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(queryAction);
   const [caixaRefreshKey, setCaixaRefreshKey] = useState(0);
   const [atendimentoKey, setAtendimentoKey] = useState(0);
+  const [refreshRevision, setRefreshRevision] = useState(0);
+  const unsavedWorkRef = useRef(false);
+  const submittingRef = useRef(false);
+  const handleUnsavedChange = useCallback((value: boolean) => { unsavedWorkRef.current = value; }, []);
+  const handleSubmittingChange = useCallback((value: boolean) => { submittingRef.current = value; }, []);
   const {
     student: commandCenterStudent,
     setStudent: setCommandCenterStudent,
@@ -72,6 +76,7 @@ export default function BalcaoPageClient({
   const syncLocation = useCallback((params: {
     alunoId?: string | null;
     actionId?: BalcaoActionId;
+    historyMode?: "push" | "replace";
   }) => {
     const nextAlunoId = params.alunoId === undefined ? selectedAlunoId : params.alunoId;
     const nextAction = params.actionId ?? activeAction;
@@ -83,11 +88,20 @@ export default function BalcaoPageClient({
 
     const query = next.toString();
     const targetPath = pathname || "/secretaria/balcao";
-    router.replace(query ? `${targetPath}?${query}` : targetPath, { scroll: false });
+    const targetUrl = query ? `${targetPath}?${query}` : targetPath;
+    if (params.historyMode === "push" && typeof window !== "undefined") {
+      // Next.js App Router patches the native History API to synchronize
+      // useSearchParams without re-executing the authenticated server route.
+      // Back/Forward now return to each visited action, preserving student.
+      window.history.pushState(window.history.state, "", targetUrl);
+    } else {
+      router.replace(targetUrl, { scroll: false });
+    }
   }, [activeAction, pathname, router, searchParams, selectedAlunoId]);
 
-  const handleCommandCenterSuccess = useCallback((newAlunoId?: string) => {
+  const handleCommandCenterSuccess = useCallback((originAction: BalcaoActionId, newAlunoId?: string) => {
     setCaixaRefreshKey((current) => current + 1);
+    setRefreshRevision((value) => value + 1);
     if (!newAlunoId) return;
 
     // Matrícula confirmada: o aluno recém-criado passa a ser o atendimento.
@@ -99,23 +113,25 @@ export default function BalcaoPageClient({
   const handleActionChange = useCallback((actionId: BalcaoActionId) => {
     if (actionId === activeAction) return;
     if (
-      activeAction === "enrollment" &&
+      activeAction === "enrollment" && unsavedWorkRef.current &&
       !window.confirm("Sair da nova matrícula? Alterações ainda não guardadas poderão perder-se. O aluno anterior continuará selecionado.")
     ) return;
 
     // Ao entrar na Matrícula, preservamos o atendimento para regressar,
     // sem apresentar esse aluno como o destinatário da nova inscrição.
     setActiveAction(actionId);
-    syncLocation({ alunoId: selectedAlunoId, actionId });
+    syncLocation({ alunoId: selectedAlunoId, actionId, historyMode: "push" });
   }, [activeAction, selectedAlunoId, syncLocation]);
 
   const handleSwitchStudent = useCallback(() => {
+    if (submittingRef.current) return; // Never change student during an in-flight write.
     // Este aviso protege a transição entre módulos. Ações já submetidas
     // continuam sob a autoridade do backend; não declarar sucesso localmente.
-    if (activeAction !== "desk" && !window.confirm(
+    if (unsavedWorkRef.current && !window.confirm(
       "Quer trocar de aluno? Dados ainda não guardados neste atendimento poderão perder-se."
     )) return;
 
+    unsavedWorkRef.current = false;
     setAtendimentoKey((key) => key + 1);
     setSelectedAlunoId(null);
     setCommandCenterStudent(null);
@@ -124,6 +140,7 @@ export default function BalcaoPageClient({
   }, [activeAction, setCommandCenterStudent, syncLocation]);
 
   const handleAlunoSelected = useCallback((aluno: AlunoDossier | null) => {
+    if (submittingRef.current) return;
     const nextAlunoId = aluno?.id ?? null;
     setSelectedAlunoId(nextAlunoId);
     if (!aluno) {
@@ -170,17 +187,31 @@ export default function BalcaoPageClient({
 
       <section className="mt-4 min-w-0 pb-2">
         {selectedAlunoId || activeAction === "enrollment" ? (
-          <CommandCenterPanel
-            key={`student-${activeAction === "enrollment" ? "new" : selectedAlunoId ?? "new"}-${atendimentoKey}`}
-            escolaId={escolaId}
-            alunoId={activeAction === "enrollment" ? null : selectedAlunoId}
-            turmaId={commandCenterStudent?.turmaId ?? null}
-            turmaLabel={commandCenterStudent?.turma ?? null}
-            actionId={activeAction}
-            returnTo={returnTo}
-            onActionChange={handleActionChange}
-            onAlunoSelected={handleAlunoSelected}
-            onSuccess={handleCommandCenterSuccess}
+          <RetainedActionPanels
+            key={`${userScope}:${escolaId}:${searchParams?.get("polo_id") ?? "-"}:${selectedAlunoId ?? "-"}:${atendimentoKey}`}
+            activeAction={activeAction}
+            contextSignature={`${userScope}:${escolaId}:${selectedAlunoId ?? "-"}:${commandCenterStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
+            onUnsavedChange={handleUnsavedChange}
+            onSubmittingChange={handleSubmittingChange}
+            renderAction={(panelAction) => (
+              <CommandCenterPanel
+                escolaId={escolaId}
+                draftScope={`${userScope}:${searchParams?.get("polo_id") ?? "-"}`}
+                alunoId={panelAction === "enrollment" ? null : selectedAlunoId}
+                turmaId={commandCenterStudent?.turmaId ?? null}
+                turmaLabel={commandCenterStudent?.turma ?? null}
+                actionId={panelAction}
+                visible={panelAction === activeAction}
+                refreshRevision={refreshRevision}
+                returnTo={returnTo}
+                onActionChange={handleActionChange}
+                onAlunoSelected={panelAction === activeAction ? (aluno) => {
+                  // An inactive/loading panel must never clear another action's student.
+                  if (aluno?.id) handleAlunoSelected(aluno);
+                } : undefined}
+                onSuccess={(newAlunoId) => handleCommandCenterSuccess(panelAction, newAlunoId)}
+              />
+            )}
           />
         ) : (
           <BalcaoAtendimento

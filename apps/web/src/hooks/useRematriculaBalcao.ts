@@ -1,4 +1,5 @@
 import { classifyRematriculaResponse } from "@/lib/secretaria/rematricula-result";
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { useState, useCallback, useEffect } from "react";
 
 // ─── Exported Types ──────────────────────────────────────────────────────────
@@ -226,10 +227,14 @@ export function useRematriculaBalcao(opts: {
   alunoId: string | null;
   matriculaId: string | null;
   academicYearId: string | null;
+  /** Only authenticated, tenant/polo-bound workspace scopes may persist drafts. */
+  draftScope?: string | null;
   responsavelContato?: string | null;
   itensPagamento?: RematriculaPaymentItem[];
 }) {
-  const draftKey = `klasse:rematricula:draft:${opts.escolaId}:${opts.alunoId ?? "-"}:${opts.matriculaId ?? "-"}:${opts.academicYearId ?? "-"}`;
+  const draftKey = opts.draftScope && opts.alunoId && opts.matriculaId
+    ? `klasse:rematricula:draft:${opts.draftScope}:${opts.escolaId}:${opts.alunoId}:${opts.matriculaId}:${opts.academicYearId ?? "-"}`
+    : null;
   // ── Status data ─────────────────────────────────────────────────────────
   const [cardState, setCardState] = useState<RematriculaCardState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -270,6 +275,16 @@ export function useRematriculaBalcao(opts: {
   const [apiError, setApiError] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
   const [responsavelContato, setResponsavelContato] = useState("");
+  useBalcaoDraftForm("reenrollment", {
+    turma: selectedTurmaId, metodo,
+    detalhes, decisaoResultado, decisaoFonte, decisaoMotivo, decisaoObservacao,
+    itensPagamento: opts.itensPagamento ?? [],
+  }, {
+    turma: null, metodo: "cash", detalhes: DETALHES_VAZIOS,
+    decisaoResultado: "aprovado", decisaoFonte: "raa", decisaoMotivo: "", decisaoObservacao: "",
+    itensPagamento: [],
+  }, { submitting, enabled: Boolean(opts.alunoId) && !result?.ok });
+
 
   // ────────────────────────────────────────────────────────────────────────
   // Fetch rematrícula eligibility status
@@ -343,7 +358,7 @@ export function useRematriculaBalcao(opts: {
     setResponsavelContato(opts.responsavelContato ?? "");
 
     try {
-      const raw = sessionStorage.getItem(draftKey);
+      const raw = draftKey ? sessionStorage.getItem(draftKey) : null;
       if (raw) {
         const draft = JSON.parse(raw) as {
           step?: number;
@@ -374,7 +389,7 @@ export function useRematriculaBalcao(opts: {
   }, [draftKey, fetchStatus]);
 
   useEffect(() => {
-    if (!opts.alunoId || !opts.matriculaId || result) return;
+    if (!draftKey || !opts.alunoId || !opts.matriculaId || result) return;
     try {
       sessionStorage.setItem(draftKey, JSON.stringify({
         step,
@@ -638,7 +653,7 @@ export function useRematriculaBalcao(opts: {
         }
         setResult(data);
         setStep(4);
-        try { sessionStorage.removeItem(draftKey); } catch {}
+        try { if (draftKey) sessionStorage.removeItem(draftKey); } catch {}
         return;
       }
       const res = await fetch("/api/secretaria/balcao/rematriculas", {
@@ -675,7 +690,7 @@ export function useRematriculaBalcao(opts: {
         // Completed or a known partial completion such as DOCUMENT_PENDING.
         setResult(data);
         setStep(4);
-        try { sessionStorage.removeItem(draftKey); } catch {}
+        try { if (draftKey) sessionStorage.removeItem(draftKey); } catch {}
       } else {
         // Map error code to human message, fall back to raw error
         const code = data.code as string | undefined;
@@ -700,7 +715,7 @@ export function useRematriculaBalcao(opts: {
           if (reconciliationOutcome !== "error") {
             setResult(reconciliationData);
             setStep(4);
-            try { sessionStorage.removeItem(draftKey); } catch {}
+            try { if (draftKey) sessionStorage.removeItem(draftKey); } catch {}
             return;
           }
         }

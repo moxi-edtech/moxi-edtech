@@ -1,0 +1,67 @@
+# Disposable end-to-end financial/RLS validation. No remote Supabase credentials.
+name: Balcao Full Financial Integration
+on:
+  pull_request:
+    paths:
+      - "supabase/ops/tests/balcao_*"
+      - ".github/workflows/balcao-finance-integrated.yml"
+      - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/command-center/**"
+      - "apps/web/src/features/financeiro/actions.ts"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-migration-finance:
+    name: Full Supabase migration chain and actual financial RLS
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      - name: Stage strict compatibility for historical dependency gaps (ephemeral runner)
+        run: python3 supabase/ops/tests/balcao_finance_replay_compat.py supabase/migrations
+      - name: Start disposable Supabase with ALL original migrations
+        run: |
+          supabase start --exclude studio,mailpit,storage-api,imgproxy,logflare,vector,edge-runtime,realtime,supavisor,postgres-meta
+      - name: Prove all original migrations PLUS recorded CI-only precondition were applied
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          python3 supabase/ops/tests/balcao_full_replay_assert.py
+          psql "$PGURL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$ BEGIN
+            IF to_regclass('public.pautas_oficiais') IS NULL THEN
+              RAISE EXCEPTION 'REAL_PAUTAS_TABLE_MISSING';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgrelid='public.pautas_oficiais'::regclass
+                AND tgname='trg_pautas_archive_outbox' AND NOT tgisinternal
+            ) THEN RAISE EXCEPTION 'DEFERRED_PAUTAS_TRIGGER_MISSING'; END IF;
+          END $$;
+          SQL
+      - name: Real RLS, actual proof/approval/rejection/resubmission, receipt and balance
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -1 -f supabase/ops/tests/balcao_finance_full_migrations.sql
+      - name: Race AND repeated approval are independent hard financial gates
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set +e
+          bash supabase/ops/tests/balcao_finance_full_concurrency.sh
+          race_exit=$?
+          psql "$PGURL" -v ON_ERROR_STOP=1 -1 -f supabase/ops/tests/balcao_finance_idempotency_guard.sql
+          repeated_exit=$?
+          set -e
+          echo "Concurrent opposite decisions: $(test "$race_exit" -eq 0 && echo PASS || echo FAIL)"
+          echo "Repeated approval without double charge: $(test "$repeated_exit" -eq 0 && echo PASS || echo FAIL)"
+          test "$race_exit" -eq 0 && test "$repeated_exit" -eq 0
+      - name: Confirm zero paid branch or remote deployment
+        run: |
+          echo "Tests used only self-hosted ephemeral Postgres, source migrations and synthetic IDs."

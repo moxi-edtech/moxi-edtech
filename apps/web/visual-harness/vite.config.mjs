@@ -11,6 +11,7 @@ export default {
         { find: "@/lib/supabaseClient", replacement: path.resolve(dir, "auth-fixture.ts") },
       ] : []),
       { find: "next/navigation", replacement: path.resolve(dir, "next-navigation.ts") },
+      { find: "next/dynamic", replacement: path.resolve(dir, "next-dynamic.tsx") },
       { find: "next/link", replacement: path.resolve(dir, "next-link.tsx") },
       { find: "@", replacement: path.resolve(dir, "../src") },
       { find: "~", replacement: path.resolve(dir, "../src") },

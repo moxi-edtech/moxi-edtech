@@ -1,0 +1,1008 @@
+{
+  "fixture": true,
+  "source": "React components / Vite visual harness + mocked fixture API; not authenticated Next production",
+  "iterations": 12,
+  "browser": "155.0.8059.85",
+  "perTab": {
+    "Visão geral": {
+      "timeMs": {
+        "n": 12,
+        "median": 58,
+        "p95": 119,
+        "max": 119
+      },
+      "requests": {
+        "n": 12,
+        "median": 8,
+        "p95": 8,
+        "max": 8
+      },
+      "queries": {
+        "n": 12,
+        "median": 8,
+        "p95": 8,
+        "max": 8
+      },
+      "commits": {
+        "n": 12,
+        "median": 7,
+        "p95": 7,
+        "max": 7
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 11.6,
+        "p95": 13.6,
+        "max": 13.6
+      }
+    },
+    "Matrícula": {
+      "timeMs": {
+        "n": 12,
+        "median": 77,
+        "p95": 128,
+        "max": 128
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 1,
+        "p95": 1,
+        "max": 1
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 2.1,
+        "p95": 5.9,
+        "max": 5.9
+      }
+    },
+    "Rematrícula": {
+      "timeMs": {
+        "n": 12,
+        "median": 126,
+        "p95": 145,
+        "max": 145
+      },
+      "requests": {
+        "n": 12,
+        "median": 8,
+        "p95": 8,
+        "max": 8
+      },
+      "queries": {
+        "n": 12,
+        "median": 8,
+        "p95": 8,
+        "max": 8
+      },
+      "commits": {
+        "n": 12,
+        "median": 7,
+        "p95": 7,
+        "max": 7
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 11.2,
+        "p95": 13.3,
+        "max": 13.3
+      }
+    },
+    "Pagar": {
+      "timeMs": {
+        "n": 12,
+        "median": 88,
+        "p95": 128,
+        "max": 128
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 3,
+        "p95": 3,
+        "max": 3
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 11.7,
+        "p95": 40.1,
+        "max": 40.1
+      }
+    },
+    "Documento": {
+      "timeMs": {
+        "n": 12,
+        "median": 74,
+        "p95": 100,
+        "max": 100
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 2,
+        "p95": 2,
+        "max": 2
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 5.6,
+        "p95": 9.3,
+        "max": 9.3
+      }
+    },
+    "Perfil": {
+      "timeMs": {
+        "n": 12,
+        "median": 64,
+        "p95": 77,
+        "max": 77
+      },
+      "requests": {
+        "n": 12,
+        "median": 2,
+        "p95": 2,
+        "max": 2
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 2,
+        "p95": 3,
+        "max": 3
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 9.8,
+        "p95": 13.4,
+        "max": 13.4
+      }
+    },
+    "Nota": {
+      "timeMs": {
+        "n": 12,
+        "median": 66,
+        "p95": 106,
+        "max": 106
+      },
+      "requests": {
+        "n": 12,
+        "median": 2,
+        "p95": 2,
+        "max": 2
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 6,
+        "p95": 6,
+        "max": 6
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 7.8,
+        "p95": 13.2,
+        "max": 13.2
+      }
+    }
+  },
+  "idle": {
+    "ms": 60000,
+    "requests": 0,
+    "queries": 0
+  },
+  "estimatedRequestsPerHour": 0,
+  "queryResponseMs": {
+    "n": 242,
+    "median": 38,
+    "p95": 43,
+    "max": 49
+  },
+  "routeJsTransferBytes": 7210407,
+  "lcpMs": 4084,
+  "inpMs": 88,
+  "inpEvents": 213,
+  "captures": [],
+  "raw": [
+    {
+      "tab": "Visão geral",
+      "round": 0,
+      "timeMs": 119,
+      "requests": 0,
+      "queries": 0,
+      "commits": 0,
+      "reactDurationMs": 0
+    },
+    {
+      "tab": "Matrícula",
+      "round": 0,
+      "timeMs": 128,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 5.9
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 0,
+      "timeMs": 129,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 13.3
+    },
+    {
+      "tab": "Pagar",
+      "round": 0,
+      "timeMs": 84,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 13.7
+    },
+    {
+      "tab": "Documento",
+      "round": 0,
+      "timeMs": 66,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.3
+    },
+    {
+      "tab": "Perfil",
+      "round": 0,
+      "timeMs": 67,
+      "requests": 2,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 13.4
+    },
+    {
+      "tab": "Nota",
+      "round": 0,
+      "timeMs": 66,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 8.8
+    },
+    {
+      "tab": "Visão geral",
+      "round": 1,
+      "timeMs": 73,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 13.6
+    },
+    {
+      "tab": "Matrícula",
+      "round": 1,
+      "timeMs": 73,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 2.4
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 1,
+      "timeMs": 116,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 12.2
+    },
+    {
+      "tab": "Pagar",
+      "round": 1,
+      "timeMs": 88,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 17.7
+    },
+    {
+      "tab": "Documento",
+      "round": 1,
+      "timeMs": 77,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5.7
+    },
+    {
+      "tab": "Perfil",
+      "round": 1,
+      "timeMs": 47,
+      "requests": 2,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 11.1
+    },
+    {
+      "tab": "Nota",
+      "round": 1,
+      "timeMs": 45,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 8.2
+    },
+    {
+      "tab": "Visão geral",
+      "round": 2,
+      "timeMs": 45,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 12.5
+    },
+    {
+      "tab": "Matrícula",
+      "round": 2,
+      "timeMs": 96,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 3.8
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 2,
+      "timeMs": 142,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 11.2
+    },
+    {
+      "tab": "Pagar",
+      "round": 2,
+      "timeMs": 128,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 40.1
+    },
+    {
+      "tab": "Documento",
+      "round": 2,
+      "timeMs": 95,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 9.3
+    },
+    {
+      "tab": "Perfil",
+      "round": 2,
+      "timeMs": 59,
+      "requests": 2,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 10
+    },
+    {
+      "tab": "Nota",
+      "round": 2,
+      "timeMs": 75,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 7.3
+    },
+    {
+      "tab": "Visão geral",
+      "round": 3,
+      "timeMs": 46,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 11.6
+    },
+    {
+      "tab": "Matrícula",
+      "round": 3,
+      "timeMs": 97,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4.3
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 3,
+      "timeMs": 120,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 12
+    },
+    {
+      "tab": "Pagar",
+      "round": 3,
+      "timeMs": 96,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 16.3
+    },
+    {
+      "tab": "Documento",
+      "round": 3,
+      "timeMs": 55,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5.6
+    },
+    {
+      "tab": "Perfil",
+      "round": 3,
+      "timeMs": 64,
+      "requests": 2,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 11.5
+    },
+    {
+      "tab": "Nota",
+      "round": 3,
+      "timeMs": 43,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 7.4
+    },
+    {
+      "tab": "Visão geral",
+      "round": 4,
+      "timeMs": 44,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 12.2
+    },
+    {
+      "tab": "Matrícula",
+      "round": 4,
+      "timeMs": 63,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 2.8
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 4,
+      "timeMs": 112,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 13
+    },
+    {
+      "tab": "Pagar",
+      "round": 4,
+      "timeMs": 96,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 10.9
+    },
+    {
+      "tab": "Documento",
+      "round": 4,
+      "timeMs": 74,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5.9
+    },
+    {
+      "tab": "Perfil",
+      "round": 4,
+      "timeMs": 72,
+      "requests": 2,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 7.6
+    },
+    {
+      "tab": "Nota",
+      "round": 4,
+      "timeMs": 47,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 7.8
+    },
+    {
+      "tab": "Visão geral",
+      "round": 5,
+      "timeMs": 62,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 10.6
+    },
+    {
+      "tab": "Matrícula",
+      "round": 5,
+      "timeMs": 60,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 2
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 5,
+      "timeMs": 143,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 9.8
+    },
+    {
+      "tab": "Pagar",
+      "round": 5,
+      "timeMs": 79,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 11.7
+    },
+    {
+      "tab": "Documento",
+      "round": 5,
+      "timeMs": 75,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5
+    },
+    {
+      "tab": "Perfil",
+      "round": 5,
+      "timeMs": 77,
+      "requests": 2,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.6
+    },
+    {
+      "tab": "Nota",
+      "round": 5,
+      "timeMs": 86,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 13.2
+    },
+    {
+      "tab": "Visão geral",
+      "round": 6,
+      "timeMs": 79,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 8.4
+    },
+    {
+      "tab": "Matrícula",
+      "round": 6,
+      "timeMs": 72,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 2
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 6,
+      "timeMs": 126,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 9.5
+    },
+    {
+      "tab": "Pagar",
+      "round": 6,
+      "timeMs": 93,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 10.3
+    },
+    {
+      "tab": "Documento",
+      "round": 6,
+      "timeMs": 97,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 8.4
+    },
+    {
+      "tab": "Perfil",
+      "round": 6,
+      "timeMs": 61,
+      "requests": 2,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 9.8
+    },
+    {
+      "tab": "Nota",
+      "round": 6,
+      "timeMs": 77,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 9.1
+    },
+    {
+      "tab": "Visão geral",
+      "round": 7,
+      "timeMs": 49,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 8.8
+    },
+    {
+      "tab": "Matrícula",
+      "round": 7,
+      "timeMs": 78,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 2.9
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 7,
+      "timeMs": 145,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 11.5
+    },
+    {
+      "tab": "Pagar",
+      "round": 7,
+      "timeMs": 64,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 10.6
+    },
+    {
+      "tab": "Documento",
+      "round": 7,
+      "timeMs": 76,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5
+    },
+    {
+      "tab": "Perfil",
+      "round": 7,
+      "timeMs": 76,
+      "requests": 2,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.3
+    },
+    {
+      "tab": "Nota",
+      "round": 7,
+      "timeMs": 88,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 10.4
+    },
+    {
+      "tab": "Visão geral",
+      "round": 8,
+      "timeMs": 76,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 12.6
+    },
+    {
+      "tab": "Matrícula",
+      "round": 8,
+      "timeMs": 96,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 1.8
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 8,
+      "timeMs": 126,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 12
+    },
+    {
+      "tab": "Pagar",
+      "round": 8,
+      "timeMs": 116,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 17
+    },
+    {
+      "tab": "Documento",
+      "round": 8,
+      "timeMs": 46,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.9
+    },
+    {
+      "tab": "Perfil",
+      "round": 8,
+      "timeMs": 68,
+      "requests": 2,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 11.1
+    },
+    {
+      "tab": "Nota",
+      "round": 8,
+      "timeMs": 106,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 11
+    },
+    {
+      "tab": "Visão geral",
+      "round": 9,
+      "timeMs": 58,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 12
+    },
+    {
+      "tab": "Matrícula",
+      "round": 9,
+      "timeMs": 79,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 1.8
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 9,
+      "timeMs": 140,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 10.7
+    },
+    {
+      "tab": "Pagar",
+      "round": 9,
+      "timeMs": 63,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 10.3
+    },
+    {
+      "tab": "Documento",
+      "round": 9,
+      "timeMs": 100,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 7.3
+    },
+    {
+      "tab": "Perfil",
+      "round": 9,
+      "timeMs": 74,
+      "requests": 2,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 11.4
+    },
+    {
+      "tab": "Nota",
+      "round": 9,
+      "timeMs": 73,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 6.8
+    },
+    {
+      "tab": "Visão geral",
+      "round": 10,
+      "timeMs": 95,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 12
+    },
+    {
+      "tab": "Matrícula",
+      "round": 10,
+      "timeMs": 70,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 2.1
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 10,
+      "timeMs": 130,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 10.9
+    },
+    {
+      "tab": "Pagar",
+      "round": 10,
+      "timeMs": 91,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 13
+    },
+    {
+      "tab": "Documento",
+      "round": 10,
+      "timeMs": 43,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.6
+    },
+    {
+      "tab": "Perfil",
+      "round": 10,
+      "timeMs": 49,
+      "requests": 2,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 7.1
+    },
+    {
+      "tab": "Nota",
+      "round": 10,
+      "timeMs": 48,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 6.5
+    },
+    {
+      "tab": "Visão geral",
+      "round": 11,
+      "timeMs": 49,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 7.4
+    },
+    {
+      "tab": "Matrícula",
+      "round": 11,
+      "timeMs": 77,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 2
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 11,
+      "timeMs": 117,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 7.9
+    },
+    {
+      "tab": "Pagar",
+      "round": 11,
+      "timeMs": 80,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 10.6
+    },
+    {
+      "tab": "Documento",
+      "round": 11,
+      "timeMs": 62,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.9
+    },
+    {
+      "tab": "Perfil",
+      "round": 11,
+      "timeMs": 48,
+      "requests": 2,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 7
+    },
+    {
+      "tab": "Nota",
+      "round": 11,
+      "timeMs": 48,
+      "requests": 2,
+      "queries": 0,
+      "commits": 6,
+      "reactDurationMs": 7.1
+    }
+  ],
+  "errors": []
+}

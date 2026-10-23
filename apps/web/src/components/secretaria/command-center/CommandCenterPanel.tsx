@@ -1,25 +1,41 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 
 import { AlunoProfilePanel } from "@/components/secretaria/AlunoProfilePanel";
-import { CommandCenterStudentDossier } from "@/components/secretaria/command-center/CommandCenterStudentDossier";
-import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
 import BalcaoAtendimento, {
   type AlunoDossier,
 } from "@/components/secretaria/BalcaoAtendimento";
-import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
 import {
   getBalcaoAction,
   type BalcaoActionId,
 } from "@/lib/balcao/action-registry";
 
+// Only the frequent reception/payment workspace is included in the initial
+// route. Large matrícula, profile and grade modules load on first use.
+const AdmissaoWizardClient = dynamic(() => import("@/components/secretaria/AdmissaoWizardClient"), {
+  ssr: false,
+  loading: () => <p role="status" className="p-5 text-sm text-slate-600">A abrir nova matrícula...</p>,
+});
+const CommandCenterStudentDossier = dynamic(() => import("@/components/secretaria/command-center/CommandCenterStudentDossier").then(m => m.CommandCenterStudentDossier), {
+  ssr: false,
+  loading: () => <p role="status" className="p-5 text-sm text-slate-600">A abrir perfil integral...</p>,
+});
+const PautaRapidaModal = dynamic(() => import("@/components/secretaria/PautaRapidaModal").then(m => m.PautaRapidaModal), {
+  ssr: false,
+  loading: () => <p role="status" className="p-5 text-sm text-slate-600">A abrir lançamento de notas...</p>,
+});
+
 type Props = {
   escolaId: string;
+  draftScope?: string | null;
   alunoId?: string | null;
   turmaId?: string | null;
   turmaLabel?: string | null;
   actionId: BalcaoActionId;
+  visible?: boolean;
+  refreshRevision?: number;
   inModal?: boolean;
   returnTo?: string | null;
   onActionChange: (actionId: BalcaoActionId) => void;
@@ -29,10 +45,13 @@ type Props = {
 
 export function CommandCenterPanel({
   escolaId,
+  draftScope,
   alunoId,
   turmaId = null,
   turmaLabel = null,
   actionId,
+  visible = true,
+  refreshRevision = 0,
   inModal = false,
   returnTo = null,
   onActionChange,
@@ -50,6 +69,7 @@ export function CommandCenterPanel({
     return (
       <AdmissaoWizardClient
         escolaId={escolaId}
+        draftScope={draftScope}
         embedded
         modalContext={inModal}
         onSuccess={(newAlunoId) => onSuccess?.(newAlunoId)}
@@ -79,11 +99,11 @@ export function CommandCenterPanel({
           </p>
         </div>
         <CommandCenterStudentDossier
-            key={alunoId}
-            escolaId={escolaId}
-            alunoId={alunoId}
-            refreshKey={profileRefreshKey}
-          />
+          key={alunoId}
+          escolaId={escolaId}
+          alunoId={alunoId}
+          refreshKey={profileRefreshKey + refreshRevision}
+        />
         <details className="group min-w-0 rounded-xl border border-slate-200 bg-white">
           <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-700 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C] sm:px-5">
             Atualizar dados pessoais
@@ -111,10 +131,13 @@ export function CommandCenterPanel({
   return (
     <BalcaoAtendimento
       escolaId={escolaId}
+      draftScope={draftScope}
       selectedAlunoId={alunoId}
       showSearch={false}
       embedded
       view={action.balcaoView ?? "overview"}
+      visible={visible}
+      refreshRevision={refreshRevision}
       focusAction={action.focusAction ?? null}
       returnTo={returnTo}
       onNavigateAction={onActionChange}
