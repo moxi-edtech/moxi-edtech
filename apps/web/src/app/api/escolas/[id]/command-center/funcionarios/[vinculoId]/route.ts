@@ -63,7 +63,7 @@ async function readFuncionario(
     .maybeSingle();
   if (memberError) throw memberError;
 
-  const role = member?.papel ?? member?.role;
+  const role = String(member?.papel ?? member?.role ?? "").trim().toLowerCase();
   if (!member || !isCommandCenterWholeSchoolRole(role)) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
