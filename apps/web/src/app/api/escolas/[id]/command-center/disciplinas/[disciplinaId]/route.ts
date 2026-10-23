@@ -8,11 +8,12 @@ import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/schoo
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import {
-  composeDisciplinaOverview, isDisciplinaTurmaInYear, isPublishedDisciplinaVersion,
+  composeDisciplinaOverview, indexPublishedCurricula, PublishedCurriculumConflictError,
+  isDisciplinaTurmaInYear, isPublishedDisciplinaVersion,
+  type PublishedCourseCurriculum,
   type DisciplinaAssignment, type DisciplinaCurriculumRow, type DisciplinaTeacher,
   type DisciplinaTurmaRow,
 } from "@/lib/command-center/disciplina-explorer";
-import { isClassInAcademicYear } from "@/lib/command-center/academic-relations";
 
 export const dynamic = "force-dynamic";
 
@@ -23,17 +24,23 @@ const schema = z.object({
 });
 
 // Limits apply independently. Any truncation must be flagged, never shown as exact totals.
+const MAX_CURRICULOS = 300;
 const MAX_MATRIZ = 300;
 const MAX_LINKS = 500;
 const MAX_TURMAS = 200;
 
 type MatrizRow = {
   id: string;
+  curso_curriculo_id: string;
   curso_id: string | null;
   classe_id: string | null;
   ativo: boolean | null;
   carga_horaria_semanal: number | null;
   obrigatoria: boolean | null;
+};
+type CurriculoRow = {
+  id: string; curso_id: string; classe_id: string | null;
+  ano_letivo_id: string; version: number; status: string;
 };
 type LinkRow = { turma_id: string; professor_id: string | null };
 type ScheduleRow = LinkRow & { versao_id: string | null };
@@ -106,11 +113,12 @@ async function readExplorer(
       { ok: false, error: "Disciplina não encontrada." }, { status: 404 },
     );
 
-    const [matrixReply, legacyReply, scheduleReply] = await Promise.all([
-      supabase.from("curso_matriz")
-        .select("id,curso_id,classe_id,ativo,carga_horaria_semanal,obrigatoria")
-        .eq("escola_id", escolaId).eq("disciplina_id", disciplina.id)
-        .order("id", { ascending: true }).limit(MAX_MATRIZ + 1),
+    // Resolve only published curricula in the selected canonical academic year.
+    const [curriculaReply, legacyReply, scheduleReply] = await Promise.all([
+      supabase.from("curso_curriculos")
+        .select("id,curso_id,classe_id,ano_letivo_id,version,status")
+        .eq("escola_id", escolaId).eq("ano_letivo_id", year.id).eq("status", "published")
+        .order("id", { ascending: true }).limit(MAX_CURRICULOS + 1),
       supabase.from("turma_disciplinas_professores")
         .select("turma_id,professor_id")
         .eq("escola_id", escolaId).eq("disciplina_id", disciplina.id)
@@ -120,15 +128,39 @@ async function readExplorer(
         .eq("escola_id", escolaId).eq("disciplina_id", disciplina.id)
         .order("id", { ascending: true }).limit(MAX_LINKS + 1),
     ]);
-    if (matrixReply.error) throw matrixReply.error;
+    if (curriculaReply.error) throw curriculaReply.error;
     if (legacyReply.error) throw legacyReply.error;
     if (scheduleReply.error) throw scheduleReply.error;
-
-    const matrix = (matrixReply.data ?? []) as MatrizRow[];
+    const allCurricula = (curriculaReply.data ?? []) as CurriculoRow[];
     const legacy = (legacyReply.data ?? []) as LinkRow[];
     const schedule = (scheduleReply.data ?? []) as ScheduleRow[];
-    let limitado = matrix.length > MAX_MATRIZ || legacy.length > MAX_LINKS || schedule.length > MAX_LINKS;
-    const relevantMatrix = matrix.slice(0, MAX_MATRIZ);
+    let limitado = allCurricula.length > MAX_CURRICULOS ||
+      legacy.length > MAX_LINKS || schedule.length > MAX_LINKS;
+    const versions: PublishedCourseCurriculum[] = allCurricula.slice(0, MAX_CURRICULOS).map((row) => ({
+      id: row.id, cursoId: row.curso_id, classeId: row.classe_id,
+      anoLetivoId: row.ano_letivo_id, version: row.version, status: row.status,
+    }));
+    const publishedByScope = indexPublishedCurricula(versions, year.id);
+    const publishedById = new Map([...publishedByScope.values()].map((version) => [version.id, version] as const));
+    const curriculumIds = [...publishedById.keys()];
+    const matrixReply = curriculumIds.length
+      ? await supabase.from("curso_matriz")
+        .select("id,curso_curriculo_id,curso_id,classe_id,ativo,carga_horaria_semanal,obrigatoria")
+        .eq("escola_id", escolaId).eq("disciplina_id", disciplina.id)
+        .in("curso_curriculo_id", curriculumIds)
+        .order("id", { ascending: true }).limit(MAX_MATRIZ + 1)
+      : { data: [] as MatrizRow[], error: null };
+    if (matrixReply.error) throw matrixReply.error;
+    const matrix = (matrixReply.data ?? []) as MatrizRow[];
+    if (matrix.length > MAX_MATRIZ) limitado = true;
+    const relevantMatrix = matrix.slice(0, MAX_MATRIZ).filter((row) => {
+      const version = publishedById.get(row.curso_curriculo_id);
+      if (!version || row.curso_id !== version.cursoId || row.classe_id !== version.classeId) {
+        limitado = true;
+        return false;
+      }
+      return true;
+    });
     const matrixIds = relevantMatrix.map((row) => row.id);
     const publishedVersionCandidates = [...new Set(schedule.slice(0, MAX_LINKS)
       .map((row) => row.versao_id).filter((id): id is string => Boolean(id)))];
@@ -169,7 +201,7 @@ async function readExplorer(
     const requestedTurmaIds = relatedTurmaIds.slice(0, MAX_TURMAS);
     const relevantClassIds = [...new Set(relevantMatrix
       .map((row) => row.classe_id).filter((id): id is string => Boolean(id)))];
-    const [turmasReply, coursesReply, classesReply, classUsageReply] = await Promise.all([
+    const [turmasReply, coursesReply, classesReply] = await Promise.all([
       requestedTurmaIds.length
         ? supabase.from("turmas")
           .select("id,nome,turno,ano_letivo,ano_letivo_id,classes(id,nome),cursos(id,nome)")
@@ -180,26 +212,14 @@ async function readExplorer(
           .in("id", [...new Set(relevantMatrix.map((row) => row.curso_id)
             .filter((id): id is string => Boolean(id)))])
         : Promise.resolve({ data: [] as Array<{ id: string; nome: string }>, error: null }),
-      relevantMatrix.some((row) => row.classe_id)
-        ? supabase.from("classes").select("id,nome,ano_letivo_id").eq("escola_id", escolaId)
-          .in("id", [...new Set(relevantMatrix.map((row) => row.classe_id)
-            .filter((id): id is string => Boolean(id)))])
-        : Promise.resolve({ data: [] as Array<{ id: string; nome: string; ano_letivo_id: string | null }>, error: null }),
-      // A class may be reused across years even if its creation-year UUID is old.
-      // A school-scoped turma in the requested year confirms current relevance.
       relevantClassIds.length
-        ? supabase.from("turmas").select("classe_id")
-          .eq("escola_id", escolaId).eq("ano_letivo_id", year.id)
-          .in("classe_id", relevantClassIds).limit(MAX_TURMAS + 1)
-        : Promise.resolve({ data: [] as Array<{ classe_id: string | null }>, error: null }),
+        ? supabase.from("classes").select("id,nome").eq("escola_id", escolaId)
+          .in("id", relevantClassIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; nome: string }>, error: null }),
     ]);
     if (turmasReply.error) throw turmasReply.error;
     if (coursesReply.error) throw coursesReply.error;
     if (classesReply.error) throw classesReply.error;
-    if (classUsageReply.error) throw classUsageReply.error;
-    const usedClasses = new Set((classUsageReply.data ?? [])
-      .map((row) => row.classe_id).filter((id): id is string => Boolean(id)));
-    if ((classUsageReply.data ?? []).length > MAX_TURMAS) limitado = true;
 
     const turmas: DisciplinaTurmaRow[] = ((turmasReply.data ?? []) as unknown as TurmaRow[])
       .map((row) => ({
@@ -232,23 +252,23 @@ async function readExplorer(
     }
 
     const courses = new Map((coursesReply.data ?? []).map((row) => [row.id, row.nome] as const));
-    const classes = new Map((classesReply.data ?? [])
-      .filter((row) => isClassInAcademicYear(
-        row.ano_letivo_id, year.id, usedClasses.has(row.id) ? 1 : 0,
-      ))
-      .map((row) => [row.id, row.nome] as const));
-    const curriculo: DisciplinaCurriculumRow[] = relevantMatrix
-      .filter((row) => !row.classe_id || classes.has(row.classe_id))
-      .map((row) => ({
-        id: row.id,
-        cursoId: row.curso_id && courses.has(row.curso_id) ? row.curso_id : null,
-        cursoNome: row.curso_id ? courses.get(row.curso_id) ?? null : null,
-        classeId: row.classe_id && classes.has(row.classe_id) ? row.classe_id : null,
-        classeNome: row.classe_id ? classes.get(row.classe_id) ?? null : null,
+    // A published curriculum of the selected year confirms reused classes.
+    const classes = new Map((classesReply.data ?? []).map((row) => [row.id, row.nome] as const));
+    const curriculo: DisciplinaCurriculumRow[] = relevantMatrix.flatMap((row) => {
+      const version = publishedById.get(row.curso_curriculo_id)!;
+      if ((row.curso_id && !courses.has(row.curso_id)) ||
+          (row.classe_id && !classes.has(row.classe_id))) {
+        limitado = true;
+        return [];
+      }
+      return [{
+        id: row.id, curriculoId: version.id, curriculoVersao: version.version,
+        cursoId: row.curso_id, cursoNome: row.curso_id ? courses.get(row.curso_id) ?? null : null,
+        classeId: row.classe_id, classeNome: row.classe_id ? classes.get(row.classe_id) ?? null : null,
         cargaHorariaSemanal: row.carga_horaria_semanal,
-        obrigatoria: row.obrigatoria,
-        ativo: row.ativo,
-      }));
+        obrigatoria: row.obrigatoria, ativo: row.ativo,
+      }];
+    });
     const overview = composeDisciplinaOverview({
       turmas, assignments: links, teachers, curriculum: curriculo, academicYear: year,
     });
@@ -266,6 +286,9 @@ async function readExplorer(
       },
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
+    if (error instanceof PublishedCurriculumConflictError) return NextResponse.json(
+      { ok: false, error: error.message }, { status: 409 },
+    );
     if (error instanceof AcademicYearContextError) return NextResponse.json(
       { ok: false, error: error.message }, { status: error.status },
     );
