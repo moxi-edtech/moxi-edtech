@@ -47,9 +47,14 @@ page.on("pageerror", e => errors.push(e.message.slice(0,180)));
 page.on("console", m => { if (m.type() === "error" && !/fixture.invalid|404/.test(m.text())) errors.push(m.text().slice(0,150)); });
 let requests = 0;
 let queryRequests = 0;
+// Diagnostic paths, not query strings or payloads. Only the isolated fixture
+// is benchmarked, so a regression pinpoints the actual duplicate reader.
+const requestedPaths = [];
 page.on("request", req => {
   if (req.resourceType() === "fetch" || req.resourceType() === "xhr") {
     requests++;
+    const url = new URL(req.url());
+    requestedPaths.push(url.pathname);
     if (req.url().includes("fixture.invalid")) queryRequests++;
   }
 });
@@ -88,7 +93,7 @@ try {
   for(let round=0;round<iterations;round++){
     for(const tab of tabs) {
       const before = await page.evaluate(() => ({commits:window.__balcaoPerf?.commits||0,duration:window.__balcaoPerf?.duration||0}));
-      const requestsBefore=requests, queryBefore=queryRequests, start=Date.now();
+      const requestsBefore=requests, queryBefore=queryRequests, pathsBefore=requestedPaths.length, start=Date.now();
       const button=page.getByRole("button",{name:tab,exact:true});
       await button.click({timeout:20000});
       await button.waitFor({state:"visible",timeout:10000});
@@ -97,7 +102,7 @@ try {
       const paintedMs = Date.now() - start;
       await page.waitForTimeout(250);
       const after = await page.evaluate(() => ({commits:window.__balcaoPerf?.commits||0,duration:window.__balcaoPerf?.duration||0}));
-      raw.push({tab,round,timeMs:paintedMs,requests:requests-requestsBefore,queries:queryRequests-queryBefore,commits:after.commits-before.commits,reactDurationMs:Number((after.duration-before.duration).toFixed(2))});
+      raw.push({tab,round,timeMs:paintedMs,requests:requests-requestsBefore,queries:queryRequests-queryBefore,requestPaths:requestedPaths.slice(pathsBefore),commits:after.commits-before.commits,reactDurationMs:Number((after.duration-before.duration).toFixed(2))});
     }
   }
   const beforeIdle=requests, queriesBeforeIdle=queryRequests;
