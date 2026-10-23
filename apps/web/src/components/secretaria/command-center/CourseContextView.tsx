@@ -12,6 +12,7 @@ import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerM
 import { buildPortalHref } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useCourseContext } from "@/hooks/useCourseContext";
+import { resolveCourseExplorerSelection } from "@/lib/command-center/course-explorer-selection";
 
 type Props = {
   context: EntityContext;
@@ -46,15 +47,13 @@ export function CourseContextView({
   const [selection, setSelection] = useState(() => ({
     contextKey, classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null,
   }));
-  const scopedSelection = selection.contextKey === contextKey ? selection : {
-    contextKey, classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null,
-  };
-  // An initial filter may reference a class/turma no longer valid in this year.
-  // Ignore it rather than claiming the selected course has no turmas.
-  const classeId = data && !data.classes.some((c) => c.id === scopedSelection.classeId)
-    ? null : scopedSelection.classeId;
-  const turmaId = data && !data.turmas.some((t) => t.id === scopedSelection.turmaId)
-    ? null : scopedSelection.turmaId;
+  const { classeId, turmaId } = resolveCourseExplorerSelection({
+    contextKey,
+    selection,
+    fallback: { classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null },
+    classes: data?.classes,
+    turmas: data?.turmas,
+  });
 
   function selectClasse(id: string | null) {
     setSelection({ contextKey, classeId: id, turmaId: null });
