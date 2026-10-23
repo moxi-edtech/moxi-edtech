@@ -58,7 +58,7 @@ BEGIN
            OR strpos(lower(t.nome),lower(trim(p_search)))>0)
   ), total AS (
     SELECT count(*)::bigint AS n FROM eligible
-  ), window AS (
+  ), page_window AS (
     SELECT * FROM eligible ORDER BY nome COLLATE "C", id
     LIMIT p_page_size OFFSET ((p_page::bigint-1)*p_page_size)
   ), counted AS (
@@ -70,7 +70,7 @@ BEGIN
       WHERE m.escola_id=p_escola_id AND m.turma_id=w.id
         AND m.ano_letivo=v_ano AND m.status='ativo' AND m.ativo IS TRUE
     ) AS alunos
-    FROM window w
+    FROM page_window w
   )
   SELECT total.n,
     coalesce((SELECT jsonb_agg(jsonb_build_object(
