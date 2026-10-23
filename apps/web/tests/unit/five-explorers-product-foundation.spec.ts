@@ -11,6 +11,7 @@ import {
 import { ExplorerMetric } from "../../src/components/secretaria/command-center/ExplorerMetric";
 import { ExplorerHistoricalScopeNotice } from "../../src/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { TURMA_DISCIPLINAS_SELECT } from "../../src/lib/command-center/turma-explorer-policy";
+import { resolveCourseExplorerSelection } from "../../src/lib/command-center/course-explorer-selection";
 import {
   composeDisciplinaOverview, indexPublishedCurricula, PublishedCurriculumConflictError,
 } from "../../src/lib/command-center/disciplina-explorer";
@@ -198,4 +199,44 @@ test("EX-006: missing or disabled teacher identity does not erase a recorded ass
   assert.match(route, /identityAvailable: Boolean\(profile/);
   assert.match(view, /Professores identificados/);
   assert.match(view, /data\.unresolvedTeacherLinks > 0/);
+});
+
+test("EX-011: course filters never survive a school, course or academic-year change", () => {
+  const selection = {
+    contextKey: "school-a:course-a:year-2025",
+    classeId: "class-old",
+    turmaId: "turma-old",
+  };
+  const fresh = resolveCourseExplorerSelection({
+    contextKey: "school-b:course-a:year-2026",
+    selection,
+    fallback: { classeId: "class-old", turmaId: "turma-old" },
+    classes: [{ id: "class-new" }],
+    turmas: [{ id: "turma-new", classeId: "class-new" }],
+  });
+  assert.deepEqual(fresh, {
+    contextKey: "school-b:course-a:year-2026",
+    classeId: null, turmaId: null,
+  });
+
+  const valid = resolveCourseExplorerSelection({
+    contextKey: selection.contextKey, selection,
+    fallback: { classeId: null, turmaId: null },
+    classes: [{ id: "class-old" }],
+    turmas: [{ id: "turma-old", classeId: "class-old" }],
+  });
+  assert.deepEqual(valid, selection);
+
+  const wrongClass = resolveCourseExplorerSelection({
+    contextKey: selection.contextKey, selection,
+    fallback: { classeId: null, turmaId: null },
+    classes: [{ id: "class-old" }],
+    turmas: [{ id: "turma-old", classeId: "another-class" }],
+  });
+  assert.equal(wrongClass.classeId, "class-old");
+  assert.equal(wrongClass.turmaId, null);
+
+  const route = readFileSync("src/components/secretaria/command-center/CourseContextView.tsx", "utf8");
+  assert.match(route, /resolveCourseExplorerSelection/);
+  assert.match(route, /context\.academicYearId/);
 });
