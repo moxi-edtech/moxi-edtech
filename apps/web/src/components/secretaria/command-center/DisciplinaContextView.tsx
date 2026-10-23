@@ -10,6 +10,7 @@ import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerM
 import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
 import { useDisciplinaContext } from "@/hooks/useDisciplinaContext";
+import { missingTeacherEvidenceLabel } from "@/lib/command-center/academic-relations";
 
 type Props = {
   context: EntityContext;
@@ -43,7 +44,7 @@ export function DisciplinaContextView({
     </div>
   );
 
-  const { disciplina, anoLetivo, stats, professores, turmas, curriculo, limitado } = data;
+  const { disciplina, anoLetivo, stats, professores, turmas, curriculo, curriculoHistorico, limitado } = data;
   const page = buildPortalHref(
     context.escolaId,
     portal === "admin" ? "/admin/configuracoes" : "/operacoes/configuracoes",
@@ -87,7 +88,7 @@ export function DisciplinaContextView({
           O número de vínculos excede o limite de consulta. Os valores são parciais, não totais definitivos.
         </p>
       )}
-      {turmasSemProfessor > 0 && stats.turmas > 0 && (
+      {!limitado && turmasSemProfessor > 0 && stats.turmas > 0 && (
         <p className="text-xs text-slate-600">
           {turmasSemProfessor === 1
             ? "1 turma sem professor vinculado a esta disciplina nesta visão."
@@ -117,7 +118,7 @@ export function DisciplinaContextView({
               </button>
             ))}
             {!professores.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhum professor vinculado neste ano letivo.</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhum professor identificado no recorte consultado; a lista é parcial." : "Nenhum professor vinculado neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -143,14 +144,14 @@ export function DisciplinaContextView({
                       {turma.professores.map((p) => p.nome).join(", ")}
                     </span>
                   ) : (
-                    <span className="mt-1 block text-xs text-amber-800">Professor não vinculado</span>
+                    <span className="mt-1 block text-xs text-amber-800">{missingTeacherEvidenceLabel(limitado)}</span>
                   )}
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
             ))}
             {!turmas.length && (
-              <p className="px-3 py-5 text-slate-500">Sem turmas vinculadas neste ano.</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma turma encontrada no recorte consultado; não é possível afirmar ausência de vínculo." : "Sem turmas vinculadas neste ano."}</p>
             )}
           </div>
         </section>
@@ -189,10 +190,29 @@ export function DisciplinaContextView({
             </div>
           ))}
           {!curriculo.length && (
-            <p className="px-3 py-5 text-slate-500">Sem associação curricular disponível neste escopo.</p>
+            <p className="px-3 py-5 text-slate-500">{limitado ? "Sem matriz ativa identificada no recorte consultado; consulta parcial." : "Sem associação curricular ativa disponível neste escopo."}</p>
           )}
         </div>
       </section>
+
+      {anoLetivo.historico && curriculoHistorico.length > 0 && (
+        <section className="min-w-0" aria-labelledby="disciplina-matriz-historica-heading">
+          <h3 id="disciplina-matriz-historica-heading" className="mb-2 text-sm font-semibold text-slate-900">
+            Referências de matriz atualmente inativa
+          </h3>
+          <p className="mb-2 text-xs text-amber-900">
+            Os vínculos foram preservados. A matriz está inativa hoje; isso não prova que estivesse inativa no ano consultado.
+            Estes registos não entram nos totais de matriz ativa.
+          </p>
+          <div className="divide-y divide-slate-100 rounded-xl border border-amber-200">
+            {curriculoHistorico.map((item, index) => (
+              <div key={`${item.cursoId ?? ""}:${item.classeId ?? ""}:${index}`} className="px-3 py-3 text-xs text-slate-700">
+                {[item.cursoNome, item.classeNome].filter(Boolean).join(" · ") || "Referência curricular"}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <p className="text-xs text-slate-500">
         Dados exclusivamente académicos. Não são apresentados notas, dados pessoais, pagamentos ou remunerações.
