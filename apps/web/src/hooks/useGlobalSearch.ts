@@ -494,7 +494,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     const hasUsableCache = Boolean(cached && now - cached.ts < SEARCH_CACHE_MAX_AGE_MS);
 
     if (cached && hasUsableCache) {
-      const items = visibleSearchResults(cached.data ?? [], portal).map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
+      const items = visibleSearchResults(cached.data ?? [], portal).map((a) => mapToMinimalResult(portal, escolaId, a, intent));
       setResults(items);
       setCursor(cached.cursor);
       setHasMore(cached.hasMore);
@@ -541,7 +541,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         created_at: row.created_at || new Date().toISOString(),
       }));
 
-      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
+      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(portal, escolaId, a, intent));
 
       if (!isCurrent()) return;
       setResults(items);
@@ -580,7 +580,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       if (!isCurrent()) return;
       const payload = ((data as SearchResult[]) ?? []);
       const nextCursor = payload.length === limit ? toCursor(payload[payload.length - 1]) : null;
-      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
+      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(portal, escolaId, a, intent));
 
       setResults((prev) => (append ? [...prev, ...items] : items));
       setCursor(nextCursor);
@@ -651,7 +651,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
           }
         : null;
 
-      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
+      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(portal, escolaId, a, intent));
 
       setResults((prev) => [...prev, ...items]);
       setCursor(nextCursor);
