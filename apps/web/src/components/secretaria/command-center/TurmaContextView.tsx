@@ -17,7 +17,7 @@ import { ExplorerStudentActions } from "@/components/secretaria/command-center/E
 import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 import { useTurmaContext } from "@/hooks/useTurmaContext";
-import { academicLinkState, ACADEMIC_LINK_LABELS } from "@/lib/command-center/academic-relations";
+import { academicLinkState, academicCurriculumNotice, missingTeacherEvidenceLabel, ACADEMIC_LINK_LABELS } from "@/lib/command-center/academic-relations";
 
 type Props = {
   context: EntityContext;
@@ -173,7 +173,7 @@ export function TurmaContextView({
           <ExplorerMetric label="Excedente de lotação" value={occupancy.overcapacity} hint="Acima da capacidade registada" />
         )}
         <ExplorerMetric label="Disciplinas" value={disciplinas.length} partial={data.disciplinasLimitadas} />
-        <ExplorerMetric label="Professores vinculados" value={data.professoresDetalhes?.length ?? professores.length} />
+        <ExplorerMetric label="Professores vinculados" value={data.professoresDetalhes?.length ?? professores.length} partial={data.disciplinasLimitadas} />
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
 
@@ -295,20 +295,26 @@ export function TurmaContextView({
                 </button>
                 {d.curriculumActive === false && (
                   <p className="mt-1 text-xs text-amber-800" role="status">
+                    {academicCurriculumNotice({
+                      curriculumActive: d.curriculumActive, assignedToTurma: true,
+                      teacherAssigned: d.professores.length > 0,
+                      schedulePublished: false, historicalYear: turma.anoLetivo.historico,
+                    })}
+                    {" · Vínculo: "}
                     {ACADEMIC_LINK_LABELS[academicLinkState({
-                      curriculumActive: false, assignedToTurma: true,
+                      curriculumActive: d.curriculumActive, assignedToTurma: true,
                       teacherAssigned: d.professores.length > 0,
                       schedulePublished: false, historicalYear: turma.anoLetivo.historico,
                     })]}
                   </p>
                 )}
                 <p className={`mt-1 text-xs ${d.professores.length ? "text-slate-500" : "text-amber-800"}`}>
-                  {d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}
+                  {d.professores.length ? d.professores.join(", ") : missingTeacherEvidenceLabel(data.disciplinasLimitadas)}
                 </p>
               </div>
             ))}
             {!disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>
+              <p className="px-3 py-5 text-slate-500">{data.disciplinasLimitadas ? "Não foi possível confirmar as disciplinas fora do recorte consultado." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
           {data.disciplinasLimitadas && (
@@ -334,7 +340,7 @@ export function TurmaContextView({
             </div>
           ) : (
             <p className="text-xs text-slate-500">
-              {professores.length ? professores.join(", ") : "Nenhum professor vinculado."}
+              {professores.length ? professores.join(", ") : data.disciplinasLimitadas ? "Não é possível confirmar a ausência de professores numa lista parcial." : "Nenhum professor vinculado."}
             </p>
           )}
         </section>
