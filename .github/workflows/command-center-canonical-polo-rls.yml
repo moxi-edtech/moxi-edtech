@@ -1,0 +1,38 @@
+name: Command Center Canonical Polo RLS
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/command-center-canonical-polo-rls.yml'
+      - 'supabase/migrations/20271022142000_cc003_canonical_polo_rls.sql'
+      - 'supabase/ops/tests/regression_command_center_canonical_polos.sql'
+      - 'supabase/ops/tests/regression_command_center_polo_scope_p0.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  two-schools-two-polos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cc_polo_model
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the migration and auth RLS with synthetic fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE cc_polo_model;'
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_command_center_canonical_polos.sql
