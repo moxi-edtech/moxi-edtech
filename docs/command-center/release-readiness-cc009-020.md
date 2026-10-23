@@ -1,5 +1,7 @@
 # Release readiness — Command Center CC-009 a CC-020
 
+> **Atualização 23/10/2026:** a integração de código já ocorreu via PR #252 e a integração do Balcão via #253. Os passos de merge abaixo são histórico pré-release, não instruções para reexecutar. A instalação das 11 migrations do Command Center está verificada; nenhuma escola tem enforcement de polo ativo. Consulte [estado atual](estado-atual-20261023.md) para pendências reais de homologação.
+
 **Branch da fase D:** PR empilhada após [#248](https://github.com/moxi-edtech/moxi-edtech/pull/248). **Não autoriza merge, deploy ou migrations na produção.** O CC-001 (replay histórico) é realizado pelo proprietário em paralelo e não foi alterado.
 
 ## Matriz de evidências

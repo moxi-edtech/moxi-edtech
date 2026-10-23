@@ -1,6 +1,8 @@
 # CC-003 — modelo canónico de polos: ativação opt-in e fail-closed
 
-Dependência: PR #250. **Não aplicar migrations ou ativar escola em produção antes da homologação autenticada.**
+> **Estado em 23/10/2026:** estrutura versionada e instalada no Supabase, com **0 escolas ativadas** em `cc_security.enforced_schools`. Os avisos abaixo sobre não aplicar migrations são históricos: a instalação foi feita, mas a **ativação por escola continua proibida sem homologação**. Ver [estado atual](estado-atual-20261023.md).
+
+Dependência histórica: PR #250. **Não aplicar migrations ou ativar escola em produção antes da homologação autenticada.**
 
 O modelo introduz `escola_polos` (unidade vinculada a um único tenant), `escola_user_polos` (operadores com 1..N unidades autorizadas), `escola_turma_polos` (alocação exclusiva por turma/ano) e a tabela privada `cc_security.enforced_schools`. Não realiza backfill ou atribuições a utilizadores atuais.
 
