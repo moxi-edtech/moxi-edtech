@@ -11,6 +11,7 @@ import { ModuleSwitcherInner } from "@/components/layout/klasse/ModuleSwitcher";
 import LockScreenButton from "@/components/session/LockScreenButton";
 import { requestSessionConfig } from "@/components/session/SessionLockProvider";
 import { clearExplorerReturnContext } from "@/lib/command-center/explorer-return-context";
+import ThemeToggle from "@/components/ThemeToggle";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -65,7 +66,7 @@ function ScopedTopbar({
   return (
     <>
 
-      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
         <div className="flex h-16 items-center gap-3 px-3 sm:gap-4 sm:px-4">
           <div className="hidden min-w-0 md:block md:w-[clamp(230px,27vw,420px)]">
             <button
@@ -74,11 +75,11 @@ function ScopedTopbar({
                 setRestoreExplorerOnOpen(false);
                 setPaletteOpen(true);
               }}
-              className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/10"
+              className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:bg-slate-800"
             >
               <Search className="h-4 w-4 text-slate-400 group-hover:text-slate-500" aria-hidden />
               <span className="flex-1 text-left">Pesquisar ou digitar acção...</span>
-              <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-mono text-[10px] font-medium text-slate-400 opacity-100 sm:flex">
+              <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-mono text-[10px] font-medium text-slate-400 opacity-100 sm:flex dark:border-slate-700 dark:bg-slate-800">
                 <span className="text-xs">⌘</span>K
               </kbd>
             </button>
@@ -91,7 +92,7 @@ function ScopedTopbar({
                 setRestoreExplorerOnOpen(false);
                 setPaletteOpen(true);
               }}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               aria-label="Pesquisar ou abrir Command Center"
             >
               <Search className="h-5 w-5" aria-hidden />
@@ -115,10 +116,11 @@ function ScopedTopbar({
 
           <div className="ml-auto flex items-center gap-2">
             <ModuleSwitcherInner escolaId={escolaId} escolaParam={escolaParam} />
+            <ThemeToggle />
             <NotificacoesDropdown />
             <LockScreenButton
               iconOnly
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
             />
 
             <div className="relative">
@@ -127,39 +129,40 @@ function ScopedTopbar({
                 className={cn(
                   "flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3",
                   "hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/20",
+                  "dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800",
                 )}
                 aria-label={`Menu do usuário - ${portalTitle}`}
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald/15 ring-1 ring-emerald/25">
-                  <span className="text-[11px] font-bold text-emerald-900">{userInitial}</span>
+                  <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-100">{userInitial}</span>
                 </div>
                 <div className="hidden text-left leading-4 sm:block">
-                  <div className="text-sm font-medium text-slate-900">{portalTitle}</div>
-                  <div className="text-xs text-slate-500">{userName || portalSubtitle}</div>
+                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{portalTitle}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">{userName || portalSubtitle}</div>
                 </div>
                 <ChevronDown className="h-4 w-4 text-slate-500" />
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                  <LockScreenButton className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50" />
+                <div className="absolute right-0 mt-2 w-56 space-y-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                  <LockScreenButton className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800" />
 
                   <button
                     onClick={() => {
                       requestSessionConfig();
                       setMenuOpen(false);
                     }}
-                    className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+                    className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     <Settings className="h-4 w-4 text-slate-400" />
                     Preferências de Sessão
                   </button>
 
-                  <div className="my-1 border-t border-slate-100" />
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
                   <SignOutButton
                     label="Sair"
-                    className="w-full justify-start gap-2 py-1.5 text-slate-700 hover:bg-slate-50"
+                    className="w-full justify-start gap-2 py-1.5 text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                     variant="ghost"
                   />
                 </div>
