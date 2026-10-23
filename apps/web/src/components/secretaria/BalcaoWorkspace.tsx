@@ -48,10 +48,14 @@ function ScopedBalcaoWorkspace({
     scope: escolaId, id: null,
   });
   const academicYearId = open && yearResult.scope === escolaId ? yearResult.id : null;
+  // The enrollment workspace is not a student-bound operation. Keep the
+  // selected student for other tabs, but never fetch or expose it as the
+  // candidate being admitted.
+  const studentInContextId = activeAction === "enrollment" ? null : selectedStudent.id;
   const { student: studentContext, subtitle } = useCommandCenterStudent(
-    selectedStudent.id, academicYearId, selectedStudent.label,
+    studentInContextId, academicYearId, selectedStudent.label,
   );
-  const currentStudent = studentContext?.id === selectedStudent.id ? studentContext : null;
+  const currentStudent = studentContext?.id === studentInContextId ? studentContext : null;
   const completedEnrollmentRef = useRef(false);
   const studentRequestRef = useRef(0);
   const hasUnsavedWorkRef = useRef(false);
@@ -102,10 +106,10 @@ function ScopedBalcaoWorkspace({
   }, [activeAction, confirmLeavingEnrollment, markNavigationStart]);
 
   const handleSwitchStudent = useCallback(() => {
-    if (submittingRef.current) return;
+    if (activeAction === "enrollment" || submittingRef.current) return;
     // Opening the picker never discards work or changes the student.
     setSwitchingStudent(true);
-  }, []);
+  }, [activeAction]);
 
   const handleStudentPicked = useCallback((next: Student) => {
     if (submittingRef.current) return;
