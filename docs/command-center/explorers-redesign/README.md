@@ -129,10 +129,12 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 - EX-001: funções canónicas puras usadas nos compositores Classe/Professor/Disciplina.
 - EX-002: ExplorerMetric reutilizado nos cinco exploradores, com valor acessível, parcial e desconhecido.
 - EX-003: indicadores de histórico, lista histórica paginada e procura operacional não disparada quando o ano está fechado (as ações abertas noutros módulos continuam sujeitas a revalidação).
-- EX-005 (parcial): no explorador Disciplina, turmas efetivas no ano confirmam classes reutilizadas. Curso exige ajuste próprio na RPC instalada, planeado para um incremento separado com migration e replay setorial.
+- EX-005 (código e migration na branch, **não aplicada**): a vista Disciplina reconhece o currículo publicado do ano; a RPC de Curso passa a incluir classes reutilizadas se houver turma ativa do ano ou currículo publicado desse ano. Migração posterior à criação original da função, sujeita a teste em PostgreSQL descartável e aplicação controlada após aprovação.
 - EX-006 (Disciplina alinhada): currículo `published` por UUID do ano, sem segunda lista; vínculos históricos e atividade preservados. Homologação autenticada ainda pendente.
 - EX-011 (parcial): a seleção de Classe/Turma no explorador de Curso agora é isolada por escola, curso e ano letivo; filtros restaurados inválidos não geram falsos estados de lista vazia. Testes cobrem mudança de contexto e turma fora da classe selecionada.
-- Testes novos para invariantes; restantes EX-004/007–014 continuam trabalho futuro nesta mesma branch.
+- EX-004 (base implementada, **homologação pendente**): Turma conserva página/pesquisa/filtro/aluno e restaura scroll/foco no contêiner que pertence ao Command Palette, depois de a lista chegar; teste sintético de três alunos consecutivos e escopo de escola/ano. O comportamento autenticado com três atendimentos ainda não foi validado.
+- EX-011 (incremento adicional): Classe e Turma partilham agora o mesmo dono de scroll; durante o debounce, não apresentam resultados de outra pesquisa como se fossem atuais; a seleção de Curso continua isolada por escola/curso/ano.
+- Testes novos para invariantes; restantes EX-007–010 e EX-012–014 continuam trabalho futuro nesta mesma branch.
 
 A implementação deste primeiro incremento **não** constitui o redesign completo e **não** deve ser enviada à main ou à produção antes de testes de integração, smoke autenticado e revisão de produto.
 
@@ -181,3 +183,16 @@ A rota, compositor, contrato TypeScript, vista e testes da Disciplina foram alin
 - Disciplina preserva a atribuição docente na turma, mas não inventa perfil navegável quando a identidade está ausente, desativada ou inacessível. O indicador conta **professores identificados** e o aviso apresenta identidades indisponíveis.
 - A seleção de Curso não reutiliza filtros de classe/turma de outro contexto de escola/curso/ano; filtros sem correspondência são ignorados, evitando “sem turmas” enganoso.
 - A PR continua draft; sem alteração na `main`, produção ou dados Supabase.
+
+### Evidência de Classe reutilizada e EX-005 (23/10/2026)
+
+- Auditoria **apenas de leitura** à base atual: em 2026, 29 das 35 classes com turmas ativas foram criadas noutro ano; em 2025, 42 das 46. A RPC instalada filtra a classe pelo ano de criação, provocando omissões em Curso, mesmo quando a turma pertence ao ano selecionado.
+- Criada `supabase/migrations/20271015100001_command_center_course_reused_classes.sql` como **migração forward**, depois do arquivo que originalmente cria a RPC. Preserva permissões, invoker e escopo de escola/curso/ano; usa existência de turma ativa do ano ou currículo publicado desse ano, não versões arquivadas.
+- A regressão `supabase/ops/tests/regression_command_center_course_overview.sql` cobre classes reutilizadas com turma atual, classes de currículo publicado sem turma, versões apenas arquivadas, totais e isolamento multi-escola. O CI contextual executa a migração em **Postgres descartável**, nunca em dados reais.
+- **Estado:** código no GitHub; testes e homologação ainda necessários; **nenhuma migração aplicada ao Supabase**.
+
+### Continuidade EX-004/EX-011 (23/10/2026)
+
+- Command Palette é o único dono do scroll. Turma e Classe restauram no contêiner correto após carregar a lista; guardam página, filtros, pesquisa, aluno selecionado e scroll numa referência efémera e isolada por escola/ano.
+- Ao atualizar a pesquisa, os resultados do termo anterior são ocultados enquanto o `useDebounce` não estabiliza. Ausência, erro e carregamento têm mensagens diferentes. O aluno antes selecionado pode não constar da página/filtros sem que se infira mudança de matrícula.
+- Testes simulam três alunos sucessivos, retorno de estado, rejeição de outra escola e contratos de scroll/roster. Teste autenticado e inspeção visual continuam requisitos para marcar EX-004 completamente aceite.
