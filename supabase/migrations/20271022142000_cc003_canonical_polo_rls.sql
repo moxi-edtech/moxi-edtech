@@ -5,7 +5,7 @@
 
 CREATE SCHEMA IF NOT EXISTS cc_security;
 REVOKE ALL ON SCHEMA cc_security FROM PUBLIC, anon;
-GRANT USAGE ON SCHEMA cc_security TO authenticated;
+GRANT USAGE ON SCHEMA cc_security TO authenticated, service_role;
 
 CREATE TABLE public.escola_polos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -48,6 +48,7 @@ CREATE TABLE cc_security.enforced_schools (
   enabled boolean NOT NULL DEFAULT false,
   activated_at timestamptz
 );
+ALTER TABLE cc_security.enforced_schools ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON cc_security.enforced_schools FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON cc_security.enforced_schools TO service_role;
 
