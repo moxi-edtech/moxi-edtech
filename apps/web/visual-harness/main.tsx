@@ -7,6 +7,10 @@ import AiChatWidget from "../src/components/ai/AiChatWidget";
 import { createRoot } from "react-dom/client";
 import { BalcaoWorkspace } from "../src/components/secretaria/BalcaoWorkspace";
 import { RetainedActionPanels } from "../src/components/secretaria/command-center/RetainedActionPanels";
+import { CommandCenterActionBar } from "../src/components/secretaria/command-center/CommandCenterActionBar";
+import { CommandCenterStudentDossier } from "../src/components/secretaria/command-center/CommandCenterStudentDossier";
+import { useBalcaoKeyboardShortcuts } from "../src/components/secretaria/command-center/useBalcaoKeyboardShortcuts";
+import type { BalcaoDraftSummary } from "../src/components/secretaria/command-center/BalcaoDraftState";
 import { useBalcaoDraftForm } from "../src/components/secretaria/command-center/BalcaoDraftState";
 import type { BalcaoActionId } from "../src/lib/balcao/action-registry";
 import { readBalcaoStudentId, setBalcaoLocationContext } from "../src/lib/balcao/return-context";
@@ -149,6 +153,8 @@ function BalcaoRouteFixture() {
   const [studentLabel, setStudentLabel] = React.useState("Aluno A · fictício");
   const [dirty, setDirty] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [statusByTab,setStatusByTab] = React.useState<Readonly<Partial<Record<BalcaoActionId,BalcaoDraftSummary>>>>({});
+  const [searchOpened,setSearchOpened] = React.useState(0);
   const requestId = React.useRef(0);
   const actionFromLocation = () => {
     const params=read();
@@ -185,12 +191,22 @@ function BalcaoRouteFixture() {
       window.history.replaceState(window.history.state,"","?"+next);
     },delayMs);
   };
+  const keyboard=useBalcaoKeyboardShortcuts({
+    onSearch:()=>setSearchOpened(x=>x+1),
+    onSwitch:()=>select("student-b",15),
+  });
+  const pendingActions=Object.entries(statusByTab).filter(([,status])=>status?.dirty).map(([id])=>id as BalcaoActionId);
   return <main className="mx-auto max-w-3xl space-y-4 p-5" data-testid="balcao-route-fixture">
     <h1>Balcão / navegação autenticada em fixture (sem backend real)</h1>
     <p data-testid="route-actor">secretaria-fixture-role</p>
     <p data-testid="route-student">{studentId ?? "sem aluno"}</p>
     <p data-testid="route-action">{currentAction}</p>
     <p data-testid="route-dirty">{String(dirty)}</p>
+    <p data-testid="route-search-opened">{searchOpened}</p>
+    <button type="button" data-testid="route-toggle-shortcuts" onClick={()=>keyboard.setEnabled(!keyboard.enabled)}>
+      {keyboard.enabled ? "Desativar atalhos" : "Ativar atalhos"}
+    </button>
+    <CommandCenterActionBar value={currentAction} hasStudent={Boolean(studentId)} onChange={visit} pendingActions={pendingActions} />
     <nav aria-label="Abas do atendimento" className="flex flex-wrap gap-2">
       {(["desk","payment","profile","enrollment","document","grade","reenrollment"] as const).map(tab=>
         <button type="button" data-testid={"route-go-"+tab} key={tab} onClick={()=>visit(tab)}>{tab}</button>
@@ -201,6 +217,7 @@ function BalcaoRouteFixture() {
     <RetainedActionPanels key={"secretaria-fixture:escola-a:polo-a:"+studentId} activeAction={currentAction}
       contextSignature={"secretaria-fixture:escola-a:polo-a:"+studentId}
       onUnsavedChange={setDirty} onSubmittingChange={setSubmitting}
+      onActionStatusesChange={setStatusByTab}
       renderAction={panel=> <SyntheticDraftFields action={panel} student={studentLabel}/>}
     />
   </main>;
@@ -269,8 +286,6 @@ if (name === "school-intelligence") {
     return originalFetch(input, init);
   };
 }
-const Scene = stories[name]?.render;
-const target = document.getElementById("root");
 if (target && name === "school-intelligence") {
   function ChatFixture() {
     const [school, setSchool] = useState(fixtureSchool);
@@ -312,7 +327,42 @@ if (target && name === "school-intelligence") {
     </main>;
   }
   createRoot(target).render(<ChatFixture />);
-} else if (target && name === "command-center-explorer") createRoot(target).render(<CommandCenterVisualFixture />);
+}
+// N3: actual student dossier UI, 100% synthetic API and deterministic delayed
+// refreshes. The third request intentionally fails for stale-data assertions.
+if (name === "balcao-financial-refresh") {
+  const originalFetch = window.fetch.bind(window);
+  let calls=0;
+  window.fetch = async (input, init) => {
+    const url=String(input);
+    if (!url.includes("/api/secretaria/alunos/") || !url.includes("/dossier")) return originalFetch(input,init);
+    calls++;
+    await new Promise(resolve=>setTimeout(resolve,calls===1?35:500));
+    if(calls===3) return new Response(JSON.stringify({ok:false,error:"Falha sintética de leitura"}),{status:503,headers:{"Content-Type":"application/json"}});
+    const aluno={
+      id:"00000000-0000-4000-8000-000000000401",
+      perfil:{nome:"Aluno fictício",foto_url:null,status:"ativo",numero_processo:"FIXTURE-0001",bi_numero:null,data_nascimento:null,responsavel_nome:null,responsavel_tel:null,endereco:null,endereco_bairro:null,provincia:null,escola_id:"00000000-0000-4000-8000-000000000402"},
+      historico:[],
+      financeiro:{total_em_atraso:calls===1?100:50,total_pago:calls===1?0:50,situacao:"inadimplente",mensalidades:[],mensalidades_pendentes:[],mensalidades_atrasadas:[]},
+      matricula_atual:null,pendencias:[]
+    };
+    return new Response(JSON.stringify({ok:true,aluno,servicos:[]}),{status:200,headers:{"Content-Type":"application/json"}});
+  };
+}
+function BalcaoFinancialRefreshFixture(){
+  const [version,setVersion]=React.useState(0);
+  return <main className="mx-auto max-w-2xl p-5">
+    <button type="button" data-testid="refresh-dossier" onClick={()=>setVersion(v=>v+1)}>Revalidar dados canónicos</button>
+    <CommandCenterStudentDossier escolaId="00000000-0000-4000-8000-000000000402"
+      alunoId="00000000-0000-4000-8000-000000000401" refreshKey={version}/>
+  </main>;
+}
+
+const Scene = stories[name]?.render;
+const target = document.getElementById("root");
+if (target && name === "balcao-financial-refresh") createRoot(target).render(<FeedbackProvider><BalcaoFinancialRefreshFixture /></FeedbackProvider>);
+else if (target && name === "school-intelligence") { /* Mounted above with synthetic auth. */ }
+else if (target && name === "command-center-explorer") createRoot(target).render(<CommandCenterVisualFixture />);
 else if (target && name === "balcao-route") createRoot(target).render(<BalcaoRouteFixture />);
 else if (target && name === "balcao-retention") createRoot(target).render(<BalcaoRetentionFixture />);
 else if (target && name === "balcao-perf") {

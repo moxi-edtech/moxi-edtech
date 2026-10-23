@@ -1,0 +1,110 @@
+{
+  "fixture": true,
+  "authenticatedBackend": false,
+  "cycles": 210,
+  "samples": [
+    {
+      "cycle": 0,
+      "heapBytes": 10451488,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 2
+    },
+    {
+      "cycle": 20,
+      "heapBytes": 11385380,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 40,
+      "heapBytes": 11626740,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 60,
+      "heapBytes": 11668220,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 80,
+      "heapBytes": 11772072,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 100,
+      "heapBytes": 11779468,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 120,
+      "heapBytes": 11794684,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 140,
+      "heapBytes": 11800208,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 160,
+      "heapBytes": 11808492,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 180,
+      "heapBytes": 11812624,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 200,
+      "heapBytes": 11820348,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    },
+    {
+      "cycle": 210,
+      "heapBytes": 11842964,
+      "domNodes": 84,
+      "panels": 1,
+      "listeners": 0,
+      "historyLength": 50
+    }
+  ],
+  "budget": {
+    "allowedHeapBytes": 23440110,
+    "allowedDomNodes": 208,
+    "allowedListeners": 50,
+    "maxRetainedPanels": 7
+  },
+  "errors": []
+}

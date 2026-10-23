@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CommandCenterPanel } from "@/components/secretaria/command-center/CommandCenterPanel";
+import { useBalcaoTelemetry } from "@/components/secretaria/command-center/useBalcaoTelemetry";
 import { RetainedActionPanels } from "@/components/secretaria/command-center/RetainedActionPanels";
+import { useBalcaoKeyboardShortcuts } from "@/components/secretaria/command-center/useBalcaoKeyboardShortcuts";
+import type { BalcaoDraftSummary } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { CommandCenterShell } from "@/components/secretaria/command-center/CommandCenterShell";
 import { CommandCenterStudentPicker } from "@/components/secretaria/command-center/CommandCenterStudentPicker";
 import { useCommandCenterStudent } from "@/components/secretaria/command-center/useCommandCenterStudent";
@@ -36,6 +39,7 @@ function ScopedBalcaoWorkspace({
   const [selectedStudent, setSelectedStudent] = useState<Student>(aluno);
   const [activeAction, setActiveAction] = useState<BalcaoActionId>(actionId);
   // Após uma operação gravada no servidor, invalidar apenas o painel de leitura.
+  const { markNavigationStart } = useBalcaoTelemetry(activeAction);
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [switchingStudent, setSwitchingStudent] = useState(false);
   // Old asynchronous academic-context responses must never be used after
@@ -52,6 +56,13 @@ function ScopedBalcaoWorkspace({
   const studentRequestRef = useRef(0);
   const hasUnsavedWorkRef = useRef(false);
   const submittingRef = useRef(false);
+  const [actionDraftStatuses, setActionDraftStatuses] = useState<Readonly<Partial<Record<BalcaoActionId, BalcaoDraftSummary>>>>({});
+  const handleActionDraftStatuses = useCallback((next: Readonly<Partial<Record<BalcaoActionId, BalcaoDraftSummary>>>) => {
+    setActionDraftStatuses(next);
+  }, []);
+  const pendingActions = Object.entries(actionDraftStatuses)
+    .filter(([, summary]) => summary?.dirty)
+    .map(([action]) => action as BalcaoActionId);
   const handleUnsavedChange = useCallback((value: boolean) => { hasUnsavedWorkRef.current = value; }, []);
   const handleSubmittingChange = useCallback((value: boolean) => { submittingRef.current = value; }, []);
 
@@ -85,9 +96,10 @@ function ScopedBalcaoWorkspace({
   const handleActionChange = useCallback((next: BalcaoActionId) => {
     if (next === activeAction || !confirmLeavingEnrollment()) return;
     if (next === "enrollment") completedEnrollmentRef.current = false;
+    markNavigationStart();
     setSwitchingStudent(false);
     setActiveAction(next);
-  }, [activeAction, confirmLeavingEnrollment]);
+  }, [activeAction, confirmLeavingEnrollment, markNavigationStart]);
 
   const handleSwitchStudent = useCallback(() => {
     if (submittingRef.current) return;
@@ -146,6 +158,11 @@ function ScopedBalcaoWorkspace({
     onSuccess?.();
   }, [onSuccess]);
 
+  const shortcuts = useBalcaoKeyboardShortcuts({
+    onSearch: handleSwitchStudent,
+    onSwitch: handleSwitchStudent, // never bypasses pending/submit guard
+  });
+
   if (!open) return null;
 
   return (
@@ -154,6 +171,8 @@ function ScopedBalcaoWorkspace({
       student={{ ...selectedStudent, subtitle: currentStudent ? subtitle : null }}
       activeAction={activeAction}
       onActionChange={handleActionChange}
+      pendingActions={pendingActions}
+      shortcuts={shortcuts}
       onSwitchStudent={switchingStudent ? undefined : handleSwitchStudent}
       onClose={handleClose}
     >
@@ -167,7 +186,7 @@ function ScopedBalcaoWorkspace({
         // Alternate entrypoints without an authenticated identity must not
         // retain private student panels (conservative security fallback).
         <CommandCenterPanel
-          key={`${selectedStudent.id}:${refreshRevision}`}
+          key={`${escolaId}:${selectedStudent.id}:${activeAction}:${refreshRevision}`}
           escolaId={escolaId}
           inModal
           alunoId={activeAction === "enrollment" ? null : selectedStudent.id}
@@ -184,6 +203,7 @@ function ScopedBalcaoWorkspace({
           contextSignature={`${userScope}:${escolaId}:${poloScope}:${selectedStudent.id}:${currentStudent?.turmaId ?? "-"}:${academicYearId ?? "-"}:${refreshRevision}`}
           onUnsavedChange={handleUnsavedChange}
           onSubmittingChange={handleSubmittingChange}
+          onActionStatusesChange={handleActionDraftStatuses}
           renderAction={(panelAction) => (
             <CommandCenterPanel
               escolaId={escolaId}

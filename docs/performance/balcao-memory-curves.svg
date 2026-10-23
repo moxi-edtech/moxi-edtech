@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="560" viewBox="0 0 980 560" role="img" aria-label="Curvas de memória heap JS, nós DOM e listeners antes e depois de 210 ciclos sintéticos de navegação">
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="65" y="36" font-family="sans-serif" font-size="23" font-weight="bold" fill="#0f172a">Balcão · 210 ciclos sintéticos de atendimento</text>
+<text x="65" y="60" font-family="sans-serif" font-size="13" fill="#475569">Chrome/Playwright · heap com GC · nenhuma consulta a dados reais</text>
+<text x="75" y="69" font-family="sans-serif" font-size="16" font-weight="bold" fill="#334155">Heap JS pós-GC (MiB)</text>
+<line x1="75" y1="183" x2="948" y2="183" stroke="#cbd5e1"/>
+<line x1="75" y1="183.0" x2="948" y2="183.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="187.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">8</text>
+<line x1="75" y1="134.0" x2="948" y2="134.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="138.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">12</text>
+<line x1="75" y1="85.0" x2="948" y2="85.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="89.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">16</text>
+<polyline points="75.0,167.2 158.1,155.8 241.3,153.6 324.4,152.7 407.6,151.5 490.7,151.2 573.9,151.1 657.0,150.9 740.1,150.9 823.3,150.7 906.4,150.8 948.0,150.6" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+<circle cx="75.0" cy="167.2" r="3" fill="#2563eb"/>
+<circle cx="158.1" cy="155.8" r="3" fill="#2563eb"/>
+<circle cx="241.3" cy="153.6" r="3" fill="#2563eb"/>
+<circle cx="324.4" cy="152.7" r="3" fill="#2563eb"/>
+<circle cx="407.6" cy="151.5" r="3" fill="#2563eb"/>
+<circle cx="490.7" cy="151.2" r="3" fill="#2563eb"/>
+<circle cx="573.9" cy="151.1" r="3" fill="#2563eb"/>
+<circle cx="657.0" cy="150.9" r="3" fill="#2563eb"/>
+<circle cx="740.1" cy="150.9" r="3" fill="#2563eb"/>
+<circle cx="823.3" cy="150.7" r="3" fill="#2563eb"/>
+<circle cx="906.4" cy="150.8" r="3" fill="#2563eb"/>
+<circle cx="948.0" cy="150.6" r="3" fill="#2563eb"/>
+<polyline points="75.0,158.9 158.1,148.0 241.3,145.2 324.4,144.7 407.6,143.5 490.7,143.4 573.9,143.2 657.0,143.1 740.1,143.0 823.3,143.0 906.4,142.9 948.0,142.6" fill="none" stroke="#db6b24" stroke-width="2.5"/>
+<circle cx="75.0" cy="158.9" r="3" fill="#db6b24"/>
+<circle cx="158.1" cy="148.0" r="3" fill="#db6b24"/>
+<circle cx="241.3" cy="145.2" r="3" fill="#db6b24"/>
+<circle cx="324.4" cy="144.7" r="3" fill="#db6b24"/>
+<circle cx="407.6" cy="143.5" r="3" fill="#db6b24"/>
+<circle cx="490.7" cy="143.4" r="3" fill="#db6b24"/>
+<circle cx="573.9" cy="143.2" r="3" fill="#db6b24"/>
+<circle cx="657.0" cy="143.1" r="3" fill="#db6b24"/>
+<circle cx="740.1" cy="143.0" r="3" fill="#db6b24"/>
+<circle cx="823.3" cy="143.0" r="3" fill="#db6b24"/>
+<circle cx="906.4" cy="142.9" r="3" fill="#db6b24"/>
+<circle cx="948.0" cy="142.6" r="3" fill="#db6b24"/>
+<text x="75" y="284" font-family="sans-serif" font-size="16" font-weight="bold" fill="#334155">Nós DOM</text>
+<line x1="75" y1="398" x2="948" y2="398" stroke="#cbd5e1"/>
+<line x1="75" y1="398.0" x2="948" y2="398.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="402.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">0</text>
+<line x1="75" y1="349.0" x2="948" y2="349.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="353.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">70</text>
+<line x1="75" y1="300.0" x2="948" y2="300.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="304.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">140</text>
+<polyline points="75.0,370.0 158.1,370.0 241.3,370.0 324.4,370.0 407.6,370.0 490.7,370.0 573.9,370.0 657.0,370.0 740.1,370.0 823.3,370.0 906.4,370.0 948.0,370.0" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+<circle cx="75.0" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="158.1" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="241.3" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="324.4" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="407.6" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="490.7" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="573.9" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="657.0" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="740.1" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="823.3" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="906.4" cy="370.0" r="3" fill="#2563eb"/>
+<circle cx="948.0" cy="370.0" r="3" fill="#2563eb"/>
+<polyline points="75.0,339.2 158.1,339.2 241.3,339.2 324.4,339.2 407.6,339.2 490.7,339.2 573.9,339.2 657.0,339.2 740.1,339.2 823.3,339.2 906.4,339.2 948.0,339.2" fill="none" stroke="#db6b24" stroke-width="2.5"/>
+<circle cx="75.0" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="158.1" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="241.3" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="324.4" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="407.6" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="490.7" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="573.9" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="657.0" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="740.1" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="823.3" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="906.4" cy="339.2" r="3" fill="#db6b24"/>
+<circle cx="948.0" cy="339.2" r="3" fill="#db6b24"/>
+<text x="75" y="419" font-family="sans-serif" font-size="16" font-weight="bold" fill="#334155">Listeners globais ativos</text>
+<line x1="75" y1="533" x2="948" y2="533" stroke="#cbd5e1"/>
+<line x1="75" y1="533.0" x2="948" y2="533.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="537.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">0</text>
+<line x1="75" y1="484.0" x2="948" y2="484.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="488.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">35</text>
+<line x1="75" y1="435.0" x2="948" y2="435.0" stroke="#e2e8f0" stroke-dasharray="2 4"/>
+<text x="68" y="439.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#64748b">70</text>
+<polyline points="75.0,533.0 158.1,533.0 241.3,533.0 324.4,533.0 407.6,533.0 490.7,533.0 573.9,533.0 657.0,533.0 740.1,533.0 823.3,533.0 906.4,533.0 948.0,533.0" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+<circle cx="75.0" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="158.1" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="241.3" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="324.4" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="407.6" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="490.7" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="573.9" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="657.0" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="740.1" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="823.3" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="906.4" cy="533.0" r="3" fill="#2563eb"/>
+<circle cx="948.0" cy="533.0" r="3" fill="#2563eb"/>
+<polyline points="75.0,533.0 158.1,533.0 241.3,533.0 324.4,533.0 407.6,533.0 490.7,533.0 573.9,533.0 657.0,533.0 740.1,533.0 823.3,533.0 906.4,533.0 948.0,533.0" fill="none" stroke="#db6b24" stroke-width="2.5"/>
+<circle cx="75.0" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="158.1" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="241.3" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="324.4" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="407.6" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="490.7" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="573.9" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="657.0" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="740.1" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="823.3" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="906.4" cy="533.0" r="3" fill="#db6b24"/>
+<circle cx="948.0" cy="533.0" r="3" fill="#db6b24"/>
+<line x1="78" y1="527" x2="110" y2="527" stroke="#2563eb" stroke-width="3"/><text x="120" y="531" font-family="sans-serif" font-size="13">PR #213 (antes)</text>
+<line x1="300" y1="527" x2="332" y2="527" stroke="#db6b24" stroke-width="3"/><text x="342" y="531" font-family="sans-serif" font-size="13">PR nice-to-haves (depois)</text>
+</svg>
