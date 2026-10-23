@@ -24,7 +24,10 @@ export type DisciplinaOverview = {
     cursoId: string | null; cursoNome: string | null;
     classeId: string | null; classeNome: string | null;
     cargaHorariaSemanal: number | null; obrigatoria: boolean | null;
+    ativo?: boolean | null;
   }>;
+  /** Matrix rows inactive today; not necessarily inactive in the selected year. */
+  curriculoHistorico: DisciplinaOverview["curriculo"];
   limitado: boolean;
 };
 
