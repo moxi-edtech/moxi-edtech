@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  AlertCircle, ArrowUpRight, BookOpen, ChevronRight, GraduationCap,
-  Loader2, RefreshCw, UsersRound,
+  AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight, GraduationCap,
+  Loader2, RefreshCw, Search, UsersRound,
 } from "lucide-react";
 
 import type { EntityContext } from "@/lib/command-center/entity-context";
@@ -12,6 +12,7 @@ import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerM
 import { buildPortalHref } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useCourseContext } from "@/hooks/useCourseContext";
+import { useCourseTurmasPage } from "@/hooks/useCourseTurmasPage";
 import { resolveCourseExplorerSelection } from "@/lib/command-center/course-explorer-selection";
 
 type Props = {
@@ -41,6 +42,8 @@ export function CourseContextView({
 }: Props) {
   const { data, error, loading, retry } = useCourseContext(context);
   const reducedMotion = useReducedMotion();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   // Selection belongs to a specific school/course/year. A mounted explorer may
   // receive a different context without remounting; never reuse the old filter.
   const contextKey = [context.escolaId, context.id, context.academicYearId ?? ""].join(":");
@@ -56,6 +59,7 @@ export function CourseContextView({
   });
 
   function selectClasse(id: string | null) {
+    setPage(1);
     setSelection({ contextKey, classeId: id, turmaId: null });
     onClasseChange?.(id);
     onTurmaChange?.(null);
@@ -64,12 +68,14 @@ export function CourseContextView({
     setSelection({ contextKey, classeId, turmaId: id });
   }
 
-  // This bounded, already fetched list is cheap to filter; React Compiler can
-  // derive it safely without manual memoization of a contextual selection.
-  const visibleTurmas = (data?.turmas ?? []).filter((turma) =>
-    !classeId || turma.classeId === classeId);
-  const selectedTurma = data?.turmas.find((turma) =>
-    turma.id === turmaId && (!classeId || turma.classeId === classeId));
+  const window = useCourseTurmasPage({
+    context, enabled: Boolean(data), page, classeId, search,
+  });
+  // The paginated RPC owns the window and total. The legacy overview's first
+  // 100 entries must never be misrepresented as an exhaustive list.
+  const visibleTurmas = window.data?.items ?? [];
+  const selectedTurma = visibleTurmas.find((turma) => turma.id === turmaId);
+  const lastPage = Math.max(1, Math.ceil((window.data?.total ?? 0) / 25));
   const selectedClasse = data?.classes.find((classe) => classe.id === classeId);
 
   function openTurmaPage(id: string) {
@@ -206,8 +212,33 @@ export function CourseContextView({
             <GraduationCap className="h-4 w-4" aria-hidden />
             {selectedClasse ? `Turmas · ${selectedClasse.nome}` : "Turmas do curso"}
           </h3>
-          <div className=" p-2">
-            {visibleTurmas.map((turma) => (
+          <div className="border-b border-slate-100 p-3">
+            <label htmlFor="curso-turmas-search" className="mb-1.5 block text-xs font-medium text-slate-600">
+              Pesquisar turmas deste curso
+            </label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden />
+              <input id="curso-turmas-search" type="search" value={search}
+                onChange={(event) => { setSearch(event.target.value.slice(0,72)); setPage(1); setTurmaId(null); }}
+                placeholder="Nome da turma" maxLength={72}
+                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus-visible:outline-2 focus-visible:outline-emerald-600" />
+            </div>
+            <p role="status" className="mt-2 text-xs text-slate-600">
+              {window.busy ? "A consultar turmas…" : window.error
+                ? "Não foi possível confirmar a lista." :
+                `${window.data?.total ?? 0} turmas encontradas · Página ${page} de ${lastPage}`}
+            </p>
+          </div>
+          <div className="p-2">
+            {window.error && (
+              <p role="alert" className="p-3 text-xs text-rose-700">
+                {window.error}
+                <button type="button" onClick={() => void window.retry()}
+                  className="ml-2 underline focus-visible:outline-2 focus-visible:outline-emerald-600">Tentar novamente</button>
+              </p>
+            )}
+            {window.busy && <p role="status" className="p-3 text-xs text-slate-600">A carregar a página…</p>}
+            {!window.busy && !window.error && visibleTurmas.map((turma) => (
               <button type="button" key={turma.id}
                 onClick={() => exploreTurmaDirect(turma)}
                 aria-pressed={turmaId === turma.id}
@@ -224,14 +255,28 @@ export function CourseContextView({
                 </span>
               </button>
             ))}
-            {!visibleTurmas.length && (
-              <p className="p-3 text-xs text-slate-500">
-                {data.turmasLimitadas
-                  ? "A lista de turmas está limitada às primeiras 100; não é possível concluir ausência nesta seleção."
-                  : "Sem turmas ativas nesta seleção."}
-              </p>
+            {!window.busy && !window.error && !visibleTurmas.length && (
+              <p className="p-3 text-xs text-slate-500">Nenhuma turma encontrada para os filtros e ano selecionados.</p>
             )}
           </div>
+          {!window.error && !window.busy && (
+            <nav aria-label="Paginação de turmas do curso"
+              className="flex items-center justify-between gap-3 border-t border-slate-100 px-3 py-2">
+              <button type="button" disabled={page <= 1}
+                onClick={() => { setPage((previous) => Math.max(1, previous - 1)); setTurmaId(null); }}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-700 focus-visible:outline-2 focus-visible:outline-emerald-600 disabled:opacity-40">
+                <ChevronLeft className="h-4 w-4" aria-hidden /> Anterior
+              </button>
+              <span className="text-xs tabular-nums text-slate-600" aria-live="polite">
+                {page} / {lastPage}
+              </span>
+              <button type="button" disabled={!window.data?.hasMore}
+                onClick={() => { setPage((previous) => previous + 1); setTurmaId(null); }}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-700 focus-visible:outline-2 focus-visible:outline-emerald-600 disabled:opacity-40">
+                Seguinte <ChevronRight className="h-4 w-4" aria-hidden />
+              </button>
+            </nav>
+          )}
         </section>
       </div>
 
@@ -273,10 +318,10 @@ export function CourseContextView({
         )}
       </AnimatePresence>
 
-      {data.turmasLimitadas && (
+      {window.error && (
         <p className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          A lista mostra até 100 turmas. Os totais acima incluem todas as turmas elegíveis.
+          Os totais do curso não substituem a consulta paginada; a lista de turmas está indisponível.
         </p>
       )}
       <p className="text-xs text-slate-500">
