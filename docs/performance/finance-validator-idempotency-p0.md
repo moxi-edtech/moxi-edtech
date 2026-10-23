@@ -1,52 +1,74 @@
-# P0 — proteção contra liquidações e validações duplicadas
+# P0 — validação financeira idempotente sobre a implementação de produção
 
-## Causa-raiz
+## Fonte da verdade
 
-A função canónica `public.validar_pagamento(uuid,boolean,text)`, na migration
-`20270605120000_unificar_recebimentos_balcao_portal.sql`, bloqueia a linha
-com `FOR UPDATE`, mas não valida se o comprovativo continua em `pending`.
-Uma segunda aprovação incrementava novamente `mensalidades.valor_pago_total`;
-uma rejeição concorrente podia alterar o estado do mesmo comprovativo.
-O mesmo problema existe no ramo de `pagamento_intents`: um serviço já
-concedido podia ser cancelado por decisão posterior.
+A base é o esquema **efetivamente instalado no Supabase**, não a função histórica
+de `20270605120000_unificar_recebimentos_balcao_portal.sql`. Consulta de leitura
+em 23/10/2026: 632 migrations aplicadas; a correção `20271015110000` ainda não
+estava aplicada. Assinaturas verificadas via `md5(pg_get_functiondef(...))`:
 
-## Correção
+- `validar_pagamento(uuid,boolean,text)`: `74696d60970bed3361b17ba712725398`.
+- `financeiro_aplicar_pagamento_existente(uuid,uuid)`: `9f4e1e0e785828c5b354056a428f38f5`.
 
-A migration `20271015110000_fix_validar_pagamento_idempotency.sql` mantém o
-bloqueio por linha, isolamento de escola, validação de papel, emissão de
-recibos e a função original. A única alteração são três guardas:
+O mecanismo instalado já faz `FOR UPDATE` na linha de pagamentos, rejeita
+transições inválidas, controla o saldo da mensalidade e impede alocações
+financeiras/fiscais repetidas por comprovativo. Não deve ser substituído
+pela lógica antiga, que somava diretamente `mensalidades.valor_pago_total`.
 
-1. Apenas `pagamentos.status='pending'` pode ser aprovado/rejeitado.
-2. A mensalidade bloqueada deve ter dívida positiva, e um novo comprovativo
-   não pode fazer o saldo exceder o valor previsto; impede cobrança duplicada
-   através de **dois comprovativos diferentes**.
-3. Apenas `pagamento_intents.status='pending'` pode alterar serviços.
-   Comprovativos rejeitados exigem reenvio para regressar ao estado pendente.
+## Falha que continuava presente
 
-O repositório possui migrations com timestamps até outubro de 2027; uma
-migration com o timestamp real de outubro de 2026 executaria antes de
-`20270605120000` e seria anulada. A versão segue o último timestamp
-existente, sem modificar migrations anteriores.
+Na ramificação de `pagamento_intents`, uma segunda rejeição podia reescrever
+a decisão; mais grave, uma rejeição posterior a `settled` podia cancelar
+um serviço já concedido. Um comprovativo `failed` também podia voltar
+a `settled` sem novo ciclo de análise.
 
-## Provas
+## Correção cirúrgica
 
-O workflow **Finance Validator P0 — Disposable PostgreSQL** executa PostgreSQL
-17 descartável, a função SQL real deste PR e três concorrências com duas
-conexões independentes: aprovar/rejeitar o mesmo comprovativo, dois
-comprovativos para a mesma dívida e aprovar/rejeitar o mesmo serviço.
-Exige precisamente um vencedor e estado/valor/recibo coerentes. Outros
-testes cobrem segundo clique, rejeição e reenvio, RLS entre duas escolas,
-papéis, serviço concedido e recibo único.
+`20271015110000_fix_validar_pagamento_idempotency.sql` deriva da função
+real instalada e introduz **apenas duas guardas na ramificação de serviços**:
 
-O verificador `scripts/ci/verify_finance_validator_function.py` confirma
-que o SQL difere da função anterior **somente** nas três guardas, não na
-autorização ou na emissão de recibos.
+1. Rejeitar um intent `failed` pela segunda vez é idempotente;
+   rejeitar outros estados diferentes de `pending` é proibido.
+2. Aprovar um intent só é permitido em `pending`, com replay
+   idempotente quando já está `settled`.
 
-**Limitação:** este workflow testa a função real, mas utiliza tabelas,
-emissor fiscal e políticas RLS de *fixture*, não o motor de recibos
-completo de produção. A homologação integral com todas as migrations,
-sessões Auth HTTP e RLS canónico permanece pendente na PR #213. Dados,
-identidades e montantes dos testes são integralmente sintéticos.
+O restante da função — isolamento de escola, papéis autorizados, pagamentos
+de mensalidades, idempotência financeira, alocações fiscais, lançamentos e
+auditoria — permanece **inalterado**. Uma guarda SQL verifica o hash da
+função real antes de executar a migração, abortando perante drift no banco.
+Em caso de drift, inspecionar e reconciliar o código; não desabilitar a
+guarda para fazer o CI passar.
 
-**Segurança:** nenhum merge, deploy, mudança direta em produção ou
-alteração a grants/policies/funções fiscais nesta PR.
+O timestamp `20271015110000` segue a numeração já existente no histórico
+do repositório. Escolher timestamp inferior às migrations efetivas mais
+recentes poderia fazer uma definição posterior sobrepor a correção.
+
+## Testes
+
+O workflow **Finance Validator P0 — Disposable PostgreSQL** inicia PostgreSQL
+17 descartável e testa **as duas funções SQL reais** (`validar_pagamento`
+e `financeiro_aplicar_pagamento_existente`) extraídas da produção,
+com hashes verificados. O esquema sintético reproduz as colunas,
+enums e restrições relevantes do motor financeiro, mas **não é
+uma cópia integral do esquema de produção**.
+
+Os testes cobrem validação/repetição, transições inválidas, escola e papel,
+duas sessões concorrentes sobre o mesmo comprovativo, dois comprovativos
+concorrentes para uma mensalidade, concorrência aprovação/rejeição do serviço,
+uma única alocação, decomposição fiscal FT em bruto/líquido/imposto,
+escrita única no `audit_logs` e atualização do lançamento mensal.
+
+As policies RLS dos contratos sintéticos testam o isolamento por escola;
+**não reproduzem todas as políticas reais, Auth HTTP ou triggers de produção**.
+A homologação integral com o snapshot completo de esquema e RLS do Supabase
+continua uma etapa separada para a PR #213.
+
+Os IDs, escola, fatura e valores são inteiramente artificiais; nenhum dado
+pessoal ou URL de conexão à produção está versionado.
+
+## Regras de publicação
+
+- Não executar a migração em produção sem conferir novamente o fingerprint.
+- Não contornar a guarda de versão nem editar migrations históricas aplicadas.
+- Publicar somente após validação integrada do esquema e plano de rollback.
+- Este PR não altera concessões `GRANT`, políticas RLS ou motor fiscal.

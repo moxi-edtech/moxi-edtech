@@ -41,13 +41,13 @@ jobs:
         run: python3 scripts/ci/verify_finance_validator_function.py
       - name: Create strictly synthetic tenant-scoped PostgreSQL contract
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_targeted_bootstrap.sql
-      - name: Install production-derived validator and synthetic fiscal allocation seam
+      - name: Install live validator and real fiscal allocator on synthetic schema
         run: |
           psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_production_contract.sql
           psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_production_baseline.sql
       - name: Apply real finance validator production migration to disposable DB
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271015110000_fix_validar_pagamento_idempotency.sql
-      - name: Real SQL function + actor guards + RLS contract + idempotency + receipts
+      - name: Real SQL functions + actor guards + fiscal allocation + RLS + idempotency
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/finance_validator_production_regression.sql
       - name: Three races — real parallel PostgreSQL sessions and strict invariants
         run: bash supabase/ops/tests/finance_validator_production_concurrency.sh
@@ -57,7 +57,7 @@ jobs:
           DO $$
           DECLARE obj text;
           BEGIN
-            FOREACH obj IN ARRAY ARRAY['pagamentos','mensalidades','pagamento_intents','documentos_emitidos','servico_pedidos']
+            FOREACH obj IN ARRAY ARRAY['pagamentos','mensalidades','pagamento_intents','documentos_emitidos','servico_pedidos','financeiro_pagamento_alocacoes','financeiro_lancamentos','fiscal_documentos','audit_logs']
             LOOP
               IF NOT EXISTS (
                 SELECT 1 FROM pg_class WHERE oid=('public.'||obj)::regclass
