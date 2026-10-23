@@ -64,6 +64,8 @@ jobs:
       - name: Concurrency — 2 independent instances, 2 principals and tenant RLS
         run: |
           set -euo pipefail
+          # EXPLAIN is observable and invokes the RPC limiter; isolate phases.
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -c 'TRUNCATE public.public_rate_limits;'
           python3 apps/web/scripts/performance/command_center_load_benchmark.py concurrency | tee /tmp/cc-concurrent.json
       - name: Reproducible 3x8 before/after p50/p95, bytes and requests/hour
         run: |
