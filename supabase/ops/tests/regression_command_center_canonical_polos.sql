@@ -121,7 +121,7 @@ CREATE POLICY synthetic_turma_update_same_school ON public.turmas
 GRANT UPDATE(nome) ON public.turmas TO authenticated;
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000d1';
-DO $
+DO $$
 DECLARE affected integer; blocked boolean:=false;
 BEGIN
   UPDATE public.turmas SET nome='Unauthorized P2 edit'
@@ -149,7 +149,7 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN blocked:=true;
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'Operator can escalate own polo membership'; END IF;
-END $;
+END $$;
 RESET ROLE;
 -- Removal of an assignment takes effect in the next statement, no JWT refresh.
 DELETE FROM public.escola_user_polos WHERE
@@ -157,11 +157,11 @@ DELETE FROM public.escola_user_polos WHERE
   AND user_id='00000000-0000-4000-8000-0000000000d1';
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000d1';
-DO $
+DO $$
 BEGIN
  IF (SELECT count(*) FROM public.turmas WHERE id='00000000-0000-4000-8000-0000000000f1')<>0
  THEN RAISE EXCEPTION 'Revoked user still sees prior polo'; END IF;
-END $;
+END $$;
 RESET ROLE;
 
 SELECT 'CC-003 canonical polo RLS fixture PASS' AS verdict;
