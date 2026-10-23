@@ -1,1 +1,307 @@
-placeholder
+"use client";
+
+import React, { useMemo, useState } from "react";
+import { Mensal, PorTurma, InadimplenciaClasseItem } from "./types";
+import { kwanza, formatMonthRef, normalizeMonthKey, EducationalEmptyState } from "./utils";
+import { Search, Info } from "lucide-react";
+import { FinancialDetailDrawer } from "./FinancialDetailDrawer";
+
+interface TabPropinasProps {
+  mensalFiltrado: Mensal[];
+  rankingTurmasOrdenado: PorTurma[];
+  inadimplenciaClasseFiltrada: InadimplenciaClasseItem[];
+  selectedMonth: string;
+  selectedMonthLabel: string;
+  setSelectedMonth: (m: string) => void;
+  anoLetivoAtivo: number;
+  anoLetivoId?: string;
+  escolaId: string;
+}
+
+export function TabPropinas({
+  mensalFiltrado,
+  rankingTurmasOrdenado,
+  inadimplenciaClasseFiltrada,
+  selectedMonth,
+  selectedMonthLabel,
+  setSelectedMonth,
+  anoLetivoAtivo,
+  anoLetivoId,
+  escolaId,
+}: TabPropinasProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [drillDown, setDrillDown] = useState<{
+    isOpen: boolean;
+    classeId?: string;
+    turmaId?: string;
+    classeLabel: string;
+    mes: string;
+    ano: string;
+    status: string;
+  }>({
+    isOpen: false,
+    classeLabel: "",
+    mes: "",
+    ano: "",
+    status: "pendente",
+  });
+
+  const matrixData = useMemo(() => {
+    const classIdMap: Record<string, string> = {};
+    inadimplenciaClasseFiltrada.forEach(item => {
+      classIdMap[item.classeLabel] = item.classeId;
+    });
+
+    const rawClasses = Array.from(new Set(inadimplenciaClasseFiltrada.map((item) => item.classeLabel)));
+    const classes = rawClasses
+      .filter((c) => c.toLowerCase().includes(searchTerm.toLowerCase()))
+      .sort();
+
+    const months = Array.from(new Set(inadimplenciaClasseFiltrada.map((item) => normalizeMonthKey(item.mesRef)))).sort();
+
+    const data: Record<string, Record<string, number>> = {};
+    classes.forEach((c) => {
+      data[c] = {};
+      months.forEach((m) => {
+        data[c][m] = 0;
+      });
+    });
+
+    inadimplenciaClasseFiltrada.forEach((item) => {
+      const mKey = normalizeMonthKey(item.mesRef);
+      if (data[item.classeLabel]) {
+        data[item.classeLabel][mKey] += item.totalEmAtraso;
+      }
+    });
+
+    return { classes, months, data, classIdMap };
+  }, [inadimplenciaClasseFiltrada, searchTerm]);
+
+  const handleOpenDrillDown = (options: { 
+    classeLabel?: string; 
+    classeId?: string;
+    turmaId?: string;
+    turmaNome?: string;
+    monthKey?: string; 
+    status?: string 
+  }) => {
+    const [ano, mes] = (options.monthKey || "").split("-");
+
+    setDrillDown({
+      isOpen: true,
+      classeId: options.classeId || (options.classeLabel ? matrixData.classIdMap[options.classeLabel] : undefined),
+      turmaId: options.turmaId,
+      classeLabel: options.turmaNome || options.classeLabel || "Todas as Classes",
+      mes: mes || "",
+      ano: ano || String(anoLetivoAtivo),
+      status: options.status || "pendente"
+    });
+  };
+
+  const rankingFiltrado = useMemo(() => {
+    if (!searchTerm) return rankingTurmasOrdenado;
+    return rankingTurmasOrdenado.filter(
+      (t) => 
+        t.turmaNome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        t.classe?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [rankingTurmasOrdenado, searchTerm]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2 shadow-sm">
+        <Search className="h-4 w-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Pesquisar por classe ou turma (ex: 7ª Classe, Turma A)..."
+          className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">Série mensal ({anoLetivoAtivo})</h2>
+          <p className="text-xs text-muted-foreground">Leitura por competência e arrecadação.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-[11px] leading-tight">
+            <thead>
+              <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
+                <th className="sticky top-0 py-2 px-3 font-bold uppercase tracking-wider">Competência</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Mens.</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Atraso</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Previsto</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Pago</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Total Atraso</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Inad. %</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {mensalFiltrado.map((m) => {
+                const mKey = `${m.ano}-${String(m.mes).padStart(2, "0")}`;
+                return (
+                  <tr key={`${m.ano}-${m.mes}`} className="hover:bg-muted/50">
+                    <td className="py-1.5 px-3 font-medium text-foreground">{m.labelMes}</td>
+                    <td className="py-1.5 px-3 text-right text-muted-foreground">{m.qtdMensalidades}</td>
+                    <td className="py-1.5 px-3 text-right text-rose-600">{m.qtdEmAtraso}</td>
+                    <td className="py-1.5 px-3 text-right text-muted-foreground">{kwanza.format(m.totalPrevisto)}</td>
+                    <td 
+                      className={`py-1.5 px-3 text-right text-emerald-600 font-medium ${m.totalPago > 0 ? "cursor-pointer hover:underline" : ""}`}
+                      onClick={() => m.totalPago > 0 && handleOpenDrillDown({ monthKey: mKey, status: "pago" })}
+                    >
+                      {kwanza.format(m.totalPago)}
+                    </td>
+                    <td 
+                      className={`py-1.5 px-3 text-right text-rose-700 font-bold ${m.totalEmAtraso > 0 ? "cursor-pointer hover:underline" : ""}`}
+                      onClick={() => m.totalEmAtraso > 0 && handleOpenDrillDown({ monthKey: mKey, status: "pendente" })}
+                    >
+                      {kwanza.format(m.totalEmAtraso)}
+                    </td>
+                    <td className="py-1.5 px-3 text-right font-medium text-foreground">{m.inadimplenciaPct.toFixed(1)}%</td>
+                  </tr>
+                );
+              })}
+              {mensalFiltrado.length === 0 ? (
+                <EducationalEmptyState
+                  colSpan={7}
+                  title="Nenhuma competência encontrada"
+                  message={`Não há dados para ${selectedMonthLabel.toLowerCase()}.`}
+                  ctaHref={`/escola/${escolaId}/secretaria`}
+                  ctaLabel="Revisar lançamentos"
+                />
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">Inadimplência por Classe (Matriz)</h2>
+          <p className="text-xs text-muted-foreground">Visão matricial de valores em atraso por mês e classe.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="bg-muted text-muted-foreground">
+                <th className="sticky left-0 z-10 bg-muted border-b border-r border-border py-2 px-3 text-left font-bold uppercase tracking-wider">Classe</th>
+                {matrixData.months.map((m) => (
+                  <th key={m} className="border-b border-border py-2 px-3 text-right font-bold uppercase tracking-wider">
+                    {formatMonthRef(m)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {matrixData.classes.map((c) => (
+                <tr key={c} className="hover:bg-muted/50">
+                  <td className="sticky left-0 z-10 bg-card border-r border-border py-1.5 px-3 font-medium text-foreground shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                    {c}
+                  </td>
+                  {matrixData.months.map((m) => {
+                    const val = matrixData.data[c][m];
+                    return (
+                      <td 
+                        key={m} 
+                        className={`py-1.5 px-3 text-right group relative ${val > 0 ? "text-rose-600 font-bold cursor-pointer hover:bg-rose-500/10" : "text-muted-foreground/40"}`}
+                        onClick={() => val > 0 && handleOpenDrillDown({ classeLabel: c, monthKey: m })}
+                        title={val > 0 ? `Clique para ver os alunos em atraso da ${c} em ${formatMonthRef(m)}` : ""}
+                      >
+                        {val > 0 ? kwanza.format(val) : "—"}
+                        {val > 0 && (
+                          <div className="absolute top-0 right-0 hidden group-hover:flex">
+                            <Info className="h-2.5 w-2.5 text-rose-400" />
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              {matrixData.classes.length === 0 ? (
+                <EducationalEmptyState
+                  colSpan={matrixData.months.length + 1}
+                  title="Nenhum dado de inadimplência"
+                  message="Parece estar tudo em dia ou os dados ainda não foram carregados."
+                  ctaHref={`/escola/${escolaId}/secretaria`}
+                  ctaLabel="Voltar para secretaria"
+                />
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">Ranking por turma ({anoLetivoAtivo})</h2>
+          <p className="text-xs text-muted-foreground">Ordenado por maior atraso.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-[11px] leading-tight">
+            <thead>
+              <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
+                <th className="sticky top-0 py-2 px-3 font-bold uppercase tracking-wider">Turma</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Mens.</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Atraso</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Pago</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Total Atraso</th>
+                <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Inad. %</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rankingFiltrado.map((t) => (
+                <tr key={t.turmaId} className="hover:bg-muted/50">
+                  <td className="py-1.5 px-3 font-medium text-foreground">{t.turmaNome}</td>
+                  <td className="py-1.5 px-3 text-right text-muted-foreground">{t.qtdMensalidades}</td>
+                  <td className="py-1.5 px-3 text-right text-rose-600">{t.qtdEmAtraso}</td>
+                  <td className="py-1.5 px-3 text-right text-emerald-700 font-bold">
+                    {kwanza.format(t.totalPago + t.totalPagoAdiantado)}
+                  </td>
+                  <td 
+                    className={`py-1.5 px-3 text-right text-rose-700 font-bold ${t.totalEmAtraso > 0 ? "cursor-pointer hover:underline" : ""}`}
+                    onClick={() => {
+                      if (t.totalEmAtraso > 0) {
+                        handleOpenDrillDown({
+                          turmaId: t.turmaId,
+                          turmaNome: t.turmaNome,
+                          monthKey: selectedMonth !== "all" ? selectedMonth : undefined,
+                        });
+                      }
+                    }}
+                  >
+                    {kwanza.format(t.totalEmAtraso)}
+                  </td>
+                  <td className="py-1.5 px-3 text-right font-medium text-foreground">{t.inadimplenciaPct.toFixed(1)}%</td>
+                </tr>
+              ))}
+              {rankingFiltrado.length === 0 ? (
+                <EducationalEmptyState
+                  colSpan={6}
+                  title="Ranking por turma indisponível"
+                  message="Ainda não há massa crítica para comparar turmas."
+                  ctaHref={`/escola/${escolaId}/secretaria`}
+                  ctaLabel="Ver secretaria"
+                />
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <FinancialDetailDrawer
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown((prev) => ({ ...prev, isOpen: false }))}
+        escolaId={escolaId}
+        classeId={drillDown.classeId}
+        classeLabel={drillDown.classeLabel}
+        mes={drillDown.mes}
+        ano={drillDown.ano}
+        anoLetivoId={anoLetivoId}
+        status={drillDown.status}
+      />
+    </div>
+  );
+}
