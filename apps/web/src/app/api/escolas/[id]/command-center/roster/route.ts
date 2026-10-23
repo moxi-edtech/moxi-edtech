@@ -3,6 +3,7 @@ import { z } from "zod";
 import { withExplorerObservability } from "@/lib/command-center/observability";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
+import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
 
@@ -72,6 +73,8 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
         "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
     });
     if (permission.error) return permission.error;
+    const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
+    if (schoolScopeError) return schoolScopeError;
     // O único limitador de pesquisas é o contador transaccional partilhado
     // no PostgreSQL. Um mapa em memória seria incoerente entre instâncias.
     const year = await resolveAcademicYearScope(supabase, {

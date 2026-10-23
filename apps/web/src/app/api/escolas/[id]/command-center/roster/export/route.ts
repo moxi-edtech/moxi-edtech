@@ -3,6 +3,7 @@ import { z } from "zod";
 import { withExplorerObservability } from "@/lib/command-center/observability";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
+import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope } from "@/lib/academic-year/context";
 import {
@@ -59,6 +60,8 @@ async function readRosterExport(req: NextRequest, { params }: { params: Promise<
       supabase, escolaId, productContext: "k12", roles: policy.roles,
     });
     if (permission.error) return permission.error;
+    const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
+    if (schoolScopeError) return schoolScopeError;
     const year = await resolveAcademicYearScope(supabase, {
       escolaId, requestedAcademicYearId: input.yearId, operation: "READ",
     });
