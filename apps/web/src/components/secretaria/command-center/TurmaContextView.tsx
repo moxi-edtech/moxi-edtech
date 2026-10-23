@@ -257,9 +257,13 @@ export function TurmaContextView({
     onAction={(action) => onStudentAction(action, { id: student.id, label: student.nome })} />
 </div>
             ))}
-            {!visibleStudents.length && !roster.loading && (
-              <p className="px-3 py-5 text-slate-500">Nenhum aluno matriculado neste âmbito.</p>
-            )}
+            {!visibleStudents.length && !roster.loading && !(searchActive && (roster.error || roster.refreshing)) && (
+            <p className="px-3 py-5 text-slate-500">
+              {searchActive ? "Nenhum aluno encontrado nos filtros selecionados."
+                : alunos.total > 0 ? "Nenhum aluno nesta página; consulte outra página."
+                : "Nenhum aluno matriculado neste âmbito."}
+            </p>
+          )}
           </div>
           {!searchActive && <div className="mt-3 flex items-center justify-between gap-2">
             <span className="text-xs tabular-nums text-slate-500" aria-live="polite">
