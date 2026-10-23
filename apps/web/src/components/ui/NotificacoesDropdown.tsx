@@ -23,21 +23,21 @@ const PRIORIDADE_CONFIG: Record<
 > = {
   info: {
     icon: Info,
-    dot: "bg-slate-400",
-    bg: "bg-slate-50",
-    text: "text-slate-600",
+    dot: "bg-muted-foreground",
+    bg: "bg-muted",
+    text: "text-muted-foreground",
   },
   aviso: {
     icon: AlertTriangle,
     dot: "bg-[#E3B23C]",
     bg: "bg-[#E3B23C]/5",
-    text: "text-[#9a7010]",
+    text: "text-[#9a7010] dark:text-[#E3B23C]",
   },
   urgente: {
     icon: Zap,
     dot: "bg-rose-500",
-    bg: "bg-rose-50",
-    text: "text-rose-700",
+    bg: "bg-rose-500/10",
+    text: "text-rose-600 dark:text-rose-400",
   },
 };
 
@@ -67,8 +67,8 @@ function NotificacaoItem({
 
   return (
     <div
-      className={`relative flex gap-3 px-4 py-3 border-b border-slate-100 last:border-0 transition-colors cursor-pointer ${
-        notificacao.lida ? "opacity-60 hover:opacity-80" : "hover:bg-slate-50"
+      className={`relative flex gap-3 px-4 py-3 border-b border-border last:border-0 transition-colors cursor-pointer ${
+        notificacao.lida ? "opacity-60 hover:opacity-80" : "hover:bg-muted"
       }`}
       onClick={() => {
         if (notificacao.action_url || notificacao.tipo === "A" || notificacao.modal_id) {
@@ -89,18 +89,18 @@ function NotificacaoItem({
       <div className="flex-1 min-w-0">
         <p
           className={`text-xs font-bold leading-tight ${
-            notificacao.lida ? "text-slate-500" : "text-slate-800"
+            notificacao.lida ? "text-muted-foreground" : "text-foreground"
           }`}
         >
           {notificacao.titulo}
         </p>
         {notificacao.corpo && (
-          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed line-clamp-2">
+          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
             {notificacao.corpo}
           </p>
         )}
         <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-[10px] text-slate-400">{formatRelativo(notificacao.created_at)}</span>
+          <span className="text-[10px] text-muted-foreground">{formatRelativo(notificacao.created_at)}</span>
           {notificacao.action_label && (
             <span className={`text-[10px] font-bold ${cfg.text}`}>
               {notificacao.action_label} →
@@ -172,24 +172,24 @@ export function NotificacoesDropdown() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="relative flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+        className="relative flex items-center justify-center h-10 w-10 rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         aria-label="Notificações"
       >
-        <Bell size={16} className="text-slate-600" />
+        <Bell size={16} />
         {naoLidas > 0 && (
-          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-white">
+          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-background">
             {naoLidas > 9 ? "9+" : naoLidas}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute left-1/2 top-11 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 overflow-hidden animate-in slide-in-from-top-2 duration-150 sm:left-auto sm:right-0 sm:w-80 sm:translate-x-0">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+        <div className="absolute left-1/2 top-11 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-border bg-popover text-popover-foreground shadow-xl overflow-hidden animate-in slide-in-from-top-2 duration-150 sm:left-auto sm:right-0 sm:w-80 sm:translate-x-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Notificações</h3>
+              <h3 className="text-xs font-black text-foreground uppercase tracking-wider">Notificações</h3>
               {naoLidas > 0 && (
-                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[9px] font-black text-rose-700">
+                <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[9px] font-black text-rose-600 dark:text-rose-400">
                   {naoLidas} novas
                 </span>
               )}
@@ -204,7 +204,7 @@ export function NotificacoesDropdown() {
                   Marcar todas
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={14} />
               </button>
             </div>
@@ -213,12 +213,12 @@ export function NotificacoesDropdown() {
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
               <div className="py-8 text-center">
-                <div className="h-4 w-32 bg-slate-100 animate-pulse rounded-full mx-auto" />
+                <div className="h-4 w-32 bg-muted animate-pulse rounded-full mx-auto" />
               </div>
             ) : notificacoes.length === 0 ? (
               <div className="py-10 text-center">
-                <Bell size={24} className="text-slate-200 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-400">Nenhuma notificação</p>
+                <Bell size={24} className="text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-muted-foreground">Nenhuma notificação</p>
               </div>
             ) : (
               notificacoes.map((n) => (
@@ -233,8 +233,8 @@ export function NotificacoesDropdown() {
           </div>
 
           {notificacoes.length > 0 && (
-            <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50">
-              <p className="text-[10px] text-slate-400 text-center">Últimas 50 notificações</p>
+            <div className="px-4 py-2.5 border-t border-border bg-muted/40">
+              <p className="text-[10px] text-muted-foreground text-center">Últimas 50 notificações</p>
             </div>
           )}
         </div>
@@ -250,7 +250,7 @@ export function NotificacoesDropdown() {
             <button
               type="button"
               onClick={() => setModalNotificacao(null)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               Fechar
             </button>
@@ -266,7 +266,7 @@ export function NotificacoesDropdown() {
           </div>
         }
       >
-        <div className="space-y-2 text-sm text-slate-600">
+        <div className="space-y-2 text-sm text-muted-foreground">
           {modalNotificacao?.corpo ? <p>{modalNotificacao.corpo}</p> : null}
         </div>
       </ModalShell>
