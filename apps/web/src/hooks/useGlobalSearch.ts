@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { useDebounce } from "./useDebounce";
 import { buildPortalHref } from "@/lib/navigation";
+import { visibleSearchResults } from "@/lib/command-center/search-visibility";
 import {
   buildBalcaoActionHref,
   getStudentBalcaoActions,
@@ -468,7 +469,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     const cached = searchCache.get(cacheKey);
     if (!cached) return;
 
-    setResults(cached.data.map((item) => mapToMinimalResult(portal, escolaId, item, intent)));
+    setResults(visibleSearchResults(cached.data, portal).map((item) => mapToMinimalResult(portal, escolaId, item, intent)));
     setCursor(cached.cursor);
     setHasMore(cached.hasMore);
   }, [cacheKey, effectiveQuery, escolaId, portal, intent]);
@@ -493,7 +494,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     const hasUsableCache = Boolean(cached && now - cached.ts < SEARCH_CACHE_MAX_AGE_MS);
 
     if (cached && hasUsableCache) {
-      const items = (cached.data ?? []).map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
+      const items = visibleSearchResults(cached.data ?? [], portal).map((a) => mapToMinimalResult(portal, escolaId, a, intent));
       setResults(items);
       setCursor(cached.cursor);
       setHasMore(cached.hasMore);
@@ -540,7 +541,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         created_at: row.created_at || new Date().toISOString(),
       }));
 
-      const items = payload.map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
+      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(portal, escolaId, a, intent));
 
       if (!isCurrent()) return;
       setResults(items);
@@ -579,7 +580,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       if (!isCurrent()) return;
       const payload = ((data as SearchResult[]) ?? []);
       const nextCursor = payload.length === limit ? toCursor(payload[payload.length - 1]) : null;
-      const items = payload.map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
+      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(portal, escolaId, a, intent));
 
       setResults((prev) => (append ? [...prev, ...items] : items));
       setCursor(nextCursor);
@@ -613,7 +614,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     })();
 
     return () => ac.abort();
-  }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal, intent]);
+  }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, portal, intent]);
 
   const loadMore = async () => {
     if (!cursor || loading || !escolaId || debouncedQuery.length < 2 || effectiveQuery !== debouncedQuery) return;
@@ -650,7 +651,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
           }
         : null;
 
-      const items = payload.map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
+      const items = visibleSearchResults(payload, portal).map((a) => mapToMinimalResult(portal, escolaId, a, intent));
 
       setResults((prev) => [...prev, ...items]);
       setCursor(nextCursor);

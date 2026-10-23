@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { visibleSearchResults } from "../../src/lib/command-center/search-visibility";
 import {
   resolveCommandCenterSelection,
   isCommandCenterOperatorPortal,
@@ -49,4 +50,31 @@ test("scope and limited portals never expose a school-wide modal", () => {
   assert.equal(resolveCommandCenterSelection("aluno", "operacoes", { hasSchoolScope: false, hasStudentModal: true }), "navigate");
   assert.equal(resolveCommandCenterSelection("aluno", "operacoes", { hasSchoolScope: true, hasStudentModal: false }), "navigate");
   assert.equal(resolveCommandCenterSelection("professor", "operacoes", { hasSchoolScope: false, hasStudentModal: true }), "navigate");
+});
+
+test("staff search excludes academic login rows but preserves academic entities", () => {
+  const rows = [
+    { id: "student-auth", type: "usuario", highlight: "Aluno" },
+    { id: "teacher-auth", type: "usuario", highlight: " professor " },
+    { id: "academic-student", type: "aluno", highlight: "000004" },
+    { id: "academic-teacher", type: "professor", highlight: null },
+    { id: "staff-user", type: "usuario", highlight: "secretaria" },
+    { id: "school-admin", type: "usuario", highlight: "admin_escola" },
+  ];
+  for (const portal of ["operacoes", "admin"]) {
+    assert.deepEqual(visibleSearchResults(rows, portal).map(row => row.id),
+      ["academic-student", "academic-teacher", "staff-user", "school-admin"]);
+  }
+  assert.equal(visibleSearchResults(rows, "superadmin").length, rows.length,
+    "Global admin account management keeps its own user access listing");
+  assert.equal(visibleSearchResults(rows, "secretaria").length, rows.length,
+    "Secretaria does not include usuario among its RPC search types");
+});
+
+test("all live, cached, fallback and paginated search results use the same visibility rule", () => {
+  const source = readFileSync(new URL("../../src/hooks/useGlobalSearch.ts", import.meta.url), "utf8");
+  assert.match(source, /admin: \["aluno",/);
+  assert.match(source, /operacoes: \["aluno",/);
+  assert.equal((source.match(/visibleSearchResults\(/g) ?? []).length, 5);
+  assert.match(source, /case "usuario":\s*return buildPortalHref\(escolaParam, "\/admin\/funcionarios"\)/);
 });
