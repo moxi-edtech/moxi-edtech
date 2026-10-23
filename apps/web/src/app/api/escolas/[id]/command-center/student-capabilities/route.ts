@@ -32,7 +32,7 @@ async function readCapabilities(req: NextRequest, { params }: { params: Promise<
   const roleGate = await requireRoleInSchool({
     supabase, escolaId, productContext: "k12",
     roles: ["admin", "admin_escola", "staff_admin", "diretor",
-      "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
+      "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro", "financeiro"],
   });
   if (roleGate.error) return roleGate.error;
   const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
