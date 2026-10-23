@@ -29,7 +29,7 @@ type TopbarProps = {
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
-export default function Topbar({
+function ScopedTopbar({
   portalTitle = "Portal",
   portalSubtitle = "MoxiNexa",
   userName,
@@ -51,11 +51,9 @@ export default function Topbar({
     schoolId: string;
   } | null>(null);
 
-  useEffect(() => {
-    setSelectedSearchStudent(null);
-    setRestoreExplorerOnOpen(false);
-    clearExplorerReturnContext();
-  }, [escolaId, userScope, poloScope]);
+  // A scope switch unmounts this keyed instance. The React states are
+  // initialised afresh, rather than synchronously reset in an effect.
+  useEffect(() => () => clearExplorerReturnContext(), []);
 
   const userInitial =
     (userName || portalSubtitle || "U")
@@ -185,4 +183,13 @@ export default function Topbar({
       ) : null}
     </>
   );
+}
+
+
+/** Isolation boundary for a logged-in operator and a school/polo. Unlike an
+ * effect-driven reset, remounting guarantees no earlier student's UI state
+ * survives a tenant/role change before the first paint. */
+export default function Topbar(props: TopbarProps) {
+  const scope = [props.userScope ?? "-", props.escolaId ?? "-", props.poloScope ?? "-"].join(":");
+  return <ScopedTopbar key={scope} {...props} />;
 }
