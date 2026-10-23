@@ -614,7 +614,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     })();
 
     return () => ac.abort();
-  }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal, intent]);
+  }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, portal, intent]);
 
   const loadMore = async () => {
     if (!cursor || loading || !escolaId || debouncedQuery.length < 2 || effectiveQuery !== debouncedQuery) return;
