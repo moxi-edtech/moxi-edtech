@@ -130,7 +130,8 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 - EX-002: ExplorerMetric reutilizado nos cinco exploradores, com valor acessível, parcial e desconhecido.
 - EX-003: indicadores de histórico, lista histórica paginada e procura operacional não disparada quando o ano está fechado (as ações abertas noutros módulos continuam sujeitas a revalidação).
 - EX-005 (parcial): no explorador Disciplina, turmas efetivas no ano confirmam classes reutilizadas. Curso exige ajuste próprio na RPC instalada, planeado para um incremento separado com migration e replay setorial.
-- EX-006 (parcial, **a rever**): atributo de atividade da matriz propagado até a visão de Turma sem eliminar vínculos históricos. **Nova decisão:** usar o currículo versionado do ano, sem segunda lista de matrizes inativas; o alinhamento da Disciplina foi codado; a homologação continua pendente.
+- EX-006 (Disciplina alinhada): currículo `published` por UUID do ano, sem segunda lista; vínculos históricos e atividade preservados. Homologação autenticada ainda pendente.
+- EX-011 (parcial): a seleção de Classe/Turma no explorador de Curso agora é isolada por escola, curso e ano letivo; filtros restaurados inválidos não geram falsos estados de lista vazia. Testes cobrem mudança de contexto e turma fora da classe selecionada.
 - Testes novos para invariantes; restantes EX-004/007–014 continuam trabalho futuro nesta mesma branch.
 
 A implementação deste primeiro incremento **não** constitui o redesign completo e **não** deve ser enviada à main ou à produção antes de testes de integração, smoke autenticado e revisão de produto.
@@ -173,3 +174,10 @@ A implementação deste primeiro incremento **não** constitui o redesign comple
 ### Alinhamento EX-006 — versão publicada do ano (23/10/2026)
 
 A rota, compositor, contrato TypeScript, vista e testes da Disciplina foram alinhados diretamente na PR #261. O currículo é resolvido por ano UUID, escola e versão publicada. As linhas atualmente inativas pertencentes à versão publicada são qualificadas **inline**, não numa segunda lista. Versões concorrentes publicadas geram 409. Os vínculos históricos não foram reescritos. CI completa, integração autenticada e revisão das 486 ligações entre anos continuam pendentes.
+
+### Regressões CI e vínculo de professor (23/10/2026)
+
+- O CI anterior da PR #261 registou duas falhas em `disciplina-contextual-explorer.spec.ts`: fixtures sem ID/versão e um teste que apagava o vínculo de professor sem perfil. Código e testes foram corrigidos — **o novo CI continua como gate de validação**.
+- Disciplina preserva a atribuição docente na turma, mas não inventa perfil navegável quando a identidade está ausente, desativada ou inacessível. O indicador conta **professores identificados** e o aviso apresenta identidades indisponíveis.
+- A seleção de Curso não reutiliza filtros de classe/turma de outro contexto de escola/curso/ano; filtros sem correspondência são ignorados, evitando “sem turmas” enganoso.
+- A PR continua draft; sem alteração na `main`, produção ou dados Supabase.
