@@ -36,6 +36,7 @@ known_conflicts={
  "apps/web/src/components/secretaria/BalcaoWorkspace.tsx",
  "apps/web/visual-harness/main.tsx",
  "apps/web/src/hooks/useGlobalSearch.ts",
+ "apps/web/tests/unit/workspace-student-dossier.spec.tsx",
 }
 def inspect(left,right):
     result=git("merge-tree","--write-tree",left,right)
