@@ -364,8 +364,12 @@ export function ClasseContextView({
     onAction={(action) => onStudentAction(action, { id: aluno.id, label: aluno.nome })} />
 </div>
           ))}
-          {!visibleStudents.length && !roster.loading && (
-            <p className="px-3 py-5 text-slate-500">Sem alunos matriculados neste âmbito.</p>
+          {!visibleStudents.length && !roster.loading && !(searchActive && (roster.error || roster.refreshing)) && (
+            <p className="px-3 py-5 text-slate-500">
+              {searchActive ? "Nenhum aluno encontrado nos filtros selecionados."
+                : alunos.total > 0 ? "Nenhum aluno nesta página; consulte outra página."
+                : "Sem alunos matriculados neste âmbito."}
+            </p>
           )}
         </div>
         {!searchActive && alunos.total > alunos.pageSize && (
