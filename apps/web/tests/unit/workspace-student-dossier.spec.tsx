@@ -57,6 +57,7 @@ test("modal and standalone workspace wire a protected student-switch callback", 
   assert.match(modal, /onSwitchStudent=\{switchingStudent \? undefined : handleSwitchStudent\}/);
   assert.match(page, /onSwitchStudent=\{handleSwitchStudent\}/);
   assert.match(modal, /window\.confirm\(/);
+  assert.match(modal, /useCommandCenterStudent\(\s*selectedStudent\.id, academicYearId, selectedStudent\.label/);
   assert.match(modal, /currentStudent = studentContext\?\.id === selectedStudent\.id/);
   assert.match(modal, /setActiveAction\("desk"\); \/\/ reset all student-bound panels/);
   assert.match(modal, /studentRequestRef\.current \+= 1/);

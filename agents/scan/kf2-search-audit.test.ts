@@ -189,8 +189,8 @@ test("embedded admissions inside modal never rewrite the underlying dashboard UR
 
   assert.match(modal, /<CommandCenterPanel[\s\S]*?\binModal\b/);
   assert.match(panel, /modalContext=\{inModal\}/);
-  assert.match(wizard, /if \(modalContext\) \{[\s\S]*?setModalResumeId\(id\);[\s\S]*?return;/);
-  assert.match(wizard, /if \(modalContext\) \{[\s\S]*?setModalResumeId\(null\);[\s\S]*?return;/);
+  assert.match(wizard, /if \(modalContext \|\| newCandidateOnly\) \{[\s\S]*?setModalResumeId\(id\);[\s\S]*?return;/);
+  assert.match(wizard, /if \(modalContext \|\| newCandidateOnly\) \{[\s\S]*?setModalResumeId\(null\);[\s\S]*?return;/);
 });
 
 test("modal and page show the same full student dossier, with editing secondary", () => {

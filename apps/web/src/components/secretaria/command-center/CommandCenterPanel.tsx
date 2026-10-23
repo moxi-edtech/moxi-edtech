@@ -72,6 +72,7 @@ export function CommandCenterPanel({
         draftScope={draftScope}
         embedded
         modalContext={inModal}
+        newCandidateOnly
         onSuccess={(newAlunoId) => onSuccess?.(newAlunoId)}
         onActionChange={onActionChange}
       />

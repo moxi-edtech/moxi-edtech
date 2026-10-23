@@ -9,6 +9,7 @@ import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { toContextualPortalPath } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { BalcaoActionId } from "@/lib/balcao/action-registry";
+import { resolveEnrollmentCandidateId } from "@/lib/balcao/enrollment-entry";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
@@ -2571,6 +2572,7 @@ export default function AdmissaoWizardClient({
   initialCandidaturaId,
   embedded = false,
   modalContext = false,
+  newCandidateOnly = false,
   draftScope,
   onSuccess,
   onActionChange,
@@ -2580,6 +2582,7 @@ export default function AdmissaoWizardClient({
   initialCandidaturaId?: string | null;
   embedded?: boolean;
   modalContext?: boolean;
+  newCandidateOnly?: boolean;
   draftScope?: string | null;
   onSuccess?: (alunoId?: string) => void;
   onActionChange?: (actionId: BalcaoActionId) => void;
@@ -2589,7 +2592,7 @@ export default function AdmissaoWizardClient({
   const confirm = useConfirm();
   const pathname = usePathname();
   const [step, setStep] = useState(1);
-  const [candidaturaId, setCandidaturaId] = useState<string | null>(initialCandidaturaId || null);
+  const [candidaturaId, setCandidaturaId] = useState<string | null>(newCandidateOnly ? null : (initialCandidaturaId || null));
   const [turmaId, setTurmaId] = useState<string | null>(null);
   const [cursoId, setCursoId] = useState<string | null>(null);
   const [classeId, setClasseId] = useState<string | null>(null);
@@ -2629,10 +2632,17 @@ export default function AdmissaoWizardClient({
   );
 
   const [modalResumeId, setModalResumeId] = useState<string | null>(null);
+  // Distinguish an effect that has never run from the valid “new enrollment” null ID.
   const lastCandidaturaIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    const candId = modalContext ? (modalResumeId || initialCandidaturaId) : (initialCandidaturaId || (searchParams ? searchParams.get("candidaturaId") : null));
+    const candId = resolveEnrollmentCandidateId({
+      newCandidateOnly,
+      modalContext,
+      resumedId: modalResumeId,
+      initialId: initialCandidaturaId,
+      queryId: searchParams?.get("candidaturaId"),
+    });
     
     if (candId === lastCandidaturaIdRef.current) return;
     lastCandidaturaIdRef.current = candId;
@@ -2678,7 +2688,7 @@ export default function AdmissaoWizardClient({
       setHydrated(true);
       setHydratingLead(false);
     }
-  }, [initialCandidaturaId, modalContext, modalResumeId, searchParams]);
+  }, [initialCandidaturaId, modalContext, modalResumeId, newCandidateOnly, searchParams]);
 
   const handleEditDados = async () => {
     setWizardError(null);
@@ -2720,14 +2730,15 @@ export default function AdmissaoWizardClient({
   }, [escolaId]);
 
   useEffect(() => {
-    if (hydrated && !candidaturaId) void loadDrafts();
-  }, [candidaturaId, hydrated, loadDrafts]);
+    // In the workspace a fresh application is the default: recovery is opt-in.
+    if (!newCandidateOnly && hydrated && !candidaturaId) void loadDrafts();
+  }, [candidaturaId, hydrated, loadDrafts, newCandidateOnly]);
 
   const handleResume = (id: string) => {
     if (!isUuid(id)) return;
 
-    if (modalContext) {
-      // Dentro do modal, retomar o rascunho sem navegar a página de origem.
+    if (modalContext || newCandidateOnly) {
+      // Dentro do workspace, retomar apenas por escolha explícita, sem navegar.
       setModalResumeId(id);
       return;
     }
@@ -2817,7 +2828,7 @@ export default function AdmissaoWizardClient({
     setWizardError(null);
     
     // O modal não deve mutar a URL da página sob o atendimento.
-    if (modalContext) {
+    if (modalContext || newCandidateOnly) {
       setModalResumeId(null);
       return;
     }
@@ -2836,7 +2847,7 @@ export default function AdmissaoWizardClient({
         window.history.replaceState(null, "", url.pathname);
       }
     }
-  }, [embedded, modalContext]);
+  }, [embedded, modalContext, newCandidateOnly]);
 
   if (!hydrated || hydratingLead) {
     return (
@@ -2865,7 +2876,7 @@ export default function AdmissaoWizardClient({
 
   return (
     <div className="space-y-4">
-      {!candidaturaId && !dismissedResumePrompt && draftItems.length > 0 && (
+      {!newCandidateOnly && !candidaturaId && !dismissedResumePrompt && draftItems.length > 0 && (
         <div className="flex flex-col gap-3 rounded-xl border border-amber/40 bg-amber/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-emerald">
@@ -2905,7 +2916,7 @@ export default function AdmissaoWizardClient({
           </div>
         </div>
       )}
-      {draftsError && !showDrafts && (
+      {!newCandidateOnly && draftsError && !showDrafts && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
           Não foi possível verificar candidaturas em andamento agora. Tente novamente em “Retomar rascunho”.
         </div>
@@ -3028,7 +3039,7 @@ export default function AdmissaoWizardClient({
         )}
         {step === 1 ? (
           <Step1Identificacao
-            draftScope={draftScope}
+            draftScope={newCandidateOnly ? undefined : draftScope}
             onNext={() => setStep(2)}
             escolaId={escolaId}
             candidaturaId={candidaturaId}
@@ -3039,7 +3050,7 @@ export default function AdmissaoWizardClient({
           />
         ) : step === 2 ? (
           <Step2FitAcademico
-            draftScope={draftScope}
+            draftScope={newCandidateOnly ? undefined : draftScope}
             onBack={() => setStep(1)}
             onNext={() => setStep(3)}
             escolaId={escolaId}

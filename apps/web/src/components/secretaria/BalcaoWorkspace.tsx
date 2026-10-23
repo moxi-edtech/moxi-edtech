@@ -48,6 +48,11 @@ function ScopedBalcaoWorkspace({
     scope: escolaId, id: null,
   });
   const academicYearId = open && yearResult.scope === escolaId ? yearResult.id : null;
+  // Keep the existing student's read-only context stable while a fresh
+  // enrollment is open. Toggling this hook to null and back invalidates
+  // retained tabs and causes duplicate dossier/academic requests on every
+  // navigation. The enrollment panel itself receives alunoId=null below,
+  // so no selected-student data becomes a candidate or prefilled admission.
   const { student: studentContext, subtitle } = useCommandCenterStudent(
     selectedStudent.id, academicYearId, selectedStudent.label,
   );
@@ -63,6 +68,9 @@ function ScopedBalcaoWorkspace({
   const pendingActions = Object.entries(actionDraftStatuses)
     .filter(([, summary]) => summary?.dirty)
     .map(([action]) => action as BalcaoActionId);
+  const enrollmentDirty = Boolean(actionDraftStatuses.enrollment?.dirty);
+  const otherTabsDirty = Object.entries(actionDraftStatuses)
+    .some(([action, summary]) => action !== "enrollment" && summary?.dirty);
   const handleUnsavedChange = useCallback((value: boolean) => { hasUnsavedWorkRef.current = value; }, []);
   const handleSubmittingChange = useCallback((value: boolean) => { submittingRef.current = value; }, []);
 
@@ -89,12 +97,12 @@ function ScopedBalcaoWorkspace({
   }, [escolaId, open]);
 
   const confirmLeavingEnrollment = useCallback(() => (
-    activeAction !== "enrollment" || completedEnrollmentRef.current || !hasUnsavedWorkRef.current ||
+    activeAction !== "enrollment" || completedEnrollmentRef.current || !enrollmentDirty ||
     window.confirm("Sair da nova matrícula? Alterações ainda não guardadas poderão perder-se. O aluno anterior continuará selecionado.")
-  ), [activeAction]);
+  ), [activeAction, enrollmentDirty]);
 
   const handleActionChange = useCallback((next: BalcaoActionId) => {
-    if (next === activeAction || !confirmLeavingEnrollment()) return;
+    if (next === activeAction || submittingRef.current || !confirmLeavingEnrollment()) return;
     if (next === "enrollment") completedEnrollmentRef.current = false;
     markNavigationStart();
     setSwitchingStudent(false);
@@ -102,10 +110,10 @@ function ScopedBalcaoWorkspace({
   }, [activeAction, confirmLeavingEnrollment, markNavigationStart]);
 
   const handleSwitchStudent = useCallback(() => {
-    if (submittingRef.current) return;
+    if (activeAction === "enrollment" || submittingRef.current) return;
     // Opening the picker never discards work or changes the student.
     setSwitchingStudent(true);
-  }, []);
+  }, [activeAction]);
 
   const handleStudentPicked = useCallback((next: Student) => {
     if (submittingRef.current) return;
@@ -129,10 +137,12 @@ function ScopedBalcaoWorkspace({
   const handleClose = useCallback(() => {
     if (submittingRef.current) return;
     if (!confirmLeavingEnrollment()) return;
-    if (activeAction !== "enrollment" && hasUnsavedWorkRef.current &&
-      !window.confirm("Fechar atendimento? Existem alterações ainda não guardadas.")) return;
+    // A matrícula não deve herdar o estado sujo de outras abas, mas fechar
+    // o Workspace também não pode perder trabalho pendente nessas abas.
+    if ((activeAction === "enrollment" ? otherTabsDirty : hasUnsavedWorkRef.current) &&
+      !window.confirm("Fechar atendimento? Existem alterações ainda não guardadas noutras operações.")) return;
     onClose();
-  }, [activeAction, confirmLeavingEnrollment, onClose]);
+  }, [activeAction, confirmLeavingEnrollment, onClose, otherTabsDirty]);
 
   const handleSuccess = useCallback((originAction: BalcaoActionId, newAlunoId?: string) => {
     setRefreshRevision((value) => value + 1);
