@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   GraduationCap, Loader2, RefreshCw, UsersRound,
@@ -8,6 +8,8 @@ import {
 
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
+import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { useClasseContext } from "@/hooks/useClasseContext";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
@@ -35,9 +37,9 @@ type Props = {
   initialSort?: RosterSort;
   initialFilter?: RosterFilter;
   onViewChange?: (state: ExplorerViewState) => void;
+  /** The surrounding palette owns the only scrollable viewport. */
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 };
-
-const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
 
 /** Capacidade registada ≠ vagas disponíveis. Null = não definida (nunca zero inventado). */
 function occupancyFromCapacity(capacity: number | null, enrolled: number) {
@@ -48,26 +50,6 @@ function occupancyFromCapacity(capacity: number | null, enrolled: number) {
     available: Math.max(capacity - enrolled, 0),
     overcapacity: Math.max(enrolled - capacity, 0),
   };
-}
-
-function Metric({
-  label, value, limited, hint,
-}: {
-  label: string;
-  value: number | null;
-  limited?: boolean;
-  hint?: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-        {value == null ? "Não definida" : numberPt(value)}
-        {limited && value != null ? "+" : ""}
-      </p>
-      {hint ? <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p> : null}
-    </div>
-  );
 }
 
 function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
@@ -87,35 +69,46 @@ function turmaOccupancyLabel(alunos: number, capacidade: number | null) {
 export function ClasseContextView({
   context, portal, onNavigate, onExploreCurso, onExploreTurma,
   onExploreDisciplina, onExploreProfessor, onStudentSelect, onStudentAction,
-  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange, scrollContainerRef,
 }: Props) {
   const [page, setPage] = useState(initialPage);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [rosterSort, setRosterSort] = useState<RosterSort>(initialSort);
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>(initialFilter);
-  const roster = useExplorerRoster(context, "classe", searchTerm, rosterSort, rosterFilter);
-  const searchActive = searchTerm.trim().length >= 2 ||
-    (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos"));
-  const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
-    page, scrollTop: currentScroll.current, selectedStudentId: selected,
-    search: searchTerm, filter: rosterFilter, sort: rosterSort,
-  }), [page, searchTerm, rosterSort, rosterFilter]);
   const { data, loading, refreshing, error, status, retry } = useClasseContext(context, page);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const currentScroll = useRef(initialScrollTop);
+  const roster = useExplorerRoster(context, "classe", searchTerm, rosterSort, rosterFilter, data?.anoLetivo.historico === false);
+  const searchActive = data?.anoLetivo.historico === false && (searchTerm.trim().length >= 2 ||
+    (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos")));
+  const scrollRestored = useRef(false);
   const currentStudent = useRef(selectedStudentId);
   const onViewChangeRef = useRef(onViewChange);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
-  const restoreScroll = useRef(initialScrollTop);
+  const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
+    page,
+    scrollTop: scrollRestored.current
+      ? scrollContainerRef?.current?.scrollTop ?? initialScrollTop
+      : initialScrollTop,
+    selectedStudentId: selected,
+    search: searchTerm, filter: rosterFilter, sort: rosterSort,
+  }), [page, initialScrollTop, scrollContainerRef, searchTerm, rosterSort, rosterFilter]);
+  // Restore after the list has loaded, never into an unscrollable inner div.
   useEffect(() => {
-    if (loading || !scrollRef.current) return;
-    scrollRef.current.scrollTop = restoreScroll.current;
-    const selected = currentStudent.current;
-    if (selected) {
-      const row = Array.from(scrollRef.current.querySelectorAll<HTMLElement>("[data-student-id]")).find((item) => item.dataset.studentId === selected);
-      if (row) row.focus({ preventScroll: true });
-    }
-  }, [loading, page]);
+    const container = scrollContainerRef?.current;
+    if (loading || !container || scrollRestored.current ||
+        (searchActive && (!roster.querySettled || roster.loading || roster.refreshing))) return;
+    const frame = requestAnimationFrame(() => {
+      if (!container.isConnected || scrollRestored.current) return;
+      container.scrollTop = initialScrollTop;
+      scrollRestored.current = true;
+      if (currentStudent.current) {
+        const row = Array.from(container.querySelectorAll<HTMLElement>("[data-student-id]"))
+          .find((item) => item.dataset.studentId === currentStudent.current);
+        row?.focus({ preventScroll: true });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loading, scrollContainerRef, initialScrollTop,
+    searchActive, roster.querySettled, roster.loading, roster.refreshing]);
   useEffect(() => {
     onViewChangeRef.current?.(view());
   }, [page, view]);
@@ -148,8 +141,12 @@ export function ClasseContextView({
   const href = `${base}${base.includes("?") ? "&" : "?"}${new URLSearchParams({
     [ACADEMIC_YEAR_PARAM]: anoLetivo.id,
   })}`;
-  const visibleStudents = searchActive ? roster.items : alunos.items;
-  const returnWarning = Boolean(selectedStudentId && (!searchActive || (!roster.loading && !roster.refreshing)) &&
+  const rosterBusy = searchActive && (!roster.querySettled || roster.loading || roster.refreshing);
+  const rosterReady = searchActive && !rosterBusy && !roster.error;
+  const visibleStudents = searchActive
+    ? roster.querySettled ? roster.items : []
+    : alunos.items;
+  const returnWarning = Boolean(selectedStudentId && (!searchActive || rosterReady) &&
     !visibleStudents.some((student) => student.id === selectedStudentId));
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   const open = (entity: { id: string; nome: string }, onExplore: (next: NextEntity) => void) =>
@@ -159,10 +156,10 @@ export function ClasseContextView({
   const turmasSemAlunos = turmas.filter((t) => t.alunos === 0).length;
 
   return (
-    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.(view()); }} className="min-w-0 space-y-5 px-1 pb-3 text-sm">
+    <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          O aluno atendido já não consta desta página. A lista foi actualizada; confirme a matrícula e a turma antes de continuar.
+          O aluno selecionado não está nesta página ou nos filtros atuais. A seleção foi preservada; confirme a turma antes de continuar o atendimento.
         </p>
       )}
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -185,30 +182,32 @@ export function ClasseContextView({
         </button>
       </header>
 
+      {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice roster />}
+
       <section aria-label="Indicadores da classe" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <Metric label="Alunos matriculados" value={stats.alunos} limited={limitado} />
-        <Metric label="Turmas do ano" value={stats.turmas} limited={limitado} />
-        <Metric
+        <ExplorerMetric label="Alunos matriculados" value={stats.alunos} partial={limitado} />
+        <ExplorerMetric label="Turmas do ano" value={stats.turmas} partial={limitado} />
+        <ExplorerMetric
           label="Capacidade"
           value={stats.capacidade}
-          limited={limitado}
+          partial={limitado}
           hint={stats.capacidade == null ? "Soma só quando todas as turmas têm capacidade definida" : undefined}
         />
-        <Metric
+        <ExplorerMetric
           label="Vagas disponíveis"
           value={classOccupancy.available}
-          limited={limitado}
+          partial={limitado}
           hint={stats.capacidade == null ? "Indisponível sem capacidade completa" : undefined}
         />
         {classOccupancy.overcapacity != null && classOccupancy.overcapacity > 0 && (
-          <Metric
+          <ExplorerMetric
             label="Excedente de lotação"
             value={classOccupancy.overcapacity}
             hint="Alunos acima da capacidade registada"
           />
         )}
-        <Metric label="Disciplinas" value={stats.disciplinas} limited={limitado} />
-        <Metric label="Professores" value={stats.professores} limited={limitado} />
+        <ExplorerMetric label="Disciplinas" value={stats.disciplinas} partial={limitado} />
+        <ExplorerMetric label="Professores" value={stats.professores} partial={limitado} />
         {refreshing && (
           <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>
         )}
@@ -260,7 +259,7 @@ export function ClasseContextView({
               </button>
             ))}
             {!turmas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma turma vinculada à classe neste ano letivo.</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma turma encontrada no recorte consultado; vínculos adicionais podem existir." : "Nenhuma turma vinculada à classe neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -287,7 +286,7 @@ export function ClasseContextView({
               </button>
             ))}
             {!disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma disciplina encontrada na lista parcial." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
           <p className="mt-2 text-xs text-slate-500">
@@ -313,39 +312,53 @@ export function ClasseContextView({
             </button>
           ))}
           {!professores.length && (
-            <p className="px-3 py-5 text-slate-500">Nenhum professor atribuído às turmas deste ano.</p>
+            <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhum professor identificado na lista parcial." : "Nenhum professor atribuído às turmas deste ano."}</p>
           )}
         </div>
       </section>
 
       <section className="min-w-0" aria-labelledby="classe-alunos-heading">
-        <ExplorerRosterControls value={searchTerm} sort={rosterSort} filter={rosterFilter}
-        onFilterChange={(next) => {
-          setRosterFilter(next);
-          onViewChangeRef.current?.({ ...view(), filter: next });
-        }}
-        onSortChange={(next) => {
-          setRosterSort(next);
-          onViewChangeRef.current?.({ ...view(), sort: next });
-        }}
-        onChange={(next) => {
-          setSearchTerm(next);
-          onViewChangeRef.current?.({ ...view(), search: next });
-        }} />
-        <ExplorerRosterExportButton escolaId={context.escolaId} entityId={context.id}
-          type="classe" yearId={context.academicYearId}
-          query={searchTerm} filter={rosterFilter} sort={rosterSort} />
+        {!anoLetivo.historico && (
+          <>
+            <ExplorerRosterControls
+              value={searchTerm}
+              sort={rosterSort}
+              filter={rosterFilter}
+              onFilterChange={(next) => {
+                setRosterFilter(next);
+                onViewChangeRef.current?.({ ...view(), filter: next });
+              }}
+              onSortChange={(next) => {
+                setRosterSort(next);
+                onViewChangeRef.current?.({ ...view(), sort: next });
+              }}
+              onChange={(next) => {
+                setSearchTerm(next);
+                onViewChangeRef.current?.({ ...view(), search: next });
+              }}
+            />
+            <ExplorerRosterExportButton
+              escolaId={context.escolaId}
+              entityId={context.id}
+              type="classe"
+              yearId={context.academicYearId}
+              query={searchTerm}
+              filter={rosterFilter}
+              sort={rosterSort}
+            />
+          </>
+        )}
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 id="classe-alunos-heading" className="flex items-center gap-2 font-semibold text-slate-900">
             <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
           </h3>
           <span className="text-xs text-slate-500" aria-live="polite">
-            {searchActive ? `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} distintos`}
+            {searchActive ? rosterBusy ? "A pesquisar…" : roster.error ? "Pesquisa indisponível" : `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} distintos`}
           </span>
         </div>
-        {searchActive && (roster.loading || roster.refreshing) && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
+        {rosterBusy && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
         {searchActive && roster.error && <p role="alert" className="my-2 text-xs text-rose-700">{roster.error} <button type="button" onClick={() => void roster.retry()} className="underline">Tentar novamente</button></p>}
-        {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
+        {!anoLetivo.historico && roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {visibleStudents.map((aluno) => (
 <div key={aluno.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-slate-100 px-2 py-1 last:border-0">
@@ -368,8 +381,12 @@ export function ClasseContextView({
     onAction={(action) => onStudentAction(action, { id: aluno.id, label: aluno.nome })} />
 </div>
           ))}
-          {!visibleStudents.length && !roster.loading && (
-            <p className="px-3 py-5 text-slate-500">Sem alunos matriculados neste âmbito.</p>
+          {!visibleStudents.length && !rosterBusy && !(searchActive && roster.error) && (
+            <p className="px-3 py-5 text-slate-500">
+              {searchActive ? "Nenhum aluno encontrado nos filtros selecionados."
+                : alunos.total > 0 ? "Nenhum aluno nesta página; consulte outra página."
+                : "Sem alunos matriculados neste âmbito."}
+            </p>
           )}
         </div>
         {!searchActive && alunos.total > alunos.pageSize && (
@@ -391,7 +408,7 @@ export function ClasseContextView({
             </div>
           </div>
         )}
-        {searchActive && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
+        {rosterReady && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
       </section>
       <p className="text-xs text-slate-500">
         Apenas alunos ativos no ano atual ou concluídos no histórico, excluindo cancelados e transferidos.

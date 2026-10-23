@@ -11,7 +11,7 @@ on:
       - 'apps/web/tests/unit/command-center-contextual.spec.ts'
       - 'apps/web/package.json'
       - 'pnpm-lock.yaml'
-      - 'supabase/migrations/*command_center_course_overview.sql'
+      - 'supabase/migrations/*command_center_course_*.sql'
       - 'supabase/ops/tests/regression_command_center_course_overview.sql'
       - '.github/workflows/command-center-contextual.yml'
   push:
@@ -24,7 +24,7 @@ on:
       - 'apps/web/src/hooks/useCourseContext.ts'
       - 'apps/web/src/app/api/escolas/**/command-center/**'
       - 'apps/web/tests/unit/command-center-contextual.spec.ts'
-      - 'supabase/migrations/*command_center_course_overview.sql'
+      - 'supabase/migrations/*command_center_course_*.sql'
       - 'supabase/ops/tests/regression_command_center_course_overview.sql'
 
 permissions:

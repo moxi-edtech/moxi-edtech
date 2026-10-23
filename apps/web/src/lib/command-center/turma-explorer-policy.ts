@@ -23,7 +23,7 @@ export function turmaPageRange(page: number, size = 20) {
  * PostgREST needs the explicit curriculum FK or the embed fails with PGRST201.
  */
 export const TURMA_DISCIPLINAS_SELECT =
-  "id,curso_matriz_id,professor_id,curso_matriz(id,disciplina_id,disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id,nome))" as const;
+  "id,curso_matriz_id,professor_id,curso_matriz(id,disciplina_id,ativo,disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id,nome))" as const;
 
 /** Capture the code and message of Supabase/PostgREST error objects in server logs. */
 export function describeTurmaReadFailure(cause: unknown): { code: string | null; message: string } {

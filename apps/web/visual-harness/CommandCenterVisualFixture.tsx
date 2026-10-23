@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TurmaContextView } from "../src/components/secretaria/command-center/TurmaContextView";
 import type { ExplorerViewState } from "../src/lib/command-center/explorer-return-context";
@@ -119,6 +119,8 @@ export default function CommandCenterVisualFixture() {
     page: 1, scrollTop: 0, selectedStudentId: null, search: "", filter: "todos", sort: "nome_asc",
   });
   const [returned, setReturned] = useState(false);
+  // Synthetic viewport matches the Command Palette's single scroll owner.
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   return <main className="mx-auto min-h-screen w-full max-w-5xl overflow-x-clip bg-slate-50 px-3 py-5 text-slate-900 sm:px-5">
     <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500">KLASSE · DADOS SINTÉTICOS · NÃO É PRODUÇÃO</p>
     <h1 className="mb-3 text-lg font-semibold">Command Center · Secretaria</h1>
@@ -139,7 +141,14 @@ export default function CommandCenterVisualFixture() {
           {returned && <p role="status" className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 p-2 text-xs">
             Voltou ao mesmo contexto da Turma — fixture de interface.
           </p>}
-          <TurmaContextView context={context} portal="secretaria"
+          <div ref={scrollContainerRef} role="region" aria-label="Área de rolagem da turma"
+            onScroll={(event) => {
+              const top = event.currentTarget.scrollTop;
+              setView((previous) => previous.scrollTop === top
+                ? previous : { ...previous, scrollTop: top });
+            }}
+            className="h-[min(70dvh,640px)] min-h-64 overflow-y-auto overscroll-contain">
+          <TurmaContextView scrollContainerRef={scrollContainerRef} context={context} portal="secretaria"
             initialPage={view.page} initialScrollTop={view.scrollTop}
             selectedStudentId={view.selectedStudentId} initialSearch={view.search}
             initialFilter={view.filter === "documentos_sinalizados" ? "documentos_sinalizados" : view.filter === "propinas_vencidas" ? "propinas_vencidas" : "todos"}
@@ -148,6 +157,7 @@ export default function CommandCenterVisualFixture() {
             onStudentAction={(_action, student) => setSelected(student)}
             onNavigate={() => undefined} onExploreClasse={() => undefined}
             onExploreProfessor={() => undefined} onExploreDisciplina={() => undefined} />
+          </div>
         </div>
       )}
     </QueryClientProvider>

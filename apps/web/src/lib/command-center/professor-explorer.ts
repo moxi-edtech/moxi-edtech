@@ -1,3 +1,5 @@
+import { isEntityInAcademicYear } from "./academic-relations";
+
 /**
  * Pure, tenant-independent view-model composition. The API MUST filter and authorize
  * school, academic year, teacher, turmas and subject catalogue before calling this.
@@ -36,9 +38,7 @@ export function belongsToProfessorAcademicYear(
   turma: Pick<ProfessorTurmaRow, "anoLetivo" | "anoLetivoId">,
   year: { id: string; ano: number },
 ) {
-  return turma.anoLetivoId
-    ? turma.anoLetivoId === year.id
-    : turma.anoLetivo === year.ano;
+  return isEntityInAcademicYear(turma, year);
 }
 
 export function composeProfessorOverview(input: {

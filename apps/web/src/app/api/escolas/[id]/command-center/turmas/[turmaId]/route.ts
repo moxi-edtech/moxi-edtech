@@ -8,6 +8,7 @@ import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/schoo
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
 import { TURMA_DISCIPLINAS_SELECT, turmaEnrollmentPolicy, turmaPageRange } from "@/lib/command-center/turma-explorer-policy";
+import { mergeCurriculumActivity } from "@/lib/command-center/academic-relations";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ type DisciplineRow = {
   professor_id?: string | null;
   curso_matriz?: {
     disciplina_id?: string | null;
+    ativo?: boolean | null;
     disciplinas_catalogo?: { id: string; nome: string } | null;
   } | null;
 };
@@ -182,12 +184,14 @@ async function readExplorer(
       for (const subject of catalog ?? []) legacyNames.set(subject.id, subject.nome);
     }
 
-    const subjectsById = new Map<string, { id: string; nome: string; professores: Set<string>; professorIds: Set<string> }>();
+    const subjectsById = new Map<string, { id: string; nome: string; professores: Set<string>; professorIds: Set<string>; curriculumActive: boolean | null }>();
     for (const d of disciplines) {
       const catalog = d.curso_matriz?.disciplinas_catalogo;
       const id = catalog?.id || d.curso_matriz?.disciplina_id;
       if (!id) continue;
-      if (!subjectsById.has(id)) subjectsById.set(id, { id, nome: catalog?.nome || "Disciplina", professores: new Set(), professorIds: new Set() });
+      if (!subjectsById.has(id)) subjectsById.set(id, { id, nome: catalog?.nome || "Disciplina", professores: new Set(), professorIds: new Set(), curriculumActive: null });
+      const subject = subjectsById.get(id)!;
+      subject.curriculumActive = mergeCurriculumActivity(subject.curriculumActive, d.curso_matriz?.ativo);
       if (d.professor_id && teachers.has(d.professor_id)) {
         subjectsById.get(id)!.professores.add(teachers.get(d.professor_id)!);
         subjectsById.get(id)!.professorIds.add(d.professor_id);
@@ -196,7 +200,7 @@ async function readExplorer(
     for (const a of assignments) {
       const id = a.disciplina_id;
       if (!id) continue;
-      if (!subjectsById.has(id) && legacyNames.has(id)) subjectsById.set(id, { id, nome: legacyNames.get(id)!, professores: new Set(), professorIds: new Set() });
+      if (!subjectsById.has(id) && legacyNames.has(id)) subjectsById.set(id, { id, nome: legacyNames.get(id)!, professores: new Set(), professorIds: new Set(), curriculumActive: null });
       if (!subjectsById.has(id) || !a.professor_id || !teachers.has(a.professor_id)) continue;
       subjectsById.get(id)!.professores.add(teachers.get(a.professor_id)!);
       subjectsById.get(id)!.professorIds.add(a.professor_id);
@@ -221,7 +225,8 @@ async function readExplorer(
         },
         alunos: { items: students, total, page: parsed.data.page, pageSize: PAGE_SIZE, hasMore: start + students.length < total },
         disciplinas: [...subjectsById.values()].map((d) => ({
-          id: d.id, nome: d.nome, professores: [...d.professores].sort(),
+          id: d.id, nome: d.nome, curriculumActive: d.curriculumActive,
+          professores: [...d.professores].sort(),
           professoresDetalhes: [...d.professorIds].map((id) => ({ id, nome: teachers.get(id)! }))
             .sort((a, b) => a.nome.localeCompare(b.nome, "pt")),
         })),

@@ -46,6 +46,10 @@ CREATE TABLE public.matriculas (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, turma_id uuid NOT NULL,
   aluno_id uuid NOT NULL, ano_letivo integer NOT NULL, status text NOT NULL, ativo boolean
 );
+CREATE TABLE public.curso_curriculos (
+  id uuid PRIMARY KEY, escola_id uuid NOT NULL, curso_id uuid NOT NULL,
+  classe_id uuid NOT NULL, ano_letivo_id uuid NOT NULL, status text NOT NULL
+);
 
 INSERT INTO public.cursos VALUES
   ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Informática', 'INF', 'II', null, 'aprovado'),
@@ -83,6 +87,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT EXECUTE ON FUNCTION public.has_access_to_escola_fast(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.user_has_role_in_school(uuid,text[]) TO authenticated;
 \ir ../../migrations/20271015100000_command_center_course_overview.sql
+\ir ../../migrations/20271015100001_command_center_course_reused_classes.sql
 
 DO $$
 BEGIN
@@ -141,4 +146,79 @@ BEGIN
   END;
 END $$;
 RESET ROLE;
-SELECT 'command-center contextual course DB regression passed' AS result;
+
+-- EX-005: an old class can have a *current-year* turma even when created
+-- in the previous year. An additional old class may be referenced only by
+-- a published curriculum; an archived-only or unreferenced class must stay out.
+INSERT INTO public.turmas VALUES
+  ('44444444-4444-4444-4444-444444444446',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   '11111111-1111-1111-1111-111111111111',
+   '33333333-3333-3333-3333-333333333334',
+   '11 A reutilizada', 'T', 90, 'ativo',
+   '22222222-2222-2222-2222-222222222222', 2026);
+INSERT INTO public.classes VALUES
+  ('33333333-3333-3333-3333-333333333335',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   '11111111-1111-1111-1111-111111111111',
+   '22222222-2222-2222-2222-222222222224', '12.ª publicada'),
+  ('33333333-3333-3333-3333-333333333336',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   '11111111-1111-1111-1111-111111111111',
+   '22222222-2222-2222-2222-222222222224', '12.ª arquivada');
+INSERT INTO public.curso_curriculos VALUES
+  ('55555555-5555-5555-5555-555555555551',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   '11111111-1111-1111-1111-111111111111',
+   '33333333-3333-3333-3333-333333333335',
+   '22222222-2222-2222-2222-222222222222', 'published'),
+  ('55555555-5555-5555-5555-555555555552',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   '11111111-1111-1111-1111-111111111111',
+   '33333333-3333-3333-3333-333333333336',
+   '22222222-2222-2222-2222-222222222222', 'archived');
+
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false);
+SELECT set_config('test.escola_id','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',false);
+SELECT set_config('test.role','secretaria',false);
+DO $$
+DECLARE
+  result jsonb;
+BEGIN
+  result := public.command_center_course_overview(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222'
+  );
+  IF (result->'stats'->>'classes')::integer <> 3
+    OR (result->'stats'->>'turmas')::integer <> 2
+    OR (result->'stats'->>'alunos')::integer <> 65
+    OR jsonb_array_length(result->'classes') <> 3
+  THEN RAISE EXCEPTION 'reused class counts inconsistent: %', result->'stats'; END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM jsonb_array_elements(result->'classes') cl
+    WHERE cl->>'id' = '33333333-3333-3333-3333-333333333334'
+      AND (cl->>'turmas')::integer = 1
+  ) THEN RAISE EXCEPTION 'class with active current-year turma was excluded'; END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM jsonb_array_elements(result->'classes') cl
+    WHERE cl->>'id' = '33333333-3333-3333-3333-333333333335'
+      AND (cl->>'turmas')::integer = 0
+  ) THEN RAISE EXCEPTION 'class with published current-year curriculum was excluded'; END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(result->'classes') cl
+    WHERE cl->>'id' = '33333333-3333-3333-3333-333333333336'
+  ) THEN RAISE EXCEPTION 'archived-only curriculum leaked into current year'; END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM jsonb_array_elements(result->'turmas') t
+    WHERE t->>'id' = '44444444-4444-4444-4444-444444444446'
+      AND t->>'classeId' = '33333333-3333-3333-3333-333333333334'
+  ) THEN RAISE EXCEPTION 'reused turma is not navigable from Course'; END IF;
+END $$;
+RESET ROLE;
+SELECT 'command-center contextual course DB regression passed (EX-005)' AS result;

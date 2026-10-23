@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import {
+  clearExplorerReturnContext, consumeExplorerReturnContext,
+  peekExplorerReturnContext, retainExplorerViewState, saveExplorerReturnContext,
+  type ExplorerScope, type ExplorerViewState,
+} from "../../src/lib/command-center/explorer-return-context";
+
 
 const palette = readFileSync("src/components/CommandPalette.tsx", "utf8");
 const topbar = readFileSync("src/components/layout/klasse/Topbar.tsx", "utf8");
@@ -75,4 +81,72 @@ test("P0 missing pupil selection produces an actionable, accessible notice", () 
     assert.match(view, /returnWarning &&/);
     assert.match(view, /role="status"/);
   }
+});
+
+test("EX-004: three consecutive students preserve one school/year-scoped Turma return state", () => {
+  clearExplorerReturnContext();
+  const scope: ExplorerScope = {
+    userId: "actor-fixture", escolaId: "school-fixture", poloId: null,
+    academicYearId: "year-fixture", portal: "secretaria",
+  };
+  const entity = {
+    type: "turma" as const, id: "turma-fixture", label: "Turma de teste",
+    escolaId: scope.escolaId, academicYearId: scope.academicYearId,
+  };
+  const key = `turma:${entity.id}:${scope.academicYearId}`;
+  let states: Record<string, ExplorerViewState> = {};
+  const students = [
+    { id: "student-1", page: 1, scrollTop: 120, search: "" },
+    { id: "student-2", page: 2, scrollTop: 350, search: "Lu" },
+    { id: "student-3", page: 2, scrollTop: 620, search: "Lu" },
+  ];
+  for (const student of students) {
+    states = retainExplorerViewState(states, key, {
+      page: student.page, scrollTop: student.scrollTop,
+      selectedStudentId: student.id, search: student.search,
+      sort: "nome_asc", filter: "todos",
+    });
+    saveExplorerReturnContext({
+      scope, escolaId: scope.escolaId, entityContext: entity,
+      contextTrail: [], courseClassId: null, courseTurmaId: null,
+      viewState: states,
+    });
+    assert.deepEqual(peekExplorerReturnContext(scope)?.viewState[key], {
+      page: student.page, scrollTop: student.scrollTop,
+      selectedStudentId: student.id, search: student.search,
+      sort: "nome_asc", filter: "todos",
+    });
+    const restored = consumeExplorerReturnContext(scope);
+    assert.equal(restored?.entityContext.id, entity.id);
+    assert.equal(restored?.viewState[key]?.selectedStudentId, student.id);
+    assert.equal(consumeExplorerReturnContext(scope), null);
+  }
+  saveExplorerReturnContext({
+    scope, escolaId: scope.escolaId, entityContext: entity,
+    contextTrail: [], courseClassId: null, courseTurmaId: null,
+    viewState: states,
+  });
+  assert.equal(peekExplorerReturnContext({ ...scope, escolaId: "another-school" }), null);
+  assert.equal(peekExplorerReturnContext(scope), null);
+  clearExplorerReturnContext();
+});
+
+test("EX-004: command palette owns Turma scrolling; restoration waits for roster", () => {
+  const roster = readFileSync("src/hooks/useExplorerRoster.ts", "utf8");
+  assert.match(palette, /scrollContainerRef=\{contextualScrollRef\}/);
+  assert.match(palette, /contextualScrollRef\.current\.scrollTop/);
+  assert.match(turma, /scrollContainerRef\?\.current/);
+  assert.match(turma, /scrollRestored\.current/);
+  assert.match(turma, /requestAnimationFrame/);
+  assert.match(turma, /if \(loading \|\| !container/);
+  assert.doesNotMatch(turma, /ref=\{scrollRef\} onScroll/);
+  assert.match(roster, /const querySettled = debounced === search\.trim\(\)/);
+  assert.match(turma, /roster\.querySettled \? roster\.items : \[\]/);
+  assert.match(turma, /!roster\.querySettled/);
+  assert.match(turma, /O aluno selecionado não está nesta página ou nos filtros atuais/);
+  assert.match(palette, /<ClasseContextView scrollContainerRef=\{contextualScrollRef\}/);
+  assert.match(classe, /scrollContainerRef\?\.current/);
+  assert.match(classe, /scrollRestored\.current/);
+  assert.match(classe, /roster\.querySettled \? roster\.items : \[\]/);
+  assert.doesNotMatch(classe, /ref=\{scrollRef\} onScroll/);
 });
