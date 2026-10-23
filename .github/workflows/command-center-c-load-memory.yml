@@ -1,0 +1,131 @@
+name: Command Center C Load and Memory
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/command-center-c-load-memory.yml'
+      - 'apps/web/scripts/performance/command_center_load_benchmark.py'
+      - 'apps/web/scripts/visual/command-center-memory.mjs'
+      - 'apps/web/src/app/api/escolas/**/command-center/roster/route.ts'
+      - 'apps/web/visual-harness/CommandCenterVisualFixture.tsx'
+      - 'supabase/ops/tests/command_center_load_seed.sql'
+      - 'supabase/ops/tests/command_center_performance_explain.sql'
+      - 'supabase/ops/tests/prepare_real_rate_limit_fixture.py'
+      - 'supabase/migrations/20271022140000_command_center_perf_indexes.sql'
+      - 'supabase/ops/rollback_command_center_perf_indexes.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-concurrency-and-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      CC_LOAD_PGURL: postgresql://postgres:postgres@127.0.0.1:5432/cc_load_fixture
+    steps:
+      - uses: actions/checkout@v4
+      - name: Seed 3 schools and 6700 fictional pupils against verified Command Center SQL
+        run: |
+          set -euo pipefail
+          psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE cc_load_fixture;"
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/command_center_load_seed.sql > /tmp/cc-load-seed.log
+          python3 supabase/ops/tests/prepare_real_rate_limit_fixture.py > /tmp/cc-canonical-rate.sql
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -f /tmp/cc-canonical-rate.sql > /tmp/cc-real-rate-install.log
+      - name: Before index SQL plans — synthetic only
+        run: |
+          set -euo pipefail
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/command_center_performance_explain.sql | tee /tmp/cc-explain-before.log
+      - name: Apply/reapply/rollback/reapply additive indexes in ephemeral database
+        run: |
+          set -euo pipefail
+          for i in 1 2; do
+            psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271022140000_command_center_perf_indexes.sql
+          done
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/rollback_command_center_perf_indexes.sql
+          test "$(psql "$CC_LOAD_PGURL" -At -c "SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN ('ix_cc_candidates_per_student_year','ix_cc_active_matricula_per_year_turma')")" = 0
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271022140000_command_center_perf_indexes.sql
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -c 'ANALYZE public.matriculas; ANALYZE public.candidaturas;'
+      - name: After index SQL plans — synthetic only
+        run: |
+          set -euo pipefail
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/command_center_performance_explain.sql | tee /tmp/cc-explain-after.log
+      - name: Concurrency — 2 independent instances, 2 principals and tenant RLS
+        run: |
+          set -euo pipefail
+          python3 apps/web/scripts/performance/command_center_load_benchmark.py concurrency | tee /tmp/cc-concurrent.json
+      - name: Reproducible 3x8 before/after p50/p95, bytes and requests/hour
+        run: |
+          set -euo pipefail
+          psql "$CC_LOAD_PGURL" -v ON_ERROR_STOP=1 -c 'TRUNCATE public.public_rate_limits;'
+          CC_BENCH_OUTPUT=/tmp/cc-load-measurements.json python3 apps/web/scripts/performance/command_center_load_benchmark.py benchmark
+          cat /tmp/cc-load-measurements.json
+          python3 - <<'PY'
+          import json
+          v=json.load(open('/tmp/cc-load-measurements.json'))
+          assert v['deltaRequestCount'] <= 0, 'Request budget increased'
+          assert v['before']['runs']==v['after']['runs']==3
+          assert v['before']['p95Ms']>0 and v['after']['p95Ms']>0
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cc-load-synthetic-plans-benchmarks
+          path: |
+            /tmp/cc-explain-before.log
+            /tmp/cc-explain-after.log
+            /tmp/cc-load-measurements.json
+            /tmp/cc-concurrent.json
+          retention-days: 14
+  playwright-memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated existing Playwright/Vite — no app dependency
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/klasse-visual
+          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
+          /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start synthetic React explorer
+        run: |
+          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/klasse-cc-memory-vite.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:6006/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 80 /tmp/klasse-cc-memory-vite.log
+          exit 1
+      - name: 400 synthetic operator transitions, visibility, heap, DOM and listeners
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/command-center-memory.mjs
+      - name: Diagnostics on error
+        if: failure()
+        run: tail -n 100 /tmp/klasse-cc-memory-vite.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cc-memory-synthetic-400-operations
+          path: apps/web/visual-evidence/command-center-memory/
+          retention-days: 14
