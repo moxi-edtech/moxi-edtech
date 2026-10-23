@@ -110,15 +110,25 @@ export function composeDisciplinaOverview(input: {
     }
   }
 
-  const professores = [...teacherTurmas.entries()].map(([id, ids]) => ({
-    id,
-    nome: teacherMap.get(id)?.nome ?? "Professor com vínculo registado · identidade indisponível",
-    turmas: ids.size,
-  })).sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id));
+  // Unresolved professor IDs remain attached to their turmas as evidence,
+  // but must not be counted as verified identities or linked to an unavailable profile.
+  const professores = [...teacherTurmas.entries()]
+    .filter(([id]) => teacherMap.has(id))
+    .map(([id, ids]) => ({
+      id,
+      nome: teacherMap.get(id)!.nome,
+      turmas: ids.size,
+    })).sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id));
 
-  // The API supplies only the published curriculum for the selected academic year.
-  // Inactive rows in that version remain inline, never in a fictitious history list.
-  const curriculo = [...input.curriculum].sort((a, b) =>
+  // The API supplies only the published curriculum for the selected year.
+  // Deduplicate identical course/class/discipline rows within that version,
+  // never by activity across versions. Preserve inactive rows inline.
+  const curriculoByScope = new Map<string, DisciplinaCurriculumRow>();
+  for (const row of input.curriculum) {
+    const key = [row.curriculoId, row.cursoId ?? "", row.classeId ?? ""].join(":");
+    if (!curriculoByScope.has(key)) curriculoByScope.set(key, row);
+  }
+  const curriculo = [...curriculoByScope.values()].sort((a, b) =>
     (a.cursoNome ?? "").localeCompare(b.cursoNome ?? "", "pt") ||
     (a.classeNome ?? "").localeCompare(b.classeNome ?? "", "pt") ||
     a.id.localeCompare(b.id));
