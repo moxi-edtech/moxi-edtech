@@ -242,7 +242,7 @@ export function ClasseContextView({
               </button>
             ))}
             {!turmas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma turma vinculada à classe neste ano letivo.</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma turma encontrada no recorte consultado; vínculos adicionais podem existir." : "Nenhuma turma vinculada à classe neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -269,7 +269,7 @@ export function ClasseContextView({
               </button>
             ))}
             {!disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma disciplina encontrada na lista parcial." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
           <p className="mt-2 text-xs text-slate-500">
@@ -295,7 +295,7 @@ export function ClasseContextView({
             </button>
           ))}
           {!professores.length && (
-            <p className="px-3 py-5 text-slate-500">Nenhum professor atribuído às turmas deste ano.</p>
+            <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhum professor identificado na lista parcial." : "Nenhum professor atribuído às turmas deste ano."}</p>
           )}
         </div>
       </section>
