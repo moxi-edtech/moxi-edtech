@@ -18,10 +18,10 @@ export function SecondaryAction({
         flex flex-col items-center gap-2 p-3 rounded-xl border transition
         ${highlight
           ? "bg-amber/5 border-amber/30 text-amber"
-          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}
+          : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"}
       `}
     >
-      <Icon className={`h-5 w-5 ${highlight ? "text-amber" : "text-slate-400"}`} />
+      <Icon className={`h-5 w-5 ${highlight ? "text-amber" : "text-muted-foreground"}`} />
       <span className="text-[11px] font-semibold">{label}</span>
     </Link>
   );
