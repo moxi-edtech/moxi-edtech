@@ -1,7 +1,7 @@
 # Feature: Alternador de Tema (Dark / Bright)
 
 **Branch:** `feat/theme-switcher`  
-**Status:** Em implementação (Fase 2 em curso)  
+**Status:** Em implementação (Fase 2 — secretaria em curso)  
 **Data:** 2026-10-23  
 **Idioma da documentação:** Português
 
@@ -42,16 +42,38 @@ O utilizador deve poder:
 |------------|------|--------|
 | P0 | Shell / Sidebar | ✅ `Sidebar.tsx` com tokens `sidebar-*` |
 | P0 | Header / Topbar | ✅ `Topbar.tsx` + `AppShell.tsx` |
-| P1 | Cards e tabelas | 🔄 Em curso |
-| P1 | Formulários e inputs | 🔄 Em curso |
-| P2 | Componentes secundários | ⏳ Pendente |
+| P1 | UI base (Input, Select, Modal, Drawer, Button, Table…) | ✅ |
+| P1 | Dashboard (KpiCard, TaskList, DashboardHeader…) | ✅ |
+| P1 | Secretaria — listas e modais prioritários | ✅ ver §2.1 |
+| P1 | Relatórios financeiros (TabFluxo, TabPropinas, TabCaptacao) | ✅ |
+| P2 | Wizards grandes (Balcão, Admissão) | 🔄 preparados localmente (~120–146 KB) |
+| P2 | Restantes páginas secretaria | ⏳ Pendente |
+
+### 2.1 Secretaria — componentes migrados
+
+| Componente | Estado |
+|------------|--------|
+| `AlunosListClient.tsx` | ✅ |
+| `ProfessoresListClient.tsx` | ✅ |
+| `PagamentoModal.tsx` | ✅ |
+| `AlunoProfilePanel.tsx` | ✅ |
+| `BalcaoServicoModal.tsx` | ✅ |
+| `ClassesListClient.tsx` | ✅ |
+| `ImportacoesListClient.tsx` | ✅ |
+| `MinhaProdutividade.tsx` | ✅ |
+| `relatorio-financeiro/TabFluxo.tsx` | ✅ |
+| `relatorio-financeiro/TabPropinas.tsx` | ✅ |
+| `relatorio-financeiro/TabCaptacao.tsx` | ✅ |
+| `BalcaoAtendimento.tsx` | 🔄 transform local pronta (ficheiro grande) |
+| `AdmissaoWizardClient.tsx` | 🔄 transform local pronta (ficheiro grande) |
 
 ### O que ainda falta (global)
 
 | Item | Estado | Observação |
 |------|--------|------------|
-| Substituição de cores fixas em páginas | ⚠️ | Muitas páginas ainda usam `bg-slate-*` / `bg-white` |
-| Testes unitários / E2E de tema | ❌ | Definidos na §7, ainda não implementados |
+| Wizards grandes secretaria | 🔄 | Balcão / Admissão — push de ficheiros >100 KB |
+| Restantes listas/modais secretaria | ⏳ | MatriculasList, TurmasList, etc. |
+| Testes unitários / E2E de tema | ❌ | Definidos na §7 |
 | Opção Sistema/Claro/Escuro no menu | ❌ | Fase 3 |
 | Integração no Command Palette | ❌ | Fase 3 |
 
@@ -68,6 +90,7 @@ O utilizador deve poder:
 | Transições | `disableTransitionOnChange` | Evita animações estranhas na troca |
 | Localização do toggle | Topbar (direita) | Sempre visível no shell principal |
 | Cores de marca | Mantidas (`#1F6B3B`, `#E3B23C`) | Funcionam bem em ambos os temas |
+| Tokens prioritários | `bg-card`, `bg-muted`, `border-border`, `text-foreground`, `text-muted-foreground` | Substituição progressiva de `slate-*` / `bg-white` |
 
 ---
 
@@ -83,29 +106,20 @@ O utilizador deve poder:
 
 ### Fase 2 — Adaptação visual (em curso)
 
-Substituir cores hardcoded por tokens semânticos:
-
-| Prioridade | Área | Exemplos a substituir |
-|------------|------|------------------------|
-| P0 ✅ | Shell / Sidebar / Topbar | `bg-slate-950` → `bg-sidebar`, etc. |
-| P1 | Cards e tabelas | Bordas e fundos fixos |
-| P1 | Formulários e inputs | Bordas e placeholders |
-| P2 | Componentes secundários | Badges, tooltips, modais |
+Substituir cores hardcoded por tokens semânticos.
 
 **Mapeamento recomendado:**
 
 | Classe antiga | Preferir |
 |---------------|----------|
-| `bg-slate-950` | `bg-sidebar` ou `bg-background` |
-| `bg-slate-900` | `bg-sidebar-accent` / `bg-muted` |
-| `text-slate-100` | `text-sidebar-foreground` / `text-foreground` |
-| `text-slate-400` | `text-muted-foreground` |
-| `border-slate-200` | `border-border` |
-| `border-slate-800` | `border-sidebar-border` / `border-border` |
-| `bg-white` | `bg-background` / `bg-card` |
-| `bg-slate-50` | `bg-muted` |
-| `text-gray-700` | `text-foreground` / `text-muted-foreground` |
-| `border-gray-300` | `border-input` |
+| `bg-slate-950` / `bg-slate-900` | `bg-background` / `bg-sidebar` |
+| `bg-white` | `bg-card` / `bg-background` |
+| `bg-slate-50` / `bg-slate-100` | `bg-muted` |
+| `text-slate-900` / `text-slate-700` | `text-foreground` |
+| `text-slate-500` / `text-slate-400` | `text-muted-foreground` |
+| `border-slate-200` / `border-slate-100` | `border-border` |
+| `divide-slate-*` | `divide-border` |
+| Badges de status | cores com opacidade (`emerald-500/10`) + `dark:` |
 
 ### Fase 3 — Polimento
 
@@ -129,10 +143,16 @@ apps/web/
 │       ├── providers/
 │       │   └── ThemeProvider.tsx   ← criado
 │       ├── ThemeToggle.tsx         ← reescrito
-│       └── layout/klasse/
-│           ├── AppShell.tsx        ← tokens semânticos
-│           ├── Sidebar.tsx         ← tokens semânticos
-│           └── Topbar.tsx          ← tokens + ThemeToggle
+│       ├── layout/klasse/
+│       │   ├── AppShell.tsx        ← tokens semânticos
+│       │   ├── Sidebar.tsx         ← tokens semânticos
+│       │   └── Topbar.tsx          ← tokens + ThemeToggle
+│       └── secretaria/
+│           ├── AlunosListClient.tsx      ← ✅ theme-aware
+│           ├── ProfessoresListClient.tsx ← ✅ theme-aware
+│           ├── PagamentoModal.tsx        ← ✅ theme-aware
+│           ├── AlunoProfilePanel.tsx     ← ✅ theme-aware
+│           └── …
 ├── tests/
 │   ├── unit/
 │   │   └── theme-toggle.spec.ts    ← planeado
@@ -148,7 +168,8 @@ apps/web/
 - [x] A preferência é mantida após refresh e entre sessões (via next-themes)
 - [x] Não há flash de tema claro ao carregar a página em modo escuro (`suppressHydrationWarning` + mounted guard)
 - [x] Sidebar, header e conteúdo principal do shell respeitam o tema ativo
-- [ ] Páginas de conteúdo (cards, tabelas, forms) respeitam o tema
+- [x] Listas prioritárias da secretaria (alunos, professores) respeitam o tema
+- [ ] Páginas de conteúdo restantes (cards, tabelas, forms) respeitam o tema
 - [x] Cores de marca (verde e dourado) continuam legíveis
 - [ ] Funciona em desktop e mobile (Capacitor) — validação manual pendente
 - [ ] Não quebra o padrão de Graciosidade
@@ -197,7 +218,8 @@ apps/web/
 
 - [x] Shell (sidebar + header)
 - [ ] Dashboard principal
-- [ ] Secretaria — lista de alunos / matrículas
+- [x] Secretaria — lista de alunos / professores
+- [ ] Secretaria — wizards (Balcão, Admissão)
 - [ ] Financeiro — dashboard e lançamentos
 - [ ] Pauta do professor
 - [ ] Wizard de importação
@@ -219,6 +241,7 @@ pnpm -C apps/web exec playwright test tests/theme-switcher.e2e.ts
 | Componentes com cores hardcoded | Auditoria progressiva P0 → P2 |
 | Flash de tema (FOUC) | `next-themes` + `suppressHydrationWarning` + mounted guard |
 | Quebra visual em páginas legadas | Shell primeiro; expandir gradualmente |
+| Ficheiros muito grandes (>100 KB) | Transform local + push dedicado |
 | Conflito com impressão / PDF | Temas só na UI |
 | Testes frágeis | Preferir `getByRole` + `aria-label` |
 
@@ -239,4 +262,5 @@ pnpm -C apps/web exec playwright test tests/theme-switcher.e2e.ts
 |------|-------|-----------|
 | 2026-10-23 | Grok | Criação inicial da documentação |
 | 2026-10-23 | Grok | Secção completa de testes |
-| 2026-10-23 | Grok | Fase 1 concluída; Fase 2 P0 (shell) concluída; progresso atualizado |
+| 2026-10-23 | Grok | Fase 1 concluída; Fase 2 P0 (shell) concluída |
+| 2026-10-23 | Grok | Secretaria prioritária migrada (Alunos, Professores, Pagamento, Profile, Tabs) |
