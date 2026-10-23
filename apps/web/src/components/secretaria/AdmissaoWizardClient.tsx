@@ -2629,10 +2629,13 @@ export default function AdmissaoWizardClient({
   );
 
   const [modalResumeId, setModalResumeId] = useState<string | null>(null);
+  // Distinguish an effect that has never run from the valid “new enrollment” null ID.
   const lastCandidaturaIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    const candId = modalContext ? (modalResumeId || initialCandidaturaId) : (initialCandidaturaId || (searchParams ? searchParams.get("candidaturaId") : null));
+    const candId = (modalContext
+      ? (modalResumeId || initialCandidaturaId)
+      : (initialCandidaturaId || searchParams?.get("candidaturaId"))) ?? null;
     
     if (candId === lastCandidaturaIdRef.current) return;
     lastCandidaturaIdRef.current = candId;
