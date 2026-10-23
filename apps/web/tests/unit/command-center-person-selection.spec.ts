@@ -32,7 +32,7 @@ test("students from global search, class, and turma open existing Balcao as a mo
   }
   assert.match(palette, /selection === "student-modal"/);
   assert.match(palette, /saveExplorerReturnContext\(/);
-  assert.match(palette, /handleOpenChange\(false\);\s*setQuery\(" "\)/.source ? /onStudentSelect\(\{ id: item\.id, label: item\.label \}\)/ : /onStudentSelect/);
+  assert.match(palette, /onStudentSelect\(\{ id: item\.id, label: item\.label \}\)/);
   assert.match(classe, /onClick=\{\(\) => selectStudent/);
   assert.match(turma, /onClick=\{\(\) => selectStudent/);
   assert.match(topbar, /createPortal\(/);
