@@ -145,7 +145,8 @@ test("EX-006: incomplete explorer lists never claim verified absence of links", 
   assert.match(disciplina, /missingTeacherEvidenceLabel\(limitado\)/);
   assert.doesNotMatch(disciplina, /curriculoHistorico|hasOtherActivityVersion/);
   assert.match(disciplina, /item\.curriculoVersao/);
-  assert.match(professor, /semAtribuicao && !limited/);
+  assert.match(professor, /semVinculos && !limited/);
+  assert.match(professor, /data\.atribuicoes\.map/);
   assert.match(classe, /limitado \? "Nenhuma disciplina encontrada na lista parcial/);
   // EX-007: Course must use the bounded server page, not the legacy 100-item overview.
   assert.match(curso, /useCourseTurmasPage\(/);
