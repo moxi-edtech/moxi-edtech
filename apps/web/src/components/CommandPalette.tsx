@@ -36,6 +36,7 @@ import { CourseContextView } from "@/components/secretaria/command-center/Course
 import { ClasseContextView } from "@/components/secretaria/command-center/ClasseContextView";
 import { TurmaContextView } from "@/components/secretaria/command-center/TurmaContextView";
 import { ProfessorContextView } from "@/components/secretaria/command-center/ProfessorContextView";
+import { FuncionarioContextView } from "@/components/secretaria/command-center/FuncionarioContextView";
 import { DisciplinaContextView } from "@/components/secretaria/command-center/DisciplinaContextView";
 import { DisciplinaSearchResults } from "@/components/secretaria/command-center/DisciplinaSearchResults";
 import type { ContextualEntityType } from "@/lib/command-center/entity-context";
@@ -54,6 +55,7 @@ const ENTITY_LABELS: Record<ContextualEntityType, string> = {
   turma: "Turma",
   professor: "Professor",
   disciplina: "Disciplina",
+  usuario: "Funcionário",
 };
 
 const BACK_LABELS: Record<ContextualEntityType, string> = {
@@ -62,6 +64,7 @@ const BACK_LABELS: Record<ContextualEntityType, string> = {
   turma: "Voltar à turma",
   professor: "Voltar ao professor",
   disciplina: "Voltar à disciplina",
+  usuario: "Voltar ao funcionário",
 };
 
 type Props = {
@@ -74,19 +77,20 @@ type Props = {
   restoreExplorerOnOpen?: boolean;
 };
 
-function SearchResultRow({ item, onSelect }: { item: MinimalSearchResult; onSelect: () => void }) {
+function SearchResultRow({ item, onSelect, portal }: { item: MinimalSearchResult; onSelect: () => void; portal?: string }) {
   const student = item.type === "aluno";
+  const employee = item.type === "usuario" && (portal === "admin" || portal === "operacoes");
   const secondary = item.highlight?.trim();
   const showSecondary = Boolean(secondary && secondary !== item.label?.trim());
   return (
     <Command.Item value={`${item.type}:${item.id}`} onSelect={onSelect} className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-700 transition-colors aria-selected:bg-slate-100 aria-selected:text-slate-900">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 group-aria-selected:bg-white">
-        {student ? <User className="h-5 w-5" /> : item.type === "turma" ? <GraduationCap className="h-5 w-5" /> : item.type === "candidatura" ? <Bookmark className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+        {student || employee ? <User className="h-5 w-5" /> : item.type === "turma" ? <GraduationCap className="h-5 w-5" /> : item.type === "candidatura" ? <Bookmark className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="break-words font-semibold leading-5 text-slate-900">{item.label?.trim() || "Nome não informado"}</div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
-          <span>{student ? "Aluno" : item.type}</span>
+          <span>{student ? "Aluno" : employee ? "Funcionário" : item.type}</span>
           {showSecondary && <span className="break-all text-slate-600">{student ? "Processo/BI: " : "· "}{secondary}</span>}
         </div>
       </div>
@@ -373,7 +377,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                       <>
                         {recentResults.length > 0 && (
                           <Command.Group heading="Recentes" className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                            {recentResults.map((item) => <SearchResultRow key={`recent-${item.type}-${item.id}`} item={item} onSelect={() => selectResult(item)} />)}
+                            {recentResults.map((item) => <SearchResultRow key={`recent-${item.type}-${item.id}`} item={item} portal={portal} onSelect={() => selectResult(item)} />)}
                           </Command.Group>
                         )}
                         <Command.Group heading="Acções frequentes" className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400">
@@ -388,7 +392,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                     )}
                     {results.length > 0 && (
                       <Command.Group heading="Resultados da pesquisa" className="mt-4 px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                        {results.map((item) => <SearchResultRow key={`${item.type}-${item.id}`} item={item} onSelect={() => selectResult(item)} />)}
+                        {results.map((item) => <SearchResultRow key={`${item.type}-${item.id}`} item={item} portal={portal} onSelect={() => selectResult(item)} />)}
                       </Command.Group>
                     )}
                     {!loading && !searchError && query.trim().length >= 2 && results.length === 0 && (
@@ -417,6 +421,9 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                   )}
                   {entityContext.type === "turma" && (
                     <TurmaContextView key={`${entityContext.escolaId}:${entityContext.id}:${entityContext.academicYearId ?? "c"}`} initialPage={viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.page ?? 1} initialScrollTop={viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.scrollTop ?? 0} selectedStudentId={viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.selectedStudentId ?? null} initialSearch={viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.search ?? ""} initialSort={viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.sort === "nome_desc" ? "nome_desc" : viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.sort === "pendencias_primeiro" ? "pendencias_primeiro" : "nome_asc"} initialFilter={viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.filter === "documentos_sinalizados" ? "documentos_sinalizados" : viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.filter === "propinas_vencidas" ? "propinas_vencidas" : viewState[`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`]?.filter === "ambos" ? "ambos" : "todos"} onViewChange={(state) => updateView(`${entityContext.type}:${entityContext.id}:${entityContext.academicYearId ?? "current"}`, state)} context={entityContext} portal={portal} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} onStudentSelect={(s) => selectResult({ id: s.id, label: s.label, type: "aluno", highlight: null, href: buildPortalHref(escolaParam, `/secretaria/alunos/${encodeURIComponent(s.id)}`), actions: [] })} onStudentAction={openStudentAction} onExploreProfessor={(p) => pushEntity({ type: "professor", id: p.id, label: p.label, escolaId: entityContext.escolaId, academicYearId: p.academicYearId })} onExploreDisciplina={(d) => pushEntity({ type: "disciplina", id: d.id, label: d.label, escolaId: entityContext.escolaId, academicYearId: d.academicYearId })} onExploreClasse={(c) => pushEntity({ type: "classe", id: c.id, label: c.label, escolaId: entityContext.escolaId, academicYearId: c.academicYearId })} />
+                  )}
+                  {entityContext.type === "usuario" && (
+                    <FuncionarioContextView context={entityContext} portal={portal} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} />
                   )}
                   {entityContext.type === "professor" && (
                     <ProfessorContextView context={entityContext} portal={portal} onExploreTurma={(t) => pushEntity({ type: "turma", id: t.id, label: t.label, escolaId: entityContext.escolaId, academicYearId: t.academicYearId })} onExploreDisciplina={(d) => pushEntity({ type: "disciplina", id: d.id, label: d.label, escolaId: entityContext.escolaId, academicYearId: d.academicYearId })} onNavigate={(href) => { handleOpenChange(false); router.push(href); }} />

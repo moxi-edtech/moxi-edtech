@@ -15,6 +15,9 @@ export function resolveCommandCenterSelection(
 ): PersonSelection {
   if (!options.hasSchoolScope || !isCommandCenterOperatorPortal(portal)) return "navigate";
   if (type === "aluno" && options.hasStudentModal) return "student-modal";
+  // The global search identifies staff by escola_users membership ID (usuario).
+  // The detail endpoint must still verify the live staff role and tenant scope.
+  if (type === "usuario" && (portal === "admin" || portal === "operacoes")) return "context";
   if (contextualTypes.has(type)) return "context";
   return "navigate";
 }

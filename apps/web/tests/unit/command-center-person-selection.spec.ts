@@ -13,6 +13,10 @@ const shell = readFileSync(new URL("../../src/components/secretaria/command-cent
 const classe = readFileSync(new URL("../../src/components/secretaria/command-center/ClasseContextView.tsx", import.meta.url), "utf8");
 const turma = readFileSync(new URL("../../src/components/secretaria/command-center/TurmaContextView.tsx", import.meta.url), "utf8");
 const professor = readFileSync(new URL("../../src/components/secretaria/command-center/ProfessorContextView.tsx", import.meta.url), "utf8");
+const employeeView = readFileSync(new URL("../../src/components/secretaria/command-center/FuncionarioContextView.tsx", import.meta.url), "utf8");
+const employeeEndpoint = readFileSync(new URL("../../src/app/api/escolas/[id]/command-center/funcionarios/[vinculoId]/route.ts", import.meta.url), "utf8");
+const employeeHook = readFileSync(new URL("../../src/hooks/useFuncionarioContext.ts", import.meta.url), "utf8");
+const employeeContext = readFileSync(new URL("../../src/lib/command-center/entity-context.ts", import.meta.url), "utf8");
 
 test("professor search and nested teacher names target one contextual modal", () => {
   for (const portal of ["secretaria", "operacoes", "admin"]) {
@@ -50,6 +54,48 @@ test("scope and limited portals never expose a school-wide modal", () => {
   assert.equal(resolveCommandCenterSelection("aluno", "operacoes", { hasSchoolScope: false, hasStudentModal: true }), "navigate");
   assert.equal(resolveCommandCenterSelection("aluno", "operacoes", { hasSchoolScope: true, hasStudentModal: false }), "navigate");
   assert.equal(resolveCommandCenterSelection("professor", "operacoes", { hasSchoolScope: false, hasStudentModal: true }), "navigate");
+});
+
+test("employees in admin and operations open the existing Explorer instead of a page", () => {
+  for (const portal of ["admin", "operacoes"]) {
+    assert.equal(resolveCommandCenterSelection("usuario", portal, {
+      hasSchoolScope: true, hasStudentModal: true,
+    }), "context");
+    assert.equal(resolveCommandCenterSelection("usuario", portal, {
+      hasSchoolScope: true, hasStudentModal: false,
+    }), "context");
+  }
+  assert.match(employeeContext, /"usuario"\] as const/);
+  assert.match(palette, /usuario: "Funcionário"/);
+  assert.match(palette, /<FuncionarioContextView context=\{entityContext\} portal=\{portal\}/);
+  assert.match(palette, /if \(selection === "context"\) \{/);
+  assert.match(palette, /setEntityContext\(context\)/);
+  assert.match(palette, /setOpen\(true\)/);
+  assert.match(employeeView, /Vínculo com a escola/);
+  assert.doesNotMatch(employeeView, /window\.location\.assign|router\.push\(/);
+});
+
+test("employee Explorer never makes unauthorized school or polo data visible", () => {
+  for (const portal of ["secretaria", "financeiro", "professor", "aluno", "gestor", "superadmin", undefined]) {
+    assert.equal(resolveCommandCenterSelection("usuario", portal, {
+      hasSchoolScope: true, hasStudentModal: true,
+    }), "navigate");
+  }
+  assert.equal(resolveCommandCenterSelection("usuario", "admin", {
+    hasSchoolScope: false, hasStudentModal: true,
+  }), "navigate");
+  assert.match(employeeEndpoint, /\.eq\("escola_id", escolaId\)/);
+  assert.match(employeeEndpoint, /\.eq\("id", parsed\.data\.vinculoId\)/);
+  assert.match(employeeEndpoint, /requireRoleInSchool\(/);
+  assert.match(employeeEndpoint, /requireCommandCenterSchoolWideAccess\(/);
+  assert.match(employeeEndpoint, /isCommandCenterWholeSchoolRole\(role\)/);
+  assert.match(employeeEndpoint, /\.eq\("user_id", member\.user_id\)/);
+  assert.match(employeeEndpoint, /\.select\("nome, deleted_at"\)/);
+  assert.doesNotMatch(employeeEndpoint, /\.select\("[^"]*email|\.select\("[^"]*telefone|service_role|createAdminClient/);
+  assert.match(employeeHook, /polo_id=/);
+  assert.match(employeeHook, /credentials: "same-origin"/);
+  assert.match(employeeHook, /cache: "no-store"/);
+  assert.match(employeeView, /portal === "admin"/);
 });
 
 test("staff search excludes academic login rows but preserves academic entities", () => {

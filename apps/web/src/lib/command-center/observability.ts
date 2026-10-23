@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export type ExplorerRouteName =
-  | "curso" | "classe" | "turma" | "professor" | "disciplina"
+  | "curso" | "classe" | "turma" | "professor" | "disciplina" | "funcionario"
   | "roster-search" | "roster-export" | "disciplina-search" | "student-capabilities";
 
 const ERROR_CODES: Record<number, string> = {

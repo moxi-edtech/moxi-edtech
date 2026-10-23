@@ -1,7 +1,7 @@
 import type { MinimalSearchResult } from "@/hooks/useGlobalSearch";
 
 /** The contextual explorer is a read-only layer over the existing global search. */
-export const CONTEXTUAL_ENTITY_TYPES = ["curso", "classe", "turma", "professor", "disciplina"] as const;
+export const CONTEXTUAL_ENTITY_TYPES = ["curso", "classe", "turma", "professor", "disciplina", "usuario"] as const;
 export type ContextualEntityType = (typeof CONTEXTUAL_ENTITY_TYPES)[number];
 
 export type EntityContext = Readonly<{
