@@ -14,7 +14,6 @@ import {
   Activity,
   Building2,
   Users,
-  UserPlus,
   User,
   GraduationCap,
   Megaphone,
@@ -130,13 +129,13 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-slate-950 text-slate-100 flex flex-col",
+        "h-screen sticky top-0 z-40 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col",
         "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-x-hidden"
       )}
       style={{ width: collapsed ? "80px" : "clamp(208px, 16vw, 256px)" }}
     >
       {/* Header / Brand */}
-      <div className="flex items-center justify-between border-b border-slate-800/80 px-3 py-4 min-[1700px]:px-4">
+      <div className="flex items-center justify-between border-b border-sidebar-border px-3 py-4 min-[1700px]:px-4">
         <Link href={homeHref} className="flex items-center gap-3 min-w-0" aria-label="Ir para a home do portal">
           <div className="h-10 w-10 rounded-xl bg-amber/15 ring-1 ring-amber/30 flex items-center justify-center">
             <Image
@@ -150,8 +149,8 @@ export default function Sidebar({
 
           {!collapsed && (
             <div className="min-w-0 animate-in fade-in duration-500">
-              <div className="font-semibold tracking-tight leading-5">KLASSE</div>
-              <div className="text-xs text-slate-400 font-medium">gestão escolar</div>
+              <div className="font-semibold tracking-tight leading-5 text-sidebar-foreground">KLASSE</div>
+              <div className="text-xs text-muted-foreground font-medium">gestão escolar</div>
             </div>
           )}
         </Link>
@@ -159,8 +158,8 @@ export default function Sidebar({
         <button
           onClick={() => setCollapsed((v) => !v)}
           className={cn(
-            "hidden md:inline-flex h-9 w-9 items-center justify-center rounded-lg",
-            "hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+            "hidden md:inline-flex h-9 w-9 items-center justify-center rounded-lg text-sidebar-foreground",
+            "hover:bg-sidebar-accent focus:outline-none focus:ring-4 focus:ring-amber/20"
           )}
           aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
         >
@@ -189,35 +188,35 @@ export default function Sidebar({
                         }));
                         if (collapsed) setCollapsed(false);
                       }}
-                    className={cn(
-                      "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
-                      "transition-all duration-200",
-                      it.active
-                        ? "bg-[#1F6B3B]/10 text-white ring-1 ring-[#1F6B3B]/30"
-                        : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
-                    )}
-                    title={collapsed ? it.label : undefined}
-                    aria-expanded={Boolean(isExpanded)}
-                  >
-                    <Icon
                       className={cn(
-                        "h-5 w-5 shrink-0 transition-colors",
-                        it.active ? "text-[#E3B23C]" : "text-slate-500 group-hover:text-[#E3B23C]"
+                        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
+                        "transition-all duration-200",
+                        it.active
+                          ? "bg-[#1F6B3B]/10 text-sidebar-foreground ring-1 ring-[#1F6B3B]/30"
+                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
-                    />
-                    {!collapsed && <span className="truncate font-medium">{it.label}</span>}
-
-                    {it.badge && !collapsed && (
-                      <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 ring-1 ring-rose-500/20">
-                        {it.badge}
-                      </span>
-                    )}
-                    {!collapsed && (
-                      <ChevronDown
-                        className={cn("ml-auto h-4 w-4 transition-transform duration-300", isExpanded && "rotate-180")}
+                      title={collapsed ? it.label : undefined}
+                      aria-expanded={Boolean(isExpanded)}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-5 w-5 shrink-0 transition-colors",
+                          it.active ? "text-[#E3B23C]" : "text-muted-foreground group-hover:text-[#E3B23C]"
+                        )}
                       />
-                    )}
-                  </button>
+                      {!collapsed && <span className="truncate font-medium">{it.label}</span>}
+
+                      {it.badge && !collapsed && (
+                        <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-500 ring-1 ring-rose-500/20">
+                          {it.badge}
+                        </span>
+                      )}
+                      {!collapsed && (
+                        <ChevronDown
+                          className={cn("ml-auto h-4 w-4 transition-transform duration-300", isExpanded && "rotate-180")}
+                        />
+                      )}
+                    </button>
                   ) : (
                     <Link
                       href={it.href}
@@ -225,20 +224,20 @@ export default function Sidebar({
                         "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
                         "transition-all duration-200",
                         it.active
-                          ? "bg-[#1F6B3B]/10 text-white ring-1 ring-[#1F6B3B]/30"
-                          : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
+                          ? "bg-[#1F6B3B]/10 text-sidebar-foreground ring-1 ring-[#1F6B3B]/30"
+                          : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                       title={collapsed ? it.label : undefined}
                     >
                       <Icon
                         className={cn(
                           "h-5 w-5 shrink-0 transition-colors",
-                          it.active ? "text-[#E3B23C]" : "text-slate-500 group-hover:text-[#E3B23C]"
+                          it.active ? "text-[#E3B23C]" : "text-muted-foreground group-hover:text-[#E3B23C]"
                         )}
                       />
                       {!collapsed && <span className="truncate font-medium">{it.label}</span>}
                       {it.badge && !collapsed && (
-                        <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 ring-1 ring-rose-500/20">
+                        <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-500 ring-1 ring-rose-500/20">
                           {it.badge}
                         </span>
                       )}
@@ -258,17 +257,17 @@ export default function Sidebar({
                             className={cn(
                               "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors",
                               childActive
-                                ? "bg-slate-900 text-white font-bold"
-                                : "text-slate-400 hover:bg-slate-900/60 hover:text-white"
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground font-bold"
+                                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
                             )}
                           >
                             <span className={cn(
                               "h-1 w-1 rounded-full transition-colors",
-                              childActive ? "bg-[#E3B23C]" : "bg-slate-700"
+                              childActive ? "bg-[#E3B23C]" : "bg-muted-foreground/40"
                             )} />
                             <span className="truncate">{child.label}</span>
                             {child.badge && (
-                              <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-400">
+                              <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-500">
                                 {child.badge}
                               </span>
                             )}
@@ -285,17 +284,17 @@ export default function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto p-3 border-t border-slate-800/80">
-        <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2", "bg-slate-900/40 border border-white/5")}>
-          <div className="h-9 w-9 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[10px] font-black text-slate-400">
+      <div className="mt-auto p-3 border-t border-sidebar-border">
+        <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2", "bg-sidebar-accent/50 border border-sidebar-border")}>
+          <div className="h-9 w-9 rounded-full bg-sidebar-accent border border-sidebar-border flex items-center justify-center text-[10px] font-black text-muted-foreground">
             AO
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-sm font-bold truncate text-slate-200">
+              <div className="text-sm font-bold truncate text-sidebar-foreground">
                 {escolaNome || portalTitle || "Klasse Network"}
               </div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">
+              <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground truncate">
                 {planoNome || portalTitle || "SaaS Hub"}
               </div>
             </div>
