@@ -94,7 +94,7 @@ test("EX-010: year-scoped curriculum coverage separates actual turma, teacher an
     assignments: [
       { turmaId:"turma-a",professorId:"teacher-a",origem:"turma_disciplinas" },
       { turmaId:"turma-a",professorId:"teacher-a",origem:"horario_publicado" },
-      { turmaId:"turma-b",professorId:null,origem:"horario_publicado" },
+      { turmaId:"turma-b",professorId:"teacher-a",origem:"horario_publicado" },
       { turmaId:"turma-wrong-year",professorId:"teacher-a",origem:"turma_disciplinas" },
     ],
     teachers:[{id:"teacher-a",nome:"Prof. A",identityAvailable:true}],
@@ -111,6 +111,8 @@ test("EX-010: year-scoped curriculum coverage separates actual turma, teacher an
   assert.equal(model.turmas.find(t=>t.id==="turma-a")?.vinculoTurma,true);
   assert.equal(model.turmas.find(t=>t.id==="turma-b")?.vinculoTurma,false);
   assert.equal(model.turmas.find(t=>t.id==="turma-b")?.horarioPublicado,true);
+  assert.equal(model.turmas.find(t=>t.id==="turma-b")?.docenteVinculado,false);
+  assert.equal(model.turmas.find(t=>t.id==="turma-b")?.docenteEmHorario,true);
   assert.deepEqual(model.cobertura.map(c=>[c.matrizId,c.turmasComVinculo,c.turmasComDocente,c.turmasComHorario]),
     [["matrix-a",1,1,1],["matrix-b",0,0,1]]);
   assert.equal(model.curriculo.find(x=>x.id==="matrix-b")?.ativo,false);
