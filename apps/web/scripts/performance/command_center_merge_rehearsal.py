@@ -36,6 +36,7 @@ known_conflicts={
  "apps/web/src/components/secretaria/BalcaoWorkspace.tsx",
  "apps/web/visual-harness/main.tsx",
  "apps/web/src/hooks/useGlobalSearch.ts",
+ "apps/web/src/components/layout/klasse/AppShell.tsx",
  "apps/web/tests/unit/workspace-student-dossier.spec.tsx",
 }
 def inspect(left,right):
