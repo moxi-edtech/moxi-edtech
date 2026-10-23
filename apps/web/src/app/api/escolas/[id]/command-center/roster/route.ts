@@ -5,7 +5,6 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
-import { allowRosterRequest } from "@/lib/command-center/roster-rate-limit";
 
 export const dynamic = "force-dynamic";
 const schema = z.object({
@@ -73,13 +72,8 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
         "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
     });
     if (permission.error) return permission.error;
-    const budget = allowRosterRequest(user.id, escolaId);
-    if (!budget.allowed) return NextResponse.json({
-      ok: false, error: "Muitas pesquisas seguidas. Aguarde um pouco e tente novamente.",
-    }, { status: 429, headers: {
-      "Cache-Control": "private, no-store",
-      "Retry-After": String(budget.retryAfterSeconds),
-    } });
+    // O único limitador de pesquisas é o contador transaccional partilhado
+    // no PostgreSQL. Um mapa em memória seria incoerente entre instâncias.
     const year = await resolveAcademicYearScope(supabase, {
       escolaId, requestedAcademicYearId: input.yearId, operation: "READ",
     });
