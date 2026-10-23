@@ -25,22 +25,22 @@ export function ModalShell({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10 animate-in fade-in-50">
-      <div className={`w-full rounded-2xl bg-white shadow-xl animate-in zoom-in-95 ${size === "wide" ? "max-w-7xl" : "max-w-3xl"}`}>
-        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+      <div className={`w-full rounded-2xl bg-card text-card-foreground shadow-xl animate-in zoom-in-95 ${size === "wide" ? "max-w-7xl" : "max-w-3xl"}`}>
+        <div className="flex items-start justify-between border-b border-border px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-            {description ? <p className="text-xs text-slate-500">{description}</p> : null}
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+            {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             Fechar
           </button>
         </div>
         <div className={`${size === "wide" ? "max-h-[82vh]" : "max-h-[70vh]"} overflow-y-auto px-6 py-5`}>{children}</div>
-        {footer && <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">{footer}</div>}
+        {footer && <div className="border-t border-border bg-muted/50 px-6 py-4">{footer}</div>}
       </div>
     </div>
   );
