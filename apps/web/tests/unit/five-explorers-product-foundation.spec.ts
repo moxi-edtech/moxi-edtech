@@ -169,18 +169,33 @@ test("EX-006: route scopes published curriculum before matrix and fails closed o
   assert.doesNotMatch(view, /curriculoHistorico/);
 });
 
-test("EX-006: orphan and unavailable teacher identities preserve assignment evidence", () => {
+test("EX-006: missing or disabled teacher identity does not erase a recorded assignment", () => {
   const overview = composeDisciplinaOverview({
     academicYear: { id: "year", ano: 2026 },
-    turmas: [{ id: "turma", nome: "Turma", turno: null, classeNome: null, cursoNome: null, anoLetivo: 2026, anoLetivoId: "year" }],
-    assignments: [{ turmaId: "turma", professorId: "orphan" }, { turmaId: "turma", professorId: "deleted-profile" }],
-    teachers: [{ id: "deleted-profile", nome: "Professor com perfil desativado" }],
+    turmas: [{ id: "turma", nome: "Turma", turno: null, classeNome: null,
+      cursoNome: null, anoLetivo: 2026, anoLetivoId: "year" }],
+    assignments: [
+      { turmaId: "turma", professorId: "orphan" },
+      { turmaId: "turma", professorId: "deleted-profile" },
+      { turmaId: "turma", professorId: "active-profile" },
+    ],
+    teachers: [
+      { id: "deleted-profile", nome: "Professor com perfil desativado", identityAvailable: false },
+      { id: "active-profile", nome: "Professora identificada", identityAvailable: true },
+    ],
     curriculum: [],
   });
   assert.equal(overview.stats.professores, 1);
-  assert.equal(overview.professores.length, 1);
-  assert.equal(overview.turmas[0]?.professores.length, 2);
-  assert.equal(overview.unresolvedTeacherLinks, 1);
-  assert.match(overview.turmas[0]?.professores.find((p) => p.id === "orphan")?.nome ?? "", /identidade indisponível/);
-  assert.equal(overview.professores.find((p) => p.id === "deleted-profile")?.nome, "Professor com perfil desativado");
+  assert.deepEqual(overview.professores.map((p) => p.id), ["active-profile"]);
+  assert.equal(overview.turmas[0]?.professores.length, 3);
+  assert.equal(overview.unresolvedTeacherLinks, 2);
+  assert.match(overview.turmas[0]?.professores.find((p) => p.id === "orphan")?.nome ?? "",
+    /identidade indisponível/);
+  assert.equal(overview.turmas[0]?.professores.find((p) => p.id === "deleted-profile")?.nome,
+    "Professor com perfil desativado");
+  const route = readFileSync("src/app/api/escolas/[id]/command-center/disciplinas/[disciplinaId]/route.ts", "utf8");
+  const view = readFileSync("src/components/secretaria/command-center/DisciplinaContextView.tsx", "utf8");
+  assert.match(route, /identityAvailable: Boolean\(profile/);
+  assert.match(view, /Professores identificados/);
+  assert.match(view, /data\.unresolvedTeacherLinks > 0/);
 });
