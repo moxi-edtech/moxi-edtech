@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** P0: no canonical user-polo-enrollment mapping exists in the installed schema.
- * An absent polo parameter MUST NOT give a restricted operator whole-school access.
+/** Only an authenticated K12 school employee with a live school membership may
+ * use the whole-school Command Center. Students and teachers are excluded.
+ * A requested polo remains fail-closed until canonical scoped querying is available.
  */
 const WHOLE_SCHOOL_ROLES = new Set([
   "admin", "admin_escola", "staff_admin", "diretor",
@@ -20,7 +21,7 @@ export function hasRequestedPoloScope(url: string): boolean {
 function deny(code: string) {
   return NextResponse.json({
     ok: false, code,
-    error: "Consulta indisponível sem autorização institucional ou vínculo canónico de polo.",
+    error: "Consulta indisponível sem autorização de funcionário da escola ou vínculo canónico de polo.",
   }, {status: 403, headers: {"Cache-Control": "private, no-store"}});
 }
 
