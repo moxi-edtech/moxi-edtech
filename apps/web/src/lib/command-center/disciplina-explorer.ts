@@ -14,6 +14,7 @@ export type DisciplinaTurmaRow = {
 export type DisciplinaTeacher = { id: string; nome: string };
 export type DisciplinaAssignment = { turmaId: string; professorId: string | null };
 export type DisciplinaCurriculumRow = {
+  id?: string;
   cursoId: string | null;
   cursoNome: string | null;
   classeId: string | null;
@@ -22,6 +23,8 @@ export type DisciplinaCurriculumRow = {
   obrigatoria: boolean | null;
   /** Current database activity: NOT a snapshot of the historical year. */
   ativo?: boolean | null;
+  /** A separate older/current row may exist for the same Curso/Classe. */
+  hasOtherActivityVersion?: boolean;
 };
 
 /** Never extrapolate across years from a legacy numeric year when an ID is present. */
@@ -44,13 +47,15 @@ export function composeDisciplinaOverview(input: {
       .map((turma) => [turma.id, turma] as const),
   );
   const teacherMap = new Map(input.teachers.map((teacher) => [teacher.id, teacher] as const));
+  const unresolvedTeacherIds = new Set<string>();
   const assignmentsByTurma = new Map<string, Set<string>>();
 
   for (const row of input.assignments) {
     if (!availableTurmas.has(row.turmaId)) continue;
     if (!assignmentsByTurma.has(row.turmaId)) assignmentsByTurma.set(row.turmaId, new Set());
-    if (row.professorId && teacherMap.has(row.professorId)) {
+    if (row.professorId) {
       assignmentsByTurma.get(row.turmaId)!.add(row.professorId);
+      if (!teacherMap.has(row.professorId)) unresolvedTeacherIds.add(row.professorId);
     }
   }
 
@@ -62,7 +67,7 @@ export function composeDisciplinaOverview(input: {
       turno: turma.turno,
       classeNome: turma.classeNome,
       cursoNome: turma.cursoNome,
-      professores: [...ids].map((id) => teacherMap.get(id)!)
+      professores: [...ids].map((id) => teacherMap.get(id) ?? { id, nome: "Professor com vínculo registado · identidade indisponível" })
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id)),
     };
   }).sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id));
@@ -77,7 +82,7 @@ export function composeDisciplinaOverview(input: {
 
   const professores = [...teacherTurmas.entries()].map(([id, ids]) => ({
     id,
-    nome: teacherMap.get(id)!.nome,
+    nome: teacherMap.get(id)?.nome ?? "Professor com vínculo registado · identidade indisponível",
     turmas: ids.size,
   })).sort((a, b) => a.nome.localeCompare(b.nome, "pt") || a.id.localeCompare(b.id));
 
@@ -85,22 +90,30 @@ export function composeDisciplinaOverview(input: {
   // count them as the active curriculum or infer their state in the selected year.
   const activeCurriculum = new Map<string, DisciplinaCurriculumRow>();
   const inactiveCurriculum = new Map<string, DisciplinaCurriculumRow>();
+  const seenActivities = new Map<string, Set<boolean>>();
   for (const row of input.curriculum) {
     if (!row.cursoId && !row.classeId) continue;
     const key = [row.cursoId ?? "", row.classeId ?? ""].join(":");
     const bucket = row.ativo === false ? inactiveCurriculum : activeCurriculum;
+    if (!seenActivities.has(key)) seenActivities.set(key, new Set());
+    if (row.ativo !== null && row.ativo !== undefined) seenActivities.get(key)!.add(row.ativo);
     if (!bucket.has(key)) bucket.set(key, row);
   }
   const byCourseAndClass = (a: DisciplinaCurriculumRow, b: DisciplinaCurriculumRow) =>
     (a.cursoNome ?? "").localeCompare(b.cursoNome ?? "", "pt") ||
     (a.classeNome ?? "").localeCompare(b.classeNome ?? "", "pt");
-  const curriculo = [...activeCurriculum.values()].sort(byCourseAndClass);
-  const curriculoHistorico = [...inactiveCurriculum.values()].sort(byCourseAndClass);
+  const withVersionContext = (rows: Map<string, DisciplinaCurriculumRow>) =>
+    [...rows.entries()].map(([key, row]) => ({
+      ...row, hasOtherActivityVersion: (seenActivities.get(key)?.size ?? 0) > 1,
+    })).sort(byCourseAndClass);
+  const curriculo = withVersionContext(activeCurriculum);
+  const curriculoHistorico = withVersionContext(inactiveCurriculum);
   return {
     professores,
     turmas,
     curriculo,
     curriculoHistorico,
+    unresolvedTeacherLinks: unresolvedTeacherIds.size,
     stats: {
       professores: professores.length,
       turmas: turmas.length,
