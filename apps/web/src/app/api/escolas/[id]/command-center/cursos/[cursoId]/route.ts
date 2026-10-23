@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
+import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
 
@@ -14,7 +16,7 @@ const inputSchema = z.object({
 });
 
 /** Read-only academic overview for the Command Center; financial permissions are separate. */
-export async function GET(
+async function readExplorer(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; cursoId: string }> },
 ) {
@@ -51,6 +53,8 @@ export async function GET(
       ],
     });
     if (authz.error) return authz.error;
+    const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
+    if (schoolScopeError) return schoolScopeError;
 
     const year = await resolveAcademicYearScope(supabase, {
       escolaId,
@@ -65,7 +69,6 @@ export async function GET(
     });
 
     if (error) {
-      console.error("[command-center/course] overview RPC failed", { code: error.code });
       const unavailable = error.code === "PGRST202" || error.code === "42883";
       return NextResponse.json({
         ok: false,
@@ -86,7 +89,14 @@ export async function GET(
     if (error instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
     }
-    console.error("[command-center/course] unexpected error", error);
     return NextResponse.json({ ok: false, error: "Falha ao carregar curso." }, { status: 500 });
   }
+}
+
+/** Stable envelope and PII-free correlation across success, 4xx and 5xx. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string; cursoId: string }> },
+) {
+  return withExplorerObservability("curso", () => readExplorer(req, context));
 }

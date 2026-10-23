@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
+import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import { normalizeDisciplinaSearch } from "@/lib/command-center/disciplina-explorer";
@@ -16,7 +18,7 @@ const searchSchema = z.object({
 const MAX_RESULTS = 8;
 
 /** Dedicated, read-only search while the global-search RPC has no disciplina entity. */
-export async function GET(
+async function readDisciplinas(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -47,6 +49,8 @@ export async function GET(
         "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
     });
     if (permission.error) return permission.error;
+    const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
+    if (schoolScopeError) return schoolScopeError;
 
     const year = await resolveAcademicYearScope(supabase, {
       escolaId, requestedAcademicYearId: input.data.academicYearId, operation: "READ",
@@ -79,9 +83,16 @@ export async function GET(
     if (error instanceof AcademicYearContextError) return NextResponse.json(
       { ok: false, error: error.message }, { status: error.status },
     );
-    console.error("[command-center/disciplinas/search]", error instanceof Error ? error.message : "unexpected");
     return NextResponse.json(
       { ok: false, error: "Não foi possível pesquisar disciplinas." }, { status: 500 },
     );
   }
+}
+
+/** Contract: correlation on every success and failure, without private payloads in logs. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  return withExplorerObservability("disciplina-search", () => readDisciplinas(req, context));
 }

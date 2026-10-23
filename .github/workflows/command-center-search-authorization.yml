@@ -1,0 +1,32 @@
+name: Command Center Search Authorization
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*command_center_search_role_authorization.sql'
+      - 'supabase/ops/tests/regression_command_center_search_authorization.sql'
+      - '.github/workflows/command-center-search-authorization.yml'
+permissions:
+  contents: read
+jobs:
+  role-and-tenant-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test privileged RPC against synthetic tenants and roles
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_command_center_search_authorization.sql

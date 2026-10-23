@@ -15,6 +15,7 @@ on:
       - 'apps/web/tests/unit/professor-contextual-explorer.spec.ts'
       - 'apps/web/tests/unit/disciplina-contextual-explorer.spec.ts'
       - 'apps/web/tests/unit/classe-contextual-explorer.spec.ts'
+      - 'apps/web/tests/unit/command-center-operational-continuity.spec.ts'
       - 'apps/web/package.json'
       - 'pnpm-lock.yaml'
       - 'supabase/migrations/*command_center*'
@@ -64,7 +65,8 @@ jobs:
             tests/unit/turma-explorer-policy.spec.ts \
             tests/unit/professor-contextual-explorer.spec.ts \
             tests/unit/disciplina-contextual-explorer.spec.ts \
-            tests/unit/classe-contextual-explorer.spec.ts --max-warnings 0
+            tests/unit/classe-contextual-explorer.spec.ts \
+            tests/unit/command-center-operational-continuity.spec.ts --max-warnings 0
       - name: Unit contracts
-        run: pnpm -C apps/web exec tsx --test tests/unit/turma-explorer-policy.spec.ts tests/unit/professor-contextual-explorer.spec.ts tests/unit/disciplina-contextual-explorer.spec.ts tests/unit/classe-contextual-explorer.spec.ts
+        run: pnpm -C apps/web exec tsx --test tests/unit/turma-explorer-policy.spec.ts tests/unit/professor-contextual-explorer.spec.ts tests/unit/disciplina-contextual-explorer.spec.ts tests/unit/classe-contextual-explorer.spec.ts tests/unit/command-center-operational-continuity.spec.ts
       - run: pnpm -C apps/web build
