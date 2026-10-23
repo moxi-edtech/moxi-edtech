@@ -35,6 +35,12 @@ export async function saveGradesInChunks(
     throw new Error("Faltam informações da turma, disciplina ou ano letivo.");
   }
 
+  // Não invocar a RPC para componentes sem notas. A coluna notas.valor é NOT NULL.
+  // Apenas isenções explícitas podem utilizar um zero técnico.
+  if (notas.some((nota) => nota.valor === null || !Number.isFinite(nota.valor))) {
+    throw new Error("Não é possível guardar uma nota sem valor.");
+  }
+
   for (let offset = 0; offset < notas.length; offset += MAX_GRADE_WRITE_BATCH) {
     const key = makeKey();
     if (!key.trim()) throw new Error("Idempotência de lançamento indisponível.");

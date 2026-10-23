@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { AlunoProfilePanel } from "@/components/secretaria/AlunoProfilePanel";
 import { CommandCenterStudentDossier } from "@/components/secretaria/command-center/CommandCenterStudentDossier";
@@ -20,7 +20,6 @@ type Props = {
   turmaId?: string | null;
   turmaLabel?: string | null;
   actionId: BalcaoActionId;
-  profileDossier?: ReactNode;
   inModal?: boolean;
   returnTo?: string | null;
   onActionChange: (actionId: BalcaoActionId) => void;
@@ -34,7 +33,6 @@ export function CommandCenterPanel({
   turmaId = null,
   turmaLabel = null,
   actionId,
-  profileDossier,
   inModal = false,
   returnTo = null,
   onActionChange,
@@ -80,14 +78,12 @@ export function CommandCenterPanel({
             Consulte dados pessoais, financeiro, histórico académico e documentos no mesmo atendimento.
           </p>
         </div>
-        {profileDossier && profileRefreshKey === 0 ? profileDossier : (
-          <CommandCenterStudentDossier
+        <CommandCenterStudentDossier
             key={alunoId}
             escolaId={escolaId}
             alunoId={alunoId}
             refreshKey={profileRefreshKey}
           />
-        )}
         <details className="group min-w-0 rounded-xl border border-slate-200 bg-white">
           <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-700 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C] sm:px-5">
             Atualizar dados pessoais

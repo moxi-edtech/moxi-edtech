@@ -177,7 +177,6 @@ export default function BalcaoPageClient({
             turmaId={commandCenterStudent?.turmaId ?? null}
             turmaLabel={commandCenterStudent?.turma ?? null}
             actionId={activeAction}
-            profileDossier={activeAction === "profile" && selectedAlunoId === profileAlunoId ? profileDossier : null}
             returnTo={returnTo}
             onActionChange={handleActionChange}
             onAlunoSelected={handleAlunoSelected}
