@@ -221,8 +221,13 @@ async function readExplorer(
       if (error) throw error;
       for (const teacher of (rows ?? []) as unknown as TeacherRow[]) {
         const profile = first(teacher.profiles ?? null);
-        if (profile?.deleted_at) continue;
-        teachers.push({ id: teacher.id, nome: profile?.nome?.trim() || teacher.apelido?.trim() || "Professor" });
+        // A deleted/unreadable identity does not invalidate an academic link.
+        teachers.push({
+          id: teacher.id,
+          nome: profile?.deleted_at
+            ? "Professor com perfil desativado"
+            : profile?.nome?.trim() || teacher.apelido?.trim() || "Professor com identidade indisponível",
+        });
       }
     }
 
@@ -235,6 +240,7 @@ async function readExplorer(
     const curriculo: DisciplinaCurriculumRow[] = relevantMatrix
       .filter((row) => !row.classe_id || classes.has(row.classe_id))
       .map((row) => ({
+        id: row.id,
         cursoId: row.curso_id && courses.has(row.curso_id) ? row.curso_id : null,
         cursoNome: row.curso_id ? courses.get(row.curso_id) ?? null : null,
         classeId: row.classe_id && classes.has(row.classe_id) ? row.classe_id : null,
