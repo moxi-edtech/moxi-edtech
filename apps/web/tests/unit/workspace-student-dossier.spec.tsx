@@ -60,7 +60,10 @@ test("modal and standalone workspace wire a protected student-switch callback", 
   assert.match(modal, /currentStudent = studentContext\?\.id === selectedStudent\.id/);
   assert.match(modal, /setActiveAction\("desk"\); \/\/ reset all student-bound panels/);
   assert.match(modal, /studentRequestRef\.current \+= 1/);
-  assert.match(modal, /key=\{selectedStudent\.id\}/);
+  // The scoped workspace rekeys on the student AND refresh revision so a
+  // completed mutation invalidates stale read panels without leaking state.
+  assert.match(modal, /key=\{\`\$\{selectedStudent\.id\}:\$\{refreshRevision\}\`\}/);
+  assert.match(modal, /setRefreshRevision\(\(value\) => value \+ 1\)/);
   assert.match(modal, /onCancel=\{\(\) => setSwitchingStudent\(false\)\}/);
   assert.match(picker, /student\.id !== currentAlunoId/);
 });
