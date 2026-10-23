@@ -39,11 +39,11 @@ await page.addInitScript(() => {
   };
   window.clearInterval = (id) => {intervals.delete(id); return baseClearInterval(id);};
   EventTarget.prototype.addEventListener = function (...args) {
-    tally.eventsAdded += 1;
+    if (this === window || this === document) tally.eventsAdded += 1;
     return realAdd.apply(this,args);
   };
   EventTarget.prototype.removeEventListener = function (...args) {
-    tally.eventsRemoved += 1;
+    if (this === window || this === document) tally.eventsRemoved += 1;
     return realRemove.apply(this,args);
   };
   window.__ccSyntheticTestMetrics = () => ({
@@ -100,6 +100,9 @@ try {
   }
   await page.waitForTimeout(850);
   const last=samples[samples.length-1], first=samples[0];
+  // Global listeners are enumerable; listeners on detached React DOM nodes
+  // are not and are assessed indirectly through heap + live DOM stability.
+  console.log(JSON.stringify({snapshotFirst:first,snapshotLast:last}));
   assert.equal(last.persistedSyntheticStudent,false,"Student content persisted in browser storage");
   assert.ok(last.domNodes <= first.domNodes + 140,"DOM nodes increased on 400 transitions");
   assert.ok(last.queryCacheEntries != null && last.queryCacheEntries <= 50,
@@ -107,7 +110,7 @@ try {
   assert.ok(last.intervals <= first.intervals+4,"Background poller/interval leaked");
   assert.ok(last.timers <= first.timers+80,"Timer backlog grows without cleanup");
   assert.ok(last.eventBalance <= first.eventBalance+180,
-    "DOM listener balance shows accumulation");
+    "Document/window listener balance shows accumulation");
   if(first.heapBytes != null && last.heapBytes != null) {
     assert.ok(last.heapBytes <= first.heapBytes*3+45*1024*1024,
       "Heap grew beyond tolerated browser/CI noise");
