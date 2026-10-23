@@ -111,4 +111,57 @@ BEGIN
  END;
  IF NOT blocked THEN RAISE EXCEPTION 'Composite school/polo FK failed'; END IF;
 END $$;
+
+-- Force a permissive fixture UPDATE; the *restrictive* polo policy must
+-- still prevent writes to rows of the other polo.
+CREATE POLICY synthetic_turma_update_same_school ON public.turmas
+  FOR UPDATE TO authenticated
+  USING (public.has_access_to_escola_fast(escola_id))
+  WITH CHECK (public.has_access_to_escola_fast(escola_id));
+GRANT UPDATE(nome) ON public.turmas TO authenticated;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000d1';
+DO $
+DECLARE affected integer; blocked boolean:=false;
+BEGIN
+  UPDATE public.turmas SET nome='Unauthorized P2 edit'
+    WHERE id='00000000-0000-4000-8f00-000000000099';
+  GET DIAGNOSTICS affected=ROW_COUNT;
+  IF affected<>0 THEN RAISE EXCEPTION 'Cross-polo UPDATE escaped restrictive RLS'; END IF;
+
+  UPDATE public.turmas SET nome='P1 authorized edit'
+    WHERE id='00000000-0000-4000-8000-0000000000f1';
+  GET DIAGNOSTICS affected=ROW_COUNT;
+  IF affected<>1 THEN RAISE EXCEPTION 'Authorized polo UPDATE unexpectedly denied'; END IF;
+
+  BEGIN
+    UPDATE cc_security.enforced_schools SET enabled=false
+      WHERE escola_id='00000000-0000-4000-8000-0000000000a1';
+  EXCEPTION WHEN insufficient_privilege THEN blocked:=true;
+  END;
+  IF NOT blocked THEN RAISE EXCEPTION 'Operator can disable private polo guard'; END IF;
+  blocked:=false;
+  BEGIN
+    INSERT INTO public.escola_user_polos(escola_id,user_id,polo_id) VALUES (
+      '00000000-0000-4000-8000-0000000000a1',
+      '00000000-0000-4000-8000-0000000000d1',
+      '00000000-0000-4000-8111-000000000002');
+  EXCEPTION WHEN insufficient_privilege THEN blocked:=true;
+  END;
+  IF NOT blocked THEN RAISE EXCEPTION 'Operator can escalate own polo membership'; END IF;
+END $;
+RESET ROLE;
+-- Removal of an assignment takes effect in the next statement, no JWT refresh.
+DELETE FROM public.escola_user_polos WHERE
+  escola_id='00000000-0000-4000-8000-0000000000a1'
+  AND user_id='00000000-0000-4000-8000-0000000000d1';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000d1';
+DO $
+BEGIN
+ IF (SELECT count(*) FROM public.turmas WHERE id='00000000-0000-4000-8000-0000000000f1')<>0
+ THEN RAISE EXCEPTION 'Revoked user still sees prior polo'; END IF;
+END $;
+RESET ROLE;
+
 SELECT 'CC-003 canonical polo RLS fixture PASS' AS verdict;
