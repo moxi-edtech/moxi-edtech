@@ -11,7 +11,9 @@ import {
 import { ExplorerMetric } from "../../src/components/secretaria/command-center/ExplorerMetric";
 import { ExplorerHistoricalScopeNotice } from "../../src/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { TURMA_DISCIPLINAS_SELECT } from "../../src/lib/command-center/turma-explorer-policy";
-import { composeDisciplinaOverview } from "../../src/lib/command-center/disciplina-explorer";
+import {
+  composeDisciplinaOverview, indexPublishedCurricula, PublishedCurriculumConflictError,
+} from "../../src/lib/command-center/disciplina-explorer";
 
 test("EX-001: canonical year UUID wins over equal legacy numeric year", () => {
   assert.equal(isEntityInAcademicYear({ anoLetivoId: "year-b", anoLetivo: 2026 }, { id: "year-a", ano: 2026 }), false);
@@ -95,8 +97,9 @@ test("EX-003: both rosters await known non-historic year before calling operatio
 test("EX-005/006: scoped class reuse and curricular activity have provenance in APIs", () => {
   const disciplinaRoute = readFileSync("src/app/api/escolas/[id]/command-center/disciplinas/[disciplinaId]/route.ts", "utf8");
   const turmaRoute = readFileSync("src/app/api/escolas/[id]/command-center/turmas/[turmaId]/route.ts", "utf8");
-  assert.match(disciplinaRoute, /classUsageReply/);
-  assert.match(disciplinaRoute, /isClassInAcademicYear/);
+  assert.match(disciplinaRoute, /from\("curso_curriculos"\)/);
+  assert.match(disciplinaRoute, /in\("curso_curriculo_id", curriculumIds\)/);
+  assert.doesNotMatch(disciplinaRoute, /classUsageReply|isClassInAcademicYear/);
   assert.match(disciplinaRoute, /eq\("ano_letivo_id", year\.id\)/);
   assert.match(TURMA_DISCIPLINAS_SELECT, /curso_matriz\(id,disciplina_id,ativo,/);
   assert.match(TURMA_DISCIPLINAS_SELECT, /!curso_matriz_disciplina_id_fkey/);
@@ -105,29 +108,22 @@ test("EX-005/006: scoped class reuse and curricular activity have provenance in 
 });
 
 
-test("EX-006: inactive matrix rows remain historical references, never active curriculum counts", () => {
+test("EX-006: one published version includes inactive rows inline without fake history", () => {
   const overview = composeDisciplinaOverview({
-    academicYear: { id: "year-2026", ano: 2026 },
-    turmas: [{
-      id: "turma-a", nome: "A", turno: "Manhã", classeNome: "10ª",
-      cursoNome: "Técnico", anoLetivo: 2026, anoLetivoId: "year-2026",
-    }],
-    assignments: [{ turmaId: "turma-a", professorId: "prof-a" }],
-    teachers: [{ id: "prof-a", nome: "Docente A" }],
+    academicYear: { id: "year", ano: 2026 },
+    turmas: [], assignments: [], teachers: [],
     curriculum: [
-      { cursoId: "curso-a", cursoNome: "Técnico", classeId: "classe-a", classeNome: "10ª", cargaHorariaSemanal: 2, obrigatoria: true, ativo: true },
-      { cursoId: "curso-a", cursoNome: "Técnico", classeId: "classe-a", classeNome: "10ª", cargaHorariaSemanal: 4, obrigatoria: true, ativo: false },
-      { cursoId: "curso-b", cursoNome: "Geral", classeId: "classe-b", classeNome: "11ª", cargaHorariaSemanal: 3, obrigatoria: true, ativo: false },
+      { id: "active", curriculoId: "published", curriculoVersao: 2, cursoId: "course", cursoNome: "Curso",
+        classeId: "class", classeNome: "Classe", cargaHorariaSemanal: 2, obrigatoria: true, ativo: true },
+      { id: "inactive", curriculoId: "published", curriculoVersao: 2, cursoId: "course2", cursoNome: "Outro",
+        classeId: "class2", classeNome: "Classe 2", cargaHorariaSemanal: 3, obrigatoria: true, ativo: false },
     ],
   });
-  assert.equal(overview.stats.turmas, 1);
-  assert.equal(overview.stats.professores, 1);
-  assert.equal(overview.turmas[0]?.professores[0]?.nome, "Docente A");
-  assert.equal(overview.curriculo.length, 1);
-  assert.equal(overview.curriculoHistorico.length, 2);
-  assert.equal(overview.stats.classes, 1);
-  assert.equal(overview.stats.cursos, 1);
-  assert.equal(overview.curriculoHistorico[0]?.ativo, false);
+  assert.equal(overview.curriculo.length, 2);
+  assert.equal(overview.stats.cursos, 2);
+  assert.equal(overview.stats.classes, 2);
+  assert.equal(overview.curriculo.find((row) => row.id === "inactive")?.ativo, false);
+  assert.equal("curriculoHistorico" in overview, false);
 });
 
 test("EX-006: incomplete explorer lists never claim verified absence of links", () => {
@@ -141,7 +137,8 @@ test("EX-006: incomplete explorer lists never claim verified absence of links", 
   assert.match(turma, /searchActive && \(roster\.error \|\| roster\.refreshing\)/);
   assert.match(classe, /searchActive && \(roster\.error \|\| roster\.refreshing\)/);
   assert.match(disciplina, /missingTeacherEvidenceLabel\(limitado\)/);
-  assert.match(disciplina, /curriculoHistorico\.map/);
+  assert.doesNotMatch(disciplina, /curriculoHistorico|hasOtherActivityVersion/);
+  assert.match(disciplina, /item\.curriculoVersao/);
   assert.match(professor, /semAtribuicao && !limited/);
   assert.match(classe, /limitado \? "Nenhuma disciplina encontrada na lista parcial/);
   assert.match(curso, /data\.turmasLimitadas\s*\?/);
@@ -149,21 +146,27 @@ test("EX-006: incomplete explorer lists never claim verified absence of links", 
 });
 
 
-test("EX-006: current and inactive matrix references remain separately identified", () => {
-  const overview = composeDisciplinaOverview({
-    academicYear: { id: "year", ano: 2026 },
-    turmas: [], assignments: [], teachers: [],
-    curriculum: [
-      { id: "current", cursoId: "course", cursoNome: "Curso", classeId: "class", classeNome: "Classe", cargaHorariaSemanal: 2, obrigatoria: true, ativo: true },
-      { id: "older", cursoId: "course", cursoNome: "Curso", classeId: "class", classeNome: "Classe", cargaHorariaSemanal: 3, obrigatoria: true, ativo: false },
-    ],
-  });
-  assert.equal(overview.curriculo[0]?.id, "current");
-  assert.equal(overview.curriculoHistorico[0]?.id, "older");
-  assert.equal(overview.curriculo[0]?.hasOtherActivityVersion, true);
-  assert.equal(overview.curriculoHistorico[0]?.hasOtherActivityVersion, true);
-  assert.equal(overview.stats.cursos, 1);
-  assert.equal(overview.stats.classes, 1);
+test("EX-006: canonical year and published version override archived and cross-year revisions", () => {
+  const versions = [
+    { id: "pub-2025", cursoId: "course", classeId: "class", anoLetivoId: "2025", version: 1, status: "published" },
+    { id: "arch-2026", cursoId: "course", classeId: "class", anoLetivoId: "2026", version: 4, status: "archived" },
+    { id: "pub-2026", cursoId: "course", classeId: "class", anoLetivoId: "2026", version: 2, status: "published" },
+  ];
+  assert.deepEqual([...indexPublishedCurricula(versions, "2025").values()].map((v) => v.id), ["pub-2025"]);
+  assert.deepEqual([...indexPublishedCurricula(versions, "2026").values()].map((v) => v.id), ["pub-2026"]);
+  assert.throws(() => indexPublishedCurricula([
+    versions[2], { ...versions[2], id: "duplicate", version: 3 },
+  ], "2026"), PublishedCurriculumConflictError);
+});
+
+test("EX-006: route scopes published curriculum before matrix and fails closed on conflict", () => {
+  const route = readFileSync("src/app/api/escolas/[id]/command-center/disciplinas/[disciplinaId]/route.ts", "utf8");
+  const view = readFileSync("src/components/secretaria/command-center/DisciplinaContextView.tsx", "utf8");
+  assert.match(route, /from\("curso_curriculos"\)/);
+  assert.match(route, /eq\("ano_letivo_id", year\.id\)\.eq\("status", "published"\)/);
+  assert.match(route, /in\("curso_curriculo_id", curriculumIds\)/);
+  assert.match(route, /error instanceof PublishedCurriculumConflictError/);
+  assert.doesNotMatch(view, /curriculoHistorico/);
 });
 
 test("EX-006: orphan and unavailable teacher identities preserve assignment evidence", () => {
