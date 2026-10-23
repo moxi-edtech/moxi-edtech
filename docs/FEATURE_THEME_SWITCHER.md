@@ -1,7 +1,7 @@
 # Feature: Alternador de Tema (Dark / Bright)
 
 **Branch:** `feat/theme-switcher`  
-**Status:** Em implementação  
+**Status:** Em implementação (Fase 2 em curso)  
 **Data:** 2026-10-23  
 **Idioma da documentação:** Português
 
@@ -23,130 +23,135 @@ O utilizador deve poder:
 
 ---
 
-## 2. Estado atual da base de código (Auditoria)
+## 2. Progresso da implementação
 
-### O que já existe e está pronto
+### Fase 1 — Infraestrutura ✅
 
-| Item                              | Estado | Localização                                      |
-|-----------------------------------|--------|--------------------------------------------------|
-| Variáveis CSS Light (`:root`)     | ✅     | `apps/web/src/app/globals.css`                   |
-| Variáveis CSS Dark (`.dark`)      | ✅     | `apps/web/src/app/globals.css`                   |
-| Variante Tailwind `dark`          | ✅     | `@custom-variant dark (&:is(.dark *));`          |
-| Tokens semânticos (shadcn)        | ✅     | `bg-background`, `text-foreground`, etc.         |
-| Configuração shadcn com CSS vars  | ✅     | `apps/web/components.json` (`cssVariables: true`)|
-| Package de design tokens          | ✅     | `packages/design-tokens`                         |
-| Cores de marca (green / gold)     | ✅     | Funcionam em ambos os temas                      |
+| Item | Estado | Notas |
+|------|--------|-------|
+| Dependência `next-themes` | ✅ | `apps/web/package.json` (`^0.4.6`) |
+| `ThemeProvider` | ✅ | `apps/web/src/components/providers/ThemeProvider.tsx` |
+| Integração no root layout | ✅ | `attribute="class"`, `defaultTheme="system"`, `enableSystem` |
+| `ThemeToggle` | ✅ | Lucide Sol/Lua, sem FOUC, tokens semânticos |
+| Toggle no shell | ✅ | Topbar (lado direito) |
+| Remoção ModuleSwitcher | ✅ | Removido do Topbar, PortalLayout e ficheiro apagado |
 
-### O que falta
+### Fase 2 — Adaptação visual
 
-| Item                        | Estado | Observação                                              |
-|-----------------------------|--------|---------------------------------------------------------|
-| Biblioteca `next-themes`    | ❌     | Não está nas dependências                               |
-| `ThemeProvider`             | ❌     | Não existe no root layout                               |
-| Componente de toggle        | ❌     | Não existe                                              |
-| Substituição de cores fixas | ⚠️     | Muitos componentes usam `bg-slate-950`, `text-slate-100`, etc. |
-| Testes de tema              | ❌     | Não existem testes relacionados com tema                |
+| Prioridade | Área | Estado |
+|------------|------|--------|
+| P0 | Shell / Sidebar | ✅ `Sidebar.tsx` com tokens `sidebar-*` |
+| P0 | Header / Topbar | ✅ `Topbar.tsx` + `AppShell.tsx` |
+| P1 | Cards e tabelas | 🔄 Em curso |
+| P1 | Formulários e inputs | 🔄 Em curso |
+| P2 | Componentes secundários | ⏳ Pendente |
+
+### O que ainda falta (global)
+
+| Item | Estado | Observação |
+|------|--------|------------|
+| Substituição de cores fixas em páginas | ⚠️ | Muitas páginas ainda usam `bg-slate-*` / `bg-white` |
+| Testes unitários / E2E de tema | ❌ | Definidos na §7, ainda não implementados |
+| Opção Sistema/Claro/Escuro no menu | ❌ | Fase 3 |
+| Integração no Command Palette | ❌ | Fase 3 |
 
 ---
 
 ## 3. Decisões técnicas
 
-| Decisão                    | Escolha                          | Justificativa                                                                 |
-|-----------------------------|----------------------------------|-------------------------------------------------------------------------------|
-| Biblioteca                  | `next-themes`                    | Padrão de mercado para Next.js App Router; evita flash de tema (FOUC)         |
-| Atributo no `<html>`        | `class`                          | Já existe o seletor `.dark` no CSS                                            |
-| Tema padrão                 | `system` (com fallback light)    | Respeita a preferência do SO; fallback seguro                                 |
-| Persistência                | `localStorage` (automático)      | Comportamento nativo do `next-themes`                                         |
-| Transições                  | `disableTransitionOnChange`      | Evita animações estranhas durante a troca de tema                             |
-| Localização do toggle       | Sidebar (footer) + Command Palette (futuro) | Fácil acesso sem poluir a interface principal                        |
+| Decisão | Escolha | Justificativa |
+|---------|---------|---------------|
+| Biblioteca | `next-themes` | Padrão de mercado para Next.js App Router; evita FOUC |
+| Atributo no `<html>` | `class` | Já existe o seletor `.dark` no CSS |
+| Tema padrão | `system` (fallback light) | Respeita a preferência do SO |
+| Persistência | `localStorage` (automático) | Comportamento nativo do `next-themes` |
+| Transições | `disableTransitionOnChange` | Evita animações estranhas na troca |
+| Localização do toggle | Topbar (direita) | Sempre visível no shell principal |
+| Cores de marca | Mantidas (`#1F6B3B`, `#E3B23C`) | Funcionam bem em ambos os temas |
 
 ---
 
 ## 4. Plano de implementação
 
-### Fase 1 — Infraestrutura (baixo esforço)
+### Fase 1 — Infraestrutura ✅ (concluída)
 
-1. Instalar dependência:
-   ```bash
-   pnpm -C apps/web add next-themes
-   ```
+1. ✅ Instalar `next-themes`
+2. ✅ Criar `ThemeProvider`
+3. ✅ Integrar no `layout.tsx`
+4. ✅ Reescrever `ThemeToggle`
+5. ✅ Colocar toggle no Topbar
 
-2. Criar `apps/web/src/components/providers/ThemeProvider.tsx`
+### Fase 2 — Adaptação visual (em curso)
 
-3. Integrar o `ThemeProvider` no `apps/web/src/app/layout.tsx`
+Substituir cores hardcoded por tokens semânticos:
 
-4. Criar o componente `ThemeToggle` (ícone Sol / Lua)
-
-5. Colocar o toggle no shell da aplicação (sidebar)
-
-### Fase 2 — Adaptação visual (esforço médio)
-
-Substituir cores hardcoded por tokens semânticos, priorizando:
-
-| Prioridade | Área                    | Exemplos a substituir                          |
-|------------|-------------------------|------------------------------------------------|
-| P0         | Shell / Sidebar         | `bg-slate-950`, `text-slate-100`, `bg-slate-900` |
-| P0         | Header / Topbar         | Cores de fundo e texto fixas                   |
-| P1         | Cards e tabelas         | Bordas e fundos fixos                          |
-| P1         | Formulários e inputs    | Bordas e placeholders                          |
-| P2         | Componentes secundários | Badges, tooltips, modais                       |
+| Prioridade | Área | Exemplos a substituir |
+|------------|------|------------------------|
+| P0 ✅ | Shell / Sidebar / Topbar | `bg-slate-950` → `bg-sidebar`, etc. |
+| P1 | Cards e tabelas | Bordas e fundos fixos |
+| P1 | Formulários e inputs | Bordas e placeholders |
+| P2 | Componentes secundários | Badges, tooltips, modais |
 
 **Mapeamento recomendado:**
 
-| Classe antiga          | Preferir                          |
-|------------------------|-----------------------------------|
-| `bg-slate-950`         | `bg-sidebar` ou `bg-background`   |
-| `bg-slate-900`         | `bg-sidebar-accent` / `bg-muted`  |
-| `text-slate-100`       | `text-sidebar-foreground` / `text-foreground` |
-| `text-slate-400`       | `text-muted-foreground`           |
-| `border-slate-200`     | `border-border`                   |
-| `border-slate-800`     | `border-border`                   |
-| `bg-white`             | `bg-background` / `bg-card`       |
-| `bg-slate-50`          | `bg-muted`                        |
-
-As cores de marca (`klasse-green`, `klasse-gold`) **não precisam** ser alteradas — funcionam bem em ambos os temas.
+| Classe antiga | Preferir |
+|---------------|----------|
+| `bg-slate-950` | `bg-sidebar` ou `bg-background` |
+| `bg-slate-900` | `bg-sidebar-accent` / `bg-muted` |
+| `text-slate-100` | `text-sidebar-foreground` / `text-foreground` |
+| `text-slate-400` | `text-muted-foreground` |
+| `border-slate-200` | `border-border` |
+| `border-slate-800` | `border-sidebar-border` / `border-border` |
+| `bg-white` | `bg-background` / `bg-card` |
+| `bg-slate-50` | `bg-muted` |
+| `text-gray-700` | `text-foreground` / `text-muted-foreground` |
+| `border-gray-300` | `border-input` |
 
 ### Fase 3 — Polimento
 
-- Adicionar opção “Sistema / Claro / Escuro” no menu de preferências
+- Opção “Sistema / Claro / Escuro” no menu de preferências
 - Integrar no Command Palette (`Cmd+K`)
 - Atualizar `themeColor` do viewport de forma dinâmica (opcional)
 - Verificar contraste (acessibilidade) nos dois temas
-- Testar em páginas críticas: Dashboard, Secretaria, Financeiro, Pauta
+- Testar páginas críticas: Dashboard, Secretaria, Financeiro, Pauta
 
 ---
 
-## 5. Estrutura de ficheiros prevista
+## 5. Estrutura de ficheiros
 
 ```
 apps/web/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx              ← adicionar ThemeProvider
-│   │   └── globals.css             ← já possui :root e .dark
+│   │   ├── layout.tsx              ← ThemeProvider integrado
+│   │   └── globals.css             ← :root e .dark
 │   └── components/
 │       ├── providers/
-│       │   └── ThemeProvider.tsx   ← novo
-│       └── theme/
-│           └── ThemeToggle.tsx     ← novo
+│       │   └── ThemeProvider.tsx   ← criado
+│       ├── ThemeToggle.tsx         ← reescrito
+│       └── layout/klasse/
+│           ├── AppShell.tsx        ← tokens semânticos
+│           ├── Sidebar.tsx         ← tokens semânticos
+│           └── Topbar.tsx          ← tokens + ThemeToggle
 ├── tests/
 │   ├── unit/
-│   │   └── theme-toggle.spec.ts    ← novo (unitário)
-│   └── theme-switcher.e2e.ts       ← novo (Playwright)
-└── package.json                    ← adicionar next-themes
+│   │   └── theme-toggle.spec.ts    ← planeado
+│   └── theme-switcher.e2e.ts       ← planeado
+└── package.json                    ← next-themes
 ```
 
 ---
 
 ## 6. Critérios de aceitação
 
-- [ ] Utilizador consegue alternar entre Bright e Dark com um clique
-- [ ] A preferência é mantida após refresh e entre sessões
-- [ ] Não há flash de tema claro ao carregar a página em modo escuro
-- [ ] Sidebar, header e conteúdo principal respeitam o tema ativo
-- [ ] Cores de marca (verde e dourado) continuam legíveis e consistentes
-- [ ] Funciona em desktop e mobile (Capacitor)
-- [ ] Não quebra o padrão de Graciosidade (estado explícito + feedback)
+- [x] Utilizador consegue alternar entre Bright e Dark com um clique
+- [x] A preferência é mantida após refresh e entre sessões (via next-themes)
+- [x] Não há flash de tema claro ao carregar a página em modo escuro (`suppressHydrationWarning` + mounted guard)
+- [x] Sidebar, header e conteúdo principal do shell respeitam o tema ativo
+- [ ] Páginas de conteúdo (cards, tabelas, forms) respeitam o tema
+- [x] Cores de marca (verde e dourado) continuam legíveis
+- [ ] Funciona em desktop e mobile (Capacitor) — validação manual pendente
+- [ ] Não quebra o padrão de Graciosidade
 - [ ] Testes unitários e E2E passam
 
 ---
@@ -155,12 +160,12 @@ apps/web/
 
 ### Estado atual da infraestrutura de testes
 
-| Tipo              | Situação                                      |
-|-------------------|-----------------------------------------------|
-| Unitários         | Existem em `apps/web/tests/unit/` (poucos)    |
-| E2E (Playwright)  | Configurado (`playwright.config.ts`)          |
-| Script `test`     | Placeholder (`echo 'No tests configured'`)    |
-| Testes de tema    | **Não existem**                               |
+| Tipo | Situação |
+|------|----------|
+| Unitários | Existem em `apps/web/tests/unit/` (poucos) |
+| E2E (Playwright) | Configurado (`playwright.config.ts`) |
+| Script `test` | Placeholder |
+| Testes de tema | **Não existem** (definidos abaixo) |
 
 ### Testes a implementar
 
@@ -168,71 +173,40 @@ apps/web/
 
 **Ficheiro:** `apps/web/tests/unit/theme-toggle.spec.ts`
 
-**Cenários:**
-
-| # | Cenário                                      | Esperado                                              |
-|---|----------------------------------------------|-------------------------------------------------------|
-| 1 | Renderiza o botão de toggle                  | Botão visível com `aria-label` adequado               |
-| 2 | Clique alterna de `light` → `dark`           | `setTheme("dark")` é chamado                          |
-| 3 | Clique alterna de `dark` → `light`           | `setTheme("light")` é chamado                         |
-| 4 | Não renderiza ícone antes de `mounted`       | Evita hydration mismatch (retorna `null` inicialmente)|
-
-**Notas técnicas:**
-- Mockar `useTheme` do `next-themes`
-- Usar runner existente: `node --test --import tsx`
+| # | Cenário | Esperado |
+|---|---------|----------|
+| 1 | Renderiza o botão de toggle | Botão visível com `aria-label` adequado |
+| 2 | Clique alterna de `light` → `dark` | `setTheme("dark")` é chamado |
+| 3 | Clique alterna de `dark` → `light` | `setTheme("light")` é chamado |
+| 4 | Estado pré-mount | Placeholder desabilitado (evita hydration mismatch) |
 
 #### 7.2 E2E — Playwright
 
 **Ficheiro:** `apps/web/tests/theme-switcher.e2e.ts`
 
-**Cenários:**
+| # | Cenário | Esperado |
+|---|---------|----------|
+| 1 | Carga com tema claro | `<html>` sem classe `dark` |
+| 2 | Toggle ativa dark | `<html>` com classe `dark` |
+| 3 | Toggle volta a light | Classe `dark` removida |
+| 4 | Persistência após refresh | Tema mantido |
+| 5 | Persistência em navegação | Tema mantido entre rotas |
+| 6 | Sem FOUC | Classe `dark` desde o primeiro paint quando guardado |
 
-| # | Cenário                                              | Esperado                                                                 |
-|---|------------------------------------------------------|--------------------------------------------------------------------------|
-| 1 | Página carrega com tema claro por defeito            | `<html>` **não** contém a classe `dark`                                  |
-| 2 | Clicar no toggle ativa o tema escuro                 | `<html>` passa a ter a classe `dark`                                     |
-| 3 | Clicar novamente volta ao tema claro                 | Classe `dark` é removida do `<html>`                                     |
-| 4 | Preferência persiste após refresh                    | Após `page.reload()`, o tema escolhido mantém-se                         |
-| 5 | Preferência persiste em nova navegação               | Navegar para outra rota e voltar mantém o tema                           |
-| 6 | Sem flash de tema (FOUC)                             | Ao carregar com tema `dark` guardado, a classe `dark` está presente desde o primeiro paint |
+#### 7.3 Checklist manual
 
-**Exemplo de asserções principais:**
-
-```ts
-// Alternar para dark
-await page.getByRole('button', { name: /tema|theme|alternar/i }).click()
-await expect(page.locator('html')).toHaveClass(/dark/)
-
-// Persistência
-await page.reload()
-await expect(page.locator('html')).toHaveClass(/dark/)
-```
-
-#### 7.3 Checklist manual (aceitação visual)
-
-Páginas prioritárias a validar nos dois temas:
-
+- [x] Shell (sidebar + header)
 - [ ] Dashboard principal
-- [ ] Shell (sidebar + header)
 - [ ] Secretaria — lista de alunos / matrículas
 - [ ] Financeiro — dashboard e lançamentos
 - [ ] Pauta do professor
-- [ ] Wizard de importação (`/migracao/alunos`)
+- [ ] Wizard de importação
 - [ ] Login / ativação de acesso
-
-**Verificar em cada página:**
-- Contraste de texto legível
-- Bordas e cards consistentes
-- Ícones e estados ativos (dourado) visíveis
-- Sem cores “quebradas” (texto branco em fundo branco, etc.)
 
 #### 7.4 Comandos sugeridos
 
 ```bash
-# Unitário (quando implementado)
 pnpm -C apps/web test:unit:theme
-
-# E2E Playwright
 pnpm -C apps/web exec playwright test tests/theme-switcher.e2e.ts
 ```
 
@@ -240,21 +214,20 @@ pnpm -C apps/web exec playwright test tests/theme-switcher.e2e.ts
 
 ## 8. Riscos e mitigação
 
-| Risco                                      | Mitigação                                              |
-|--------------------------------------------|--------------------------------------------------------|
-| Componentes com cores hardcoded            | Auditoria progressiva por prioridade (P0 → P2)         |
-| Flash de tema (FOUC)                       | Usar `next-themes` + `suppressHydrationWarning`        |
-| Quebra visual em páginas legadas           | Implementar primeiro no shell e expandir gradualmente  |
-| Conflito com estilos de impressão / PDF    | Manter temas apenas na UI; PDFs usam estilos próprios  |
-| Testes frágeis por seletores de UI         | Preferir `getByRole` + `aria-label` estável            |
+| Risco | Mitigação |
+|-------|-----------|
+| Componentes com cores hardcoded | Auditoria progressiva P0 → P2 |
+| Flash de tema (FOUC) | `next-themes` + `suppressHydrationWarning` + mounted guard |
+| Quebra visual em páginas legadas | Shell primeiro; expandir gradualmente |
+| Conflito com impressão / PDF | Temas só na UI |
+| Testes frágeis | Preferir `getByRole` + `aria-label` |
 
 ---
 
 ## 9. Referências
 
-- Design Tokens oficiais: `docs/design-tokens.md`
-- Padrão de produto (Graciosidade): `docs/product/graciosidade.md`
-- shadcn/ui + CSS Variables: documentação oficial
+- Design Tokens: `docs/design-tokens.md`
+- Graciosidade: `docs/product/graciosidade.md`
 - next-themes: https://github.com/pacocoursey/next-themes
 - Playwright: https://playwright.dev
 
@@ -262,7 +235,8 @@ pnpm -C apps/web exec playwright test tests/theme-switcher.e2e.ts
 
 ## 10. Histórico
 
-| Data       | Autor     | Alteração                                      |
-|------------|-----------|------------------------------------------------|
-| 2026-10-23 | Grok      | Criação inicial da documentação na branch      |
-| 2026-10-23 | Grok      | Adicionada secção completa de testes           |
+| Data | Autor | Alteração |
+|------|-------|-----------|
+| 2026-10-23 | Grok | Criação inicial da documentação |
+| 2026-10-23 | Grok | Secção completa de testes |
+| 2026-10-23 | Grok | Fase 1 concluída; Fase 2 P0 (shell) concluída; progresso atualizado |
