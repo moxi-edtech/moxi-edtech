@@ -4,7 +4,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** P0: no canonical user-polo-enrollment mapping exists in the installed schema.
  * An absent polo parameter MUST NOT give a restricted operator whole-school access.
  */
-const WHOLE_SCHOOL_ROLES = new Set(["admin", "admin_escola", "staff_admin", "diretor"]);
+const WHOLE_SCHOOL_ROLES = new Set([
+  "admin", "admin_escola", "staff_admin", "diretor",
+  "secretaria", "admin_secretaria", "secretaria_financeiro",
+  "admin_financeiro", "financeiro",
+]);
 
 export function isCommandCenterWholeSchoolRole(role: unknown): boolean {
   return typeof role === "string" && WHOLE_SCHOOL_ROLES.has(role.trim().toLowerCase());
