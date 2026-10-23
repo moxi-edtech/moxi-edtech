@@ -1,0 +1,116 @@
+name: Command Center D Integration and Release Gates
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/command-center-d-integration.yml'
+      - 'apps/web/scripts/performance/command_center_merge_rehearsal.py'
+      - 'apps/web/scripts/visual/command-center-three-attendances.mjs'
+      - 'apps/web/tests/unit/command-center-integration-gates.spec.ts'
+      - 'apps/web/src/components/layout/klasse/Topbar.tsx'
+      - 'docs/command-center/release-readiness-cc009-020.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  combined-synthetic-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch concurrent finance, Balcão, KLASSE IA and UX PR heads
+        run: |
+          set -euo pipefail
+          git fetch origin \
+            '+refs/heads/main:refs/remotes/origin/main' \
+            '+refs/heads/fix/finance-validar-pagamento-idempotency-20261021:refs/remotes/origin/fix/finance-validar-pagamento-idempotency-20261021' \
+            '+refs/heads/perf/balcao-measured-20261021:refs/remotes/origin/perf/balcao-measured-20261021' \
+            '+refs/heads/feat/balcao-nice-to-haves-20261021:refs/remotes/origin/feat/balcao-nice-to-haves-20261021' \
+            '+refs/heads/work/klasse-ai-20261013:refs/remotes/origin/work/klasse-ai-20261013' \
+            '+refs/heads/fix/operations-layout-composition-20261022:refs/remotes/origin/fix/operations-layout-composition-20261022' \
+            '+refs/heads/fix/command-center-professor-search-modal-20261021:refs/remotes/origin/fix/command-center-professor-search-modal-20261021'
+      - name: Individual and sequential git merge-tree --write-tree, never merge a PR
+        run: |
+          set -euo pipefail
+          python3 apps/web/scripts/performance/command_center_merge_rehearsal.py
+          git worktree add --detach "$RUNNER_TEMP/cc-composite" "$(cat /tmp/cc-d-composite-sha.txt)"
+          test -f "$RUNNER_TEMP/cc-composite/apps/web/src/components/CommandPalette.tsx"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Frozen install in disposable synthesized tree
+        run: |
+          cd "$RUNNER_TEMP/cc-composite"
+          pnpm install --frozen-lockfile
+      - name: Combined TS application contract
+        run: |
+          cd "$RUNNER_TEMP/cc-composite"
+          pnpm -C apps/web typecheck
+      - name: Combined lint across conflicting owners
+        run: |
+          cd "$RUNNER_TEMP/cc-composite"
+          pnpm -C apps/web exec eslint src/components/layout/klasse/Topbar.tsx src/hooks/useGlobalSearch.ts src/components/CommandPalette.tsx src/components/secretaria/BalcaoWorkspace.tsx --max-warnings 0
+      - name: Complete unit test directory (not the no-op package test script)
+        run: |
+          cd "$RUNNER_TEMP/cc-composite/apps/web"
+          pnpm exec tsx --test tests/unit/*.spec.ts | tee /tmp/cc-d-all-unit-tests.txt
+        shell: bash
+      - name: Combined Next.js production build (disposable only)
+        run: |
+          cd "$RUNNER_TEMP/cc-composite"
+          pnpm -C apps/web build
+      - name: Preserve real blockers without disguising branch conflicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-d-synthetic-merge-combined-evidence
+          path: |
+            /tmp/cc-d-integration-report.json
+            /tmp/cc-d-all-unit-tests.txt
+          retention-days: 14
+  synthetic-three-attendances:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Isolated Playwright and Vite, no application library changes
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/klasse-visual
+          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
+          /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Serve React contextual fixture with fictional students
+        run: |
+          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/cc-d-vite.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:6006/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 80 /tmp/cc-d-vite.log
+          exit 1
+      - name: Three successive fictional attendances x five widths x three zooms
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/command-center-three-attendances.mjs
+      - name: Diagnostics
+        if: failure()
+        run: tail -n 80 /tmp/cc-d-vite.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cc-d-three-attendances-5x3-synthetic
+          path: apps/web/visual-evidence/command-center-three-attendances/
+          retention-days: 14
