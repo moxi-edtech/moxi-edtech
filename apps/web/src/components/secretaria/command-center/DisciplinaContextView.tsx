@@ -96,6 +96,13 @@ export function DisciplinaContextView({
         </p>
       )}
 
+      {data.unresolvedTeacherLinks > 0 && (
+        <p role="status" className="text-xs text-amber-900">
+          Existem {data.unresolvedTeacherLinks} referências docentes com identidade indisponível.
+          O vínculo académico permanece registado; confirme a identidade na gestão autorizada.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="min-w-0" aria-labelledby="disciplina-professores-heading">
           <h3 id="disciplina-professores-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
@@ -183,6 +190,7 @@ export function DisciplinaContextView({
                 </span>
               )}
               <span className="text-xs text-slate-500">
+                {item.hasOtherActivityVersion ? "Matriz ativa · também existe referência inativa · " : ""}
                 {item.cargaHorariaSemanal != null
                   ? `${item.cargaHorariaSemanal} h/semana`
                   : "Carga não definida"}
@@ -206,8 +214,10 @@ export function DisciplinaContextView({
           </p>
           <div className="divide-y divide-slate-100 rounded-xl border border-amber-200">
             {curriculoHistorico.map((item, index) => (
-              <div key={`${item.cursoId ?? ""}:${item.classeId ?? ""}:${index}`} className="px-3 py-3 text-xs text-slate-700">
+              <div key={item.id ?? `${item.cursoId ?? ""}:${item.classeId ?? ""}:${index}`} className="px-3 py-3 text-xs text-slate-700">
                 {[item.cursoNome, item.classeNome].filter(Boolean).join(" · ") || "Referência curricular"}
+                {item.hasOtherActivityVersion ? " · Outra linha da matriz está ativa para esta combinação" : " · Sem linha ativa correspondente no recorte"}
+                {item.id ? ` · Registo ${item.id.slice(0, 8)}` : ""}
               </div>
             ))}
           </div>
