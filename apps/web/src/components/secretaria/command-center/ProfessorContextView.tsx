@@ -87,12 +87,12 @@ export function ProfessorContextView({
           Algumas vinculações ultrapassaram o limite de consulta. Os números são parciais; consulte a gestão para o restante.
         </p>
       )}
-      {semAtribuicao && (
+      {semAtribuicao && !limited && (
         <p className="text-xs text-slate-600">
           Sem atribuição de turma ou disciplina neste ano letivo (nas fontes desta visão).
         </p>
       )}
-      {!semAtribuicao && semHorario && (
+      {!semAtribuicao && semHorario && !limited && (
         <p className="text-xs text-slate-600">
           Há atribuições, mas sem horário publicado neste ano letivo.
         </p>
@@ -127,7 +127,7 @@ export function ProfessorContextView({
               </button>
             ))}
             {!data.turmas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma turma atribuída neste ano letivo.</p>
+              <p className="px-3 py-5 text-slate-500">{limited ? "Nenhuma turma identificada nos vínculos consultados; a lista é parcial." : "Nenhuma turma atribuída neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -151,7 +151,7 @@ export function ProfessorContextView({
               </button>
             ))}
             {!data.disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma disciplina atribuída neste ano letivo.</p>
+              <p className="px-3 py-5 text-slate-500">{limited ? "Nenhuma disciplina identificada nos vínculos consultados; a lista é parcial." : "Nenhuma disciplina atribuída neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -177,7 +177,7 @@ export function ProfessorContextView({
           ))}
           {!data.horarios.length && (
             <p className="px-3 py-5 text-slate-500">
-              Sem horário publicado para este professor neste ano letivo.
+              {limited ? "Nenhum horário publicado identificado no recorte consultado; a lista é parcial." : "Sem horário publicado para este professor neste ano letivo."}
               {" "}
               (Ausência de publicação ≠ ausência de atribuição.)
             </p>
