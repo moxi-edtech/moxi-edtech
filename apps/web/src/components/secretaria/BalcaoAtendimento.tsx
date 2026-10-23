@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import {
   ShoppingCart,
   Plus,
@@ -44,12 +45,15 @@ export type BalcaoView = "all" | "overview" | "payment" | "document" | "reenroll
 
 export interface BalcaoAtendimentoProps {
   escolaId: string;
+  draftScope?: string | null;
   selectedAlunoId?: string | null;
   showSearch?: boolean;
   embedded?: boolean;
   returnTo?: string | null;
   focusAction?: BalcaoFocusAction | null;
   view?: BalcaoView;
+  visible?: boolean;
+  refreshRevision?: number;
   onNavigateAction?: (actionId: BalcaoActionId) => void;
   onAlunoSelected?: (aluno: AlunoDossier | null) => void;
   /** Chamado após um pagamento concluído com sucesso. A página usa-o para
@@ -249,10 +253,22 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
   const [aluno, setAluno] = useState<AlunoDossier | null>(null);
   const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [lastVerifiedAt, setLastVerifiedAt] = useState<Date | null>(null);
+  const lastLoadedStudentRef = useRef<string | null>(null);
+  // A result from another student or an older revalidation can never win.
+  const requestGeneration = useRef(0);
 
   const load = useCallback(
-    async (alunoId: string) => {
+    async (alunoId: string): Promise<boolean> => {
+      const generation = ++requestGeneration.current;
+      if (lastLoadedStudentRef.current !== alunoId) {
+        setAluno(null);
+        setMensalidades([]);
+        setLastVerifiedAt(null);
+      }
       setLoading(true);
+      setLoadError(false);
       try {
         const supabase = createClient();
         let dossierRpc = "get_aluno_dossier";
@@ -332,6 +348,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
             : null;
         }
 
+        if (generation !== requestGeneration.current) return false;
         setAluno({
           id: String(raw.aluno?.id ?? alunoId),
           nome: String(perfil.nome_completo ?? perfil.nome ?? raw.aluno?.nome ?? "Aluno"),
@@ -402,23 +419,41 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
             const bKey = Number(b.referencia_ano ?? 0) * 100 + Number(b.referencia_mes ?? 0);
             return aKey - bKey;
           });
+        if (generation !== requestGeneration.current) return false;
         setMensalidades(ms);
+        lastLoadedStudentRef.current = alunoId;
+        setLastVerifiedAt(new Date());
+        setLoadError(false);
+        return true;
       } catch {
-        setAluno(null);
-        setMensalidades([]);
+        if (generation === requestGeneration.current) {
+          setLoadError(true);
+          // Keep the last confirmed snapshot visible (but inert) on refresh
+          // failure; never treat stale financial data as an updated saldo.
+          if (lastLoadedStudentRef.current !== alunoId) {
+            setAluno(null);
+            setMensalidades([]);
+          }
+        }
+        return false;
       } finally {
-        setLoading(false);
+        if (generation === requestGeneration.current) setLoading(false);
       }
     },
     [escolaId, academicYearId]
   );
 
   const clear = useCallback(() => {
+    requestGeneration.current += 1;
+    lastLoadedStudentRef.current = null;
     setAluno(null);
     setMensalidades([]);
+    setLastVerifiedAt(null);
+    setLoadError(false);
+    setLoading(false);
   }, []);
 
-  return { aluno, mensalidades, loading, load, clear };
+  return { aluno, mensalidades, loading, loadError, lastVerifiedAt, load, clear };
 }
 
 function useServicos(escolaId: string) {
@@ -612,7 +647,7 @@ function useCheckout({
   aluno: AlunoDossier | null;
   carrinho: ReturnType<typeof useCarrinho>;
   academicYearId: string | null;
-  onSuccess: () => void;
+  onSuccess: () => Promise<boolean>;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [billingWindowIssue, setBillingWindowIssue] = useState<BillingWindowIssue | null>(null);
@@ -694,6 +729,18 @@ function useCheckout({
       );
       const settlement = resolveCheckoutPaymentState(json);
 
+      // Never expose a settled/approved display until the authoritative
+      // payment/saldo has been read back. A failed read is a recoverable
+      // outcome, not permission to replay the financial mutation.
+      const verified = await onSuccess();
+      if (!verified) {
+        setPagos([]);
+        setPendentes(documentosDoCheckout);
+        checkoutRequestRef.current = null;
+        carrinho.limpar();
+        error("Pagamento registado, mas não foi possível atualizar o saldo. Reabra o atendimento para conferir o estado antes de continuar.");
+        return true;
+      }
       if (settlement.state === "settled") {
         setPagos(documentosDoCheckout);
         setPendentes([]);
@@ -712,7 +759,6 @@ function useCheckout({
       setBillingWindowIssue(null);
       checkoutRequestRef.current = null;
       carrinho.limpar();
-      onSuccess();
       return true;
     } catch (err) {
       error(err instanceof Error ? err.message : "Nao foi possivel concluir o pagamento.");
@@ -788,12 +834,13 @@ function useCheckout({
           return null;
         }
         documentRequestRef.current.delete(servico.id);
+        await onSuccess();
         return resultado.printUrl;
       } finally {
         setEmittingDocId(null);
       }
     },
-    [aluno, escolaId, academicYearId, error]
+    [aluno, escolaId, academicYearId, error, onSuccess]
   );
 
   return {
@@ -2646,12 +2693,15 @@ function BillingWindowRepairPanel({
 
 export default function BalcaoAtendimento({
   escolaId,
+  draftScope = null,
   selectedAlunoId = null,
   showSearch = true,
   embedded = false,
   returnTo = null,
   focusAction = null,
   view = "all",
+  visible = true,
+  refreshRevision = 0,
   onNavigateAction,
   onAlunoSelected,
   onPagamentoConcluido,
@@ -2680,6 +2730,8 @@ export default function BalcaoAtendimento({
 
   const search = useAlunoSearch();
   const dossier = useAlunoDossier(escolaId, effectiveAcademicYearId);
+  const lastRevisionRef = useRef(refreshRevision);
+  const [refreshingRevision, setRefreshingRevision] = useState(false);
   const servicos = useServicos(escolaId);
   const carrinho = useCarrinho();
   // Itens escolhidos dentro da rematrícula pertencem ao pagamento dessa
@@ -2689,6 +2741,7 @@ export default function BalcaoAtendimento({
 
   const rematricula = useRematriculaBalcao({
     escolaId,
+    draftScope,
     alunoId: dossier.aluno?.id ?? null,
     matriculaId: dossier.aluno?.matricula_id ?? null,
     academicYearId: effectiveAcademicYearId,
@@ -2711,12 +2764,13 @@ export default function BalcaoAtendimento({
     }
   }, [debtModalOpen, dossier.loading, hasOverdueDebt]);
 
-  const onCheckoutSuccess = useCallback(() => {
-    if (dossier.aluno?.id) {
-      void dossier.load(dossier.aluno.id);
-      void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
-    }
+  const onCheckoutSuccess = useCallback(async (): Promise<boolean> => {
+    if (!dossier.aluno?.id) return false;
+    const verified = await dossier.load(dossier.aluno.id);
+    if (!verified) return false;
+    void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
     onPagamentoConcluido?.();
+    return true;
   }, [dossier, audit, onPagamentoConcluido]);
 
   const checkout = useCheckout({
@@ -2726,6 +2780,16 @@ export default function BalcaoAtendimento({
     academicYearId: effectiveAcademicYearId,
     onSuccess: onCheckoutSuccess,
   });
+
+  // The actual React checkout state is the draft, not clicks or button labels.
+  // This also covers programmatic cart updates and attachment URL changes.
+  useBalcaoDraftForm("checkout", {
+    itens: carrinho.itens, metodo: carrinho.itens.length ? carrinho.metodo : "tpa",
+    detalhes: carrinho.itens.length ? carrinho.detalhes : { referencia: "", evidencia_url: "", gateway_ref: "" },
+    valorRecebido: carrinho.itens.length ? carrinho.valorRecebido : "",
+  }, {
+    itens: [], metodo: "tpa", detalhes: { referencia: "", evidencia_url: "", gateway_ref: "" }, valorRecebido: "",
+  }, { submitting: checkout.isSubmitting, enabled: view === "payment" || view === "document" || view === "all" });
 
   // Cada ação do Command Center tem um contexto transitório próprio. Sem este
   // reset, um item deixado em "Pagar" podia reaparecer no checkout de
@@ -2822,6 +2886,14 @@ export default function BalcaoAtendimento({
     ...mensalidadesDestino,
     ...servicos.filter((servico) => ["DOC_CARTAO_ESTUDANTE", "SERV_UNIFORME"].includes(servico.codigo.trim().toUpperCase())),
   ], [mensalidadesDestino, servicos]);
+
+  useEffect(() => {
+    if (!visible || refreshRevision <= lastRevisionRef.current) return;
+    lastRevisionRef.current = refreshRevision;
+    if (!selectedAlunoId) return;
+    setRefreshingRevision(true);
+    void dossier.load(selectedAlunoId).finally(() => setRefreshingRevision(false));
+  }, [refreshRevision, visible, selectedAlunoId, dossier.load]);
 
   useEffect(() => {
     setItensRematricula([]);
@@ -2991,7 +3063,20 @@ export default function BalcaoAtendimento({
         </>
       )}
 
-      {dossier.loading ? (
+      {dossier.aluno && (view === "payment" || view === "document" || view === "overview" || view === "all") ? (
+        <div role={dossier.loadError ? "alert" : "status"} aria-live="polite"
+          className="mb-3 flex min-h-9 flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+          {dossier.loadError ? "Falha ao confirmar dados atuais. Operações financeiras indisponíveis." : dossier.loading || refreshingRevision
+            ? "Atualizando dados... As operações aguardam confirmação do servidor." : "Dados financeiros atualizados"}
+          {dossier.lastVerifiedAt ? <time dateTime={dossier.lastVerifiedAt.toISOString()}>
+            Última atualização: {dossier.lastVerifiedAt.toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+          </time> : null}
+          {dossier.loadError && selectedAlunoId ? (
+            <button type="button" onClick={() => void dossier.load(selectedAlunoId)} className="rounded border px-2 py-1 font-semibold">Tentar novamente</button>
+          ) : null}
+        </div>
+      ) : null}
+      {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
           <Loader2 className="h-8 w-8 animate-spin text-amber" />
           <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
@@ -3000,6 +3085,7 @@ export default function BalcaoAtendimento({
         view === "payment" && debtModalOpen ? (
           <div className="min-h-[1px]" aria-hidden="true" />
         ) : view === "overview" ? (
+          <div inert={dossier.loading || dossier.loadError || refreshingRevision} aria-disabled={dossier.loading || dossier.loadError || refreshingRevision}>
           <CommandCenterOverview
             aluno={dossier.aluno}
             mensalidades={dossier.mensalidades}
@@ -3012,10 +3098,13 @@ export default function BalcaoAtendimento({
             onNavigate={onNavigateAction}
             onTrocarAluno={handleTrocarAluno}
           />
+          </div>
         ) : view === "reenrollment" && rematricula.modalOpen ? (
           <div className="min-h-[1px]" aria-hidden="true" />
         ) : (
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+          <div inert={dossier.loading || dossier.loadError || refreshingRevision}
+            aria-disabled={dossier.loading || dossier.loadError || refreshingRevision}
+            className="grid grid-cols-1 gap-5 lg:grid-cols-12">
             <div
               className={
                 view === "payment"
@@ -3101,8 +3190,14 @@ export default function BalcaoAtendimento({
           onClose={() => {
             rematricula.closeModal();
             setItensRematricula([]);
-            if (rematricula.result) {
-              void dossier.load(dossier.aluno!.id);
+            if (rematricula.result?.ok) {
+              // The canonical rematrícula writer has already committed. Signal
+              // cross-panel invalidation immediately; no cached financial view
+              // may be presented as current while the latest balance loads.
+              onPagamentoConcluido?.();
+              void dossier.load(dossier.aluno!.id).then((verified) => {
+                if (!verified) error("Rematrícula registada. Não foi possível confirmar o saldo atualizado.");
+              });
             }
           }}
           alunoNome={dossier.aluno.nome}
@@ -3187,7 +3282,10 @@ export default function BalcaoAtendimento({
           alunoId={dossier.aluno.id}
           anoLetivoId={effectiveAcademicYearId}
           onSuccess={() => {
-            void dossier.load(dossier.aluno!.id);
+            void dossier.load(dossier.aluno!.id).then((verified) => {
+              if (verified) onPagamentoConcluido?.();
+              else error("Pagamento registado. Não foi possível confirmar o saldo atualizado.");
+            });
             void rematricula.refresh();
             void audit.fetch(dossier.aluno!.id, dossier.aluno!.matricula_id);
           }}

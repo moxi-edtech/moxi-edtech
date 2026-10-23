@@ -17,6 +17,8 @@ type Props = {
   student: CommandCenterStudent | null;
   activeAction: BalcaoActionId;
   onActionChange: (actionId: BalcaoActionId) => void;
+  pendingActions?: ReadonlyArray<BalcaoActionId>;
+  shortcuts?: { enabled: boolean; setEnabled: (enabled: boolean) => void };
   onSwitchStudent?: () => void;
   onClose?: () => void;
   leading?: ReactNode;
@@ -30,6 +32,8 @@ export function CommandCenterShell({
   student,
   activeAction,
   onActionChange,
+  pendingActions = [],
+  shortcuts,
   onSwitchStudent,
   onClose,
   leading,
@@ -89,12 +93,26 @@ export function CommandCenterShell({
       </div>
 
       {aboveActions}
+      {shortcuts ? (
+        <details className="text-[11px] text-slate-500">
+          <summary className="cursor-pointer select-none font-medium" aria-label="Ajuda de atalhos de teclado do Balcão">Atalhos do Balcão</summary>
+          <div className="flex flex-wrap items-center gap-2 py-1">
+            <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd>: pesquisar aluno</span>
+            <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd>: trocar aluno</span>
+            <button type="button" className="rounded border px-2 py-1 focus-visible:outline-2" aria-pressed={shortcuts.enabled}
+              onClick={() => shortcuts.setEnabled(!shortcuts.enabled)}>
+              {shortcuts.enabled ? "Desativar atalhos" : "Ativar atalhos"}
+            </button>
+          </div>
+        </details>
+      ) : null}
 
       <CommandCenterActionBar
         value={activeAction}
         onChange={onActionChange}
         label={activeAction === "enrollment" ? "Novo atendimento" : student ? "Atendimento" : "Iniciar"}
         hasStudent={Boolean(student)}
+        pendingActions={pendingActions}
       />
     </>
   );

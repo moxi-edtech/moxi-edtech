@@ -1,0 +1,76 @@
+name: Balcao Nice-to-have Regression
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/components/secretaria/**"
+      - "apps/web/src/app/secretaria/balcao/**"
+      - "apps/web/src/lib/balcao/balcaoTelemetry.ts"
+      - "apps/web/scripts/performance/**"
+      - "apps/web/visual-harness/**"
+      - "apps/web/tests/unit/balcao-anonymous-telemetry.spec.ts"
+      - ".github/workflows/balcao-nice-regression.yml"
+      - "docs/performance/balcao-memory-*.json"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  balcao-nice-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - name: Locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Disposable browser tools
+        run: |
+          mkdir -p /tmp/klasse-nice-tools
+          npm install --prefix /tmp/klasse-nice-tools --no-save vite@6.4.0 playwright@1.57.0
+          /tmp/klasse-nice-tools/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start synthetic visual fixture server
+        run: |
+          /tmp/klasse-nice-tools/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6019 > /tmp/klasse-nice-vite.log 2>&1 &
+          for n in $(seq 1 60); do
+            curl -sf 'http://127.0.0.1:6019/?story=balcao-route' >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/klasse-nice-vite.log
+          exit 1
+      - name: Telemetry payload allowlist and rate limit
+        run: node --test --import tsx apps/web/tests/unit/balcao-anonymous-telemetry.spec.ts
+      - name: Keyboard opt-out, guarded switch, pending label
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-nice-tools/node_modules/playwright/index.mjs
+          PERF_BASE_URL: http://127.0.0.1:6019
+        run: node apps/web/scripts/performance/balcao-nice-browser.mjs
+      - name: Financial background refresh, stale lock and verified time
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-nice-tools/node_modules/playwright/index.mjs
+          PERF_BASE_URL: http://127.0.0.1:6019
+        run: node apps/web/scripts/performance/balcao-financial-refresh.mjs
+      - name: Prolonged navigation memory/DOM/listeners guard
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-nice-tools/node_modules/playwright/index.mjs
+          PERF_BASE_URL: http://127.0.0.1:6019
+          PERF_MEMORY_CYCLES: "100"
+          PERF_MEMORY_OUTPUT: /tmp/klasse-nice-memory-ci.json
+        run: node apps/web/scripts/performance/balcao-memory.mjs
+      - name: React/TypeScript and ESLint
+        run: |
+          pnpm -C apps/web typecheck
+          pnpm -C apps/web lint
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: balcao-nice-synthetic-regression
+          path: |
+            /tmp/klasse-nice-memory-ci.json
+            /tmp/klasse-nice-vite.log
+          retention-days: 7
+          if-no-files-found: warn

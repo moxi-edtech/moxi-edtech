@@ -138,7 +138,7 @@ test("student selection opens the existing modal workspace instead of navigating
   assert.match(topbar, /schoolId: escolaId/);
   assert.match(topbar, /selectedSearchStudent\?\.schoolId === escolaId/);
   assert.match(modal, /variant="modal"/);
-  assert.match(modal, /alunoId=\{activeAction === "enrollment" \? null : selectedStudent\.id\}/);
+  assert.match(modal, /alunoId=\{panelAction === "enrollment" \? null : selectedStudent\.id\}/);
   assert.match(modal, /setSelectedStudent\(\{ id: newAlunoId, label: "Aluno matriculado" \}\)/);
   assert.match(modal, /confirmLeavingEnrollment/);
   assert.match(shell, /hasStudent=\{Boolean\(student\)\}/, "other actions remain available during new enrollment");
@@ -177,7 +177,7 @@ test("Balcão page uses persistent return context and switches to new student on
   const page = readFileSync("apps/web/src/app/secretaria/balcao/BalcaoPageClient.tsx", "utf8");
   assert.match(page, /readBalcaoStudentId\(/);
   assert.match(page, /setBalcaoLocationContext\(/);
-  assert.match(page, /alunoId=\{activeAction === "enrollment" \? null : selectedAlunoId\}/);
+  assert.match(page, /alunoId=\{panelAction === "enrollment" \? null : selectedAlunoId\}/);
   assert.match(page, /syncLocation\(\{ alunoId: newAlunoId, actionId: "desk" \}\)/);
   assert.doesNotMatch(page, /if \(actionId === "enrollment"\)[\s\S]{0,150}setSelectedAlunoId\(null\)/);
 });
@@ -197,7 +197,10 @@ test("modal and page show the same full student dossier, with editing secondary"
   const panel = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterPanel.tsx", "utf8");
   const inline = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx", "utf8");
   const fullPage = readFileSync("apps/web/src/components/aluno/AlunoPerfilPage.tsx", "utf8");
-  assert.match(panel, /profileDossier && profileRefreshKey === 0 \? profileDossier : \(/);
+  assert.doesNotMatch(panel, /profileDossier/, "the same interactive dossier must render regardless of entry point");
+  assert.match(panel, /<CommandCenterStudentDossier[\s\S]*?refreshKey=\{profileRefreshKey \+ refreshRevision\}/);
+  const standalone = readFileSync("apps/web/src/app/secretaria/balcao/BalcaoPageClient.tsx", "utf8");
+  assert.doesNotMatch(standalone, /profileDossier=\{/, "standalone view must not bypass the interactive dossier");
   assert.match(panel, /<CommandCenterStudentDossier/);
   assert.match(panel, /<details[\s\S]*?<AlunoProfilePanel alunoId=\{alunoId\}/);
   assert.match(inline, /<DossierTabs/);

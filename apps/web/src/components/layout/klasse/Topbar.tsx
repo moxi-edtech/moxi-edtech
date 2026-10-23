@@ -168,9 +168,11 @@ function ScopedTopbar({
         </div>
       </header>
 
-      {escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
+      {userScope && escolaId && selectedSearchStudent?.schoolId === escolaId && (portal === "operacoes" || portal === "secretaria") ? (
         <BalcaoWorkspace
-          key={`${userScope ?? "sem-actor"}:${escolaId}:${poloScope}:${selectedSearchStudent.id}`}
+          key={`${userScope}:${escolaId}:${poloScope}:${selectedSearchStudent.id}`}
+          userScope={userScope}
+          poloScope={poloScope}
           open
           escolaId={escolaId}
           aluno={selectedSearchStudent}

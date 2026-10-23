@@ -5,6 +5,16 @@ import { canUseOperationalCopilot } from "../src/lib/roles/ai-roles";
 import TransferForm from "../src/components/secretaria/TransferForm";
 import AiChatWidget from "../src/components/ai/AiChatWidget";
 import { createRoot } from "react-dom/client";
+import { BalcaoWorkspace } from "../src/components/secretaria/BalcaoWorkspace";
+import { RetainedActionPanels } from "../src/components/secretaria/command-center/RetainedActionPanels";
+import { CommandCenterActionBar } from "../src/components/secretaria/command-center/CommandCenterActionBar";
+import { CommandCenterStudentDossier } from "../src/components/secretaria/command-center/CommandCenterStudentDossier";
+import { useBalcaoKeyboardShortcuts } from "../src/components/secretaria/command-center/useBalcaoKeyboardShortcuts";
+import type { BalcaoDraftSummary } from "../src/components/secretaria/command-center/BalcaoDraftState";
+import { useBalcaoDraftForm } from "../src/components/secretaria/command-center/BalcaoDraftState";
+import type { BalcaoActionId } from "../src/lib/balcao/action-registry";
+import { readBalcaoStudentId, setBalcaoLocationContext } from "../src/lib/balcao/return-context";
+import { FeedbackProvider } from "../src/components/feedback/FeedbackSystem";
 import "./fixture.css";
 import "../src/app/globals.css";
 import {
@@ -71,6 +81,148 @@ if (name === "class-transfer") {
     return originalFetch(input,init);
   };
 }
+// Test the *same* draft-state contract as the real forms. No private values are
+// ever written to global state, navigation history or telemetry.
+function SyntheticDraftFields({ action, student }: { action: BalcaoActionId; student: string }) {
+  const [value, setValue] = React.useState("");
+  const [attached, setAttached] = React.useState<string | null>(null);
+  const [saved, setSaved] = React.useState({ value: "", attached: null as string | null });
+  const [submitting, setSubmitting] = React.useState(false);
+  useBalcaoDraftForm(action, { value, attached }, saved, { submitting });
+  return <div className="min-w-0 max-w-full rounded-xl border p-3">
+    <p data-testid={`target-${action}`}>{action === "enrollment" ? "Nova matrícula: aluno-alvo não selecionado" : "Aluno atual: "+student}</p>
+    <label>Rascunho <input value={value} onChange={e=>setValue(e.target.value)} data-testid={`draft-${action}`} /></label>
+    <label className="block min-w-0 max-w-full">Comprovativo <input className="block w-full min-w-0 max-w-full" type="file" data-testid={`file-${action}`} onChange={e=>setAttached(e.target.files?.[0]?.name ?? null)} /></label>
+    <button type="button" data-testid={`programmatic-${action}`} onClick={()=>setValue("Gerado via React state")}>Programático</button>
+    <button type="button" data-testid={`clear-${action}`} onClick={()=>{setValue("");setAttached(null)}}>Reverter</button>
+    <button type="button" data-testid={`save-${action}`} onClick={()=>setSaved({value,attached})}>Guardar confirmado</button>
+    <button type="button" data-testid={`submitting-${action}`} onClick={()=>setSubmitting(true)}>Iniciar submissão</button>
+    <button type="button" data-testid={`failure-${action}`} onClick={()=>setSubmitting(false)}>Falha de submissão</button>
+    <button type="button" data-testid={`finish-${action}`} onClick={()=>{setSaved({value,attached});setSubmitting(false)}}>Submissão confirmada</button>
+  </div>;
+}
+
+function BalcaoRetentionFixture() {
+  const [action, setAction] = React.useState<BalcaoActionId>("payment");
+  const [actor, setActor] = React.useState("user-a");
+  const [school, setSchool] = React.useState("school-a");
+  const [polo, setPolo] = React.useState("polo-a");
+  const [student, setStudent] = React.useState("student-a");
+  const [revision, setRevision] = React.useState(0);
+  const [unsaved, setUnsaved] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const scope = [actor, school, polo, student].join(":");
+  const switchContext = (update: () => void) => {
+    if (submitting) return;
+    if (unsaved && !window.confirm("Descartar rascunhos pendentes?")) return;
+    update(); setAction("payment");
+  };
+  return <main className="mx-auto max-w-2xl space-y-4 p-6">
+    <h1>Balcão · contratos sintéticos</h1>
+    <p data-testid="actor-context">{scope}</p>
+    <p data-testid="has-unsaved">{String(unsaved)}</p>
+    <p data-testid="is-submitting">{String(submitting)}</p>
+    <div className="flex flex-wrap gap-2">
+      {(["payment", "document", "enrollment", "profile", "grade"] as const).map(tab => (
+        <button type="button" key={tab} data-testid={`go-${tab}`} onClick={() => setAction(tab)}>{tab}</button>
+      ))}
+    </div>
+    <div className="flex flex-wrap gap-2">
+      <button type="button" data-testid="switch-user" onClick={() => switchContext(()=>setActor("user-b"))}>Novo utilizador</button>
+      <button type="button" data-testid="switch-school" onClick={() => switchContext(()=>setSchool("school-b"))}>Outra escola</button>
+      <button type="button" data-testid="switch-polo" onClick={() => switchContext(()=>setPolo("polo-b"))}>Outro polo</button>
+      <button type="button" data-testid="switch-student" onClick={() => switchContext(()=>setStudent("student-b"))}>Outro aluno</button>
+      <button type="button" data-testid="server-confirmed-save" onClick={() => document.querySelector<HTMLButtonElement>(`[data-testid="save-${action}"]`)?.click()}>Guardar no servidor</button>
+      <button type="button" data-testid="server-confirmed-mutation" onClick={() => setRevision(v=>v+1)}>Revalidar sem guardar</button>
+    </div>
+    <RetainedActionPanels key={scope} activeAction={action} contextSignature={scope+":"+revision}
+      onUnsavedChange={setUnsaved} onSubmittingChange={setSubmitting}
+      renderAction={panel => <SyntheticDraftFields action={panel} student={student} />}
+    />
+  </main>;
+}
+
+// Synthetic role-scoped integration of the *real* URL return-context helpers,
+// React retained panel and generation race guard. It does not claim to exercise
+// a Supabase-authenticated Next.js route or RLS; that remains a separate M2/M3
+// gate requiring an intact disposable full migration replay.
+function BalcaoRouteFixture() {
+  const read = () => new URLSearchParams(window.location.search);
+  const [currentAction, setCurrentAction] = React.useState<BalcaoActionId>("desk");
+  const [studentId, setStudentId] = React.useState<string | null>("student-a");
+  const [studentLabel, setStudentLabel] = React.useState("Aluno A · fictício");
+  const [dirty, setDirty] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [statusByTab,setStatusByTab] = React.useState<Readonly<Partial<Record<BalcaoActionId,BalcaoDraftSummary>>>>({});
+  const [searchOpened,setSearchOpened] = React.useState(0);
+  const requestId = React.useRef(0);
+  const actionFromLocation = () => {
+    const params=read();
+    const value=params.get("action");
+    const action = (["desk","payment","profile","enrollment","document","grade","reenrollment"] as string[]).includes(value || "")
+      ? value as BalcaoActionId : "desk";
+    setCurrentAction(action);
+    setStudentId(readBalcaoStudentId(params,action));
+  };
+  React.useEffect(() => {
+    const params=read();
+    if (!params.get("alunoId")) {
+      const next=setBalcaoLocationContext(params,"student-a","desk");
+      window.history.replaceState(window.history.state,"","?"+next);
+    }
+    actionFromLocation();
+    window.addEventListener("popstate",actionFromLocation);
+    return ()=>window.removeEventListener("popstate",actionFromLocation);
+  },[]);
+  const visit = (action: BalcaoActionId) => {
+    const next=setBalcaoLocationContext(read(),studentId,action);
+    window.history.pushState(window.history.state,"","?"+next);
+    setCurrentAction(action);
+  };
+  const select = (id:string, delayMs:number) => {
+    if (submitting || (dirty && !window.confirm("Alterações pendentes. Trocar de aluno?"))) return;
+    const generation=++requestId.current;
+    window.setTimeout(()=>{
+      if(generation!==requestId.current)return;
+      setStudentId(id);
+      setStudentLabel(id==="student-b"?"Aluno B · fictício":"Aluno A · fictício");
+      setCurrentAction("desk");
+      const next=setBalcaoLocationContext(read(),id,"desk");
+      window.history.replaceState(window.history.state,"","?"+next);
+    },delayMs);
+  };
+  const keyboard=useBalcaoKeyboardShortcuts({
+    onSearch:()=>setSearchOpened(x=>x+1),
+    onSwitch:()=>select("student-b",15),
+  });
+  const pendingActions=Object.entries(statusByTab).filter(([,status])=>status?.dirty).map(([id])=>id as BalcaoActionId);
+  return <main className="mx-auto max-w-3xl space-y-4 p-5" data-testid="balcao-route-fixture">
+    <h1>Balcão / navegação autenticada em fixture (sem backend real)</h1>
+    <p data-testid="route-actor">secretaria-fixture-role</p>
+    <p data-testid="route-student">{studentId ?? "sem aluno"}</p>
+    <p data-testid="route-action">{currentAction}</p>
+    <p data-testid="route-dirty">{String(dirty)}</p>
+    <p data-testid="route-search-opened">{searchOpened}</p>
+    <button type="button" data-testid="route-toggle-shortcuts" onClick={()=>keyboard.setEnabled(!keyboard.enabled)}>
+      {keyboard.enabled ? "Desativar atalhos" : "Ativar atalhos"}
+    </button>
+    <CommandCenterActionBar value={currentAction} hasStudent={Boolean(studentId)} onChange={visit} pendingActions={pendingActions} />
+    <nav aria-label="Abas do atendimento" className="flex flex-wrap gap-2">
+      {(["desk","payment","profile","enrollment","document","grade","reenrollment"] as const).map(tab=>
+        <button type="button" data-testid={"route-go-"+tab} key={tab} onClick={()=>visit(tab)}>{tab}</button>
+      )}
+      <button type="button" data-testid="route-select-slow-a" onClick={()=>select("student-a",450)}>Selecionar A, atraso</button>
+      <button type="button" data-testid="route-select-fast-b" onClick={()=>select("student-b",15)}>Selecionar B, rápido</button>
+    </nav>
+    <RetainedActionPanels key={"secretaria-fixture:escola-a:polo-a:"+studentId} activeAction={currentAction}
+      contextSignature={"secretaria-fixture:escola-a:polo-a:"+studentId}
+      onUnsavedChange={setDirty} onSubmittingChange={setSubmitting}
+      onActionStatusesChange={setStatusByTab}
+      renderAction={panel=> <SyntheticDraftFields action={panel} student={studentLabel}/>}
+    />
+  </main>;
+}
+
 // Fully synthetic and offline: browser contract for the REAL KLASSE IA widget.
 // Never captures or requests information from the school database.
 const fixtureScope = new URLSearchParams(window.location.search);
@@ -177,7 +329,57 @@ if (target && name === "school-intelligence") {
     </main>;
   }
   createRoot(target).render(<ChatFixture />);
-} else if (target && name === "command-center-explorer") createRoot(target).render(<CommandCenterVisualFixture />);
-else if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
+}
+// N3: actual student dossier UI, 100% synthetic API and deterministic delayed
+// refreshes. The third request intentionally fails for stale-data assertions.
+if (name === "balcao-financial-refresh") {
+  const originalFetch = window.fetch.bind(window);
+  let calls=0;
+  window.fetch = async (input, init) => {
+    const url=String(input);
+    if (!url.includes("/api/secretaria/alunos/") || !url.includes("/dossier")) return originalFetch(input,init);
+    calls++;
+    await new Promise(resolve=>setTimeout(resolve,calls===1?35:500));
+    if(calls===3) return new Response(JSON.stringify({ok:false,error:"Falha sintética de leitura"}),{status:503,headers:{"Content-Type":"application/json"}});
+    const aluno={
+      id:"00000000-0000-4000-8000-000000000401",
+      perfil:{nome:"Aluno fictício",foto_url:null,status:"ativo",numero_processo:"FIXTURE-0001",bi_numero:null,data_nascimento:null,responsavel_nome:null,responsavel_tel:null,endereco:null,endereco_bairro:null,provincia:null,escola_id:"00000000-0000-4000-8000-000000000402"},
+      historico:[],
+      financeiro:{total_em_atraso:calls===1?100:50,total_pago:calls===1?0:50,situacao:"inadimplente",mensalidades:[],mensalidades_pendentes:[],mensalidades_atrasadas:[]},
+      matricula_atual:null,pendencias:[]
+    };
+    return new Response(JSON.stringify({ok:true,aluno,servicos:[]}),{status:200,headers:{"Content-Type":"application/json"}});
+  };
+}
+function BalcaoFinancialRefreshFixture(){
+  const [version,setVersion]=React.useState(0);
+  return <main className="mx-auto max-w-2xl p-5">
+    <button type="button" data-testid="refresh-dossier" onClick={()=>setVersion(v=>v+1)}>Revalidar dados canónicos</button>
+    <CommandCenterStudentDossier escolaId="00000000-0000-4000-8000-000000000402"
+      alunoId="00000000-0000-4000-8000-000000000401" refreshKey={version}/>
+  </main>;
+}
+
+if (target && name === "balcao-financial-refresh") createRoot(target).render(<FeedbackProvider><BalcaoFinancialRefreshFixture /></FeedbackProvider>);
+else if (target && name === "school-intelligence") { /* Mounted above with synthetic auth. */ }
+else if (target && name === "command-center-explorer") createRoot(target).render(<CommandCenterVisualFixture />);
+else if (target && name === "balcao-route") createRoot(target).render(<BalcaoRouteFixture />);
+else if (target && name === "balcao-retention") createRoot(target).render(<BalcaoRetentionFixture />);
+else if (target && name === "balcao-perf") {
+  const metrics = { commits: 0, duration: 0 };
+  Object.assign(window, { __balcaoPerf: metrics });
+  const fixtureStudent = { id: "00000000-0000-4000-8000-000000000401", label: "Aluno sintético" };
+  createRoot(target).render(
+    <FeedbackProvider>
+      <React.Profiler id="BalcaoWorkspace" onRender={(_id, _phase, duration) => {
+        metrics.commits += 1;
+        metrics.duration += duration;
+      }}>
+        <BalcaoWorkspace open userScope="fixture-actor-a" poloScope="fixture-polo-a" escolaId="00000000-0000-4000-8000-000000000401"
+          aluno={fixtureStudent} onClose={() => {}} />
+      </React.Profiler>
+    </FeedbackProvider>
+  );
+} else if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
 else if (target && Scene) createRoot(target).render(<>{Scene()}</>);
 else if (target) target.textContent = "Visual fixture not found";

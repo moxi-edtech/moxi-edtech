@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 
 type ProfileForm = {
   bi_numero: string;
@@ -118,6 +119,7 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
     [form, savedForm],
   );
   const hasChanges = changedEntries.length > 0;
+  useBalcaoDraftForm("profile", form, savedForm, { submitting: saving, enabled: !loading });
 
   const updateField = (field: keyof ProfileForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));

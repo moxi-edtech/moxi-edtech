@@ -313,7 +313,7 @@ function SecretariaNotasContent() {
       await postNotas({
         tipo,
         isIsento: true,
-        notas: isentos.map((row) => ({ aluno_id: row.id, valor: null })),
+        notas: isentos.map((row) => ({ aluno_id: row.id, valor: 0 })),
       })
     }
 
@@ -322,10 +322,12 @@ function SecretariaNotasContent() {
       await postNotas({
         tipo,
         isIsento: false,
-        notas: activeRows.map((row) => ({
-          aluno_id: row.id,
-          valor: row[campo] ?? null,
-        })),
+        notas: activeRows.flatMap((row) => {
+          const valor = row[campo]
+          return typeof valor === "number" && Number.isFinite(valor)
+            ? [{ aluno_id: row.id, valor }]
+            : []
+        }),
       })
     }
 

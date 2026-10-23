@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import { DossierTabs } from "@/components/aluno/DossierTabs";
+import TransferForm from "@/components/secretaria/TransferForm";
 import {
   DossierDocumentosSection,
   DossierFinanceiroSection,
@@ -34,16 +35,24 @@ export function CommandCenterStudentDossier({
   const [data, setData] = useState<{
     aluno: AlunoNormalizado;
     servicos: AlunoServicoFinanceiro[];
+    schoolScope: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
+  const [matriculaInfo, setMatriculaInfo] = useState<{ id: string; turmaId: string; ano: number; sessionId: string | null; canRectifyClass: boolean } | null>(null);
+  const [matriculaError, setMatriculaError] = useState<string | null>(null);
+  const [lastConfirmedAt, setLastConfirmedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    setData(null);
+    // Preserve the current student's snapshot while revalidating; never display
+    // a different student's cached values after a context switch.
+    setData(current => current?.aluno.id === alunoId && current.schoolScope === escolaId ? current : null);
+    setMatriculaInfo(null);
+    setMatriculaError(null);
     void fetch("/api/secretaria/alunos/" + encodeURIComponent(alunoId) + "/dossier", {
       cache: "no-store",
       signal: controller.signal,
@@ -58,9 +67,11 @@ export function CommandCenterStudentDossier({
           throw new Error(body.error || "Não foi possível carregar a ficha integral.");
         }
         setData({
+          schoolScope: escolaId,
           aluno: body.aluno,
           servicos: Array.isArray(body.servicos) ? body.servicos : [],
         });
+        setLastConfirmedAt(new Date());
       })
       .catch((cause: unknown) => {
         if (controller.signal.aborted) return;
@@ -72,7 +83,27 @@ export function CommandCenterStudentDossier({
     return () => controller.abort();
   }, [alunoId, escolaId, refreshKey, retry]);
 
-  if (loading) {
+  useEffect(() => {
+    const controller = new AbortController();
+    setMatriculaInfo(null);
+    setMatriculaError(null);
+    if (!data?.aluno.matricula_atual?.matricula_id) return () => controller.abort();
+    const matriculaId = data.aluno.matricula_atual.matricula_id;
+    void fetch("/api/secretaria/admissoes/matriculas/" + encodeURIComponent(matriculaId) + "/workspace-context", {
+      cache: "no-store", signal: controller.signal,
+    }).then(async (response) => {
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.ok) throw new Error(body.error || "Não foi possível consultar a matrícula.");
+      return body;
+    }).then((body) => {
+      if (!controller.signal.aborted) setMatriculaInfo(body.matricula);
+    }).catch((cause: unknown) => {
+      if (!controller.signal.aborted) setMatriculaError(cause instanceof Error ? cause.message : "Falha ao consultar matrícula.");
+    });
+    return () => controller.abort();
+  }, [data]);
+
+  if (loading && (!data || data.aluno.id !== alunoId || data.schoolScope !== escolaId)) {
     return (
       <div role="status" className="flex min-h-40 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -81,7 +112,7 @@ export function CommandCenterStudentDossier({
     );
   }
 
-  if (error || !data) {
+  if (!data || data.aluno.id !== alunoId || data.schoolScope !== escolaId) {
     return (
       <div role="alert" className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900">
         <p>{error || "Não foi possível carregar a ficha integral."}</p>
@@ -98,8 +129,19 @@ export function CommandCenterStudentDossier({
   }
 
   const { aluno, servicos } = data;
+  const notConfirmed = loading || Boolean(error);
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" aria-busy={loading}>
+      <div role={error ? "alert" : "status"} aria-live="polite"
+        className="min-h-8 flex flex-wrap items-center gap-2 rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-700">
+        {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Atualizando dados...</> : error
+          ? "Não foi possível confirmar dados recentes. Ações estão temporariamente indisponíveis."
+          : "Dados atualizados"}
+        {lastConfirmedAt ? <time dateTime={lastConfirmedAt.toISOString()}>
+          Última atualização: {lastConfirmedAt.toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+        </time> : null}
+      </div>
+      <div inert={notConfirmed} aria-disabled={notConfirmed} className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-slate-900">{aluno.perfil.nome}</p>
@@ -127,7 +169,18 @@ export function CommandCenterStudentDossier({
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-slate-900">Matrícula atual</h2>
             <p className="text-sm text-slate-600">Turma: {aluno.matricula_atual?.turma ?? "Não definida"}</p>
-            <Link href={"/escola/" + encodeURIComponent(escolaId) + "/operacoes/alunos/" + encodeURIComponent(alunoId) + "?tab=matricula"} className="inline-flex rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-100">Abrir retificação de matrícula</Link>
+            <p className="text-sm text-slate-600">Classe: {aluno.matricula_atual?.classe ?? "Não definida"}</p>
+            {matriculaError ? <p role="alert" className="text-sm text-red-700">{matriculaError}</p> : null}
+            {matriculaInfo ? (
+              <TransferForm
+                matriculaId={matriculaInfo.id}
+                currentTurmaId={matriculaInfo.turmaId}
+                anoLetivo={matriculaInfo.ano}
+                anoLetivoId={matriculaInfo.sessionId}
+                canRectifyClass={matriculaInfo.canRectifyClass}
+                onSuccess={() => setRetry((current) => current + 1)}
+              />
+            ) : !aluno.matricula_atual?.matricula_id ? <p className="text-sm text-slate-500">Sem matrícula atual para retificar.</p> : !matriculaError ? <p className="text-sm text-slate-500">A carregar opções de retificação...</p> : null}
           </div>
         }
         slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role="secretaria" servicos={servicos} />}
@@ -135,6 +188,7 @@ export function CommandCenterStudentDossier({
         slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit />}
         slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
       />
+      </div>
     </div>
   );
 }

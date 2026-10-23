@@ -62,8 +62,9 @@ test("modal and standalone workspace wire a protected student-switch callback", 
   assert.match(modal, /studentRequestRef\.current \+= 1/);
   // The scoped workspace rekeys on the student AND refresh revision so a
   // completed mutation invalidates stale read panels without leaking state.
-  assert.match(modal, /key=\{\`\$\{selectedStudent\.id\}:\$\{refreshRevision\}\`\}/);
+  assert.match(modal, /props\.userScope.*props\.escolaId.*props\.poloScope.*props\.aluno\.id/s);
   assert.match(modal, /setRefreshRevision\(\(value\) => value \+ 1\)/);
+  assert.match(modal, /key=\{`\$\{userScope\}:\$\{escolaId\}:\$\{poloScope\}:\$\{selectedStudent\.id\}`\}/);
   assert.match(modal, /onCancel=\{\(\) => setSwitchingStudent\(false\)\}/);
   assert.match(picker, /student\.id !== currentAlunoId/);
 });

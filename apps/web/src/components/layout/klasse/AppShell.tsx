@@ -289,6 +289,7 @@ export default function AppShell({
         setUserName(null);
         return;
       }
+      if (!cancelled) setUserScope(user.id);
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -396,6 +397,7 @@ export default function AppShell({
             portalSubtitle={topbarLabels?.subtitle}
             userName={userName}
             userScope={userScope}
+            poloScope={new URLSearchParams(currentSearch).get("polo_id") ?? "-"}
             contextLabel="Dashboard"
             escolaNome={displayedEscolaNome}
             planoNome={displayedPlanoNome}

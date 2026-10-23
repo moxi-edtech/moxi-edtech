@@ -1,0 +1,1849 @@
+{
+  "fixture": true,
+  "source": "React components / Vite visual harness + mocked fixture API; not authenticated Next production",
+  "iterations": 12,
+  "browser": "155.0.8059.85",
+  "perTab": {
+    "Visão geral": {
+      "timeMs": {
+        "n": 12,
+        "median": 60,
+        "p95": 107,
+        "max": 107
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 1,
+        "max": 1
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 1,
+        "p95": 5,
+        "max": 5
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 4.1,
+        "p95": 8.8,
+        "max": 8.8
+      }
+    },
+    "Matrícula": {
+      "timeMs": {
+        "n": 12,
+        "median": 75,
+        "p95": 131,
+        "max": 131
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 2,
+        "p95": 3,
+        "max": 3
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 4,
+        "p95": 8.3,
+        "max": 8.3
+      }
+    },
+    "Rematrícula": {
+      "timeMs": {
+        "n": 12,
+        "median": 124,
+        "p95": 146,
+        "max": 146
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 8,
+        "max": 8
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 8,
+        "max": 8
+      },
+      "commits": {
+        "n": 12,
+        "median": 2,
+        "p95": 7,
+        "max": 7
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 4.2,
+        "p95": 17.5,
+        "max": 17.5
+      }
+    },
+    "Pagar": {
+      "timeMs": {
+        "n": 12,
+        "median": 65,
+        "p95": 93,
+        "max": 93
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 8,
+        "max": 8
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 8,
+        "max": 8
+      },
+      "commits": {
+        "n": 12,
+        "median": 2,
+        "p95": 7,
+        "max": 7
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 8.2,
+        "p95": 23.8,
+        "max": 23.8
+      }
+    },
+    "Documento": {
+      "timeMs": {
+        "n": 12,
+        "median": 63,
+        "p95": 93,
+        "max": 93
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 8,
+        "max": 8
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 8,
+        "max": 8
+      },
+      "commits": {
+        "n": 12,
+        "median": 2,
+        "p95": 7,
+        "max": 7
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 6.8,
+        "p95": 15.1,
+        "max": 15.1
+      }
+    },
+    "Perfil": {
+      "timeMs": {
+        "n": 12,
+        "median": 78,
+        "p95": 94,
+        "max": 94
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 2,
+        "max": 2
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 2,
+        "p95": 4,
+        "max": 4
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 7.6,
+        "p95": 17.8,
+        "max": 17.8
+      }
+    },
+    "Nota": {
+      "timeMs": {
+        "n": 12,
+        "median": 78,
+        "p95": 98,
+        "max": 98
+      },
+      "requests": {
+        "n": 12,
+        "median": 0,
+        "p95": 1,
+        "max": 1
+      },
+      "queries": {
+        "n": 12,
+        "median": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "commits": {
+        "n": 12,
+        "median": 1,
+        "p95": 4,
+        "max": 4
+      },
+      "reactDurationMs": {
+        "n": 12,
+        "median": 6.4,
+        "p95": 11.8,
+        "max": 11.8
+      }
+    }
+  },
+  "idle": {
+    "ms": 60000,
+    "requests": 0,
+    "queries": 0
+  },
+  "estimatedRequestsPerHour": 0,
+  "queryResponseMs": {
+    "n": 38,
+    "median": 38,
+    "p95": 43,
+    "max": 45
+  },
+  "routeJsTransferBytes": 7248936,
+  "lcpMs": 2404,
+  "inpMs": 64,
+  "inpEvents": 216,
+  "captures": [
+    {
+      "tab": "Visão geral",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1366x768-100.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1366x768-100.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1366x768-100.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1366x768-100.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1366x768-100.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1366x768-100.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1366x768-100.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1366x768-125.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1366x768-125.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1366x768-125.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1366x768-125.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1366x768-125.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1366x768-125.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1366x768-125.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1366x768-150.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1366x768-150.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1366x768-150.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1366x768-150.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1366x768-150.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1366x768-150.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1366,
+      "height": 768,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1366x768-150.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1536x864-100.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1536x864-100.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1536x864-100.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1536x864-100.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1536x864-100.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1536x864-100.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1536x864-100.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1536x864-125.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1536x864-125.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1536x864-125.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1536x864-125.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1536x864-125.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1536x864-125.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1536x864-125.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1536x864-150.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1536x864-150.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1536x864-150.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1536x864-150.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1536x864-150.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1536x864-150.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1536,
+      "height": 864,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1536x864-150.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1920x1080-100.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1920x1080-100.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1920x1080-100.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1920x1080-100.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1920x1080-100.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1920x1080-100.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1920x1080-100.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1920x1080-125.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1920x1080-125.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1920x1080-125.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1920x1080-125.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1920x1080-125.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1920x1080-125.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1920x1080-125.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-1920x1080-150.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-1920x1080-150.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-1920x1080-150.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-1920x1080-150.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-1920x1080-150.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-1920x1080-150.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-1920x1080-150.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-768x1024-100.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-768x1024-100.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-768x1024-100.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-768x1024-100.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-768x1024-100.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-768x1024-100.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-768x1024-100.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-768x1024-125.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-768x1024-125.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-768x1024-125.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-768x1024-125.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-768x1024-125.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-768x1024-125.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-768x1024-125.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-768x1024-150.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-768x1024-150.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-768x1024-150.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-768x1024-150.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-768x1024-150.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-768x1024-150.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 768,
+      "height": 1024,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-768x1024-150.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-390x844-100.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-390x844-100.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-390x844-100.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-390x844-100.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-390x844-100.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-390x844-100.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 390,
+      "height": 844,
+      "zoom": 1,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-390x844-100.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-390x844-125.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-390x844-125.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-390x844-125.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-390x844-125.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-390x844-125.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-390x844-125.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.25,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-390x844-125.jpg"
+    },
+    {
+      "tab": "Visão geral",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-vis-o-geral-390x844-150.jpg"
+    },
+    {
+      "tab": "Matrícula",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-matr-cula-390x844-150.jpg"
+    },
+    {
+      "tab": "Rematrícula",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-rematr-cula-390x844-150.jpg"
+    },
+    {
+      "tab": "Pagar",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-pagar-390x844-150.jpg"
+    },
+    {
+      "tab": "Documento",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-documento-390x844-150.jpg"
+    },
+    {
+      "tab": "Perfil",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-perfil-390x844-150.jpg"
+    },
+    {
+      "tab": "Nota",
+      "width": 390,
+      "height": 844,
+      "zoom": 1.5,
+      "overflow": 0,
+      "file": "docs/performance/evidence/balcao-nota-390x844-150.jpg"
+    }
+  ],
+  "raw": [
+    {
+      "tab": "Visão geral",
+      "round": 0,
+      "timeMs": 107,
+      "requests": 0,
+      "queries": 0,
+      "commits": 0,
+      "reactDurationMs": 0
+    },
+    {
+      "tab": "Matrícula",
+      "round": 0,
+      "timeMs": 131,
+      "requests": 0,
+      "queries": 0,
+      "commits": 3,
+      "reactDurationMs": 8.3
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 0,
+      "timeMs": 142,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 17.5
+    },
+    {
+      "tab": "Pagar",
+      "round": 0,
+      "timeMs": 62,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 23.8
+    },
+    {
+      "tab": "Documento",
+      "round": 0,
+      "timeMs": 63,
+      "requests": 8,
+      "queries": 8,
+      "commits": 7,
+      "reactDurationMs": 15.1
+    },
+    {
+      "tab": "Perfil",
+      "round": 0,
+      "timeMs": 84,
+      "requests": 2,
+      "queries": 0,
+      "commits": 4,
+      "reactDurationMs": 17.8
+    },
+    {
+      "tab": "Nota",
+      "round": 0,
+      "timeMs": 98,
+      "requests": 1,
+      "queries": 0,
+      "commits": 4,
+      "reactDurationMs": 11.8
+    },
+    {
+      "tab": "Visão geral",
+      "round": 1,
+      "timeMs": 96,
+      "requests": 1,
+      "queries": 0,
+      "commits": 5,
+      "reactDurationMs": 8.8
+    },
+    {
+      "tab": "Matrícula",
+      "round": 1,
+      "timeMs": 76,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5.2
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 1,
+      "timeMs": 125,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.6
+    },
+    {
+      "tab": "Pagar",
+      "round": 1,
+      "timeMs": 74,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 8.6
+    },
+    {
+      "tab": "Documento",
+      "round": 1,
+      "timeMs": 92,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 13.8
+    },
+    {
+      "tab": "Perfil",
+      "round": 1,
+      "timeMs": 91,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 11.8
+    },
+    {
+      "tab": "Nota",
+      "round": 1,
+      "timeMs": 79,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.3
+    },
+    {
+      "tab": "Visão geral",
+      "round": 2,
+      "timeMs": 46,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 3.6
+    },
+    {
+      "tab": "Matrícula",
+      "round": 2,
+      "timeMs": 47,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 3.2
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 2,
+      "timeMs": 110,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.5
+    },
+    {
+      "tab": "Pagar",
+      "round": 2,
+      "timeMs": 74,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.9
+    },
+    {
+      "tab": "Documento",
+      "round": 2,
+      "timeMs": 63,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.8
+    },
+    {
+      "tab": "Perfil",
+      "round": 2,
+      "timeMs": 66,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 7.6
+    },
+    {
+      "tab": "Nota",
+      "round": 2,
+      "timeMs": 96,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 10.9
+    },
+    {
+      "tab": "Visão geral",
+      "round": 3,
+      "timeMs": 73,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 5
+    },
+    {
+      "tab": "Matrícula",
+      "round": 3,
+      "timeMs": 93,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.9
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 3,
+      "timeMs": 116,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4.1
+    },
+    {
+      "tab": "Pagar",
+      "round": 3,
+      "timeMs": 59,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6
+    },
+    {
+      "tab": "Documento",
+      "round": 3,
+      "timeMs": 65,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 9
+    },
+    {
+      "tab": "Perfil",
+      "round": 3,
+      "timeMs": 90,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 11.6
+    },
+    {
+      "tab": "Nota",
+      "round": 3,
+      "timeMs": 77,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.2
+    },
+    {
+      "tab": "Visão geral",
+      "round": 4,
+      "timeMs": 56,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 3.8
+    },
+    {
+      "tab": "Matrícula",
+      "round": 4,
+      "timeMs": 47,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 3.4
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 4,
+      "timeMs": 130,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.6
+    },
+    {
+      "tab": "Pagar",
+      "round": 4,
+      "timeMs": 93,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 8.2
+    },
+    {
+      "tab": "Documento",
+      "round": 4,
+      "timeMs": 93,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 12.8
+    },
+    {
+      "tab": "Perfil",
+      "round": 4,
+      "timeMs": 81,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.3
+    },
+    {
+      "tab": "Nota",
+      "round": 4,
+      "timeMs": 92,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 10.9
+    },
+    {
+      "tab": "Visão geral",
+      "round": 5,
+      "timeMs": 75,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4.8
+    },
+    {
+      "tab": "Matrícula",
+      "round": 5,
+      "timeMs": 78,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5.1
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 5,
+      "timeMs": 110,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4.3
+    },
+    {
+      "tab": "Pagar",
+      "round": 5,
+      "timeMs": 65,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.2
+    },
+    {
+      "tab": "Documento",
+      "round": 5,
+      "timeMs": 63,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.6
+    },
+    {
+      "tab": "Perfil",
+      "round": 5,
+      "timeMs": 63,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.3
+    },
+    {
+      "tab": "Nota",
+      "round": 5,
+      "timeMs": 62,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6
+    },
+    {
+      "tab": "Visão geral",
+      "round": 6,
+      "timeMs": 63,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5.2
+    },
+    {
+      "tab": "Matrícula",
+      "round": 6,
+      "timeMs": 77,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 6,
+      "timeMs": 109,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.2
+    },
+    {
+      "tab": "Pagar",
+      "round": 6,
+      "timeMs": 93,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 10.9
+    },
+    {
+      "tab": "Documento",
+      "round": 6,
+      "timeMs": 44,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.8
+    },
+    {
+      "tab": "Perfil",
+      "round": 6,
+      "timeMs": 60,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 7.9
+    },
+    {
+      "tab": "Nota",
+      "round": 6,
+      "timeMs": 78,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.4
+    },
+    {
+      "tab": "Visão geral",
+      "round": 7,
+      "timeMs": 91,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 8.6
+    },
+    {
+      "tab": "Matrícula",
+      "round": 7,
+      "timeMs": 59,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.5
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 7,
+      "timeMs": 110,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4.2
+    },
+    {
+      "tab": "Pagar",
+      "round": 7,
+      "timeMs": 77,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 8.4
+    },
+    {
+      "tab": "Documento",
+      "round": 7,
+      "timeMs": 77,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.8
+    },
+    {
+      "tab": "Perfil",
+      "round": 7,
+      "timeMs": 61,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.2
+    },
+    {
+      "tab": "Nota",
+      "round": 7,
+      "timeMs": 92,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 11.1
+    },
+    {
+      "tab": "Visão geral",
+      "round": 8,
+      "timeMs": 44,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.1
+    },
+    {
+      "tab": "Matrícula",
+      "round": 8,
+      "timeMs": 75,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 3.9
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 8,
+      "timeMs": 124,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.2
+    },
+    {
+      "tab": "Pagar",
+      "round": 8,
+      "timeMs": 66,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 8.2
+    },
+    {
+      "tab": "Documento",
+      "round": 8,
+      "timeMs": 76,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 7
+    },
+    {
+      "tab": "Perfil",
+      "round": 8,
+      "timeMs": 59,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 8.1
+    },
+    {
+      "tab": "Nota",
+      "round": 8,
+      "timeMs": 95,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 11
+    },
+    {
+      "tab": "Visão geral",
+      "round": 9,
+      "timeMs": 60,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 5.4
+    },
+    {
+      "tab": "Matrícula",
+      "round": 9,
+      "timeMs": 80,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 3.9
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 9,
+      "timeMs": 126,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4.2
+    },
+    {
+      "tab": "Pagar",
+      "round": 9,
+      "timeMs": 62,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.5
+    },
+    {
+      "tab": "Documento",
+      "round": 9,
+      "timeMs": 62,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.4
+    },
+    {
+      "tab": "Perfil",
+      "round": 9,
+      "timeMs": 94,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 12.4
+    },
+    {
+      "tab": "Nota",
+      "round": 9,
+      "timeMs": 74,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.4
+    },
+    {
+      "tab": "Visão geral",
+      "round": 10,
+      "timeMs": 45,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.1
+    },
+    {
+      "tab": "Matrícula",
+      "round": 10,
+      "timeMs": 46,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 10,
+      "timeMs": 124,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 3.8
+    },
+    {
+      "tab": "Pagar",
+      "round": 10,
+      "timeMs": 59,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 7
+    },
+    {
+      "tab": "Documento",
+      "round": 10,
+      "timeMs": 44,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 6.4
+    },
+    {
+      "tab": "Perfil",
+      "round": 10,
+      "timeMs": 79,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6.9
+    },
+    {
+      "tab": "Nota",
+      "round": 10,
+      "timeMs": 44,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5.7
+    },
+    {
+      "tab": "Visão geral",
+      "round": 11,
+      "timeMs": 45,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 3.9
+    },
+    {
+      "tab": "Matrícula",
+      "round": 11,
+      "timeMs": 66,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 4.1
+    },
+    {
+      "tab": "Rematrícula",
+      "round": 11,
+      "timeMs": 146,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 4.1
+    },
+    {
+      "tab": "Pagar",
+      "round": 11,
+      "timeMs": 61,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 8.3
+    },
+    {
+      "tab": "Documento",
+      "round": 11,
+      "timeMs": 91,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 12.6
+    },
+    {
+      "tab": "Perfil",
+      "round": 11,
+      "timeMs": 78,
+      "requests": 0,
+      "queries": 0,
+      "commits": 2,
+      "reactDurationMs": 5.7
+    },
+    {
+      "tab": "Nota",
+      "round": 11,
+      "timeMs": 62,
+      "requests": 0,
+      "queries": 0,
+      "commits": 1,
+      "reactDurationMs": 6
+    }
+  ],
+  "errors": []
+}
