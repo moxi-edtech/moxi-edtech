@@ -48,14 +48,15 @@ function ScopedBalcaoWorkspace({
     scope: escolaId, id: null,
   });
   const academicYearId = open && yearResult.scope === escolaId ? yearResult.id : null;
-  // The enrollment workspace is not a student-bound operation. Keep the
-  // selected student for other tabs, but never fetch or expose it as the
-  // candidate being admitted.
-  const studentInContextId = activeAction === "enrollment" ? null : selectedStudent.id;
+  // Keep the existing student's read-only context stable while a fresh
+  // enrollment is open. Toggling this hook to null and back invalidates
+  // retained tabs and causes duplicate dossier/academic requests on every
+  // navigation. The enrollment panel itself receives alunoId=null below,
+  // so no selected-student data becomes a candidate or prefilled admission.
   const { student: studentContext, subtitle } = useCommandCenterStudent(
-    studentInContextId, academicYearId, selectedStudent.label,
+    selectedStudent.id, academicYearId, selectedStudent.label,
   );
-  const currentStudent = studentContext?.id === studentInContextId ? studentContext : null;
+  const currentStudent = studentContext?.id === selectedStudent.id ? studentContext : null;
   const completedEnrollmentRef = useRef(false);
   const studentRequestRef = useRef(0);
   const hasUnsavedWorkRef = useRef(false);
