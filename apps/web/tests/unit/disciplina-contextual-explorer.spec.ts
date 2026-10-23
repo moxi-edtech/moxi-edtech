@@ -59,9 +59,15 @@ describe("Disciplina contextual explorer", () => {
         { turmaId: "other-school", professorId: "t2" },
       ],
       curriculum: [
-        { cursoId: "course-1", cursoNome: "Geral", classeId: "class-1", classeNome: "8.ª", cargaHorariaSemanal: 4, obrigatoria: true },
-        { cursoId: "course-1", cursoNome: "Geral", classeId: "class-1", classeNome: "8.ª", cargaHorariaSemanal: 4, obrigatoria: true },
-        { cursoId: "course-1", cursoNome: "Geral", classeId: "class-2", classeNome: "9.ª", cargaHorariaSemanal: 5, obrigatoria: true },
+        { id: "matrix-1", curriculoId: "published-class-1", curriculoVersao: 2,
+          cursoId: "course-1", cursoNome: "Geral", classeId: "class-1", classeNome: "8.ª",
+          cargaHorariaSemanal: 4, obrigatoria: true, ativo: true },
+        { id: "matrix-1", curriculoId: "published-class-1", curriculoVersao: 2,
+          cursoId: "course-1", cursoNome: "Geral", classeId: "class-1", classeNome: "8.ª",
+          cargaHorariaSemanal: 4, obrigatoria: true, ativo: true },
+        { id: "matrix-2", curriculoId: "published-class-2", curriculoVersao: 1,
+          cursoId: "course-1", cursoNome: "Geral", classeId: "class-2", classeNome: "9.ª",
+          cargaHorariaSemanal: 5, obrigatoria: true, ativo: true },
       ],
     });
     assert.deepEqual(result.stats, { professores: 2, turmas: 2, cursos: 1, classes: 2 });
@@ -78,7 +84,9 @@ describe("Disciplina contextual explorer", () => {
       turmas: [turma("a")],
       teachers: [],
       assignments: [],
-      curriculum: [{ cursoId: "c", cursoNome: "Geral", classeId: "cl", classeNome: "10.ª", cargaHorariaSemanal: 2, obrigatoria: false }],
+      curriculum: [{ id: "matrix-c", curriculoId: "published-cl", curriculoVersao: 1,
+        cursoId: "c", cursoNome: "Geral", classeId: "cl", classeNome: "10.ª",
+        cargaHorariaSemanal: 2, obrigatoria: false, ativo: true }],
     });
     assert.equal(result.stats.cursos, 1);
     assert.equal(result.stats.turmas, 0);
@@ -86,7 +94,7 @@ describe("Disciplina contextual explorer", () => {
     assert.equal(result.curriculo.length, 1);
   });
 
-  it("does not create a teacher from a missing tenant-scoped professor row", () => {
+  it("preserves a missing teacher link without counting or navigating to an unverified identity", () => {
     const result = composeDisciplinaOverview({
       academicYear: year,
       turmas: [turma("a")],
@@ -96,6 +104,10 @@ describe("Disciplina contextual explorer", () => {
     });
     assert.equal(result.stats.turmas, 1);
     assert.equal(result.stats.professores, 0);
+    assert.equal(result.unresolvedTeacherLinks, 1);
+    assert.deepEqual(result.professores, []);
+    assert.equal(result.turmas[0]?.professores[0]?.id, "missing-teacher");
+    assert.match(result.turmas[0]?.professores[0]?.nome ?? "", /identidade indisponível/);
   });
 
   it("only accepts published timetable state", () => {
