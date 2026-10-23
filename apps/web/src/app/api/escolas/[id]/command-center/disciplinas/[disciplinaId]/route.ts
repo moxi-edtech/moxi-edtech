@@ -233,7 +233,7 @@ async function readExplorer(
       ))
       .map((row) => [row.id, row.nome] as const));
     const curriculo: DisciplinaCurriculumRow[] = relevantMatrix
-      .filter((row) => row.ativo !== false && (!row.classe_id || classes.has(row.classe_id)))
+      .filter((row) => !row.classe_id || classes.has(row.classe_id))
       .map((row) => ({
         cursoId: row.curso_id && courses.has(row.curso_id) ? row.curso_id : null,
         cursoNome: row.curso_id ? courses.get(row.curso_id) ?? null : null,
@@ -241,6 +241,7 @@ async function readExplorer(
         classeNome: row.classe_id ? classes.get(row.classe_id) ?? null : null,
         cargaHorariaSemanal: row.carga_horaria_semanal,
         obrigatoria: row.obrigatoria,
+        ativo: row.ativo,
       }));
     const overview = composeDisciplinaOverview({
       turmas, assignments: links, teachers, curriculum: curriculo, academicYear: year,
