@@ -210,8 +210,8 @@ export function CourseContextView({
             ))}
             {!visibleTurmas.length && (
               <p className="p-3 text-xs text-slate-500">
-                {selectedClasse?.turmas
-                  ? "As turmas desta classe não estão entre as 100 primeiras listadas."
+                {data.turmasLimitadas
+                  ? "A lista de turmas está limitada às primeiras 100; não é possível concluir ausência nesta seleção."
                   : "Sem turmas ativas nesta seleção."}
               </p>
             )}
