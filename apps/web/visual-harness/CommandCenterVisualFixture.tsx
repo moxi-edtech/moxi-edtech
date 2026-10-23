@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TurmaContextView } from "../src/components/secretaria/command-center/TurmaContextView";
 import type { ExplorerViewState } from "../src/lib/command-center/explorer-return-context";
@@ -29,6 +29,8 @@ export function installCommandCenterVisualMocks() {
     const raw = String(input);
     if (!raw.includes("/command-center/")) return oldFetch(input, init);
     const url = new URL(raw, location.origin);
+    const metrics = window as Window & { __ccSyntheticRequestCount?: number };
+    metrics.__ccSyntheticRequestCount = (metrics.__ccSyntheticRequestCount ?? 0) + 1;
     if (!url.pathname.includes(SCHOOL_ID)) return Promise.resolve(json({ ok: false, error: "Sem acesso." }, 403));
     if (url.pathname.includes("/student-capabilities")) return Promise.resolve(json({
       ok: true, actions: {
@@ -102,6 +104,16 @@ export default function CommandCenterVisualFixture() {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
   }));
+  useEffect(() => {
+    const bridge = window as Window & {
+      __ccQueryMetrics?: () => { queryCount: number; viewCount: number };
+    };
+    bridge.__ccQueryMetrics = () => ({
+      queryCount: queryClient.getQueryCache().getAll().length,
+      viewCount: 1,
+    });
+    return () => { delete bridge.__ccQueryMetrics; };
+  }, [queryClient]);
   const [selected, setSelected] = useState<{ id: string; label: string } | null>(null);
   const [view, setView] = useState<ExplorerViewState>({
     page: 1, scrollTop: 0, selectedStudentId: null, search: "", filter: "todos", sort: "nome_asc",
