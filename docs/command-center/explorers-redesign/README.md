@@ -3,7 +3,7 @@
 **Estado:** implementação inicial em branch isolada, sem merge na main e sem deploy.
 **Data de referência:** 23/10/2026. **Ámbito:** Curso, Classe, Turma, Professor e Disciplina.
 **Fonte de verdade:** código da main de origem (99cdcd20), contratos das rotas e estrutura corrente do Supabase; todos os números abaixo são fotografias agregadas, não invariantes.
-**Decisão posterior e prevalecente (23/10/2026):** [currículo por ano letivo e versão, sem segunda lista de matrizes inativas](./DECISAO-ESCOPO-CURRICULAR.md). A implementação corrente da PR #261 **ainda não reflete integralmente esta decisão**; manter draft.
+**Decisão posterior e prevalecente (23/10/2026):** [currículo por ano letivo e versão, sem segunda lista de matrizes inativas](./DECISAO-ESCOPO-CURRICULAR.md). A implementação EX-006 da Disciplina já segue a decisão na branch; CI e homologação autenticada continuam pendentes. Manter draft.
 **Principais ficheiros:** apps/web/src/components/secretaria/command-center/*ContextView.tsx, apps/web/src/lib/command-center/, apps/web/src/app/api/escolas/[id]/command-center/ e apps/web/src/hooks/.
 
 ## 1. Objetivo de produto
@@ -61,7 +61,7 @@ Não redesenhar tudo com cartões iguais. A estrutura base e semântica devem se
 5. **Linha de matriz inativa:** não confundir com uma versão histórica curricular. Preservar a prova e o acesso de auditoria; **não criar segunda lista de matrizes inativas na vista operacional**. Consultar currículo do ano/versão selecionados.
 6. **Não confirmado:** dados incompletos ou fontes não relacionadas; não traduzir automaticamente para ausência de relação.
 
-**Implementação inicial:** academic-relations.ts centraliza ano, reutilização de classe, fusão de estados de matriz e nomenclatura de evidência. Interfaces preservam vínculos históricos; o explorador de Turma passa a qualificar explicitamente matriz inativa. Nenhuma operação escreve no Supabase. **Por rever antes do merge:** a vista Disciplina e respetiva rota ainda separam currículo ativo/inativo sem resolver a versão de curso_curriculos; ver decisão vinculada.
+**Implementação inicial:** academic-relations.ts centraliza ano, reutilização de classe, fusão de estados de matriz e nomenclatura de evidência. Interfaces preservam vínculos históricos; o explorador de Turma passa a qualificar explicitamente matriz inativa. Nenhuma operação escreve no Supabase. **Alinhado na branch:** Disciplina usa currículo publicado por ano e versão; CI e homologação ainda pendentes.
 
 ## 4. Fotografia do Supabase (consultas apenas de leitura)
 
@@ -130,17 +130,17 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 - EX-002: ExplorerMetric reutilizado nos cinco exploradores, com valor acessível, parcial e desconhecido.
 - EX-003: indicadores de histórico, lista histórica paginada e procura operacional não disparada quando o ano está fechado (as ações abertas noutros módulos continuam sujeitas a revalidação).
 - EX-005 (parcial): no explorador Disciplina, turmas efetivas no ano confirmam classes reutilizadas. Curso exige ajuste próprio na RPC instalada, planeado para um incremento separado com migration e replay setorial.
-- EX-006 (parcial, **a rever**): atributo de atividade da matriz propagado até a visão de Turma sem eliminar vínculos históricos. **Nova decisão:** usar o currículo versionado do ano, sem segunda lista de matrizes inativas; a implementação atual ainda não está conforme.
+- EX-006 (parcial, **a rever**): atributo de atividade da matriz propagado até a visão de Turma sem eliminar vínculos históricos. **Nova decisão:** usar o currículo versionado do ano, sem segunda lista de matrizes inativas; o alinhamento da Disciplina foi codado; a homologação continua pendente.
 - Testes novos para invariantes; restantes EX-004/007–014 continuam trabalho futuro nesta mesma branch.
 
 A implementação deste primeiro incremento **não** constitui o redesign completo e **não** deve ser enviada à main ou à produção antes de testes de integração, smoke autenticado e revisão de produto.
 
 ### Incremento já codado: vínculos históricos e resultados parciais (23/10/2026)
 
-> **Nota de substituição de contrato (23/10/2026):** a opção de expor `curriculoHistorico` numa segunda secção era uma etapa provisória e **não é a direção aprovada**. O [documento de decisão](./DECISAO-ESCOPO-CURRICULAR.md) prevalece. Manter este registo apenas como histórico técnico do código ainda existente na PR #261; retirar a apresentação duplicada na implementação posterior, sem apagar vínculos.
+> **Nota de substituição de contrato (23/10/2026):** a opção de expor `curriculoHistorico` numa segunda secção era uma etapa provisória e **não é a direção aprovada**. O [documento de decisão](./DECISAO-ESCOPO-CURRICULAR.md) prevalece. Este registo descreve uma etapa provisória já substituída no código da PR #261, sem apagar vínculos.
 
 - **Estado do vínculo e estado da matriz são independentes.** A evidência de atribuição à turma, professor e horário publicado prevalece na classificação operacional; uma matriz atualmente inativa fica sinalizada separadamente. Num ano CLOSED, **não inferir** que estivesse inativa nesse ano.
-- **Disciplina — implementação provisória, a substituir:** hoje a rota devolve `curriculo` e `curriculoHistorico` com base em `curso_matriz.ativo`; isso **não representa corretamente o currículo histórico por ano/versão**. O explorador deve passar a resolver `curso_curriculos` e exibir uma única matriz do contexto selecionado. Nenhum dado deve ser apagado.
+- **Disciplina — implementação provisória substituída:** a rota resolve agora `curso_curriculos` por escola/ano/versão publicada, com uma única coleção curricular e sem segunda lista de inativas. Nenhum dado foi apagado.
 - **Turma:** exibe o vínculo preservado e o aviso de matriz inativa em campos separados, mesmo que haja professor atribuído.
 - **Resultados limitados:** indicadores são limites inferiores, nunca totais exatos; Curso/Classe/Turma/Professor/Disciplina não anunciam ausência comprovada quando faltam registos por truncagem. “Professor não encontrado nos vínculos consultados” não equivale a “sem professor”.
 - **Testes de regressão:** cobrem prioridade de evidência, estado de matriz em ano CLOSED, coexistência de linhas ativas/inativas, totais apenas de matrizes ativas, zero parcial e mensagens de ausência. É necessária validação de CI e homologação autenticada antes da integração.
@@ -169,3 +169,7 @@ A implementação deste primeiro incremento **não** constitui o redesign comple
 - Contexto/modal: docs/command-center-contextual-modal.md
 - Decisão de produto obrigatória: docs/command-center/explorers-redesign/DECISAO-ESCOPO-CURRICULAR.md
 - Estado de release: docs/command-center/estado-atual-20261023.md (na PR documental #260; integrar com cuidado)
+
+### Alinhamento EX-006 — versão publicada do ano (23/10/2026)
+
+A rota, compositor, contrato TypeScript, vista e testes da Disciplina foram alinhados diretamente na PR #261. O currículo é resolvido por ano UUID, escola e versão publicada. As linhas atualmente inativas pertencentes à versão publicada são qualificadas **inline**, não numa segunda lista. Versões concorrentes publicadas geram 409. Os vínculos históricos não foram reescritos. CI completa, integração autenticada e revisão das 486 ligações entre anos continuam pendentes.
