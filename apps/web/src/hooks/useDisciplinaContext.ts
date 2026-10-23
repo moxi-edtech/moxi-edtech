@@ -20,7 +20,7 @@ export type DisciplinaOverview = {
     id: string; nome: string; turno: string | null;
     classeNome: string | null; cursoNome: string | null;
     classeId: string | null; cursoId: string | null;
-    vinculoTurma: boolean; horarioPublicado: boolean; docenteVinculado: boolean;
+    vinculoTurma: boolean; horarioPublicado: boolean; docenteVinculado: boolean; docenteEmHorario: boolean;
     professores: Array<{ id: string; nome: string }>;
   }>;
   /** Published curriculum of the selected academic year. */
