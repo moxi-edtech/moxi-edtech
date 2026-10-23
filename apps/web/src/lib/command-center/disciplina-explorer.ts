@@ -85,6 +85,8 @@ export function composeDisciplinaOverview(input: {
   const unresolvedTeacherIds = new Set<string>();
   const assignmentsByTurma = new Map<string, Set<string>>();
   const evidenceByTurma = new Map<string, Set<NonNullable<DisciplinaAssignment["origem"]>>>();
+  const formallyAssignedTeachers = new Map<string, Set<string>>();
+  const timetableTeachers = new Map<string, Set<string>>();
 
   for (const row of input.assignments) {
     if (!availableTurmas.has(row.turmaId)) continue;
@@ -93,6 +95,9 @@ export function composeDisciplinaOverview(input: {
     evidenceByTurma.get(row.turmaId)!.add(row.origem ?? "turma_disciplinas");
     if (row.professorId) {
       assignmentsByTurma.get(row.turmaId)!.add(row.professorId);
+      const bucket = row.origem === "horario_publicado" ? timetableTeachers : formallyAssignedTeachers;
+      if (!bucket.has(row.turmaId)) bucket.set(row.turmaId, new Set());
+      bucket.get(row.turmaId)!.add(row.professorId);
       if (teacherMap.get(row.professorId)?.identityAvailable === false ||
           !teacherMap.has(row.professorId)) unresolvedTeacherIds.add(row.professorId);
     }
@@ -111,7 +116,9 @@ export function composeDisciplinaOverview(input: {
       vinculoTurma: evidenceByTurma.get(turmaId)!.has("turma_disciplinas") ||
         evidenceByTurma.get(turmaId)!.has("docente_legado"),
       horarioPublicado: evidenceByTurma.get(turmaId)!.has("horario_publicado"),
-      docenteVinculado: ids.size > 0,
+      // A scheduled teacher alone is not a formal allocation.
+      docenteVinculado: (formallyAssignedTeachers.get(turmaId)?.size ?? 0) > 0,
+      docenteEmHorario: (timetableTeachers.get(turmaId)?.size ?? 0) > 0,
       professores: [...ids].map((id) => teacherMap.get(id) ?? {
         id, nome: "Professor com vínculo registado · identidade indisponível", identityAvailable: false,
       })
