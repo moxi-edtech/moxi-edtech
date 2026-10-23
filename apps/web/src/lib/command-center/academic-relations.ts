@@ -48,12 +48,32 @@ export type AcademicLinkState =
 
 /** Descriptive, never a substitute for status or a promise that a lesson took place. */
 export function academicLinkState(evidence: AcademicLinkEvidence): AcademicLinkState {
-  if (evidence.curriculumActive === false) return "inactive-matrix";
+  // Operational evidence and the current curriculum state are independent.
+  // Never hide a proven historical assignment behind an inactive matrix row.
   if (evidence.schedulePublished) return "published";
   if (evidence.teacherAssigned) return "teacher-assigned";
   if (evidence.assignedToTurma) return "turma-assigned";
+  if (evidence.curriculumActive === false) return "inactive-matrix";
   if (evidence.curriculumActive === true) return "curriculum-only";
   return "unconfirmed";
+}
+
+/**
+ * Current matrix activity must not be represented as the matrix's state in
+ * a closed academic year. Keep it separate from the proven link status.
+ */
+export function academicCurriculumNotice(evidence: AcademicLinkEvidence): string | null {
+  if (evidence.curriculumActive !== false) return null;
+  return evidence.historicalYear
+    ? "Matriz atualmente inativa · vínculo histórico preservado"
+    : "Matriz inativa · verificar vínculo no ano selecionado";
+}
+
+/** Absence cannot be proved from a truncated set of associations. */
+export function missingTeacherEvidenceLabel(partial: boolean): string {
+  return partial
+    ? "Professor não identificado nos vínculos consultados (lista parcial)"
+    : "Professor não vinculado";
 }
 
 export const ACADEMIC_LINK_LABELS: Readonly<Record<AcademicLinkState, string>> = {
