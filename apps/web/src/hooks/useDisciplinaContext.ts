@@ -19,6 +19,8 @@ export type DisciplinaOverview = {
   turmas: Array<{
     id: string; nome: string; turno: string | null;
     classeNome: string | null; cursoNome: string | null;
+    classeId: string | null; cursoId: string | null;
+    vinculoTurma: boolean; horarioPublicado: boolean; docenteVinculado: boolean;
     professores: Array<{ id: string; nome: string }>;
   }>;
   /** Published curriculum of the selected academic year. */
@@ -28,6 +30,11 @@ export type DisciplinaOverview = {
     classeId: string | null; classeNome: string | null;
     cargaHorariaSemanal: number | null; obrigatoria: boolean | null;
     ativo: boolean | null;
+  }>;
+  cobertura: Array<{
+    curriculoId: string; matrizId: string;
+    cursoId: string | null; classeId: string | null;
+    turmasComVinculo: number; turmasComDocente: number; turmasComHorario: number;
   }>;
   limitado: boolean;
 };
