@@ -50,13 +50,15 @@ export function CourseContextView({
   const [selection, setSelection] = useState(() => ({
     contextKey, classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null,
   }));
-  const { classeId, turmaId } = resolveCourseExplorerSelection({
+  const scoped = resolveCourseExplorerSelection({
     contextKey,
     selection,
     fallback: { classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null },
     classes: data?.classes,
-    turmas: data?.turmas,
+    // The summary is deliberately capped at 100. Never invalidate a turma
+    // selected on another server-side page by comparing to that old window.
   });
+  const classeId = scoped.classeId;
 
   function selectClasse(id: string | null) {
     setPage(1);
@@ -74,6 +76,12 @@ export function CourseContextView({
   // The paginated RPC owns the window and total. The legacy overview's first
   // 100 entries must never be misrepresented as an exhaustive list.
   const visibleTurmas = window.data?.items ?? [];
+  const { turmaId } = resolveCourseExplorerSelection({
+    contextKey, selection,
+    fallback: { classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null },
+    classes: data?.classes,
+    turmas: window.data?.items,
+  });
   const selectedTurma = visibleTurmas.find((turma) => turma.id === turmaId);
   const lastPage = Math.max(1, Math.ceil((window.data?.total ?? 0) / 25));
   const selectedClasse = data?.classes.find((classe) => classe.id === classeId);
