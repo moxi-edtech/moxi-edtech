@@ -83,24 +83,24 @@ function KpiCard({
   tone?: "slate" | "emerald" | "amber" | "violet";
 }) {
   const tones: Record<string, { iconWrap: string; iconColor: string }> = {
-    slate: { iconWrap: "bg-muted", iconColor: "text-foreground" },
-    emerald: { iconWrap: "bg-emerald-500/10", iconColor: "text-emerald-700" },
-    amber: { iconWrap: "bg-amber-500/10", iconColor: "text-amber-700" },
-    violet: { iconWrap: "bg-violet-500/10", iconColor: "text-violet-700 dark:text-violet-300" },
+    slate: { iconWrap: "bg-slate-100", iconColor: "text-slate-700" },
+    emerald: { iconWrap: "bg-emerald-100/50", iconColor: "text-emerald-700" },
+    amber: { iconWrap: "bg-amber-100/50", iconColor: "text-amber-700" },
+    violet: { iconWrap: "bg-violet-100/50", iconColor: "text-violet-700" },
   };
 
   const t = tones[tone] ?? tones.slate;
 
   return (
-    <div className="rounded-xl bg-card p-5 ring-1 ring-border shadow-sm transition hover:shadow-md">
+    <div className="rounded-xl bg-white p-5 ring-1 ring-slate-200 shadow-sm transition hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 truncate">
             {title}
           </p>
-          <p className="mt-1 text-2xl font-black text-foreground">{value}</p>
+          <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
         </div>
-        <div className={cn("rounded-xl p-3 ring-1 ring-border", t.iconWrap)}>
+        <div className={cn("rounded-xl p-3 ring-1 ring-slate-200", t.iconWrap)}>
           <Icon className={cn("h-5 w-5", t.iconColor)} />
         </div>
       </div>
@@ -110,14 +110,14 @@ function KpiCard({
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    ativa: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/20",
-    pendente: "bg-amber-500/10 text-amber-800 dark:text-amber-300 ring-1 ring-amber-500/20",
-    cancelada: "bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/20",
-    transferida: "bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/20",
+    ativa: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
+    pendente: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70",
+    cancelada: "bg-red-50 text-red-700 ring-1 ring-red-200/70",
+    transferida: "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70",
   };
 
   const key = (status || "").toLowerCase();
-  const style = styles[key] ?? "bg-muted text-foreground ring-1 ring-border";
+  const style = styles[key] ?? "bg-slate-50 text-slate-700 ring-1 ring-slate-200/70";
 
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold capitalize", style)}>
@@ -139,10 +139,10 @@ function ToolbarButton({
     <a
       href={href}
       target="_blank"
-      className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-bold text-foreground ring-1 ring-border hover:bg-muted"
+      className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
       rel="noreferrer"
     >
-      <Download className="h-4 w-4 text-muted-foreground" />
+      <Download className="h-4 w-4 text-slate-500" />
       {label}
     </a>
   );
@@ -167,6 +167,7 @@ export default function MatriculasListClient() {
     ? `/escola/${resolvedSlug}${portalBase}/admissoes/nova`
     : "#";
 
+  // Filtros URL
   const turmaIdFromQuery = searchParams?.get("turma_id");
   const statusFromQuery = searchParams?.get("status");
   const statusInFromQuery = searchParams?.get("status_in");
@@ -176,6 +177,7 @@ export default function MatriculasListClient() {
     return [] as string[];
   }, [statusFromQuery, statusInFromQuery]);
 
+  // Estados Locais
   const [q, setQ] = useState("");
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [selectedAno, setSelectedAno] = useState<number | null>(null);
@@ -188,6 +190,7 @@ export default function MatriculasListClient() {
   const activeRequestRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Estados dos Filtros em Cascata
   const [selectedEnsino, setSelectedEnsino] = useState<string>("");
   const [cursos, setCursos] = useState<CursoItem[]>([]);
   const [selectedCurso, setSelectedCurso] = useState<string>("");
@@ -197,6 +200,7 @@ export default function MatriculasListClient() {
   const [selectedTurma, setSelectedTurma] = useState<string>("");
   const [showPendentes, setShowPendentes] = useState<boolean>(false);
 
+  // Modais
   const [showStatusForm, setShowStatusForm] = useState(false);
   const [showTransferForm, setShowTransferForm] = useState(false);
   const [selectedMatricula, setSelectedMatricula] = useState<Item | null>(null);
@@ -222,6 +226,7 @@ export default function MatriculasListClient() {
 
   const anoLetivoAtivo = useMemo(() => selectedAno ?? new Date().getFullYear(), [selectedAno]);
 
+  // --- LÓGICA (INTACTA) ---
   const fetchSessions = useCallback(async () => {
     try {
       const res = await fetch("/api/secretaria/school-sessions");
@@ -434,20 +439,25 @@ export default function MatriculasListClient() {
     setShowTransferForm(true);
   };
 
+  // NOTE: Full original UI from main restored.
+  // Cascading filters, virtualized table, modals — unchanged from main.
+  // Theme migration deferred for this large file to avoid UI simplification.
+
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-8 pb-20">
+      {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <button
             onClick={() => router.back()}
-            className="mb-2 inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"
+            className="mb-2 inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-700"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar
           </button>
 
-          <h1 className="text-2xl font-black text-foreground tracking-tight">Gestão de Matrículas</h1>
-          <p className="text-sm font-medium text-muted-foreground">Administre o estado e turmas dos alunos.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Gestão de Matrículas</h1>
+          <p className="text-sm font-medium text-slate-500">Administre o estado e turmas dos alunos.</p>
         </div>
 
         <Link
@@ -455,7 +465,7 @@ export default function MatriculasListClient() {
           aria-disabled={!resolvedSlug}
           className={cn(
             "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold",
-            resolvedSlug ? "bg-amber text-white hover:brightness-95" : "bg-muted-foreground/30 text-white pointer-events-none cursor-not-allowed",
+            resolvedSlug ? "bg-amber text-white hover:brightness-95" : "bg-slate-300 text-white pointer-events-none cursor-not-allowed",
             "focus:outline-none focus:ring-4 focus:ring-amber/20"
           )}
         >
@@ -464,6 +474,7 @@ export default function MatriculasListClient() {
         </Link>
       </div>
 
+      {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total Matrículas" value={total} icon={Users} tone="slate" />
         <KpiCard title="Matrículas Ativas" value={statusCounts["ativa"] || 0} icon={UserCheck} tone="emerald" />
@@ -471,18 +482,20 @@ export default function MatriculasListClient() {
         <KpiCard title="Turmas Envolvidas" value={turmasUnicas.size} icon={BookOpen} tone="violet" />
       </div>
 
-      <div className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border">
-        <div className="flex flex-col gap-4 border-b border-border bg-muted/50 p-5 xl:flex-row xl:items-center xl:justify-between">
+      {/* Card Principal */}
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        {/* Toolbar */}
+        <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/50 p-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Buscar por nome, BI..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className={cn(
-                  "w-full rounded-xl border border-border bg-card py-2 pl-10 pr-4 text-sm outline-none text-foreground",
+                  "w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm outline-none",
                   "focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 )}
               />
@@ -496,7 +509,7 @@ export default function MatriculasListClient() {
                 setSelectedTurma("");
               }}
               className={cn(
-                "w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none sm:w-auto text-foreground",
+                "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
                 "focus:ring-4 focus:ring-amber/20 focus:border-amber"
               )}
             >
@@ -524,88 +537,197 @@ export default function MatriculasListClient() {
           </div>
         </div>
 
-        <div className="p-5 text-sm text-muted-foreground">
-          {loading ? "A carregar matrículas…" : `${total} matrícula(s) encontrada(s).`}
+        {/* Cascading Filters — original structure preserved */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/30 p-4">
+          <select
+            value={selectedEnsino}
+            onChange={(e) => {
+              setSelectedEnsino(e.target.value);
+              setSelectedCurso("");
+              setSelectedClasse("");
+              setSelectedTurma("");
+            }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+          >
+            <option value="">Todos os ensinos</option>
+            <option value="primario">Primário</option>
+            <option value="secundario">Secundário</option>
+            <option value="medio">Médio</option>
+          </select>
+
+          <select
+            value={selectedCurso}
+            onChange={(e) => {
+              setSelectedCurso(e.target.value);
+              setSelectedClasse("");
+              setSelectedTurma("");
+            }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+          >
+            <option value="">Todos os cursos</option>
+            {cursos.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome || c.id}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedClasse}
+            onChange={(e) => {
+              setSelectedClasse(e.target.value);
+              setSelectedTurma("");
+            }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+          >
+            <option value="">Todas as classes</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome || c.id}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedTurma}
+            onChange={(e) => setSelectedTurma(e.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+          >
+            <option value="">Todas as turmas</option>
+            {turmas.map((t) => (
+              <option key={t.id} value={t.id}>{t.nome || t.turma_codigo || t.id}</option>
+            ))}
+          </select>
+
+          <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={showPendentes}
+              onChange={(e) => setShowPendentes(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Só sem turma
+          </label>
+
+          {statusFilters.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {statusFilters.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => handleRemoveStatus(s)}
+                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700"
+                >
+                  {s} ×
+                </button>
+              ))}
+              <button type="button" onClick={handleClearStatuses} className="text-xs font-bold text-slate-500 hover:text-slate-800">
+                limpar
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
-          <table className="min-w-full table-fixed divide-y divide-border text-sm">
-            <thead className="bg-muted sticky top-0 z-10">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Aluno</th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Turma</th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-muted-foreground">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-card">
-              {isInitialLoading ? (
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
+            <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50 sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                    <Skeleton className="mx-auto h-4 w-40" />
-                  </td>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Aluno</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Turma</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-slate-500">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">Ações</th>
                 </tr>
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                    Nenhuma matrícula encontrada.
-                  </td>
-                </tr>
-              ) : (
-                items.map((item) => (
-                  <tr key={item.id} className="hover:bg-muted/50">
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-foreground">{item.aluno_nome || "—"}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{item.numero_matricula || item.id.slice(0, 8)}</div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {formatTurmaDisplayName({
-                        nome: item.turma_nome,
-                        sala: item.sala,
-                        turno: item.turno,
-                        classe_nome: item.classe_nome,
-                      }) || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <StatusBadge status={item.status} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="inline-flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenStatusForm(item)}
-                          className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          title="Alterar status"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenTransferForm(item)}
-                          className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          title="Transferir"
-                        >
-                          <ArrowUpDown className="h-4 w-4" />
-                        </button>
-                      </div>
+              </thead>
+              <tbody
+                className="divide-y divide-slate-100 bg-white"
+                style={
+                  hasRows
+                    ? { position: "relative", display: "block", height: rowVirtualizer.getTotalSize() }
+                    : undefined
+                }
+              >
+                {isInitialLoading ? (
+                  <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                    <td colSpan={4} className="p-8 text-center text-slate-500">
+                      <Skeleton className="mx-auto h-4 w-40" />
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : items.length === 0 ? (
+                  <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                    <td colSpan={4} className="p-8 text-center text-slate-500">
+                      Nenhuma matrícula encontrada.
+                    </td>
+                  </tr>
+                ) : (
+                  rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const item = items[virtualRow.index];
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50 transition-colors"
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          transform: `translateY(${virtualRow.start}px)`,
+                          width: "100%",
+                          display: "table",
+                          tableLayout: "fixed",
+                        }}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-900">{item.aluno_nome || "—"}</div>
+                          <div className="text-xs text-slate-500 font-mono">{item.numero_matricula || item.id.slice(0, 8)}</div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {formatTurmaDisplayName({
+                            nome: item.turma_nome,
+                            sala: item.sala,
+                            turno: item.turno,
+                            classe_nome: item.classe_nome,
+                          }) || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <StatusBadge status={item.status} />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenStatusForm(item)}
+                              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                              title="Alterar status"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenTransferForm(item)}
+                              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                              title="Transferir"
+                            >
+                              <ArrowUpDown className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-border bg-muted px-5 py-3 text-sm text-muted-foreground">
+        {/* Pagination */}
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3 text-sm text-slate-600">
           <span>
-            Página {page} de {totalPages}
+            Página {page} de {totalPages} · {total} total
           </span>
           <div className="flex gap-2">
             <button
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-bold disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold disabled:opacity-50"
             >
               Anterior
             </button>
@@ -613,7 +735,7 @@ export default function MatriculasListClient() {
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-bold disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold disabled:opacity-50"
             >
               Próxima
             </button>
@@ -622,8 +744,8 @@ export default function MatriculasListClient() {
       </div>
 
       {showStatusForm && selectedMatricula ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-card p-4 shadow-xl ring-1 ring-border">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200">
             <StatusForm
               matriculaId={selectedMatricula.id}
               currentStatus={selectedMatricula.status}
@@ -642,8 +764,8 @@ export default function MatriculasListClient() {
       ) : null}
 
       {showTransferForm && selectedMatricula ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-card p-4 shadow-xl ring-1 ring-border">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200">
             <TransferForm
               matriculaId={selectedMatricula.id}
               alunoNome={selectedMatricula.aluno_nome || ""}
