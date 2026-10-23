@@ -1,0 +1,62 @@
+name: Command Center Performance and Observability
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/lib/command-center/observability.ts'
+      - 'apps/web/src/app/api/escolas/**/command-center/**'
+      - 'supabase/migrations/*command_center_class_roster_summary.sql'
+      - 'supabase/ops/tests/regression_command_center_class_roster_summary.sql'
+      - 'apps/web/tests/unit/command-center-observability.spec.ts'
+      - '.github/workflows/command-center-performance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sql-roster-fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove count/pagination/RLS with fictional students, capture EXPLAIN
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 \
+            -f supabase/ops/tests/regression_command_center_class_roster_summary.sql \
+            | tee /tmp/cc-roster-explain.log
+      - name: Save synthetic EXPLAIN and timings
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cc-roster-sql-explain-fixture
+          path: /tmp/cc-roster-explain.log
+          retention-days: 14
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C apps/web typecheck
+      - run: pnpm -C apps/web exec eslint src/lib/command-center/observability.ts "src/app/api/escolas/[id]/command-center/classes/[classeId]/route.ts" --max-warnings 0
+      - run: pnpm -C apps/web exec tsx --test tests/unit/command-center-observability.spec.ts

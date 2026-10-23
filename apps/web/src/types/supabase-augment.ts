@@ -885,6 +885,95 @@ export type DBWithRPC = Omit<Database, "public"> & {
       };
     };
     Functions: Database["public"]["Functions"] & {
+      command_center_class_roster_summary: {
+        Args: {
+          p_escola_id: string;
+          p_classe_id: string;
+          p_ano_letivo_id: string;
+          p_ano_letivo: number;
+          p_historico?: boolean;
+          p_page?: number;
+          p_page_size?: number;
+        };
+        Returns: Json;
+      };
+      command_center_roster_operational_v1: {
+        Args: {
+          p_escola_id: string;
+          p_ano_letivo: number;
+          p_turma_id?: string | null;
+          p_classe_id?: string | null;
+          p_query?: string | null;
+          p_cursor_name?: string | null;
+          p_cursor_id?: string | null;
+          p_cursor_priority?: number | null;
+          p_limit?: number;
+          p_polo_id?: string | null;
+          p_sort?: "nome_asc" | "nome_desc" | "pendencias_primeiro";
+          p_filter?: "todos" | "documentos_sinalizados" | "propinas_vencidas" | "ambos";
+        };
+        Returns: Array<{
+          aluno_id: string | null;
+          nome: string | null;
+          numero_processo: string | null;
+          turma_id: string | null;
+          turma_nome: string | null;
+          numero_chamada: number | null;
+          total_filtrado: number;
+          cursor_name: string | null;
+          documentos_sinalizados: boolean;
+          propinas_vencidas: boolean;
+          pendencias_count: number;
+          rate_limited: boolean;
+        }>;
+      };
+      command_center_roster_keyset_v2: {
+        Args: {
+          p_escola_id: string;
+          p_ano_letivo: number;
+          p_turma_id?: string | null;
+          p_classe_id?: string | null;
+          p_query?: string | null;
+          p_cursor_name?: string | null;
+          p_cursor_id?: string | null;
+          p_limit?: number;
+          p_polo_id?: string | null;
+          p_sort?: "nome_asc" | "nome_desc";
+        };
+        Returns: Array<{
+          aluno_id: string;
+          nome: string;
+          numero_processo: string | null;
+          turma_id: string;
+          turma_nome: string;
+          numero_chamada: number | null;
+          total_filtrado: number;
+          cursor_name: string;
+        }>;
+      };
+      command_center_roster_keyset: {
+        Args: {
+          p_escola_id: string;
+          p_ano_letivo: number;
+          p_turma_id?: string | null;
+          p_classe_id?: string | null;
+          p_query?: string | null;
+          p_cursor_name?: string | null;
+          p_cursor_id?: string | null;
+          p_limit?: number;
+          p_polo_id?: string | null;
+        };
+        Returns: Array<{
+          aluno_id: string;
+          nome: string;
+          numero_processo: string | null;
+          turma_id: string;
+          turma_nome: string;
+          numero_chamada: number | null;
+          total_filtrado: number;
+          cursor_name: string;
+        }>;
+      };
       claim_ai_usage_slot: {
         Args: {
           p_school_id: string;

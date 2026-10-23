@@ -1,0 +1,72 @@
+name: Command Center P1 Operational Filters
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/app/api/escolas/**/command-center/roster/**'
+      - 'apps/web/src/components/secretaria/command-center/**'
+      - 'apps/web/src/hooks/useExplorerRoster.ts'
+      - 'apps/web/src/lib/command-center/roster-rate-limit.ts'
+      - 'apps/web/tests/unit/command-center-p1-polish.spec.ts'
+      - 'supabase/migrations/*command_center_roster_sort_v2.sql'
+      - 'supabase/ops/tests/regression_command_center_roster_sort_v2.sql'
+      - '.github/workflows/command-center-p1-operational.yml'
+permissions:
+  contents: read
+jobs:
+  sql-sort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check both sorting orders and RLS on 55 fictional students
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 \
+            -f supabase/ops/tests/regression_command_center_roster_sort_v2.sql \
+            | tee /tmp/cc-p1-sort-explain.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: command-center-p1-keyset-explain
+          path: /tmp/cc-p1-sort-explain.log
+          retention-days: 14
+  web-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C apps/web typecheck
+      - name: Focused lint
+        run: |
+          pnpm -C apps/web exec eslint \
+            src/hooks/useExplorerRoster.ts \
+            src/lib/command-center/roster-rate-limit.ts \
+            src/components/CommandPalette.tsx \
+            src/components/secretaria/command-center/ExplorerRosterControls.tsx \
+            src/components/secretaria/command-center/TurmaContextView.tsx \
+            src/components/secretaria/command-center/ClasseContextView.tsx \
+            "src/app/api/escolas/[id]/command-center/roster/route.ts" \
+            tests/unit/command-center-p1-polish.spec.ts --max-warnings 0
+      - run: pnpm -C apps/web exec tsx --test tests/unit/command-center-p1-polish.spec.ts

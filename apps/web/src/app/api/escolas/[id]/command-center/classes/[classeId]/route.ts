@@ -1,13 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { withExplorerObservability } from "@/lib/command-center/observability";
 
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
+import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import {
-  classeEnrollmentStatuses, composeClasseOverview, isClasseTurmaInYear, isClasseAvailableInYear,
-  type ClasseAssignment, type ClasseEnrollment, type ClasseTurma,
+  composeClasseOverview, isClasseTurmaInYear, isClasseAvailableInYear,
+  type ClasseAssignment, type ClasseTurma,
 } from "@/lib/command-center/classe-explorer";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +20,19 @@ const requestSchema = z.object({
   academicYearId: z.string().uuid().nullable(),
   page: z.coerce.number().int().min(1).max(10000),
 });
+const classRosterSchema = z.object({
+  total: z.number().int().nonnegative(),
+  counts: z.record(z.string(), z.number().int().nonnegative()),
+  items: z.array(z.object({
+    id: z.string().uuid(),
+    nome: z.string(),
+    turmaId: z.string().uuid(),
+    turmaNome: z.string(),
+    numeroChamada: z.number().int().nullable(),
+  })),
+});
+const CLASS_ROSTER_PAGE_SIZE = 20;
 const MAX_TURMAS = 200;
-const MAX_ENROLLMENTS = 3000;
-const ROSTER_BATCH = 500;
 const MAX_MATRIZ = 300;
 const MAX_ALLOCS = 500;
 const MAX_SCHEDULE_ROWS = 900;
@@ -36,10 +48,6 @@ type TurmaRow = {
   id: string; nome: string; turno: string | null; sala: string | null;
   capacidade_maxima: number | null; curso_id: string | null;
   ano_letivo: number | null; ano_letivo_id: string | null;
-};
-type EnrollmentRow = {
-  id: string; aluno_id: string; turma_id: string; numero_chamada: number | null;
-  alunos: Joined<{ id: string; nome: string | null; nome_completo: string | null }>;
 };
 type MatrizRow = {
   id: string; disciplina_id: string | null;
@@ -69,7 +77,7 @@ function noStore(body: unknown, status = 200) {
  * year: that is a valid empty state. Never use the client-supplied class name
  * or global search result as proof of authorization.
  */
-export async function GET(
+async function readExplorer(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; classeId: string }> },
 ) {
@@ -97,6 +105,8 @@ export async function GET(
         "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
     });
     if (permission.error) return permission.error;
+    const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
+    if (schoolScopeError) return schoolScopeError;
 
     const year = await resolveAcademicYearScope(supabase, {
       escolaId, requestedAcademicYearId: parsed.data.academicYearId, operation: "READ",
@@ -134,45 +144,20 @@ export async function GET(
     }
     const turmaIds = turmas.map((turma) => turma.id);
 
-    const enrollmentPolicy = classeEnrollmentStatuses(year.status === "CLOSED");
-    const enrollmentRows: EnrollmentRow[] = [];
-    // Fetch minimal identity fields only, in bounded windows, so the class
-    // count can deduplicate aluno_id across turmas before paging the UI.
-    if (turmaIds.length) {
-      for (let offset = 0; offset < MAX_ENROLLMENTS; offset += ROSTER_BATCH) {
-        let q = supabase.from("matriculas")
-          .select("id,aluno_id,turma_id,numero_chamada,alunos!inner(id,nome,nome_completo,deleted_at,escola_id)", { count: "exact" })
-          .eq("escola_id", escolaId)
-          .eq("session_id", year.id)
-          .eq("ano_letivo", year.ano)
-          .eq("alunos.escola_id", escolaId)
-          .is("alunos.deleted_at", null)
-          .in("turma_id", turmaIds)
-          .in("status", [...enrollmentPolicy.statuses])
-          .order("id", { ascending: true })
-          .range(offset, offset + ROSTER_BATCH - 1);
-        if (enrollmentPolicy.requireActive) q = q.eq("ativo", true);
-        const { data, count, error } = await q;
-        if (error) throw error;
-        enrollmentRows.push(...((data ?? []) as unknown as EnrollmentRow[]));
-        const total = count ?? 0;
-        if (total > MAX_ENROLLMENTS) limitado = true;
-        if (enrollmentRows.length >= total || (data ?? []).length < ROSTER_BATCH) {
-          if (enrollmentRows.length < total) limitado = true;
-          break;
-        }
-      }
-    }
-
-    const mappedEnrollment: ClasseEnrollment[] = enrollmentRows.flatMap((row) => {
-      const aluno = first(row.alunos);
-      if (!aluno || !row.aluno_id || aluno.id !== row.aluno_id) return [];
-      return [{
-        id: row.id, turmaId: row.turma_id, alunoId: row.aluno_id,
-        nome: aluno.nome_completo || aluno.nome || "Aluno",
-        numeroChamada: row.numero_chamada,
-      }];
-    });
+    // One SECURITY INVOKER aggregation replaces up to six 500-row PostgREST
+    // requests. The function applies the same year, school and status policy.
+    const { data: rosterJson, error: rosterError } = await supabase.rpc(
+      "command_center_class_roster_summary", {
+        p_escola_id: escolaId, p_classe_id: classe.id,
+        p_ano_letivo_id: year.id, p_ano_letivo: year.ano,
+        p_historico: year.status === "CLOSED",
+        p_page: parsed.data.page, p_page_size: CLASS_ROSTER_PAGE_SIZE,
+      },
+    );
+    if (rosterError) throw rosterError;
+    const parsedRoster = classRosterSchema.safeParse(rosterJson);
+    if (!parsedRoster.success) throw new Error("Invalid class roster summary shape");
+    const roster = parsedRoster.data;
 
     const matrixReply = await supabase.from("curso_matriz")
       .select("id,disciplina_id,carga_horaria_semanal,obrigatoria,ativo")
@@ -270,7 +255,7 @@ export async function GET(
     });
 
     const overview = composeClasseOverview({
-      year, turmas, enrollments: mappedEnrollment,
+      year, turmas, enrollments: [],
       curriculum: matrix.map((row) => ({
         id: row.id, disciplinaId: row.disciplina_id!,
         cargaHorariaSemanal: row.carga_horaria_semanal, obrigatoria: row.obrigatoria,
@@ -280,6 +265,16 @@ export async function GET(
       teachers,
       page: parsed.data.page,
     });
+    const completeOverview = {
+      ...overview,
+      stats: { ...overview.stats, alunos: roster.total },
+      turmas: overview.turmas.map((turma) => ({ ...turma, alunos: roster.counts[turma.id] ?? 0 })),
+      alunos: {
+        items: roster.items, total: roster.total, page: parsed.data.page,
+        pageSize: CLASS_ROSTER_PAGE_SIZE,
+        hasMore: parsed.data.page * CLASS_ROSTER_PAGE_SIZE < roster.total,
+      },
+    };
     return noStore({
       ok: true,
       data: {
@@ -289,7 +284,7 @@ export async function GET(
           curso: first(classe.cursos),
         },
         anoLetivo: { id: year.id, ano: year.ano, historico: year.status === "CLOSED" },
-        ...overview,
+        ...completeOverview,
         limitado,
       },
     });
@@ -297,7 +292,14 @@ export async function GET(
     if (error instanceof AcademicYearContextError) return noStore(
       { ok: false, error: error.message }, error.status,
     );
-    console.error("[command-center/classe] read failed", error instanceof Error ? error.message : "unexpected");
     return noStore({ ok: false, error: "Não foi possível carregar esta classe." }, 500);
   }
+}
+
+/** Stable envelope and PII-free correlation across success, 4xx and 5xx. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string; classeId: string }> },
+) {
+  return withExplorerObservability("classe", () => readExplorer(req, context));
 }
