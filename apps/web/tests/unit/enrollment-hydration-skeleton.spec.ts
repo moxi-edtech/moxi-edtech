@@ -31,6 +31,8 @@ test("workspace enrollment ignores selected student, initial candidature and URL
   }), null);
   assert.match(panel, /<AdmissaoWizardClient[\s\S]*?newCandidateOnly/);
   assert.match(workspace, /alunoId=\{panelAction === "enrollment" \? null : selectedStudent\.id\}/);
+  assert.match(workspace, /const studentInContextId = activeAction === "enrollment" \? null : selectedStudent\.id;/);
+  assert.match(workspace, /if \(activeAction === "enrollment" \|\| submittingRef\.current\) return;/);
   assert.match(wizard, /newCandidateOnly \? undefined : draftScope/g);
 });
 
