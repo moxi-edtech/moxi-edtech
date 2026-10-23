@@ -4,6 +4,7 @@ import { withExplorerObservability } from "@/lib/command-center/observability";
 
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
+import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import { normalizeDisciplinaSearch } from "@/lib/command-center/disciplina-explorer";
@@ -48,6 +49,8 @@ async function readDisciplinas(
         "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
     });
     if (permission.error) return permission.error;
+    const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
+    if (schoolScopeError) return schoolScopeError;
 
     const year = await resolveAcademicYearScope(supabase, {
       escolaId, requestedAcademicYearId: input.data.academicYearId, operation: "READ",

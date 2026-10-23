@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
+import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveExplorerStudentCapabilities } from "@/lib/command-center/student-capabilities";
 import { withExplorerObservability } from "@/lib/command-center/observability";
@@ -34,6 +35,8 @@ async function readCapabilities(req: NextRequest, { params }: { params: Promise<
       "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro"],
   });
   if (roleGate.error) return roleGate.error;
+  const schoolScopeError = await requireCommandCenterSchoolWideAccess(supabase, user.id, escolaId, req);
+  if (schoolScopeError) return schoolScopeError;
   const { data: student, error: studentError } = await supabase.from("alunos")
     .select("id").eq("escola_id", escolaId).eq("id", parsed.data.alunoId)
     .is("deleted_at", null).maybeSingle();
