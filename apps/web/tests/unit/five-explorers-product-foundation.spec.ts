@@ -138,6 +138,8 @@ test("EX-006: incomplete explorer lists never claim verified absence of links", 
   const curso = readFileSync("src/components/secretaria/command-center/CourseContextView.tsx", "utf8");
   const route = readFileSync("src/app/api/escolas/[id]/command-center/disciplinas/[disciplinaId]/route.ts", "utf8");
   assert.match(turma, /missingTeacherEvidenceLabel\(data\.disciplinasLimitadas\)/);
+  assert.match(turma, /searchActive && \(roster\.error \|\| roster\.refreshing\)/);
+  assert.match(classe, /searchActive && \(roster\.error \|\| roster\.refreshing\)/);
   assert.match(disciplina, /missingTeacherEvidenceLabel\(limitado\)/);
   assert.match(disciplina, /curriculoHistorico\.map/);
   assert.match(professor, /semAtribuicao && !limited/);
