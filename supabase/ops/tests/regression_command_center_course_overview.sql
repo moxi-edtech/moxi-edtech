@@ -92,7 +92,7 @@ INSERT INTO public.matriculas VALUES
 -- reproduces the school isolation *effect*, not the production policy graph
 -- (whose auth/profile relationships are broader than this synthetic fixture).
 -- These are solely disposable test objects, never migration changes.
-DO $
+DO $fixture_rls$
 DECLARE relation text;
 BEGIN
   FOREACH relation IN ARRAY ARRAY[
@@ -105,7 +105,7 @@ BEGIN
       relation
     );
   END LOOP;
-END $;
+END $fixture_rls$;
 ALTER TABLE public.turmas FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.matriculas FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.alunos FORCE ROW LEVEL SECURITY;
