@@ -62,10 +62,12 @@ INSERT INTO public.anos_letivos VALUES
   ('22222222-2222-2222-2222-222222222224', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 2025, false);
 INSERT INTO public.classes VALUES
   ('33333333-3333-3333-3333-333333333333', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', '10.ª'),
-  ('33333333-3333-3333-3333-333333333334', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222224', '10.ª em 2025');
+  ('33333333-3333-3333-3333-333333333334', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222224', '10.ª em 2025'),
+  ('33333333-3333-3333-3333-333333333337', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111112', '22222222-2222-2222-2222-222222222223', 'Classe B');
 INSERT INTO public.turmas VALUES
   ('44444444-4444-4444-4444-444444444444', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', '10 A', 'M', 90, 'ativo', '22222222-2222-2222-2222-222222222222', 2026),
-  ('44444444-4444-4444-4444-444444444445', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333334', '10 A antigo', 'M', 90, 'ativo', '22222222-2222-2222-2222-222222222224', 2025);
+  ('44444444-4444-4444-4444-444444444445', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333334', '10 A antigo', 'M', 90, 'ativo', '22222222-2222-2222-2222-222222222224', 2025),
+  ('44444444-4444-4444-4444-444444444447', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111112', '33333333-3333-3333-3333-333333333337', 'Turma B', 'M', 30, 'ativo', '22222222-2222-2222-2222-222222222223', 2026);
 INSERT INTO public.alunos
   SELECT ('00000000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid,
          'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid,
@@ -430,6 +432,18 @@ BEGIN
     RAISE EXCEPTION 'school B leaked through the tenant RLS fixture';
   END IF;
 END $$;
+-- A real school-B row must be visible to its own school, but never to A.
+SELECT set_config('test.escola_id','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',false);
+DO $$
+BEGIN
+  IF (SELECT count(*) FROM public.turmas WHERE nome='Turma B') <> 1 THEN
+    RAISE EXCEPTION 'school B control row invisible: RLS assertion was vacuous';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.turmas WHERE escola_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') THEN
+    RAISE EXCEPTION 'school A leaked to school B';
+  END IF;
+END $$;
+SELECT set_config('test.escola_id','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',false);
 SELECT set_config('test.role','professor',false);
 DO $$
 BEGIN
