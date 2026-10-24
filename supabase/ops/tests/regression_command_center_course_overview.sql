@@ -270,8 +270,8 @@ BEGIN
   IF (SELECT prosecdef OR provolatile <> 's' FROM pg_proc WHERE oid=fn) THEN
     RAISE EXCEPTION 'EX-007 must remain STABLE SECURITY INVOKER';
   END IF;
-  IF has_function_privilege('anon', fn, 'EXECUTE')
-    OR has_function_privilege('PUBLIC', fn, 'EXECUTE') THEN
+  -- Anon inherits PUBLIC, so this checks both direct and default grants.
+  IF has_function_privilege('anon', fn, 'EXECUTE') THEN
     RAISE EXCEPTION 'anonymous/public execution must be revoked';
   END IF;
   IF NOT has_function_privilege('authenticated', fn, 'EXECUTE') THEN
