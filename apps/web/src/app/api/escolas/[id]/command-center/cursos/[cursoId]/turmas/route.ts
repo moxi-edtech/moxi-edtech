@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { withExplorerObservability } from "@/lib/command-center/observability";
+import { classifyCourseTurmasRpcError } from "@/lib/command-center/course-turmas-error";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { requireRoleInSchool } from "@/lib/authz";
 import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
@@ -59,12 +60,11 @@ async function readPage(req: NextRequest, context: {
       p_classe_id: input.data.classeId, p_search: input.data.search?.trim() || null,
     });
     if (error) {
-      const unavailable = error.code === "PGRST202" || error.code === "42883";
-      const invalid = error.code === "22023";
-      return NextResponse.json({ ok: false, error: unavailable
-        ? "A paginação do curso ainda não está instalada neste ambiente."
-        : invalid ? "Classe ou janela inválida." : "Não foi possível carregar as turmas." },
-        { status: unavailable ? 503 : invalid ? 400 : 500 });
+      const failure = classifyCourseTurmasRpcError(error);
+      return NextResponse.json(
+        { ok: false, error: failure.message },
+        { status: failure.status, headers: { "Cache-Control": "private, no-store" } },
+      );
     }
     if (!data) return NextResponse.json({ ok: false, error: "Curso não encontrado." }, { status: 404 });
     return NextResponse.json({ ok: true, data },
