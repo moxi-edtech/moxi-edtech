@@ -50,6 +50,10 @@ export function composeProfessorOverview(input: {
   const turmaMap = new Map(input.turmas.map((turma) => [turma.id, turma]));
   const subjectMap = new Map(input.subjects.map((subject) => [subject.id, subject]));
   const turmaSubjects = new Map<string, Set<string>>();
+  // An allocation is distinct from a published timetable. Never infer a
+  // formally assigned subject from the existence of a scheduled lesson.
+  const verifiedAllocationKeys = new Set<string>();
+  let unresolvedDisciplineLinks = 0;
 
   const ensureTurma = (id: string) => {
     if (!turmaMap.has(id)) return null;
@@ -59,8 +63,12 @@ export function composeProfessorOverview(input: {
 
   for (const allocation of input.allocations) {
     const subjects = ensureTurma(allocation.turmaId);
-    if (subjects && allocation.disciplinaId && subjectMap.has(allocation.disciplinaId)) {
+    if (!subjects) continue;
+    if (allocation.disciplinaId && subjectMap.has(allocation.disciplinaId)) {
       subjects.add(allocation.disciplinaId);
+      verifiedAllocationKeys.add([allocation.turmaId, allocation.disciplinaId].join(":"));
+    } else {
+      unresolvedDisciplineLinks++;
     }
   }
 
@@ -73,6 +81,19 @@ export function composeProfessorOverview(input: {
     const key = [slot.turmaId, slot.slotId, slot.disciplinaId || ""].join(":");
     scheduleByKey.set(key, slot);
   }
+
+  const atribuicoes = [...verifiedAllocationKeys].map((key) => {
+    const [turmaId, disciplinaId] = key.split(":");
+    const turma = turmaMap.get(turmaId)!;
+    const disciplina = subjectMap.get(disciplinaId)!;
+    return {
+      turmaId, turmaNome: turma.nome, cursoNome: turma.cursoNome,
+      classeNome: turma.classeNome, disciplinaId, disciplinaNome: disciplina.nome,
+      evidencia: "atribuicao_registada" as const,
+    };
+  }).sort((a, b) => a.turmaNome.localeCompare(b.turmaNome, "pt") ||
+    a.disciplinaNome.localeCompare(b.disciplinaNome, "pt") ||
+    a.turmaId.localeCompare(b.turmaId));
 
   const turmas = Array.from(turmaSubjects.entries()).map(([id, subjectIds]) => {
     const turma = turmaMap.get(id)!;
@@ -108,8 +129,9 @@ export function composeProfessorOverview(input: {
   })).sort((a, b) => a.diaSemana - b.diaSemana ||
     a.inicio.localeCompare(b.inicio) || a.turmaNome.localeCompare(b.turmaNome));
 
-  return { turmas, disciplinas, horarios,
-    stats: { turmas: turmas.length, disciplinas: disciplinas.length, aulasPublicadas: horarios.length } };
+  return { turmas, disciplinas, horarios, atribuicoes, unresolvedDisciplineLinks,
+    stats: { turmas: turmas.length, disciplinas: disciplinas.length,
+      aulasPublicadas: horarios.length } };
 }
 
 /** In KLASSE horario_slots 1=segunda, through 7=domingo. */

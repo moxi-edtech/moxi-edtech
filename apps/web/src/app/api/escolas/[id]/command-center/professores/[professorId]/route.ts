@@ -147,7 +147,7 @@ async function readExplorer(
       return NextResponse.json({ ok: true, data: {
         professor: { id: professor.id, nome },
         anoLetivo: { id: year.id, ano: year.ano, historico: year.status === "CLOSED" },
-        turmas: [], disciplinas: [], horarios: [],
+        turmas: [], disciplinas: [], horarios: [], atribuicoes: [], unresolvedDisciplineLinks: 0,
         stats: { turmas: 0, disciplinas: 0, aulasPublicadas: 0 },
         limitado: false,
       } }, { headers: { "Cache-Control": "private, no-store" } });

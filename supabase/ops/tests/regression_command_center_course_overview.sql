@@ -88,6 +88,7 @@ GRANT EXECUTE ON FUNCTION public.has_access_to_escola_fast(uuid) TO authenticate
 GRANT EXECUTE ON FUNCTION public.user_has_role_in_school(uuid,text[]) TO authenticated;
 \ir ../../migrations/20271015100000_command_center_course_overview.sql
 \ir ../../migrations/20271015100001_command_center_course_reused_classes.sql
+\ir ../../migrations/20271015100002_command_center_course_turmas_page.sql
 
 DO $$
 BEGIN
@@ -222,3 +223,95 @@ BEGIN
 END $$;
 RESET ROLE;
 SELECT 'command-center contextual course DB regression passed (EX-005)' AS result;
+
+-- EX-007: >100 turmas are paginated by the database, not a React slice.
+-- Names provide a deterministic order; no identifiable student data included.
+INSERT INTO public.turmas (
+  id,escola_id,curso_id,classe_id,nome,turno,capacidade_maxima,status_validacao,ano_letivo_id,ano_letivo
+)
+SELECT ('44444444-4444-4444-5555-' || lpad(n::text,12,'0'))::uuid,
+ 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid,
+ '11111111-1111-1111-1111-111111111111'::uuid,
+ '33333333-3333-3333-3333-333333333333'::uuid,
+ 'Turma ' || lpad(n::text,3,'0'), 'M', 30, 'ativo',
+ '22222222-2222-2222-2222-222222222222'::uuid, 2026
+FROM generate_series(1,125) n;
+
+DO $$
+BEGIN
+  IF has_function_privilege('anon',
+      'public.command_center_course_turmas_page(uuid,uuid,uuid,integer,integer,uuid,text)','EXECUTE')
+  THEN RAISE EXCEPTION 'anon cannot run turma pagination RPC'; END IF;
+END $$;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false);
+SELECT set_config('test.escola_id','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',false);
+SELECT set_config('test.role','secretaria',false);
+DO $$
+DECLARE
+  a jsonb; b jsonb; last_page jsonb; by_class jsonb; searched jsonb; escaped jsonb;
+BEGIN
+  a := public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',1,25,null,null);
+  b := public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',2,25,null,null);
+  last_page := public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',6,25,null,null);
+
+  IF (a->>'total')::integer<>127 OR jsonb_array_length(a->'items')<>25
+    OR (a->>'hasMore')::boolean IS NOT TRUE OR jsonb_array_length(b->'items')<>25
+    OR (last_page->>'total')::integer<>127 OR jsonb_array_length(last_page->'items')<>2
+    OR (last_page->>'hasMore')::boolean IS NOT FALSE
+  THEN RAISE EXCEPTION 'pagination totals/window drift: % % %',a,b,last_page; END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(a->'items') aa
+    JOIN jsonb_array_elements(b->'items') bb ON aa->>'id'=bb->>'id'
+  ) THEN RAISE EXCEPTION 'overlapping adjacent turma pages'; END IF;
+
+  by_class := public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',1,25,
+    '33333333-3333-3333-3333-333333333334',null);
+  IF (by_class->>'total')::integer<>1
+  THEN RAISE EXCEPTION 'reused class filtering wrong: %',by_class; END IF;
+
+  searched := public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',1,25,null,'Turma 10');
+  IF (searched->>'total')::integer<>10
+  THEN RAISE EXCEPTION 'literal name search wrong: %',searched; END IF;
+
+  escaped := public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',1,25,null,'%');
+  IF (escaped->>'total')::integer<>0
+  THEN RAISE EXCEPTION 'wildcard injection in course search'; END IF;
+
+  BEGIN
+    PERFORM public.command_center_course_turmas_page(
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',0,25,null,null);
+    RAISE EXCEPTION 'page zero accepted';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.command_center_course_turmas_page(
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      '11111111-1111-1111-1111-111111111112',
+      '22222222-2222-2222-2222-222222222223',1,25,null,null);
+    RAISE EXCEPTION 'unauthorized school accepted';
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+  END;
+END $$;
+RESET ROLE;
+SELECT 'EX-007 Course pagination >100 turmas, scope and search regression passed' AS result;

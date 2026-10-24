@@ -52,7 +52,8 @@ export function ProfessorContextView({
   params.set(ACADEMIC_YEAR_PARAM, data.anoLetivo.id);
   const pageHref = existingPage + (existingPage.includes("?") ? "&" : "?") + params.toString();
   const limited = data.limitado;
-  const semAtribuicao = data.turmas.length === 0 && data.disciplinas.length === 0;
+  const semAtribuicao = !data.atribuicoes.length && !data.unresolvedDisciplineLinks && !limited;
+  const semVinculos = data.turmas.length === 0 && data.disciplinas.length === 0;
   const semHorario = data.horarios.length === 0;
 
   return (
@@ -87,16 +88,64 @@ export function ProfessorContextView({
           Algumas vinculações ultrapassaram o limite de consulta. Os números são parciais; consulte a gestão para o restante.
         </p>
       )}
-      {semAtribuicao && !limited && (
+      {semVinculos && !limited && (
         <p className="text-xs text-slate-600">
           Sem atribuição de turma ou disciplina neste ano letivo (nas fontes desta visão).
         </p>
       )}
-      {!semAtribuicao && semHorario && !limited && (
+      {!semVinculos && !semHorario && !data.atribuicoes.length && !limited && (
+        <p className="text-xs text-slate-600">
+          Há horários publicados, mas estes não comprovam atribuição formal de disciplina à turma.
+        </p>
+      )}
+      {!semVinculos && semHorario && !limited && (
         <p className="text-xs text-slate-600">
           Há atribuições, mas sem horário publicado neste ano letivo.
         </p>
       )}
+
+      <section className="min-w-0" aria-labelledby="professor-atribuicoes-heading">
+        <h3 id="professor-atribuicoes-heading" className="mb-1 flex items-center gap-2 font-semibold text-slate-900">
+          <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Atribuições · Turma × Disciplina
+        </h3>
+        <p className="mb-2 text-xs text-slate-600">
+          Vínculos docentes registados neste ano, distintos das aulas de horário publicado.
+        </p>
+        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          {data.atribuicoes.map((atribuicao) => (
+            <div key={`${atribuicao.turmaId}:${atribuicao.disciplinaId}`}
+              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+              <button type="button" onClick={() => onExploreTurma({
+                id: atribuicao.turmaId, label: atribuicao.turmaNome, academicYearId: data.anoLetivo.id,
+              })} className="min-w-0 text-left focus-visible:outline-2 focus-visible:outline-emerald-600">
+                <span className="block font-medium text-emerald-800 hover:underline">{atribuicao.turmaNome}</span>
+                <span className="block text-xs text-slate-500">
+                  {[atribuicao.cursoNome, atribuicao.classeNome].filter(Boolean).join(" · ") || "Turma do ano"}
+                </span>
+              </button>
+              <button type="button" onClick={() => onExploreDisciplina({
+                id: atribuicao.disciplinaId, label: atribuicao.disciplinaNome,
+                academicYearId: data.anoLetivo.id,
+              })} className="text-right text-xs font-medium text-emerald-800 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600">
+                {atribuicao.disciplinaNome}
+              </button>
+            </div>
+          ))}
+          {!data.atribuicoes.length && (
+            <p className="px-3 py-4 text-xs text-slate-600">
+              {limited || data.unresolvedDisciplineLinks > 0
+                ? "Atribuições disciplinares não confirmadas na lista consultada; há vínculos a verificar."
+                : semAtribuicao ? "Sem atribuições registadas neste ano nas fontes consultadas."
+                  : "Existem vínculos de turma ou horário, mas não comprovam atribuição disciplinar."}
+            </p>
+          )}
+        </div>
+        {data.unresolvedDisciplineLinks > 0 && (
+          <p role="status" className="mt-2 text-xs text-amber-900">
+            {data.unresolvedDisciplineLinks} vínculos sem disciplina de catálogo verificável. Não foram apagados nem atribuídos a outra disciplina.
+          </p>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <section className="min-w-0" aria-labelledby="professor-turmas-heading">
@@ -161,7 +210,7 @@ export function ProfessorContextView({
         <h3 id="professor-horario-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
           <CalendarDays className="h-4 w-4 text-emerald-700" aria-hidden /> Horário publicado
         </h3>
-        <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
+        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {data.horarios.map((aula, i) => (
             <div key={`${aula.turmaId}:${aula.diaSemana}:${aula.inicio}:${i}`}
               className="flex flex-wrap items-center justify-between gap-3 px-3 py-3">
@@ -186,8 +235,8 @@ export function ProfessorContextView({
       </section>
 
       <p className="text-xs text-slate-500">
-        Apenas vínculos académicos e horários publicados.
-        Contactos, documentos, remunerações, notas e pagamentos não são apresentados.
+        Atribuição registada não equivale a aula ministrada; horário publicado não prova presença.
+        Apenas vínculos académicos e horários publicados. Contactos, documentos, remunerações, notas e pagamentos não são apresentados.
       </p>
     </div>
   );
