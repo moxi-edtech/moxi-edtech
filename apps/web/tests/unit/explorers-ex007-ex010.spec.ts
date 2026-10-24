@@ -37,6 +37,8 @@ test("EX-007: page cache and request preserve school, year, class and literal se
   assert.match(courseRoute, /command_center_course_turmas_page/);
   assert.match(courseView, /window\.data\?\.hasMore/);
   assert.match(courseView, /Pesquisar turmas deste curso/);
+  // The parent return-context must clear a turma when the page/search changes.
+  assert.match(courseView, /onTurmaChange\\?\\.\\(id\\)/);
   assert.doesNotMatch(courseView, /data\.turmas\.map\(/);
 });
 
