@@ -1,0 +1,30 @@
+name: Academic Target Calendar Guard
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/academic-target-calendar-guard.yml'
+      - 'apps/web/src/lib/academico/target-academic-year.ts'
+      - 'apps/web/src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts'
+      - 'apps/web/tests/unit/academic-year-target.spec.ts'
+      - 'docs/ops/academic-target-calendar-validation-20261012.md'
+jobs:
+  academic-target:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Published calendar and rollover edge cases
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/academic-year-target.spec.ts
+      - name: Typecheck
+        run: pnpm -C apps/web typecheck
+      - name: Focused ESLint
+        working-directory: apps/web
+        run: pnpm exec eslint src/lib/academico/target-academic-year.ts src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts tests/unit/academic-year-target.spec.ts --max-warnings 10000
