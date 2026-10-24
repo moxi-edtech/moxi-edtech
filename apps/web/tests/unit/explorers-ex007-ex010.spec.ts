@@ -4,6 +4,7 @@ import test from "node:test";
 import { courseTurmasPageHref, courseTurmasPageKey } from "../../src/hooks/useCourseTurmasPage";
 import { composeProfessorOverview } from "../../src/lib/command-center/professor-explorer";
 import { composeDisciplinaOverview } from "../../src/lib/command-center/disciplina-explorer";
+import { classifyCourseTurmasRpcError } from "../../src/lib/command-center/course-turmas-error";
 import type { EntityContext } from "../../src/lib/command-center/entity-context";
 
 const context: EntityContext = {
@@ -120,4 +121,24 @@ test("EX-010: year-scoped curriculum coverage separates actual turma, teacher an
   assert.match(disciplineRoute, /origem: "horario_publicado"/);
   assert.match(disciplineView, /data\.cobertura/);
   assert.match(disciplineView, /Matriz ≠ atribuição à turma ≠ docente ≠ horário publicado/);
+});
+
+
+test("EX-007: PostgREST errors preserve safe HTTP semantics", () => {
+  const expectations = [
+    ["42501", 403, /autoriza/],
+    ["22023", 400, /inválida/],
+    ["PGRST202", 503, /não está instalada/],
+    ["42883", 503, /não está instalada/],
+    ["23505", 500, /Não foi possível/],
+  ] as const;
+  for (const [code, status, message] of expectations) {
+    const reply = classifyCourseTurmasRpcError({ code });
+    assert.equal(reply.status, status, `status for ${code}`);
+    assert.match(reply.message, message);
+    assert.doesNotMatch(reply.message, /sqlstate|postgres|schema|supabase/i);
+  }
+  assert.equal(classifyCourseTurmasRpcError({}).status, 500);
+  assert.match(courseRoute, /classifyCourseTurmasRpcError\(error\)/);
+  assert.match(courseRoute, /Cache-Control/);
 });
