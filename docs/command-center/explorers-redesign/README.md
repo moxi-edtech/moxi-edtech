@@ -114,6 +114,7 @@ Os valores abaixo vieram de consultas agregadas aos dados atualmente instalados;
 | EX-012 | P2 | A11y, teclado, zoom, alto contraste | Testes de foco, modal, NVDA/VoiceOver, 1280px e 150% zoom |
 | EX-013 | P2 | Observabilidade e performance | Percentis p50/p95 por rota e regressão de render por escola/ano sem dados privados |
 | EX-014 | P2 | Revisão controlada de produto | Screenshots e critérios de aceite reais da Secretaria/Direção em homologação |
+| EX-015 | P1 | Horário semanal contextual (SSOT) | Publicação canónica por turma, UI partilhada nos cinco exploradores, sem edição paralela ou docentes presumidos |
 
 ### Critérios de não regressão / limites
 
@@ -196,3 +197,34 @@ A rota, compositor, contrato TypeScript, vista e testes da Disciplina foram alin
 - Command Palette é o único dono do scroll. Turma e Classe restauram no contêiner correto após carregar a lista; guardam página, filtros, pesquisa, aluno selecionado e scroll numa referência efémera e isolada por escola/ano.
 - Ao atualizar a pesquisa, os resultados do termo anterior são ocultados enquanto o `useDebounce` não estabiliza. Ausência, erro e carregamento têm mensagens diferentes. O aluno antes selecionado pode não constar da página/filtros sem que se infira mudança de matrícula.
 - Testes simulam três alunos sucessivos, retorno de estado, rejeição de outra escola e contratos de scroll/roster. Teste autenticado e inspeção visual continuam requisitos para marcar EX-004 completamente aceite.
+
+## 10. EX-015 — Horário contextual sobre o SSOT existente (24/10/2026)
+
+**Decisão:** não criar novas tabelas, scheduler, motor de conflitos ou módulo de edição. O **SSOT continua a ser**:
+
+- \`horario_versoes\` — versão por escola/turma; uma aula só é oficial quando a versão tem \`status='publicada'\`.
+- \`quadro_horarios\` — associações explícitas de versão + turma + período, com disciplina, professor e sala opcionais.
+- \`horario_slots\` — fonte dos dias, horas de início e fim, ordem, intervalo e turno.
+- \`disciplinas_catalogo\`, \`professores\` + \`profiles\`, \`salas\` — nomes de apresentação; identidades ausentes não são inventadas.
+
+**Evidência agregada, leitura do Supabase (24/10/2026):** 139 turmas; 36 versões de horário: 14 publicadas, 19 rascunhos, 3 arquivadas. Das 14 publicadas, 2 são de turmas do ano letivo ativo e 12 de anos inativos. Há 373 aulas nas versões publicadas, das quais 364 não registam \`professor_id\` e 144 não registam \`sala_id\`. Das 364 sem professor diretamente no horário, 33 têm exatamente um vínculo docente direto turma-disciplina noutra tabela, mas a vista **não o promove automaticamente** a professor responsável pelo horário; 331 não têm esse vínculo direto. Não foram observados conflitos de professor/sala com referências explícitas, versões publicadas duplicadas por turma ou chaves órfãs nas verificações executadas.
+
+### Implementação mínima nesta branch
+
+- Um **GET exclusivamente de leitura** em \`/api/escolas/[id]/command-center/turmas/[turmaId]/horario\`: autenticação, pertença à escola, papéis permitidos, contrato de polo, UUID do ano e relação turma/ano verificados **no servidor**; apenas versão publicada; limite defensivo com marcador de parcial, sem escrita.
+- Não reutilizar \`/api/escolas/[id]/horarios/quadro\` diretamente: tem permissão de **gestão pedagógica**, não necessariamente a de consulta dos exploradores. A rota \`/api/secretaria/turmas/[id]/horario/versao\` chega a criar rascunho quando inexistente: **nunca chamá-la** a partir de visualizações de consulta.
+- Um único contrato de apresentação \`published-horario.ts\` e um componente \`ExplorerHorario.tsx\`, com agrupamento por dia e ordenação pela hora, responsive em notebooks e mobile.
+- Curso: após selecionar uma turma, abrir o seu horário da mesma forma; Classe: escolher turma; Turma: horário da entidade atual; Disciplina: escolher turma, mostrar **apenas aulas da disciplina**; Professor: reutilizar os horários já presentes na resposta do seu explorador, com o mesmo componente visual.
+- **Lazy loading:** as consultas adicionais só começam depois de clicar em **Ver horário** e selecionar turma quando necessário. Cache isolada por escola, ano e turma, com cancelamento ao desmontar e duração curta.
+- Mensagens independentes: **sem publicação** (não é falta de atribuição), **publicado**, **parcial**, **erro**, **docente não indicado no quadro**, **identidade docente indisponível** e **sala não indicada**. Não mostrar um rascunho como oficial nem completar automaticamente campos vazios a partir de vínculos indiretos.
+- O explorador continua read-only; a edição e publicação permanecem no módulo canónico de horários. PDF fica na implementação já existente, sem duplicação de exportação nesta etapa.
+
+### O que **não** faz parte desta entrega
+
+- Não é uma agregação global dos cinco horários em centenas de turmas numa só grade. Curso/Classe/Disciplina usam **seleção progressiva de uma turma**.
+- Não fornece a agenda docente com aulas onde \`quadro_horarios.professor_id\` está nulo; o sistema não pode presumir o professor pelo vínculo curricular.
+- Não altera a lógica de publicação, os guardrails de conflitos de docentes/salas ou as migrações do scheduler.
+- Não adiciona comparações semanais simultâneas, editor, sala/turno inventado ou conflitos presumidos. Evoluir apenas após validação de necessidade real.
+- A homologação autenticada com escola/ano/polo, leitura de histórico e visual em 1280px/150% permanece obrigatória antes de merge.
+
+**Critérios de aceite EX-015:** os cinco exploradores apresentam a função num local previsível; a seleção de uma turma por escola/ano é obrigatória; a agenda do Professor mostra apenas entradas que o identificam explicitamente; a ausência de horário publicado gera estado de informação, não falso erro; resultados parciais são declarados; não existem chamadas ao editor ou escritas no banco; políticas de acesso verificadas no servidor.

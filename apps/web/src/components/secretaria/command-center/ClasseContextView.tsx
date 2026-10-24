@@ -8,6 +8,7 @@ import {
 
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioTurma } from "@/components/secretaria/command-center/ExplorerHorario";
 import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
 import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { useClasseContext } from "@/hooks/useClasseContext";
@@ -232,6 +233,9 @@ export function ClasseContextView({
             : `${turmasSemAlunos} turmas sem alunos matriculados neste ano.`}
         </p>
       )}
+
+      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
+        turmas={turmas} listaParcial={limitado} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="min-w-0" aria-labelledby="classe-turmas-heading">
