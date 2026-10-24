@@ -49,6 +49,16 @@
 
 **Gate atual:** execução do plano interrompida **antes** da criação de staging por custo não autorizado; EX-REL-03, merge e deploy não foram executados.
 
+## Continuação de código — 24/10/2026 (sem branch Supabase paga)
+
+- O responsável **não autorizou o custo** de uma branch Supabase (US$ 0,01344/h); a criação foi cancelada. Não tentar criá-la novamente sem nova autorização. Supabase instalado mantém-se **intocado**.
+- O teste `supabase/ops/tests/regression_command_center_course_overview.sql` foi endurecido no PostgreSQL 17 descartável já usado pelo workflow `Command Center Contextual`: replica o tipo real `curriculo_status`, ativação do RLS nas sete tabelas académicas de consulta, `FORCE RLS` em `turmas`, `matriculas` e `alunos`; dois tenants sintéticos com linhas próprias, privilégios de função, 127 turmas em seis páginas, janela fora do intervalo, limites, termo literal, papel não autorizado e JWT ausente.
+- **Limitação deliberada:** as policies de RLS no teste são **simplificadas**, não uma réplica literal das policies e dependências do Supabase. O ensaio prova isolamento nesta fixture e cobertura de SQL proposto; **não** prova que uma conta real de Secretaria tem todas as permissões após aplicação em produção.
+- `course-turmas-error.ts` e a rota de paginação passam a mapear SQLSTATE `42501` para HTTP **403**, mantendo `22023→400` e RPC ausente `PGRST202/42883→503`. Unit tests específicos foram adicionados.
+- `CourseContextView` comunica ao proprietário do contexto que a turma selecionada foi limpa quando mudam página ou pesquisa, evitando restaurar uma seleção obsoleta ao reabrir.
+- As migrations versionadas **EX-005/EX-007 não foram alteradas nem aplicadas** neste incremento. Nenhum dado académico ou financeiro foi escrito.
+- **Gate:** aguardar workflows no último HEAD, ensaio com autenticação real em ambiente seguro (sem custo adicional aprovado) e aplicação controlada da RPC. Não integrar #261/#262 nem publicar até cumprir os requisitos.
+
 ## Contratos que não podem regredir
 
 - `turma_disciplinas` prova atribuição; horário publicado não cria atribuição formal.
