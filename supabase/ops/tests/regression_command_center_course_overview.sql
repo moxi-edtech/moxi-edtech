@@ -46,9 +46,11 @@ CREATE TABLE public.matriculas (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, turma_id uuid NOT NULL,
   aluno_id uuid NOT NULL, ano_letivo integer NOT NULL, status text NOT NULL, ativo boolean
 );
+-- Match the installed PostgreSQL 17 enum, not a permissive synthetic text column.
+CREATE TYPE public.curriculo_status AS ENUM ('draft', 'published', 'archived');
 CREATE TABLE public.curso_curriculos (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, curso_id uuid NOT NULL,
-  classe_id uuid NOT NULL, ano_letivo_id uuid NOT NULL, status text NOT NULL
+  classe_id uuid, ano_letivo_id uuid NOT NULL, status public.curriculo_status NOT NULL
 );
 
 INSERT INTO public.cursos VALUES
@@ -82,6 +84,29 @@ INSERT INTO public.matriculas
 INSERT INTO public.matriculas VALUES
   ('10000000-0000-0000-1111-111111111111','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
    '44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000001', 2026, 'ativo', true);
+
+-- Relevant tables in the installed KLASSE schema have RLS enabled. In
+-- particular alunos, matriculas and turmas have FORCE RLS. This local policy
+-- reproduces the school isolation *effect*, not the production policy graph
+-- (whose auth/profile relationships are broader than this synthetic fixture).
+-- These are solely disposable test objects, never migration changes.
+DO $
+DECLARE relation text;
+BEGIN
+  FOREACH relation IN ARRAY ARRAY[
+    'cursos','anos_letivos','classes','turmas',
+    'alunos','matriculas','curso_curriculos'
+  ] LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', relation);
+    EXECUTE format(
+      'CREATE POLICY fixture_school_read ON public.%I FOR SELECT TO authenticated USING (escola_id = nullif(current_setting(''test.escola_id'',true),'''')::uuid)',
+      relation
+    );
+  END LOOP;
+END $;
+ALTER TABLE public.turmas FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.matriculas FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.alunos FORCE ROW LEVEL SECURITY;
 
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT EXECUTE ON FUNCTION public.has_access_to_escola_fast(uuid) TO authenticated;
@@ -237,12 +262,27 @@ SELECT ('44444444-4444-4444-5555-' || lpad(n::text,12,'0'))::uuid,
  '22222222-2222-2222-2222-222222222222'::uuid, 2026
 FROM generate_series(1,125) n;
 
-DO $$
+DO $
+DECLARE fn oid;
 BEGIN
-  IF has_function_privilege('anon',
-      'public.command_center_course_turmas_page(uuid,uuid,uuid,integer,integer,uuid,text)','EXECUTE')
-  THEN RAISE EXCEPTION 'anon cannot run turma pagination RPC'; END IF;
-END $$;
+  fn := to_regprocedure('public.command_center_course_turmas_page(uuid,uuid,uuid,integer,integer,uuid,text)');
+  IF fn IS NULL THEN RAISE EXCEPTION 'EX-007 function missing'; END IF;
+  IF (SELECT prosecdef OR provolatile <> 's' FROM pg_proc WHERE oid=fn) THEN
+    RAISE EXCEPTION 'EX-007 must remain STABLE SECURITY INVOKER';
+  END IF;
+  IF has_function_privilege('anon', fn, 'EXECUTE')
+    OR has_function_privilege('PUBLIC', fn, 'EXECUTE') THEN
+    RAISE EXCEPTION 'anonymous/public execution must be revoked';
+  END IF;
+  IF NOT has_function_privilege('authenticated', fn, 'EXECUTE') THEN
+    RAISE EXCEPTION 'authenticated user must have access, with a per-school role gate';
+  END IF;
+  IF (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname='public' AND c.relname IN ('turmas','alunos','matriculas')
+        AND c.relrowsecurity AND c.relforcerowsecurity) <> 3 THEN
+    RAISE EXCEPTION 'fixture must exercise forced tenant RLS on critical tables';
+  END IF;
+END $;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false);
 SELECT set_config('test.escola_id','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',false);
@@ -315,3 +355,105 @@ BEGIN
 END $$;
 RESET ROLE;
 SELECT 'EX-007 Course pagination >100 turmas, scope and search regression passed' AS result;
+
+-- EX-007 hardening: exercise *all* six windows, permissions and edge cases.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false);
+SELECT set_config('test.escola_id','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',false);
+SELECT set_config('test.role','secretaria',false);
+DO $$
+DECLARE
+  actual_pages integer;
+  total_rows integer;
+  unique_rows integer;
+  invalid_class boolean := false;
+  result jsonb;
+BEGIN
+  SELECT count(DISTINCT p.n), count(x.item), count(DISTINCT x.item->>'id')
+  INTO actual_pages,total_rows,unique_rows
+  FROM generate_series(1,6) p(n)
+  CROSS JOIN LATERAL jsonb_array_elements(public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',p.n,25,null,null)->'items') x(item);
+  IF actual_pages<>6 OR total_rows<>127 OR unique_rows<>127 THEN
+    RAISE EXCEPTION 'incomplete or duplicated windows: pages %, items %, distinct %',
+      actual_pages,total_rows,unique_rows;
+  END IF;
+  result := public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',7,25,null,null);
+  IF (result->>'total')::int<>127 OR jsonb_array_length(result->'items')<>0
+     OR (result->>'hasMore')::boolean IS NOT FALSE THEN
+    RAISE EXCEPTION 'out-of-range page must be empty without faking zero total: %',result;
+  END IF;
+  result := public.command_center_course_turmas_page(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222',1,25,null,'10 A');
+  IF (result->>'total')::int<>1 OR (result->'items'->0->>'alunos')::int<>65 THEN
+    RAISE EXCEPTION 'deduplicated active student count drift: %',result;
+  END IF;
+  -- Unrelated class/year must not be accepted or leak via arbitrary filtering.
+  BEGIN
+    PERFORM public.command_center_course_turmas_page(
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',1,25,
+      '99999999-9999-9999-9999-999999999999',null);
+    RAISE EXCEPTION 'unknown class accepted';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.command_center_course_turmas_page(
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',1,51,null,null);
+    RAISE EXCEPTION 'page size beyond 50 accepted';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.command_center_course_turmas_page(
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',1,25,null,repeat('x',73));
+    RAISE EXCEPTION 'unbounded search accepted';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+END $$;
+-- Tenant row filtering remains effective even when an operator passes
+-- a different school into a direct SELECT; the function separately rejects it.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.turmas WHERE escola_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') THEN
+    RAISE EXCEPTION 'school B leaked through the tenant RLS fixture';
+  END IF;
+END $$;
+SELECT set_config('test.role','professor',false);
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.command_center_course_turmas_page(
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',1,25,null,null);
+    RAISE EXCEPTION 'teacher role bypassed staff-only EX-007';
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+  END;
+END $$;
+SELECT set_config('test.role','secretaria',false);
+SELECT set_config('request.jwt.claim.sub','',false);
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.command_center_course_turmas_page(
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',1,25,null,null);
+    RAISE EXCEPTION 'missing JWT subject accepted';
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+  END;
+END $$;
+RESET ROLE;
+SELECT 'EX-007 SQL RLS, privileges, six-window and malformed request checks passed' AS result;
