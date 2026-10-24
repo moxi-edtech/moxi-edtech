@@ -1,0 +1,10 @@
+version,candidate_command_NOT_APPROVED,evidence,gate
+20260520001000,supabase migration repair --status applied 20260520001000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
+20260520003000,supabase migration repair --status applied 20260520003000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
+20260813140000,supabase migration repair --status applied 20260813140000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
+20260814120000,supabase migration repair --status applied 20260814120000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
+20260815220000,supabase migration repair --status applied 20260815220000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
+20260816013000,supabase migration repair --status applied 20260816013000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
+20260818090000,supabase migration repair --status applied 20260818090000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
+20270507160000,supabase migration repair --status applied 20270507160000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
+20270529113000,supabase migration repair --status applied 20270529113000,only target object names present,"FIRST verify exact SQL/definition, runtime behavior, and DBA signoff; do not execute yet"
