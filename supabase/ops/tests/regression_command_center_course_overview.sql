@@ -264,7 +264,7 @@ SELECT ('44444444-4444-4444-5555-' || lpad(n::text,12,'0'))::uuid,
  '22222222-2222-2222-2222-222222222222'::uuid, 2026
 FROM generate_series(1,125) n;
 
-DO $
+DO $rpc_acl$
 DECLARE fn oid;
 BEGIN
   fn := to_regprocedure('public.command_center_course_turmas_page(uuid,uuid,uuid,integer,integer,uuid,text)');
@@ -284,7 +284,7 @@ BEGIN
         AND c.relrowsecurity AND c.relforcerowsecurity) <> 3 THEN
     RAISE EXCEPTION 'fixture must exercise forced tenant RLS on critical tables';
   END IF;
-END $;
+END $rpc_acl$;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false);
 SELECT set_config('test.escola_id','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',false);
