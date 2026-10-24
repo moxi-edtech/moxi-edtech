@@ -17,14 +17,37 @@
 
 | ID | Prioridade | Estado | Critério de aceite |
 | --- | --- | --- | --- |
-| EX-REL-01 | P0 | Pendente | Comparar migrations EX-005 (`20271015100001`) e EX-007 (`20271015100002`) com histórico e catálogo reais do Supabase, sem editar migrations já aplicadas. Registar plano e rollback. |
-| EX-REL-02 | P0 | Pendente | Aplicar RPC `command_center_course_turmas_page` em ambiente controlado; validar `SECURITY INVOKER`, grants sem `anon`, isolamento entre escolas, paginação 1–50, contagem e erros 403/503. |
+| EX-REL-01 | P0 | **Parcial: inspeção read-only realizada, falta ensaio/rollback aprovado** | Comparar migrations EX-005 (`20271015100001`) e EX-007 (`20271015100002`) com histórico e catálogo reais do Supabase, sem editar migrations já aplicadas. Registar plano e rollback. |
+| EX-REL-02 | P0 | **Bloqueado: não existe staging e branch faturada exige autorização** | Aplicar RPC `command_center_course_turmas_page` em ambiente controlado; validar `SECURITY INVOKER`, grants sem `anon`, isolamento entre escolas, paginação 1–50, contagem e erros 403/503. |
 | EX-REL-03 | P0 | Pendente | Homologação autenticada de Secretaria e Direção, pelo menos duas escolas, ano corrente e histórico; >100 turmas, filtros, paginação, links, professor removido, vínculos legados, versão curricular inativa e dados parciais. |
-| EX-REL-04 | P0 | Pendente | Revalidar #261 → #262, conflitos e CI no HEAD final de ambas; integrar em ordem, sem omitir gates de segurança/financeiro de outras frentes. |
+| EX-REL-04 | P0 | **Parcial: ancestralidade comprovada; homologação/merge pendentes** | Revalidar #261 → #262, conflitos e CI no HEAD final de ambas; integrar em ordem, sem omitir gates de segurança/financeiro de outras frentes. |
 | EX-REL-05 | P0 | Pendente | Deploy controlado, smoke tests autenticados dos cinco exploradores, observabilidade e rollback testado. |
 | EX-QUAL-01 | P1 | Pendente | Medir p95, bytes, requisições e `EXPLAIN (ANALYZE, BUFFERS)` em estrutura representativa; confirmar índices e ausência de N+1. |
 | EX-QUAL-02 | P1 | Pendente | Acessibilidade com teclado, foco, zoom e leitor de ecrã nas cinco vistas em sessão real. |
 | EX-QUAL-03 | P1 | Pendente | Confirmar rótulos: vínculo não resolvido ≠ inexistente; ausência em recorte parcial ≠ ausência comprovada; versão curricular inativa ≠ versão duplicada. |
+
+## Evidência auditada no Supabase — 23/10/2026
+
+- Projeto KLASSE: `wjtifcpxxxotsbmvbgoq`, PostgreSQL **17.6**; inspeção exclusivamente de leitura.
+- Histórico: **646** migrations registadas; `20271015100000_command_center_course_overview` está no ledger; `20271015100001` (EX-005) e `20271015100002` (EX-007) **não** estão.
+- Catálogo `pg_proc`: `command_center_course_overview(uuid,uuid,uuid)` existe, é `STABLE SECURITY INVOKER`, com `EXECUTE` para `authenticated` e `service_role`; sem `anon`/`PUBLIC`. O corpo instalado mantém o filtro antigo de classe e `LIMIT 100`.
+- Catálogo `pg_proc`: `command_center_course_turmas_page` **não** existe; o código EX-007 depende dela e responde 503 até a instalação.
+- Colunas usadas pelas propostas foram verificadas nas tabelas necessárias. Consulta agregada encontrou **6** classes reutilizadas elegíveis de 2025 com `ano_letivo_id` não nulo e diferente; nenhum caso equivalente no recorte 2026. **Não** inferir sucesso funcional sem execução da RPC.
+- Dependências Git: `main → #261` (60 commits à frente, nenhum atrás na consulta); `#261 → #262` (27 à frente, nenhum atrás), antes deste novo commit documental. O HEAD `19dc8093` teve os 16 workflows consultados concluídos com sucesso; evidência de CI não equivale a autenticação real.
+- Existe **zero branch de desenvolvimento** no Supabase. A criação de uma branch de homologação requer confirmação de custo: **US$ 0,01344/h**, valor informado pela ferramenta para esta organização; nenhuma branch foi criada e nenhuma alteração DDL executada.
+- **Não usar `supabase db push` globalmente**: o handoff técnico `docs/HANDOFF_KLASSE.md` alerta que o ledger de migrations pode não corresponder a objetos reais e que push global pode reaplicar migrações não registadas. As versões EX-005/007 são também anteriores às últimas versões já instaladas (`20271022142000`). Primeiro reconciliar ledger, catálogo, dependências e método de aplicação seletiva.
+- O advisor de segurança encontrou alertas preexistentes sobre RLS sem políticas e funções `SECURITY DEFINER` executáveis por `anon`. Não são atribuídos às RPCs EX-005/007; exigem triagem de segurança separada e **não** permitem dispensar testes de isolamento da nova função.
+
+### Runbook bloqueado por autorização de staging
+
+1. Aprovar custo de branch de desenvolvimento, ou fornecer ambiente de homologação existente. Sem isto, não criar projeto faturado nem alterar produção para testar.
+2. Confirmar em staging o `pg_get_functiondef` **antes** de EX-005, assinatura e ACL, índices, enum curricular, e a lista de objetos dependentes. Guardar a definição prévia como rollback versionado e restrito; não inventar rollback com `DROP` indiscriminado.
+3. Aplicar **apenas** EX-005 e depois EX-007, transacionalmente, mantendo versões canónicas e reconciliação explícita no ledger; não executar o restante catálogo pendente.
+4. Validar `pg_proc`, `proacl`, `has_function_privilege` para `anon`/`authenticated`, acesso cruzado entre duas escolas e papéis reais; 127 turmas sintéticas, filtros, pesquisa literal, ano histórico, 401/403, parâmetros inválidos e erros 503.
+5. Homologar no preview com Secretaria/Direção, três atendimentos consecutivos, foco/scroll e vínculos curriculares por versão; impedir publicação se faltar teste ou se criar regressão.
+6. Após aprovação, aplicar em produção com backup do corpo/ACL anteriores e plano de reversão testado, publicar na ordem da stack, monitorizar e executar smoke. Não tratar branch vazia (sem dados reais) como réplica funcional completa.
+
+**Gate atual:** execução do plano interrompida **antes** da criação de staging por custo não autorizado; EX-REL-03, merge e deploy não foram executados.
 
 ## Contratos que não podem regredir
 
