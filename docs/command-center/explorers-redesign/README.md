@@ -6,6 +6,9 @@
 **Decisão posterior e prevalecente (23/10/2026):** [currículo por ano letivo e versão, sem segunda lista de matrizes inativas](./DECISAO-ESCOPO-CURRICULAR.md). A implementação EX-006 da Disciplina já segue a decisão na branch; CI e homologação autenticada continuam pendentes. Manter draft.
 **Principais ficheiros:** apps/web/src/components/secretaria/command-center/*ContextView.tsx, apps/web/src/lib/command-center/, apps/web/src/app/api/escolas/[id]/command-center/ e apps/web/src/hooks/.
 
+
+> **Estado atualizado — EX-007 a EX-010 (PR #262, 23/10/2026):** implementação técnica concluída, CI de código originalmente 23/23 verde em `e6b592bd`; permanece **sem instalação da RPC EX-007, homologação autenticada, merge ou produção**. A documentação da implementação está em [EX007-EX010-IMPLEMENTACAO.md](./EX007-EX010-IMPLEMENTACAO.md); o [backlog de integração e release](./BACKLOG-RELEASE-20261023.md) contém o estado auditado no Supabase e os gates de aplicação controlada. Os registos históricos abaixo sobre “ainda não implementado” descrevem **a fase anterior da PR #261**, não o estado atual da stack.
+
 ## 1. Objetivo de produto
 
 Transformar diretórios académicos em ferramentas operacionais contextuais sem criar uma segunda área de gestão. Cada explorador deve responder:
