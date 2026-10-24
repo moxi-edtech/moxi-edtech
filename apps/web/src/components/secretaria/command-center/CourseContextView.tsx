@@ -68,6 +68,9 @@ export function CourseContextView({
   }
   function setTurmaId(id: string | null) {
     setSelection({ contextKey, classeId, turmaId: id });
+    // Keep the parent return-context in sync on searches and page changes.
+    // Otherwise a remount may restore a turma that was already cleared.
+    onTurmaChange?.(id);
   }
 
   const window = useCourseTurmasPage({
@@ -99,7 +102,6 @@ export function CourseContextView({
   /** NAV-02: a linha abre directamente o contexto da turma. */
   function exploreTurmaDirect(turma: { id: string; nome: string }) {
     setTurmaId(turma.id);
-    onTurmaChange?.(turma.id);
     if (!data) return;
     onExploreTurma({ id: turma.id, label: turma.nome, academicYearId: data.anoLetivo.id });
   }
@@ -159,7 +161,7 @@ export function CourseContextView({
             <ChevronRight className="h-3.5 w-3.5 text-slate-400" aria-hidden />
             <button type="button"
               className="rounded-lg px-2 py-1 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-              onClick={() => { setTurmaId(null); onTurmaChange?.(null); }}>
+              onClick={() => setTurmaId(null)}>
               {selectedClasse.nome}
             </button>
           </>
