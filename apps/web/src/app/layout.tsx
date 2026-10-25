@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./theme-print.css";
 import { ServiceWorkerRegister } from "@/components/system/ServiceWorkerRegister";
 import { OfflineSyncRegister } from "@/components/system/OfflineSyncRegister";
 import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";

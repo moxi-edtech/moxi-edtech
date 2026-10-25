@@ -9,7 +9,7 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 - Provider local, sem `next-themes`: a branch antiga acrescentou a dependência mas não atualizou `pnpm-lock.yaml`, incompatível com installs congeladas.
 - Bootstrap antes do paint, com `suppressHydrationWarning` já no RootLayout.
 - Alternador na Topbar e escolha acessível Claro/Escuro/Sistema no menu do utilizador (teclado: setas/Home/End), em desktop e mobile; sem alterações de autenticação, permissões, RPC ou pagamentos.
-- Em `@media print`, tokens semânticos e `color-scheme` são forçados a claro; impressão/PDF reais continuam a exigir homologação autenticada.
+- Em `theme-print.css` (`@media print`), tokens semânticos e `color-scheme` são forçados a claro; impressão/PDF reais continuam a exigir homologação autenticada.
 
 ## Escopo já integrado
 - Fundamentos: RootLayout, ThemeProvider, ThemeToggle, bootstrap pré-paint, preferência tipada, testes unitários e workflow `Theme Switcher Guard`.

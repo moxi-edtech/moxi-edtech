@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "apps/web/src/app/layout.tsx"
+      - "apps/web/src/app/theme-print.css"
       - "apps/web/src/components/ThemeToggle.tsx"
       - "apps/web/src/components/ThemePreferences.tsx"
       - "apps/web/src/components/layout/klasse/Topbar.tsx"
