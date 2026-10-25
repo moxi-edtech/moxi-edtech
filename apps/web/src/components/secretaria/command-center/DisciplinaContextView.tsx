@@ -86,7 +86,7 @@ export function DisciplinaContextView({
       {limitado && (
         <p role="status" className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          O número de vínculos excede o limite de consulta. Os valores são parciais, não totais definitivos.
+          Nem todos os dados desta disciplina estão disponíveis. Os totais podem ser maiores.
         </p>
       )}
       {!limitado && turmasSemProfessor > 0 && stats.turmas > 0 && (
@@ -99,8 +99,8 @@ export function DisciplinaContextView({
 
       {data.unresolvedTeacherLinks > 0 && (
         <p role="status" className="text-xs text-amber-900">
-          Existem {data.unresolvedTeacherLinks} {data.unresolvedTeacherLinks === 1 ? "identidade docente indisponível" : "identidades docentes indisponíveis"}.
-          Os vínculos académicos permanecem registados; confirme as identidades na gestão autorizada.
+          Existem {data.unresolvedTeacherLinks} {data.unresolvedTeacherLinks === 1 ? "professor por identificar" : "professores por identificar"}.
+          Há atribuições registadas. Confirme os nomes na gestão académica.
         </p>
       )}
 
@@ -131,9 +131,9 @@ export function DisciplinaContextView({
             ))}
             {!professores.length && (
               <p className="px-3 py-5 text-slate-500">{data.unresolvedTeacherLinks > 0
-                ? "Existem vínculos docentes registados, mas algumas identidades não estão disponíveis."
+                ? "Há professores atribuídos, mas não foi possível mostrar alguns nomes."
                 : limitado
-                  ? "Nenhum professor identificado no recorte consultado; a lista é parcial."
+                  ? "Não aparecem professores nesta lista. Podem existir outros."
                   : "Nenhum professor vinculado neste ano letivo."}</p>
             )}
           </div>
@@ -156,10 +156,9 @@ export function DisciplinaContextView({
                     {[turma.cursoNome, turma.classeNome, turma.turno].filter(Boolean).join(" · ") || "Turma"}
                   </span>
                   <span className="mt-1 block text-[11px] text-slate-600">
-                    {turma.vinculoTurma ? "Atribuição registada à turma"
-                      : turma.horarioPublicado ? "Apenas horário publicado confirmado" : "Vínculo a verificar"}
-                    {turma.horarioPublicado ? " · Horário publicado" : " · Horário não confirmado"}
-                    {turma.docenteVinculado ? " · Docente formalmente vinculado" : turma.docenteEmHorario ? " · Docente apenas no horário publicado" : " · Docente não confirmado"}
+                    {turma.vinculoTurma ? "Na turma" : turma.horarioPublicado ? "No horário publicado" : "Associação por confirmar"}
+                    {turma.vinculoTurma && turma.horarioPublicado ? " · Horário publicado" : ""}
+                    {turma.docenteVinculado ? " · Professor atribuído" : turma.docenteEmHorario ? " · Professor indicado no horário" : ""}
                   </span>
                   {turma.professores.length ? (
                     <span className="mt-1 block truncate text-xs text-slate-600">
@@ -173,7 +172,7 @@ export function DisciplinaContextView({
               </button>
             ))}
             {!turmas.length && (
-              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma turma encontrada no recorte consultado; não é possível afirmar ausência de vínculo." : "Sem turmas vinculadas neste ano."}</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Não aparecem turmas nesta lista. Podem existir outras." : "Sem turmas vinculadas neste ano."}</p>
             )}
           </div>
         </section>
@@ -184,9 +183,7 @@ export function DisciplinaContextView({
           <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Matriz curricular
         </h3>
         <p className="mb-2 text-xs text-slate-600">
-          Cobertura verificável por Curso → Classe, na versão publicada do ano selecionado.
-          Matriz ≠ atribuição à turma ≠ docente ≠ horário publicado. Os números abaixo indicam
-          apenas vínculos com origem verificada.
+          Disciplinas previstas por curso e classe. As turmas, os professores e os horários aparecem à parte.
         </p>
         <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
           {curriculo.map((item) => (
@@ -215,7 +212,7 @@ export function DisciplinaContextView({
                 </span>
                 {item.ativo === false && (
                   <span className="mt-1 block text-amber-800">
-                    Linha inativa atualmente · estado no ano não comprovado
+                    Esta versão está inativa hoje; pode ter sido usada no ano selecionado.
                   </span>
                 )}
                 {data.cobertura.filter((entry) => entry.matrizId === item.id).map((entry) => (
@@ -225,20 +222,19 @@ export function DisciplinaContextView({
                     {" · "}{entry.turmasComDocente} com docente vinculado
                     {" · "}{entry.turmasComHorario} com horário publicado
                     {!limitado && entry.turmasComVinculo === 0 &&
-                      " · Atribuição não encontrada nas fontes consultadas"}
+                      " · Sem turma atribuída nesta consulta"}
                   </span>
                 ))}
               </span>
             </div>
           ))}
           {!curriculo.length && (
-            <p className="px-3 py-5 text-slate-500">{limitado ? "Currículo publicado não confirmado no recorte consultado; consulta parcial." : "Sem associação na versão curricular publicada deste ano."}</p>
+            <p className="px-3 py-5 text-slate-500">{limitado ? "Não foi possível mostrar todo o currículo deste ano." : "Esta disciplina não consta do currículo publicado deste ano."}</p>
           )}
         </div>
       </section>
 
       <p className="text-xs text-slate-500">
-        Dados exclusivamente académicos. Não são apresentados notas, dados pessoais, pagamentos ou remunerações.
       </p>
     </div>
   );
