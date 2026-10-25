@@ -23,8 +23,21 @@ export default function ThemePreferences() {
             type="button"
             role="radio"
             aria-checked={active}
+            tabIndex={mounted && active ? 0 : -1}
             disabled={!mounted}
             onClick={() => setTheme(id)}
+            onKeyDown={(event) => {
+              const index = OPTIONS.findIndex((option) => option.id === id);
+              let nextIndex = index;
+              if (event.key === "ArrowRight" || event.key === "ArrowDown") nextIndex = (index + 1) % OPTIONS.length;
+              else if (event.key === "ArrowLeft" || event.key === "ArrowUp") nextIndex = (index - 1 + OPTIONS.length) % OPTIONS.length;
+              else if (event.key === "Home") nextIndex = 0;
+              else if (event.key === "End") nextIndex = OPTIONS.length - 1;
+              else return;
+              event.preventDefault();
+              setTheme(OPTIONS[nextIndex].id);
+              event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[nextIndex]?.focus();
+            }}
             className={[
               "flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-sm",
               "text-foreground transition-colors hover:bg-muted",

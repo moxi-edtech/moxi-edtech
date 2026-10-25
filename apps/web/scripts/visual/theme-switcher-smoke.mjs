@@ -37,13 +37,21 @@ try {
   await checkContrast();
   await page.screenshot({ path: `${out}/theme-switcher-light.png` });
 
-  await chooser.getByRole("radio", { name: "Escuro" }).click();
+  // Radio group: a seta alterna de Claro para Escuro.
+  await chooser.getByRole("radio", { name: "Claro" }).focus();
+  await page.keyboard.press("ArrowRight");
+  assert.equal(await chooser.getByRole("radio", { name: "Escuro" }).getAttribute("aria-checked"), "true");
   await page.waitForFunction(() => document.documentElement.classList.contains("dark"));
   const dark = await colors();
   assert.notDeepEqual(dark, light, "Theme colors must visually differ");
   await checkContrast();
   assert.equal(await page.evaluate(() => localStorage.getItem("klasse-theme")), "dark");
   await page.screenshot({ path: `${out}/theme-switcher-dark.png` });
+  await page.emulateMedia({ media: "print" });
+  const printColors = await colors();
+  assert.deepEqual(printColors, light, "Dark preference must not darken printed documents");
+  await page.emulateMedia({ media: "screen" });
+  await page.waitForFunction(() => document.documentElement.classList.contains("dark"));
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("radio", { name: "Escuro" }).waitFor();
   assert.equal(await page.getByRole("radio", { name: "Escuro" }).getAttribute("aria-checked"), "true");
