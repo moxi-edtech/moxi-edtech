@@ -233,9 +233,6 @@ export function DisciplinaContextView({
           )}
         </div>
       </section>
-
-      <p className="text-xs text-slate-500">
-      </p>
     </div>
   );
 }
