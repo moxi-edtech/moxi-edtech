@@ -85,17 +85,17 @@ export function ProfessorContextView({
       {limited && (
         <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Algumas vinculações ultrapassaram o limite de consulta. Os números são parciais; consulte a gestão para o restante.
+          Nem todos os dados deste professor estão disponíveis. Os totais podem ser maiores.
         </p>
       )}
       {semVinculos && !limited && (
         <p className="text-xs text-slate-600">
-          Sem atribuição de turma ou disciplina neste ano letivo (nas fontes desta visão).
+          Nenhuma turma ou disciplina atribuída neste ano.
         </p>
       )}
       {!semVinculos && !semHorario && !data.atribuicoes.length && !limited && (
         <p className="text-xs text-slate-600">
-          Há horários publicados, mas estes não comprovam atribuição formal de disciplina à turma.
+          Há aulas no horário, mas a disciplina não tem atribuição confirmada.
         </p>
       )}
       {!semVinculos && semHorario && !limited && (
@@ -106,10 +106,10 @@ export function ProfessorContextView({
 
       <section className="min-w-0" aria-labelledby="professor-atribuicoes-heading">
         <h3 id="professor-atribuicoes-heading" className="mb-1 flex items-center gap-2 font-semibold text-slate-900">
-          <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Atribuições · Turma × Disciplina
+          <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Turmas e disciplinas
         </h3>
         <p className="mb-2 text-xs text-slate-600">
-          Vínculos docentes registados neste ano, distintos das aulas de horário publicado.
+          Disciplinas atribuídas a este professor no ano selecionado.
         </p>
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {data.atribuicoes.map((atribuicao) => (
@@ -134,15 +134,15 @@ export function ProfessorContextView({
           {!data.atribuicoes.length && (
             <p className="px-3 py-4 text-xs text-slate-600">
               {limited || data.unresolvedDisciplineLinks > 0
-                ? "Atribuições disciplinares não confirmadas na lista consultada; há vínculos a verificar."
-                : semAtribuicao ? "Sem atribuições registadas neste ano nas fontes consultadas."
-                  : "Existem vínculos de turma ou horário, mas não comprovam atribuição disciplinar."}
+                ? "Não foi possível identificar todas as disciplinas atribuídas."
+                : semAtribuicao ? "Nenhuma disciplina atribuída neste ano."
+                  : "Há turmas ou horários associados, mas sem disciplina atribuída."}
             </p>
           )}
         </div>
         {data.unresolvedDisciplineLinks > 0 && (
           <p role="status" className="mt-2 text-xs text-amber-900">
-            {data.unresolvedDisciplineLinks} vínculos sem disciplina de catálogo verificável. Não foram apagados nem atribuídos a outra disciplina.
+            {data.unresolvedDisciplineLinks} atribuições com disciplina por identificar.
           </p>
         )}
       </section>
@@ -176,7 +176,7 @@ export function ProfessorContextView({
               </button>
             ))}
             {!data.turmas.length && (
-              <p className="px-3 py-5 text-slate-500">{limited ? "Nenhuma turma identificada nos vínculos consultados; a lista é parcial." : "Nenhuma turma atribuída neste ano letivo."}</p>
+              <p className="px-3 py-5 text-slate-500">{limited ? "Não aparecem turmas nesta lista. Podem existir outras." : "Nenhuma turma atribuída neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -200,7 +200,7 @@ export function ProfessorContextView({
               </button>
             ))}
             {!data.disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">{limited ? "Nenhuma disciplina identificada nos vínculos consultados; a lista é parcial." : "Nenhuma disciplina atribuída neste ano letivo."}</p>
+              <p className="px-3 py-5 text-slate-500">{limited ? "Não aparecem disciplinas nesta lista. Podem existir outras." : "Nenhuma disciplina atribuída neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -228,16 +228,14 @@ export function ProfessorContextView({
         ) : (
           <p className="rounded-lg border border-slate-200 px-3 py-4 text-xs text-slate-600">
             {limited
-              ? "Nenhum horário publicado identificado no recorte consultado; a lista é parcial."
+              ? "Nenhum horário nesta lista. Podem existir outras aulas."
               : "Sem horário publicado para este professor neste ano letivo."}
-            {" "}Ausência de publicação não significa ausência de atribuição docente.
+            {" "}O professor pode ter turmas mesmo sem horário publicado.
           </p>
         )}
       </section>
 
       <p className="text-xs text-slate-500">
-        Atribuição registada não equivale a aula ministrada; horário publicado não prova presença.
-        Apenas vínculos académicos e horários publicados. Contactos, documentos, remunerações, notas e pagamentos não são apresentados.
       </p>
     </div>
   );
