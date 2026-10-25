@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { contrastRatio } from "./color-contrast.mjs";
 import { mkdir } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
@@ -26,13 +27,7 @@ try {
   });
   const checkContrast = async () => {
     const { background, foreground } = await colors();
-    const rgb = str => (str.match(/[0-9.]+/g) || []).slice(0, 3).map(Number);
-    const lightness = str => rgb(str).map(n => {
-      const v = n / 255;
-      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-    }).reduce((sum, n, i) => sum + n * [0.2126, 0.7152, 0.0722][i], 0);
-    const a = lightness(background), b = lightness(foreground);
-    const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    const ratio = contrastRatio(foreground, background);
     assert.ok(ratio >= 4.5, `Theme contrast ${ratio.toFixed(2)} (bg=${background}, fg=${foreground})`);
   };
 
