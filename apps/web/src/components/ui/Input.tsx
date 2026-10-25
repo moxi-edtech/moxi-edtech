@@ -15,19 +15,19 @@ export function Input({ label, id, error, className = '', inputRef, ...props }: 
   return (
     <div className="w-full">
       {label ? (
-        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-foreground">
           {label}
         </label>
       ) : null}
       <input
         id={inputId}
         ref={inputRef}
-        className={`w-full p-3 border rounded-lg transition-colors duration-200 ${
-          error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-teal-500 focus:border-teal-500'
+        className={`w-full rounded-xl border bg-card p-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors duration-200 focus:ring-4 ${
+          error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-border focus:border-amber focus:ring-amber/20'
         } ${className}`}
         {...props}
       />
-      {error && <p className="mt-1.5 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }
