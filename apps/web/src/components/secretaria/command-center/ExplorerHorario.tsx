@@ -26,8 +26,8 @@ export function ExplorerHorarioSemanal({
 
   if (!aulas.length) return (
     <p className="rounded-xl border border-slate-200 px-3 py-4 text-xs text-slate-600">
-      Nenhuma aula publicada encontrada nesta consulta.
-      {parcial ? " O resultado é parcial, pelo que não permite concluir ausência." : ""}
+      Nenhuma aula no horário publicado desta consulta.
+      {parcial ? " Podem existir outras aulas." : ""}
     </p>
   );
 
@@ -68,8 +68,8 @@ export function ExplorerHorarioSemanal({
                       <p className="mt-0.5 text-xs text-slate-600">
                         {aula.professorNome ??
                           (aula.professorVinculoRegistrado
-                            ? "Identidade docente indisponível"
-                            : "Professor não indicado no horário")}
+                            ? "Professor por identificar"
+                            : "Professor não indicado")}
                       </p>
                     )}
                     {!showTurma && <p className="mt-0.5 text-[11px] text-slate-500">
@@ -88,7 +88,7 @@ export function ExplorerHorarioSemanal({
       {parcial && (
         <p role="status" className="flex items-start gap-2 text-xs text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Horário parcial: existem aulas adicionais fora do limite consultado.
+          Nem todas as aulas foram carregadas.
         </p>
       )}
     </div>
@@ -152,7 +152,7 @@ function HorarioResultado({
         Sem publicação
       </span>
       <p role="status" className="mt-2 text-xs text-slate-600">
-        Esta turma não tem horário publicado neste ano letivo. Pode existir um rascunho na gestão de horários, mas nunca é apresentado como oficial.
+        Esta turma ainda não tem horário publicado. Consulte a gestão de horários para verificar se está em preparação.
       </p>
     </div>
   );
@@ -168,14 +168,14 @@ function HorarioResultado({
           Publicado
         </span>
         <span className="text-xs text-slate-500">
-          Versão oficial · apenas consulta
+          Horário oficial
           {query.data.publicadoEm
             ? " · " + new Date(query.data.publicadoEm).toLocaleDateString("pt-AO") : ""}
         </span>
       </div>
       <ExplorerHorarioSemanal aulas={aulas} parcial={query.data.parcial} />
       {disciplinaId && aulas.length === 0 && query.data.parcial && (
-        <p className="text-xs text-amber-900">A consulta é parcial; outras aulas desta disciplina podem existir.</p>
+        <p className="text-xs text-amber-900">Podem existir outras aulas desta disciplina.</p>
       )}
     </div>
   );
@@ -270,11 +270,11 @@ export function ExplorerHorarioTurma({
           )}
           {listaParcial && (
             <p role="status" className="text-xs text-amber-900">
-              A lista de turmas é parcial. Para uma turma fora deste recorte, abra o respetivo explorador diretamente.
+              Não aparecem todas as turmas. Para consultar outra, pesquise-a diretamente.
             </p>
           )}
           {!effectiveTurma && (
-            <p className="text-xs text-slate-600">Selecione uma turma para consultar apenas o seu horário oficial.</p>
+            <p className="text-xs text-slate-600">Escolha uma turma para ver o horário publicado.</p>
           )}
           {effectiveTurma && (
             <div className={effectiveCompare ? "grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2" : "min-w-0"}>
