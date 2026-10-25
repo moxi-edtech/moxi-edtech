@@ -9,6 +9,7 @@ import { BalcaoWorkspace } from "@/components/secretaria/BalcaoWorkspace";
 import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
 import { ModuleSwitcherInner } from "@/components/layout/klasse/ModuleSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
+import ThemePreferences from "@/components/ThemePreferences";
 import LockScreenButton from "@/components/session/LockScreenButton";
 import { requestSessionConfig } from "@/components/session/SessionLockProvider";
 import { clearExplorerReturnContext } from "@/lib/command-center/explorer-return-context";
@@ -143,7 +144,7 @@ function ScopedTopbar({
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 space-y-0.5 rounded-xl border border-border bg-card p-2 shadow-lg">
+                <div className="absolute right-0 mt-2 w-64 space-y-0.5 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
                   <LockScreenButton className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-foreground transition hover:bg-muted" />
 
                   <button
@@ -157,10 +158,9 @@ function ScopedTopbar({
                     Preferências de Sessão
                   </button>
 
-                  <div className="sm:hidden">
-                    <ThemeToggle className="w-full justify-start border-0 bg-transparent" />
-                  </div>
-                  <div className="my-1 border-t border-border" />
+                  <div className="my-2 border-t border-border" />
+                  <ThemePreferences />
+                  <div className="my-2 border-t border-border" />
 
                   <SignOutButton
                     label="Sair"
