@@ -6,6 +6,17 @@ import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 import SessionLockProvider from "@/components/session/SessionLockProvider";
 import { UserRoleProvider } from "@/components/auth/UserRoleProvider";
 import SWRProvider from "@/components/providers/SWRProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+
+// Aplicar o tema antes do primeiro paint, sem hidratação dependente do browser.
+const themeInitScript = `(() => {
+  try {
+    const saved = localStorage.getItem("klasse-theme") ?? localStorage.getItem("theme");
+    const dark = saved === "dark" || (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", dark);
+    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+  } catch {}
+})();`;
 
 const shouldLoadGoogleFonts = process.env.NEXT_FONT_GOOGLE_FONTS_DISABLE !== "1";
 
@@ -36,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt" className="h-full" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
         <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
@@ -47,7 +59,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
       </head>
       <body className="h-full" style={{ fontFamily: shouldLoadGoogleFonts ? "Sora, sans-serif" : "sans-serif" }}>
-        <ServiceWorkerRegister />
+        <ThemeProvider>
+          <ServiceWorkerRegister />
         <OfflineSyncRegister />
         <FeedbackProvider>
           <SWRProvider>
@@ -55,7 +68,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <SessionLockProvider>{children}</SessionLockProvider>
             </UserRoleProvider>
           </SWRProvider>
-        </FeedbackProvider>
+          </FeedbackProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

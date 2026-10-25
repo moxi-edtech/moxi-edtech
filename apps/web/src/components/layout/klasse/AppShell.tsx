@@ -378,7 +378,7 @@ export default function AppShell({
   }
   
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <Suspense fallback={null}>
         <AcademicContextSync pathname={pathname} onSearchSync={handleSearchSync} />
       </Suspense>
