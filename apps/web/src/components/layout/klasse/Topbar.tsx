@@ -7,7 +7,6 @@ import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
 import { BalcaoWorkspace } from "@/components/secretaria/BalcaoWorkspace";
 import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
-import { ModuleSwitcherInner } from "@/components/layout/klasse/ModuleSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import ThemePreferences from "@/components/ThemePreferences";
 import LockScreenButton from "@/components/session/LockScreenButton";
@@ -42,7 +41,6 @@ function ScopedTopbar({
   escolaNome: _escolaNome,
   planoNome: _planoNome,
   escolaId,
-  escolaParam,
   portal,
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -116,7 +114,6 @@ function ScopedTopbar({
           />
 
           <div className="ml-auto flex items-center gap-2">
-            <ModuleSwitcherInner escolaId={escolaId} escolaParam={escolaParam} />
             <ThemeToggle className="hidden sm:inline-flex" />
             <NotificacoesDropdown />
             <LockScreenButton
