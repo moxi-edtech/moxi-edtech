@@ -165,7 +165,7 @@ export function ClasseContextView({
     <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          O aluno selecionado não está nesta página ou nos filtros atuais. A seleção foi preservada; confirme a turma antes de continuar o atendimento.
+          O aluno selecionado não aparece nesta lista. Confirme a turma antes de continuar o atendimento.
         </p>
       )}
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -182,7 +182,7 @@ export function ClasseContextView({
           )}
         </div>
         <button type="button" onClick={() => onNavigate(href)}
-          title="Abre o módulo de gestão académica (configurações). Não executa alterações neste explorador."
+          title="Abrir gestão académica"
           className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
           Abrir gestão académica <ArrowUpRight className="h-4 w-4" aria-hidden />
         </button>
@@ -197,13 +197,13 @@ export function ClasseContextView({
           label="Capacidade"
           value={stats.capacidade}
           partial={limitado}
-          hint={stats.capacidade == null ? "Soma só quando todas as turmas têm capacidade definida" : undefined}
+          hint={stats.capacidade == null ? "Falta definir a capacidade de algumas turmas" : undefined}
         />
         <ExplorerMetric
           label="Vagas disponíveis"
           value={classOccupancy.available}
           partial={limitado}
-          hint={stats.capacidade == null ? "Indisponível sem capacidade completa" : undefined}
+          hint={stats.capacidade == null ? "Falta definir a capacidade de algumas turmas" : undefined}
         />
         {classOccupancy.overcapacity != null && classOccupancy.overcapacity > 0 && (
           <ExplorerMetric
@@ -221,14 +221,13 @@ export function ClasseContextView({
 
       {stats.capacidade === null && (
         <p className="text-xs text-slate-500">
-          A capacidade total e as vagas disponíveis não são calculadas quando uma ou mais turmas
-          não têm capacidade definida. Capacidade desconhecida não é tratada como zero.
+          Para ver a capacidade total e as vagas, defina a lotação das turmas em falta.
         </p>
       )}
       {limitado && (
         <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Os vínculos excedem o limite de consulta. As contagens são parciais e não representam o total da classe.
+          Nem todos os dados desta classe estão disponíveis. Os totais podem ser maiores.
         </p>
       )}
       {turmas.length > 0 && (
@@ -236,7 +235,7 @@ export function ClasseContextView({
           <span><strong className="tabular-nums text-emerald-800">{turmasComVagas}</strong> turmas com vagas conhecidas</span>
           <span><strong className="tabular-nums text-slate-800">{turmasLotadas}</strong> lotadas ou acima da capacidade</span>
           <span><strong className="tabular-nums text-slate-800">{turmasSemAlunos}</strong> sem alunos do ano</span>
-          <span className="text-slate-500">{limitado ? "Apenas vínculos consultados; lista parcial" : "Capacidades não definidas não são consideradas lotadas"}</span>
+          <span className="text-slate-500">{limitado ? "Dados incompletos" : "Turmas sem capacidade definida ficam fora da lotação"}</span>
         </div>
       )}
 
@@ -245,7 +244,7 @@ export function ClasseContextView({
           <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-800">Atendimento</p>
           <p className="text-sm text-slate-600">Localizar o aluno e continuar no Balcão, sem perder o contexto.</p>
         </div>
-        <span className="text-xs text-slate-500">Ano ${anoLetivo.ano}</span>
+        <span className="text-xs text-slate-500">Ano {anoLetivo.ano}</span>
       </div>
       <section className="min-w-0" aria-labelledby="classe-alunos-heading">
         {!anoLetivo.historico && (
@@ -376,7 +375,7 @@ export function ClasseContextView({
               </button>
             ))}
             {!turmas.length && (
-              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma turma encontrada no recorte consultado; vínculos adicionais podem existir." : "Nenhuma turma vinculada à classe neste ano letivo."}</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Não aparecem turmas nesta lista. Podem existir outras." : "Nenhuma turma vinculada à classe neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -403,7 +402,7 @@ export function ClasseContextView({
               </button>
             ))}
             {!disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma disciplina encontrada na lista parcial." : "Nenhuma disciplina vinculada."}</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Não aparecem disciplinas nesta lista. Podem existir outras." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
           <p className="mt-2 text-xs text-slate-500">
@@ -429,15 +428,13 @@ export function ClasseContextView({
             </button>
           ))}
           {!professores.length && (
-            <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhum professor identificado na lista parcial." : "Nenhum professor atribuído às turmas deste ano."}</p>
+            <p className="px-3 py-5 text-slate-500">{limitado ? "Não aparecem professores nesta lista. Podem existir outros." : "Nenhum professor atribuído às turmas deste ano."}</p>
           )}
         </div>
       </section>
 
 
       <p className="text-xs text-slate-500">
-        Apenas alunos ativos no ano atual ou concluídos no histórico, excluindo cancelados e transferidos.
-        O Balcão mantém as ações existentes. Os marcadores financeiros indicam só a existência de propinas vencidas, sem expor valores.
       </p>
     </div>
   );
