@@ -236,7 +236,7 @@ export function CourseContextView({
             </div>
             <p role="status" className="mt-2 text-xs text-slate-600">
               {window.busy ? "A consultar turmas…" : window.error
-                ? "Não foi possível confirmar a lista." :
+                ? "Não foi possível carregar as turmas." :
                 `${window.data?.total ?? 0} turmas encontradas · Página ${page} de ${lastPage}`}
             </p>
           </div>
@@ -267,7 +267,7 @@ export function CourseContextView({
               </button>
             ))}
             {!window.busy && !window.error && !visibleTurmas.length && (
-              <p className="p-3 text-xs text-slate-500">Nenhuma turma encontrada para os filtros e ano selecionados.</p>
+              <p className="p-3 text-xs text-slate-500">Nenhuma turma encontrada com estes filtros.</p>
             )}
           </div>
           {!window.error && !window.busy && (
@@ -320,7 +320,7 @@ export function CourseContextView({
                 Explorar turma <ChevronRight className="h-4 w-4" aria-hidden />
               </button>
               <button type="button" onClick={() => openTurmaPage(selectedTurma.id)}
-                title="Abre a página canónica da turma"
+                title="Abrir página da turma"
                 className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-emerald-600">
                 Abrir página <ArrowUpRight className="h-4 w-4" aria-hidden />
               </button>
@@ -338,12 +338,10 @@ export function CourseContextView({
       {window.error && (
         <p className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          Os totais do curso não substituem a consulta paginada; a lista de turmas está indisponível.
+          Não foi possível carregar todas as turmas. Tente novamente.
         </p>
       )}
       <p className="text-xs text-slate-500">
-        Apenas matrículas vigentes de alunos não eliminados entram nas contagens.
-        Histórico e valores financeiros não estão incluídos nesta visão.
       </p>
     </div>
   );
