@@ -104,7 +104,8 @@ export function DisciplinaContextView({
         </p>
       )}
 
-      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
+      <ExplorerHorarioTurma key={[context.escolaId, disciplina.id, anoLetivo.id].join(":")}
+        escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
         turmas={turmas} listaParcial={limitado} disciplinaId={disciplina.id} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -154,6 +155,12 @@ export function DisciplinaContextView({
                   <span className="block truncate text-xs text-slate-500">
                     {[turma.cursoNome, turma.classeNome, turma.turno].filter(Boolean).join(" · ") || "Turma"}
                   </span>
+                  <span className="mt-1 block text-[11px] text-slate-600">
+                    {turma.vinculoTurma ? "Atribuição registada à turma"
+                      : turma.horarioPublicado ? "Apenas horário publicado confirmado" : "Vínculo a verificar"}
+                    {turma.horarioPublicado ? " · Horário publicado" : " · Horário não confirmado"}
+                    {turma.docenteVinculado ? " · Docente formalmente vinculado" : turma.docenteEmHorario ? " · Docente apenas no horário publicado" : " · Docente não confirmado"}
+                  </span>
                   {turma.professores.length ? (
                     <span className="mt-1 block truncate text-xs text-slate-600">
                       {turma.professores.map((p) => p.nome).join(", ")}
@@ -176,8 +183,10 @@ export function DisciplinaContextView({
         <h3 id="disciplina-matriz-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
           <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Matriz curricular
         </h3>
-        <p className="mb-2 text-xs text-slate-500">
-          Versão publicada do currículo do ano selecionado. Consta na matriz ≠ atribuída à turma ≠ tem docente neste ano.
+        <p className="mb-2 text-xs text-slate-600">
+          Cobertura verificável por Curso → Classe, na versão publicada do ano selecionado.
+          Matriz ≠ atribuição à turma ≠ docente ≠ horário publicado. Os números abaixo indicam
+          apenas vínculos com origem verificada.
         </p>
         <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
           {curriculo.map((item) => (
@@ -209,6 +218,16 @@ export function DisciplinaContextView({
                     Linha inativa atualmente · estado no ano não comprovado
                   </span>
                 )}
+                {data.cobertura.filter((entry) => entry.matrizId === item.id).map((entry) => (
+                  <span key={entry.matrizId} className="mt-1 block text-slate-600">
+                    {limitado ? "Pelo menos " : ""}
+                    {entry.turmasComVinculo} turmas com vínculo
+                    {" · "}{entry.turmasComDocente} com docente vinculado
+                    {" · "}{entry.turmasComHorario} com horário publicado
+                    {!limitado && entry.turmasComVinculo === 0 &&
+                      " · Atribuição não encontrada nas fontes consultadas"}
+                  </span>
+                ))}
               </span>
             </div>
           ))}

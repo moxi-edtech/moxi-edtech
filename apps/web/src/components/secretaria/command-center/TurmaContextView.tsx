@@ -58,6 +58,7 @@ export function TurmaContextView({
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [rosterSort, setRosterSort] = useState<RosterSort>(initialSort);
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>(initialFilter);
+  const [activeTab, setActiveTab] = useState<"alunos" | "horario" | "disciplinas">("alunos");
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
   const roster = useExplorerRoster(context, "turma", searchTerm, rosterSort, rosterFilter, data?.turma.anoLetivo.historico === false);
   const searchActive = data?.turma.anoLetivo.historico === false && (searchTerm.trim().length >= 2 ||
@@ -198,8 +199,30 @@ export function TurmaContextView({
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
 
-      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={turma.anoLetivo.id}
-        turmaId={turma.id} />
+      <div role="tablist" aria-label="Vistas da turma"
+        className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+        {([
+          { id: "alunos", label: "Alunos" },
+          { id: "horario", label: "Horário" },
+          { id: "disciplinas", label: "Disciplinas" },
+        ] as const).map(({ id, label }) => (
+          <button key={id} type="button" role="tab" id={"turma-tab-" + id}
+            aria-controls={"turma-tabpanel-" + id} aria-selected={activeTab === id}
+            tabIndex={0} onClick={() => setActiveTab(id)}
+            className={"min-w-0 flex-1 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 " +
+              (activeTab === id ? "bg-white text-emerald-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "horario" && (
+        <div role="tabpanel" id="turma-tabpanel-horario" aria-labelledby="turma-tab-horario" tabIndex={0}>
+          <ExplorerHorarioTurma key={[context.escolaId, turma.id, turma.anoLetivo.id].join(":")}
+            escolaId={context.escolaId} anoLetivoId={turma.anoLetivo.id}
+            turmaId={turma.id} initiallyExpanded />
+        </div>
+      )}
 
       {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
         <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
@@ -218,7 +241,7 @@ export function TurmaContextView({
         </p>
       )}
 
-      {!turma.anoLetivo.historico && (
+      {activeTab === "alunos" && !turma.anoLetivo.historico && (
         <>
           <ExplorerRosterControls
             value={searchTerm}
@@ -248,8 +271,10 @@ export function TurmaContextView({
           />
         </>
       )}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <section className="min-w-0" aria-labelledby="turma-alunos-heading">
+      <div className="min-w-0">
+        {activeTab === "alunos" && (
+        <section role="tabpanel" id="turma-tabpanel-alunos" aria-labelledby="turma-tab-alunos"
+          tabIndex={0} className="min-w-0">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h3 id="turma-alunos-heading" className="flex items-center gap-2 font-semibold text-slate-900">
               <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
@@ -308,8 +333,11 @@ export function TurmaContextView({
           </div>}
           {rosterReady && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
         </section>
+        )}
 
-        <section className="min-w-0" aria-labelledby="turma-disciplinas-heading">
+        {activeTab === "disciplinas" && (
+        <section role="tabpanel" id="turma-tabpanel-disciplinas" aria-labelledby="turma-tab-disciplinas"
+          tabIndex={0} className="min-w-0">
           <h3 id="turma-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
             <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Disciplinas e professores
           </h3>
@@ -372,6 +400,7 @@ export function TurmaContextView({
             </p>
           )}
         </section>
+        )}
       </div>
 
       <p className="text-xs text-slate-500">

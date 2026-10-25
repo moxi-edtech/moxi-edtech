@@ -103,3 +103,43 @@ test("EX-015: five explorers reuse the read-only timetable, without five APIs", 
   }
   assert.match(readFileSync(base + "ProfessorContextView.tsx", "utf8"), /ExplorerHorarioSemanal/);
 });
+
+
+test("EX-015: weekly schedule exposes prototype-like weekday navigation", () => {
+  const html = renderToStaticMarkup(React.createElement(ExplorerHorarioSemanal, {
+    aulas: [lesson("monday", 1, "07:30:00", {
+      disciplinaNome: "Física", professorNome: "Prof. Carlos", salaNome: "Lab. 02",
+    })],
+  }));
+  for (const weekday of ["Seg", "Ter", "Qua", "Qui", "Sex"]) {
+    assert.match(html, new RegExp(">" + weekday + "<"), "missing weekday " + weekday);
+  }
+  assert.match(html, /aria-label="Filtrar horário por dia"/);
+  assert.match(html, /07:30–09:00/);
+  assert.match(html, /Prof. Carlos/);
+  assert.match(html, /Sala Lab. 02/);
+});
+
+test("EX-015: Turma uses three contextual tabs and lazy published timetable", () => {
+  const src = readFileSync("src/components/secretaria/command-center/TurmaContextView.tsx", "utf8");
+  assert.match(src, /role="tablist"/);
+  assert.match(src, /label: "Alunos"/);
+  assert.match(src, /label: "Horário"/);
+  assert.match(src, /label: "Disciplinas"/);
+  assert.match(src, /activeTab === "horario" &&/);
+  assert.match(src, /initiallyExpanded/);
+  assert.match(src, /role="tabpanel"/);
+  assert.match(src, /activeTab === "alunos" &&/);
+  assert.match(src, /activeTab === "disciplinas" &&/);
+});
+
+test("EX-015: Classe compares two authorized turma schedules only after explicit expansion", () => {
+  const classe = readFileSync("src/components/secretaria/command-center/ClasseContextView.tsx", "utf8");
+  const horario = readFileSync("src/components/secretaria/command-center/ExplorerHorario.tsx", "utf8");
+  assert.match(classe, /allowCompare/);
+  assert.match(horario, /Comparar com \(opcional\)/);
+  assert.match(horario, /enabled: expanded && Boolean\(effectiveCompare\)/);
+  assert.match(horario, /item\.id !== effectiveTurma/);
+  assert.match(horario, /Sem publicação/);
+  assert.match(horario, /Versão oficial · apenas consulta/);
+});

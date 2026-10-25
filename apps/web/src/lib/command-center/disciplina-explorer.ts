@@ -7,12 +7,17 @@ export type DisciplinaTurmaRow = {
   turno: string | null;
   classeNome: string | null;
   cursoNome: string | null;
+  cursoId?: string | null;
+  classeId?: string | null;
   anoLetivo: number | null;
   anoLetivoId: string | null;
 };
 
 export type DisciplinaTeacher = { id: string; nome: string; identityAvailable?: boolean };
-export type DisciplinaAssignment = { turmaId: string; professorId: string | null };
+export type DisciplinaAssignment = {
+  turmaId: string; professorId: string | null;
+  origem?: "turma_disciplinas" | "docente_legado" | "horario_publicado";
+};
 export type PublishedCourseCurriculum = {
   id: string;
   cursoId: string;
@@ -79,12 +84,20 @@ export function composeDisciplinaOverview(input: {
   const teacherMap = new Map(input.teachers.map((teacher) => [teacher.id, teacher] as const));
   const unresolvedTeacherIds = new Set<string>();
   const assignmentsByTurma = new Map<string, Set<string>>();
+  const evidenceByTurma = new Map<string, Set<NonNullable<DisciplinaAssignment["origem"]>>>();
+  const formallyAssignedTeachers = new Map<string, Set<string>>();
+  const timetableTeachers = new Map<string, Set<string>>();
 
   for (const row of input.assignments) {
     if (!availableTurmas.has(row.turmaId)) continue;
     if (!assignmentsByTurma.has(row.turmaId)) assignmentsByTurma.set(row.turmaId, new Set());
+    if (!evidenceByTurma.has(row.turmaId)) evidenceByTurma.set(row.turmaId, new Set());
+    evidenceByTurma.get(row.turmaId)!.add(row.origem ?? "turma_disciplinas");
     if (row.professorId) {
       assignmentsByTurma.get(row.turmaId)!.add(row.professorId);
+      const bucket = row.origem === "horario_publicado" ? timetableTeachers : formallyAssignedTeachers;
+      if (!bucket.has(row.turmaId)) bucket.set(row.turmaId, new Set());
+      bucket.get(row.turmaId)!.add(row.professorId);
       if (teacherMap.get(row.professorId)?.identityAvailable === false ||
           !teacherMap.has(row.professorId)) unresolvedTeacherIds.add(row.professorId);
     }
@@ -98,6 +111,14 @@ export function composeDisciplinaOverview(input: {
       turno: turma.turno,
       classeNome: turma.classeNome,
       cursoNome: turma.cursoNome,
+      classeId: turma.classeId ?? null,
+      cursoId: turma.cursoId ?? null,
+      vinculoTurma: evidenceByTurma.get(turmaId)!.has("turma_disciplinas") ||
+        evidenceByTurma.get(turmaId)!.has("docente_legado"),
+      horarioPublicado: evidenceByTurma.get(turmaId)!.has("horario_publicado"),
+      // A scheduled teacher alone is not a formal allocation.
+      docenteVinculado: (formallyAssignedTeachers.get(turmaId)?.size ?? 0) > 0,
+      docenteEmHorario: (timetableTeachers.get(turmaId)?.size ?? 0) > 0,
       professores: [...ids].map((id) => teacherMap.get(id) ?? {
         id, nome: "Professor com vínculo registado · identidade indisponível", identityAvailable: false,
       })
@@ -136,10 +157,28 @@ export function composeDisciplinaOverview(input: {
     (a.classeNome ?? "").localeCompare(b.classeNome ?? "", "pt") ||
     a.id.localeCompare(b.id));
 
+  // Cross-reference only classes/courses actually recorded on year-scoped
+  // turmas; names and the catalogue alone never prove a curriculum assignment.
+  const cobertura = curriculo.map((item) => {
+    const matching = turmas.filter((turma) =>
+      Boolean(item.cursoId && turma.cursoId === item.cursoId) &&
+      (!item.classeId || turma.classeId === item.classeId));
+    return {
+      curriculoId: item.curriculoId,
+      matrizId: item.id,
+      cursoId: item.cursoId,
+      classeId: item.classeId,
+      turmasComVinculo: matching.filter((turma) => turma.vinculoTurma).length,
+      turmasComDocente: matching.filter((turma) => turma.vinculoTurma && turma.docenteVinculado).length,
+      turmasComHorario: matching.filter((turma) => turma.horarioPublicado).length,
+    };
+  });
+
   return {
     professores,
     turmas,
     curriculo,
+    cobertura,
     unresolvedTeacherLinks: unresolvedTeacherIds.size,
     stats: {
       professores: professores.length,

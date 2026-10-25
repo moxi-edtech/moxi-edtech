@@ -192,9 +192,18 @@ async function readExplorer(
     );
 
     const links: DisciplinaAssignment[] = [
-      ...direct.slice(0, MAX_LINKS).map((row) => ({ turmaId: row.turma_id, professorId: row.professor_id })),
-      ...legacy.slice(0, MAX_LINKS).map((row) => ({ turmaId: row.turma_id, professorId: row.professor_id })),
-      ...publishedLinks.map((row) => ({ turmaId: row.turma_id, professorId: row.professor_id })),
+      ...direct.slice(0, MAX_LINKS).map((row) => ({
+        turmaId: row.turma_id, professorId: row.professor_id,
+        origem: "turma_disciplinas" as const,
+      })),
+      ...legacy.slice(0, MAX_LINKS).map((row) => ({
+        turmaId: row.turma_id, professorId: row.professor_id,
+        origem: "docente_legado" as const,
+      })),
+      ...publishedLinks.map((row) => ({
+        turmaId: row.turma_id, professorId: row.professor_id,
+        origem: "horario_publicado" as const,
+      })),
     ];
     const relatedTurmaIds = [...new Set(links.map((row) => row.turmaId).filter(Boolean))];
     if (relatedTurmaIds.length > MAX_TURMAS) limitado = true;
@@ -227,6 +236,8 @@ async function readExplorer(
         anoLetivo: row.ano_letivo, anoLetivoId: row.ano_letivo_id,
         classeNome: first(row.classes)?.nome ?? null,
         cursoNome: first(row.cursos)?.nome ?? null,
+        classeId: first(row.classes)?.id ?? null,
+        cursoId: first(row.cursos)?.id ?? null,
       })).filter((turma) => isDisciplinaTurmaInYear(turma, year));
     const scopedIds = new Set(turmas.map((turma) => turma.id));
     const teacherIds = [...new Set(links
