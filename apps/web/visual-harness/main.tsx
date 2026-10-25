@@ -18,6 +18,7 @@ import { FeedbackProvider } from "../src/components/feedback/FeedbackSystem";
 import ThemeSwitcherVisualFixture from "./ThemeSwitcherVisualFixture";
 import "./fixture.css";
 import "../src/app/globals.css";
+import "../src/app/theme-print.css";
 import {
   DocumentosPendentes, DocumentosRejeitados, NotasPagas, ProfessorComTurmas, DashboardClean, DashboardPending, DashboardRejected, DashboardRematricula, DashboardOverdue, DashboardEmpty, DashboardApproved, GradePaid, GradeUnpaid, GradePending, GradeRejected, GradeEmpty, NoticeInformativo, NoticeAtencao, NoticeCritico, NoticeSucesso, NoticeRematricula, NoticeFinanceiro,
 } from "../src/components/aluno/PortalVisualFixtures.stories";
