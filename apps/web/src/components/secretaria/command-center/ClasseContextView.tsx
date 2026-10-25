@@ -8,6 +8,7 @@ import {
 
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioTurma } from "@/components/secretaria/command-center/ExplorerHorario";
 import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
 import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { useClasseContext } from "@/hooks/useClasseContext";
@@ -345,6 +346,9 @@ export function ClasseContextView({
           Abrir turmas, consultar a matriz e conferir docentes sem presumir atribuições.
         </p>
       </div>
+      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
+        turmas={turmas} listaParcial={limitado} />
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="min-w-0" aria-labelledby="classe-turmas-heading">
           <h3 id="classe-turmas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">

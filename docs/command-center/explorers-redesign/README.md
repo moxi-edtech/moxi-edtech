@@ -199,3 +199,10 @@ A rota, compositor, contrato TypeScript, vista e testes da Disciplina foram alin
 - Command Palette é o único dono do scroll. Turma e Classe restauram no contêiner correto após carregar a lista; guardam página, filtros, pesquisa, aluno selecionado e scroll numa referência efémera e isolada por escola/ano.
 - Ao atualizar a pesquisa, os resultados do termo anterior são ocultados enquanto o `useDebounce` não estabiliza. Ausência, erro e carregamento têm mensagens diferentes. O aluno antes selecionado pode não constar da página/filtros sem que se infira mudança de matrícula.
 - Testes simulam três alunos sucessivos, retorno de estado, rejeição de outra escola e contratos de scroll/roster. Teste autenticado e inspeção visual continuam requisitos para marcar EX-004 completamente aceite.
+
+
+## EX-015 — Horários contextuais (integração com a PR #262)
+
+A branch da PR #262 incorpora a EX-015 codificada na #261, mantendo `horario_versoes`, `quadro_horarios` e `horario_slots` como fonte única. A rota `/command-center/turmas/[turmaId]/horario` é read-only, restrita à escola, turma e ano autorizado, e consulta somente a versão publicada. Sem publicação não se exibe rascunho; identidade do professor e sala não são deduzidas. Curso/Classe/Disciplina usam escolha explícita de turma; Turma mostra horário semanal; Professor usa agenda de publicação já existente. Nenhuma edição foi adicionada aos exploradores.
+
+A EX-015 não dispensa homologação autenticada em duas escolas e verificação de permissões, histórico, responsividade e associações docentes ausentes. A adoção da grelha semanal deve seguir o protótipo aprovado antes do merge à main.

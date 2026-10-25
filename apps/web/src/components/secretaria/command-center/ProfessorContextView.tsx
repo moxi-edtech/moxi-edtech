@@ -6,10 +6,10 @@ import {
 } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioSemanal } from "@/components/secretaria/command-center/ExplorerHorario";
 import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
 import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
-import { PROFESSOR_WEEKDAYS } from "@/lib/command-center/professor-explorer";
 import { useProfessorContext } from "@/hooks/useProfessorContext";
 
 type Props = {
@@ -210,28 +210,29 @@ export function ProfessorContextView({
         <h3 id="professor-horario-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
           <CalendarDays className="h-4 w-4 text-emerald-700" aria-hidden /> Horário publicado
         </h3>
-        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-          {data.horarios.map((aula, i) => (
-            <div key={`${aula.turmaId}:${aula.diaSemana}:${aula.inicio}:${i}`}
-              className="flex flex-wrap items-center justify-between gap-3 px-3 py-3">
-              <span className="font-medium text-slate-900">
-                {PROFESSOR_WEEKDAYS[aula.diaSemana] || `Dia ${aula.diaSemana}`}
-                {" · "}
-                {aula.inicio.slice(0, 5)}–{aula.fim.slice(0, 5)}
-              </span>
-              <span className="text-xs text-slate-600">
-                {aula.turmaNome}{aula.disciplinaNome ? ` · ${aula.disciplinaNome}` : ""}
-              </span>
-            </div>
-          ))}
-          {!data.horarios.length && (
-            <p className="px-3 py-5 text-slate-500">
-              {limited ? "Nenhum horário publicado identificado no recorte consultado; a lista é parcial." : "Sem horário publicado para este professor neste ano letivo."}
-              {" "}
-              (Ausência de publicação ≠ ausência de atribuição.)
-            </p>
-          )}
-        </div>
+        {data.horarios.length > 0 ? (
+          <ExplorerHorarioSemanal
+            showTurma
+            parcial={limited}
+            aulas={data.horarios.map((aula, index) => ({
+              id: [aula.turmaId, aula.diaSemana, aula.inicio, aula.fim, index].join(":"),
+              turmaNome: aula.turmaNome,
+              diaSemana: aula.diaSemana,
+              inicio: aula.inicio,
+              fim: aula.fim,
+              disciplinaNome: aula.disciplinaNome || "Disciplina sem identificação",
+              professorNome: null,
+              salaNome: null,
+            }))}
+          />
+        ) : (
+          <p className="rounded-lg border border-slate-200 px-3 py-4 text-xs text-slate-600">
+            {limited
+              ? "Nenhum horário publicado identificado no recorte consultado; a lista é parcial."
+              : "Sem horário publicado para este professor neste ano letivo."}
+            {" "}Ausência de publicação não significa ausência de atribuição docente.
+          </p>
+        )}
       </section>
 
       <p className="text-xs text-slate-500">

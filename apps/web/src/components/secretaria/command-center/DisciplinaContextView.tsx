@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioTurma } from "@/components/secretaria/command-center/ExplorerHorario";
 import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
 import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
@@ -102,6 +103,9 @@ export function DisciplinaContextView({
           Os vínculos académicos permanecem registados; confirme as identidades na gestão autorizada.
         </p>
       )}
+
+      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
+        turmas={turmas} listaParcial={limitado} disciplinaId={disciplina.id} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="min-w-0" aria-labelledby="disciplina-professores-heading">

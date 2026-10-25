@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioTurma } from "@/components/secretaria/command-center/ExplorerHorario";
 import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
 import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
@@ -196,6 +197,9 @@ export function TurmaContextView({
         <ExplorerMetric label="Professores vinculados" value={data.professoresDetalhes?.length ?? professores.length} partial={data.disciplinasLimitadas} />
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
+
+      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={turma.anoLetivo.id}
+        turmaId={turma.id} />
 
       {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
         <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">

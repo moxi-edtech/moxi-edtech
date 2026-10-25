@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioTurma } from "@/components/secretaria/command-center/ExplorerHorario";
 import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
 import { buildPortalHref } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
@@ -327,6 +328,12 @@ export function CourseContextView({
           </motion.section>
         )}
       </AnimatePresence>
+
+      <ExplorerHorarioTurma
+        key={[context.escolaId, context.id, data.anoLetivo.id, classeId ?? "todas"].join(":")}
+        escolaId={context.escolaId} anoLetivoId={data.anoLetivo.id}
+        turmas={visibleTurmas} listaParcial={Boolean(window.data?.hasMore) || Boolean(window.error) || window.busy}
+      />
 
       {window.error && (
         <p className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
