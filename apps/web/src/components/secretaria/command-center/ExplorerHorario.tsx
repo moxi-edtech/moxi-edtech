@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { AlertCircle, CalendarDays, ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
