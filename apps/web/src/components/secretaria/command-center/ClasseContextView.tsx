@@ -432,10 +432,6 @@ export function ClasseContextView({
           )}
         </div>
       </section>
-
-
-      <p className="text-xs text-slate-500">
-      </p>
     </div>
   );
 }
