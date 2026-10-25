@@ -234,9 +234,6 @@ export function ProfessorContextView({
           </p>
         )}
       </section>
-
-      <p className="text-xs text-slate-500">
-      </p>
     </div>
   );
 }
