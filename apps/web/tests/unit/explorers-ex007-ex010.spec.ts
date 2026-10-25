@@ -78,7 +78,7 @@ test("EX-009: professor matrix uses only actual allocations, not published sched
   assert.equal(model.stats.aulasPublicadas,1);
   assert.equal(model.disciplinas.length,2); // schedule may reveal subject, not formal allocation
   assert.ok(!model.atribuicoes.some(a=>a.disciplinaId==="lang"));
-  assert.match(teacherView, /Atribuições · Turma × Disciplina/);
+  assert.match(teacherView, /Turmas e disciplinas/);
   assert.match(teacherView, /Horário publicado/);
   assert.match(teacherView, /data\.unresolvedDisciplineLinks/);
 });
@@ -122,7 +122,7 @@ test("EX-010: year-scoped curriculum coverage separates actual turma, teacher an
   assert.match(disciplineRoute, /origem: "turma_disciplinas"/);
   assert.match(disciplineRoute, /origem: "horario_publicado"/);
   assert.match(disciplineView, /data\.cobertura/);
-  assert.match(disciplineView, /Matriz ≠ atribuição à turma ≠ docente ≠ horário publicado/);
+  assert.match(disciplineView, /As turmas, os professores e os horários aparecem à parte/);
 });
 
 
