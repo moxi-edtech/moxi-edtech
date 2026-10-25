@@ -1,0 +1,30 @@
+name: Theme Switcher Guard
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/layout.tsx"
+      - "apps/web/src/components/ThemeToggle.tsx"
+      - "apps/web/src/components/providers/ThemeProvider.tsx"
+      - "apps/web/src/lib/theme-preference.ts"
+      - "apps/web/tests/unit/theme-preference.spec.ts"
+      - "apps/web/package.json"
+      - ".github/workflows/theme-switcher-guard.yml"
+  workflow_dispatch:
+
+jobs:
+  theme-preference:
+    name: Theme preference tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web test:unit:theme
