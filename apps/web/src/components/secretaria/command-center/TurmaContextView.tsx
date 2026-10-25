@@ -394,9 +394,6 @@ export function TurmaContextView({
         </section>
         )}
       </div>
-
-      <p className="text-xs text-slate-500">
-      </p>
     </div>
   );
 }
