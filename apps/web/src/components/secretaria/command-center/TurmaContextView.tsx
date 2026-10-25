@@ -18,7 +18,7 @@ import { ExplorerStudentActions } from "@/components/secretaria/command-center/E
 import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 import { useTurmaContext } from "@/hooks/useTurmaContext";
-import { academicLinkState, academicCurriculumNotice, missingTeacherEvidenceLabel, ACADEMIC_LINK_LABELS } from "@/lib/command-center/academic-relations";
+import { missingTeacherEvidenceLabel } from "@/lib/command-center/academic-relations";
 
 type Props = {
   context: EntityContext;
@@ -171,7 +171,7 @@ export function TurmaContextView({
           </p>
         </div>
         <button type="button" onClick={openExisting}
-          title="Abre a página canónica da turma. As escritas ficam nesse módulo."
+          title="Abrir gestão da turma"
           className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
           Abrir página da turma <ArrowUpRight className="h-4 w-4" aria-hidden />
         </button>
@@ -189,7 +189,7 @@ export function TurmaContextView({
         <ExplorerMetric
           label="Vagas disponíveis"
           value={occupancy.available}
-          hint={turma.capacidade == null ? "Indisponível sem capacidade" : undefined}
+          hint={turma.capacidade == null ? "Defina a capacidade da turma" : undefined}
         />
         {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
           <ExplorerMetric label="Excedente de lotação" value={occupancy.overcapacity} hint="Acima da capacidade registada" />
@@ -226,7 +226,7 @@ export function TurmaContextView({
 
       {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
         <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-          <span>Lotação excedida em {occupancy.overcapacity} alunos. Fonte: capacidade registada da turma e matrículas activas deste ano.</span>
+          <span>Há {occupancy.overcapacity} alunos acima da capacidade desta turma.</span>
           <button type="button" onClick={openExisting} className="font-semibold underline focus-visible:outline-2 focus-visible:outline-emerald-600">
             Abrir gestão da turma
           </button>
@@ -351,17 +351,9 @@ export function TurmaContextView({
                 </button>
                 {d.curriculumActive === false && (
                   <p className="mt-1 text-xs text-amber-800" role="status">
-                    {academicCurriculumNotice({
-                      curriculumActive: d.curriculumActive, assignedToTurma: true,
-                      teacherAssigned: d.professores.length > 0,
-                      schedulePublished: false, historicalYear: turma.anoLetivo.historico,
-                    })}
-                    {" · Vínculo: "}
-                    {ACADEMIC_LINK_LABELS[academicLinkState({
-                      curriculumActive: d.curriculumActive, assignedToTurma: true,
-                      teacherAssigned: d.professores.length > 0,
-                      schedulePublished: false, historicalYear: turma.anoLetivo.historico,
-                    })]}
+                    {turma.anoLetivo.historico
+                      ? "Currículo atualmente inativo. Consulte os dados do ano selecionado."
+                      : "Currículo inativo. Confirme esta disciplina na gestão académica."}
                   </p>
                 )}
                 <p className={`mt-1 text-xs ${d.professores.length ? "text-slate-500" : "text-amber-800"}`}>
@@ -370,13 +362,13 @@ export function TurmaContextView({
               </div>
             ))}
             {!disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">{data.disciplinasLimitadas ? "Não foi possível confirmar as disciplinas fora do recorte consultado." : "Nenhuma disciplina vinculada."}</p>
+              <p className="px-3 py-5 text-slate-500">{data.disciplinasLimitadas ? "Não aparecem todas as disciplinas nesta lista." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
           {data.disciplinasLimitadas && (
             <p className="mt-2 flex gap-2 text-xs text-slate-600">
               <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-              Algumas vinculações excedem os limites desta visão. Consulte a página da turma para o restante.
+              Algumas disciplinas podem não aparecer. Consulte a página da turma.
             </p>
           )}
           <h4 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -396,7 +388,7 @@ export function TurmaContextView({
             </div>
           ) : (
             <p className="text-xs text-slate-500">
-              {professores.length ? professores.join(", ") : data.disciplinasLimitadas ? "Não é possível confirmar a ausência de professores numa lista parcial." : "Nenhum professor vinculado."}
+              {professores.length ? professores.join(", ") : data.disciplinasLimitadas ? "Não aparecem professores nesta lista. Podem existir outros." : "Nenhum professor vinculado."}
             </p>
           )}
         </section>
@@ -404,7 +396,6 @@ export function TurmaContextView({
       </div>
 
       <p className="text-xs text-slate-500">
-        Os marcadores representam apenas pendências comprovadas, sem mostrar montantes. Pagamentos, notas e documentos continuam nos módulos autorizados.
       </p>
     </div>
   );
