@@ -346,8 +346,9 @@ export function ClasseContextView({
           Abrir turmas, consultar a matriz e conferir docentes sem presumir atribuições.
         </p>
       </div>
-      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
-        turmas={turmas} listaParcial={limitado} />
+      <ExplorerHorarioTurma key={[context.escolaId, context.id, anoLetivo.id].join(":")}
+        escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
+        turmas={turmas} listaParcial={limitado} allowCompare />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="min-w-0" aria-labelledby="classe-turmas-heading">

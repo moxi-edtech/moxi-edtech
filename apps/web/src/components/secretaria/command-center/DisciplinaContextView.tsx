@@ -104,7 +104,8 @@ export function DisciplinaContextView({
         </p>
       )}
 
-      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
+      <ExplorerHorarioTurma key={[context.escolaId, disciplina.id, anoLetivo.id].join(":")}
+        escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
         turmas={turmas} listaParcial={limitado} disciplinaId={disciplina.id} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

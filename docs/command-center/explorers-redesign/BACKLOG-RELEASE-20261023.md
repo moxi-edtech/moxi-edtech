@@ -73,3 +73,10 @@
 Este documento é um **adendo** ao `docs/command-center/estado-backlog-20261022.md`, não substitui CC-001–020. CC-002/003/004 (RLS, polos e E2E real), CC-012 (retorno de contexto), CC-015/016 (performance), CC-018/019 (acessibilidade/homologação) permanecem gates ou trabalhos independentes conforme o seu escopo. Não reclassificar os CC como concluídos por causa dos testes EX.
 
 **Próxima ação:** EX-REL-01 → EX-REL-02 → EX-REL-03 → EX-REL-04 → EX-REL-05.
+
+
+## Atualização de implementação — 25/10/2026
+
+- **EX-REL-01/02:** a aplicação seletiva das RPCs EX-005 e EX-007 em produção foi confirmada, com \`SECURITY INVOKER\` e EXECUTE restrito a \`authenticated\`/\`service_role\`. Os registos anteriores a esta secção documentam o estado **antes** da aplicação, não constituem o estado atual.
+- **EX-015:** incorporada da PR #261 na branch da #262 por merge histórico explícito; uma fonte de verdade para horários. UX: Turma com abas Alunos/Horário/Disciplinas, Classe com comparação de duas turmas, Curso com escolha no recorte paginado, Disciplina filtrada, Professor com agenda. Testes de contrato visual acrescentados.
+- **Não há release de interface:** EX-REL-03 (homologação autenticada), EX-REL-04 (merge) e EX-REL-05 (deploy/smoke) continuam pendentes.

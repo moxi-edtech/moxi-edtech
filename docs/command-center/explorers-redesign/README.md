@@ -7,7 +7,7 @@
 **Principais ficheiros:** apps/web/src/components/secretaria/command-center/*ContextView.tsx, apps/web/src/lib/command-center/, apps/web/src/app/api/escolas/[id]/command-center/ e apps/web/src/hooks/.
 
 
-> **Estado atualizado — EX-007 a EX-010 (PR #262, 23/10/2026):** implementação técnica concluída, CI de código originalmente 23/23 verde em `e6b592bd`; permanece **sem instalação da RPC EX-007, homologação autenticada, merge ou produção**. A documentação da implementação está em [EX007-EX010-IMPLEMENTACAO.md](./EX007-EX010-IMPLEMENTACAO.md); o [backlog de integração e release](./BACKLOG-RELEASE-20261023.md) contém o estado auditado no Supabase e os gates de aplicação controlada. Os registos históricos abaixo sobre “ainda não implementado” descrevem **a fase anterior da PR #261**, não o estado atual da stack.
+> **Estado atualizado — EX-007 a EX-010 (PR #262, 23/10/2026):** implementação técnica concluída, CI de código originalmente 23/23 verde em `e6b592bd`; as RPCs EX-005 e EX-007 foram **instaladas e verificadas em produção em 25/10/2026**; permanecem pendentes homologação autenticada, merge e deploy. A documentação da implementação está em [EX007-EX010-IMPLEMENTACAO.md](./EX007-EX010-IMPLEMENTACAO.md); o [backlog de integração e release](./BACKLOG-RELEASE-20261023.md) contém o estado auditado no Supabase e os gates de aplicação controlada. Os registos históricos abaixo sobre “ainda não implementado” descrevem **a fase anterior da PR #261**, não o estado atual da stack.
 
 ## 1. Objetivo de produto
 
@@ -206,3 +206,15 @@ A rota, compositor, contrato TypeScript, vista e testes da Disciplina foram alin
 A branch da PR #262 incorpora a EX-015 codificada na #261, mantendo `horario_versoes`, `quadro_horarios` e `horario_slots` como fonte única. A rota `/command-center/turmas/[turmaId]/horario` é read-only, restrita à escola, turma e ano autorizado, e consulta somente a versão publicada. Sem publicação não se exibe rascunho; identidade do professor e sala não são deduzidas. Curso/Classe/Disciplina usam escolha explícita de turma; Turma mostra horário semanal; Professor usa agenda de publicação já existente. Nenhuma edição foi adicionada aos exploradores.
 
 A EX-015 não dispensa homologação autenticada em duas escolas e verificação de permissões, histórico, responsividade e associações docentes ausentes. A adoção da grelha semanal deve seguir o protótipo aprovado antes do merge à main.
+
+
+### EX-015 — apresentação alinhada ao protótipo (25/10/2026)
+
+- **Turma:** abas Alunos / Horário / Disciplinas no próprio explorador. Ao selecionar Horário, abre-se a grelha semanal com dias e períodos, sem sair do contexto. A consulta só é ativada quando a aba é aberta.
+- **Professor:** agenda por dia e período, reaproveitando a listagem de horários publicados; apenas mostra turma e disciplina comprovadas, não deduz sala.
+- **Classe:** escolha explícita de duas turmas para comparação lado a lado; cada consulta é autenticada e limitada ao ano/escola.
+- **Curso:** escolha de turma no recorte filtrado pela classe e página atual, com aviso quando a janela não é exaustiva.
+- **Disciplina:** horário da turma selecionada, filtrado pela disciplina, distinguindo resultado parcial de ausência.
+- Componente partilhado \`ExplorerHorarioSemanal\`, estados **Publicado**, **Sem publicação**, carregamento, erro e dados parciais; grelha Seg–Sex (fins de semana apresentados apenas quando existem aulas).
+- Acesso read-only a uma versão publicada. Rascunhos e conflitos não são oficializados, professor e sala nunca são inferidos, sem esquema SQL paralelo.
+- **Gate:** testar responsividade e autenticação multi-escola, períodos incompletos, retorno entre abas e abertura progressiva antes de merge e deploy.
