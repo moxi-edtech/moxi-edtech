@@ -112,8 +112,8 @@ export function TabPropinas({
   return (
     <div className="space-y-6">
       {/* Barra de Pesquisa Local */}
-      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
-        <Search className="h-4 w-4 text-slate-400" />
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2 shadow-sm">
+        <Search className="h-4 w-4 text-muted-foreground" />
         <input
           type="text"
           placeholder="Pesquisar por classe ou turma (ex: 7ª Classe, Turma A)..."
@@ -123,15 +123,15 @@ export function TabPropinas({
         />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold text-slate-900">Série mensal ({anoLetivoAtivo})</h2>
-          <p className="text-xs text-slate-500">Leitura por competência e arrecadação.</p>
+          <h2 className="text-base font-semibold text-foreground">Série mensal ({anoLetivoAtivo})</h2>
+          <p className="text-xs text-muted-foreground">Leitura por competência e arrecadação.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-[11px] leading-tight">
             <thead>
-              <tr className="border-b bg-slate-50/50 text-left text-slate-500">
+              <tr className="border-b bg-muted/50 text-left text-muted-foreground">
                 <th className="sticky top-0 py-2 px-3 font-bold uppercase tracking-wider">Competência</th>
                 <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Mens.</th>
                 <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Atraso</th>
@@ -141,15 +141,15 @@ export function TabPropinas({
                 <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Inad. %</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {mensalFiltrado.map((m) => {
                 const mKey = `${m.ano}-${String(m.mes).padStart(2, "0")}`;
                 return (
-                  <tr key={`${m.ano}-${m.mes}`} className="hover:bg-slate-50/50">
-                    <td className="py-1.5 px-3 font-medium text-slate-700">{m.labelMes}</td>
-                    <td className="py-1.5 px-3 text-right text-slate-600">{m.qtdMensalidades}</td>
+                  <tr key={`${m.ano}-${m.mes}`} className="hover:bg-muted/50">
+                    <td className="py-1.5 px-3 font-medium text-foreground">{m.labelMes}</td>
+                    <td className="py-1.5 px-3 text-right text-muted-foreground">{m.qtdMensalidades}</td>
                     <td className="py-1.5 px-3 text-right text-rose-600">{m.qtdEmAtraso}</td>
-                    <td className="py-1.5 px-3 text-right text-slate-600">{kwanza.format(m.totalPrevisto)}</td>
+                    <td className="py-1.5 px-3 text-right text-muted-foreground">{kwanza.format(m.totalPrevisto)}</td>
                     <td 
                       className={`py-1.5 px-3 text-right text-emerald-600 font-medium ${m.totalPago > 0 ? "cursor-pointer hover:underline" : ""}`}
                       onClick={() => m.totalPago > 0 && handleOpenDrillDown({ monthKey: mKey, status: "pago" })}
@@ -180,16 +180,16 @@ export function TabPropinas({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold text-slate-900">Inadimplência por Classe (Matriz)</h2>
-          <p className="text-xs text-slate-500">Visão matricial de valores em atraso por mês e classe.</p>
+          <h2 className="text-base font-semibold text-foreground">Inadimplência por Classe (Matriz)</h2>
+          <p className="text-xs text-muted-foreground">Visão matricial de valores em atraso por mês e classe.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-[11px]">
             <thead>
-              <tr className="bg-slate-50 text-slate-500">
-                <th className="sticky left-0 z-10 bg-slate-50 border-b border-r py-2 px-3 text-left font-bold uppercase tracking-wider">Classe</th>
+              <tr className="bg-muted text-muted-foreground">
+                <th className="sticky left-0 z-10 bg-muted border-b border-r py-2 px-3 text-left font-bold uppercase tracking-wider">Classe</th>
                 {matrixData.months.map((m) => (
                   <th key={m} className="border-b py-2 px-3 text-right font-bold uppercase tracking-wider">
                     {formatMonthRef(m)}
@@ -197,10 +197,10 @@ export function TabPropinas({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {matrixData.classes.map((c) => (
-                <tr key={c} className="hover:bg-slate-50/50">
-                  <td className="sticky left-0 z-10 bg-white border-r py-1.5 px-3 font-medium text-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <tr key={c} className="hover:bg-muted/50">
+                  <td className="sticky left-0 z-10 bg-card border-r py-1.5 px-3 font-medium text-foreground shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                     {c}
                   </td>
                   {matrixData.months.map((m) => {
@@ -237,15 +237,15 @@ export function TabPropinas({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold text-slate-900">Ranking por turma ({anoLetivoAtivo})</h2>
-          <p className="text-xs text-slate-500">Ordenado por maior atraso.</p>
+          <h2 className="text-base font-semibold text-foreground">Ranking por turma ({anoLetivoAtivo})</h2>
+          <p className="text-xs text-muted-foreground">Ordenado por maior atraso.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-[11px] leading-tight">
             <thead>
-              <tr className="border-b bg-slate-50/50 text-left text-slate-500">
+              <tr className="border-b bg-muted/50 text-left text-muted-foreground">
                 <th className="sticky top-0 py-2 px-3 font-bold uppercase tracking-wider">Turma</th>
                 <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Mens.</th>
                 <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Atraso</th>
@@ -254,11 +254,11 @@ export function TabPropinas({
                 <th className="sticky top-0 py-2 px-3 text-right font-bold uppercase tracking-wider">Inad. %</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {rankingFiltrado.map((t) => (
-                <tr key={t.turmaId} className="hover:bg-slate-50/50">
-                  <td className="py-1.5 px-3 font-medium text-slate-700">{t.turmaNome}</td>
-                  <td className="py-1.5 px-3 text-right text-slate-600">{t.qtdMensalidades}</td>
+                <tr key={t.turmaId} className="hover:bg-muted/50">
+                  <td className="py-1.5 px-3 font-medium text-foreground">{t.turmaNome}</td>
+                  <td className="py-1.5 px-3 text-right text-muted-foreground">{t.qtdMensalidades}</td>
                   <td className="py-1.5 px-3 text-right text-rose-600">{t.qtdEmAtraso}</td>
                   <td className="py-1.5 px-3 text-right text-emerald-700 font-bold">
                     {kwanza.format(t.totalPago + t.totalPagoAdiantado)}

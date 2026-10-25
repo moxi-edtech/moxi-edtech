@@ -83,7 +83,7 @@ function KpiCard({
   tone?: "slate" | "emerald" | "amber" | "violet";
 }) {
   const tones: Record<string, { iconWrap: string; iconColor: string }> = {
-    slate: { iconWrap: "bg-slate-100", iconColor: "text-slate-700" },
+    slate: { iconWrap: "bg-muted", iconColor: "text-foreground" },
     emerald: { iconWrap: "bg-emerald-100/50", iconColor: "text-emerald-700" },
     amber: { iconWrap: "bg-amber-100/50", iconColor: "text-amber-700" },
     violet: { iconWrap: "bg-violet-100/50", iconColor: "text-violet-700" },
@@ -92,13 +92,13 @@ function KpiCard({
   const t = tones[tone] ?? tones.slate;
 
   return (
-    <div className="rounded-xl bg-white p-5 ring-1 ring-slate-200 shadow-sm transition hover:shadow-md">
+    <div className="rounded-xl bg-card p-5 ring-1 ring-slate-200 shadow-sm transition hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 truncate">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">
             {title}
           </p>
-          <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+          <p className="mt-1 text-2xl font-black text-foreground">{value}</p>
         </div>
         <div className={cn("rounded-xl p-3 ring-1 ring-slate-200", t.iconWrap)}>
           <Icon className={cn("h-5 w-5", t.iconColor)} />
@@ -117,7 +117,7 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   const key = (status || "").toLowerCase();
-  const style = styles[key] ?? "bg-slate-50 text-slate-700 ring-1 ring-slate-200/70";
+  const style = styles[key] ?? "bg-muted text-foreground ring-1 ring-slate-200/70";
 
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold capitalize", style)}>
@@ -139,10 +139,10 @@ function ToolbarButton({
     <a
       href={href}
       target="_blank"
-      className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+      className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-bold text-foreground ring-1 ring-slate-200 hover:bg-muted"
       rel="noreferrer"
     >
-      <Download className="h-4 w-4 text-slate-500" />
+      <Download className="h-4 w-4 text-muted-foreground" />
       {label}
     </a>
   );
@@ -447,14 +447,14 @@ export default function MatriculasListClient() {
         <div className="min-w-0">
           <button
             onClick={() => router.back()}
-            className="mb-2 inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-700"
+            className="mb-2 inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar
           </button>
 
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Gestão de Matrículas</h1>
-          <p className="text-sm font-medium text-slate-500">Administre o estado e turmas dos alunos.</p>
+          <h1 className="text-2xl font-black text-foreground tracking-tight">Gestão de Matrículas</h1>
+          <p className="text-sm font-medium text-muted-foreground">Administre o estado e turmas dos alunos.</p>
         </div>
 
         <Link
@@ -480,20 +480,20 @@ export default function MatriculasListClient() {
       </div>
 
       {/* Card Principal */}
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-slate-200">
         {/* Toolbar */}
-        <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/50 p-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-4 border-b border-border bg-muted/50 p-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
             {/* Search */}
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar por nome, BI..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className={cn(
-                  "w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm outline-none",
+                  "w-full rounded-xl border border-border bg-card py-2 pl-10 pr-4 text-sm outline-none",
                   "focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 )}
               />
@@ -508,7 +508,7 @@ export default function MatriculasListClient() {
                 setSelectedTurma("");
               }}
               className={cn(
-                "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+                "w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none sm:w-auto",
                 "focus:ring-4 focus:ring-amber/20 focus:border-amber"
               )}
             >
@@ -538,12 +538,12 @@ export default function MatriculasListClient() {
         </div>
 
         {/* Cascading Filters */}
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/50 p-5">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/50 p-5">
           <select
             value={selectedEnsino}
             onChange={(e) => setSelectedEnsino(e.target.value)}
             className={cn(
-              "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+              "w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none sm:w-auto",
               "focus:ring-4 focus:ring-amber/20 focus:border-amber"
             )}
           >
@@ -557,7 +557,7 @@ export default function MatriculasListClient() {
             value={selectedCurso}
             onChange={(e) => setSelectedCurso(e.target.value)}
             className={cn(
-              "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+              "w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none sm:w-auto",
               "focus:ring-4 focus:ring-amber/20 focus:border-amber"
             )}
           >
@@ -573,7 +573,7 @@ export default function MatriculasListClient() {
             value={selectedClasse}
             onChange={(e) => setSelectedClasse(e.target.value)}
             className={cn(
-              "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+              "w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none sm:w-auto",
               "focus:ring-4 focus:ring-amber/20 focus:border-amber"
             )}
           >
@@ -589,7 +589,7 @@ export default function MatriculasListClient() {
             value={selectedTurma}
             onChange={(e) => setSelectedTurma(e.target.value)}
             className={cn(
-              "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+              "w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none sm:w-auto",
               "focus:ring-4 focus:ring-amber/20 focus:border-amber"
             )}
           >
@@ -608,15 +608,15 @@ export default function MatriculasListClient() {
               onChange={(e) => setShowPendentes(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-amber focus:ring-4 focus:ring-amber/20"
             />
-            <span className="text-sm font-medium text-slate-700">Pendentes de Enturmação</span>
+            <span className="text-sm font-medium text-foreground">Pendentes de Enturmação</span>
           </label>
 
         </div>
 
         {/* Active Filter Tags */}
         {(statusFilters.length > 0 || turmaIdFromQuery) && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3">
-            <span className="mr-2 text-xs font-bold uppercase text-slate-400">Filtros:</span>
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
+            <span className="mr-2 text-xs font-bold uppercase text-muted-foreground">Filtros:</span>
 
             {turmaIdFromQuery && (
               <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700 ring-1 ring-violet-200/70">
@@ -646,7 +646,7 @@ export default function MatriculasListClient() {
 
             <button
               onClick={handleClearStatuses}
-              className="ml-2 text-xs font-semibold text-slate-400 hover:text-red-600"
+              className="ml-2 text-xs font-semibold text-muted-foreground hover:text-red-600"
             >
               Limpar tudo
             </button>
@@ -656,29 +656,29 @@ export default function MatriculasListClient() {
         {/* Table */}
         <div className="overflow-x-auto">
           <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
-            <table className="min-w-full table-fixed divide-y divide-slate-100">
-            <thead className="bg-white sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+            <table className="min-w-full table-fixed divide-y divide-border">
+            <thead className="bg-card sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Matrícula
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Aluno
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Turma
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-400">
+                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Status
                 </th>
-                <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-400">
+                <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Ações
                 </th>
               </tr>
             </thead>
 
             <tbody
-              className="divide-y divide-slate-50 bg-white"
+              className="divide-y divide-slate-50 bg-card"
               style={
                 hasRows
                   ? {
@@ -729,7 +729,7 @@ export default function MatriculasListClient() {
                 ))
               ) : items.length === 0 ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                  <td colSpan={5} className="p-12 text-center text-slate-500">
+                  <td colSpan={5} className="p-12 text-center text-muted-foreground">
                     <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
                     Nenhuma matrícula encontrada com estes filtros.
                   </td>
@@ -753,7 +753,7 @@ export default function MatriculasListClient() {
                   return (
                     <tr
                       key={m.id}
-                      className="group transition-colors hover:bg-slate-50/70"
+                      className="group transition-colors hover:bg-muted/70"
                       style={{
                         position: "absolute",
                         top: 0,
@@ -766,11 +766,11 @@ export default function MatriculasListClient() {
                     >
                       {/* Matrícula */}
                       <td className="whitespace-nowrap px-6 py-4">
-                        <div className="w-fit rounded-xl bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-700 ring-1 ring-slate-200">
+                        <div className="w-fit rounded-xl bg-muted px-2 py-1 font-mono text-xs font-bold text-foreground ring-1 ring-slate-200">
                           {numeroMatriculaVisivel}
                         </div>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                           <span>ID: {m.id.slice(0, 6)}</span>
 
                           {m.numero_chamada ? (
@@ -780,7 +780,7 @@ export default function MatriculasListClient() {
                           ) : null}
 
                           {dataMatriculaFmt ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600 ring-1 ring-slate-200">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-muted-foreground ring-1 ring-slate-200">
                               {dataMatriculaFmt}
                             </span>
                           ) : null}
@@ -797,21 +797,21 @@ export default function MatriculasListClient() {
                       <td className="whitespace-nowrap px-6 py-4">
                         {fichaHref ? (
                           <Link href={fichaHref} className="flex items-center gap-3 min-w-0">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-slate-200">
                               {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : "?"}
                             </div>
                             <div className="min-w-0">
-                              <div className="truncate text-sm font-bold text-slate-900 group-hover:text-amber">
+                              <div className="truncate text-sm font-bold text-foreground group-hover:text-amber">
                                 {m.aluno_nome || "Aluno Desconhecido"}
                               </div>
                             </div>
                           </Link>
                         ) : (
-                          <div className="flex items-center gap-3 text-slate-500">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400 ring-1 ring-slate-200">
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-slate-200">
                               {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : "?"}
                             </div>
-                            <div className="truncate text-sm font-bold text-slate-400">
+                            <div className="truncate text-sm font-bold text-muted-foreground">
                               {m.aluno_nome || "Aluno Desconhecido"}
                             </div>
                           </div>
@@ -822,10 +822,10 @@ export default function MatriculasListClient() {
                       <td className="whitespace-nowrap px-6 py-4">
                         {m.turma_nome ? (
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-slate-900">
+                            <p className="truncate text-sm font-bold text-foreground">
                               <span className="text-amber">{m.classe_nome}</span> / {m.turma_nome}
                             </p>
-                            <p className="truncate text-xs text-slate-500">
+                            <p className="truncate text-xs text-muted-foreground">
                               {m.turno ? <span>{m.turno}</span> : null}
                               {m.sala ? <span className="ml-2">Sala: {m.sala}</span> : null}
                             </p>
@@ -846,7 +846,7 @@ export default function MatriculasListClient() {
                           <button
                             onClick={() => handleOpenStatusForm(m)}
                             title="Alterar Status"
-                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <RefreshCw className="h-4 w-4" />
                           </button>
@@ -854,7 +854,7 @@ export default function MatriculasListClient() {
                           <button
                             onClick={() => handleOpenTransferForm(m)}
                             title="Transferir turma ou corrigir classe"
-                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <ArrowUpDown className="h-4 w-4" />
                           </button>
@@ -863,14 +863,14 @@ export default function MatriculasListClient() {
                             href={`/api/secretaria/admissoes/matriculas/${m.id}/declaracao`}
                             target="_blank"
                             title="Declaração"
-                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <FileText className="h-4 w-4" />
                           </Link>
 
                           <button
                             title="Mais"
-                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </button>
@@ -886,8 +886,8 @@ export default function MatriculasListClient() {
         </div>
 
         {/* Footer Paginação */}
-        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-4">
-          <p className="text-xs font-medium text-slate-500">
+        <div className="flex items-center justify-between border-t border-border bg-muted px-6 py-4">
+          <p className="text-xs font-medium text-muted-foreground">
             Página {page} de {totalPages} • Total: {total}
           </p>
 
@@ -895,14 +895,14 @@ export default function MatriculasListClient() {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-card px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-slate-200 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             >
               Anterior
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-card px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-slate-200 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             >
               Próxima
             </button>
@@ -913,14 +913,14 @@ export default function MatriculasListClient() {
       {/* Modais */}
       {showStatusForm && selectedMatricula && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl animate-in zoom-in-95">
+          <div className="w-full max-w-lg rounded-2xl bg-card p-8 shadow-2xl animate-in zoom-in-95">
             <div className="mb-6 flex items-center justify-between gap-4">
-              <h2 className="text-xl font-bold text-slate-900">Alterar Status</h2>
+              <h2 className="text-xl font-bold text-foreground">Alterar Status</h2>
               <button
                 onClick={() => setShowStatusForm(false)}
-                className="rounded-full p-2 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                className="rounded-full p-2 hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/20"
               >
-                <XCircle className="h-5 w-5 text-slate-400" />
+                <XCircle className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
 
@@ -938,14 +938,14 @@ export default function MatriculasListClient() {
 
       {showTransferForm && selectedMatricula && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl animate-in zoom-in-95">
+          <div className="w-full max-w-lg rounded-2xl bg-card p-8 shadow-2xl animate-in zoom-in-95">
             <div className="mb-6 flex items-center justify-between gap-4">
-              <h2 className="text-xl font-bold text-slate-900">Retificar matrícula</h2>
+              <h2 className="text-xl font-bold text-foreground">Retificar matrícula</h2>
               <button
                 onClick={() => setShowTransferForm(false)}
-                className="rounded-full p-2 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                className="rounded-full p-2 hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/20"
               >
-                <XCircle className="h-5 w-5 text-slate-400" />
+                <XCircle className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
 

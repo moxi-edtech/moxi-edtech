@@ -14,12 +14,12 @@ import {
 } from "lucide-react";
 
 const KWANZA_NOTES = [
-  { value: 5000, label: "5.000 Kz", color: "text-slate-700 bg-slate-50" },
-  { value: 2000, label: "2.000 Kz", color: "text-slate-700 bg-slate-50" },
+  { value: 5000, label: "5.000 Kz", color: "text-foreground bg-muted" },
+  { value: 2000, label: "2.000 Kz", color: "text-foreground bg-muted" },
   { value: 1000, label: "1.000 Kz", color: "text-rose-700 bg-rose-50" },
   { value: 500, label: "500 Kz", color: "text-amber-700 bg-amber-50" },
   { value: 200, label: "200 Kz", color: "text-cyan-700 bg-cyan-50" },
-  { value: 100, label: "100 Kz", color: "text-slate-700 bg-slate-100" },
+  { value: 100, label: "100 Kz", color: "text-foreground bg-muted" },
 ];
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
@@ -95,7 +95,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
 
   return (
     <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-card w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="bg-slate-950 p-6 flex justify-between items-center text-white shrink-0 border-b border-slate-800">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -105,12 +105,12 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
               </span>
             </div>
             <h2 className="text-xl font-bold text-white">Fecho de Caixa Cego</h2>
-            <p className="text-slate-400 text-xs mt-1">Declare os valores físicos antes de ver o sistema.</p>
+            <p className="text-muted-foreground text-xs mt-1">Declare os valores físicos antes de ver o sistema.</p>
           </div>
 
           {step === "contagem" && (
             <div className="text-right bg-slate-900 p-3 rounded-xl border border-slate-800">
-              <div className="text-[10px] text-slate-400 uppercase font-bold">Total Físico (Cash)</div>
+              <div className="text-[10px] text-muted-foreground uppercase font-bold">Total Físico (Cash)</div>
               <div className="text-2xl font-mono font-bold text-[#1F6B3B]">
                 {kwanza.format(totalNumerario)}
               </div>
@@ -118,12 +118,12 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-muted">
           {step === "contagem" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 space-y-8">
-              <section className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-                  <Banknote className="w-4 h-4 text-slate-400" />
+              <section className="bg-card p-5 rounded-2xl border border-border shadow-sm">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4 pb-2 border-b border-border">
+                  <Banknote className="w-4 h-4 text-muted-foreground" />
                   1. Contagem de Numerário (Cédulas)
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -136,8 +136,8 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                         key={note.value}
                         className={`p-3 rounded-xl border transition-all ${
                           qtd > 0
-                            ? "bg-white border-[#1F6B3B]/30 shadow-sm ring-1 ring-[#1F6B3B]/10"
-                            : "bg-slate-50 border-slate-200"
+                            ? "bg-card border-[#1F6B3B]/30 shadow-sm ring-1 ring-[#1F6B3B]/10"
+                            : "bg-muted border-border"
                         }`}
                       >
                         <div className="flex justify-between items-center mb-2">
@@ -150,15 +150,15 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                             type="text"
                             inputMode="numeric"
                             placeholder="0"
-                            className="w-full bg-white border border-slate-300 rounded-lg py-1.5 px-2 text-center font-bold text-slate-900 focus:ring-2 focus:ring-[#E3B23C] focus:border-[#E3B23C] outline-none text-lg"
+                            className="w-full bg-card border border-slate-300 rounded-lg py-1.5 px-2 text-center font-bold text-foreground focus:ring-2 focus:ring-[#E3B23C] focus:border-[#E3B23C] outline-none text-lg"
                             value={counts[note.value] || ""}
                             onChange={(e) => handleCountChange(note.value, e.target.value)}
                           />
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">un</span>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">un</span>
                         </div>
                         <div
                           className={`text-right text-xs font-mono font-bold mt-2 ${
-                            subtotal > 0 ? "text-slate-900" : "text-slate-300"
+                            subtotal > 0 ? "text-foreground" : "text-slate-300"
                           }`}
                         >
                           {kwanza.format(subtotal)}
@@ -169,70 +169,70 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                 </div>
               </section>
 
-              <section className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-                  <CreditCard className="w-4 h-4 text-slate-400" />
+              <section className="bg-card p-5 rounded-2xl border border-border shadow-sm">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4 pb-2 border-b border-border">
+                  <CreditCard className="w-4 h-4 text-muted-foreground" />
                   2. Valores Digitais (Soma dos Comprovativos)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 uppercase">Soma dos Talões TPA</label>
+                    <label className="text-xs font-bold text-foreground uppercase">Soma dos Talões TPA</label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#E3B23C]">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-[#E3B23C]">
                         <CreditCard className="h-5 w-5" />
                       </div>
                       <input
                         type="number"
                         value={tpaTotal}
                         onChange={(e) => setTpaTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 font-mono text-lg font-bold text-slate-900 focus:bg-white focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
                         placeholder="0"
                       />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
                         KZ
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400">Some o valor impresso em todos os papéis do TPA.</p>
+                    <p className="text-[10px] text-muted-foreground">Some o valor impresso em todos os papéis do TPA.</p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 uppercase">Soma Transferências</label>
+                    <label className="text-xs font-bold text-foreground uppercase">Soma Transferências</label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#E3B23C]">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-[#E3B23C]">
                         <Wallet className="h-5 w-5" />
                       </div>
                       <input
                         type="number"
                         value={transferTotal}
                         onChange={(e) => setTransferTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 font-mono text-lg font-bold text-slate-900 focus:bg-white focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
                         placeholder="0"
                       />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
                         KZ
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400">Some o valor dos bordereaux físicos recebidos.</p>
+                    <p className="text-[10px] text-muted-foreground">Some o valor dos bordereaux físicos recebidos.</p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 uppercase">Soma MCX/KIWK</label>
+                    <label className="text-xs font-bold text-foreground uppercase">Soma MCX/KIWK</label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#E3B23C]">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-[#E3B23C]">
                         <Wallet className="h-5 w-5" />
                       </div>
                       <input
                         type="number"
                         value={mcxTotal}
                         onChange={(e) => setMcxTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 font-mono text-lg font-bold text-slate-900 focus:bg-white focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
                         placeholder="0"
                       />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
                         KZ
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400">Some o valor dos pagamentos MCX/KIWK.</p>
+                    <p className="text-[10px] text-muted-foreground">Some o valor dos pagamentos MCX/KIWK.</p>
                   </div>
                 </div>
               </section>
@@ -262,52 +262,52 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                 )}
               </div>
 
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">
+              <h3 className="text-2xl font-bold text-foreground mb-2">
                 {resultado.diferenca_total === 0 ? "Caixa Batido com Sucesso!" : "Divergência Detectada"}
               </h3>
-              <p className="text-slate-500 text-sm mb-8 text-center max-w-md">
+              <p className="text-muted-foreground text-sm mb-8 text-center max-w-md">
                 O relatório de fecho foi gerado e enviado para a administração.
               </p>
 
-              <div className="w-full bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm mb-6">
-                <div className="grid grid-cols-3 bg-slate-50 p-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+              <div className="w-full bg-card rounded-xl border border-border overflow-hidden shadow-sm mb-6">
+                <div className="grid grid-cols-3 bg-muted p-4 text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
                   <div>Canal</div>
                   <div className="text-right">Declarado</div>
                   <div className="text-right">Sistema</div>
                 </div>
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-border">
                   <div className="grid grid-cols-3 p-4 text-sm">
-                    <span className="font-bold text-slate-700">Numerário</span>
-                    <span className="text-right font-mono text-slate-600">{kwanza.format(totalNumerario)}</span>
-                    <span className="text-right font-mono text-slate-400">
+                    <span className="font-bold text-foreground">Numerário</span>
+                    <span className="text-right font-mono text-muted-foreground">{kwanza.format(totalNumerario)}</span>
+                    <span className="text-right font-mono text-muted-foreground">
                       {kwanza.format(resultado.sistema.numerario)}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 p-4 text-sm">
-                    <span className="font-bold text-slate-700">TPA</span>
-                    <span className="text-right font-mono text-slate-600">
+                    <span className="font-bold text-foreground">TPA</span>
+                    <span className="text-right font-mono text-muted-foreground">
                       {kwanza.format(Number(tpaTotal) || 0)}
                     </span>
-                    <span className="text-right font-mono text-slate-400">{kwanza.format(resultado.sistema.tpa)}</span>
+                    <span className="text-right font-mono text-muted-foreground">{kwanza.format(resultado.sistema.tpa)}</span>
                   </div>
                   <div className="grid grid-cols-3 p-4 text-sm">
-                    <span className="font-bold text-slate-700">Transferência</span>
-                    <span className="text-right font-mono text-slate-600">
+                    <span className="font-bold text-foreground">Transferência</span>
+                    <span className="text-right font-mono text-muted-foreground">
                       {kwanza.format(Number(transferTotal) || 0)}
                     </span>
-                    <span className="text-right font-mono text-slate-400">
+                    <span className="text-right font-mono text-muted-foreground">
                       {kwanza.format(resultado.sistema.transferencia)}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 p-4 text-sm">
-                    <span className="font-bold text-slate-700">MCX</span>
-                    <span className="text-right font-mono text-slate-600">
+                    <span className="font-bold text-foreground">MCX</span>
+                    <span className="text-right font-mono text-muted-foreground">
                       {kwanza.format(Number(mcxTotal) || 0)}
                     </span>
-                    <span className="text-right font-mono text-slate-400">{kwanza.format(resultado.sistema.mcx)}</span>
+                    <span className="text-right font-mono text-muted-foreground">{kwanza.format(resultado.sistema.mcx)}</span>
                   </div>
-                  <div className="grid grid-cols-3 p-4 bg-slate-50/50">
-                    <span className="font-bold text-slate-900">Resultado Final</span>
+                  <div className="grid grid-cols-3 p-4 bg-muted/50">
+                    <span className="font-bold text-foreground">Resultado Final</span>
                     <div className="col-span-2 text-right">
                       <span
                         className={`text-base font-black font-mono px-3 py-1 rounded-lg ${
@@ -327,12 +327,12 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
           )}
         </div>
 
-        <div className="p-6 bg-white border-t border-slate-200 shrink-0 flex justify-between items-center gap-4">
+        <div className="p-6 bg-card border-t border-border shrink-0 flex justify-between items-center gap-4">
           {step === "contagem" ? (
             <>
               <button
                 onClick={onClose}
-                className="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                className="px-6 py-3 rounded-xl border border-border text-muted-foreground text-sm font-bold hover:bg-muted hover:text-foreground transition-colors"
               >
                 Cancelar
               </button>
