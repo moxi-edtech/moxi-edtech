@@ -341,8 +341,6 @@ export function CourseContextView({
           Não foi possível carregar todas as turmas. Tente novamente.
         </p>
       )}
-      <p className="text-xs text-slate-500">
-      </p>
     </div>
   );
 }
