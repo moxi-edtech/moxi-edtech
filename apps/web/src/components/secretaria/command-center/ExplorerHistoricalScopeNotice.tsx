@@ -7,7 +7,7 @@ import React from "react";
 export function ExplorerHistoricalScopeNotice({ roster = false }: { roster?: boolean }) {
   return (
     <p role="status" className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-700">
-      <strong>Ano anterior · apenas consulta.</strong> Informações do ano selecionado.
+      <strong>Histórico · apenas consulta.</strong> Informações do ano selecionado.
       {roster ? " Para ver os alunos, navegue pelas páginas da lista. Pesquisa e exportação não estão disponíveis neste ano." : null}
     </p>
   );
