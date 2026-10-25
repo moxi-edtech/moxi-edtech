@@ -104,20 +104,20 @@ export function BalcaoServicoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <div className="font-bold text-slate-900">Balcão · Novo Serviço</div>
-          <button onClick={handleClose} className="rounded-xl p-2 hover:bg-slate-50">
-            <X className="h-4 w-4 text-slate-400" />
+      <div className="w-full max-w-xl overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div className="font-bold text-foreground">Balcão · Novo Serviço</div>
+          <button onClick={handleClose} className="rounded-xl p-2 hover:bg-muted">
+            <X className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
 
         <div className="space-y-4 p-5">
-          <label className="block text-xs font-bold uppercase text-slate-500">Serviço</label>
+          <label className="block text-xs font-bold uppercase text-muted-foreground">Serviço</label>
           <select
             value={servicoCodigo}
             onChange={(event) => setSelectedCodigo(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
           >
             {available.length === 0 ? (
               <option value="">Sem serviços ativos</option>
@@ -166,10 +166,10 @@ export function BalcaoServicoModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+        <div className="flex justify-end gap-2 border-t border-border bg-muted px-5 py-4">
           <button
             onClick={handleClose}
-            className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900"
+            className="rounded-xl px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground"
           >
             Cancelar
           </button>

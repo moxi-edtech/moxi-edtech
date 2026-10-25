@@ -103,14 +103,14 @@ function KpiCard({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 flex items-start justify-between">
+    <div className="bg-card border border-border rounded-xl shadow-sm p-5 flex items-start justify-between">
       <div className="min-w-0">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
         <p className="text-2xl font-black text-slate-950 mt-1">{value}</p>
       </div>
 
-      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-        <Icon className="h-4 w-4 text-slate-400" />
+      <div className="p-3 rounded-xl bg-muted border border-border">
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
     </div>
   );
@@ -129,8 +129,8 @@ function StatusBadge({ status }: { status?: string | null }) {
     aprovada: "bg-indigo-50 text-indigo-700 border-indigo-200",
     suspenso: "bg-amber-50 text-amber-800 border-amber-200",
     inativo: "bg-rose-50 text-rose-700 border-rose-200",
-    arquivado: "bg-slate-100 text-slate-600 border-slate-200",
-    todos: "bg-slate-100 text-slate-600 border-slate-200",
+    arquivado: "bg-muted text-muted-foreground border-border",
+    todos: "bg-muted text-muted-foreground border-border",
   };
 
   return (
@@ -149,8 +149,8 @@ function StatusBadge({ status }: { status?: string | null }) {
 function StatusBadgeEmpty({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="p-12 text-center">
-      <p className="text-sm font-semibold text-slate-700">{title}</p>
-      {subtitle ? <p className="text-sm text-slate-500 mt-1">{subtitle}</p> : null}
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      {subtitle ? <p className="text-sm text-muted-foreground mt-1">{subtitle}</p> : null}
     </div>
   );
 }
@@ -332,14 +332,14 @@ export default function AlunosListClient() {
         <div className="min-w-0">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors mb-2"
+            className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mb-2"
           >
-            <ArrowLeft size={16} className="text-slate-400" />
+            <ArrowLeft size={16} className="text-muted-foreground" />
             Voltar
           </button>
 
           <h1 className="text-2xl font-black text-emerald tracking-tight">Gestão de Alunos</h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Leads (candidaturas) podem aparecer como <span className="font-semibold">pendentes</span> até a conversão para matrícula.
           </p>
         </div>
@@ -360,7 +360,7 @@ export default function AlunosListClient() {
           <div className="mt-1">{fetchError}</div>
           <button
             onClick={() => load( page )}
-            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white border border-rose-200 text-rose-700 hover:bg-rose-50"
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-card border border-rose-200 text-rose-700 hover:bg-rose-50"
           >
             Tentar novamente
           </button>
@@ -376,17 +376,17 @@ export default function AlunosListClient() {
       </div>
 
       {/* Table card */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-5 border-b border-slate-200 bg-slate-50">
+        <div className="p-5 border-b border-border bg-muted">
           <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar por nome, responsável, processo ou login…"
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none
+                className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-xl text-sm outline-none
                            focus:ring-4 focus:ring-amber/20 focus:border-amber"
               />
             </div>
@@ -401,8 +401,8 @@ export default function AlunosListClient() {
                     className={[
                       "whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold border transition-all",
                       active
-                        ? "bg-white border-amber text-amber ring-1 ring-amber/25"
-                        : "bg-white border-slate-200 text-slate-600 hover:text-slate-800",
+                        ? "bg-card border-amber text-amber ring-1 ring-amber/25"
+                        : "bg-card border-border text-muted-foreground hover:text-foreground",
                     ].join(" ")}
                   >
                     {s.label}
@@ -416,19 +416,19 @@ export default function AlunosListClient() {
         {/* Table */}
         <div className="overflow-x-auto">
           <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
-            <table className="min-w-full table-fixed divide-y divide-slate-200">
-              <thead className="bg-white sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+            <table className="min-w-full table-fixed divide-y divide-border">
+              <thead className="bg-card sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Aluno</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Contato</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Responsável</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Ações</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Aluno</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Contato</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Responsável</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
 
               <tbody
-                className="bg-white divide-y divide-slate-100"
+                className="bg-card divide-y divide-border"
                 style={
                   hasRows
                     ? { position: "relative", display: "block", height: rowVirtualizer.getTotalSize() }
@@ -437,7 +437,7 @@ export default function AlunosListClient() {
               >
                 {loading ? (
                   <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                    <td colSpan={5} className="p-12 text-center text-slate-600">
+                    <td colSpan={5} className="p-12 text-center text-muted-foreground">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-amber" />
                       Carregando…
                     </td>
@@ -482,7 +482,7 @@ export default function AlunosListClient() {
                     return (
                       <tr
                         key={aluno.id}
-                        className="hover:bg-slate-50 transition-colors group"
+                        className="hover:bg-muted transition-colors group"
                         style={{
                           position: "absolute",
                           top: 0,
@@ -495,14 +495,14 @@ export default function AlunosListClient() {
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center">
-                              <span className="text-xs font-black text-slate-600">{initials || "—"}</span>
+                            <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center">
+                              <span className="text-xs font-black text-muted-foreground">{initials || "—"}</span>
                             </div>
 
                             <div className="min-w-0">
                               <p className="font-bold text-sm text-slate-950 truncate">{aluno.nome}</p>
 
-                              <p className="text-xs text-slate-500 font-mono mt-0.5">
+                              <p className="text-xs text-muted-foreground font-mono mt-0.5">
                                 {identificadorLabel !== "—" ? `${identificadorLabel}: ${identificador}` : "—"}
                               </p>
 
@@ -515,10 +515,10 @@ export default function AlunosListClient() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4 text-sm text-slate-700">
+                        <td className="px-6 py-4 text-sm text-foreground">
                           {aluno.email ? (
                             <div className="flex items-center gap-2">
-                              <Mail className="w-4 h-4 text-slate-400" />
+                              <Mail className="w-4 h-4 text-muted-foreground" />
                               <span className="truncate">{aluno.email}</span>
                             </div>
                           ) : (
@@ -526,13 +526,13 @@ export default function AlunosListClient() {
                           )}
                         </td>
 
-                        <td className="px-6 py-4 text-sm text-slate-700">
+                        <td className="px-6 py-4 text-sm text-foreground">
                           {aluno.responsavel ? (
                             <div className="min-w-0">
                               <p className="font-semibold truncate">{aluno.responsavel}</p>
                               {aluno.telefone_responsavel ? (
-                                <p className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
-                                  <Phone className="w-4 h-4 text-slate-400" />
+                                <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                                  <Phone className="w-4 h-4 text-muted-foreground" />
                                   {aluno.telefone_responsavel}
                                 </p>
                               ) : null}
@@ -552,7 +552,7 @@ export default function AlunosListClient() {
                             {matriculaHref && (aluno.status || "").toLowerCase() !== "ativo" ? (
                               <Link
                                 href={matriculaHref}
-                                className="p-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber-50 transition"
+                                className="p-2 rounded-xl text-muted-foreground hover:text-amber hover:bg-amber-50 transition"
                                 title="Abrir matrícula"
                               >
                                 <Plus className="w-4 h-4" />
@@ -564,7 +564,7 @@ export default function AlunosListClient() {
                               <>
                                 <Link
                                   href={`${secretariaBase}/alunos/${aluno.id}`}
-                                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
                                   title="Ver"
                                 >
                                   <Eye className="w-4 h-4" />
@@ -572,7 +572,7 @@ export default function AlunosListClient() {
 
                                 <Link
                                   href={`${secretariaBase}/alunos/${aluno.id}/editar`}
-                                  className="p-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber-50 transition"
+                                  className="p-2 rounded-xl text-muted-foreground hover:text-amber hover:bg-amber-50 transition"
                                   title="Editar"
                                 >
                                   <Pencil className="w-4 h-4" />
@@ -581,7 +581,7 @@ export default function AlunosListClient() {
                                 <button
                                   onClick={() => handleArchive(aluno)}
                                   disabled={deleting}
-                                  className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
+                                  className="p-2 rounded-xl text-muted-foreground hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
                                   title="Arquivar"
                                 >
                                   {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -600,20 +600,20 @@ export default function AlunosListClient() {
         </div>
 
         {/* Pagination */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between text-sm text-slate-600">
+        <div className="bg-muted px-6 py-4 border-t border-border flex items-center justify-between text-sm text-muted-foreground">
           <span className="font-semibold">Página {page}</span>
           <div className="flex gap-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold disabled:opacity-50"
+              className="px-4 py-2 bg-card border border-border rounded-xl text-sm font-bold disabled:opacity-50"
             >
               Anterior
             </button>
             <button
               disabled={!hasMore}
               onClick={() => setPage((p) => p + 1)}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold disabled:opacity-50"
+              className="px-4 py-2 bg-card border border-border rounded-xl text-sm font-bold disabled:opacity-50"
             >
               Próximo
             </button>

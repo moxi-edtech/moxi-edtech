@@ -53,7 +53,7 @@ function ActivityIcon({ act }: { act: any }) {
   if (act.entity === 'documentos_emitidos') return <FileText size={16} className="text-amber-500" />;
   if (act.action === 'NOTA_LANCADA_BATCH') return <ClipboardCheck size={16} className="text-purple-500" />;
   if (act.action === 'FREQUENCIA_UPSERT_BATCH') return <CalendarCheck size={16} className="text-rose-500" />;
-  if (act.entity === 'alunos') return <UserCog size={16} className="text-slate-500" />;
+  if (act.entity === 'alunos') return <UserCog size={16} className="text-muted-foreground" />;
   return <CheckCircle2 size={16} className="text-emerald-500" />;
 }
 
@@ -85,7 +85,7 @@ export function MinhaProdutividade({
       .finally(() => setLoading(false));
   }, [escolaId, onData]);
 
-  if (loading) return <div className="h-40 bg-slate-50 animate-pulse rounded-2xl" />;
+  if (loading) return <div className="h-40 bg-muted animate-pulse rounded-2xl" />;
   if (!data) return null;
 
   return (
@@ -94,40 +94,40 @@ export function MinhaProdutividade({
         <SecaoLabel>Minha Produtividade (Hoje)</SecaoLabel>
         <div className="flex items-center gap-1.5">
            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tempo Real</span>
+           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tempo Real</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm transition-all hover:shadow-md">
+        <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4 shadow-sm transition-all hover:shadow-md">
           <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <UserPlus size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Minhas Admissões</p>
-            <p className="text-xl font-black text-slate-900">{data.admissoes_hoje}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Minhas Admissões</p>
+            <p className="text-xl font-black text-foreground">{data.admissoes_hoje}</p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm transition-all hover:shadow-md">
+        <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4 shadow-sm transition-all hover:shadow-md">
           <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
             <FileWarning size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Docs Pendentes</p>
-            <p className="text-xl font-black text-slate-900">{data.documentos_pendentes}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Docs Pendentes</p>
+            <p className="text-xl font-black text-foreground">{data.documentos_pendentes}</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col h-[400px]">
-        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2 shrink-0">
-          <History size={14} className="text-slate-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Últimas Atividades</span>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col h-[400px]">
+        <div className="bg-muted px-4 py-3 border-b border-border flex items-center gap-2 shrink-0">
+          <History size={14} className="text-muted-foreground" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Últimas Atividades</span>
         </div>
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+        <div className="flex-1 overflow-y-auto divide-y divide-border">
           {data.atividades_recentes.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs">
+            <div className="p-8 text-center text-muted-foreground text-xs">
               Nenhuma atividade registrada ainda hoje.
             </div>
           ) : (
@@ -135,23 +135,23 @@ export function MinhaProdutividade({
               <button 
                 key={act.id} 
                 onClick={() => setSelectedActivity(act)}
-                className="w-full text-left p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors group"
+                className="w-full text-left p-3 flex items-center gap-3 hover:bg-muted transition-colors group"
               >
-                <div className="shrink-0 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-white transition-colors">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-card transition-colors">
                    <ActivityIcon act={act} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate flex items-center gap-2">
+                  <p className="text-xs font-bold text-foreground truncate flex items-center gap-2">
                     {act.contexto || formatActivityLabel(act)} 
                     <ExternalLink size={10} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Clock size={10} />
                       {new Date(act.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                     {act.aluno_nome && (
-                      <p className="text-[10px] text-slate-500 truncate max-w-[150px]">
+                      <p className="text-[10px] text-muted-foreground truncate max-w-[150px]">
                         • {act.aluno_nome}
                       </p>
                     )}
@@ -178,15 +178,15 @@ export function MinhaProdutividade({
           description={formatActivityLabel(selectedActivity)}
         >
           <div className="space-y-6 py-4">
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-4">
+            <div className="bg-muted rounded-2xl p-5 border border-border space-y-4">
                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-100">
+                    <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center shadow-sm border border-border">
                        <ActivityIcon act={selectedActivity} />
                     </div>
                     <div>
-                       <p className="text-sm font-black text-slate-900">{selectedActivity.contexto || formatActivityLabel(selectedActivity)}</p>
-                       <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                       <p className="text-sm font-black text-foreground">{selectedActivity.contexto || formatActivityLabel(selectedActivity)}</p>
+                       <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                          <Clock size={12} /> 
                          {new Date(selectedActivity.created_at).toLocaleString('pt-PT')}
                        </p>
@@ -194,7 +194,7 @@ export function MinhaProdutividade({
                   </div>
                   {selectedActivity.valor_pago && (
                     <div className="text-right">
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Valor</p>
+                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Valor</p>
                        <p className="text-lg font-mono font-black text-emerald-600">{moneyAOA.format(selectedActivity.valor_pago)}</p>
                     </div>
                   )}
@@ -208,7 +208,7 @@ export function MinhaProdutividade({
                <DetailCard icon={<Calendar size={16}/>} label="Entidade" value={selectedActivity.entity} />
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+            <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
                {selectedActivity.aluno_id && onAtenderAluno && (
                  <button 
                   onClick={() => {
@@ -222,7 +222,7 @@ export function MinhaProdutividade({
                )}
                <button 
                 onClick={() => setSelectedActivity(null)}
-                className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 active:scale-95 transition-all"
+                className="px-6 py-2.5 bg-muted text-foreground rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 active:scale-95 transition-all"
                >
                  Fechar Detalhes
                </button>
@@ -236,13 +236,13 @@ export function MinhaProdutividade({
 
 function DetailCard({ icon, label, value, isMono = false }: { icon: React.ReactNode, label: string, value: string, isMono?: boolean }) {
   return (
-    <div className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex items-center gap-3">
-       <div className="text-slate-400 shrink-0">
+    <div className="bg-card border border-border rounded-xl p-3 shadow-sm flex items-center gap-3">
+       <div className="text-muted-foreground shrink-0">
           {icon}
        </div>
        <div className="min-w-0">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-          <p className={`text-sm font-bold text-slate-800 truncate ${isMono ? 'font-mono' : ''}`}>{value}</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
+          <p className={`text-sm font-bold text-foreground truncate ${isMono ? 'font-mono' : ''}`}>{value}</p>
        </div>
     </div>
   )

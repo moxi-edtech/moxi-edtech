@@ -181,9 +181,9 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-        <p className="text-sm font-medium text-slate-500">A carregar ficha do aluno…</p>
+      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <p className="text-sm font-medium text-muted-foreground">A carregar ficha do aluno…</p>
       </div>
     );
   }
@@ -199,15 +199,15 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-        <div className="border-b border-slate-100 pb-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="border-b border-border pb-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
             Perfil
           </p>
-          <h2 className="mt-1 text-base font-black text-slate-900">
+          <h2 className="mt-1 text-base font-black text-foreground">
             O que precisa atualizar?
           </h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Altere apenas os dados que mudaram. O restante da ficha permanece intacto.
           </p>
         </div>
@@ -215,12 +215,12 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
         <div className="mt-4">
 
         <div className="mb-4 flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50">
-            <Fingerprint className="h-4 w-4 text-slate-400" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
+            <Fingerprint className="h-4 w-4 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900">Identificação e contacto</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <h2 className="text-sm font-black text-foreground">Identificação e contacto</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Atualize somente os dados que mudaram.
             </p>
           </div>
@@ -281,14 +281,14 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="mb-4 flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50">
-            <UserCheck className="h-4 w-4 text-slate-400" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900">Encarregado e família</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <h2 className="text-sm font-black text-foreground">Encarregado e família</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Contactos usados pela escola durante o atendimento.
             </p>
           </div>
@@ -357,8 +357,8 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
         </div>
       </div>
 
-      <div className="sticky bottom-3 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-slate-500">
+      <div className="sticky bottom-3 flex flex-col gap-3 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-muted-foreground">
           {hasChanges ? `${changedEntries.length} alteração(ões) por guardar` : "Sem alterações pendentes"}
         </p>
         <button
@@ -386,7 +386,7 @@ function Field({
 }) {
   return (
     <label className="space-y-1.5">
-      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
         {icon}
         {label}
       </span>
@@ -396,4 +396,4 @@ function Field({
 }
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20";
+  "w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-foreground outline-none transition placeholder:text-muted-foreground focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20";

@@ -77,10 +77,10 @@ export type NoticeProps = {
   role?: "status" | "alert" | "region";
 };
 const noticeTones: Record<NoticeTone,string> = {
-  neutral: "border-slate-200 bg-white",
-  attention: "border-[#C8902A]/40 bg-white",
-  critical: "border-rose-300 bg-white",
-  success: "border-[#2B6044]/30 bg-white",
+  neutral: "border-border bg-card",
+  attention: "border-[#C8902A]/40 bg-card",
+  critical: "border-rose-300 bg-card",
+  success: "border-[#2B6044]/30 bg-card",
 };
 export function Notice({title,description,eyebrow,icon,action,detail,tone="neutral",className,children,role="region"}: NoticeProps) {
   return (
@@ -92,9 +92,9 @@ export function Notice({title,description,eyebrow,icon,action,detail,tone="neutr
             {icon && <span aria-hidden="true" className="shrink-0">{icon}</span>}
             {eyebrow && <span>{eyebrow}</span>}
           </div>}
-          <h3 className="break-words text-lg font-semibold leading-snug tracking-tight text-slate-900">{title}</h3>
-          {description && <div className="text-sm leading-6 text-slate-600">{description}</div>}
-          {detail && <div className="pt-1 text-sm leading-6 text-slate-600">{detail}</div>}
+          <h3 className="break-words text-lg font-semibold leading-snug tracking-tight text-foreground">{title}</h3>
+          {description && <div className="text-sm leading-6 text-muted-foreground">{description}</div>}
+          {detail && <div className="pt-1 text-sm leading-6 text-muted-foreground">{detail}</div>}
         </div>
         {action && <div className="flex shrink-0 items-center sm:self-center [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_button]:min-h-11 [&_button]:rounded-xl [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-[#2B6044] [&_button]:focus-visible:ring-offset-2">{action}</div>}
       </div>

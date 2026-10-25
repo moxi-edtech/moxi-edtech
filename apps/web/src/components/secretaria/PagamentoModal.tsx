@@ -179,11 +179,11 @@ export function PagamentoModal({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-        <div className="w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-            <div className="font-bold text-slate-900">Pagamento · {kwanza.format(totalKz)} </div>
-            <button onClick={handleClose} className="rounded-xl p-2 hover:bg-slate-50">
-              <X className="h-4 w-4 text-slate-400" />
+        <div className="w-full max-w-xl overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div className="font-bold text-foreground">Pagamento · {kwanza.format(totalKz)} </div>
+            <button onClick={handleClose} className="rounded-xl p-2 hover:bg-muted">
+              <X className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
 
@@ -228,10 +228,10 @@ export function PagamentoModal({
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "cash"
                         ? "border-amber ring-4 ring-amber/20"
-                        : "border-slate-200"
+                        : "border-border"
                     }`}
                   >
-                    <Banknote className="h-4 w-4 text-slate-500" /> Cash
+                    <Banknote className="h-4 w-4 text-muted-foreground" /> Cash
                   </button>
                   <button
                     type="button"
@@ -239,10 +239,10 @@ export function PagamentoModal({
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "tpa"
                         ? "border-amber ring-4 ring-amber/20"
-                        : "border-slate-200"
+                        : "border-border"
                     }`}
                   >
-                    <CreditCard className="h-4 w-4 text-slate-500" /> TPA
+                    <CreditCard className="h-4 w-4 text-muted-foreground" /> TPA
                   </button>
                   <button
                     type="button"
@@ -250,10 +250,10 @@ export function PagamentoModal({
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "transfer"
                         ? "border-amber ring-4 ring-amber/20"
-                        : "border-slate-200"
+                        : "border-border"
                     }`}
                   >
-                    <Upload className="h-4 w-4 text-slate-500" /> Transferência
+                    <Upload className="h-4 w-4 text-muted-foreground" /> Transferência
                   </button>
                   <button
                     type="button"
@@ -261,10 +261,10 @@ export function PagamentoModal({
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "mcx"
                         ? "border-amber ring-4 ring-amber/20"
-                        : "border-slate-200"
+                        : "border-border"
                     }`}
                   >
-                    <ReceiptText className="h-4 w-4 text-slate-500" /> Multicaixa
+                    <ReceiptText className="h-4 w-4 text-muted-foreground" /> Multicaixa
                   </button>
                   <button
                     type="button"
@@ -272,10 +272,10 @@ export function PagamentoModal({
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
                       method === "kiwk"
                         ? "border-amber ring-4 ring-amber/20"
-                        : "border-slate-200"
+                        : "border-border"
                     }`}
                   >
-                    <ReceiptText className="h-4 w-4 text-slate-500" /> KIWK
+                    <ReceiptText className="h-4 w-4 text-muted-foreground" /> KIWK
                   </button>
                 </div>
 
@@ -283,11 +283,11 @@ export function PagamentoModal({
                   <div className="space-y-2">
                     {needsRef ? (
                       <>
-                        <label className="text-xs font-bold uppercase text-slate-500">Referência (obrigatório)</label>
+                        <label className="text-xs font-bold uppercase text-muted-foreground">Referência (obrigatório)</label>
                         <input
                           value={reference}
                           onChange={(event) => setReference(event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                          className="w-full rounded-xl border border-border px-3 py-2 text-sm font-semibold text-foreground outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                           placeholder="Ex: TPA-2026-000882"
                         />
                       </>
@@ -296,19 +296,19 @@ export function PagamentoModal({
                       <input
                         value={terminalId}
                         onChange={(event) => setTerminalId(event.target.value)}
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                        className="w-full rounded-xl border border-border px-3 py-2 text-sm font-semibold text-foreground outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                         placeholder="Terminal ID (opcional)"
                       />
                     ) : null}
                     {needsGatewayRef ? (
                       <>
-                        <label className="text-xs font-bold uppercase text-slate-500">
+                        <label className="text-xs font-bold uppercase text-muted-foreground">
                           {method === "kiwk" ? "KIWK ref (opcional)" : "Gateway ref (opcional)"}
                         </label>
                         <input
                           value={gatewayRef}
                           onChange={(event) => setGatewayRef(event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                          className="w-full rounded-xl border border-border px-3 py-2 text-sm font-semibold text-foreground outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                           placeholder="MCX-..."
                         />
                       </>
@@ -317,21 +317,21 @@ export function PagamentoModal({
                 ) : null}
 
                 {needsEvidence ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-sm font-bold text-slate-900">Comprovativo (obrigatório)</div>
-                    <div className="text-xs text-slate-500">
+                  <div className="rounded-xl border border-border bg-muted p-3">
+                    <div className="text-sm font-bold text-foreground">Comprovativo (obrigatório)</div>
+                    <div className="text-xs text-muted-foreground">
                       Faça upload e cole a URL do comprovativo.
                     </div>
                     <input
                       value={evidenceUrl}
                       onChange={(event) => setEvidenceUrl(event.target.value)}
-                      className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                      className="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm font-semibold text-foreground outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                       placeholder="https://..."
                     />
                   </div>
                 ) : null}
 
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   * TPA/Transfer/MCX/KIWK entram como pendente até conciliação.
                 </div>
               </>
@@ -339,10 +339,10 @@ export function PagamentoModal({
           </div>
 
           {!showSuccess && (
-            <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="flex justify-end gap-2 border-t border-border bg-muted px-5 py-4">
               <button
                 onClick={handleClose}
-                className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900"
+                className="rounded-xl px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground"
               >
                 Voltar
               </button>

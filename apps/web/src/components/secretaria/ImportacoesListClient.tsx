@@ -69,8 +69,8 @@ export default function ImportacoesListClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Importações recentes</h1>
-          <p className="text-sm text-slate-500">Últimas importações efetuadas nesta escola.</p>
+          <h1 className="text-xl font-semibold text-foreground">Importações recentes</h1>
+          <p className="text-sm text-muted-foreground">Últimas importações efetuadas nesta escola.</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -83,7 +83,7 @@ export default function ImportacoesListClient() {
           <button
             type="button"
             onClick={() => fetchItems({ append: false })}
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-slate-700 border border-slate-200 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-card px-4 py-2 text-foreground border border-border hover:bg-muted"
           >
             <RefreshCw size={18} />
             Atualizar
@@ -92,27 +92,27 @@ export default function ImportacoesListClient() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
+        <table className="min-w-full divide-y divide-border">
+          <thead className="bg-muted">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Arquivo</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Registos</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Processado</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Arquivo</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Registos</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Processado</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className="bg-card divide-y divide-border">
             {loading && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                   Carregando importações...
                 </td>
               </tr>
             )}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                   Nenhuma importação encontrada.
                 </td>
               </tr>
@@ -129,15 +129,15 @@ export default function ImportacoesListClient() {
                 ? new Date(it.created_at).toLocaleString()
                 : "—";
               return (
-                <tr key={it.id} className="hover:bg-slate-50/60">
+                <tr key={it.id} className="hover:bg-muted/60">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <FileText size={18} className="text-slate-400" />
+                      <FileText size={18} className="text-muted-foreground" />
                       <div>
-                        <div className="text-sm font-medium text-slate-900 truncate max-w-[360px]">
+                        <div className="text-sm font-medium text-foreground truncate max-w-[360px]">
                           {it.file_name ?? it.id}
                         </div>
-                        <div className="text-xs text-slate-500">ID: {it.id}</div>
+                        <div className="text-xs text-muted-foreground">ID: {it.id}</div>
                       </div>
                     </div>
                   </td>
@@ -146,14 +146,14 @@ export default function ImportacoesListClient() {
                       it.status === 'imported' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' :
                       it.status === 'pending' ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' :
                       it.status === 'failed' ? 'bg-red-50 text-red-700 ring-1 ring-red-200' :
-                      'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
+                      'bg-muted text-foreground ring-1 ring-slate-200'
                     }`}>
                       {it.status ?? '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-700">{counts}</td>
-                  <td className="px-4 py-3 text-sm text-slate-700">
-                    <div className="inline-flex items-center gap-1 text-slate-600">
+                  <td className="px-4 py-3 text-sm text-foreground">{counts}</td>
+                  <td className="px-4 py-3 text-sm text-foreground">
+                    <div className="inline-flex items-center gap-1 text-muted-foreground">
                       <Clock size={16} />
                       {processed}
                     </div>
@@ -161,7 +161,7 @@ export default function ImportacoesListClient() {
                   <td className="px-4 py-3 text-right space-x-2">
                     <Link
                       href={buildContextualPortalHref(escolaParam, `/secretaria/importacoes/${it.id}`, pathname)}
-                      className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-teal-700 border border-teal-200 hover:bg-teal-50"
+                      className="inline-flex items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm text-teal-700 border border-teal-200 hover:bg-teal-50"
                     >
                       Visualizar
                       <ArrowRight size={16} />
@@ -181,7 +181,7 @@ export default function ImportacoesListClient() {
             type="button"
             onClick={() => fetchItems({ cursor: nextCursor, append: true })}
             disabled={loadingMore}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
           >
             {loadingMore ? 'Carregando...' : 'Carregar mais'}
           </button>
