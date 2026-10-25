@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronRight, GraduationCap,
@@ -8,9 +8,12 @@ import {
 } from "lucide-react";
 
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioTurma } from "@/components/secretaria/command-center/ExplorerHorario";
+import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
 import { buildPortalHref } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useCourseContext } from "@/hooks/useCourseContext";
+import { resolveCourseExplorerSelection } from "@/lib/command-center/course-explorer-selection";
 
 type Props = {
   context: EntityContext;
@@ -23,19 +26,6 @@ type Props = {
   onClasseChange?: (id: string | null) => void;
   onTurmaChange?: (id: string | null) => void;
 };
-
-const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
-
-function Metric({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4">
-      <span className="text-xs text-slate-500">{label}</span>
-      <p className="mt-1 font-sora text-2xl font-semibold tabular-nums text-[#1F6B3B]">
-        {numberPt(value)}
-      </p>
-    </div>
-  );
-}
 
 function turmaOccupancyHint(alunos: number, capacidade: number | null | undefined) {
   if (capacidade == null) return `${alunos} alunos · Capacidade não definida`;
@@ -52,20 +42,35 @@ export function CourseContextView({
 }: Props) {
   const { data, error, loading, retry } = useCourseContext(context);
   const reducedMotion = useReducedMotion();
-  const [classeId, setClasseId] = useState<string | null>(initialClasseId ?? null);
+  // Selection belongs to a specific school/course/year. A mounted explorer may
+  // receive a different context without remounting; never reuse the old filter.
+  const contextKey = [context.escolaId, context.id, context.academicYearId ?? ""].join(":");
+  const [selection, setSelection] = useState(() => ({
+    contextKey, classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null,
+  }));
+  const { classeId, turmaId } = resolveCourseExplorerSelection({
+    contextKey,
+    selection,
+    fallback: { classeId: initialClasseId ?? null, turmaId: initialTurmaId ?? null },
+    classes: data?.classes,
+    turmas: data?.turmas,
+  });
+
   function selectClasse(id: string | null) {
-    setClasseId(id);
+    setSelection({ contextKey, classeId: id, turmaId: null });
     onClasseChange?.(id);
-    setTurmaId(null);
     onTurmaChange?.(null);
   }
-  const [turmaId, setTurmaId] = useState<string | null>(initialTurmaId ?? null);
+  function setTurmaId(id: string | null) {
+    setSelection({ contextKey, classeId, turmaId: id });
+  }
 
-  const visibleTurmas = useMemo(
-    () => (data?.turmas ?? []).filter((turma) => !classeId || turma.classeId === classeId),
-    [data, classeId],
-  );
-  const selectedTurma = data?.turmas.find((turma) => turma.id === turmaId);
+  // This bounded, already fetched list is cheap to filter; React Compiler can
+  // derive it safely without manual memoization of a contextual selection.
+  const visibleTurmas = (data?.turmas ?? []).filter((turma) =>
+    !classeId || turma.classeId === classeId);
+  const selectedTurma = data?.turmas.find((turma) =>
+    turma.id === turmaId && (!classeId || turma.classeId === classeId));
   const selectedClasse = data?.classes.find((classe) => classe.id === classeId);
 
   function openTurmaPage(id: string) {
@@ -125,9 +130,9 @@ export function CourseContextView({
       </header>
 
       <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-3 sm:gap-3">
-        <Metric label="Alunos matriculados" value={data.stats.alunos} />
-        <Metric label="Turmas ativas" value={data.stats.turmas} />
-        <Metric label="Classes" value={data.stats.classes} />
+        <ExplorerMetric label="Alunos matriculados" value={data.stats.alunos} />
+        <ExplorerMetric label="Turmas ativas" value={data.stats.turmas} />
+        <ExplorerMetric label="Classes" value={data.stats.classes} />
       </div>
 
       <nav aria-label="Navegação contextual" className="flex flex-wrap items-center gap-1 text-xs text-slate-600">
@@ -163,7 +168,7 @@ export function CourseContextView({
           </h3>
           <div className=" p-2">
             <button type="button"
-              onClick={() => { setClasseId(null); setTurmaId(null); onClasseChange?.(null); onTurmaChange?.(null); }}
+              onClick={() => selectClasse(null)}
               aria-pressed={!classeId}
               className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600 ${!classeId ? "bg-slate-100 font-semibold" : ""}`}>
               Todas as classes
@@ -222,8 +227,8 @@ export function CourseContextView({
             ))}
             {!visibleTurmas.length && (
               <p className="p-3 text-xs text-slate-500">
-                {selectedClasse?.turmas
-                  ? "As turmas desta classe não estão entre as 100 primeiras listadas."
+                {data.turmasLimitadas
+                  ? "A lista de turmas está limitada às primeiras 100; não é possível concluir ausência nesta seleção."
                   : "Sem turmas ativas nesta seleção."}
               </p>
             )}
@@ -268,6 +273,14 @@ export function CourseContextView({
           </motion.section>
         )}
       </AnimatePresence>
+
+      <ExplorerHorarioTurma
+        key={[context.id, classeId ?? "todas"].join(":")}
+        escolaId={context.escolaId}
+        anoLetivoId={data.anoLetivo.id}
+        turmas={visibleTurmas}
+        listaParcial={data.turmasLimitadas}
+      />
 
       {data.turmasLimitadas && (
         <p className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">

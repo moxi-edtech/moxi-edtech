@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   Loader2, RefreshCw, UsersRound,
 } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioTurma } from "@/components/secretaria/command-center/ExplorerHorario";
+import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
+import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
@@ -15,6 +18,7 @@ import { ExplorerStudentActions } from "@/components/secretaria/command-center/E
 import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 import { useTurmaContext } from "@/hooks/useTurmaContext";
+import { academicLinkState, academicCurriculumNotice, missingTeacherEvidenceLabel, ACADEMIC_LINK_LABELS } from "@/lib/command-center/academic-relations";
 
 type Props = {
   context: EntityContext;
@@ -29,12 +33,12 @@ type Props = {
   initialSort?: RosterSort;
   initialFilter?: RosterFilter;
   onViewChange?: (state: ExplorerViewState) => void;
+  /** The Command Palette owns the only scrollable viewport. */
+  scrollContainerRef?: RefObject<HTMLElement | null>;
   onExploreProfessor: (professor: { id: string; label: string; academicYearId: string }) => void;
   onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
   onExploreClasse: (classe: { id: string; label: string; academicYearId: string }) => void;
 };
-
-const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
 
 function occupancyFromCapacity(capacity: number | null | undefined, enrolled: number) {
   if (capacity == null) {
@@ -46,57 +50,51 @@ function occupancyFromCapacity(capacity: number | null | undefined, enrolled: nu
   };
 }
 
-function Metric({
-  label, value, limited, hint,
-}: {
-  label: string;
-  value: number | null;
-  limited?: boolean;
-  hint?: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-        {value == null ? "Não definida" : numberPt(value)}
-        {limited && value != null ? "+" : ""}
-      </p>
-      {hint ? <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p> : null}
-    </div>
-  );
-}
-
 export function TurmaContextView({
   context, portal, onNavigate, onStudentSelect, onStudentAction, onExploreProfessor, onExploreDisciplina, onExploreClasse,
-  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange,
+  initialPage = 1, initialScrollTop = 0, selectedStudentId = null, initialSearch = "", initialSort = "nome_asc", initialFilter = "todos", onViewChange, scrollContainerRef,
 }: Props) {
   const [page, setPage] = useState(initialPage);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [rosterSort, setRosterSort] = useState<RosterSort>(initialSort);
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>(initialFilter);
-  const roster = useExplorerRoster(context, "turma", searchTerm, rosterSort, rosterFilter);
-  const searchActive = searchTerm.trim().length >= 2 ||
-    (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos"));
-  const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
-    page, scrollTop: currentScroll.current, selectedStudentId: selected,
-    search: searchTerm, filter: rosterFilter, sort: rosterSort,
-  }), [page, searchTerm, rosterSort, rosterFilter]);
   const { data, error, status, loading, refreshing, retry } = useTurmaContext(context, page);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const currentScroll = useRef(initialScrollTop);
+  const roster = useExplorerRoster(context, "turma", searchTerm, rosterSort, rosterFilter, data?.turma.anoLetivo.historico === false);
+  const searchActive = data?.turma.anoLetivo.historico === false && (searchTerm.trim().length >= 2 ||
+    (searchTerm.trim().length === 0 && (rosterSort !== "nome_asc" || rosterFilter !== "todos")));
+  const scrollRestored = useRef(false);
   const currentStudent = useRef(selectedStudentId);
   const onViewChangeRef = useRef(onViewChange);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
-  const restoreScroll = useRef(initialScrollTop);
+  const view = useCallback((selected: string | null = currentStudent.current): ExplorerViewState => ({
+    page,
+    // Before restoring the viewport, never overwrite the saved scroll with 0.
+    scrollTop: scrollRestored.current
+      ? scrollContainerRef?.current?.scrollTop ?? initialScrollTop
+      : initialScrollTop,
+    selectedStudentId: selected,
+    search: searchTerm, filter: rosterFilter, sort: rosterSort,
+  }), [page, initialScrollTop, scrollContainerRef, searchTerm, rosterSort, rosterFilter]);
+
+  // Restore only once, after the actual roster exists. The scrolling surface
+  // belongs to CommandPalette; this view must never create a second scroll.
   useEffect(() => {
-    if (loading || !scrollRef.current) return;
-    scrollRef.current.scrollTop = restoreScroll.current;
-    const selected = currentStudent.current;
-    if (selected) {
-      const row = Array.from(scrollRef.current.querySelectorAll<HTMLElement>("[data-student-id]")).find((item) => item.dataset.studentId === selected);
-      if (row) row.focus({ preventScroll: true });
-    }
-  }, [loading, page]);
+    const container = scrollContainerRef?.current;
+    if (loading || !container || scrollRestored.current ||
+        (searchActive && (!roster.querySettled || roster.loading || roster.refreshing))) return;
+    const frame = requestAnimationFrame(() => {
+      if (!container.isConnected || scrollRestored.current) return;
+      container.scrollTop = initialScrollTop;
+      scrollRestored.current = true;
+      if (currentStudent.current) {
+        const row = Array.from(container.querySelectorAll<HTMLElement>("[data-student-id]"))
+          .find((item) => item.dataset.studentId === currentStudent.current);
+        row?.focus({ preventScroll: true });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loading, scrollContainerRef, initialScrollTop,
+    searchActive, roster.querySettled, roster.loading, roster.refreshing]);
   useEffect(() => {
     onViewChangeRef.current?.(view());
   }, [page, view]);
@@ -135,18 +133,22 @@ export function TurmaContextView({
   );
 
   const { turma, alunos, disciplinas, professores } = data;
-  const visibleStudents = searchActive ? roster.items : alunos.items;
-  const returnWarning = Boolean(selectedStudentId && (!searchActive || (!roster.loading && !roster.refreshing)) &&
+  const rosterBusy = searchActive && (!roster.querySettled || roster.loading || roster.refreshing);
+  const rosterReady = searchActive && !rosterBusy && !roster.error;
+  const visibleStudents = searchActive
+    ? roster.querySettled ? roster.items : []
+    : alunos.items;
+  const returnWarning = Boolean(selectedStudentId && (!searchActive || rosterReady) &&
     !visibleStudents.some((student) => student.id === selectedStudentId));
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   const occupancy = occupancyFromCapacity(turma.capacidade, alunos.total);
   const disciplinasSemProfessor = disciplinas.filter((d) => !d.professores.length).length;
 
   return (
-    <div ref={scrollRef} onScroll={(event) => { currentScroll.current = event.currentTarget.scrollTop; onViewChangeRef.current?.(view()); }} className="min-w-0 space-y-5 px-1 pb-3 text-sm">
+    <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          O aluno atendido já não consta desta página. A lista foi actualizada; confirme a matrícula e a turma antes de continuar.
+          O aluno selecionado não está nesta página ou nos filtros atuais. A seleção foi preservada; confirme a turma antes de continuar o atendimento.
         </p>
       )}
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -174,25 +176,30 @@ export function TurmaContextView({
         </button>
       </header>
 
+      {turma.anoLetivo.historico && <ExplorerHistoricalScopeNotice roster />}
+
       <section aria-label="Indicadores da turma" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <Metric label="Alunos matriculados" value={alunos.total} />
-        <Metric
+        <ExplorerMetric label="Alunos matriculados" value={alunos.total} />
+        <ExplorerMetric
           label="Capacidade"
           value={turma.capacidade ?? null}
           hint={turma.capacidade == null ? "Não definida nesta turma" : undefined}
         />
-        <Metric
+        <ExplorerMetric
           label="Vagas disponíveis"
           value={occupancy.available}
           hint={turma.capacidade == null ? "Indisponível sem capacidade" : undefined}
         />
         {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
-          <Metric label="Excedente de lotação" value={occupancy.overcapacity} hint="Acima da capacidade registada" />
+          <ExplorerMetric label="Excedente de lotação" value={occupancy.overcapacity} hint="Acima da capacidade registada" />
         )}
-        <Metric label="Disciplinas" value={disciplinas.length} limited={data.disciplinasLimitadas} />
-        <Metric label="Professores vinculados" value={data.professoresDetalhes?.length ?? professores.length} />
+        <ExplorerMetric label="Disciplinas" value={disciplinas.length} partial={data.disciplinasLimitadas} />
+        <ExplorerMetric label="Professores vinculados" value={data.professoresDetalhes?.length ?? professores.length} partial={data.disciplinasLimitadas} />
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
+
+      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={turma.anoLetivo.id}
+        turmaId={turma.id} />
 
       {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
         <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
@@ -211,22 +218,36 @@ export function TurmaContextView({
         </p>
       )}
 
-      <ExplorerRosterControls value={searchTerm} sort={rosterSort} filter={rosterFilter}
-        onFilterChange={(next) => {
-          setRosterFilter(next);
-          onViewChangeRef.current?.({ ...view(), filter: next });
-        }}
-        onSortChange={(next) => {
-          setRosterSort(next);
-          onViewChangeRef.current?.({ ...view(), sort: next });
-        }}
-        onChange={(next) => {
-        setSearchTerm(next);
-        onViewChangeRef.current?.({ ...view(), search: next });
-      }} />
-        <ExplorerRosterExportButton escolaId={context.escolaId} entityId={context.id}
-          type="turma" yearId={context.academicYearId}
-          query={searchTerm} filter={rosterFilter} sort={rosterSort} />
+      {!turma.anoLetivo.historico && (
+        <>
+          <ExplorerRosterControls
+            value={searchTerm}
+            sort={rosterSort}
+            filter={rosterFilter}
+            onFilterChange={(next) => {
+              setRosterFilter(next);
+              onViewChangeRef.current?.({ ...view(), filter: next });
+            }}
+            onSortChange={(next) => {
+              setRosterSort(next);
+              onViewChangeRef.current?.({ ...view(), sort: next });
+            }}
+            onChange={(next) => {
+              setSearchTerm(next);
+              onViewChangeRef.current?.({ ...view(), search: next });
+            }}
+          />
+          <ExplorerRosterExportButton
+            escolaId={context.escolaId}
+            entityId={context.id}
+            type="turma"
+            yearId={context.academicYearId}
+            query={searchTerm}
+            filter={rosterFilter}
+            sort={rosterSort}
+          />
+        </>
+      )}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <section className="min-w-0" aria-labelledby="turma-alunos-heading">
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -234,12 +255,12 @@ export function TurmaContextView({
               <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
             </h3>
             <span className="text-xs text-slate-500" aria-live="polite">
-              {searchActive ? `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} no total`}
+              {searchActive ? rosterBusy ? "A pesquisar…" : roster.error ? "Pesquisa indisponível" : `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} no total`}
             </span>
           </div>
-          {searchActive && (roster.loading || roster.refreshing) && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
+          {rosterBusy && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
           {searchActive && roster.error && <p role="alert" className="my-2 text-xs text-rose-700">{roster.error} <button type="button" onClick={() => void roster.retry()} className="underline">Tentar novamente</button></p>}
-          {roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
+          {!turma.anoLetivo.historico && roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
             {visibleStudents.map((student) => (
 <div key={student.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-slate-100 px-2 py-1 last:border-0">
@@ -260,9 +281,13 @@ export function TurmaContextView({
     onAction={(action) => onStudentAction(action, { id: student.id, label: student.nome })} />
 </div>
             ))}
-            {!visibleStudents.length && !roster.loading && (
-              <p className="px-3 py-5 text-slate-500">Nenhum aluno matriculado neste âmbito.</p>
-            )}
+            {!visibleStudents.length && !rosterBusy && !(searchActive && roster.error) && (
+            <p className="px-3 py-5 text-slate-500">
+              {searchActive ? "Nenhum aluno encontrado nos filtros selecionados."
+                : alunos.total > 0 ? "Nenhum aluno nesta página; consulte outra página."
+                : "Nenhum aluno matriculado neste âmbito."}
+            </p>
+          )}
           </div>
           {!searchActive && <div className="mt-3 flex items-center justify-between gap-2">
             <span className="text-xs tabular-nums text-slate-500" aria-live="polite">
@@ -281,7 +306,7 @@ export function TurmaContextView({
               </button>
             </div>
           </div>}
-          {searchActive && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
+          {rosterReady && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
         </section>
 
         <section className="min-w-0" aria-labelledby="turma-disciplinas-heading">
@@ -296,13 +321,28 @@ export function TurmaContextView({
                   className="inline-flex items-center gap-1 text-left font-medium text-emerald-800 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-600">
                   {d.nome} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
                 </button>
+                {d.curriculumActive === false && (
+                  <p className="mt-1 text-xs text-amber-800" role="status">
+                    {academicCurriculumNotice({
+                      curriculumActive: d.curriculumActive, assignedToTurma: true,
+                      teacherAssigned: d.professores.length > 0,
+                      schedulePublished: false, historicalYear: turma.anoLetivo.historico,
+                    })}
+                    {" · Vínculo: "}
+                    {ACADEMIC_LINK_LABELS[academicLinkState({
+                      curriculumActive: d.curriculumActive, assignedToTurma: true,
+                      teacherAssigned: d.professores.length > 0,
+                      schedulePublished: false, historicalYear: turma.anoLetivo.historico,
+                    })]}
+                  </p>
+                )}
                 <p className={`mt-1 text-xs ${d.professores.length ? "text-slate-500" : "text-amber-800"}`}>
-                  {d.professores.length ? d.professores.join(", ") : "Professor não vinculado"}
+                  {d.professores.length ? d.professores.join(", ") : missingTeacherEvidenceLabel(data.disciplinasLimitadas)}
                 </p>
               </div>
             ))}
             {!disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma disciplina vinculada.</p>
+              <p className="px-3 py-5 text-slate-500">{data.disciplinasLimitadas ? "Não foi possível confirmar as disciplinas fora do recorte consultado." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
           {data.disciplinasLimitadas && (
@@ -328,7 +368,7 @@ export function TurmaContextView({
             </div>
           ) : (
             <p className="text-xs text-slate-500">
-              {professores.length ? professores.join(", ") : "Nenhum professor vinculado."}
+              {professores.length ? professores.join(", ") : data.disciplinasLimitadas ? "Não é possível confirmar a ausência de professores numa lista parcial." : "Nenhum professor vinculado."}
             </p>
           )}
         </section>

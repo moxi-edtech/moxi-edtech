@@ -130,6 +130,39 @@ async function run(size, zoom) {
   await page.getByText(/Voltou ao mesmo contexto da Turma/).waitFor();
   await capture(page,size,zoom,"retorno-balcao");
 
+  // EX-004: exercise the actual React return path for three consecutive
+  // fictional students. The viewport, page, and focus must survive the dialog.
+  const viewport = () => page.getByRole("region", { name: "Área de rolagem da turma" });
+  await viewport().evaluate((node) => { node.scrollTop = 260; });
+  await page.waitForFunction(() => {
+    const node = document.querySelector('[aria-label="Área de rolagem da turma"]');
+    return Boolean(node && node.scrollTop > 0);
+  });
+  await page.locator('[data-student-id="00000000-0000-4000-8100-000000000002"]').click();
+  await page.getByRole("dialog",{name:"Balcão sintético"}).waitFor();
+  await page.getByRole("button",{name:"Voltar à turma"}).click();
+  await viewport().waitFor();
+  await page.waitForFunction(() => {
+    const owner = document.querySelector('[aria-label="Área de rolagem da turma"]');
+    const selected = document.querySelector('[data-student-id="00000000-0000-4000-8100-000000000002"]');
+    return Boolean(owner && owner.scrollTop > 0 && selected?.getAttribute("aria-current") === "true" &&
+      document.activeElement === selected);
+  }, null, { timeout: 10000 });
+  assert.ok(await viewport().evaluate((node) => node.scrollTop > 0),
+    "Second student must return to the real scrollable parent, not to an inner div");
+
+  await page.getByRole("button", { name: /Seguinte/ }).click();
+  await page.getByText("Página 2 de 3").waitFor();
+  await page.locator('[data-student-id="00000000-0000-4000-8100-000000000022"]').click();
+  await page.getByRole("dialog",{name:"Balcão sintético"}).waitFor();
+  await page.getByRole("button",{name:"Voltar à turma"}).click();
+  await page.getByText("Página 2 de 3").waitFor();
+  await page.waitForFunction(() => {
+    const row = document.querySelector('[data-student-id="00000000-0000-4000-8100-000000000022"]');
+    return row?.getAttribute("aria-current") === "true" && document.activeElement === row;
+  }, null, { timeout: 10000 });
+  await capture(page,size,zoom,"tres-alunos-retorno-paginado");
+
   assert.deepEqual(errors,[],`Browser errors at ${size.join("x")}/${zoom}: ${errors.join("; ")}`);
   await page.close();
 }

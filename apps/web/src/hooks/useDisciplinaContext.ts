@@ -14,16 +14,20 @@ export type DisciplinaOverview = {
   };
   anoLetivo: { id: string; ano: number; historico: boolean };
   stats: { professores: number; turmas: number; cursos: number; classes: number };
+  unresolvedTeacherLinks: number;
   professores: Array<{ id: string; nome: string; turmas: number }>;
   turmas: Array<{
     id: string; nome: string; turno: string | null;
     classeNome: string | null; cursoNome: string | null;
     professores: Array<{ id: string; nome: string }>;
   }>;
+  /** Published curriculum of the selected academic year. */
   curriculo: Array<{
+    id: string; curriculoId: string; curriculoVersao: number;
     cursoId: string | null; cursoNome: string | null;
     classeId: string | null; classeNome: string | null;
     cargaHorariaSemanal: number | null; obrigatoria: boolean | null;
+    ativo: boolean | null;
   }>;
   limitado: boolean;
 };

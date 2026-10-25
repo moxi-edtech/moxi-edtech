@@ -6,8 +6,10 @@ import {
 } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioSemanal } from "@/components/secretaria/command-center/ExplorerHorario";
+import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
+import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
-import { PROFESSOR_WEEKDAYS } from "@/lib/command-center/professor-explorer";
 import { useProfessorContext } from "@/hooks/useProfessorContext";
 
 type Props = {
@@ -17,19 +19,6 @@ type Props = {
   onExploreDisciplina: (disciplina: { id: string; label: string; academicYearId: string }) => void;
   onNavigate: (href: string) => void;
 };
-
-const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
-
-function Metric({ label, value, limited }: { label: string; value: number; limited: boolean }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-        {numberPt(value)}{limited ? "+" : ""}
-      </p>
-    </div>
-  );
-}
 
 export function ProfessorContextView({
   context, portal, onExploreTurma, onExploreDisciplina, onNavigate,
@@ -83,10 +72,12 @@ export function ProfessorContextView({
         </button>
       </header>
 
+            {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice />}
+
       <section aria-label="Indicadores académicos" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <Metric label="Turmas" value={data.stats.turmas} limited={limited} />
-        <Metric label="Disciplinas distintas" value={data.stats.disciplinas} limited={limited} />
-        <Metric label="Aulas em horário publicado" value={data.stats.aulasPublicadas} limited={limited} />
+        <ExplorerMetric label="Turmas" value={data.stats.turmas} partial={limited} />
+        <ExplorerMetric label="Disciplinas distintas" value={data.stats.disciplinas} partial={limited} />
+        <ExplorerMetric label="Aulas em horário publicado" value={data.stats.aulasPublicadas} partial={limited} />
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
 
@@ -96,12 +87,12 @@ export function ProfessorContextView({
           Algumas vinculações ultrapassaram o limite de consulta. Os números são parciais; consulte a gestão para o restante.
         </p>
       )}
-      {semAtribuicao && (
+      {semAtribuicao && !limited && (
         <p className="text-xs text-slate-600">
           Sem atribuição de turma ou disciplina neste ano letivo (nas fontes desta visão).
         </p>
       )}
-      {!semAtribuicao && semHorario && (
+      {!semAtribuicao && semHorario && !limited && (
         <p className="text-xs text-slate-600">
           Há atribuições, mas sem horário publicado neste ano letivo.
         </p>
@@ -136,7 +127,7 @@ export function ProfessorContextView({
               </button>
             ))}
             {!data.turmas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma turma atribuída neste ano letivo.</p>
+              <p className="px-3 py-5 text-slate-500">{limited ? "Nenhuma turma identificada nos vínculos consultados; a lista é parcial." : "Nenhuma turma atribuída neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -160,7 +151,7 @@ export function ProfessorContextView({
               </button>
             ))}
             {!data.disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhuma disciplina atribuída neste ano letivo.</p>
+              <p className="px-3 py-5 text-slate-500">{limited ? "Nenhuma disciplina identificada nos vínculos consultados; a lista é parcial." : "Nenhuma disciplina atribuída neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -170,28 +161,29 @@ export function ProfessorContextView({
         <h3 id="professor-horario-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
           <CalendarDays className="h-4 w-4 text-emerald-700" aria-hidden /> Horário publicado
         </h3>
-        <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
-          {data.horarios.map((aula, i) => (
-            <div key={`${aula.turmaId}:${aula.diaSemana}:${aula.inicio}:${i}`}
-              className="flex flex-wrap items-center justify-between gap-3 px-3 py-3">
-              <span className="font-medium text-slate-900">
-                {PROFESSOR_WEEKDAYS[aula.diaSemana] || `Dia ${aula.diaSemana}`}
-                {" · "}
-                {aula.inicio.slice(0, 5)}–{aula.fim.slice(0, 5)}
-              </span>
-              <span className="text-xs text-slate-600">
-                {aula.turmaNome}{aula.disciplinaNome ? ` · ${aula.disciplinaNome}` : ""}
-              </span>
-            </div>
-          ))}
-          {!data.horarios.length && (
-            <p className="px-3 py-5 text-slate-500">
-              Sem horário publicado para este professor neste ano letivo.
-              {" "}
-              (Ausência de publicação ≠ ausência de atribuição.)
-            </p>
-          )}
-        </div>
+        {data.horarios.length > 0 ? (
+          <ExplorerHorarioSemanal
+            showTurma
+            parcial={limited}
+            aulas={data.horarios.map((aula, index) => ({
+              id: [aula.turmaId, aula.diaSemana, aula.inicio, aula.fim, index].join(":"),
+              turmaNome: aula.turmaNome,
+              diaSemana: aula.diaSemana,
+              inicio: aula.inicio,
+              fim: aula.fim,
+              disciplinaNome: aula.disciplinaNome || "Disciplina sem identificação",
+              professorNome: null,
+              salaNome: null,
+            }))}
+          />
+        ) : (
+          <p className="rounded-lg border border-slate-200 px-3 py-4 text-xs text-slate-600">
+            {limited
+              ? "Nenhum horário publicado identificado no recorte consultado; a lista é parcial."
+              : "Sem horário publicado para este professor neste ano letivo."}
+            {" "}Ausência de publicação não significa ausência de atribuição docente.
+          </p>
+        )}
       </section>
 
       <p className="text-xs text-slate-500">

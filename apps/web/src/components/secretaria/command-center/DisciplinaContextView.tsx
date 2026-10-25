@@ -6,8 +6,12 @@ import {
 } from "lucide-react";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import { ExplorerHorarioTurma } from "@/components/secretaria/command-center/ExplorerHorario";
+import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerMetric";
+import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
 import { useDisciplinaContext } from "@/hooks/useDisciplinaContext";
+import { missingTeacherEvidenceLabel } from "@/lib/command-center/academic-relations";
 
 type Props = {
   context: EntityContext;
@@ -17,19 +21,6 @@ type Props = {
   onExploreTurma: (turma: { id: string; label: string; academicYearId: string }) => void;
   onExploreClasse: (classe: { id: string; label: string; academicYearId: string }) => void;
 };
-
-const numberPt = (value: number) => new Intl.NumberFormat("pt-AO").format(value);
-
-function Metric({ label, value, parcial }: { label: string; value: number; parcial: boolean }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-        {numberPt(value)}{parcial ? "+" : ""}
-      </p>
-    </div>
-  );
-}
 
 export function DisciplinaContextView({
   context, portal, onNavigate, onExploreProfessor, onExploreTurma, onExploreClasse,
@@ -82,11 +73,13 @@ export function DisciplinaContextView({
         </button>
       </header>
 
+      {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice />}
+
       <section aria-label="Indicadores da disciplina" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <Metric label="Professores vinculados" value={stats.professores} parcial={limitado} />
-        <Metric label="Turmas no ano" value={stats.turmas} parcial={limitado} />
-        <Metric label="Cursos na matriz" value={stats.cursos} parcial={limitado} />
-        <Metric label="Classes na matriz" value={stats.classes} parcial={limitado} />
+        <ExplorerMetric label="Professores identificados" value={stats.professores} partial={limitado} />
+        <ExplorerMetric label="Turmas no ano" value={stats.turmas} partial={limitado} />
+        <ExplorerMetric label="Cursos no currículo" value={stats.cursos} partial={limitado} />
+        <ExplorerMetric label="Classes no currículo" value={stats.classes} partial={limitado} />
         {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
       </section>
 
@@ -96,7 +89,7 @@ export function DisciplinaContextView({
           O número de vínculos excede o limite de consulta. Os valores são parciais, não totais definitivos.
         </p>
       )}
-      {turmasSemProfessor > 0 && stats.turmas > 0 && (
+      {!limitado && turmasSemProfessor > 0 && stats.turmas > 0 && (
         <p className="text-xs text-slate-600">
           {turmasSemProfessor === 1
             ? "1 turma sem professor vinculado a esta disciplina nesta visão."
@@ -104,10 +97,20 @@ export function DisciplinaContextView({
         </p>
       )}
 
+      {data.unresolvedTeacherLinks > 0 && (
+        <p role="status" className="text-xs text-amber-900">
+          Existem {data.unresolvedTeacherLinks} {data.unresolvedTeacherLinks === 1 ? "identidade docente indisponível" : "identidades docentes indisponíveis"}.
+          Os vínculos académicos permanecem registados; confirme as identidades na gestão autorizada.
+        </p>
+      )}
+
+      <ExplorerHorarioTurma escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
+        turmas={turmas} listaParcial={limitado} disciplinaId={disciplina.id} />
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="min-w-0" aria-labelledby="disciplina-professores-heading">
           <h3 id="disciplina-professores-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
-            <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Professores
+            <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Professores identificados
           </h3>
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
             {professores.map((professor) => (
@@ -126,7 +129,11 @@ export function DisciplinaContextView({
               </button>
             ))}
             {!professores.length && (
-              <p className="px-3 py-5 text-slate-500">Nenhum professor vinculado neste ano letivo.</p>
+              <p className="px-3 py-5 text-slate-500">{data.unresolvedTeacherLinks > 0
+                ? "Existem vínculos docentes registados, mas algumas identidades não estão disponíveis."
+                : limitado
+                  ? "Nenhum professor identificado no recorte consultado; a lista é parcial."
+                  : "Nenhum professor vinculado neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -152,14 +159,14 @@ export function DisciplinaContextView({
                       {turma.professores.map((p) => p.nome).join(", ")}
                     </span>
                   ) : (
-                    <span className="mt-1 block text-xs text-amber-800">Professor não vinculado</span>
+                    <span className="mt-1 block text-xs text-amber-800">{missingTeacherEvidenceLabel(limitado)}</span>
                   )}
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
             ))}
             {!turmas.length && (
-              <p className="px-3 py-5 text-slate-500">Sem turmas vinculadas neste ano.</p>
+              <p className="px-3 py-5 text-slate-500">{limitado ? "Nenhuma turma encontrada no recorte consultado; não é possível afirmar ausência de vínculo." : "Sem turmas vinculadas neste ano."}</p>
             )}
           </div>
         </section>
@@ -170,11 +177,11 @@ export function DisciplinaContextView({
           <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Matriz curricular
         </h3>
         <p className="mb-2 text-xs text-slate-500">
-          Referência do currículo da escola. Consta na matriz ≠ atribuída à turma ≠ tem docente neste ano.
+          Versão publicada do currículo do ano selecionado. Consta na matriz ≠ atribuída à turma ≠ tem docente neste ano.
         </p>
         <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
-          {curriculo.map((item, index) => (
-            <div key={`${item.cursoId ?? ""}:${item.classeId ?? ""}:${index}`}
+          {curriculo.map((item) => (
+            <div key={item.id}
               className="flex flex-wrap items-start justify-between gap-2 px-3 py-3">
               {item.classeId && item.classeNome ? (
                 <button type="button"
@@ -190,15 +197,23 @@ export function DisciplinaContextView({
                   {item.cursoNome || "Matriz curricular"}
                 </span>
               )}
-              <span className="text-xs text-slate-500">
-                {item.cargaHorariaSemanal != null
-                  ? `${item.cargaHorariaSemanal} h/semana`
-                  : "Carga não definida"}
+              <span className="text-right text-xs text-slate-500">
+                <span className="block">
+                  {item.cargaHorariaSemanal != null
+                    ? `${item.cargaHorariaSemanal} h/semana`
+                    : "Carga não definida"}
+                  {" · "}Versão {item.curriculoVersao}
+                </span>
+                {item.ativo === false && (
+                  <span className="mt-1 block text-amber-800">
+                    Linha inativa atualmente · estado no ano não comprovado
+                  </span>
+                )}
               </span>
             </div>
           ))}
           {!curriculo.length && (
-            <p className="px-3 py-5 text-slate-500">Sem associação curricular disponível neste escopo.</p>
+            <p className="px-3 py-5 text-slate-500">{limitado ? "Currículo publicado não confirmado no recorte consultado; consulta parcial." : "Sem associação na versão curricular publicada deste ano."}</p>
           )}
         </div>
       </section>
