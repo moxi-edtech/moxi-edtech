@@ -53,7 +53,7 @@ function TaskItem({
 
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
         <button
-          className="h-9 w-9 rounded-lg border border-[#1F6B3B]/20 bg-card text-[#1F6B3B] hover:bg-[#1F6B3B]/5 hover:border-[#1F6B3B]/30 focus:outline-none focus:ring-4 focus:ring-[#1F6B3B]/20"
+          className="h-9 w-9 rounded-lg border border-emerald/20 bg-card text-emerald hover:bg-emerald/5 hover:border-emerald/30 focus:outline-none focus:ring-4 focus:ring-emerald/20"
           aria-label="Aprovar"
         >
           <Check className="h-4 w-4 mx-auto" />
