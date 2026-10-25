@@ -23,7 +23,7 @@ export default function ThemeToggle({ className = "", iconOnly = false }: Props)
       title={label}
     >
       {mounted && isDark ? <Sun className="h-4 w-4 shrink-0" aria-hidden /> : <Moon className="h-4 w-4 shrink-0" aria-hidden />}
-      {!iconOnly && <span className="hidden sm:inline">{label}</span>}
+      {!iconOnly && <span>{label}</span>}
     </button>
   );
 }
