@@ -15,4 +15,5 @@ test("identical colors fail the contrast threshold", () => {
 test("transparent or unsupported CSS values fail explicitly", () => {
   assert.throws(() => contrastRatio("rgba(0,0,0,0)", "rgb(255,255,255)"));
   assert.throws(() => contrastRatio("transparent", "rgb(255,255,255)"));
+  assert.throws(() => contrastRatio("oklch(1 0 0 / 0.2)", "rgb(255,255,255)"));
 });

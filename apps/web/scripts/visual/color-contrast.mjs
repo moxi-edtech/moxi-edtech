@@ -2,7 +2,9 @@
 function toLinearRgb(color) {
   const input = color.trim().toLowerCase();
   if (input.startsWith("oklch(") && input.endsWith(")")) {
-    const parts = input.slice(6, -1).split("/")[0].trim().split(/\s+/);
+    const [channels, opacity] = input.slice(6, -1).split("/");
+    if (opacity && Number.parseFloat(opacity.trim()) !== 1) throw new Error("Only opaque OKLCH colors supported: " + color);
+    const parts = channels.trim().split(/\s+/);
     if (parts.length !== 3) throw new Error("Invalid OKLCH color: " + color);
     const L = parts[0].endsWith("%") ? Number.parseFloat(parts[0]) / 100 : Number(parts[0]);
     const C = Number(parts[1]);

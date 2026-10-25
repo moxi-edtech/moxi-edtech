@@ -48,6 +48,7 @@ try {
   assert.equal(await page.evaluate(() => localStorage.getItem("klasse-theme")), "dark");
   await page.screenshot({ path: `${out}/theme-switcher-dark.png` });
   await page.emulateMedia({ media: "print" });
+  assert.equal(await page.locator("html").evaluate(el => getComputedStyle(el).colorScheme), "light");
   const printColors = await colors();
   assert.deepEqual(printColors, light, "Dark preference must not darken printed documents");
   await page.emulateMedia({ media: "screen" });

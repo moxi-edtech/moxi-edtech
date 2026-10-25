@@ -8,16 +8,17 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 - Oferecer light, dark e system; persistir por navegador em `klasse-theme`, com leitura retrocompatível de `theme`.
 - Provider local, sem `next-themes`: a branch antiga acrescentou a dependência mas não atualizou `pnpm-lock.yaml`, incompatível com installs congeladas.
 - Bootstrap antes do paint, com `suppressHydrationWarning` já no RootLayout.
-- Alternador em Topbar desktop e no menu no mobile; sem alterações de autenticação, permissões, RPC ou pagamentos.
-- A vista de impressão continua com fundo branco explícito.
+- Alternador na Topbar e escolha acessível Claro/Escuro/Sistema no menu do utilizador (teclado: setas/Home/End), em desktop e mobile; sem alterações de autenticação, permissões, RPC ou pagamentos.
+- Em `@media print`, tokens semânticos e `color-scheme` são forçados a claro; impressão/PDF reais continuam a exigir homologação autenticada.
 
 ## Escopo já integrado
 - Fundamentos: RootLayout, ThemeProvider, ThemeToggle, bootstrap pré-paint, preferência tipada, testes unitários e workflow `Theme Switcher Guard`.
 - Shell: Topbar, fundo principal de AppShell; `ModuleSwitcherInner` preservado. A sidebar mantém o padrão escuro institucional nos dois temas.
-- Partilhados: Card, KpiCard, SecondaryAction, TaskList, DashboardHeader, Button, Drawer, ModalShell, StatusPill, Alert, Sheet e notificações.
+- Partilhados: Card, KpiCard, SecondaryAction, TaskList, DashboardHeader, Button, Drawer, ModalShell, StatusPill, Alert, Sheet, Input, Select e notificações.
 - Secretaria: AlunosList, ProfessoresList, ClassesList, ImportacoesList, MatriculasList, AlunoProfilePanel, PagamentoModal, BalcaoServicoModal, FilaAtendimentoModal, MinhaProdutividade e FechoCaixaCego.
 - Relatórios: TabFluxo, TabPropinas, TabCaptacao (apenas classes visuais; lógica e consultas intactas).
 - Portal do aluno: BottomNav.
+- Command Center: CommandPalette, CommandCenterShell e CommandCenterPanel (apenas classes visuais, sem alteração de comandos nem permissões).
 - Sem migrations, mudanças de auth, alterações financeiras ou refactors funcionais antigos.
 
 ## Exclusões intencionais
@@ -27,7 +28,9 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 - Nenhuma dependência `next-themes` ou modificação do lockfile; o provider local é autocontido.
 
 ## Validação
-- `Theme Switcher Guard`: teste de parsing e resolução de preferência light/dark/system.
+- `Theme Switcher Guard`: testes de preferência light/dark/system e contraste CSS RGB/OKLCH.
+- `Portal Visual Fixture Screenshots`: Playwright em fixture isolada verifica os controlos reais, persistência, system, contraste e impressão; screenshots sintéticas de ambos os temas.
+- O contraste das fixtures passou a calcular a luminância a partir de OKLCH, em vez de interpretar números OKLCH incorretamente como RGB.
 - `KF2 Search Audit`: garantir nenhum hexadecimal de marca introduzido em novas linhas operacionais.
 - Gates de CI gerais e homologação autenticada continuam obrigatórios antes de tirar a PR do modo draft.
 
@@ -35,5 +38,5 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 ## Pendências antes de release
 - Converter classes fixas legadas de formulários, tabelas, modais e páginas; **dark completo ainda não está pronto**.
 - Executar typecheck, testes do provider/alternância e Playwright com autenticação nos portais e módulos operacionais.
-- Validar preferências ao alternar escolas, carregar, imprimir e alternar a preferência do sistema.
+- Validar com sessão real o comando, Balcão, formulários, impressões de recibos e a troca entre escolas; testes sintéticos não substituem esta homologação.
 - Não apagar a branch histórica antes de validar o restante do escopo P1/P2.
