@@ -33,3 +33,26 @@ Auditoria read-only em produção Vercel/Supabase, com código do deployment `2f
 - Não efetuar reprocessamento global nem gerar recibos automaticamente durante a auditoria. O outbox pode conter operações já cobertas por recibos consolidados/síncronos: reconciliar com o snapshot antes de qualquer replay.
 - Não atualizar vínculos académicos ou liquidações do banco para ocultar o erro; preservar RLS, authz, índices, auditoria e idempotência.
 - Para fechamento operacional: CI verde, deployment da correção, teste autenticado com pagamento sintético/sandbox, verificação de ausência de `23514` em novo worker, e replay **seletivo** segundo `supabase/ops/scripts/replay_receipt_outbox_GATED.sql` após aprovação explícita.
+
+## Segunda auditoria — capacidade e emissão operacional, 26/10
+
+A aplicação na Vercel Hobby tinha cron diário `/api/jobs/outbox` com consumo de 25 eventos por tópico. O worker PostgreSQL `process_outbox_batch_p0_v2` executa a cada minuto, mas exclui intencionalmente `financeiro_recibo_pagamento`. A combinação não é uma fila de recibos sustentável.
+
+Correção na PR #268:
+
+- Migration `20271026123000_operational_receipt_outbox_worker.sql` cria o job `operational-receipts-1m`, limitado a 20 eventos por execução, com `FOR UPDATE SKIP LOCKED`, transição atómica de estado, tentativa incremental e backoff. Apenas o utilizador interno `postgres` executa a RPC (não há concessão a `anon`, `authenticated` ou `service_role`).
+- A Vercel deixa de reivindicar o tópico de recibos para que haja um único protocolo de consumo; os tópicos de autenticação e de comunicação permanecem nos seus fluxos.
+- Validação do pagamento **liquidado**, da escola, do aluno e da mensalidade; pagamento anulado vira `dead`, nunca recibo; itens intermédios com `emitir_recibo=false` são consumidos sem segundo recibo.
+- Mensalidades continuam a usar a função **operacional** `emitir_recibo_system`. Serviços persistem documento em `documentos_emitidos` com `numero_sequencial`, `idempotency_key` e `idempotency_fingerprint`. Pagamentos consolidados preservam as linhas normalizadas e o valor total no snapshot, mesmo em recuperação assíncrona.
+- `operational_receipt_worker_control.started_at` define a data de entrada em serviço: não recolher automaticamente os eventos históricos já existentes. `enabled` permite paragem operacional. Os eventos anteriores ao corte continuam sujeitos a reconciliação e replay seletivo autorizado; os eventos `dead` nunca são reativados implicitamente.
+- A segurança do job web usa token de servidor, não aceita `x-vercel-cron` isoladamente nem `?token=`.
+- O motor AGT continua **desligado**: `fiscal_escola_bindings.fiscal_enabled=false` e as funções `fiscal_emitir_documento`, `fiscal_emitir_recibo_pagamento` e `fiscal_finalizar_assinatura` sem `EXECUTE` das roles expostas. O worker não referencia `fiscal_*` nem envia dados à AGT.
+
+### Critérios objetivos de aceitação
+
+1. `postgres-operational-receipts` CI em PostgreSQL 17 descartável executa a função mensal real e testes de serviço, lotes consolidados, idempotência, cancelamento, estado não liquidado, isolamento entre escolas, exclusão de histórico e bloqueio RPC externo.
+2. `operational-receipts-1m` deve surgir ativo em `cron.job` e com execuções bem-sucedidas em `cron.job_run_details`.
+3. Novos pagamentos legítimos devem mover o evento para `sent` **com documento operacional existente** (ou `emitir_recibo=false`, sem novo documento); nenhum `23514` novo.
+4. Verificar que o motor AGT permanece desativado após deploy. A existência da fila histórica não é um motivo para gerar recibos massivamente.
+
+Nota: teste sintético em banco descartável **não** equivale a um pagamento autenticado de uma escola em produção. Este último exige transação legítima e validação do documento emitido; não criar pagamentos financeiros fictícios no banco de produção apenas para um smoke test.
