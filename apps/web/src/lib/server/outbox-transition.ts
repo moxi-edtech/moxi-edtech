@@ -43,3 +43,14 @@ export function paymentReceiptFingerprint(escolaId: string, pagamentoId: string)
     .update(`pagamento_recibo:v1:${escolaId}:${pagamentoId}`)
     .digest("hex");
 }
+
+/**
+ * Batch checkout issues exactly one consolidated receipt (for the final
+ * item). Earlier items carry meta.emitir_recibo=false and must not be
+ * independently fiscalized/printed by the asynchronous outbox consumer.
+ * Legacy payments without the flag retain their original behavior.
+ */
+export function shouldEmitAutomaticPaymentReceipt(meta: unknown): boolean {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return true;
+  return (meta as Record<string, unknown>).emitir_recibo !== false;
+}
