@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { enrichOperationalReceiptSnapshot } from "@/lib/financeiro/enrichOperationalReceiptSnapshot";
+import { resolveCheckoutOriginMatricula } from "@/lib/financeiro/checkout-origin";
 import { z } from "zod";
 import { POST as processarPagamentoBalcao } from "../../balcao/pagamentos/route";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -201,6 +202,11 @@ export async function POST(request: Request) {
   // needed when one checkout can otherwise commit a prefix of the cart.
   if (itensPagamento.length === 1) {
     const item = itensPagamento[0];
+    const itemMatriculaOrigemId = resolveCheckoutOriginMatricula({
+      tipo: item.tipo,
+      origemMatriculaId: item.origem_matricula_id,
+      matriculaId: parsed.data.matricula_id,
+    });
     const delegatedHeaders = new Headers(request.headers);
     delegatedHeaders.set("Idempotency-Key", `${requestId}:0`);
 
@@ -219,15 +225,9 @@ export async function POST(request: Request) {
         meta: {
           origem: parsed.data.origem ?? "secretaria_pagamentos_processar_compat",
           pedido_id: parsed.data.pedido_id ?? null,
-          matricula_id:
-            (item.tipo === "mensalidade" ? item.origem_matricula_id : null)
-            ?? parsed.data.matricula_id
-            ?? null,
-          // The canonical Balcão route validates this against mensalidades.matricula_id.
-          // Without a per-item origin, a single post-rollover debt was always rejected.
-          matricula_origem_id: item.tipo === "mensalidade"
-            ? (item.origem_matricula_id ?? parsed.data.matricula_id ?? null)
-            : null,
+          matricula_id: itemMatriculaOrigemId ?? parsed.data.matricula_id ?? null,
+          // Validated by the canonical Balcão route against mensalidades.matricula_id.
+          matricula_origem_id: itemMatriculaOrigemId,
           descricao_item: item.nome ?? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço escolar"),
           itens: itensPagamento,
           emitir_recibo: true,
