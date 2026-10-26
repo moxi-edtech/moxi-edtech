@@ -37,7 +37,7 @@ jobs:
       - name: Targeted ESLint
         run: |
           pnpm -C apps/web exec eslint \
-            'src/app/api/secretaria/alunos/[alunoId]/recibos/route.ts' \
+            'src/app/api/secretaria/alunos/[id]/recibos/route.ts' \
             src/lib/financeiro/operational-receipt-history.ts \
             src/components/aluno/StudentReceiptHistory.tsx \
             src/components/aluno/DossierSeccoes.tsx \
