@@ -212,7 +212,8 @@ BEGIN
               'numero_sequencial', v_numero,
               'tipo_comprovativo', v_receipt_kind,
               'itens_pagamento', v_items,
-              'valor_pago', v_payment.valor_pago,
+              -- Consolidated checkout receipt must match all settled lines.
+              'valor_pago', v_total,
               'data_pagamento', v_payment.data_pagamento,
               'metodo', v_payment.metodo,
               'reference', v_payment.reference,
