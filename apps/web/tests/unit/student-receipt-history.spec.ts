@@ -88,7 +88,7 @@ test("invalid or incomplete historical metadata is handled without leaking snaps
 
 test("listing is read-only, scoped to school, student, authorized staff, and non-revoked issued receipts", () => {
   const route = readFileSync(
-    "apps/web/src/app/api/secretaria/alunos/[alunoId]/recibos/route.ts", "utf8",
+    new URL("../../src/app/api/secretaria/alunos/[id]/recibos/route.ts", import.meta.url), "utf8",
   );
   assert.match(route, /supabase\.auth\.getUser\(\)/);
   assert.match(route, /resolveEscolaIdForUser/);
@@ -104,10 +104,10 @@ test("listing is read-only, scoped to school, student, authorized staff, and non
 });
 
 test("same UI supports full profile and Command Center, using guarded reprint route", () => {
-  const section = readFileSync("apps/web/src/components/aluno/DossierSeccoes.tsx", "utf8");
-  const profile = readFileSync("apps/web/src/components/aluno/AlunoPerfilPage.tsx", "utf8");
-  const command = readFileSync("apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx", "utf8");
-  const component = readFileSync("apps/web/src/components/aluno/StudentReceiptHistory.tsx", "utf8");
+  const section = readFileSync(new URL("../../src/components/aluno/DossierSeccoes.tsx", import.meta.url), "utf8");
+  const profile = readFileSync(new URL("../../src/components/aluno/AlunoPerfilPage.tsx", import.meta.url), "utf8");
+  const command = readFileSync(new URL("../../src/components/secretaria/command-center/CommandCenterStudentDossier.tsx", import.meta.url), "utf8");
+  const component = readFileSync(new URL("../../src/components/aluno/StudentReceiptHistory.tsx", import.meta.url), "utf8");
   assert.match(section, /<StudentReceiptHistory/);
   assert.match(profile, /DossierFinanceiroSection[^>]*escolaId=\{resolvedEscolaId\}/);
   assert.match(command, /DossierFinanceiroSection[^>]*escolaId=\{escolaId\}/);
