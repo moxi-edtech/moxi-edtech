@@ -93,7 +93,9 @@ VALUES
 ('00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000101',
  '00000000-0000-4000-8000-000000000201','pago',5000,2026,10,now()::date,'cash'),
 ('00000000-0000-4000-8000-000000000302','00000000-0000-4000-8000-000000000101',
- '00000000-0000-4000-8000-000000000201','pendente',5000,2026,11,NULL,'cash');
+ '00000000-0000-4000-8000-000000000201','pendente',5000,2026,11,NULL,'cash'),
+('00000000-0000-4000-8000-000000000303','00000000-0000-4000-8000-000000000101',
+ '00000000-0000-4000-8000-000000000201','pago',5000,2026,12,now()::date,'cash');
 INSERT INTO public.pagamentos(id,escola_id,aluno_id,mensalidade_id,status,valor_pago,data_pagamento,meta)
 VALUES
 ('00000000-0000-4000-8000-000000000401','00000000-0000-4000-8000-000000000101',
@@ -111,7 +113,11 @@ VALUES
 ('00000000-0000-4000-8000-000000000407','00000000-0000-4000-8000-000000000101',
  '00000000-0000-4000-8000-000000000201',NULL,'pending',700,now()::date,'{"emitir_recibo":true}'),
 ('00000000-0000-4000-8000-000000000408','00000000-0000-4000-8000-000000000101',
- '00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','settled',5000,now()::date,'{"emitir_recibo":false}');
+ '00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','settled',5000,now()::date,'{"emitir_recibo":false}'),
+('00000000-0000-4000-8000-000000000409','00000000-0000-4000-8000-000000000101',
+ '00000000-0000-4000-8000-000000000201',NULL,'settled',900,now()::date,'{"emitir_recibo":true,"itens":[{"tipo":"mensalidade","nome":"Mensalidade dezembro","preco":5000},{"tipo":"servico","nome":"Declaração","preco":900}]}'),
+('00000000-0000-4000-8000-000000000410','00000000-0000-4000-8000-000000000101',
+ '00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000303','settled',5000,now()::date,'{"emitir_recibo":false}');
 
 -- Every row is new EXCEPT 499: it is the historical backlog, NOT a replay.
 INSERT INTO public.outbox_events(escola_id,event_type,dedupe_key,idempotency_key,payload,created_at)
@@ -126,24 +132,27 @@ SELECT CASE WHEN x.n=5 THEN '00000000-0000-4000-8000-000000000102'::uuid
   WHEN x.n=5 THEN '00000000-0000-4000-8000-000000000405'
   WHEN x.n=6 THEN '00000000-0000-4000-8000-000000000406'
   WHEN x.n=7 THEN '00000000-0000-4000-8000-000000000407'
-  WHEN x.n=8 THEN '00000000-0000-4000-8000-000000000408' END,
+  WHEN x.n=8 THEN '00000000-0000-4000-8000-000000000408'
+  WHEN x.n=12 THEN '00000000-0000-4000-8000-000000000409'
+  WHEN x.n=13 THEN '00000000-0000-4000-8000-000000000410' END,
  'mensalidade_id',CASE WHEN x.n IN(1,9,8) THEN '00000000-0000-4000-8000-000000000301'
+  WHEN x.n=13 THEN '00000000-0000-4000-8000-000000000303'
   WHEN x.n=6 THEN '00000000-0000-4000-8000-000000000302'
   ELSE NULL END),
  (SELECT started_at + CASE WHEN x.n=11 THEN interval '-1 second' ELSE interval '1 second' END
     FROM public.operational_receipt_worker_control)
-FROM generate_series(1,11) x(n);
+FROM generate_series(1,13) x(n);
 
 DO $$
 DECLARE r record;
 BEGIN
   SELECT * INTO r FROM public.process_operational_receipt_outbox(25);
-  IF r.issued_count <> 4 OR r.skipped_count <> 3 OR r.failed_count <> 3 THEN
+  IF r.issued_count <> 5 OR r.skipped_count <> 4 OR r.failed_count <> 3 THEN
     RAISE EXCEPTION 'incorrect first batch counts issued %, skipped %, failed %',
       r.issued_count,r.skipped_count,r.failed_count;
   END IF;
-  IF (SELECT count(*) FROM public.documentos_emitidos WHERE tipo='recibo') <> 2 THEN
-    RAISE EXCEPTION 'two receipts (monthly and service) must be emitted exactly once';
+  IF (SELECT count(*) FROM public.documentos_emitidos WHERE tipo='recibo') <> 3 THEN
+    RAISE EXCEPTION 'three receipts (monthly and services) must be emitted exactly once';
   END IF;
   IF (SELECT count(*) FROM public.documentos_emitidos WHERE mensalidade_id =
       '00000000-0000-4000-8000-000000000301') <> 1 THEN
@@ -169,6 +178,15 @@ BEGIN
       AND (dados_snapshot->'itens_pagamento'->0->>'valor')::numeric=800
   ) THEN
     RAISE EXCEPTION 'service receipt line items not normalized';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.documentos_emitidos
+    WHERE dados_snapshot->>'pagamento_id'='00000000-0000-4000-8000-000000000409'
+      AND jsonb_array_length(dados_snapshot->'itens_pagamento') = 2
+      AND (dados_snapshot->>'valor_pago')::numeric = 5900
+      AND dados_snapshot->'itens_pagamento'->1->>'descricao' = 'Declaração'
+  ) THEN
+    RAISE EXCEPTION 'service-final consolidated receipt has incorrect total or lines';
   END IF;
   IF EXISTS(SELECT 1 FROM public.documentos_emitidos WHERE
      idempotency_key LIKE 'pagamento_recibo:%' AND (idempotency_fingerprint IS NULL
