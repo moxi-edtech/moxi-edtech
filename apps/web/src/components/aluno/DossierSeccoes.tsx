@@ -14,6 +14,7 @@ import { QuickEditField } from "@/components/aluno/QuickEditField";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { PushSettings } from "@/components/aluno/PushSettings";
 import { ReverterPagamentoButton } from "@/components/financeiro/ReverterPagamentoButton";
+import { StudentReceiptHistory } from "@/components/aluno/StudentReceiptHistory";
 import {
   buildContextualPortalHref,
   getEscolaParamFromPath,
@@ -202,9 +203,9 @@ function MensalidadeRow({
   );
 }
 
-export function DossierFinanceiroSection({ aluno, role, servicos = [] }: { aluno: AlunoNormalizado; role: DossierRole; servicos?: AlunoServicoFinanceiro[] }) {
+export function DossierFinanceiroSection({ aluno, role, escolaId, servicos = [] }: { aluno: AlunoNormalizado; role: DossierRole; escolaId: string; servicos?: AlunoServicoFinanceiro[] }) {
   const { error } = useToast();
-  const canReprint = role === "secretaria";
+  const canReprint = role === "secretaria" || role === "admin";
   const canReverse = role === "secretaria";
   const f = aluno.financeiro;
   const atrasado = f.situacao === "inadimplente";
@@ -306,6 +307,9 @@ export function DossierFinanceiroSection({ aluno, role, servicos = [] }: { aluno
           </div>
         )}
       </div>
+      {canReprint && (
+        <StudentReceiptHistory key={escolaId + ":" + aluno.id} alunoId={aluno.id} escolaId={escolaId} />
+      )}
     </div>
   );
 }
