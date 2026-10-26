@@ -13,7 +13,7 @@ import {
 } from "@/lib/server/whatsappUtility";
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
-import { buildOutboxTransition, paymentReceiptKey } from "@/lib/server/outbox-transition";
+import { buildOutboxTransition, paymentReceiptKey, paymentReceiptFingerprint } from "@/lib/server/outbox-transition";
 import { persistReceiptOnce } from "@/lib/server/receipt-idempotency";
 
 export const dynamic = "force-dynamic";
@@ -882,6 +882,7 @@ async function emitirReciboPagamento(
         mensalidade_id: row.mensalidade_id,
         tipo: "recibo",
         idempotency_key: receiptKey,
+        idempotency_fingerprint: paymentReceiptFingerprint(row.escola_id, row.id),
         dados_snapshot: {
           origem: "pagamento_auto",
           pagamento_id: row.id,
