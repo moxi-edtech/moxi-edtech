@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { paymentReceiptKey, paymentReceiptFingerprint } from "../../src/lib/server/outbox-transition";
+import { paymentReceiptKey, paymentReceiptFingerprint, shouldEmitAutomaticPaymentReceipt } from "../../src/lib/server/outbox-transition";
 import { persistReceiptOnce } from "../../src/lib/server/receipt-idempotency";
 
 /**
@@ -90,4 +90,16 @@ test("non-uniqueness insert failure retains SQLSTATE and message for diagnosis",
       (err as Error & { code?: string }).code === "23514" &&
       err.message.includes("documentos_emitidos_idempotency_pair_chk"),
   );
+});
+
+test("consolidated batch checkout never emits receipts for intermediate items", () => {
+  assert.equal(shouldEmitAutomaticPaymentReceipt({ emitir_recibo: false, batch_index: 0 }), false);
+  assert.equal(shouldEmitAutomaticPaymentReceipt({ emitir_recibo: true, batch_index: 2 }), true);
+});
+
+test("legacy and malformed receipt metadata cannot suppress a receipt", () => {
+  assert.equal(shouldEmitAutomaticPaymentReceipt(null), true);
+  assert.equal(shouldEmitAutomaticPaymentReceipt({}), true);
+  assert.equal(shouldEmitAutomaticPaymentReceipt({ emitir_recibo: "false" }), true);
+  assert.equal(shouldEmitAutomaticPaymentReceipt([]), true);
 });
