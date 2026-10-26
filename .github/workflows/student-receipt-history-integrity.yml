@@ -1,0 +1,54 @@
+name: Student Receipt History Integrity
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/api/secretaria/alunos/**/recibos/**"
+      - "apps/web/src/components/aluno/StudentReceiptHistory.tsx"
+      - "apps/web/src/components/aluno/DossierSeccoes.tsx"
+      - "apps/web/src/components/aluno/AlunoPerfilPage.tsx"
+      - "apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx"
+      - "apps/web/src/lib/financeiro/operational-receipt-history.ts"
+      - "apps/web/tests/unit/student-receipt-history.spec.ts"
+      - ".github/workflows/student-receipt-history-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Receipt normalization, access control and print route tests
+        run: node --test --import tsx apps/web/tests/unit/student-receipt-history.spec.ts
+      - name: Full KLASSE web TypeScript check
+        run: pnpm -C apps/web typecheck
+      - name: Targeted ESLint
+        run: |
+          pnpm -C apps/web exec eslint \
+            'src/app/api/secretaria/alunos/[id]/recibos/route.ts' \
+            src/lib/financeiro/operational-receipt-history.ts \
+            src/components/aluno/StudentReceiptHistory.tsx \
+            src/components/aluno/DossierSeccoes.tsx \
+            src/components/aluno/AlunoPerfilPage.tsx \
+            src/components/secretaria/command-center/CommandCenterStudentDossier.tsx \
+            tests/unit/student-receipt-history.spec.ts \
+            --max-warnings 10000
+      - name: No fiscal engine or migration changes
+        run: |
+          git diff --check
+          ! git diff "origin/${{ github.base_ref }}...HEAD" --name-only | grep -E '^(supabase/migrations/|apps/web/src/lib/fiscal/|apps/web/src/app/api/fiscal/)' || {
+            echo 'Fiscal or database scope modified unexpectedly' >&2
+            exit 1
+          }

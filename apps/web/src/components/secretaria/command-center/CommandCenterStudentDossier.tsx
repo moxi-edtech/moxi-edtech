@@ -183,7 +183,7 @@ export function CommandCenterStudentDossier({
             ) : !aluno.matricula_atual?.matricula_id ? <p className="text-sm text-slate-500">Sem matrícula atual para retificar.</p> : !matriculaError ? <p className="text-sm text-slate-500">A carregar opções de retificação...</p> : null}
           </div>
         }
-        slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role="secretaria" servicos={servicos} />}
+        slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role="secretaria" escolaId={escolaId} servicos={servicos} />}
         slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role="secretaria" escolaId={escolaId} />}
         slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit />}
         slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}

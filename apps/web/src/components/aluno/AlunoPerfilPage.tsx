@@ -60,7 +60,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
               {(!matriculaAtualId || !turmaAtualId || !Number.isFinite(anoAtual)) && <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Não foi possível identificar uma matrícula atual válida para alteração. Confirme a matrícula do aluno na Secretaria.</p>}
             </div>
           }
-          slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} servicos={servicos} />}
+          slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
           slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}
           slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
