@@ -13,7 +13,7 @@ import {
 } from "@/lib/server/whatsappUtility";
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
-import { buildOutboxTransition, paymentReceiptKey, paymentReceiptFingerprint } from "@/lib/server/outbox-transition";
+import { buildOutboxTransition, paymentReceiptKey, paymentReceiptFingerprint, shouldEmitAutomaticPaymentReceipt } from "@/lib/server/outbox-transition";
 import { persistReceiptOnce } from "@/lib/server/receipt-idempotency";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +45,7 @@ type PagamentoRow = {
   data_pagamento: string | null;
   metodo: string | null;
   reference: string | null;
+  meta: Record<string, unknown> | null;
 };
 
 type NotificationOutboxRow = {
@@ -799,7 +800,24 @@ async function emitirReciboPagamento(
     throw new Error("payload missing pagamento_id or mensalidade_id");
   }
 
-  // Se tiver mensalidade_id, usamos a RPC do sistema que é muito mais completa
+  // The batch checkout suppresses per-item receipts except on its final item.
+  // Read the canonical payment, never trust event payload to waive that guard.
+  const { data: pagamento, error: pagamentoErr } = pagamentoId
+    ? await admin
+      .from("pagamentos")
+      .select("id, escola_id, aluno_id, mensalidade_id, valor_pago, data_pagamento, metodo, reference, meta")
+      .eq("id", pagamentoId)
+      .maybeSingle()
+    : { data: null, error: null };
+
+  if (pagamentoErr) throw new Error(pagamentoErr.message);
+  if (pagamentoId && !pagamento) throw new Error("pagamento not found");
+  const row = pagamento as PagamentoRow | null;
+  if (row && row.escola_id !== event.escola_id) throw new Error("OUTBOX_RECEIPT_TENANT_MISMATCH");
+  if (row && row.mensalidade_id !== mensalidadeId) throw new Error("OUTBOX_RECEIPT_MONTHLY_MISMATCH");
+  if (row && !shouldEmitAutomaticPaymentReceipt(row.meta)) return;
+
+  // Monthly receipts must be authorized by the settled payment's source.
   if (mensalidadeId) {
     const { data: res, error: rpcError } = await admin.rpc("emitir_recibo_system", {
       p_mensalidade_id: mensalidadeId,
@@ -820,17 +838,8 @@ async function emitirReciboPagamento(
     return;
   }
 
-  // Fallback para pagamentos sem mensalidade direta (se existir no futuro)
-  const { data: pagamento, error: pagamentoErr } = await admin
-    .from("pagamentos")
-    .select("id, escola_id, aluno_id, mensalidade_id, valor_pago, data_pagamento, metodo, reference")
-    .eq("id", pagamentoId)
-    .maybeSingle();
-
-  if (pagamentoErr) throw pagamentoErr;
-  if (!pagamento) throw new Error("pagamento not found");
-
-  const row = pagamento as PagamentoRow;
+  // Service receipts reuse the payment already tenant-checked above.
+  if (!row) throw new Error("pagamento not found");
   if (!row.aluno_id) throw new Error("pagamento sem aluno_id");
 
   const receiptKey = paymentReceiptKey(row.id);
