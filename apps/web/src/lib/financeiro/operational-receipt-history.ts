@@ -51,12 +51,33 @@ export function toOperationalReceiptHistoryItem(
     str(snapshot.tipo_operacao),
   ].filter(Boolean).join(" "));
 
+  const rawLines = Array.isArray(snapshot.itens_pagamento)
+    ? snapshot.itens_pagamento
+    : Array.isArray(snapshot.itens)
+      ? snapshot.itens
+      : [];
+  const firstLine = rawLines.length ? record(rawLines[0]) : {};
+  const firstLineName = normalized(
+    str(firstLine.descricao)
+    ?? str(firstLine.nome)
+    ?? str(firstLine.referencia)
+    ?? str(snapshot.referencia)
+    ?? "",
+  );
+  // Some old, legitimately issued matrícula receipts were persisted under
+  // tipo_comprovativo="pagamento" with only the item "Matrícula".
+  // Use a *leading* item label, not a substring (e.g. "Declaração de matrícula"
+  // remains a service, and a receipt is never modified by classification).
+  const isRematriculaLine = /^(taxa (de|da) )?rematricul/.test(firstLineName);
+  const isMatriculaLine = /^(taxa (de|da) )?matricul\b|^ficha de inscricao\b/.test(firstLineName);
+  const isMensalidadeLine = /^(propina|mensalidade)\b/.test(firstLineName);
+
   const kind: OperationalReceiptHistoryItem["kind"] =
-    /rematricul|reconfirm|confirmacao/.test(markers)
+    (/rematricul|reconfirm|confirmacao/.test(markers) || isRematriculaLine)
       ? "rematricula"
-      : /matricul|admissao|inscricao/.test(markers)
+      : (/matricul|admissao|inscricao/.test(markers) || isMatriculaLine)
         ? "matricula"
-        : row.mensalidade_id
+        : row.mensalidade_id || isMensalidadeLine
           ? "mensalidade"
           : "servico";
 
@@ -67,11 +88,7 @@ export function toOperationalReceiptHistoryItem(
     servico: "Serviços",
   }[kind];
 
-  const lines = Array.isArray(snapshot.itens_pagamento)
-    ? snapshot.itens_pagamento
-    : Array.isArray(snapshot.itens)
-      ? snapshot.itens
-      : [];
+  const lines = rawLines;
 
   // Match the print view's rule: use item amounts where present; otherwise
   // use the persisted receipt total (never recalculate from today's prices).
@@ -88,7 +105,6 @@ export function toOperationalReceiptHistoryItem(
     ? sum
     : amount(snapshot.valor_pago ?? snapshot.valor_total ?? snapshot.total);
 
-  const firstLine = lines.length ? record(lines[0]) : {};
   const reference = str(snapshot.referencia)
     ?? str(firstLine.descricao)
     ?? str(firstLine.nome)
