@@ -33,6 +33,9 @@ DECLARE
   v_fingerprint text;
   v_hash text;
   v_numero integer;
+  v_items jsonb;
+  v_total numeric;
+  v_receipt_kind text;
   v_error text;
 BEGIN
   issued_count := 0;
@@ -106,6 +109,42 @@ BEGIN
         CONTINUE;
       END IF;
 
+      -- Reconstruct a consolidated receipt from the persisted, validated
+      -- checkout items when the synchronous receipt path had failed.
+      v_receipt_kind := CASE
+        WHEN lower(COALESCE(v_payment.meta->>'tipo_comprovativo','')) LIKE '%confirm%'
+          OR lower(COALESCE(v_payment.meta->>'origem','')) LIKE '%rematric%'
+        THEN 'confirmacao' ELSE 'pagamento' END;
+      IF jsonb_typeof(v_payment.meta->'itens_pagamento') = 'array' THEN
+        SELECT COALESCE(jsonb_agg(jsonb_build_object(
+          'descricao', COALESCE(NULLIF(btrim(i.item->>'descricao'),''),
+                                NULLIF(btrim(i.item->>'nome'),''),'Item'),
+          'valor', COALESCE(NULLIF(i.item->>'valor','')::numeric,
+                            NULLIF(i.item->>'preco','')::numeric,0)) ORDER BY i.ord),'[]'::jsonb),
+          COALESCE(sum(COALESCE(NULLIF(i.item->>'valor','')::numeric,
+                                NULLIF(i.item->>'preco','')::numeric,0)),0)
+        INTO v_items,v_total
+        FROM jsonb_array_elements(v_payment.meta->'itens_pagamento') WITH ORDINALITY i(item,ord);
+      ELSIF jsonb_typeof(v_payment.meta->'itens') = 'array' THEN
+        SELECT COALESCE(jsonb_agg(jsonb_build_object(
+          'descricao', COALESCE(NULLIF(btrim(i.item->>'nome'),''),
+                                NULLIF(btrim(i.item->>'descricao'),''),'Item'),
+          'valor', COALESCE(NULLIF(i.item->>'preco','')::numeric,
+                            NULLIF(i.item->>'valor','')::numeric,0)) ORDER BY i.ord),'[]'::jsonb),
+          COALESCE(sum(COALESCE(NULLIF(i.item->>'preco','')::numeric,
+                                NULLIF(i.item->>'valor','')::numeric,0)),0)
+        INTO v_items,v_total
+        FROM jsonb_array_elements(v_payment.meta->'itens') WITH ORDINALITY i(item,ord);
+      ELSE
+        v_items := jsonb_build_array(jsonb_build_object(
+          'descricao',COALESCE(v_payment.meta->>'descricao_item','Serviço escolar'),
+          'valor',v_payment.valor_pago));
+        v_total := v_payment.valor_pago;
+      END IF;
+      IF v_items = '[]'::jsonb THEN
+        RAISE EXCEPTION 'RECEIPT_EMPTY_CHECKOUT_ITEMS';
+      END IF;
+
       IF v_payment.mensalidade_id IS NOT NULL THEN
         SELECT m.* INTO v_monthly FROM public.mensalidades m
          WHERE m.id = v_payment.mensalidade_id;
@@ -116,6 +155,21 @@ BEGIN
         v_rpc := public.emitir_recibo_system(v_monthly.id);
         IF COALESCE(v_rpc->>'ok','false') <> 'true' THEN
           RAISE EXCEPTION 'RECEIPT_MONTHLY_RPC_REJECTED:%', COALESCE(v_rpc->>'erro','unknown');
+        END IF;
+        -- Exactly the synchronous batch contract: one receipt for the final
+        -- item describing ALL items, not just the final mensalidade.
+        IF jsonb_array_length(v_items) > 1 THEN
+          v_document_id := NULLIF(v_rpc->>'doc_id','')::uuid;
+          IF v_document_id IS NULL THEN
+            RAISE EXCEPTION 'RECEIPT_MONTHLY_RPC_MISSING_DOCUMENT';
+          END IF;
+          UPDATE public.documentos_emitidos d
+             SET dados_snapshot = d.dados_snapshot || jsonb_build_object(
+               'itens_pagamento',v_items, 'valor_pago',v_total,
+               'tipo_comprovativo',v_receipt_kind)
+           WHERE d.id=v_document_id AND d.escola_id=v_payment.escola_id
+             AND d.aluno_id=v_payment.aluno_id AND d.mensalidade_id=v_monthly.id
+             AND d.tipo='recibo' AND NOT (d.dados_snapshot ? 'itens_pagamento');
         END IF;
       ELSE
         -- A service receipt is unique by school and settled payment.
@@ -156,15 +210,8 @@ BEGIN
               'aluno_nome', v_aluno_nome,
               'aluno_bi', v_aluno_bi,
               'numero_sequencial', v_numero,
-              'tipo_comprovativo', CASE
-                WHEN lower(COALESCE(v_payment.meta->>'tipo_comprovativo','')) LIKE '%confirm%'
-                     OR lower(COALESCE(v_payment.meta->>'origem','')) LIKE '%rematric%'
-                THEN 'confirmacao' ELSE 'pagamento' END,
-              'itens_pagamento', COALESCE(v_payment.meta->'itens_pagamento',
-                                         v_payment.meta->'itens',
-                                         jsonb_build_array(jsonb_build_object(
-                                           'descricao', COALESCE(v_payment.meta->>'descricao_item','Serviço escolar'),
-                                           'valor', v_payment.valor_pago))),
+              'tipo_comprovativo', v_receipt_kind,
+              'itens_pagamento', v_items,
               'valor_pago', v_payment.valor_pago,
               'data_pagamento', v_payment.data_pagamento,
               'metodo', v_payment.metodo,
