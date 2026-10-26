@@ -9,6 +9,8 @@ on:
       - "apps/web/tests/unit/outbox-receipts.spec.ts"
       - "apps/web/tests/unit/outbox-receipt-idempotency.spec.ts"
       - "supabase/migrations/*outbox_receipt_retry_gate.sql"
+      - "supabase/migrations/*operational_receipt_outbox_worker.sql"
+      - "supabase/ops/tests/regression_new_operational_receipts_20261026.sql"
       - "supabase/ops/tests/regression_receipt_outbox_20261011.sql"
       - "supabase/ops/scripts/replay_receipt_outbox_GATED.sql"
       - "supabase/ops/scripts/rollback_outbox_receipt_retry_gate.sql"
@@ -69,3 +71,25 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f supabase/ops/tests/regression_receipt_outbox_20261011.sql
+
+  postgres-operational-receipts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: New monthly and service receipts, retries, concurrency guards, non-fiscal isolation
+        env:
+          PGPASSWORD: postgres
+        run: psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f supabase/ops/tests/regression_new_operational_receipts_20261026.sql
