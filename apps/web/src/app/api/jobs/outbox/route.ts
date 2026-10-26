@@ -46,6 +46,7 @@ type PagamentoRow = {
   metodo: string | null;
   reference: string | null;
   meta: Record<string, unknown> | null;
+  status: string;
 };
 
 type NotificationOutboxRow = {
@@ -100,7 +101,7 @@ function isAuthorizedJobRequest(req: Request) {
     .filter(Boolean);
 
   if (token && expectedTokens.includes(token.trim())) return true;
-  return process.env.VERCEL === "1" && req.headers.get("x-vercel-cron") === "1";
+  return false;
 }
 
 function getAdminClient() {
@@ -796,8 +797,8 @@ async function emitirReciboPagamento(
   const pagamentoId = typeof payload.pagamento_id === "string" ? payload.pagamento_id : null;
   const mensalidadeId = typeof payload.mensalidade_id === "string" ? payload.mensalidade_id : null;
 
-  if (!pagamentoId && !mensalidadeId) {
-    throw new Error("payload missing pagamento_id or mensalidade_id");
+  if (!pagamentoId) {
+    throw new Error("OUTBOX_RECEIPT_PAYMENT_ID_REQUIRED");
   }
 
   // The batch checkout suppresses per-item receipts except on its final item.
@@ -805,7 +806,7 @@ async function emitirReciboPagamento(
   const { data: pagamento, error: pagamentoErr } = pagamentoId
     ? await admin
       .from("pagamentos")
-      .select("id, escola_id, aluno_id, mensalidade_id, valor_pago, data_pagamento, metodo, reference, meta")
+      .select("id, escola_id, aluno_id, mensalidade_id, valor_pago, data_pagamento, metodo, reference, meta, status")
       .eq("id", pagamentoId)
       .maybeSingle()
     : { data: null, error: null };
@@ -816,6 +817,9 @@ async function emitirReciboPagamento(
   if (row && row.escola_id !== event.escola_id) throw new Error("OUTBOX_RECEIPT_TENANT_MISMATCH");
   if (row && row.mensalidade_id !== mensalidadeId) throw new Error("OUTBOX_RECEIPT_MONTHLY_MISMATCH");
   if (row && !shouldEmitAutomaticPaymentReceipt(row.meta)) return;
+  if (row && !["settled", "concluido"].includes(row.status)) {
+    throw new Error(`OUTBOX_RECEIPT_PAYMENT_NOT_SETTLED:${row.status}`);
+  }
 
   // Monthly receipts must be authorized by the settled payment's source.
   if (mensalidadeId) {
