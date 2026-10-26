@@ -69,7 +69,7 @@ export function toOperationalReceiptHistoryItem(
   // Use a *leading* item label, not a substring (e.g. "Declaração de matrícula"
   // remains a service, and a receipt is never modified by classification).
   const isRematriculaLine = /^(taxa (de|da) )?rematricul/.test(firstLineName);
-  const isMatriculaLine = /^(taxa (de|da) )?matricul\b|^ficha de inscricao\b/.test(firstLineName);
+  const isMatriculaLine = /^(taxa (de|da) )?matricula\b|^ficha de inscricao\b/.test(firstLineName);
   const isMensalidadeLine = /^(propina|mensalidade)\b/.test(firstLineName);
 
   const kind: OperationalReceiptHistoryItem["kind"] =
