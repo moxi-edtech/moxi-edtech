@@ -97,9 +97,9 @@ VALUES
 INSERT INTO public.pagamentos(id,escola_id,aluno_id,mensalidade_id,status,valor_pago,data_pagamento,meta)
 VALUES
 ('00000000-0000-4000-8000-000000000401','00000000-0000-4000-8000-000000000101',
- '00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','settled',5000,now()::date,'{"emitir_recibo":true}'),
+ '00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000301','settled',5000,now()::date,'{"emitir_recibo":true,"itens":[{"tipo":"servico","nome":"Certidão","preco":800},{"tipo":"mensalidade","nome":"Mensalidade outubro","preco":5000}]}'),
 ('00000000-0000-4000-8000-000000000402','00000000-0000-4000-8000-000000000101',
- '00000000-0000-4000-8000-000000000201',NULL,'settled',800,now()::date,'{"emitir_recibo":true,"descricao_item":"Emissão de documentos"}'),
+ '00000000-0000-4000-8000-000000000201',NULL,'settled',800,now()::date,'{"emitir_recibo":true,"itens":[{"tipo":"servico","nome":"Emissão de documentos","preco":800}]}'),
 ('00000000-0000-4000-8000-000000000403','00000000-0000-4000-8000-000000000101',
  '00000000-0000-4000-8000-000000000201',NULL,'settled',800,now()::date,'{"emitir_recibo":false}'),
 ('00000000-0000-4000-8000-000000000404','00000000-0000-4000-8000-000000000101',
@@ -152,6 +152,23 @@ BEGIN
   IF (SELECT count(*) FROM public.documentos_emitidos WHERE dados_snapshot->>'pagamento_id' =
       '00000000-0000-4000-8000-000000000402') <> 1 THEN
     RAISE EXCEPTION 'service receipt not generated or duplicated';
+  END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.documentos_emitidos
+    WHERE mensalidade_id='00000000-0000-4000-8000-000000000301'
+      AND jsonb_array_length(dados_snapshot->'itens_pagamento') = 2
+      AND (dados_snapshot->>'valor_pago')::numeric = 5800
+      AND dados_snapshot->'itens_pagamento'->0->>'descricao' = 'Certidão'
+  ) THEN
+    RAISE EXCEPTION 'consolidated monthly receipt did not preserve all payment lines';
+  END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.documentos_emitidos
+    WHERE dados_snapshot->>'pagamento_id'='00000000-0000-4000-8000-000000000402'
+      AND dados_snapshot->'itens_pagamento'->0->>'descricao' = 'Emissão de documentos'
+      AND (dados_snapshot->'itens_pagamento'->0->>'valor')::numeric=800
+  ) THEN
+    RAISE EXCEPTION 'service receipt line items not normalized';
   END IF;
   IF EXISTS(SELECT 1 FROM public.documentos_emitidos WHERE
      idempotency_key LIKE 'pagamento_recibo:%' AND (idempotency_fingerprint IS NULL
