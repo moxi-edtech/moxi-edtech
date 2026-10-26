@@ -55,6 +55,31 @@ test("balcão rematrícula takes precedence over generic matrícula markers", ()
   assert.equal(receipt.kind, "rematricula");
 });
 
+test("legacy matrícula labeled as generic pagamento is not misclassified as service", () => {
+  const receipt = toOperationalReceiptHistoryItem(row({
+    tipo_comprovativo: "pagamento",
+    itens_pagamento: [{ descricao: "Matrícula", valor: 7500 }],
+  }));
+  assert.equal(receipt.kind, "matricula");
+  assert.equal(receipt.amount, 7500);
+});
+
+test("propina without a direct mensalidade FK remains a mensalidade receipt", () => {
+  const receipt = toOperationalReceiptHistoryItem(row({
+    tipo_comprovativo: "pagamento",
+    itens_pagamento: [{ descricao: "Propina 09/2026", valor: 2000 }],
+  }));
+  assert.equal(receipt.kind, "mensalidade");
+});
+
+test("school service mentioning matrícula in its description stays a service", () => {
+  const receipt = toOperationalReceiptHistoryItem(row({
+    tipo_comprovativo: "pagamento",
+    itens_pagamento: [{ descricao: "Declaração de matrícula", valor: 500 }],
+  }));
+  assert.equal(receipt.kind, "servico");
+});
+
 test("service receipts without mensalidade are included, including automatic ones", () => {
   const receipt = toOperationalReceiptHistoryItem(row({
     origem: "pagamento_auto",
