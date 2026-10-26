@@ -220,9 +220,14 @@ export async function POST(request: Request) {
           origem: parsed.data.origem ?? "secretaria_pagamentos_processar_compat",
           pedido_id: parsed.data.pedido_id ?? null,
           matricula_id:
-            parsed.data.matricula_id
-            ?? (item.tipo === "mensalidade" ? item.origem_matricula_id : null)
+            (item.tipo === "mensalidade" ? item.origem_matricula_id : null)
+            ?? parsed.data.matricula_id
             ?? null,
+          // The canonical Balcão route validates this against mensalidades.matricula_id.
+          // Without a per-item origin, a single post-rollover debt was always rejected.
+          matricula_origem_id: item.tipo === "mensalidade"
+            ? (item.origem_matricula_id ?? parsed.data.matricula_id ?? null)
+            : null,
           descricao_item: item.nome ?? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço escolar"),
           itens: itensPagamento,
           emitir_recibo: true,
