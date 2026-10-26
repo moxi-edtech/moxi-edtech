@@ -13,8 +13,7 @@ import {
 } from "@/lib/server/whatsappUtility";
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
-import { buildOutboxTransition, paymentReceiptKey, paymentReceiptFingerprint, shouldEmitAutomaticPaymentReceipt } from "@/lib/server/outbox-transition";
-import { persistReceiptOnce } from "@/lib/server/receipt-idempotency";
+import { buildOutboxTransition } from "@/lib/server/outbox-transition";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,19 +33,6 @@ type OutboxEvent = {
   created_at: string;
   processed_at: string | null;
   last_error: string | null;
-};
-
-type PagamentoRow = {
-  id: string;
-  escola_id: string;
-  aluno_id: string | null;
-  mensalidade_id: string | null;
-  valor_pago: number | null;
-  data_pagamento: string | null;
-  metodo: string | null;
-  reference: string | null;
-  meta: Record<string, unknown> | null;
-  status: string;
 };
 
 type NotificationOutboxRow = {
@@ -89,8 +75,7 @@ type CommunicationRateLimit = {
 function resolveJobToken(req: Request) {
   return (
     req.headers.get("x-job-token") ||
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
-    new URL(req.url).searchParams.get("token")
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
   );
 }
 
@@ -789,130 +774,8 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
   });
 }
 
-async function emitirReciboPagamento(
-  admin: NonNullable<ReturnType<typeof getAdminClient>>,
-  event: OutboxEvent
-) {
-  const payload = (event.payload || {}) as Record<string, unknown>;
-  const pagamentoId = typeof payload.pagamento_id === "string" ? payload.pagamento_id : null;
-  const mensalidadeId = typeof payload.mensalidade_id === "string" ? payload.mensalidade_id : null;
-
-  if (!pagamentoId) {
-    throw new Error("OUTBOX_RECEIPT_PAYMENT_ID_REQUIRED");
-  }
-
-  // The batch checkout suppresses per-item receipts except on its final item.
-  // Read the canonical payment, never trust event payload to waive that guard.
-  const { data: pagamento, error: pagamentoErr } = pagamentoId
-    ? await admin
-      .from("pagamentos")
-      .select("id, escola_id, aluno_id, mensalidade_id, valor_pago, data_pagamento, metodo, reference, meta, status")
-      .eq("id", pagamentoId)
-      .maybeSingle()
-    : { data: null, error: null };
-
-  if (pagamentoErr) throw new Error(pagamentoErr.message);
-  if (pagamentoId && !pagamento) throw new Error("pagamento not found");
-  const row = pagamento as PagamentoRow | null;
-  if (row && row.escola_id !== event.escola_id) throw new Error("OUTBOX_RECEIPT_TENANT_MISMATCH");
-  if (row && row.mensalidade_id !== mensalidadeId) throw new Error("OUTBOX_RECEIPT_MONTHLY_MISMATCH");
-  if (row && !shouldEmitAutomaticPaymentReceipt(row.meta)) return;
-  if (row && !["settled", "concluido"].includes(row.status)) {
-    throw new Error(`OUTBOX_RECEIPT_PAYMENT_NOT_SETTLED:${row.status}`);
-  }
-
-  // Monthly receipts must be authorized by the settled payment's source.
-  if (mensalidadeId) {
-    const { data: res, error: rpcError } = await admin.rpc("emitir_recibo_system", {
-      p_mensalidade_id: mensalidadeId,
-    });
-
-    if (rpcError) {
-      // Ignoramos erros de status (mensalidade não paga) para evitar retries infinitos
-      if (rpcError.message?.includes("não está paga")) {
-        console.warn(`[RECIBO] Mensalidade ${mensalidadeId} ainda não está paga. Ignorando.`);
-        return;
-      }
-      throw rpcError;
-    }
-    if (res && typeof res === "object" && "ok" in res && res.ok === false) {
-      // A stored-function application error is not a successfully sent receipt.
-      throw new Error("emissão de recibo não concluída pela RPC");
-    }
-    return;
-  }
-
-  // Service receipts reuse the payment already tenant-checked above.
-  if (!row) throw new Error("pagamento not found");
-  if (!row.aluno_id) throw new Error("pagamento sem aluno_id");
-
-  const receiptKey = paymentReceiptKey(row.id);
-  const findExisting = async () => {
-    const byKey = await admin
-      .from("documentos_emitidos")
-      .select("id")
-      .eq("escola_id", row.escola_id)
-      .eq("tipo", "recibo")
-      .eq("idempotency_key", receiptKey)
-      .maybeSingle();
-    if (byKey.error) throw byKey.error;
-    if (byKey.data?.id) return true;
-    if (row.mensalidade_id) {
-      const byMonthly = await admin
-        .from("documentos_emitidos")
-        .select("id")
-        .eq("tipo", "recibo")
-        .eq("mensalidade_id", row.mensalidade_id)
-        .maybeSingle();
-      if (byMonthly.error) throw byMonthly.error;
-      return Boolean(byMonthly.data?.id);
-    }
-    // Historical documents may predate deterministic idempotency_key.
-    const legacy = await admin
-      .from("documentos_emitidos")
-      .select("id")
-      .eq("tipo", "recibo")
-      .eq("escola_id", row.escola_id)
-      .contains("dados_snapshot", { pagamento_id: row.id })
-      .limit(1);
-    if (legacy.error) throw legacy.error;
-    return (legacy.data ?? []).length > 0;
-  };
-  // Retain the fast replay check; persistReceiptOnce adds atomic conflict
-  // handling for two workers racing on the same payment id.
-  if (await findExisting()) return;
-
-  const valor = Number(row.valor_pago ?? 0);
-  if (!Number.isFinite(valor) || valor <= 0) throw new Error("pagamento com valor inválido");
-
-  const hash = crypto.randomUUID().replace(/-/g, "");
-  await persistReceiptOnce({
-    exists: findExisting,
-    insert: async () => {
-      const { error } = await admin.from("documentos_emitidos").insert({
-        escola_id: row.escola_id,
-        aluno_id: row.aluno_id,
-        mensalidade_id: row.mensalidade_id,
-        tipo: "recibo",
-        idempotency_key: receiptKey,
-        idempotency_fingerprint: paymentReceiptFingerprint(row.escola_id, row.id),
-        dados_snapshot: {
-          origem: "pagamento_auto",
-          pagamento_id: row.id,
-          mensalidade_id: row.mensalidade_id,
-          valor_pago: valor,
-          data_pagamento: row.data_pagamento,
-          metodo: row.metodo,
-          reference: row.reference,
-          hash_validacao: hash,
-        },
-        created_by: null,
-        hash_validacao: hash,
-      });
-      return { error };
-    },
-  });
-}
+// Operational receipts are handled by the dedicated PostgreSQL pg_cron worker.
+// Do not claim them here: one consumer/locking protocol owns new events.
 
 async function runOutboxWorker(req: Request) {
   if (!isAuthorizedJobRequest(req)) {
@@ -959,14 +822,12 @@ async function runOutboxWorker(req: Request) {
     provisionStudent(admin, event)
   );
 
-  const reciboResults = await processTopic("financeiro_recibo_pagamento", (event) =>
-    emitirReciboPagamento(admin, event)
-  );
+  // Receipt-topic events are exclusively consumed by Supabase pg_cron.
 
   const whatsappResults = await processWhatsappNotifications(admin);
   const communicationWhatsappResults = await processCommunicationOutbox(admin);
 
-  const results = [...authResults, ...reciboResults];
+  const results = [...authResults];
   return NextResponse.json({
     ok: true,
     processed: results.length + whatsappResults.length + communicationWhatsappResults.length,
