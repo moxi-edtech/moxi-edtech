@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 /**
  * A claimed event has already had attempts incremented by claim_outbox_events.
  * next_attempt_at is NOT NULL in production, including terminal sent/dead rows.
@@ -30,4 +32,25 @@ export function buildOutboxTransition(input: {
 
 export function paymentReceiptKey(pagamentoId: string): string {
   return `pagamento_recibo:${pagamentoId}`;
+}
+
+/** Matches documentos_emitidos_idempotency_pair_chk: an idempotency key
+ * must be persisted together with a deterministic 16-128 char fingerprint.
+ * The school/payment identity stays stable across outbox retries.
+ */
+export function paymentReceiptFingerprint(escolaId: string, pagamentoId: string): string {
+  return createHash("sha256")
+    .update(`pagamento_recibo:v1:${escolaId}:${pagamentoId}`)
+    .digest("hex");
+}
+
+/**
+ * Batch checkout issues exactly one consolidated receipt (for the final
+ * item). Earlier items carry meta.emitir_recibo=false and must not be
+ * independently fiscalized/printed by the asynchronous outbox consumer.
+ * Legacy payments without the flag retain their original behavior.
+ */
+export function shouldEmitAutomaticPaymentReceipt(meta: unknown): boolean {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return true;
+  return (meta as Record<string, unknown>).emitir_recibo !== false;
 }
