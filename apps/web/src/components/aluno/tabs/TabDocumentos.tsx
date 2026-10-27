@@ -327,9 +327,9 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
 
               {/* Motivo de Rejeição (se houver) */}
               {doc.status === 'rejected' && doc.reject_reason && (
-                <div className="mt-2 rounded-2xl bg-rose-50/70 p-3.5 text-xs font-medium text-rose-700 border border-rose-100/80 flex items-start gap-2.5">
+                <div className="mt-1 flex items-start gap-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">
                   <AlertCircle size={15} className="shrink-0 mt-0.5" />
-                  <span className="leading-relaxed"><b>Motivo da Secretaria:</b> {doc.reject_reason}</span>
+                  <span className="leading-relaxed"><b>Motivo:</b> {doc.reject_reason}</span>
                 </div>
               )}
             </AlunoCard>
@@ -341,7 +341,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
         onSuccess={() => {
-          success("Comprovativo recebido", "A secretaria vai verificar o teu comprovativo.");
+          success("Comprovativo enviado", "A secretaria vai verificar o teu comprovativo.");
           void fetchCatalogo(true);
         }}
         studentId={studentId}
@@ -363,13 +363,13 @@ function StatusBadge({ status }: { status: DocumentoStatus }) {
     case 'pending_payment':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-700 border border-amber-200/60">
-          <Wallet size={11} /> Pagar para Liberar
+          <Wallet size={11} /> Pagamento pendente
         </span>
       );
     case 'pending':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold text-blue-700 border border-blue-200/60">
-          <Clock size={11} /> Validando Comprovativo
+          <Clock size={11} /> Em análise
         </span>
       );
     case 'rejected':
@@ -381,13 +381,13 @@ function StatusBadge({ status }: { status: DocumentoStatus }) {
     case 'blocked':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold text-blue-700 border border-blue-200/60">
-          <Clock size={11} /> Aguardando aprovação
+          <Clock size={11} /> Em análise
         </span>
       );
     case 'granted':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700 border border-emerald-200/60">
-          <CheckCircle2 size={11} /> Disponível para Download
+          <CheckCircle2 size={11} /> Disponível
         </span>
       );
     default:
