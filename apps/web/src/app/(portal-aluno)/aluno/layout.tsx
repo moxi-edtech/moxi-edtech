@@ -70,16 +70,17 @@ const alunoTemInadimplencia = async (
 
 export default async function AlunoLayout({ children }: { children: React.ReactNode }) {
   const supabase = await supabaseServer();
-  let user: any;
+  let user: { id: string; email?: string | null } | null = null;
   try {
-    const sessionResult = await supabase.auth.getSession();
-    if (isRefreshTokenNotFoundError(sessionResult.error)) {
+    // A identidade é validada no servidor: getSession() apenas lê cookies.
+    const authResult = await supabase.auth.getUser();
+    if (isRefreshTokenNotFoundError(authResult.error)) {
       redirect("/auth-recover?next=/redirect");
     }
-    if (sessionResult.error && !isAuthSessionMissingError(sessionResult.error)) {
-      throw sessionResult.error;
+    if (authResult.error && !isAuthSessionMissingError(authResult.error)) {
+      throw authResult.error;
     }
-    user = sessionResult.data.session?.user ?? null;
+    user = authResult.data.user ?? null;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
       redirect("/auth-recover?next=/redirect");
@@ -112,10 +113,12 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   const escolaId = vincPortal.escola_id;
   const { data: escolaInfo } = await supabase
     .from("escolas")
-    .select("slug")
+    .select("nome, slug, aluno_portal_enabled, status")
     .eq("id", escolaId)
     .maybeSingle();
-  const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : String(escolaId);
+  if (!escolaInfo) redirect("/");
+  if (escolaInfo.status === "suspensa") redirect("/escola/suspensa");
+  const escolaParam = escolaInfo.slug ? String(escolaInfo.slug) : String(escolaId);
 
   const { data: configuracoes } = await (supabase as any)
     .from("configuracoes_financeiro")
@@ -131,5 +134,16 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
     }
   }
 
-  return <AlunoLayoutClient>{children}</AlunoLayoutClient>;
+  return (
+    <AlunoLayoutClient
+      escolaId={escolaId}
+      escolaParam={escolaParam}
+      escolaNome={escolaInfo.nome ?? null}
+      portalEnabled={Boolean(escolaInfo.aluno_portal_enabled)}
+      userId={user.id}
+      userEmail={user.email ?? null}
+    >
+      {children}
+    </AlunoLayoutClient>
+  );
 }
