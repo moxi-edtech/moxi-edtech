@@ -199,9 +199,13 @@ export function CurrentYearEnrollmentPanel({
         </p>
       )}
       {!loading && state && state.estado !== "ativa" && (
-        <Link href={buildBalcaoActionHref({ escolaParam: escolaId, actionId: "reenrollment", alunoId })}
+        <Link href={buildBalcaoActionHref({
+          escolaParam: escolaId,
+          actionId: state.estado === "sem_matricula" ? "enrollment" : "reenrollment",
+          alunoId,
+        })}
           className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-700">
-          Abrir Balcão de Atendimento
+          {state.estado === "sem_matricula" ? "Iniciar matrícula no Balcão" : "Abrir rematrícula no Balcão"}
         </Link>
       )}
     </section>
