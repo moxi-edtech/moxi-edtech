@@ -37,13 +37,14 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
         </p>
         {action === 'suspend' && (
           <div className="mt-4">
-            <label className="block text-sm text-foreground mb-1">Motivo (opcional)</label>
+            <label htmlFor="confirmacao-motivo" className="block text-sm text-foreground mb-1">Motivo (opcional)</label>
             <textarea
+              id="confirmacao-motivo"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ex: Inadimplência, auditoria em andamento, solicitação da escola, etc."
               rows={3}
-              className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+              className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         )}

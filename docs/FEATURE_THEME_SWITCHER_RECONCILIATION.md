@@ -14,6 +14,9 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 ## Escopo já integrado
 - Fundamentos: RootLayout, ThemeProvider, ThemeToggle, bootstrap pré-paint, preferência tipada, testes unitários e workflow `Theme Switcher Guard`.
 - Shell: Topbar, fundo principal de AppShell; **ModuleSwitcher removido** tanto do Topbar como do antigo PortalLayout. A sidebar mantém o padrão escuro institucional nos dois temas.
+- Admin/Operações: dashboard académica, KPIs, cards, atalhos, painéis operacionais e gráficos usam tokens semânticos; eixos dos gráficos seguem `--muted-foreground` / `--border`.
+- Financeiro: geração e registo de pagamentos, validações, tabelas de mensalidades e listas com modais scrolláveis no viewport móvel.
+- Super Admin: rede de escolas, utilizadores, filtros, tabelas, diálogos de confirmação e cobrança convertidos para cores adaptativas.
 - Partilhados: Card, KpiCard, SecondaryAction, TaskList, DashboardHeader, Button, Drawer, ModalShell, StatusPill, Alert, Sheet, Input, Select e notificações.
 - Secretaria: AlunosList, ProfessoresList, ClassesList, ImportacoesList, MatriculasList, AlunoProfilePanel, PagamentoModal, BalcaoServicoModal, FilaAtendimentoModal, MinhaProdutividade e FechoCaixaCego.
 - Relatórios: TabFluxo, TabPropinas, TabCaptacao (apenas classes visuais; lógica e consultas intactas).
@@ -33,6 +36,7 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 - O contraste das fixtures passou a calcular a luminância a partir de OKLCH, em vez de interpretar números OKLCH incorretamente como RGB.
 - `KF2 Search Audit`: garantir nenhum hexadecimal de marca introduzido em novas linhas operacionais.
 - `module-switcher-removal.spec.mjs`: impede regressão que volte a importar/renderizar ModuleSwitcher no Topbar ou PortalLayout; garante que ThemeSwitcher permanece acessível.
+- `admin-theme-coverage.spec.mjs`: protege superfícies administrativas contra reintrodução de branco fixo e texto neutro ilegível, e verifica altura/scroll de modais e rótulos dos campos.
 - Gates de CI gerais e homologação autenticada continuam obrigatórios antes de tirar a PR do modo draft.
 
 

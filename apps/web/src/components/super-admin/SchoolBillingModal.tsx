@@ -20,18 +20,22 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
       <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xl sm:p-5">
         <h3 className="text-lg font-semibold text-foreground mb-2">Enviar cobrança</h3>
         <div className="space-y-3">
+          <label htmlFor="billing-amount" className="block text-sm font-medium text-foreground">Valor</label>
           <input
+            id="billing-amount"
             type="text"
             placeholder="Valor (R$)"
             value={valor}
             onChange={(e)=>setValor(e.target.value)}
-            className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+            className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
+          <label htmlFor="billing-due-date" className="block text-sm font-medium text-foreground">Vencimento</label>
           <input
+            id="billing-due-date"
             type="date"
             value={vencimento}
             onChange={(e)=>setVencimento(e.target.value)}
-            className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+            className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">

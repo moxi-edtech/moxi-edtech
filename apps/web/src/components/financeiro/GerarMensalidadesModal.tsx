@@ -126,6 +126,15 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
     }
   }
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !loading) setIsOpen(false);
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [isOpen, loading]);
+
   if (!isOpen) {
     return (
       <button
@@ -149,6 +158,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
         <div className="mb-4">
           <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase">Ano letivo</label>
           <select
+            autoFocus
             value={selectedSession}
             onChange={(e) => setSelectedSession(e.target.value)}
             className="w-full border-border border rounded-xl p-2 text-sm bg-card focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
