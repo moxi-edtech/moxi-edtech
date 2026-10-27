@@ -32,13 +32,14 @@ async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T | null
   }
 }
 const heading = "text-lg font-semibold tracking-tight text-foreground sm:text-xl";
-const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
-const action = `inline-flex min-h-10 items-center gap-1.5 rounded-lg text-sm font-semibold text-emerald-800 underline-offset-4 hover:underline ${focus}`;
+const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+const action = `inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-primary underline-offset-4 hover:underline ${focus}`;
 function LoadingDashboard() {
-  return <div className="mx-auto max-w-6xl animate-pulse space-y-8 px-4 py-6 sm:px-8" aria-label="A carregar a tua página">
+  return <div role="status" aria-live="polite" className="mx-auto max-w-6xl animate-pulse space-y-8 px-4 py-6 sm:px-8" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
     <div className="space-y-4"><div className="h-4 w-40 rounded-lg bg-slate-200"/><div className="h-9 w-56 rounded-lg bg-slate-200"/><div className="h-4 w-44 rounded-lg bg-slate-200"/></div>
     <div className="grid gap-6 lg:grid-cols-5"><div className="h-52 rounded-2xl bg-slate-100 lg:col-span-3"/><div className="h-52 rounded-2xl bg-slate-100 lg:col-span-2"/></div>
     <div className="h-48 rounded-2xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/>
+    </div>
   </div>;
 }
 export default function DashboardLoader() {
@@ -118,7 +119,7 @@ export default function DashboardLoader() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-[#2B6044]"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-slate-500">/ Portal do aluno</span></p>
         <nav aria-label="Navegação rápida" className="hidden gap-5 text-sm lg:flex">
-          {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/academico?aba=disciplinas"],["Notas","/aluno/academico"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(path)} className={`min-h-11 content-center text-muted-foreground hover:text-emerald-800 ${focus}`}>{label}</Link>)}
+          {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/academico?aba=disciplinas"],["Notas","/aluno/academico"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(path)} className={`min-h-11 content-center text-muted-foreground hover:text-primary ${focus}`}>{label}</Link>)}
         </nav>
       </div>
       <div className="relative overflow-hidden rounded-2xl bg-[#142D3B] px-5 py-5 text-white shadow-[0_18px_42px_-28px_rgba(15,42,54,0.65)] sm:px-8 sm:py-7">
