@@ -12,7 +12,7 @@ export type PortalTabItem<T extends string> = {
  * Navigation/URL state belongs to the calling portal, so no router refresh.
  */
 export function PortalTabs<T extends string>({
-  items, value, onChange, label, idPrefix, className = "",
+  items, value, onChange, label, idPrefix, className = "", testId,
 }: {
   items: readonly PortalTabItem<T>[];
   value: T;
@@ -20,6 +20,7 @@ export function PortalTabs<T extends string>({
   label: string;
   idPrefix: string;
   className?: string;
+  testId?: string;
 }) {
   const refs = useRef<Partial<Record<T, HTMLButtonElement | null>>>({});
   const previous = useRef(value);
@@ -43,7 +44,7 @@ export function PortalTabs<T extends string>({
   };
 
   return (
-    <div role="tablist" aria-label={label}
+    <div role="tablist" aria-label={label} data-testid={testId}
       className={`flex min-w-0 gap-1 overflow-x-auto border-b border-border ${className}`}>
       {items.map((tab) => (
         <button
