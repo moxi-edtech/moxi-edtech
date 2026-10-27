@@ -53,7 +53,7 @@ export function CurrentYearEnrollmentPanel({
     setLoading(true);
     setError(null);
     setReview(false);
-    void fetch("/api/secretaria/alunos/" + encodeURIComponent(alunoId) + "/matricula-corrente", {
+    void fetch("/api/secretaria/alunos/" + encodeURIComponent(alunoId) + "/matricula-corrente?escolaId=" + encodeURIComponent(escolaId), {
       signal: controller.signal, cache: "no-store",
     })
       .then(async (response) => {
@@ -86,6 +86,7 @@ export function CurrentYearEnrollmentPanel({
         {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            escola_id: escolaId,
             matricula_id: matricula.id,
             turma_id: matricula.turmaId,
             ano_letivo_id: state.anoLetivo.id,
