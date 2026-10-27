@@ -1,7 +1,7 @@
 // @kf2 allow-scan
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
-import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import type { Database, Json } from "~types/supabase";
 import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
 
@@ -34,13 +34,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: "Parâmetros obrigatórios: fromAno e toAno." }, { status: 400 });
     }
 
-    const { data: userRes } = await supabase.auth.getUser();
-    const authorizedIds = await resolveAuthorizedStudentIds({
-      supabase,
-      userId: ctx.userId,
-      escolaId: ctx.escolaId,
-      userEmail: userRes?.user?.email,
-    });
+    const authorizedIds = ctx.alunoIds;
 
     const selectedId = url.searchParams.get("studentId");
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
