@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
-import { RetificarMatriculaAction } from "@/components/aluno/RetificarMatriculaAction";
+import { CurrentYearEnrollmentPanel } from "@/components/aluno/CurrentYearEnrollmentPanel";
 import { DossierHeader } from "@/components/aluno/DossierHeader";
 import { DossierTabs } from "@/components/aluno/DossierTabs";
 import {
@@ -32,12 +32,6 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
   });
   if (!loaded) return notFound();
   const { aluno, servicos } = loaded;
-  const matriculaAtualId = aluno.matricula_atual?.matricula_id;
-  const matriculaAtual = matriculaAtualId && (role === "admin" || role === "secretaria")
-    ? await supabase.from("matriculas").select("turma_id, ano_letivo").eq("id", matriculaAtualId).eq("escola_id", resolvedEscolaId).eq("aluno_id", alunoId).maybeSingle()
-    : null;
-  const turmaAtualId = matriculaAtual?.data?.turma_id;
-  const anoAtual = Number(String(matriculaAtual?.data?.ano_letivo ?? "").match(/20\d{2}/)?.[0]);
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
 
   return (
@@ -48,18 +42,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           workspace={workspace}
           aluno={aluno}
           slotPerfil={<DossierPerfilSection aluno={aluno} />}
-          slotMatricula={
-            <div className="space-y-4">
-              <div><h2 className="text-lg font-semibold text-slate-900">Matrícula atual</h2><p className="text-sm text-slate-600">Turma: {aluno.matricula_atual?.turma ?? "Sem matrícula atual"} · Classe: {aluno.matricula_atual?.classe ?? "Não definida"}</p></div>
-              {matriculaAtualId && turmaAtualId && Number.isFinite(anoAtual) && (
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-white px-5 py-4">
-            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-900">Matrícula atual</p><p className="text-xs text-slate-500">Corrigir turma ou classe sem apagar o histórico académico e financeiro.</p></div>
-            <RetificarMatriculaAction canRectifyClass={role === "admin"} matriculaId={matriculaAtualId} turmaId={turmaAtualId} anoLetivo={anoAtual} />
-          </div>
-        )}
-              {(!matriculaAtualId || !turmaAtualId || !Number.isFinite(anoAtual)) && <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Não foi possível identificar uma matrícula atual válida para alteração. Confirme a matrícula do aluno na Secretaria.</p>}
-            </div>
-          }
+          slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />}
           slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
           slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}
