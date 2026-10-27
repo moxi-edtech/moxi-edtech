@@ -25,7 +25,7 @@ export function FiscalRowActions({ doc, onRefresh }: FiscalRowActionsProps) {
         <button
           type="button"
           onClick={() => window.open(`/api/fiscal/documentos/${doc.id}/pdf`, "_blank", "noopener,noreferrer")}
-          className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-xl p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
           title="Imprimir/PDF fiscal"
           aria-label="Imprimir/PDF fiscal"
         >
@@ -36,7 +36,7 @@ export function FiscalRowActions({ doc, onRefresh }: FiscalRowActionsProps) {
           <button
             type="button"
             onClick={() => setOpenAnular(true)}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+            className="rounded-xl p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
             title="Anular"
             aria-label="Anular documento"
           >
@@ -48,7 +48,7 @@ export function FiscalRowActions({ doc, onRefresh }: FiscalRowActionsProps) {
           <button
             type="button"
             onClick={() => router.push(buildPortalHref(escolaSlug, `/financeiro/fiscal/retificar/${doc.id}`))}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-green-50 hover:text-[#1F6B3B]"
+            className="rounded-xl p-2 text-muted-foreground transition hover:bg-emerald/10 hover:text-foreground"
             title="Retificar"
             aria-label="Retificar documento"
           >

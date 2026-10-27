@@ -78,9 +78,9 @@ export type NoticeProps = {
 };
 const noticeTones: Record<NoticeTone,string> = {
   neutral: "border-border bg-card",
-  attention: "border-[#C8902A]/40 bg-card",
-  critical: "border-rose-300 bg-card",
-  success: "border-[#2B6044]/30 bg-card",
+  attention: "border-amber/40 bg-amber/5 text-foreground",
+  critical: "border-destructive/40 bg-destructive/5 text-foreground",
+  success: "border-emerald/30 bg-emerald/5 text-foreground",
 };
 export function Notice({title,description,eyebrow,icon,action,detail,tone="neutral",className,children,role="region"}: NoticeProps) {
   return (
@@ -88,7 +88,7 @@ export function Notice({title,description,eyebrow,icon,action,detail,tone="neutr
       className={cn("min-w-0 rounded-2xl border p-5 sm:p-6",noticeTones[tone],className)}>
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="min-w-0 flex-1 space-y-2">
-          {(eyebrow || icon) && <div className="flex items-center gap-2 text-xs font-semibold text-[#2B6044]">
+          {(eyebrow || icon) && <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             {icon && <span aria-hidden="true" className="shrink-0">{icon}</span>}
             {eyebrow && <span>{eyebrow}</span>}
           </div>}
@@ -96,7 +96,7 @@ export function Notice({title,description,eyebrow,icon,action,detail,tone="neutr
           {description && <div className="text-sm leading-6 text-muted-foreground">{description}</div>}
           {detail && <div className="pt-1 text-sm leading-6 text-muted-foreground">{detail}</div>}
         </div>
-        {action && <div className="flex shrink-0 items-center sm:self-center [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_button]:min-h-11 [&_button]:rounded-xl [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-[#2B6044] [&_button]:focus-visible:ring-offset-2">{action}</div>}
+        {action && <div className="flex shrink-0 items-center sm:self-center [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_button]:min-h-11 [&_button]:rounded-xl [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-ring [&_button]:focus-visible:ring-offset-2">{action}</div>}
       </div>
       {children && <div className="mt-5">{children}</div>}
     </section>

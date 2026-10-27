@@ -28,10 +28,10 @@ export const klasseColors = {
 } as const;
 
 export const klasseSurface = {
-  card: "rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md",
-  cardInteractive: "rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md",
-  cardCompact: "rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md",
-  cardMuted: "rounded-xl border border-slate-100 bg-slate-50/50",
+  card: "rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md",
+  cardInteractive: "rounded-xl border border-border bg-card shadow-sm transition hover:border-ring hover:shadow-md",
+  cardCompact: "rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md",
+  cardMuted: "rounded-xl border border-border bg-muted/50",
 } as const;
 
 export const klasseUiExceptions = [

@@ -30,18 +30,18 @@ export function AlunoDossierRouteModal({ children }: AlunoDossierRouteModalProps
         if (event.currentTarget === event.target) router.back();
       }}
     >
-      <div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+      <div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-6">
           <div>
-            <h2 id="aluno-dossier-modal-title" className="text-base font-bold text-slate-900">
+            <h2 id="aluno-dossier-modal-title" className="text-base font-bold text-foreground">
               Ficha do aluno
             </h2>
-            <p className="text-xs text-slate-500">Perfil, histórico, financeiro e documentos</p>
+            <p className="text-xs text-muted-foreground">Perfil, histórico, financeiro e documentos</p>
           </div>
           <button
             type="button"
             onClick={() => router.back()}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground"
             aria-label="Fechar ficha do aluno"
           >
             <X className="h-4 w-4" />

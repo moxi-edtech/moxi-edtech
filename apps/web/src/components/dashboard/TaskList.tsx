@@ -35,7 +35,7 @@ function TaskItem({
 }) {
   return (
     <div className="group flex items-center gap-4 p-4 border-b border-border last:border-0 hover:bg-muted transition">
-      <div className="h-10 w-10 rounded-xl bg-[#E3B23C]/15 text-[#E3B23C] ring-1 ring-[#E3B23C]/25 flex items-center justify-center shrink-0">
+      <div className="h-10 w-10 rounded-xl bg-amber/10 text-foreground ring-1 ring-amber/30 flex items-center justify-center shrink-0">
         <UserCheck className="h-5 w-5" />
       </div>
 
@@ -53,13 +53,13 @@ function TaskItem({
 
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
         <button
-          className="h-9 w-9 rounded-lg border border-emerald/20 bg-card text-emerald hover:bg-emerald/5 hover:border-emerald/30 focus:outline-none focus:ring-4 focus:ring-emerald/20"
+          className="h-9 w-9 rounded-lg border border-emerald/30 bg-card text-foreground hover:bg-emerald/10 hover:border-emerald/40 focus:outline-none focus:ring-4 focus:ring-emerald/20"
           aria-label="Aprovar"
         >
           <Check className="h-4 w-4 mx-auto" />
         </button>
         <button
-          className="h-9 w-9 rounded-lg border border-rose-200 bg-card text-muted-foreground hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 focus:outline-none focus:ring-4 focus:ring-rose-200/40"
+          className="h-9 w-9 rounded-lg border border-destructive/30 bg-card text-foreground hover:bg-destructive/10 hover:border-destructive/40 focus:outline-none focus:ring-4 focus:ring-destructive/20"
           aria-label="Rejeitar"
         >
           <X className="h-4 w-4 mx-auto" />

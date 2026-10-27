@@ -23,21 +23,21 @@ const PRIORIDADE_CONFIG: Record<
 > = {
   info: {
     icon: Info,
-    dot: "bg-slate-400",
+    dot: "bg-muted-foreground",
     bg: "bg-muted",
     text: "text-muted-foreground",
   },
   aviso: {
     icon: AlertTriangle,
-    dot: "bg-[#E3B23C]",
-    bg: "bg-[#E3B23C]/5",
-    text: "text-[#9a7010]",
+    dot: "bg-amber",
+    bg: "bg-amber/10",
+    text: "text-foreground",
   },
   urgente: {
     icon: Zap,
-    dot: "bg-rose-500",
-    bg: "bg-rose-50",
-    text: "text-rose-700",
+    dot: "bg-destructive",
+    bg: "bg-destructive/10",
+    text: "text-foreground",
   },
 };
 
@@ -177,19 +177,19 @@ export function NotificacoesDropdown() {
       >
         <Bell size={16} className="text-muted-foreground" />
         {naoLidas > 0 && (
-          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-white">
+          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-background text-[9px] font-black flex items-center justify-center border-2 border-card">
             {naoLidas > 9 ? "9+" : naoLidas}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute left-1/2 top-11 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-border bg-card shadow-xl shadow-slate-200/50 overflow-hidden animate-in slide-in-from-top-2 duration-150 sm:left-auto sm:right-0 sm:w-80 sm:translate-x-0">
+        <div className="absolute left-1/2 top-11 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-border bg-card shadow-xl overflow-hidden animate-in slide-in-from-top-2 duration-150 sm:left-auto sm:right-0 sm:w-80 sm:translate-x-0">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-black text-foreground uppercase tracking-wider">Notificações</h3>
               {naoLidas > 0 && (
-                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[9px] font-black text-rose-700">
+                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[9px] font-black text-foreground">
                   {naoLidas} novas
                 </span>
               )}
@@ -198,7 +198,7 @@ export function NotificacoesDropdown() {
               {naoLidas > 0 && (
                 <button
                   onClick={marcarTodasLidas}
-                  className="flex items-center gap-1 text-[10px] font-bold text-[#1F6B3B] hover:underline"
+                  className="flex items-center gap-1 text-[10px] font-bold text-foreground hover:underline"
                 >
                   <CheckCheck size={11} />
                   Marcar todas
@@ -217,7 +217,7 @@ export function NotificacoesDropdown() {
               </div>
             ) : notificacoes.length === 0 ? (
               <div className="py-10 text-center">
-                <Bell size={24} className="text-slate-200 mx-auto mb-2" />
+                <Bell size={24} className="text-muted-foreground mx-auto mb-2" />
                 <p className="text-xs font-semibold text-muted-foreground">Nenhuma notificação</p>
               </div>
             ) : (
@@ -258,7 +258,7 @@ export function NotificacoesDropdown() {
               <button
                 type="button"
                 onClick={handleModalAction}
-                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 {modalNotificacao?.action_label || "Abrir"}
               </button>
