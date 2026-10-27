@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { Lock as LockIcon, FileText, ChevronDown, Loader2, Download, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 import { accessPresentation, availablePeriods, chooseInitialPeriod, formatPublishedGrade, periodAssessments } from "@/lib/aluno/gradesPresentation";
 
@@ -53,6 +54,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const [academicYear, setAcademicYear] = useState<string | null>(null);
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [historicalRead, setHistoricalRead] = useState(false);
+  const dialogOpener = useRef<HTMLElement | null>(null);
+  const restoreDialogFocus = (event: Event) => { event.preventDefault(); dialogOpener.current?.focus(); };
   const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("");
   const [reapreciacaoSaving, setReapreciacaoSaving] = useState(false);
@@ -344,8 +347,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
                     Opções <ChevronDown aria-hidden className="h-4 w-4"/>
                   </summary>
                   <div className="absolute right-0 z-20 mt-1 w-52 max-w-[80vw] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                    <button type="button" onClick={() => { setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Pedir reapreciação</button>
-                    <button type="button" onClick={() => void abrirMelhoria(disc)} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Solicitar melhoria</button>
+                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Pedir reapreciação</button>
+                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; void abrirMelhoria(disc); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Solicitar melhoria</button>
                   </div>
                 </details>}
               </div>
@@ -368,27 +371,55 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       {safeIsLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
       {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-raa-title">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-            <h2 id="aluno-raa-title" className="font-semibold text-slate-900">Solicitar reapreciação — {reapreciacaoDisc.nome}</h2>
-            <p className="mt-1 text-xs text-slate-500">O pedido será vinculado ao seu ano letivo, turma e disciplina. O prazo de resposta é contado a partir do registo.</p>
-            {reapreciacaoMessage && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{reapreciacaoMessage}</p>}
-            <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={5} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Explique o motivo do pedido." />
-            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setReapreciacaoDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()} className="rounded-lg bg-emerald px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button></div>
-          </div>
-        </div>
+        <Dialog open onOpenChange={(open) => { if (!open) setReapreciacaoDisc(null); }}>
+          <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
+            className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
+            <DialogTitle>Solicitar reapreciação — {reapreciacaoDisc.nome}</DialogTitle>
+            <DialogDescription>Explica por que pretendes rever esta avaliação.</DialogDescription>
+            {reapreciacaoMessage && <p role="status" aria-live="polite" className="rounded-lg bg-muted p-3 text-sm text-foreground">{reapreciacaoMessage}</p>}
+            <label htmlFor="aluno-raa-motivo" className="text-sm font-medium">Motivo da reapreciação</label>
+            <textarea id="aluno-raa-motivo" required minLength={10} value={reapreciacaoMotivo}
+              onChange={(event) => setReapreciacaoMotivo(event.target.value)}
+              rows={4} className="w-full rounded-lg border border-input bg-background px-3 py-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder="Descreve o motivo (mínimo de 10 caracteres)" />
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => setReapreciacaoDisc(null)} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring">Cancelar</button>
+              <button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()}
+                className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
-
       {safeIsLiberado && !historicalRead && melhoriaDisc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-melhoria-title">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-            <h2 id="aluno-melhoria-title" className="font-semibold text-slate-900">Solicitar melhoria — {melhoriaDisc.nome}</h2>
-            <p className="mt-1 text-xs text-slate-500">A melhoria usa uma sessão oficial de recurso e preserva a maior nota entre a anterior e a obtida.</p>
-            {melhoriaMessage && <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{melhoriaMessage}</p>}
-            {melhoriaLoading ? <p className="mt-4 text-sm text-slate-500">A carregar sessões...</p> : melhoriaSessoes.length > 0 && <><label className="mt-4 block text-sm font-medium text-slate-700">Sessão de recurso</label><select value={melhoriaSessaoId} onChange={(event) => setMelhoriaSessaoId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">{melhoriaSessoes.map((sessao) => <option key={sessao.id} value={sessao.id}>{new Date(sessao.data_inicio).toLocaleDateString("pt-PT")} — {new Date(sessao.data_fim).toLocaleDateString("pt-PT")} ({sessao.estado})</option>)}</select><textarea value={melhoriaMotivo} onChange={(event) => setMelhoriaMotivo(event.target.value)} rows={4} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Explique o motivo do pedido." /></>}
-            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setMelhoriaDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={melhoriaSaving || melhoriaLoading || melhoriaSessoes.length === 0} onClick={() => void solicitarMelhoria()} className="rounded-lg bg-emerald px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{melhoriaSaving ? "A enviar..." : "Enviar pedido"}</button></div>
-          </div>
-        </div>
+        <Dialog open onOpenChange={(open) => { if (!open) setMelhoriaDisc(null); }}>
+          <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
+            className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
+            <DialogTitle>Solicitar melhoria — {melhoriaDisc.nome}</DialogTitle>
+            <DialogDescription>Seleciona uma sessão de recurso e explica o pedido.</DialogDescription>
+            {melhoriaMessage && <p role="status" aria-live="polite" className="rounded-lg bg-muted p-3 text-sm text-foreground">{melhoriaMessage}</p>}
+            {melhoriaLoading ? <p role="status" className="text-sm text-muted-foreground">A carregar sessões...</p> : melhoriaSessoes.length > 0 && <>
+              <label htmlFor="aluno-melhoria-sessao" className="text-sm font-medium">Sessão de recurso</label>
+              <select id="aluno-melhoria-sessao" value={melhoriaSessaoId} onChange={(event) => setMelhoriaSessaoId(event.target.value)}
+                className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                {melhoriaSessoes.map((sessao) => <option key={sessao.id} value={sessao.id}>
+                  {new Date(sessao.data_inicio).toLocaleDateString("pt-PT")} — {new Date(sessao.data_fim).toLocaleDateString("pt-PT")} ({sessao.estado})
+                </option>)}
+              </select>
+              <label htmlFor="aluno-melhoria-motivo" className="text-sm font-medium">Motivo da melhoria</label>
+              <textarea id="aluno-melhoria-motivo" required minLength={10} value={melhoriaMotivo}
+                onChange={(event) => setMelhoriaMotivo(event.target.value)} rows={4}
+                className="w-full rounded-lg border border-input bg-background px-3 py-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Descreve o motivo (mínimo de 10 caracteres)" />
+            </>}
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => setMelhoriaDisc(null)} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring">Cancelar</button>
+              <button type="button" disabled={melhoriaSaving || melhoriaLoading || melhoriaSessoes.length === 0}
+                onClick={() => void solicitarMelhoria()} className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+                {melhoriaSaving ? "A enviar..." : "Enviar pedido"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
