@@ -58,6 +58,8 @@ test("receipt lookup validates user, staff role, school, monthly and issued docu
   assert.match(route, /supabaseServerTyped/);
   assert.match(route, /auth\.getUser\(\)/);
   assert.match(route, /requireRoleInSchool/);
+  assert.match(route, /context\(studentId, parsed\.data\.escola_id\)/);
+  assert.match(route, /resolveEscolaIdForUser\(db, user\.id, requestedEscolaId\)/);
   assert.match(route, /resolveEscolaIdForUser/);
   assert.match(route, /\.eq\("escola_id", escolaId\)/);
   assert.match(route, /\.eq\("aluno_id", monthly\.aluno_id\)/);
@@ -121,6 +123,12 @@ test("full profile and Command Center share the same class correction and curren
   assert.match(commandCenter, /slotPerfil=\{\([\s\S]*?<CurrentYearEnrollmentPanel[\s\S]*?alunoId=\{alunoId\}/);
   assert.match(profile, /slotMatricula=\{<CurrentYearEnrollmentPanel alunoId=\{alunoId\}/);
   assert.match(panel, /RetificarMatriculaAction/);
+  assert.match(panel, /matricula-corrente\?escolaId=/);
+  assert.match(panel, /escola_id: escolaId/);
+  const correctionForm = source("components/secretaria/TransferForm.tsx");
+  assert.match(correctionForm, /useState\(canRectifyClass && defaultRectifyClass\)/);
+  assert.match(action, /Corrigir classe/);
+  assert.match(action, /defaultRectifyClass=\{canRectifyClass\}/);
   // The correct year ID comes from the authenticated server scope and
   // must reach the modal without an optional secondary session lookup.
   assert.match(panel, /anoLetivoId=\{state\.matricula\.anoLetivoId\}/);
