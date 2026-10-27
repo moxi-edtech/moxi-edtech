@@ -9,6 +9,7 @@ const directory = "apps/web/visual-evidence";
 await mkdir(directory, { recursive: true });
 
 const stories = [
+  ["academic-tabs", "synthetic-academic-tabs", /Académico/i],
   ["documentos-pendentes", "klasse-portal-visual-fixtures--documentos-pendentes", /Boletim/i],
   ["documentos-rejeitados", "klasse-portal-visual-fixtures--documentos-rejeitados", /Boletim/i],
   ["notas-pagas", "klasse-portal-visual-fixtures--notas-pagas", /Notas|Matemática/i],
@@ -105,6 +106,34 @@ try {
         if (name.startsWith("dashboard-") && metrics.nestedScrolls > 0) errors.push(`${name} ${width}x${height} zoom ${zoom}: nested scroll ${metrics.nestedScrolls}`);
         if (!visible) errors.push(`${name} ${width}x${height} zoom ${zoom}: content not rendered; root children ${metrics.rendered}`);
         if (metrics.horizontalOverflow > 12) errors.push(`${name} ${width}x${height} zoom ${zoom}: horizontal overflow ${metrics.horizontalOverflow}px`);
+      }
+    }
+    if (name === "academic-tabs") {
+      await page.goto(`${baseUrl}/?story=academic-tabs`, { waitUntil: "domcontentloaded" });
+      try {
+        const tabs = page.getByRole("tablist", { name: "Área académica" });
+        await tabs.waitFor({ timeout: 10000 });
+        const initialDocument = await page.evaluate(() => { (window).__academicFixtureSentinel = "same-document"; return document; }).then(() => true);
+        const notesTab = page.getByRole("tab", { name: "Notas" });
+        const subjectTab = page.getByRole("tab", { name: "Disciplinas" });
+        const documentsTab = page.getByRole("tab", { name: "Documentos" });
+        await notesTab.focus();
+        await page.keyboard.press("ArrowRight");
+        await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Disciplinas"));
+        if (await subjectTab.getAttribute("tabindex") !== "0") errors.push("academic-tabs: roving keyboard focus broken");
+        if (!(await page.getByRole("tabpanel", { name: "Disciplinas" }).isVisible())) errors.push("academic-tabs: discipline panel not visible");
+        await page.keyboard.press("Home");
+        await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Notas"));
+        await page.keyboard.press("End");
+        await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Documentos"));
+        if (!(await documentsTab.getAttribute("aria-selected") === "true")) errors.push("academic-tabs: End key did not select documents");
+        await page.goBack({ waitUntil: "domcontentloaded" });
+        await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Notas"));
+        if ((await page.evaluate(() => (window).__academicFixtureSentinel)) !== "same-document" || !initialDocument) {
+          errors.push("academic-tabs: navigation caused full page reload");
+        }
+      } catch (error) {
+        errors.push(`academic-tabs: keyboard/panel/back navigation failed: ${error.message}`);
       }
     }
     if (name === "grade-paid") {
