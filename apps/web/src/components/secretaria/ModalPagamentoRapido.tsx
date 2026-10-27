@@ -1191,7 +1191,7 @@ export function ModalPagamentoRapido({
                     <p className="font-semibold text-emerald-800">Recibo emitido — disponível para impressão</p>
                     <a href={receiptHandoff.url} target="_blank" rel="noopener noreferrer"
                       className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-800">
-                      Abrir recibo existente
+                      Imprimir recibo
                     </a>
                   </>
                 ) : receiptHandoff?.pending && receiptHandoff.mensalidadeId ? (
