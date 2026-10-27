@@ -249,7 +249,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
           Escolha o documento, envie o comprovativo de pagamento e acompanhe a validação da secretaria.
         </p>
       </header>}
-      {embedded && <p className="text-sm leading-6 text-slate-600">Solicita documentos e acompanha o estado dos teus pedidos.</p>}
+      {embedded && <p className="text-sm leading-6 text-muted-foreground">Solicita documentos e acompanha o estado dos teus pedidos.</p>}
 
       {catalogError ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900" role="alert">
@@ -271,7 +271,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
           {visibleDocs.map((doc) => (
              <AlunoCard
                key={doc.id}
-               className="min-w-0 space-y-3 rounded-2xl border-slate-200 bg-white p-4 shadow-none sm:p-5"
+               className="min-w-0 space-y-3 rounded-2xl border-border bg-card p-4 shadow-none sm:p-5"
              >
                <div className="flex min-w-0 items-start gap-3">
                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
@@ -279,19 +279,19 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                    doc.status === "pending_payment" ? "border-amber-100 bg-amber-50 text-amber-700" :
                    doc.status === "pending" || doc.status === "blocked" ? "border-blue-100 bg-blue-50 text-blue-700" :
                    doc.status === "rejected" ? "border-rose-100 bg-rose-50 text-rose-700" :
-                   "border-slate-100 bg-slate-50 text-slate-500"
+                   "border-border bg-muted text-muted-foreground"
                  }`}>
                    <FileText aria-hidden="true" className="h-5 w-5" />
                  </div>
                  <div className="min-w-0 flex-1 space-y-2">
                    <div className="flex flex-wrap items-start gap-2">
-                     <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-slate-900 sm:text-base">{doc.nome}</h3>
-                     <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                     <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-foreground sm:text-base">{doc.nome}</h3>
+                     <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
                        {doc.pagamento_configurado === false ? "Taxa não configurada" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
                      </span>
                    </div>
                    {doc.descricao && (
-                     <p className="break-words text-sm leading-6 text-slate-600">{doc.descricao}</p>
+                     <p className="break-words text-sm leading-6 text-muted-foreground">{doc.descricao}</p>
                    )}
                    <div className="flex flex-wrap items-center gap-2">
                      {doc.pagamento_configurado === false
@@ -309,9 +309,9 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                    </div>
                  </div>
                </div>
-               <div className="flex min-w-0 items-center justify-start border-t border-slate-100 pt-3 sm:justify-end">
+               <div className="flex min-w-0 items-center justify-start border-t border-border pt-3 sm:justify-end">
                  {loading === doc.codigo ? (
-                   <span role="status" className="inline-flex h-11 items-center gap-2 text-sm text-slate-600">
+                   <span role="status" className="inline-flex h-11 items-center gap-2 text-sm text-muted-foreground">
                      <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar
                    </span>
                  ) : doc.pagamento_configurado === false ? (
@@ -503,7 +503,7 @@ function ActionButton({ status, codigo, gratuito }: { status: DocumentoStatus; c
       );
     case 'blocked':
       return (
-        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-slate-100 px-3 py-2.5 text-xs font-bold text-slate-600">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-muted px-3 py-2.5 text-xs font-bold text-muted-foreground">
           <Clock size={14} /> Actualizar
         </span>
       );
@@ -515,7 +515,7 @@ function ActionButton({ status, codigo, gratuito }: { status: DocumentoStatus; c
       );
     default:
       return (
-        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1 rounded-2xl bg-foreground px-4 py-2.5 text-xs font-bold text-background shadow-sm transition-all hover:bg-foreground/90 active:scale-95">
           {gratuito ? "Solicitar grátis" : "Solicitar"} <ChevronRight size={14} />
         </span>
       );
