@@ -838,13 +838,16 @@ export function ModalPagamentoRapido({
   const [valor,    setValor]    = useState("");
   const [concluido, setConcluido] = useState(false);
   const [recibos,   setRecibos]   = useState<ReciboBatchItem[]>([]);
+  const [receiptHandoff, setReceiptHandoff] = useState<{
+    url: string | null; mensalidadeId: string | null; pending: boolean;
+  } | null>(null);
+  const [checkingExistingReceipt, setCheckingExistingReceipt] = useState(false);
   const [pagamentosConcluidos, setPagamentosConcluidos] = useState<PagamentoConcluido[]>([]);
   const [pagamentosPagosAluno, setPagamentosPagosAluno] = useState<PagamentoConcluido[]>([]);
   const [loadingPagamentosPagos, setLoadingPagamentosPagos] = useState(false);
   const [reversedPagamentoIds, setReversedPagamentoIds] = useState<Set<string>>(new Set());
   const [revertingPagamentoId, setRevertingPagamentoId] = useState<string | null>(null);
   const [reclassificacaoBlockOpen, setReclassificacaoBlockOpen] = useState(false);
-  const [printReadyCount, setPrintReadyCount] = useState(0);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -1021,11 +1024,11 @@ export function ModalPagamentoRapido({
     }, 0);
     setValor(initialTotal > 0 ? String(initialTotal) : "");
     setRecibos([]);
+    setReceiptHandoff(null);
     setPagamentosConcluidos([]);
     setPagamentosPagosAluno([]);
     setReversedPagamentoIds(new Set());
     setRevertingPagamentoId(null);
-    setPrintReadyCount(0);
     setTimeout(() => confirmBtnRef.current?.focus(), 50);
   }, [open, initialSelectedIds, availableMensalidades]);
 
@@ -1059,12 +1062,8 @@ export function ModalPagamentoRapido({
       .catch(() => {});
   }, [escolaId, open]);
 
-  // ── Print pós-pagamento ──────────────────────────────────────────────────
-  useEffect(() => {
-    if (recibos.length === 0 || printReadyCount < recibos.length) return;
-    const t = setTimeout(() => window.print(), 150);
-    return () => clearTimeout(t);
-  }, [recibos, printReadyCount]);
+  // The canonical receipt page owns window.print(). Never open a second
+  // print dialog for the payment modal rather than the issued document.
 
   // ── Submissão ────────────────────────────────────────────────────────────
   const { processando, submit } = usePagamentoSubmit({
@@ -1072,6 +1071,7 @@ export function ModalPagamentoRapido({
     trocoValido,
     onConcluido: () => setConcluido(true),
     onRecibos:   (payload) => setRecibos(payload),
+    onReceiptStatus: setReceiptHandoff,
     onPagamentosConcluidos: (payload) => setPagamentosConcluidos(payload),
     safeClose, onSuccess,
     posViradaContext,
@@ -1168,6 +1168,7 @@ export function ModalPagamentoRapido({
           {/* ── Body ────────────────────────────────────────────────────── */}
           <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-5">
             {concluido ? (
+              <div className="space-y-3">
               <EstadoConcluido 
                 aluno={aluno}
                 valor={valorNum || valorDevido}
@@ -1180,6 +1181,39 @@ export function ModalPagamentoRapido({
                 onReverter={handleReverterPagamento}
                 onClose={safeClose}
               />
+              <div aria-live="polite" className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                {receiptHandoff?.url ? (
+                  <>
+                    <p className="font-semibold text-emerald-800">Recibo emitido — disponível para impressão</p>
+                    <a href={receiptHandoff.url} target="_blank" rel="noopener noreferrer"
+                      className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-800">
+                      Abrir recibo existente
+                    </a>
+                  </>
+                ) : receiptHandoff?.pending && receiptHandoff.mensalidadeId ? (
+                  <>
+                    <p className="font-semibold text-amber-900">Pagamento confirmado — recibo em preparação</p>
+                    <p className="mt-1 text-xs text-slate-600">O processamento ocorre separadamente. Não faça outro pagamento.</p>
+                    <button type="button" disabled={checkingExistingReceipt}
+                      onClick={() => {
+                        if (!receiptHandoff.mensalidadeId) return;
+                        setCheckingExistingReceipt(true);
+                        void findIssuedOperationalReceipt(receiptHandoff.mensalidadeId, { attempts: 1 })
+                          .then((url) => {
+                            if (url) setReceiptHandoff({ ...receiptHandoff, url, pending: false });
+                          })
+                          .catch(() => {})
+                          .finally(() => setCheckingExistingReceipt(false));
+                      }}
+                      className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50">
+                      {checkingExistingReceipt ? "A verificar…" : "Verificar recibo sem repetir pagamento"}
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-600">Pode consultar os recibos já emitidos no perfil financeiro do aluno.</p>
+                )}
+              </div>
+              </div>
             ) : (
               <>
                 {/* Card da mensalidade */}
@@ -1370,7 +1404,6 @@ export function ModalPagamentoRapido({
           titularConta={recibo.titular_conta ?? null}
           iban={recibo.iban ?? null}
           kwikChave={recibo.kwik_chave ?? null}
-          onPrintReady={() => setPrintReadyCount((count) => count + 1)}
         />
       ))}
 
