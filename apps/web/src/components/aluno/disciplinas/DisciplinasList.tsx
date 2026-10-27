@@ -62,13 +62,13 @@ export function DisciplinasList() {
         {isCurrent && <p className="text-sm text-muted-foreground">{yearLabel ? `Ano letivo ${yearLabel} · ` : ""}${disciplinas.length} disciplinas da tua turma</p>}
       </div>
       {loading || (scope !== query && !error) ? (
-        <div role="status" aria-label="A carregar disciplinas" className="grid gap-3 sm:grid-cols-2">
+        <div role="status" aria-label="A carregar disciplinas" aria-hidden="true" className="grid gap-3 sm:grid-cols-2">
           {[1,2,3].map((key) => <div key={key} className="h-20 animate-pulse rounded-xl bg-muted" />)}
         </div>
       ) : error ? (
         <div role="alert" className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm text-rose-900">{error}</p>
-          <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-card px-4 text-sm font-semibold text-rose-800">
+          <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-card px-4 text-sm font-semibold text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <RefreshCw className="h-4 w-4" /> Tentar novamente
           </button>
         </div>
@@ -80,7 +80,7 @@ export function DisciplinasList() {
         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
           {disciplinas.map((disciplina) => (
             <article key={disciplina.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4">
-              <BookOpen aria-hidden className="h-5 w-5 shrink-0 text-emerald-800" />
+              <BookOpen aria-hidden className="h-5 w-5 shrink-0 text-primary" />
               <h3 className="min-w-0 break-words text-sm font-medium leading-6 text-foreground">{disciplina.nome}</h3>
             </article>
           ))}
