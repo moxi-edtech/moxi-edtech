@@ -41,7 +41,12 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
         <DossierTabs
           workspace={workspace}
           aluno={aluno}
-          slotPerfil={<DossierPerfilSection aluno={aluno} />}
+          slotPerfil={(
+            <div className="space-y-5">
+              <DossierPerfilSection aluno={aluno} />
+              <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />
+            </div>
+          )}
           slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />}
           slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
