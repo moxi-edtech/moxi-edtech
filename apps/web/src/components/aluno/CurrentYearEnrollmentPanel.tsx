@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
 import { RetificarMatriculaAction } from "@/components/aluno/RetificarMatriculaAction";
+import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 
 type CurrentEnrollmentState = {
   ok: boolean;
@@ -196,7 +197,7 @@ export function CurrentYearEnrollmentPanel({
         </p>
       )}
       {!loading && state && state.estado !== "ativa" && (
-        <Link href={"/escola/" + encodeURIComponent(escolaId) + "/operacoes"}
+        <Link href={buildBalcaoActionHref({ escolaParam: escolaId, actionId: "reenrollment", alunoId })}
           className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-700">
           Abrir Balcão de Atendimento
         </Link>
