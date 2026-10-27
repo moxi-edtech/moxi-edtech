@@ -97,13 +97,14 @@ export function RegistoPagamentoModal({
           />
 
           <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label htmlFor="pagamento-metodo" className="block text-sm font-medium text-foreground mb-1.5">
               Método de Pagamento
             </label>
             <select
+              id="pagamento-metodo"
               value={metodo}
               onChange={(e) => setMetodo(e.target.value as PagamentoMetodo)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+              className="w-full bg-background text-foreground p-3 border border-border rounded-lg focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
             >
               {METODOS.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -125,14 +126,15 @@ export function RegistoPagamentoModal({
         )}
 
         <div className="w-full">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label htmlFor="pagamento-observacao" className="block text-sm font-medium text-foreground mb-1.5">
             Observações Internas
           </label>
           <textarea
+            id="pagamento-observacao"
             value={observacao}
             onChange={(e) => setObservacao(e.target.value)}
             rows={3}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all resize-none text-sm"
+            className="w-full bg-background text-foreground p-3 border border-border rounded-lg focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all resize-none text-sm"
             placeholder="Alguma nota sobre este pagamento..."
           />
         </div>
@@ -141,7 +143,7 @@ export function RegistoPagamentoModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-semibold text-foreground/80 hover:bg-muted rounded-lg transition-colors"
           >
             Cancelar
           </button>

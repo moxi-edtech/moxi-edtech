@@ -37,7 +37,7 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 
 
 ## Pendências antes de release
-- Converter classes fixas legadas de formulários, tabelas, modais e páginas; **dark completo ainda não está pronto**.
+- Convertidos formulários, cartões de pagamentos, listagem, geração e edição de mensalidades para tokens semânticos e contrastes de feedback; outras páginas legadas continuam pendentes de homologação.
 - Executar typecheck, testes do provider/alternância e Playwright com autenticação nos portais e módulos operacionais.
 - Validar com sessão real o comando, Balcão, formulários, impressões de recibos e a troca entre escolas; testes sintéticos não substituem esta homologação.
 - Não apagar a branch histórica antes de validar o restante do escopo P1/P2.

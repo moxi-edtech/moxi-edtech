@@ -164,12 +164,12 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
   };
 
   if (loading) {
-    return <div className="p-4 text-sm text-gray-500">Carregando pagamentos...</div>;
+    return <div className="p-4 text-sm text-muted-foreground">Carregando pagamentos...</div>;
   }
 
   if (error) {
     return (
-      <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+      <div className="rounded border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300 px-3 py-2 text-sm text-red-700">
         {error}
       </div>
     );
@@ -180,30 +180,30 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
       <OfflineBanner fromCache={offlineMeta.fromCache} updatedAt={offlineMeta.updatedAt} />
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 dark:border-emerald-800/50 dark:bg-emerald-950/25">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
             <Banknote className="h-4 w-4" /> Valor recebido
           </div>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{moneyAOA.format(totalReceived)}</p>
-          <p className="text-xs text-slate-500">no período selecionado</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{moneyAOA.format(totalReceived)}</p>
+          <p className="text-xs text-muted-foreground">no período selecionado</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+        <div className="rounded-xl border border-border bg-muted/70 p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-foreground/80">
             <ReceiptText className="h-4 w-4" /> Pagamentos encontrados
           </div>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{items.length}</p>
-          <p className="text-xs text-slate-500">máximo de 50 por consulta</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{items.length}</p>
+          <p className="text-xs text-muted-foreground">máximo de 50 por consulta</p>
         </div>
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 px-6 py-12 text-center">
-          <ReceiptText className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-sm font-semibold text-slate-700">Nenhum pagamento encontrado</p>
-          <p className="mt-1 text-xs text-slate-500">Altere o período ou limpe a pesquisa.</p>
+        <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
+          <ReceiptText className="mx-auto h-8 w-8 text-muted-foreground" />
+          <p className="mt-3 text-sm font-semibold text-foreground">Nenhum pagamento encontrado</p>
+          <p className="mt-1 text-xs text-muted-foreground">Altere o período ou limpe a pesquisa.</p>
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+        <div className="divide-y divide-border rounded-xl border border-border">
           {items.map((payment) => {
             const status = String(payment.status ?? "").toLowerCase();
             const canReverter = ["settled", "concluido", "pago"].includes(status);
@@ -213,27 +213,27 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
             return (
               <article
                 key={payment.id}
-                className="grid gap-4 p-4 transition-colors hover:bg-slate-50/70 lg:grid-cols-[minmax(220px,1.4fr)_minmax(180px,1fr)_150px_auto] lg:items-center"
+                className="grid gap-4 p-4 transition-colors hover:bg-muted/70 lg:grid-cols-[minmax(220px,1.4fr)_minmax(180px,1fr)_150px_auto] lg:items-center"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/80">
                       <UserRound className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">
+                      <p className="truncate text-sm font-semibold text-foreground">
                         {payment.aluno_nome || "Aluno não identificado"}
                       </p>
-                      <p className="truncate text-xs text-slate-500">{paymentReference(payment)}</p>
+                      <p className="truncate text-xs text-muted-foreground">{paymentReference(payment)}</p>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-lg font-bold text-slate-900">
+                  <p className="text-lg font-bold text-foreground">
                     {moneyAOA.format(Number(payment.valor_pago || 0))}
                   </p>
-                  <p className="text-xs text-slate-500">{method}</p>
+                  <p className="text-xs text-muted-foreground">{method}</p>
                 </div>
 
                 <div>
@@ -242,13 +242,13 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
                       canReverter
                         ? "bg-emerald-50 text-emerald-700"
                         : status.includes("revert")
-                          ? "bg-slate-100 text-slate-600"
-                          : "bg-amber-50 text-amber-700"
+                          ? "bg-muted text-foreground/80"
+                          : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                     }`}
                   >
                     {statusLabel}
                   </span>
-                  <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-500">
+                  <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
                     <CalendarDays className="h-3.5 w-3.5" />
                     {payment.created_at
                       ? new Date(payment.created_at).toLocaleString("pt-AO", {
@@ -257,7 +257,7 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
                         })
                       : "Data não informada"}
                   </p>
-                  <p className="mt-1 font-mono text-[10px] text-slate-400">
+                  <p className="mt-1 font-mono text-[10px] text-muted-foreground">
                     Ref. {payment.id.slice(0, 8).toUpperCase()}
                   </p>
                 </div>
@@ -268,7 +268,7 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
                       type="button"
                       onClick={() => handleReverter(payment)}
                       disabled={revertingId === payment.id}
-                      className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-card px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                       title="Reverter este pagamento"
                     >
                       <RotateCcw className="h-3.5 w-3.5" />

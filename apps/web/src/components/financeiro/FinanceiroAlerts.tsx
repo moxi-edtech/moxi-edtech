@@ -54,11 +54,11 @@ export function FinanceiroAlerts({ notifications }: { notifications: Notificatio
           {items.map((notif) => (
             <div
               key={notif.id}
-              className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm flex justify-between items-center group hover:border-amber-300 transition-all"
+              className="bg-card p-3 rounded-lg border border-amber-100 shadow-sm flex justify-between items-center group hover:border-amber-300 transition-all"
             >
               <div>
-                <p className="text-sm font-bold text-slate-700">{notif.titulo}</p>
-                <p className="text-xs text-slate-500">{notif.mensagem}</p>
+                <p className="text-sm font-bold text-foreground">{notif.titulo}</p>
+                <p className="text-xs text-muted-foreground">{notif.mensagem}</p>
               </div>
 
               <div className="flex gap-2">
@@ -74,7 +74,7 @@ export function FinanceiroAlerts({ notifications }: { notifications: Notificatio
                 <button
                   onClick={() => handleMarkAsRead(notif.id)}
                   disabled={loadingId === notif.id}
-                  className="text-slate-400 hover:text-emerald-600 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
+                  className="text-muted-foreground hover:text-emerald-600 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <Check className="w-4 h-4" />
                 </button>
