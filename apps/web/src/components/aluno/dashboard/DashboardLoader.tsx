@@ -113,7 +113,7 @@ export default function DashboardLoader() {
     {label:"Pagamentos",hint:"Mensalidades e comprovativos",href:"/aluno/financeiro",icon:Wallet},
     {label:"Horário",hint:"Aulas da semana",href:"/aluno/horario",icon:CalendarDays},
   ];
-  return <main className="mx-auto w-full max-w-6xl space-y-8 rounded-2xl bg-[#F3F5F1] px-4 pb-28 pt-5 text-slate-800 sm:px-8 sm:pt-10" data-testid="aluno-dashboard-editorial">
+  return <main className="mx-auto w-full max-w-6xl space-y-6 rounded-2xl bg-background px-3 pb-20 pt-4 text-foreground sm:space-y-8 sm:px-6 sm:pt-8" data-testid="aluno-dashboard-editorial">
     <header className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-[#2B6044]"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-slate-500">/ Portal do aluno</span></p>
@@ -121,7 +121,7 @@ export default function DashboardLoader() {
           {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/academico?aba=disciplinas"],["Notas","/aluno/academico"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(path)} className={`min-h-11 content-center text-slate-600 hover:text-[#2B6044] ${focus}`}>{label}</Link>)}
         </nav>
       </div>
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-[#142D3B] px-6 py-8 text-white shadow-[0_18px_42px_-28px_rgba(15,42,54,0.65)] sm:px-9 sm:py-10">
+      <div className="relative overflow-hidden rounded-2xl bg-[#142D3B] px-5 py-5 text-white shadow-[0_18px_42px_-28px_rgba(15,42,54,0.65)] sm:px-8 sm:py-7">
         <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-[36px] border-[#C2DDBF]/10 sm:right-8" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-24 h-44 w-44 rounded-full bg-[#75B59A]/10 blur-2xl" />
         <div className="relative max-w-2xl space-y-3">
@@ -132,10 +132,10 @@ export default function DashboardLoader() {
         </div>
       </div>
     </header>
-    <div className="grid items-start gap-8 lg:grid-cols-5">
-      <section aria-labelledby="next-class" className="space-y-4 lg:col-span-3">
+    <div className="grid items-start gap-5 lg:grid-cols-5">
+      <section aria-labelledby="next-class" className="space-y-2 lg:col-span-3">
         <h2 id="next-class" className={heading}>A tua próxima aula</h2>
-        <div className="rounded-2xl border border-[#D7E5DC] bg-[#E5F0E8] p-5 shadow-sm sm:p-6">
+        <div className="rounded-xl border border-[#D7E5DC] bg-[#E5F0E8] p-4 sm:p-5">
           {lesson ? <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="rounded-xl bg-white/85 px-4 py-3 text-[#24573e] shadow-sm"><p className="text-2xl font-semibold tabular-nums">{lesson.time}</p></div>
@@ -146,16 +146,20 @@ export default function DashboardLoader() {
           <Link className={`${action} mt-5`} href={go("/aluno/horario")}>Ver o horário completo <ArrowRight className="h-4 w-4"/></Link>
         </div>
       </section>
-      {attentions.length > 0 && <section aria-labelledby="attention-title" className="space-y-4 lg:col-span-2" data-testid="attention">
-        <h2 id="attention-title" className={heading}>Precisa da tua atenção</h2>
-        <div className="space-y-4 rounded-2xl border border-[#E5CF9F] bg-[#FFF3D9] p-5 shadow-sm sm:p-6">
-          {attentions.slice(0,3).map((item,index) => <div key={item.kind+item.href} className={index?"border-t border-[#C8902A]/20 pt-4":""}>
-            <div className="flex items-start gap-3"><AlertCircle aria-hidden="true" className="mt-1 h-5 w-5 shrink-0 text-[#956412]"/><div className="min-w-0 space-y-2">
-              <p className="font-semibold text-slate-900">{item.title}</p>
-              <p className="text-sm leading-6 text-slate-700">{item.description}</p>
-              <Link href={go(item.href)} className={action}>{item.action}<ArrowRight className="h-4 w-4"/></Link>
-            </div></div>
-          </div>)}
+      {attentions.length > 0 && <section aria-labelledby="attention-title" className="space-y-2 lg:col-span-2" data-testid="attention">
+        <h2 id="attention-title" className={heading}>A acompanhar</h2>
+        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+          {attentions.slice(0,3).map(item => {
+            const needsAction = item.kind === "rejected" || item.kind === "mensalidade" || item.kind === "rematricula";
+            return <article key={item.kind + item.href} className="flex min-w-0 items-start gap-3 px-4 py-3.5">
+              <span aria-hidden="true" className={needsAction ? "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" : "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-700/50"}/>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold leading-5 text-foreground">{item.title}</h3>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.description}</p>
+                <Link href={go(item.href)} className={action}>{item.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/></Link>
+              </div>
+            </article>;
+          })}
         </div>
       </section>}
     </div>
