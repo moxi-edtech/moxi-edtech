@@ -94,13 +94,13 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-card w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="bg-slate-950 p-6 flex justify-between items-center text-white shrink-0 border-b border-slate-800">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Lock className="w-4 h-4 text-[#E3B23C]" />
-              <span className="text-[10px] font-bold text-[#E3B23C] uppercase tracking-widest">
+              <Lock className="w-4 h-4 text-amber-300" />
+              <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">
                 Procedimento de Auditoria
               </span>
             </div>
@@ -111,7 +111,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
           {step === "contagem" && (
             <div className="text-right bg-slate-900 p-3 rounded-xl border border-slate-800">
               <div className="text-[10px] text-muted-foreground uppercase font-bold">Total Físico (Cash)</div>
-              <div className="text-2xl font-mono font-bold text-[#1F6B3B]">
+              <div className="text-2xl font-mono font-bold text-emerald-300">
                 {kwanza.format(totalNumerario)}
               </div>
             </div>
@@ -136,7 +136,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                         key={note.value}
                         className={`p-3 rounded-xl border transition-all ${
                           qtd > 0
-                            ? "bg-card border-[#1F6B3B]/30 shadow-sm ring-1 ring-[#1F6B3B]/10"
+                            ? "bg-card border-emerald/30 shadow-sm ring-1 ring-emerald/10"
                             : "bg-muted border-border"
                         }`}
                       >
@@ -150,7 +150,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                             type="text"
                             inputMode="numeric"
                             placeholder="0"
-                            className="w-full bg-card border border-slate-300 rounded-lg py-1.5 px-2 text-center font-bold text-foreground focus:ring-2 focus:ring-[#E3B23C] focus:border-[#E3B23C] outline-none text-lg"
+                            className="w-full bg-card border border-border rounded-lg py-1.5 px-2 text-center font-bold text-foreground focus:ring-2 focus:ring-ring focus:border-ring outline-none text-lg"
                             value={counts[note.value] || ""}
                             onChange={(e) => handleCountChange(note.value, e.target.value)}
                           />
@@ -158,7 +158,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                         </div>
                         <div
                           className={`text-right text-xs font-mono font-bold mt-2 ${
-                            subtotal > 0 ? "text-foreground" : "text-slate-300"
+                            subtotal > 0 ? "text-foreground" : "text-muted-foreground"
                           }`}
                         >
                           {kwanza.format(subtotal)}
@@ -178,14 +178,14 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-foreground uppercase">Soma dos Talões TPA</label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-[#E3B23C]">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-foreground">
                         <CreditCard className="h-5 w-5" />
                       </div>
                       <input
                         type="number"
                         value={tpaTotal}
                         onChange={(e) => setTpaTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none transition-all placeholder:text-muted-foreground"
                         placeholder="0"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
@@ -198,14 +198,14 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-foreground uppercase">Soma Transferências</label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-[#E3B23C]">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-foreground">
                         <Wallet className="h-5 w-5" />
                       </div>
                       <input
                         type="number"
                         value={transferTotal}
                         onChange={(e) => setTransferTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none transition-all placeholder:text-muted-foreground"
                         placeholder="0"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
@@ -218,14 +218,14 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-foreground uppercase">Soma MCX/KIWK</label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-[#E3B23C]">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-foreground">
                         <Wallet className="h-5 w-5" />
                       </div>
                       <input
                         type="number"
                         value={mcxTotal}
                         onChange={(e) => setMcxTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 outline-none transition-all placeholder:text-slate-300"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none transition-all placeholder:text-muted-foreground"
                         placeholder="0"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
@@ -245,7 +245,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                 <div
                   className={`w-24 h-24 rounded-full flex items-center justify-center ${
                     resultado.diferenca_total === 0
-                      ? "bg-[#1F6B3B]/10 text-[#1F6B3B]"
+                      ? "bg-emerald/10 text-foreground"
                       : "bg-red-50 text-red-600"
                   }`}
                 >
@@ -256,7 +256,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                   )}
                 </div>
                 {resultado.diferenca_total === 0 && (
-                  <div className="absolute -bottom-2 -right-2 bg-[#E3B23C] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">
+                  <div className="absolute -bottom-2 -right-2 bg-amber text-amber-900 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">
                     PERFEITO
                   </div>
                 )}
@@ -312,7 +312,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                       <span
                         className={`text-base font-black font-mono px-3 py-1 rounded-lg ${
                           resultado.diferenca_total === 0
-                            ? "bg-[#1F6B3B]/10 text-[#1F6B3B]"
+                            ? "bg-emerald/10 text-foreground"
                             : "bg-red-50 text-red-600"
                         }`}
                       >
@@ -339,7 +339,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex-1 bg-[#E3B23C] text-white px-6 py-3 rounded-xl text-sm font-bold hover:brightness-105 shadow-md shadow-orange-900/10 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="flex-1 bg-amber text-amber-900 px-6 py-3 rounded-xl text-sm font-bold hover:brightness-105 shadow-md shadow-orange-900/10 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Calculator className="w-5 h-5" />}
                 {isSubmitting ? "Validando..." : "Conferir Caixa"}
@@ -348,7 +348,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
           ) : (
             <button
               onClick={onClose}
-              className="w-full bg-[#1F6B3B] text-white px-6 py-4 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg flex items-center justify-center gap-2 transition-all"
+              className="w-full bg-emerald text-white px-6 py-4 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg flex items-center justify-center gap-2 transition-all"
             >
               Concluir e Sair <ArrowRight className="w-4 h-4" />
             </button>

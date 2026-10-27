@@ -92,7 +92,7 @@ function KpiCard({
   const t = tones[tone] ?? tones.slate;
 
   return (
-    <div className="rounded-xl bg-card p-5 ring-1 ring-slate-200 shadow-sm transition hover:shadow-md">
+    <div className="rounded-xl bg-card p-5 ring-1 ring-border shadow-sm transition hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">
@@ -100,7 +100,7 @@ function KpiCard({
           </p>
           <p className="mt-1 text-2xl font-black text-foreground">{value}</p>
         </div>
-        <div className={cn("rounded-xl p-3 ring-1 ring-slate-200", t.iconWrap)}>
+        <div className={cn("rounded-xl p-3 ring-1 ring-border", t.iconWrap)}>
           <Icon className={cn("h-5 w-5", t.iconColor)} />
         </div>
       </div>
@@ -117,7 +117,7 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   const key = (status || "").toLowerCase();
-  const style = styles[key] ?? "bg-muted text-foreground ring-1 ring-slate-200/70";
+  const style = styles[key] ?? "bg-muted text-foreground ring-1 ring-border/70";
 
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold capitalize", style)}>
@@ -139,7 +139,7 @@ function ToolbarButton({
     <a
       href={href}
       target="_blank"
-      className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-bold text-foreground ring-1 ring-slate-200 hover:bg-muted"
+      className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-bold text-foreground ring-1 ring-border hover:bg-muted"
       rel="noreferrer"
     >
       <Download className="h-4 w-4 text-muted-foreground" />
@@ -462,7 +462,7 @@ export default function MatriculasListClient() {
           aria-disabled={!resolvedSlug}
           className={cn(
             "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold",
-            resolvedSlug ? "bg-amber text-white hover:brightness-95" : "bg-slate-300 text-white pointer-events-none cursor-not-allowed",
+            resolvedSlug ? "bg-amber text-amber-900 hover:brightness-95" : "bg-muted text-muted-foreground pointer-events-none cursor-not-allowed",
             "focus:outline-none focus:ring-4 focus:ring-amber/20"
           )}
         >
@@ -480,7 +480,7 @@ export default function MatriculasListClient() {
       </div>
 
       {/* Card Principal */}
-      <div className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-slate-200">
+      <div className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border">
         {/* Toolbar */}
         <div className="flex flex-col gap-4 border-b border-border bg-muted/50 p-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
@@ -606,7 +606,7 @@ export default function MatriculasListClient() {
               type="checkbox"
               checked={showPendentes}
               onChange={(e) => setShowPendentes(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-amber focus:ring-4 focus:ring-amber/20"
+              className="h-4 w-4 rounded border-border text-amber focus:ring-4 focus:ring-amber/20"
             />
             <span className="text-sm font-medium text-foreground">Pendentes de Enturmação</span>
           </label>
@@ -730,7 +730,7 @@ export default function MatriculasListClient() {
               ) : items.length === 0 ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-12 text-center text-muted-foreground">
-                    <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                    <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
                     Nenhuma matrícula encontrada com estes filtros.
                   </td>
                 </tr>
@@ -766,7 +766,7 @@ export default function MatriculasListClient() {
                     >
                       {/* Matrícula */}
                       <td className="whitespace-nowrap px-6 py-4">
-                        <div className="w-fit rounded-xl bg-muted px-2 py-1 font-mono text-xs font-bold text-foreground ring-1 ring-slate-200">
+                        <div className="w-fit rounded-xl bg-muted px-2 py-1 font-mono text-xs font-bold text-foreground ring-1 ring-border">
                           {numeroMatriculaVisivel}
                         </div>
 
@@ -780,7 +780,7 @@ export default function MatriculasListClient() {
                           ) : null}
 
                           {dataMatriculaFmt ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-muted-foreground ring-1 ring-slate-200">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-muted-foreground ring-1 ring-border">
                               {dataMatriculaFmt}
                             </span>
                           ) : null}
@@ -797,7 +797,7 @@ export default function MatriculasListClient() {
                       <td className="whitespace-nowrap px-6 py-4">
                         {fichaHref ? (
                           <Link href={fichaHref} className="flex items-center gap-3 min-w-0">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-slate-200">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-border">
                               {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : "?"}
                             </div>
                             <div className="min-w-0">
@@ -808,7 +808,7 @@ export default function MatriculasListClient() {
                           </Link>
                         ) : (
                           <div className="flex items-center gap-3 text-muted-foreground">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-slate-200">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-border">
                               {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : "?"}
                             </div>
                             <div className="truncate text-sm font-bold text-muted-foreground">
@@ -831,7 +831,7 @@ export default function MatriculasListClient() {
                             </p>
                           </div>
                         ) : (
-                          <span className="text-xs italic text-slate-300">Sem turma</span>
+                          <span className="text-xs italic text-muted-foreground">Sem turma</span>
                         )}
                       </td>
 
@@ -895,14 +895,14 @@ export default function MatriculasListClient() {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-xl bg-card px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-slate-200 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-card px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             >
               Anterior
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-xl bg-card px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-slate-200 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-card px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             >
               Próxima
             </button>
@@ -912,7 +912,7 @@ export default function MatriculasListClient() {
 
       {/* Modais */}
       {showStatusForm && selectedMatricula && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-lg rounded-2xl bg-card p-8 shadow-2xl animate-in zoom-in-95">
             <div className="mb-6 flex items-center justify-between gap-4">
               <h2 className="text-xl font-bold text-foreground">Alterar Status</h2>
@@ -937,7 +937,7 @@ export default function MatriculasListClient() {
       )}
 
       {showTransferForm && selectedMatricula && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-lg rounded-2xl bg-card p-8 shadow-2xl animate-in zoom-in-95">
             <div className="mb-6 flex items-center justify-between gap-4">
               <h2 className="text-xl font-bold text-foreground">Retificar matrícula</h2>

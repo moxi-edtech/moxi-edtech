@@ -143,7 +143,7 @@ export function MinhaProdutividade({
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-foreground truncate flex items-center gap-2">
                     {act.contexto || formatActivityLabel(act)} 
-                    <ExternalLink size={10} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ExternalLink size={10} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -215,14 +215,14 @@ export function MinhaProdutividade({
                     onAtenderAluno(selectedActivity.aluno_id);
                     setSelectedActivity(null);
                   }}
-                  className="px-4 py-2.5 bg-amber text-white rounded-xl text-sm font-bold shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                  className="px-4 py-2.5 bg-amber text-amber-900 rounded-xl text-sm font-bold shadow-sm hover:brightness-110 active:scale-95 transition-all"
                  >
                    Atender Aluno
                  </button>
                )}
                <button 
                 onClick={() => setSelectedActivity(null)}
-                className="px-6 py-2.5 bg-muted text-foreground rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 active:scale-95 transition-all"
+                className="px-6 py-2.5 bg-muted text-foreground rounded-xl text-sm font-bold shadow-sm hover:bg-accent active:scale-95 transition-all"
                >
                  Fechar Detalhes
                </button>

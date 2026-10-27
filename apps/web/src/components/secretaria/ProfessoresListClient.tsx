@@ -232,7 +232,7 @@ export default function ProfessoresListClient() {
             </button>
           ))}
           
-          <span className="mx-2 h-4 w-px bg-slate-200" />
+          <span className="mx-2 h-4 w-px bg-border" />
           
           <span className="text-sm text-muted-foreground font-medium">Cargo:</span>
           <select 
@@ -247,7 +247,7 @@ export default function ProfessoresListClient() {
             <option value="assistente">Assistente</option>
           </select>
           
-          <span className="mx-2 h-4 w-px bg-slate-200" />
+          <span className="mx-2 h-4 w-px bg-border" />
           
           <a 
             href={`professores/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
@@ -319,7 +319,7 @@ export default function ProfessoresListClient() {
               ) : items.length === 0 ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                    <Users className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                    <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                     Nenhum professor encontrado.
                     <div className="mt-2 text-sm">
                       {q || cargoFilter ? 'Tente ajustar os filtros de busca.' : 'Comece cadastrando o primeiro professor.'}
@@ -400,7 +400,7 @@ export default function ProfessoresListClient() {
                         <div className="flex justify-center gap-1">
                           <Link
                             href={buildContextualPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}`, pathname)}
-                            className="text-muted-foreground hover:text-white hover:bg-slate-600 p-2 rounded-lg transition-all"
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted p-2 rounded-lg transition-all"
                             title="Ver detalhes"
                           >
                             <Eye className="w-4 h-4" />
