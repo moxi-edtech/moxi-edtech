@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { AlertCircle, ArrowRight, BookOpen, CalendarDays, FileText, Wallet, Bell, GraduationCap, Clock3 } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { ArrowRight, BookOpen, CalendarDays, FileText, Wallet, Bell, GraduationCap, Clock3 } from "lucide-react";
 import { ErrorState } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { buildStudentAttention, nextLessonLabel, type StudentDocument, type StudentRematricula } from "@/lib/aluno/dashboardPresentation";
@@ -19,7 +19,6 @@ type BoletimData = { ok: boolean; nome_aluno?: string | null; is_liberado?: bool
 type CatalogoData = { ok: boolean; documentos?: StudentDocument[]; boletim_pago?: boolean };
 type RaaData = { ok: boolean; result?: { status: string; mensagem: string } | null };
 type ScreenData = { dashboard: DashboardData; boletim: BoletimData | null; catalogo: CatalogoData | null; rematricula: StudentRematricula | null; raa: RaaData | null };
-const go = (school: string | null, path: string) => buildPortalHref(school || "default", path);
 async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T | null> {
   try {
     const res = await fetch(path, { cache: "no-store", signal });
@@ -32,9 +31,9 @@ async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T | null
     return null;
   }
 }
-const heading = "text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl";
+const heading = "text-lg font-semibold tracking-tight text-foreground sm:text-xl";
 const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
-const action = `inline-flex min-h-11 items-center gap-2 rounded-xl text-sm font-semibold text-[#24573e] underline-offset-4 hover:underline ${focus}`;
+const action = `inline-flex min-h-10 items-center gap-1.5 rounded-lg text-sm font-semibold text-emerald-800 underline-offset-4 hover:underline ${focus}`;
 function LoadingDashboard() {
   return <div className="mx-auto max-w-6xl animate-pulse space-y-8 px-4 py-6 sm:px-8" aria-label="A carregar a tua página">
     <div className="space-y-4"><div className="h-4 w-40 rounded-lg bg-slate-200"/><div className="h-9 w-56 rounded-lg bg-slate-200"/><div className="h-4 w-44 rounded-lg bg-slate-200"/></div>
@@ -44,7 +43,18 @@ function LoadingDashboard() {
 }
 export default function DashboardLoader() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const school = getEscolaParamFromPath(pathname ?? "") ?? "default";
+  const studentId = searchParams?.get("aluno") ?? null;
+  const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
+  const go = (path: string) => {
+    const [route, rawQuery] = path.split("?");
+    const params = new URLSearchParams(rawQuery ?? "");
+    if (studentId) params.set("aluno", studentId);
+    if (academicYearId) params.set("ano_letivo_id", academicYearId);
+    const suffix = params.toString();
+    return `${buildPortalHref(school, route)}${suffix ? `?${suffix}` : ""}`;
+  };
   const [screen, setScreen] = useState<ScreenData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,8 +108,8 @@ export default function DashboardLoader() {
   const firstName = screen.boletim?.nome_aluno?.trim().split(/\s+/)[0] || "aluno";
   const today = new Intl.DateTimeFormat("pt-AO",{weekday:"long",day:"numeric",month:"long"}).format(new Date());
   const shortcuts = [
-    {label:"Disciplinas",hint:"As tuas aulas e matérias",href:"/aluno/disciplinas",icon:GraduationCap},
-    {label:"Boletim",hint:"Notas e documentos",href:"/aluno/documentos",icon:FileText},
+    {label:"Disciplinas",hint:"Matérias da turma",href:"/aluno/academico?aba=disciplinas",icon:GraduationCap},
+    {label:"Notas",hint:"Avaliações e boletim",href:"/aluno/academico",icon:FileText},
     {label:"Pagamentos",hint:"Mensalidades e comprovativos",href:"/aluno/financeiro",icon:Wallet},
     {label:"Horário",hint:"Aulas da semana",href:"/aluno/horario",icon:CalendarDays},
   ];
@@ -108,7 +118,7 @@ export default function DashboardLoader() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-[#2B6044]"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-slate-500">/ Portal do aluno</span></p>
         <nav aria-label="Navegação rápida" className="hidden gap-5 text-sm lg:flex">
-          {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/disciplinas"],["Notas","/aluno/documentos"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(school,path)} className={`min-h-11 content-center text-slate-600 hover:text-[#2B6044] ${focus}`}>{label}</Link>)}
+          {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/academico?aba=disciplinas"],["Notas","/aluno/academico"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(path)} className={`min-h-11 content-center text-slate-600 hover:text-[#2B6044] ${focus}`}>{label}</Link>)}
         </nav>
       </div>
       <div className="relative overflow-hidden rounded-[1.75rem] bg-[#142D3B] px-6 py-8 text-white shadow-[0_18px_42px_-28px_rgba(15,42,54,0.65)] sm:px-9 sm:py-10">
@@ -133,7 +143,7 @@ export default function DashboardLoader() {
             </div>
             {lesson.details.length > 0 && <p className="text-sm text-slate-600">{lesson.details.join(" · ")}</p>}
           </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-slate-400"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 text-sm leading-6 text-slate-600">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
-          <Link className={`${action} mt-5`} href={go(school,"/aluno/horario")}>Ver o horário completo <ArrowRight className="h-4 w-4"/></Link>
+          <Link className={`${action} mt-5`} href={go("/aluno/horario")}>Ver o horário completo <ArrowRight className="h-4 w-4"/></Link>
         </div>
       </section>
       {attentions.length > 0 && <section aria-labelledby="attention-title" className="space-y-4 lg:col-span-2" data-testid="attention">
@@ -143,7 +153,7 @@ export default function DashboardLoader() {
             <div className="flex items-start gap-3"><AlertCircle aria-hidden="true" className="mt-1 h-5 w-5 shrink-0 text-[#956412]"/><div className="min-w-0 space-y-2">
               <p className="font-semibold text-slate-900">{item.title}</p>
               <p className="text-sm leading-6 text-slate-700">{item.description}</p>
-              <Link href={go(school,item.href)} className={action}>{item.action}<ArrowRight className="h-4 w-4"/></Link>
+              <Link href={go(item.href)} className={action}>{item.action}<ArrowRight className="h-4 w-4"/></Link>
             </div></div>
           </div>)}
         </div>
@@ -152,13 +162,13 @@ export default function DashboardLoader() {
     <section aria-labelledby="school-links" className="space-y-4">
       <h2 id="school-links" className={heading}>A tua vida escolar</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(school,href)} className={`flex min-h-32 min-w-0 flex-col gap-3 rounded-2xl border border-[#DEE5E2] p-4 shadow-sm transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-[#2B6044]/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} ${label === "Disciplinas" ? "bg-[#E6EDEB]" : label === "Boletim" ? "bg-[#EBE8F3]" : label === "Pagamentos" ? "bg-[#F5EBDD]" : "bg-[#E4EBF5]"}`}>
+        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-32 min-w-0 flex-col gap-3 rounded-2xl border border-[#DEE5E2] p-4 shadow-sm transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-[#2B6044]/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} ${label === "Disciplinas" ? "bg-[#E6EDEB]" : label === "Boletim" ? "bg-[#EBE8F3]" : label === "Pagamentos" ? "bg-[#F5EBDD]" : "bg-[#E4EBF5]"}`}>
           <Icon className="h-6 w-6 text-[#2B6044]" aria-hidden="true"/><div><p className="text-sm font-semibold text-slate-900">{label}</p><p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">{hint}</p></div>
         </Link>)}
       </div>
     </section>
     <section aria-labelledby="notices" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="notices" className={heading}>Avisos da escola</h2><Link className={action} href={go(school,"/aluno/avisos")}>Ver todos<ArrowRight className="h-4 w-4"/></Link></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="notices" className={heading}>Avisos da escola</h2><Link className={action} href={go("/aluno/avisos")}>Ver todos<ArrowRight className="h-4 w-4"/></Link></div>
       {(screen.dashboard.avisos_recentes??[]).length===0 ? <p className="flex items-start gap-3 rounded-xl border border-[#DEE5E2] bg-white/85 px-4 py-5 text-sm text-slate-600"><Bell className="h-5 w-5 shrink-0"/> Ainda não há avisos recentes. As novidades da escola vão aparecer aqui.</p> : <ul className="divide-y divide-slate-200 rounded-2xl border border-[#DEE5E2] bg-white/90 px-5 shadow-sm">
         {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-4"><p className="font-medium text-slate-900">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 text-sm leading-6 text-slate-600">{a.resumo}</p>}<p className="mt-2 text-xs text-slate-500">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
       </ul>}
