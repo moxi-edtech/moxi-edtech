@@ -126,7 +126,7 @@ export default function DashboardLoader() {
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-24 h-44 w-44 rounded-full bg-[#75B59A]/10 blur-2xl" />
         <div className="relative max-w-2xl space-y-3">
           <p className="text-sm capitalize tracking-wide text-[#C2DDBF]">{today}</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Olá, {firstName}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Olá, {firstName}</h1>
           {(screen.dashboard.turma_nome || screen.dashboard.ano_letivo) && <p className="text-sm text-slate-200">{[screen.dashboard.turma_nome, screen.dashboard.ano_letivo ? `Ano letivo ${screen.dashboard.ano_letivo}` : ""].filter(Boolean).join(" · ")}</p>}
           <p className="pt-1 text-base text-slate-100">O que precisas de saber hoje.</p>
         </div>
@@ -142,7 +142,7 @@ export default function DashboardLoader() {
               <div className="min-w-0"><p className="text-sm text-slate-500">{lesson.day}</p><p className="mt-1 text-lg font-semibold text-slate-900">{lesson.subject}</p></div>
             </div>
             {lesson.details.length > 0 && <p className="text-sm text-slate-600">{lesson.details.join(" · ")}</p>}
-          </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-slate-400"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 text-sm leading-6 text-slate-600">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
+          </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-slate-400"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
           <Link className={`${action} mt-5`} href={go("/aluno/horario")}>Ver o horário completo <ArrowRight className="h-4 w-4"/></Link>
         </div>
       </section>
@@ -163,18 +163,18 @@ export default function DashboardLoader() {
         </div>
       </section>}
     </div>
-    <section aria-labelledby="school-links" className="space-y-4">
+    <section aria-labelledby="school-links" className="space-y-3">
       <h2 id="school-links" className={heading}>A tua vida escolar</h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-32 min-w-0 flex-col gap-3 rounded-2xl border border-[#DEE5E2] p-4 shadow-sm transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-[#2B6044]/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} ${label === "Disciplinas" ? "bg-[#E6EDEB]" : label === "Boletim" ? "bg-[#EBE8F3]" : label === "Pagamentos" ? "bg-[#F5EBDD]" : "bg-[#E4EBF5]"}`}>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-[#2B6044]/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} ${label === "Disciplinas" ? "bg-[#E6EDEB]" : label === "Boletim" ? "bg-[#EBE8F3]" : label === "Pagamentos" ? "bg-[#F5EBDD]" : "bg-[#E4EBF5]"}`}>
           <Icon className="h-6 w-6 text-[#2B6044]" aria-hidden="true"/><div><p className="text-sm font-semibold text-slate-900">{label}</p><p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">{hint}</p></div>
         </Link>)}
       </div>
     </section>
-    <section aria-labelledby="notices" className="space-y-4">
+    <section aria-labelledby="notices" className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="notices" className={heading}>Avisos da escola</h2><Link className={action} href={go("/aluno/avisos")}>Ver todos<ArrowRight className="h-4 w-4"/></Link></div>
-      {(screen.dashboard.avisos_recentes??[]).length===0 ? <p className="flex items-start gap-3 rounded-xl border border-[#DEE5E2] bg-white/85 px-4 py-5 text-sm text-slate-600"><Bell className="h-5 w-5 shrink-0"/> Ainda não há avisos recentes. As novidades da escola vão aparecer aqui.</p> : <ul className="divide-y divide-slate-200 rounded-2xl border border-[#DEE5E2] bg-white/90 px-5 shadow-sm">
-        {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-4"><p className="font-medium text-slate-900">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 text-sm leading-6 text-slate-600">{a.resumo}</p>}<p className="mt-2 text-xs text-slate-500">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
+      {(screen.dashboard.avisos_recentes??[]).length===0 ? <p className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-3 text-sm text-muted-foreground"><Bell className="h-5 w-5 shrink-0"/> Não há avisos recentes.</p> : <ul className="divide-y divide-border rounded-xl border border-border bg-card px-4">
+        {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-3"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 text-sm leading-6 text-slate-600">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
       </ul>}
     </section>
   </main>;
