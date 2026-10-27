@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, FileText, GraduationCap } from "lucide-react";
 import { TabNotas } from "@/components/aluno/tabs/TabNotas";
@@ -26,11 +26,13 @@ export function AcademicoWorkspace() {
   const [activeTab, setActiveTab] = useState<AcademicTab>(selectedFromUrl);
   const [visited, setVisited] = useState<AcademicTab[]>([selectedFromUrl]);
   const [focusService, setFocusService] = useState<string | null>(null);
+  const tabRefs = useRef<Partial<Record<AcademicTab, HTMLButtonElement | null>>>({});
 
   const navigateTab = useCallback((tab: AcademicTab, service?: string) => {
     setActiveTab(tab);
     setVisited((current) => current.includes(tab) ? current : [...current, tab]);
     setFocusService(tab === "documentos" ? service ?? null : null);
+    tabRefs.current[tab]?.focus();
     // Muda apenas o separador. Não executa navegação Next nem remonta
     // o layout servidor; preserva aluno, ano letivo e os dados já carregados.
     const url = new URL(window.location.href);
@@ -38,6 +40,18 @@ export function AcademicoWorkspace() {
     else url.searchParams.set("aba", tab);
     window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }, []);
+
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, current: AcademicTab) => {
+    const index = validTabs.indexOf(current);
+    let next: AcademicTab | undefined;
+    if (event.key === "ArrowRight") next = validTabs[(index + 1) % validTabs.length];
+    else if (event.key === "ArrowLeft") next = validTabs[(index + validTabs.length - 1) % validTabs.length];
+    else if (event.key === "Home") next = validTabs[0];
+    else if (event.key === "End") next = validTabs[validTabs.length - 1];
+    if (!next) return;
+    event.preventDefault();
+    navigateTab(next);
+  };
 
   useEffect(() => {
     const selected = resolveAcademicTab(searchParams?.get("aba"));
@@ -71,9 +85,12 @@ export function AcademicoWorkspace() {
             id={`academic-tab-${id}`}
             aria-controls={`academic-panel-${id}`}
             aria-selected={activeTab === id}
+            tabIndex={activeTab === id ? 0 : -1}
+            ref={(element) => { tabRefs.current[id] = element; }}
+            onKeyDown={(event) => onTabKeyDown(event, id)}
             onClick={() => navigateTab(id)}
-            className={`inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 sm:gap-2 sm:px-4 sm:text-sm ${
-              activeTab === id ? "border-emerald-700 text-emerald-900" : "border-transparent text-muted-foreground hover:text-foreground"
+            className={`inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-2 sm:px-4 sm:text-sm ${
+              activeTab === id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
@@ -81,19 +98,15 @@ export function AcademicoWorkspace() {
           </button>
         ))}
       </div>
-      <section id="academic-panel-notas" role="tabpanel" aria-labelledby="academic-tab-notas" hidden={activeTab !== "notas"}>
+      <section id="academic-panel-notas" role="tabpanel" aria-labelledby="academic-tab-notas" hidden={activeTab !== "notas"} tabIndex={0}>
         <TabNotas embedded onOpenDocuments={(serviceCode) => navigateTab("documentos", serviceCode ?? undefined)} />
       </section>
-      {visited.includes("disciplinas") && (
-        <section id="academic-panel-disciplinas" role="tabpanel" aria-labelledby="academic-tab-disciplinas" hidden={activeTab !== "disciplinas"}>
-          <DisciplinasList />
-        </section>
-      )}
-      {visited.includes("documentos") && (
-        <section id="academic-panel-documentos" role="tabpanel" aria-labelledby="academic-tab-documentos" hidden={activeTab !== "documentos"}>
-          <TabDocumentos embedded focusServiceCode={focusService} onOpenNotas={() => navigateTab("notas")} />
-        </section>
-      )}
+      <section id="academic-panel-disciplinas" role="tabpanel" aria-labelledby="academic-tab-disciplinas" hidden={activeTab !== "disciplinas"} tabIndex={0}>
+        {visited.includes("disciplinas") && <DisciplinasList />}
+      </section>
+      <section id="academic-panel-documentos" role="tabpanel" aria-labelledby="academic-tab-documentos" hidden={activeTab !== "documentos"} tabIndex={0}>
+        {visited.includes("documentos") && <TabDocumentos embedded focusServiceCode={focusService} onOpenNotas={() => navigateTab("notas")} />}
+      </section>
     </div>
   );
 }
