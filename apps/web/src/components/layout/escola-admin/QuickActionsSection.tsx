@@ -237,7 +237,7 @@ function CadastroColaboradoresBody({ allowProfessor }: { allowProfessor: boolean
             type="button"
             onClick={() => setTab("funcionario")}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              tab === "funcionario" ? "bg-slate-900 text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+              tab === "funcionario" ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Funcionário
@@ -247,7 +247,7 @@ function CadastroColaboradoresBody({ allowProfessor }: { allowProfessor: boolean
             onClick={() => allowProfessor && setTab("professor")}
             disabled={!allowProfessor}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              tab === "professor" ? "bg-slate-900 text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+              tab === "professor" ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:text-foreground"
             } ${!allowProfessor ? "opacity-40 cursor-not-allowed" : ""}`}
           >
             Professor

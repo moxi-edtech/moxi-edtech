@@ -52,8 +52,8 @@ const Logo = ({ collapsed = false, href = "/" }: { collapsed?: boolean; href?: s
     </div>
     {!collapsed && (
       <div className="min-w-0">
-        <div className="font-semibold tracking-tight leading-5 text-slate-900">KLASSE</div>
-        <div className="text-xs text-slate-500 font-medium">gestão escolar</div>
+        <div className="font-semibold tracking-tight leading-5 text-foreground">KLASSE</div>
+        <div className="text-xs text-muted-foreground font-medium">gestão escolar</div>
       </div>
     )}
   </Link>
@@ -246,12 +246,12 @@ export default function PortalLayout({
                         className={clsx(
                           "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium w-full transition-all duration-200",
                           isActive
-                            ? "bg-[#1F6B3B]/10 text-[#1F6B3B] ring-1 ring-[#1F6B3B]/20"
+                            ? "bg-primary/10 text-foreground ring-1 ring-primary/20"
                             : "text-foreground hover:bg-muted hover:text-foreground"
                         )}
                         title={item.label}
                       >
-                        <IconComponent className={clsx("h-5 w-5 shrink-0 transition-colors", isActive ? "text-[#1F6B3B]" : "text-muted-foreground group-hover:text-foreground")} />
+                        <IconComponent className={clsx("h-5 w-5 shrink-0 transition-colors", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                         {!collapsed && <span className="truncate">{item.label}</span>}
                         {item.badge && !collapsed && (
                           <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
@@ -271,8 +271,8 @@ export default function PortalLayout({
                 "flex items-center gap-3 rounded-2xl p-2 transition-colors",
                 !collapsed && "bg-muted border border-border"
               )}>
-                <div className="h-10 w-10 rounded-xl bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-black text-[#1F6B3B]">{userInitials}</span>
+                <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-black text-foreground">{userInitials}</span>
                 </div>
                 {!collapsed && (
                   <div className="min-w-0">
@@ -338,7 +338,7 @@ export default function PortalLayout({
 
                   <SignOutButton
                     label="Sair"
-                    className="px-3 py-1.5 text-xs bg-slate-500 text-white rounded-md hover:bg-slate-600 transition-colors"
+                    className="px-3 py-1.5 text-xs bg-muted text-foreground rounded-md hover:bg-slate-600 transition-colors"
                     title="Sair"
                   />
                 </div>

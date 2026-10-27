@@ -329,7 +329,7 @@ export default function ConfiguracoesPage({ params }: Props) {
                       Progresso: {statusLoading ? "..." : `${progressPercent}%`}
                     </span>
                     {pageSetupStatus.next_action?.label && (
-                      <span className="rounded-full bg-[#1F6B3B]/8 px-2.5 py-1 font-medium text-[#1F6B3B]">
+                      <span className="rounded-full bg-emerald/10 px-2.5 py-1 font-medium text-foreground">
                         Próximo passo: {pageSetupStatus.next_action.label}
                       </span>
                     )}
@@ -340,14 +340,14 @@ export default function ConfiguracoesPage({ params }: Props) {
                 <button
                   type="button"
                   onClick={() => setForceWizard(true)}
-                  className="inline-flex items-center justify-center rounded-xl bg-[#1F6B3B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#17532e]"
+                  className="inline-flex items-center justify-center rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
                 >
                   {nextActionLabel}
                 </button>
                 {nextActionHref ? (
                   <Link
                     href={nextActionHref}
-                    className="inline-flex items-center justify-center rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 px-4 py-2.5 text-sm font-semibold text-[#1F6B3B] hover:bg-[#1F6B3B]/10"
+                    className="inline-flex items-center justify-center rounded-xl border border-emerald/20 bg-emerald/10 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-emerald/10"
                   >
                     Abrir módulo recomendado
                   </Link>
@@ -355,7 +355,7 @@ export default function ConfiguracoesPage({ params }: Props) {
                 {!nextActionHref && primaryBlockerAction?.kind === "link" ? (
                   <Link
                     href={primaryBlockerAction.href}
-                    className="inline-flex items-center justify-center rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 px-4 py-2.5 text-sm font-semibold text-[#1F6B3B] hover:bg-[#1F6B3B]/10"
+                    className="inline-flex items-center justify-center rounded-xl border border-emerald/20 bg-emerald/10 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-emerald/10"
                   >
                     {primaryBlockerAction.label}
                   </Link>
@@ -376,11 +376,11 @@ export default function ConfiguracoesPage({ params }: Props) {
                     key={item.label}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${
                       item.ok
-                        ? "border-[#1F6B3B]/15 bg-[#1F6B3B]/5 text-[#1F6B3B]"
+                        ? "border-emerald/20 bg-emerald/10 text-foreground"
                         : "border-border bg-muted text-foreground/80"
                     }`}
                   >
-                    <span className={`inline-block h-2 w-2 rounded-full ${item.ok ? "bg-[#1F6B3B]" : "bg-border"}`} />
+                    <span className={`inline-block h-2 w-2 rounded-full ${item.ok ? "bg-emerald" : "bg-border"}`} />
                     <span>{item.label}</span>
                   </div>
                 ))}

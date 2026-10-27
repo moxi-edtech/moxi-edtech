@@ -386,7 +386,7 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
             <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-2xl sm:p-6 space-y-5 scale-100 animate-in zoom-in-95">
                 <div className="flex justify-between items-center border-b border-border pb-4">
                     <h3 className="font-bold text-lg text-foreground">{initialData ? "Editar Regra" : "Nova Regra de Preço"}</h3>
@@ -518,7 +518,7 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                     </div>
 
                     <div className="flex justify-end pt-2">
-                        <button type="submit" disabled={saving} className="w-full bg-foreground text-background py-3 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition disabled:opacity-50">
+                        <button type="submit" disabled={saving} className="w-full bg-foreground text-background py-3 rounded-xl font-bold shadow-lg hover:bg-foreground/90 transition disabled:opacity-50">
                             {saving ? "A guardar..." : "Salvar Regra"}
                         </button>
                     </div>

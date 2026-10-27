@@ -406,7 +406,7 @@ export default function FinanceiroConfiguracoesPage() {
                       checked={config.bloquear_inadimplentes}
                       onChange={(e) => setConfig({ ...config, bloquear_inadimplentes: e.target.checked })}
                     />
-                    <div className="peer h-6 w-11 rounded-full bg-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-red-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-red-300"></div>
+                    <div className="peer h-6 w-11 rounded-full bg-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-red-600 peer-checked:after:translate-x-full peer-checked:after:border-border peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring"></div>
                   </label>
                 </div>
                 

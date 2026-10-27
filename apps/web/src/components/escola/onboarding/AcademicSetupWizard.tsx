@@ -210,7 +210,7 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
       <div className="relative flex justify-between">
         <div className="absolute left-0 top-1/2 -z-10 h-0.5 w-full -translate-y-1/2 bg-border" />
         <div 
-          className="absolute left-0 top-1/2 -z-10 h-0.5 -translate-y-1/2 bg-[#1F6B3B] transition-all duration-500"
+          className="absolute left-0 top-1/2 -z-10 h-0.5 -translate-y-1/2 bg-emerald transition-all duration-500"
           style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
         />
 
@@ -223,9 +223,9 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
                 className={`
                   flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300
                   ${isCompleted 
-                    ? "border-[#1F6B3B] bg-[#1F6B3B] text-white" 
+                    ? "border-emerald bg-emerald text-white" 
                     : isActive 
-                      ? "border-[#1F6B3B] bg-card text-[#1F6B3B] ring-4 ring-[#1F6B3B]/10" 
+                      ? "border-emerald bg-card text-foreground ring-4 ring-emerald/10" 
                       : "border-border bg-card text-muted-foreground"
                   }
                 `}
@@ -860,7 +860,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   return (
     <div className="min-h-full bg-background py-6 px-4 sm:py-12 sm:px-6 font-sans text-left">
       <div className="mx-auto mb-10 max-w-5xl text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#1F6B3B]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B]">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-foreground">
           <School className="h-3 w-3" /> Setup Inicial
         </div>
         <h1 className="text-3xl font-bold text-foreground text-center">Setup do {schoolDisplayName || "Sistema"}</h1>
@@ -1022,13 +1022,13 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                     <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Como editar depois</p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Link href={portalHref("/admin/configuracoes/calendario")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/admin/configuracoes/calendario")} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground no-underline">
                           Calendário
                         </Link>
-                        <Link href={portalHref("/admin/configuracoes/turmas")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/admin/configuracoes/turmas")} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground no-underline">
                           Turmas e currículo
                         </Link>
-                        <Link href={portalHref("/horarios/quadro")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/horarios/quadro")} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground no-underline">
                           Quadro de horários
                         </Link>
                       </div>
@@ -1054,7 +1054,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                           <p className="text-sm font-semibold text-foreground">{item.title}</p>
                           <p className="mt-1 text-xs leading-relaxed text-foreground/80">{item.detail}</p>
                           <div className="mt-3">
-                            <Link href={item.href} className="inline-flex rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-white no-underline">
+                            <Link href={item.href} className="inline-flex rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-amber-900 no-underline">
                               Abrir correção
                             </Link>
                           </div>
@@ -1066,7 +1066,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
               ) : (
                 <>
               <div className="text-center max-w-xl mx-auto space-y-3">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald/10 text-foreground">
                   <Wand2 className="h-6 w-6" />
                 </div>
                 <h3 className="text-lg font-bold text-foreground">Resumo e Preview de Geração</h3>
@@ -1079,7 +1079,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                 {/* CARD 1: CALENDÁRIO & PERÍODOS */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
                   <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <CalendarCheck className="h-4 w-4 text-[#1F6B3B]" />
+                    <CalendarCheck className="h-4 w-4 text-foreground" />
                     <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Sessão & Trimestres</h4>
                   </div>
                   <div className="text-xs text-foreground/80 space-y-1">
@@ -1090,7 +1090,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                       <div key={p.numero} className="p-3 rounded-lg bg-muted border border-border space-y-1">
                         <div className="flex justify-between items-center text-[11px] font-bold text-foreground">
                           <span>{p.numero}º Trimestre</span>
-                          <span className="text-[9px] text-[#1F6B3B] bg-[#1F6B3B]/10 px-1.5 py-0.5 rounded-md font-semibold">Ativo</span>
+                          <span className="text-[9px] text-foreground bg-emerald/10 px-1.5 py-0.5 rounded-md font-semibold">Ativo</span>
                         </div>
                         <p className="text-[10px] text-muted-foreground">
                           Datas: {safeFormatDate(p.data_inicio)} a {safeFormatDate(p.data_fim)}
@@ -1108,7 +1108,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                 {/* CARD 2: REGRAS PEDAGÓGICAS */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
                   <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <GraduationCap className="h-4 w-4 text-[#1F6B3B]" />
+                    <GraduationCap className="h-4 w-4 text-foreground" />
                     <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Regras de Lançamento</h4>
                   </div>
                   <div className="space-y-3 text-xs text-foreground/80">
@@ -1133,7 +1133,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                 {/* CARD 3: ESTRUTURA ACADÉMICA (TURMAS) */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
                   <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <Layers className="h-4 w-4 text-[#1F6B3B]" />
+                    <Layers className="h-4 w-4 text-foreground" />
                     <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Estrutura & Turmas</h4>
                   </div>
                   <div className="space-y-3 text-xs text-foreground/80">
@@ -1143,8 +1143,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                         <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Classes Ativas</span>
                       </div>
                       <div className="p-3 bg-muted rounded-lg border border-border">
-                        <span className="block text-lg font-black text-[#1F6B3B]">{totalTurmas}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-[#1F6B3B]/70">Total Turmas</span>
+                        <span className="block text-lg font-black text-foreground">{totalTurmas}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Total Turmas</span>
                       </div>
                     </div>
                     <div className="pt-2 space-y-1.5">
@@ -1157,7 +1157,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                 {/* CARD 4: MENSALIDADES & PREÇOS */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
                   <div className="flex items-center gap-2 border-b border-border pb-3">
-                    <Banknote className="h-4 w-4 text-[#1F6B3B]" />
+                    <Banknote className="h-4 w-4 text-foreground" />
                     <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Financeiro Base</h4>
                   </div>
                   <div className="space-y-3 text-xs text-foreground/80">
@@ -1245,7 +1245,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                               {action.kind === "link" ? (
                                 <Link
                                   href={action.href}
-                                  className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-slate-800"
+                                  className="inline-flex items-center rounded-lg bg-primary px-3 py-2 text-[11px] font-bold text-primary-foreground no-underline transition-colors hover:bg-primary/90"
                                 >
                                   {action.label}
                                 </Link>
@@ -1254,7 +1254,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                                   type="button"
                                   onClick={() => handleAutoResolve(action.action)}
                                   disabled={Boolean(resolvingAction)}
-                                  className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+                                  className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-amber-900 transition-colors hover:bg-amber-700 disabled:opacity-50"
                                 >
                                   {resolvingAction === action.action ? "A executar..." : action.label}
                                 </button>
@@ -1291,17 +1291,17 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           </button>
           {showFinalSuccess && finalSummary ? (
             <div className="flex items-center gap-3">
-              <Link href={portalHref("/admin/dashboard")} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white no-underline shadow-md">
+              <Link href={portalHref("/admin/dashboard")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground no-underline shadow-md">
                 Ir ao dashboard
               </Link>
               {onComplete ? (
-                <button onClick={onComplete} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-3 text-sm font-bold text-white shadow-md">
+                <button onClick={onComplete} className="inline-flex items-center gap-2 rounded-xl bg-amber px-6 py-3 text-sm font-bold text-amber-900 shadow-md">
                   Fechar onboarding
                 </button>
               ) : null}
             </div>
           ) : (
-            <button onClick={handleNext} disabled={applyingPreset || creatingSession || finalizing || !isContextReady || (step === 3 && matrix.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:brightness-105 disabled:opacity-50">
+            <button onClick={handleNext} disabled={applyingPreset || creatingSession || finalizing || !isContextReady || (step === 3 && matrix.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-amber px-8 py-3 text-sm font-bold text-amber-900 shadow-md transition-all hover:brightness-105 disabled:opacity-50">
               {applyingPreset || creatingSession || finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : (step === 5 ? "Finalizar" : "Continuar")}
               <ChevronRight className="h-4 w-4" />
             </button>
