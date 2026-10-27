@@ -73,14 +73,14 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   let user: { id: string; email?: string | null } | null = null;
   try {
     // A identidade é validada no servidor: getSession() apenas lê cookies.
-    const authResult = await supabase.auth.getUser();
-    if (isRefreshTokenNotFoundError(authResult.error)) {
+    const userResult = await supabase.auth.getUser();
+    if (isRefreshTokenNotFoundError(userResult.error)) {
       redirect("/auth-recover?next=/redirect");
     }
-    if (authResult.error && !isAuthSessionMissingError(authResult.error)) {
-      throw authResult.error;
+    if (userResult.error && !isAuthSessionMissingError(userResult.error)) {
+      throw userResult.error;
     }
-    user = authResult.data.user ?? null;
+    user = userResult.data.user ?? null;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
       redirect("/auth-recover?next=/redirect");
