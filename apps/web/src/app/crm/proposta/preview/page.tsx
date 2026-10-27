@@ -1,294 +1,269 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { Printer, ArrowLeft, ShieldCheck, HelpCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { format } from "date-fns";
-import { pt } from "date-fns/locale";
+import {
+  formatKz,
+  formatNumber,
+  proposalPrintErrors,
+  PROPOSAL_PLANS,
+  readProposalParams,
+} from "@/lib/crm/commercial-proposal";
+
+const CORE_PORTALS = [
+  ["Secretaria", "Matrículas, alunos, turmas, documentos e rotinas administrativas."],
+  ["Professor", "Turmas, frequência, avaliações e lançamento de notas."],
+  ["Aluno", "Acompanhamento académico, frequência, avaliações e documentos disponibilizados."],
+  ["Direção", "Visão consolidada dos processos académicos, administrativos e financeiros."],
+] as const;
+
+const CORE_FEATURES = [
+  "Gestão de alunos, responsáveis, turmas e professores.",
+  "Matrículas e organização do ano letivo.",
+  "Gestão financeira de propinas e pagamentos, com identificação de pendências.",
+  "Frequência, avaliações e acompanhamento académico.",
+  "Emissão e consulta de documentos e relatórios disponíveis no plano contratado.",
+  "Perfis de acesso e permissões de utilizadores conforme a função.",
+];
+
+function Section({ index, title, children }: { index: number; title: string; children: ReactNode }) {
+  return (
+    <section className="proposal-section border-t border-slate-200 pt-5 mt-6">
+      <h2 className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#1F6B3B] mb-3">
+        {index}. {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Field({ title, value }: { title: string; value: string }) {
+  return (
+    <p className="text-[11px] leading-[1.65] text-slate-700">
+      <span className="font-bold text-slate-800">{title}:</span> {value}
+    </p>
+  );
+}
+
+function Signature({ title, role }: { title: string; role: string }) {
+  return (
+    <div className="proposal-keep break-inside-avoid">
+      <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#1F6B3B] mb-3">{title}</p>
+      <p className="text-[11px] leading-7">Nome: __________________________________</p>
+      <p className="text-[11px] leading-7">{role}: __________________________________</p>
+      <p className="text-[11px] leading-7">Data: ____ / ____ / ______</p>
+      <p className="text-[11px] leading-7">Assinatura: ______________________________</p>
+    </div>
+  );
+}
 
 function ProposalPreviewContent() {
-  const searchParams = useSearchParams();
+  const params = useSearchParams();
+  const proposal = readProposalParams(new URLSearchParams(params?.toString() || ""));
+  const errors = proposalPrintErrors(proposal);
+  const [issuedOn, setIssuedOn] = useState("");
 
-  const escola = searchParams?.get("escola") || "Escola Exemplo";
-  const contacto = searchParams?.get("contacto") || "Não informado";
-  const plano = searchParams?.get("plano") || "profissional";
-  const alunos = Number(searchParams?.get("alunos") || "0");
-  const trial = Number(searchParams?.get("trial") || "15");
-  const taxa = Number(searchParams?.get("taxa") || "0");
-  const mensalidade = Number(searchParams?.get("mensalidade") || "0");
-  const preset = searchParams?.get("preset") || "";
+  useEffect(() => {
+    setIssuedOn(new Date().toLocaleDateString("pt-AO"));
+  }, []);
 
-  const niveisRaw = searchParams?.get("niveis") || "";
-  const secNome = searchParams?.get("sec_nome") || "";
-  const secEmail = searchParams?.get("sec_email") || "";
-  const secTel = searchParams?.get("sec_tel") || "";
-  const finNome = searchParams?.get("fin_nome") || "";
-  const finEmail = searchParams?.get("fin_email") || "";
-  const finTel = searchParams?.get("fin_tel") || "";
-  const pedNome = searchParams?.get("ped_nome") || "";
-  const pedEmail = searchParams?.get("ped_email") || "";
-  const pedTel = searchParams?.get("ped_tel") || "";
-
-  const planName = plano === "essencial" ? "Klasse Essencial" : plano === "premium" ? "Klasse Premium" : "Klasse Profissional";
-
-  const presetNameMap: Record<string, string> = {
-    pre_escolar: "Educação Pré-Escolar",
-    primario_generico: "Ensino Primário (1ª-6ª Classe)",
-    esg_ciclo1: "Iº Ciclo Secundário (7ª-9ª Classe)",
-    esg_puniv_cfb: "PUNIV - Ciências Físicas e Biol.",
-    esg_puniv_cej: "PUNIV - Ciências Econ. e Jurídicas",
-    esg_puniv_cch: "PUNIV - Ciências Sociais e Humanas",
-    tec_informatica: "Técnico de Informática",
-    tec_contabilidade: "Técnico de Contabilidade",
-    tec_informatica_gestao: "Técnico de Informática de Gestão",
-    tec_saude_enfermagem: "Técnico de Enfermagem",
-    tec_saude_analises: "Técnico de Análises Clínicas",
-  };
-
-  const niveisMap: Record<string, string> = {
-    primario: "Ensino Primário",
-    ciclo1: "Iº Ciclo Secundário",
-    puniv: "PUNIV / Geral",
-    tecnico: "Ensino Técnico",
-  };
-  const niveisList = niveisRaw ? niveisRaw.split(",").map((n) => niveisMap[n] || n) : [];
-
-  const PLAN_FEATURES = {
-    essencial: [
-      "Controle de Matrículas e Turmas",
-      "Pautas Académicas de Notas e Frequências",
-      "Portal do Professor (Diário de Classe)",
-      "Histórico Escolar e Relatórios Básicos",
-    ],
-    profissional: [
-      "Tudo do Essencial",
-      "Financeiro Completo e Faturamento Automático",
-      "Cobranças por SMS e Notificações de Pagamento",
-      "Relatórios de Inadimplência e Projeção Financeira",
-      "Conciliação Bancária Automatizada",
-    ],
-    premium: [
-      "Tudo do Profissional",
-      "Portal do Aluno e Encarregado de Educação",
-      "Emissão de Documentos e Diplomas com QR Code Seguro",
-      "Relatórios Avançados de Auditoria e KPI",
-      "Suporte Prioritário L2/L3 com SLA Estendido",
-    ],
-  };
-
-  const currentFeatures = PLAN_FEATURES[plano as keyof typeof PLAN_FEATURES] || PLAN_FEATURES.profissional;
+  const plan = proposal.plano ? PROPOSAL_PLANS[proposal.plano] : null;
+  const valorInicial = proposal.taxa !== null && proposal.mensalidade !== null
+    ? proposal.taxa + proposal.mensalidade
+    : null;
+  const canPrint = errors.length === 0 && Boolean(issuedOn);
 
   return (
-    <div className="min-h-screen bg-zinc-50 py-10 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0 print:px-0">
-      {/* Top action bar (hidden in print) */}
-      <div className="max-w-4xl mx-auto mb-6 flex items-center justify-between bg-white p-4 rounded-2xl border border-zinc-200/60 shadow-sm print:hidden">
-        <Button
-          type="button"
-          onClick={() => window.close()}
-          variant="outline"
-          className="h-9 px-4 rounded-xl border-zinc-200 bg-white text-xs font-semibold text-zinc-700 flex items-center gap-1.5"
-        >
-          <ArrowLeft size={14} /> Voltar para o CRM
+    <div className="min-h-screen bg-slate-100 px-4 py-7 text-slate-800 print:bg-white print:p-0">
+      <div className="mx-auto mb-5 flex max-w-[210mm] flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm print:hidden">
+        <Button type="button" variant="outline" onClick={() => window.close()} className="h-9 rounded-xl border-slate-200 text-xs font-semibold">
+          <ArrowLeft size={16} className="mr-2" /> Voltar ao CRM
         </Button>
-        <Button
-          type="button"
-          onClick={() => window.print()}
-          className="h-9 px-4 rounded-xl bg-zinc-950 text-xs font-bold text-white hover:bg-zinc-800 flex items-center gap-1.5 border-none"
-        >
-          <Printer size={14} /> Imprimir Proposta / PDF
+        <Button type="button" disabled={!canPrint} onClick={() => window.print()} className="h-9 rounded-xl border-0 bg-[#E3B23C] text-white text-xs font-bold hover:brightness-95">
+          <Printer size={16} className="mr-2" /> Imprimir / guardar PDF
         </Button>
       </div>
 
-      {/* Main Document Body */}
-      <div className="max-w-4xl mx-auto bg-white p-12 sm:p-16 rounded-3xl border border-zinc-200/80 shadow-md print:shadow-none print:border-none print:p-0">
-        
-        {/* Document Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-zinc-100 pb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-3 h-3 rounded-full bg-[#1F6B3B]" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1F6B3B]">Proposta Comercial Klasse</span>
-            </div>
-            <h1 className="text-3xl font-black tracking-tight text-zinc-900 leading-none">
-              Proposta de Adesão
-            </h1>
-            <p className="text-sm text-zinc-500 font-semibold mt-2.5">
-              Ref: KL-PROP-{searchParams?.get("ref") || "PRÉVIA"}
-            </p>
-          </div>
-          <div className="text-right sm:text-right flex flex-col items-end">
-            <span className="text-lg font-black tracking-widest text-zinc-950 font-serif">KLASSE</span>
-            <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-widest mt-1">Sistemas de Gestão Escolar</span>
-            <span className="text-[10px] font-medium text-zinc-500 mt-2">www.klasse.ao · comercial@klasse.ao</span>
-          </div>
+      {errors.length > 0 && (
+        <div role="alert" className="mx-auto mb-5 max-w-[210mm] rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 print:hidden">
+          <div className="flex items-center gap-2 font-bold mb-2"><AlertCircle size={16} /> Complete os dados no CRM antes de imprimir</div>
+          <ul className="list-disc pl-5 space-y-1">{errors.map((error) => <li key={error}>{error}</li>)}</ul>
+        </div>
+      )}
+
+      <main className="commercial-proposal mx-auto w-full max-w-[210mm] rounded-xl bg-white px-9 py-10 shadow-sm print:w-auto print:max-w-none print:rounded-none print:p-0 print:shadow-none">
+        <header className="proposal-keep border-b-2 border-[#E3B23C] pb-5 text-center">
+          <p className="text-[22px] font-extrabold tracking-[0.14em] text-[#1F6B3B]">KLASSE</p>
+          <h1 className="mt-2 text-[21px] font-extrabold uppercase tracking-tight text-[#1F6B3B]">Proposta Comercial</h1>
+          <p className="mt-1 text-[12px] font-semibold text-slate-500">Plataforma de Gestão Escolar KLASSE</p>
+        </header>
+
+        <div className="proposal-keep mt-5 rounded-lg border-l-[3px] border-[#1F6B3B] bg-[#F5F9F6] px-5 py-4">
+          <Field title="Escola" value={proposal.escola || "Por confirmar"} />
+          <Field title="Responsável" value={proposal.contacto || "A confirmar na reunião"} />
+          <Field title="N.º aproximado de alunos" value={proposal.alunos !== null ? formatNumber(proposal.alunos) : "Por confirmar"} />
+          <Field title="Plano" value={plan?.label.toUpperCase() || "Por confirmar"} />
+          <Field title="Data" value={issuedOn || "A gerar"} />
+          <Field title="Validade da proposta" value="15 dias corridos a partir da emissão" />
         </div>
 
-        {/* Client & Partnership Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8 border-b border-zinc-100">
-          <div>
-            <h3 className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-2">Destinatário (Escola)</h3>
-            <p className="text-base font-bold text-zinc-800">{escola}</p>
-            <p className="text-xs font-medium text-zinc-500 mt-1.5">
-              Decisor / Ponto de Contacto: <span className="font-semibold text-zinc-800">{contacto}</span>
-            </p>
-          </div>
-          <div>
-            <h3 className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-2">Detalhes da Proposta</h3>
-            <p className="text-xs font-medium text-zinc-600">
-              Data de Emissão: <span className="font-bold text-zinc-800">{format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: pt })}</span>
-            </p>
-            <p className="text-xs font-medium text-zinc-600 mt-1">
-              Validade da Proposta: <span className="font-bold text-zinc-800">15 dias corridos</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Commercial Terms Summary */}
-        <div className="py-8">
-          <h3 className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-4">Condições Comerciais Acordadas</h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/50 flex flex-col justify-between">
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Plano Escolhido</span>
-                <p className="text-lg font-bold text-zinc-800 mt-1">{planName}</p>
-              </div>
-              <div className="mt-3 text-[10px] font-medium text-zinc-500 space-y-0.5">
-                <p>Volume: {alunos > 0 ? `${alunos} alunos` : "Não definido"}</p>
-                {preset && (
-                  <p className="font-bold text-[#1F6B3B]">
-                    Modelo: {presetNameMap[preset] || preset}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/50">
-              <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Taxa de Ativação</span>
-              <p className="text-lg font-bold text-[#1F6B3B] mt-1 font-mono">
-                {taxa > 0 ? `Kz ${taxa.toLocaleString("pt-PT")}` : "Isento"}
+        <Section index={1} title="Objetivo">
+          <p className="text-[11px] leading-[1.7]">
+            A KLASSE propõe apoiar a transição da escola para uma gestão integrada e digital,
+            centralizando processos académicos, administrativos e financeiros e reduzindo a dependência
+            de planilhas, retrabalho e controlos dispersos.
+          </p>
+          {plan && (
+            <div className="proposal-keep mt-4 rounded-lg border border-emerald-100 bg-[#F5F9F6] p-4">
+              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wide text-[#1F6B3B]">
+                Benefícios do plano {plan.label}
               </p>
-              <span className="text-[10px] font-medium text-zinc-500 block mt-1">Pago na assinatura do contrato</span>
-            </div>
-            <div className="p-5 rounded-2xl bg-[#1F6B3B]/5 border border-[#1F6B3B]/10">
-              <span className="text-[9px] font-black uppercase tracking-wider text-[#1F6B3B]">Subscrição Mensal</span>
-              <p className="text-lg font-bold text-[#1F6B3B] mt-1 font-mono">
-                {mensalidade > 0 ? `Kz ${mensalidade.toLocaleString("pt-PT")}` : "Consulte departamento comercial"}
+              <p className="text-[11px] font-bold">
+                {plan.alunos === null ? "Alunos sem limite contratual padrão" : "Até " + formatNumber(plan.alunos) + " alunos"}
+                {"  ·  "}
+                {plan.utilizadores === null ? "Utilizadores conforme contrato" : "Até " + formatNumber(plan.utilizadores) + " utilizadores"}
+                {"  ·  "}{plan.storage}
               </p>
-              <span className="text-[10px] font-medium text-[#1F6B3B]/80 block mt-1">Faturamento pós-trial</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Plan Features */}
-        <div className="py-6 border-t border-zinc-100">
-          <h3 className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-4">Escopo dos Serviços Incluídos</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2.5">
-              {currentFeatures.map((feat, index) => (
-                <div key={index} className="flex items-start gap-2 text-xs font-semibold text-zinc-700">
-                  <ShieldCheck size={14} className="text-[#1F6B3B] shrink-0 mt-0.5" />
-                  <span>{feat}</span>
-                </div>
-              ))}
-            </div>
-            <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex gap-3 text-xs leading-relaxed text-amber-900 font-medium">
-              <HelpCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">Período de Demonstração (Trial)</p>
-                <p className="mt-1 text-amber-800/90 font-semibold">
-                  A escola usufruirá de **{trial} dias** de licença gratuita sem compromisso, com suporte básico de onboarding e acesso total a todas as funcionalidades do plano contratado para teste operacional.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Níveis de Ensino e Contas de Acesso */}
-        {(niveisList.length > 0 || secNome || finNome || pedNome) && (
-          <div className="py-6 border-t border-zinc-100">
-            <h3 className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-4">Estrutura Acadêmica & Credenciais Pré-configuradas</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-zinc-700">
-              {niveisList.length > 0 && (
-                <div>
-                  <p className="font-bold text-zinc-800 mb-2">Níveis Pedagógicos Contratados:</p>
-                  <ul className="list-disc list-inside space-y-1 font-semibold text-zinc-600">
-                    {niveisList.map((nivel, idx) => (
-                      <li key={idx}>{nivel}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {(secNome || finNome || pedNome) && (
-                <div className="space-y-3">
-                  <p className="font-bold text-zinc-800">Contas de Acesso Administrativas Autodeclaradas:</p>
-                  <div className="space-y-2 text-[11px] leading-relaxed">
-                    {secNome && (
-                      <p>
-                        <span className="font-bold text-[#1F6B3B]">Secretaria Geral:</span> {secNome} {secEmail ? `(${secEmail})` : ""} {secTel ? `· Tel: ${secTel}` : ""}
-                      </p>
-                    )}
-                    {finNome && (
-                      <p>
-                        <span className="font-bold text-[#1F6B3B]">Diretoria Financeira:</span> {finNome} {finEmail ? `(${finEmail})` : ""} {finTel ? `· Tel: ${finTel}` : ""}
-                      </p>
-                    )}
-                    {pedNome && (
-                      <p>
-                        <span className="font-bold text-[#1F6B3B]">Coordenação Pedagógica / Ops:</span> {pedNome} {pedEmail ? `(${pedEmail})` : ""} {pedTel ? `· Tel: ${pedTel}` : ""}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* SLA and Contracts */}
-        <div className="py-6 border-t border-zinc-100 space-y-4">
-          <h3 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Termos Gerais de Contratação e SLAs</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-[10px] text-zinc-500 leading-relaxed font-semibold">
-            <div className="space-y-2">
-              <p className="font-bold text-zinc-700 uppercase">1. Implantação e Ativação</p>
-              <p>
-                A ativação oficial das pautas e liberação do acesso de alunos está sujeita à conclusão do checklist técnico e assinatura digital do Termo de Aceite pelo Diretor.
+              <p className="mt-1 text-[10px] leading-relaxed">
+                Portais do Aluno, Professor, Secretaria e Direção · Documentos MED incluídos · {plan.network}.
+              </p>
+              <p className="mt-1 text-[10px] text-slate-500">
+                {plan.suporte}. Condições anuais e eventuais descontos dependem de proposta específica.
               </p>
             </div>
-            <div className="space-y-2">
-              <p className="font-bold text-zinc-700 uppercase">2. Níveis de SLA de Suporte L1</p>
-              <p>
-                Os tempos de atendimento a incidentes pelo parceiro são regulados por contrato:
-                - Gravidade Alta: Resposta em até 15 min · Resolução em até 2 horas.
-                - Gravidade Média: Resposta em até 1 hora · Resolução em até 8 horas.
-                - Gravidade Baixa: Resposta em até 4 horas · Resolução em até 24 horas.
+          )}
+        </Section>
+
+        <Section index={2} title="Escopo da solução">
+          <h3 className="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-slate-700">Portais incluídos</h3>
+          <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2 print:grid-cols-2">
+            {CORE_PORTALS.map(([title, description]) => (
+              <p key={title} className="text-[10px] leading-[1.6]">
+                <span className="font-extrabold text-[#1F6B3B]">{title}</span> — {description}
               </p>
-            </div>
+            ))}
           </div>
-        </div>
+          <ul className="mt-3 list-disc space-y-1 pl-4 text-[11px] leading-[1.6]">
+            {CORE_FEATURES.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+          {proposal.niveis.length > 0 && (
+            <p className="mt-3 text-[10px] text-slate-600">
+              <span className="font-bold">Níveis de ensino previstos:</span> {proposal.niveis.join(" · ")}.
+            </p>
+          )}
+        </Section>
 
-        {/* Signatures Area */}
-        <div className="mt-16 pt-16 border-t border-zinc-100 grid grid-cols-2 gap-12 text-center text-xs font-bold text-zinc-700">
-          <div className="flex flex-col items-center">
-            <div className="w-48 border-b border-zinc-300 mb-2 h-10" />
-            <p>Pela KLASSE / Parceiro Comercial</p>
-            <p className="text-[10px] font-medium text-zinc-400 mt-1">Assinatura e Carimbo</p>
+        <Section index={3} title="Condições comerciais">
+          <div className="proposal-keep rounded-lg border border-emerald-100 bg-[#F5F9F6] p-4">
+            <p className="text-[21px] font-extrabold text-[#1F6B3B]">{formatKz(proposal.mensalidade)} <span className="text-[12px] font-semibold">/ mês</span></p>
+            <p className="text-[11px] font-bold">Plano {plan?.label || "Por confirmar"}</p>
+            <p className="mt-2 text-[11px] leading-relaxed">
+              Taxa de ativação: <strong>{proposal.taxa === 0 ? "Isenta (Kz 0)" : formatKz(proposal.taxa)}</strong>
+              {" · "}Periodicidade proposta: mensal{" · "}Vencimento no dia 5 de cada mês.
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed">
+              Pagamento inicial: <strong>{formatKz(valorInicial)}</strong> (taxa de ativação e primeira mensalidade antecipada).
+            </p>
           </div>
-          <div className="flex flex-col items-center">
-            <div className="w-48 border-b border-zinc-300 mb-2 h-10" />
-            <p>Pelo Cliente / {escola}</p>
-            <p className="text-[10px] font-medium text-zinc-400 mt-1">Assinatura e Carimbo</p>
-          </div>
-        </div>
+          <p className="mt-3 text-[11px] leading-[1.7]">
+            A subscrição inclui acesso contínuo à KLASSE, infraestrutura do plano, manutenção,
+            atualizações e suporte durante a vigência, conforme a Política de Suporte e Níveis de Serviço (SLA).
+          </p>
+          <p className="mt-2 text-[11px] leading-[1.7]">
+            No plano mensal, a primeira mensalidade é paga antecipadamente e creditada para o primeiro ciclo
+            completo de cobrança após a entrada em funcionamento. Se a entrada em funcionamento ocorrer fora
+            do dia 5, o período até ao próximo dia 5 fica incluído sem cobrança adicional. As mensalidades
+            seguintes vencem no dia 5 de cada mês.
+          </p>
+          {proposal.trial !== null && proposal.trial > 0 && (
+            <p className="mt-2 text-[11px] leading-[1.7]">
+              <strong>Período de demonstração negociado:</strong> {proposal.trial} dias. As datas e a relação
+              entre o período de demonstração e a cobrança inicial serão formalizadas no Termo de Adesão.
+            </p>
+          )}
+        </Section>
 
-      </div>
+        <Section index={4} title="Pagamento">
+          <div className="proposal-keep grid gap-x-4 gap-y-1 sm:grid-cols-2 print:grid-cols-2">
+            <Field title="Banco" value="Banco Yetu S.A" />
+            <Field title="Titular" value="MOXI SOLUCOES COMERCIO G P S SU LDA" />
+            <Field title="Número de conta" value="10117234810001" />
+            <Field title="IBAN" value="AO06 0066 0000 1017 2348 10197" />
+            <Field title="Kwik" value="006600001017234810197" />
+          </div>
+          <p className="mt-3 text-[11px] leading-[1.6]">A confirmação do pagamento poderá ser enviada para <strong>contato@klasse.ao</strong> ou WhatsApp <strong>+244 933 349 106</strong>.</p>
+        </Section>
+
+        <Section index={5} title="Implantação inicial">
+          <p className="proposal-keep mb-3 rounded-lg bg-slate-50 p-3 text-center text-[10px] font-bold tracking-wide text-[#1F6B3B]">
+            Aceite → Ativação → Configuração → Formação → Entrada em funcionamento
+          </p>
+          <p className="text-[11px] leading-[1.7]">
+            A taxa de ativação inclui a configuração inicial da escola, preparação do ambiente, criação de
+            acessos administrativos, apoio à importação inicial dos dados acordados, formação da equipa e
+            acompanhamento assistido durante os primeiros 7–14 dias após a entrada em funcionamento.
+          </p>
+        </Section>
+
+        <Section index={6} title="Premissas">
+          <ul className="list-disc space-y-1 pl-4 text-[11px] leading-[1.7]">
+            <li>A escola deverá fornecer dados corretos e em formato utilizável para migração.</li>
+            <li>Customizações, integrações ou migração de histórico fora do escopo poderão ser avaliadas e orçadas separadamente.</li>
+            <li>Após o aceite contratual e a confirmação do pagamento inicial, a KLASSE definirá e comunicará a data de ativação.</li>
+          </ul>
+        </Section>
+
+        <Section index={7} title="Aceite comercial">
+          <p className="mb-4 text-[11px] leading-[1.7]">
+            Ao aceitar esta proposta, a escola confirma o interesse na contratação nas condições acima,
+            sujeita à assinatura do Termo de Adesão e às políticas aplicáveis da KLASSE.
+          </p>
+          <div className="proposal-keep rounded-lg border border-slate-200 p-4">
+            <h3 className="text-[10px] font-extrabold uppercase tracking-wide text-[#1F6B3B]">Ponto focal para implantação</h3>
+            <p className="mt-2 text-[11px] leading-6">Nome: ____________________________________</p>
+            <p className="text-[11px] leading-6">Cargo: ____________________________________</p>
+            <p className="text-[11px] leading-6">WhatsApp: _________________________________</p>
+            <p className="text-[11px] leading-6">E-mail: ____________________________________</p>
+            <p className="mt-2 text-[10px] text-slate-500">Contacto principal da escola para partilha e validação de informações durante a implantação.</p>
+          </div>
+          <div className="mt-6 grid grid-cols-1 gap-7 sm:grid-cols-2 print:grid-cols-2">
+            <Signature title="Cliente" role="Cargo" />
+            <Signature title="KLASSE / MOXI SOLUÇÕES" role="Representante" />
+          </div>
+        </Section>
+
+        <footer className="proposal-keep mt-7 border-t-2 border-[#E3B23C] pt-4">
+          <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wide text-[#1F6B3B]">Identificação da prestadora</p>
+          <p className="text-[10px] leading-[1.6]">
+            KLASSE é um produto da MOXI SOLUÇÕES - COMERCIO GERAL E PRESTAÇÃO DE SERVIÇOS, (SU), LDA.
+            {" "}NIF: 5002637618.
+          </p>
+          <p className="text-[10px] leading-[1.6]">
+            Sede: Bairro Azul, Rua dos Bombeiros, N.º S/N, Município de Menongue,
+            Província do Cubango, Angola.
+          </p>
+          <p className="text-[10px] leading-[1.6]">contato@klasse.ao · +244 933 349 106</p>
+        </footer>
+      </main>
+
+      <style jsx global>{`
+        @media print {
+          @page { size: A4; margin: 13mm; }
+          html, body { background: white !important; }
+          .commercial-proposal { box-shadow: none !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          .commercial-proposal .proposal-keep { break-inside: avoid; page-break-inside: avoid; }
+          .commercial-proposal .proposal-section > h2 { break-after: avoid; page-break-after: avoid; }
+        }
+      `}</style>
     </div>
   );
 }
 
 export default function ProposalPreviewPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-zinc-50 py-10 px-4 text-center text-xs font-semibold text-zinc-500">A carregar proposta...</div>}>
+    <Suspense fallback={<div className="p-8 text-sm text-slate-500">A carregar proposta comercial...</div>}>
       <ProposalPreviewContent />
     </Suspense>
   );
