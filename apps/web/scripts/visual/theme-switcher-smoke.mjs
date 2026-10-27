@@ -66,6 +66,25 @@ try {
   await page.getByRole("radio", { name: "Claro" }).click();
   await page.waitForFunction(() => !document.documentElement.classList.contains("dark"));
   assert.equal(await page.evaluate(() => localStorage.getItem("klasse-theme")), "light");
+  // Light-only student and teacher routes must not inherit a saved Dark preference.
+  await chooser.getByRole("radio", { name: "Escuro" }).click();
+  await page.waitForFunction(() => document.documentElement.classList.contains("dark"));
+  for (const portal of ["aluno", "professor"]) {
+    await page.goto(url + "&portal=" + portal, { waitUntil: "domcontentloaded" });
+    const selection = page.getByRole("radio", { name: "Escuro" });
+    await page.waitForFunction(() => {
+      const selected = Array.from(document.querySelectorAll('[role="radio"]'))
+        .find(element => element.getAttribute("aria-checked") === "true");
+      return selected?.textContent?.includes("Escuro");
+    });
+    assert.equal(await selection.getAttribute("aria-checked"), "true");
+    assert.equal(await page.locator("html").evaluate(el => el.classList.contains("dark")), false, portal + " must stay light");
+    assert.equal(await page.locator("html").evaluate(el => getComputedStyle(el).colorScheme), "light");
+    assert.equal(await page.evaluate(() => localStorage.getItem("klasse-theme")), "dark", "preference must be preserved");
+  }
+  // The previous preference returns when switching back to an enabled portal.
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => document.documentElement.classList.contains("dark"));
   assert.deepEqual(errors, [], "no client-side exceptions");
   await context.close();
   console.log("PASS: light, dark, system, persistence, contrast and control semantics");
