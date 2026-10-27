@@ -122,6 +122,7 @@ test("full profile and Command Center share the same class correction and curren
   assert.match(profile, /slotPerfil=\{\([\s\S]*?<CurrentYearEnrollmentPanel alunoId=\{alunoId\}/);
   assert.match(commandCenter, /slotPerfil=\{\([\s\S]*?<CurrentYearEnrollmentPanel[\s\S]*?alunoId=\{alunoId\}/);
   assert.match(profile, /slotMatricula=\{<CurrentYearEnrollmentPanel alunoId=\{alunoId\}/);
+  const action = source("components/aluno/RetificarMatriculaAction.tsx");
   assert.match(panel, /RetificarMatriculaAction/);
   assert.match(panel, /matricula-corrente\?escolaId=/);
   assert.match(panel, /escola_id: escolaId/);
@@ -132,7 +133,6 @@ test("full profile and Command Center share the same class correction and curren
   // The correct year ID comes from the authenticated server scope and
   // must reach the modal without an optional secondary session lookup.
   assert.match(panel, /anoLetivoId=\{state\.matricula\.anoLetivoId\}/);
-  const action = source("components/aluno/RetificarMatriculaAction.tsx");
   assert.match(action, /anoLetivoId=\{anoLetivoId \?\? sessionId\}/);
   const tabs = source("components/aluno/DossierTabs.tsx");
   assert.match(tabs, /: "perfil"/);
