@@ -142,7 +142,16 @@ export function CommandCenterStudentDossier({
         key={alunoId}
         workspace
         aluno={aluno}
-        slotPerfil={<DossierPerfilSection aluno={aluno} />}
+        slotPerfil={(
+          <div className="space-y-4">
+            <DossierPerfilSection aluno={aluno} />
+            <CurrentYearEnrollmentPanel
+              alunoId={alunoId}
+              escolaId={escolaId}
+              onChanged={() => setRetry((current) => current + 1)}
+            />
+          </div>
+        )}
         slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={escolaId} onChanged={() => setRetry((current) => current + 1)} />}
         slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role="secretaria" escolaId={escolaId} servicos={servicos} />}
         slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role="secretaria" escolaId={escolaId} />}
