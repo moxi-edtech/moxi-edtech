@@ -2,6 +2,11 @@ name: Theme Switcher Guard
 on:
   pull_request:
     paths:
+      - "apps/web/src/app/**"
+      - "apps/web/src/components/**"
+      - "packages/design-tokens/src/**"
+      - "scripts/check-theme-switcher-colors*.mjs"
+      - "apps/web/tests/unit/theme-color-coverage.spec.mjs"
       - "apps/web/src/app/layout.tsx"
       - "apps/web/src/app/theme-print.css"
       - "apps/web/src/components/ThemeToggle.tsx"
@@ -30,6 +35,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -42,3 +49,9 @@ jobs:
       - run: node --test apps/web/tests/unit/visual-contrast.spec.mjs
       - run: node --test apps/web/tests/unit/module-switcher-removal.spec.mjs
       - run: node --test apps/web/tests/unit/admin-theme-coverage.spec.mjs
+      - run: node --test apps/web/tests/unit/theme-color-coverage.spec.mjs
+      - run: node --test scripts/check-theme-switcher-colors.test.mjs
+      - name: Guard new hardcoded UI colors
+        env:
+          THEME_GUARD_BASE_REF: ${{ github.event.pull_request.base.sha || '' }}
+        run: node scripts/check-theme-switcher-colors.mjs

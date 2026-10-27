@@ -50,3 +50,10 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 ## Integração paralela de Outubro
 - O ensaio do Command Center deixou de repetir a PR #247 (`fix/operations-layout-composition-20261022`): está **merged em main**, logo o seu CSS responsivo já pertence à base do teste. Preservar a sua lógica em `globals.css` e validar as restantes branches em merge sintético.
 - Não introduzimos resolução automática nem ignorámos novos conflitos entre branches realmente independentes.
+
+## Expansão de cores semânticas e guard (2026-10-27)
+- GlobalSearch, dossiê modal de aluno, FiscalLedgerTable/RowActions, perfil do professor, TaskList, Notice e notificações usam superfícies e texto theme-aware, preservando a informação de sucesso/alerta/erro através de bordas e fundos semânticos com texto legível.
+- Recipes `klasseSurface` centralizadas usam `bg-card`, `bg-muted` e `border-border` em vez de superfícies brancas permanentes.
+- `check-theme-switcher-colors.mjs` verifica linhas novas nos componentes partilhados e portais: fundos, textos e bordas neutras fixas e hexadecimais de marca. Mantém exclusões explícitas para impressão e área de autenticação com identidade visual própria; componentes legados não modificados continuam dívida técnica, não justificativa para novas regressões.
+- `theme-color-coverage.spec.mjs` protege componentes críticos e contrastes de estados semânticos; CI executa também testes do guard.
+- O CI não equivale a homologação autenticada de cada portal nem prova contraste real de todos os estilos em browser: permanece o gate visual/manual pré-release.
