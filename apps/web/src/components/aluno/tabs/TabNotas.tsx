@@ -287,7 +287,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Documentos</Link>
         </nav>
       </header>}
-      {embedded && academicYear !== null && <p className="text-xs font-medium text-slate-500">Ano letivo {academicYear}</p>}
+      {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
       {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-5 motion-safe:animate-pulse">
         <div className="h-12 max-w-sm rounded-xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/><div className="h-28 rounded-2xl bg-slate-100"/>
       </section> : accessError ? <section role="alert" className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
@@ -311,7 +311,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
             {access.action}<ArrowRight className="h-4 w-4"/>
           </Link>
         )}
-        {!serviceUnconfigured && <p className="text-xs leading-5 text-slate-500">A aprovação do pedido, por si só, não libera as avaliações. É preciso confirmar a liquidação.</p>}
+        {!serviceUnconfigured && <p className="text-xs leading-5 text-muted-foreground">A aprovação do pedido, por si só, não libera as avaliações. É preciso confirmar a liquidação.</p>}
       </section> : <section aria-labelledby="pauta-title" className="space-y-6">
         <div className="space-y-4">
           <h2 id="pauta-title" className="text-xl font-semibold tracking-tight text-slate-900">Avaliações por período</h2>
