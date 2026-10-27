@@ -40,14 +40,27 @@ function eligible(file) {
   return inUi && !excluded && /\.[jt]sx?$/.test(file);
 }
 
+// On pull_request Actions checkout the synthetic merge commit, whose first
+// parent is the *current* main. Compare that exact parent to avoid treating
+// unrelated main changes as new PR regressions (PR metadata can hold an old base).
+let range = base + "...HEAD";
+if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+  try {
+    execFileSync("git", ["rev-parse", "HEAD^2"], { stdio: "ignore" });
+    range = "HEAD^1..HEAD";
+  } catch {
+    // A branch-head checkout has no second parent; use the merge-base range.
+  }
+}
+
 let diff;
 try {
   diff = execFileSync("git", [
     "diff", "--unified=0", "--no-color", "--diff-filter=ACMR",
-    base + "...HEAD", "--", "apps/web/src/components", "apps/web/src/app"
+    range, "--", "apps/web/src/components", "apps/web/src/app"
   ], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 } catch (error) {
-  console.error("Theme Switcher Guard: cannot compare with " + base + " (full git history required).");
+  console.error("Theme Switcher Guard: cannot compare with " + range + " (full git history required).");
   console.error(String(error.message));
   process.exit(2);
 }

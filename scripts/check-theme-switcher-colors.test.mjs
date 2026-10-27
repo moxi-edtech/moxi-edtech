@@ -75,3 +75,27 @@ test("a brand color defined in the central tokens package is allowed", () => {
     'export const ok = true;\nexport const official = "#1F6B3B";\n');
   assert.equal(out.status, 0, out.stderr);
 });
+
+
+test("a synthetic PR merge ignores newly added colors that only exist in main", () => {
+  const { cwd, target, base } = repo("apps/web/src/components/Shared.tsx", 'export const safe = "bg-card";\n');
+  try {
+    git(cwd, ["checkout", "-b", "feature"]);
+    writeFileSync(target, 'export const safe = "bg-card";\nexport const feature = "text-foreground";\n');
+    git(cwd, ["add", "."]);
+    git(cwd, ["commit", "-m", "feature"]);
+    git(cwd, ["checkout", "main"]);
+    const mainOnly = path.join(cwd, "apps/web/src/components/MainOnly.tsx");
+    writeFileSync(mainOnly, 'export const legacyOnMain = "bg-white text-slate-900";\n');
+    git(cwd, ["add", "."]);
+    git(cwd, ["commit", "-m", "unrelated main change"]);
+    git(cwd, ["merge", "--no-ff", "feature", "-m", "test PR merge"]);
+    const out = spawnSync(process.execPath, [script], {
+      cwd, encoding: "utf8",
+      env: { ...process.env, GITHUB_EVENT_NAME: "pull_request", THEME_GUARD_BASE_REF: base },
+    });
+    assert.equal(out.status, 0, out.stderr);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
