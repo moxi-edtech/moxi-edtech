@@ -92,7 +92,7 @@ export function AcademicoWorkspace() {
       )}
       {visited.includes("documentos") && (
         <section id="academic-panel-documentos" role="tabpanel" aria-labelledby="academic-tab-documentos" hidden={activeTab !== "documentos"}>
-          <TabDocumentos embedded focusServiceCode={focusService} />
+          <TabDocumentos embedded focusServiceCode={focusService} onOpenNotas={() => navigateTab("notas")} />
         </section>
       )}
     </div>
