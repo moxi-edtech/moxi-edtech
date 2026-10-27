@@ -511,17 +511,7 @@ export function CrmLeadDetailsSheet({
                             trial: String(commercialTrialDays),
                             taxa: String(commercialTaxaAtivacao),
                             mensalidade: String(commercialMensalidade),
-                            preset: commercialPreset,
                             niveis: (commercialNiveisEnsino || []).join(","),
-                            sec_nome: commercialSecretaria?.nome || "",
-                            sec_email: commercialSecretaria?.email || "",
-                            sec_tel: commercialSecretaria?.telefone || "",
-                            fin_nome: commercialFinanceiro?.nome || "",
-                            fin_email: commercialFinanceiro?.email || "",
-                            fin_tel: commercialFinanceiro?.telefone || "",
-                            ped_nome: commercialPedagogico?.nome || "",
-                            ped_email: commercialPedagogico?.email || "",
-                            ped_tel: commercialPedagogico?.telefone || "",
                           });
                           window.open(`/crm/proposta/preview?${params.toString()}`, '_blank');
                         }}
@@ -529,7 +519,7 @@ export function CrmLeadDetailsSheet({
                         className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 flex items-center gap-1"
                       >
                         <ExternalLink size={11} className="text-zinc-400" />
-                        Preview
+                        Pré-visualizar proposta
                       </Button>
                       {selectedCrmLead.proposal_file_name ? (
                         <Button
