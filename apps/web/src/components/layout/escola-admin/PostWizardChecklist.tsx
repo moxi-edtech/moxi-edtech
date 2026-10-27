@@ -161,16 +161,16 @@ export default function PostWizardChecklist({
     <section className="space-y-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
             Ativação da Escola
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Conclua estas etapas para operar a 100%.
           </p>
         </div>
         <div className="text-right">
           <span className="text-lg font-black text-brand-900">{progressPct}%</span>
-          <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden border border-slate-200">
+          <div className="w-24 h-1.5 bg-muted rounded-full mt-1 overflow-hidden border border-border">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progressPct}%` }}
@@ -188,10 +188,10 @@ export default function PostWizardChecklist({
             className={`
               group relative flex items-center gap-4 rounded-xl border p-4 shadow-sm transition-all hover:shadow-md
               ${step.completed 
-                ? 'bg-slate-50/50 border-slate-100 opacity-75' 
+                ? 'bg-muted/50 border-border opacity-75' 
                 : step.current
-                ? 'bg-white border-brand-200 ring-1 ring-brand-100'
-                : 'bg-white border-slate-200 opacity-60 hover:opacity-100'
+                ? 'bg-card border-brand-200 ring-1 ring-brand-100'
+                : 'bg-card border-border opacity-60 hover:opacity-100'
               }
             `}
           >
@@ -201,17 +201,17 @@ export default function PostWizardChecklist({
                 ? 'bg-emerald/10 text-emerald'
                 : step.current
                 ? 'bg-amber/15 text-amber group-hover:bg-emerald group-hover:text-white'
-                : 'bg-slate-50 text-slate-400 border border-slate-100/50'
+                : 'bg-muted text-muted-foreground border border-border/50'
               }
             `}>
               {step.completed ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
             </div>
             
             <div className="flex-1 min-w-0">
-              <h4 className={`text-sm font-bold truncate ${step.completed ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+              <h4 className={`text-sm font-bold truncate ${step.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                 {step.title}
               </h4>
-              <p className="text-[11px] text-slate-500 truncate leading-tight mt-0.5">
+              <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
                 {step.description}
               </p>
             </div>

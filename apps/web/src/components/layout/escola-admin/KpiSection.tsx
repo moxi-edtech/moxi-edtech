@@ -41,15 +41,15 @@ function trendFromSeries(series?: number[]) {
 // ─── Skeleton card ────────────────────────────────────────────────────────────
 function KpiSkeleton() {
   return (
-    <div className="flex h-28 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="flex h-28 flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="space-y-2 flex-1">
-          <div className="h-2.5 w-16 bg-slate-100 animate-pulse rounded" />
-          <div className="h-7 w-20 bg-slate-100 animate-pulse rounded-md" />
+          <div className="h-2.5 w-16 bg-muted animate-pulse rounded" />
+          <div className="h-7 w-20 bg-muted animate-pulse rounded-md" />
         </div>
-        <div className="h-10 w-10 bg-slate-100 animate-pulse rounded-xl" />
+        <div className="h-10 w-10 bg-muted animate-pulse rounded-xl" />
       </div>
-      <div className="h-8 w-full bg-slate-50/50 animate-pulse rounded-b-xl mt-4" />
+      <div className="h-8 w-full bg-muted/50 animate-pulse rounded-b-xl mt-4" />
     </div>
   );
 }

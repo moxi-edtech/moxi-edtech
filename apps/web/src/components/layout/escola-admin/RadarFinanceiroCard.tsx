@@ -125,9 +125,9 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
   const displayItems = items.slice(0, 5);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="p-5 border-b border-slate-100 flex flex-col gap-3">
+      <div className="p-5 border-b border-border flex flex-col gap-3">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
@@ -135,8 +135,8 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
             </div>
             <div>
               <SecaoLabel className="text-emerald">Financeiro</SecaoLabel>
-              <h3 className="mt-1 text-sm font-bold tracking-tight text-slate-900">Radar Financeiro</h3>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+              <h3 className="mt-1 text-sm font-bold tracking-tight text-foreground">Radar Financeiro</h3>
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
                 {totalAlunos > 0 ? (
                   <span>{totalAlunos} aluno{totalAlunos !== 1 ? "s" : ""} • {moeda.format(totalEmRisco)} em risco</span>
                 ) : (
@@ -186,8 +186,8 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald border border-emerald-100 shadow-sm">
               <CheckCircle2 className="h-7 w-7" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900 mb-1">Inadimplência Zero</h4>
-            <p className="text-xs text-slate-500 mb-5 max-w-[240px] leading-relaxed">
+            <h4 className="text-sm font-bold text-foreground mb-1">Inadimplência Zero</h4>
+            <p className="text-xs text-muted-foreground mb-5 max-w-[240px] leading-relaxed">
               Nenhum aluno com atraso no período actual. Continue assim.
             </p>
             <Link
@@ -200,7 +200,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
           </div>
         ) : (
           <AnimatePresence mode="popLayout">
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-border">
               {displayItems.map((item, index) => {
                 const severity = getSeverity(item.dias_em_atraso);
                 const cfg = SEVERITY_CONFIG[severity];
@@ -223,7 +223,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group flex flex-col flex-wrap sm:flex-row sm:items-center justify-between gap-2 px-5 py-3.5 hover:bg-slate-50/50 transition-colors"
+                    className="group flex flex-col flex-wrap sm:flex-row sm:items-center justify-between gap-2 px-5 py-3.5 hover:bg-muted/50 transition-colors"
                   >
                     <button
                       type="button"
@@ -236,7 +236,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                         {initials}
                       </div>
                       <div className="min-w-0 flex flex-col gap-0.5">
-                        <p className="text-sm font-bold text-slate-900 truncate group-hover:text-emerald transition-colors">
+                        <p className="text-sm font-bold text-foreground truncate group-hover:text-emerald transition-colors">
                           {nome}
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -247,8 +247,8 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
 
                           {contexto && (
                             <>
-                              <span className="text-slate-200">·</span>
-                              <span className="text-[10px] font-medium text-slate-400 truncate max-w-[140px]">
+                              <span className="text-muted-foreground">·</span>
+                              <span className="text-[10px] font-medium text-muted-foreground truncate max-w-[140px]">
                                 {contexto}
                               </span>
                             </>
@@ -256,9 +256,9 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
 
                           {item.tendencia && (
                             <>
-                              <span className="text-slate-200">·</span>
+                              <span className="text-muted-foreground">·</span>
                               {item.tendencia === "piorando" && <ArrowUp className="h-3 w-3 text-amber-700" aria-label="Piorando" />}
-                              {item.tendencia === "estavel" && <Minus className="h-3 w-3 text-slate-400" aria-label="Estável" />}
+                              {item.tendencia === "estavel" && <Minus className="h-3 w-3 text-muted-foreground" aria-label="Estável" />}
                               {item.tendencia === "melhorando" && <ArrowDown className="h-3 w-3 text-emerald" aria-label="Melhorando" />}
                             </>
                           )}
@@ -276,13 +276,13 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                       <p className="text-sm font-black text-red-600">
                         {moeda.format(Number(item.valor_em_atraso ?? 0))}
                       </p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">
                         {item.titulos_em_atraso
                           ? `${item.titulos_em_atraso} título${item.titulos_em_atraso > 1 ? "s" : ""} em atraso`
                           : "Dívida Total"}
                       </p>
                       {item.ultimo_pagamento_data && (
-                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                        <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
                           Último pagto {formatRelativeTime(item.ultimo_pagamento_data)}
                         </p>
                       )}
@@ -292,11 +292,11 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
-                        className="basis-full ml-12 grid grid-cols-2 gap-x-5 gap-y-2 border-t border-slate-100 pt-3 text-xs sm:basis-full sm:ml-12"
+                        className="basis-full ml-12 grid grid-cols-2 gap-x-5 gap-y-2 border-t border-border pt-3 text-xs sm:basis-full sm:ml-12"
                       >
-                        <div><span className="text-slate-400">Dias em atraso</span><p className="font-bold text-slate-700">{item.dias_em_atraso}</p></div>
-                        <div><span className="text-slate-400">Títulos em atraso</span><p className="font-bold text-slate-700">{item.titulos_em_atraso ?? "—"}</p></div>
-                        <div className="col-span-2"><span className="text-slate-400">Último pagamento</span><p className="font-bold text-slate-700">{item.ultimo_pagamento_data ? formatRelativeTime(item.ultimo_pagamento_data) : "Nenhum pagamento registado"}</p></div>
+                        <div><span className="text-muted-foreground">Dias em atraso</span><p className="font-bold text-foreground">{item.dias_em_atraso}</p></div>
+                        <div><span className="text-muted-foreground">Títulos em atraso</span><p className="font-bold text-foreground">{item.titulos_em_atraso ?? "—"}</p></div>
+                        <div className="col-span-2"><span className="text-muted-foreground">Último pagamento</span><p className="font-bold text-foreground">{item.ultimo_pagamento_data ? formatRelativeTime(item.ultimo_pagamento_data) : "Nenhum pagamento registado"}</p></div>
                       </motion.div>
                     )}
                   </motion.li>
@@ -309,9 +309,9 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
 
       {/* ── Footer — Data freshness §6 ──────────────────────────────────── */}
       {(lastUpdated || totalAlunos > 5) && (
-        <div className="bg-slate-50/50 px-5 py-3 border-t border-slate-100 flex items-center justify-between text-[10px]">
+        <div className="bg-muted/50 px-5 py-3 border-t border-border flex items-center justify-between text-[10px]">
           {lastUpdated ? (
-            <div className="flex items-center gap-1.5 text-slate-400 font-medium">
+            <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
               <RefreshCw className="h-3 w-3" />
               <span>Última atualização: {formatFreshness(lastUpdated)}</span>
             </div>
@@ -320,7 +320,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
           {totalAlunos > 5 && (
             <Link
               href={contextualLinkHref}
-              className="font-bold text-slate-500 hover:text-emerald transition-colors flex items-center gap-1 group"
+              className="font-bold text-muted-foreground hover:text-emerald transition-colors flex items-center gap-1 group"
             >
               Ver todos os {totalAlunos} casos
               <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />

@@ -24,7 +24,7 @@ interface QuickAction {
 }
 
 const RISK_CONFIG: Record<RiskLevel, { dot: string; bg: string; text: string }> = {
-  low: { dot: "bg-slate-400", bg: "bg-slate-50", text: "text-slate-600" },
+  low: { dot: "bg-slate-400", bg: "bg-muted", text: "text-foreground/80" },
   medium: { dot: "bg-amber", bg: "bg-amber/5", text: "text-amber" },
   high: { dot: "bg-rose-500", bg: "bg-rose-50", text: "text-rose-600" },
 };
@@ -245,12 +245,12 @@ export default function QuickActionsSection() {
   return (
     <section className="space-y-8">
       <div>
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
           <Zap className="h-3 w-3 fill-current" />
           <span>Central de Comando</span>
         </div>
-        <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Atalhos Prioritários</h2>
-        <p className="mt-1 text-sm text-slate-500">Execução imediata baseada em domínios críticos.</p>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-foreground">Atalhos Prioritários</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Execução imediata baseada em domínios críticos.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-10">
@@ -262,14 +262,14 @@ export default function QuickActionsSection() {
             transition={{ duration: 0.5, delay: gIdx * 0.1 }}
             className="space-y-4"
           >
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-900">
+            <div className="flex items-center gap-3 border-b border-border pb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-foreground">
                 {(() => {
                   const Icon = GROUP_ICONS[group];
                   return <Icon className="h-4 w-4" />;
                 })()}
               </div>
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">{group}</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-foreground">{group}</h3>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -280,7 +280,7 @@ export default function QuickActionsSection() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => executeAction(action)}
                   disabled={Boolean(action.disabledReason)}
-                  className="group relative flex w-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 text-left transition-all hover:border-amber/30 hover:shadow-xl hover:shadow-amber/5 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="group relative flex w-full flex-col overflow-hidden rounded-3xl border border-border bg-card p-5 text-left transition-all hover:border-amber/30 hover:shadow-xl hover:shadow-amber/5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {/* Background Accents */}
                   <div className={`absolute -right-4 -top-4 h-16 w-16 rounded-full transition-all group-hover:scale-150 ${RISK_CONFIG[action.risk_level].bg}`} />
@@ -298,15 +298,15 @@ export default function QuickActionsSection() {
                         )}
                       </div>
 
-                      <h4 className="text-base font-bold text-slate-950 group-hover:text-emerald transition-colors">
+                      <h4 className="text-base font-bold text-foreground group-hover:text-emerald transition-colors">
                         {action.label}
                       </h4>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-500 line-clamp-2">
+                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-2">
                         {action.description}
                       </p>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-between border-t border-slate-50 pt-4">
+                    <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
                       <div className="flex items-center gap-1.5">
                         <div className={`h-1.5 w-1.5 rounded-full ${RISK_CONFIG[action.risk_level].dot}`} />
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${RISK_CONFIG[action.risk_level].text}`}>
@@ -337,21 +337,21 @@ export default function QuickActionsSection() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="w-full max-w-md rounded-[2.5rem] border border-white/20 bg-white p-8 shadow-2xl"
+              className="w-full max-w-md rounded-[2.5rem] border border-white/20 bg-card p-8 shadow-2xl"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 mb-6">
                 <AlertCircle className="h-6 w-6" />
               </div>
 
-              <h4 className="text-xl font-black text-slate-950">Confirmar ação sensível</h4>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              <h4 className="text-xl font-black text-foreground">Confirmar ação sensível</h4>
+              <p className="mt-2 text-sm text-foreground/80 leading-relaxed">
                 Você está prestes a executar uma ação de <strong>risco {pendingAction.risk_level}</strong> no domínio de {pendingAction.group}.
               </p>
               
-              <div className="mt-6 rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                <p className="text-sm font-bold text-slate-900">{pendingAction.label}</p>
-                <p className="mt-1 text-xs text-slate-500">{pendingAction.description}</p>
-                <div className="mt-3 inline-flex rounded-lg bg-white px-2 py-1 text-[10px] font-mono text-slate-400 border border-slate-200">
+              <div className="mt-6 rounded-2xl bg-muted p-4 border border-border">
+                <p className="text-sm font-bold text-foreground">{pendingAction.label}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{pendingAction.description}</p>
+                <div className="mt-3 inline-flex rounded-lg bg-card px-2 py-1 text-[10px] font-mono text-muted-foreground border border-border">
                   TAG: {pendingAction.audit_tag}
                 </div>
               </div>
@@ -366,7 +366,7 @@ export default function QuickActionsSection() {
                 </button>
                 <button
                   onClick={() => setPendingAction(null)}
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-border bg-card px-6 py-4 text-sm font-bold text-foreground transition hover:bg-muted"
                 >
                   Cancelar
                 </button>

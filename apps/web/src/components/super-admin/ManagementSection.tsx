@@ -71,22 +71,22 @@ export default function ManagementSection({
   ];
 
   return (
-    <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
       <div>
-        <h2 className="text-xl font-bold text-slate-950">Zona 2 — Gestão</h2>
-        <p className="text-sm text-slate-500">Onboarding de escolas, performance por tenant e gargalos operacionais.</p>
+        <h2 className="text-xl font-bold text-foreground">Zona 2 — Gestão</h2>
+        <p className="text-sm text-muted-foreground">Onboarding de escolas, performance por tenant e gargalos operacionais.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <article key={card.title} className="rounded-xl border border-slate-200 p-4 transition hover:ring-1 hover:ring-amber/25">
-            <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <card.icon className="h-4 w-4 text-slate-400" />
+          <article key={card.title} className="rounded-xl border border-border p-4 transition hover:ring-1 hover:ring-amber/25">
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+              <card.icon className="h-4 w-4 text-muted-foreground" />
               {card.title}
             </p>
-            <p className="mt-2 text-2xl font-bold text-slate-950">{card.value}</p>
-            <p className="mt-1 text-sm text-slate-600">{card.owner}</p>
-            <p className="text-sm text-slate-500">{card.action}</p>
+            <p className="mt-2 text-2xl font-bold text-foreground">{card.value}</p>
+            <p className="mt-1 text-sm text-foreground/80">{card.owner}</p>
+            <p className="text-sm text-muted-foreground">{card.action}</p>
           </article>
         ))}
       </div>
