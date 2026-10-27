@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import { DossierTabs } from "@/components/aluno/DossierTabs";
-import TransferForm from "@/components/secretaria/TransferForm";
+import { CurrentYearEnrollmentPanel } from "@/components/aluno/CurrentYearEnrollmentPanel";
 import {
   DossierDocumentosSection,
   DossierFinanceiroSection,
@@ -40,8 +40,6 @@ export function CommandCenterStudentDossier({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
-  const [matriculaInfo, setMatriculaInfo] = useState<{ id: string; turmaId: string; ano: number; sessionId: string | null; canRectifyClass: boolean } | null>(null);
-  const [matriculaError, setMatriculaError] = useState<string | null>(null);
   const [lastConfirmedAt, setLastConfirmedAt] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -51,8 +49,6 @@ export function CommandCenterStudentDossier({
     // Preserve the current student's snapshot while revalidating; never display
     // a different student's cached values after a context switch.
     setData(current => current?.aluno.id === alunoId && current.schoolScope === escolaId ? current : null);
-    setMatriculaInfo(null);
-    setMatriculaError(null);
     void fetch("/api/secretaria/alunos/" + encodeURIComponent(alunoId) + "/dossier", {
       cache: "no-store",
       signal: controller.signal,
@@ -83,25 +79,7 @@ export function CommandCenterStudentDossier({
     return () => controller.abort();
   }, [alunoId, escolaId, refreshKey, retry]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setMatriculaInfo(null);
-    setMatriculaError(null);
-    if (!data?.aluno.matricula_atual?.matricula_id) return () => controller.abort();
-    const matriculaId = data.aluno.matricula_atual.matricula_id;
-    void fetch("/api/secretaria/admissoes/matriculas/" + encodeURIComponent(matriculaId) + "/workspace-context", {
-      cache: "no-store", signal: controller.signal,
-    }).then(async (response) => {
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.ok) throw new Error(body.error || "Não foi possível consultar a matrícula.");
-      return body;
-    }).then((body) => {
-      if (!controller.signal.aborted) setMatriculaInfo(body.matricula);
-    }).catch((cause: unknown) => {
-      if (!controller.signal.aborted) setMatriculaError(cause instanceof Error ? cause.message : "Falha ao consultar matrícula.");
-    });
-    return () => controller.abort();
-  }, [data]);
+
 
   if (loading && (!data || data.aluno.id !== alunoId || data.schoolScope !== escolaId)) {
     return (
@@ -164,25 +142,17 @@ export function CommandCenterStudentDossier({
         key={alunoId}
         workspace
         aluno={aluno}
-        slotPerfil={<DossierPerfilSection aluno={aluno} />}
-        slotMatricula={
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-slate-900">Matrícula atual</h2>
-            <p className="text-sm text-slate-600">Turma: {aluno.matricula_atual?.turma ?? "Não definida"}</p>
-            <p className="text-sm text-slate-600">Classe: {aluno.matricula_atual?.classe ?? "Não definida"}</p>
-            {matriculaError ? <p role="alert" className="text-sm text-red-700">{matriculaError}</p> : null}
-            {matriculaInfo ? (
-              <TransferForm
-                matriculaId={matriculaInfo.id}
-                currentTurmaId={matriculaInfo.turmaId}
-                anoLetivo={matriculaInfo.ano}
-                anoLetivoId={matriculaInfo.sessionId}
-                canRectifyClass={matriculaInfo.canRectifyClass}
-                onSuccess={() => setRetry((current) => current + 1)}
-              />
-            ) : !aluno.matricula_atual?.matricula_id ? <p className="text-sm text-slate-500">Sem matrícula atual para retificar.</p> : !matriculaError ? <p className="text-sm text-slate-500">A carregar opções de retificação...</p> : null}
+        slotPerfil={(
+          <div className="space-y-4">
+            <DossierPerfilSection aluno={aluno} />
+            <CurrentYearEnrollmentPanel
+              alunoId={alunoId}
+              escolaId={escolaId}
+              onChanged={() => setRetry((current) => current + 1)}
+            />
           </div>
-        }
+        )}
+        slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={escolaId} onChanged={() => setRetry((current) => current + 1)} />}
         slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role="secretaria" escolaId={escolaId} servicos={servicos} />}
         slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role="secretaria" escolaId={escolaId} />}
         slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit />}

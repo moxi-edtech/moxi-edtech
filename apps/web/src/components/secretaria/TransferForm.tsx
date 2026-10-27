@@ -7,6 +7,7 @@ import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 interface TransferFormProps {
   matriculaId: string;
   canRectifyClass?: boolean;
+  defaultRectifyClass?: boolean;
   currentTurmaId: string;
   anoLetivo?: number | null;
   anoLetivoId?: string | null;
@@ -41,7 +42,7 @@ interface ImpactoTransferencia {
   };
 }
 
-export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, anoLetivoId, onSuccess, canRectifyClass = true }: TransferFormProps) {
+export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, anoLetivoId, onSuccess, canRectifyClass = true, defaultRectifyClass = false }: TransferFormProps) {
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
   const [checking, setChecking] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [confirming, setConfirming] = useState(false);
-  const [retificarClasse, setRetificarClasse] = useState(false);
+  const [retificarClasse, setRetificarClasse] = useState(canRectifyClass && defaultRectifyClass);
   const [confirmarHistorico, setConfirmarHistorico] = useState(false);
 
   const turmaAtual = turmas.find((turma) => turma.id === currentTurmaId) ?? null;
