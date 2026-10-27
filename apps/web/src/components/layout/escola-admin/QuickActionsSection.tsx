@@ -178,7 +178,7 @@ export default function QuickActionsSection({
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <header className="mb-5">
         <SecaoLabel className="text-emerald">Atalhos do portal</SecaoLabel>
         <div className="mt-1 flex items-center gap-2.5">

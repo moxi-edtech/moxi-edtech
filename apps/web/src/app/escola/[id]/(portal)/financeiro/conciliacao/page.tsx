@@ -129,7 +129,7 @@ function pillClasses(tone: "ok" | "warn" | "neutral") {
 
 function iconBadge(tone: "ok" | "warn" | "neutral") {
   return cx(
-    "inline-flex h-10 w-10 items-center justify-center rounded-2xl border",
+    "inline-flex h-10 w-10 items-center justify-center rounded-xl border",
     tone === "ok" && "border-emerald/25 bg-emerald/10",
     tone === "warn" && "border-amber/25 bg-amber/10",
     tone === "neutral" && "border-border bg-muted"
@@ -203,7 +203,7 @@ function StatCard(props: {
   const tone = props.tone ?? "neutral";
 
   return (
-    <div className="rounded-2xl bg-card shadow-sm ring-1 ring-ring p-4">
+    <div className="rounded-xl bg-card shadow-sm ring-1 ring-ring p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
@@ -487,7 +487,7 @@ const ConciliacaoBancaria: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Top header */}
-      <header className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-ring">
+      <header className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-ring">
         <div className="h-1 bg-gradient-to-r from-transparent via-amber/60 to-transparent" />
         <div className="px-6 py-6 md:px-8 md:py-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -551,7 +551,7 @@ const ConciliacaoBancaria: React.FC = () => {
       </div>
 
       {/* Upload + settings */}
-      <section className="rounded-2xl bg-card shadow-sm ring-1 ring-ring p-6">
+      <section className="rounded-xl bg-card shadow-sm ring-1 ring-ring p-6">
         <SectionHeader
           icon={Landmark}
           title="Importar extrato bancário"
@@ -567,7 +567,7 @@ const ConciliacaoBancaria: React.FC = () => {
         />
 
         {mostrarConfiguracoes ? (
-          <div className="mb-6 rounded-2xl border border-border bg-muted p-4">
+          <div className="mb-6 rounded-xl border border-border bg-muted p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-sm font-semibold text-foreground">Motor de matching</div>
@@ -692,7 +692,7 @@ const ConciliacaoBancaria: React.FC = () => {
         <div
           {...getRootProps()}
           className={cx(
-            "rounded-2xl border-2 border-dashed p-8 text-center transition cursor-pointer",
+            "rounded-xl border-2 border-dashed p-8 text-center transition cursor-pointer",
             isDragActive
               ? "border-amber/60 bg-amber/10"
               : "border-border hover:border-border"
@@ -729,7 +729,7 @@ const ConciliacaoBancaria: React.FC = () => {
               {arquivos.map((file, idx) => (
                 <div
                   key={`${file.name}-${idx}`}
-                  className="flex items-center justify-between rounded-2xl border border-border bg-muted p-3"
+                  className="flex items-center justify-between rounded-xl border border-border bg-muted p-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <FileUp className="h-5 w-5 text-foreground/80" />
@@ -755,7 +755,7 @@ const ConciliacaoBancaria: React.FC = () => {
         ) : null}
 
         {!processingUpload && transacoes.length === 0 && arquivos.length > 0 ? (
-          <div className="mt-6 rounded-2xl border border-amber/25 bg-amber/10 p-4 text-foreground">
+          <div className="mt-6 rounded-xl border border-amber/25 bg-amber/10 p-4 text-foreground">
             <div className="flex items-start gap-3">
               <span className={iconBadge("warn")}>
                 <AlertTriangle className={iconColor("warn")} />
@@ -772,7 +772,7 @@ const ConciliacaoBancaria: React.FC = () => {
       </section>
 
       {/* Table */}
-      <section className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-ring">
+      <section className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-ring">
         <div className="px-6 py-5">
           <SectionHeader
             icon={FileText}

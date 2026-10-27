@@ -30,7 +30,7 @@ function AcademicItem({ item }: { item: Item }) {
       group relative flex items-start gap-3 rounded-xl border p-3 transition-all
       ${item.locked
         ? "border-border bg-muted/50 cursor-not-allowed"
-        : "border-border bg-card hover:border-[#1F6B3B]/25 hover:bg-muted hover:shadow-sm cursor-pointer"
+        : "border-border bg-card hover:border-primary/25 hover:bg-muted hover:shadow-sm cursor-pointer"
       }
     `}>
       {/* Icon */}
@@ -38,7 +38,7 @@ function AcademicItem({ item }: { item: Item }) {
         flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors
         ${item.locked
           ? "bg-muted text-muted-foreground"
-          : "bg-muted text-foreground/80 group-hover:bg-[#1F6B3B]/10 group-hover:text-[#1F6B3B]"
+          : "bg-muted text-foreground/80 group-hover:bg-primary/10 group-hover:text-primary"
         }
       `}>
         {item.locked ? <Lock className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
@@ -158,7 +158,7 @@ export default function AcademicSection({
   ];
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <header className="mb-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="rounded-xl bg-muted p-2 text-muted-foreground flex-shrink-0">

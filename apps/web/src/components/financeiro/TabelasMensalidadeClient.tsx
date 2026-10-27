@@ -159,7 +159,7 @@ export default function TabelasMensalidadeClient({
         </div>
 
         {/* FILTROS */}
-        <div className="bg-card p-4 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row gap-4 items-center">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4"/>
                 <input 
@@ -193,7 +193,7 @@ export default function TabelasMensalidadeClient({
         {loading ? (
              <div className="text-center py-12 text-muted-foreground">Carregando preçário...</div>
         ) : filtered.length === 0 ? (
-            <div className="text-center py-16 bg-card rounded-2xl border border-dashed border-border">
+            <div className="text-center py-16 bg-card rounded-xl border border-dashed border-border">
                 <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-3"/>
                 <p className="text-muted-foreground font-medium">Nenhuma regra encontrada.</p>
                 <button onClick={() => setShowModal(true)} className="text-teal-600 text-sm font-bold mt-2 hover:underline">Criar a primeira regra</button>
@@ -201,7 +201,7 @@ export default function TabelasMensalidadeClient({
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map(item => (
-                    <div key={item.id} className="bg-card p-5 rounded-2xl border border-border shadow-sm hover:shadow-md transition-all group relative">
+                    <div key={item.id} className="bg-card p-5 rounded-xl border border-border shadow-sm hover:shadow-md transition-all group relative">
                         <div className="flex justify-between items-start mb-3">
                             <div className={`p-2 rounded-lg ${item.ativo ? 'bg-emerald-50 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
                                 <DollarSign size={20}/>
@@ -387,7 +387,7 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl sm:p-6 space-y-5 scale-100 animate-in zoom-in-95">
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-2xl sm:p-6 space-y-5 scale-100 animate-in zoom-in-95">
                 <div className="flex justify-between items-center border-b border-border pb-4">
                     <h3 className="font-bold text-lg text-foreground">{initialData ? "Editar Regra" : "Nova Regra de Preço"}</h3>
                     <button onClick={onClose}><X className="w-5 h-5 text-muted-foreground hover:text-foreground/80"/></button>

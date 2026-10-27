@@ -299,7 +299,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
             color: black !important;
             box-shadow: none !important;
           }
-          .rounded-2xl, .rounded-xl {
+          .rounded-xl, .rounded-xl {
             border-radius: 0 !important;
             border: none !important;
           }
@@ -427,7 +427,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
         
         {/* Search Input */}
         <div className="relative w-full md:max-w-md group px-2">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 group-focus-within:text-[#E3B23C] transition-colors" />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 group-focus-within:text-amber transition-colors" />
           <input 
             type="text" 
             placeholder="Buscar aluno, ID ou turma..." 
@@ -497,7 +497,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                   {/* Info Básica */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-base font-semibold text-foreground group-hover:text-[#E3B23C] transition-colors truncate">
+                      <h3 className="text-base font-semibold text-foreground group-hover:text-amber transition-colors truncate">
                         {formatTurmaDisplayName(turma)}
                       </h3>
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-muted text-muted-foreground border-border">
@@ -592,7 +592,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                     <Link
                                       href={contextualPortalHref(`/secretaria/alunos/${aluno.id}`)}
                                       onClick={(e) => e.stopPropagation()}
-                                      className="font-bold text-foreground hover:text-[#1F6B3B] hover:underline"
+                                      className="font-bold text-foreground hover:text-primary hover:underline"
                                     >
                                       {aluno.nome}
                                     </Link>
@@ -767,7 +767,7 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl flex flex-col">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card text-card-foreground shadow-2xl flex flex-col">
         <div className="p-6 border-b border-border flex justify-between items-center bg-muted">
           <div>
             <h3 className="text-lg font-black text-foreground">Disparar Cobranças</h3>

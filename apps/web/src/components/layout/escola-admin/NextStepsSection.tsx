@@ -30,7 +30,7 @@ export default function NextSteps() {
   return (
     <div>
       <h3 className="font-bold text-foreground mb-4 text-sm">Próximos Passos</h3>
-      <div className="bg-card rounded-2xl border border-border shadow-sm divide-y divide-border">
+      <div className="bg-card rounded-xl border border-border shadow-sm divide-y divide-border">
         {steps.map((step) => (
           <div 
             key={step.id}
