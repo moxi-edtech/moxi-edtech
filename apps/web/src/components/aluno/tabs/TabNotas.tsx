@@ -296,7 +296,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         <div className="h-5 w-36 rounded-lg bg-muted"/><div className="h-24 rounded-xl bg-muted"/>
       </section> : accessError ? <section role="alert" className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4">
         <h2 className="text-lg font-semibold">Não foi possível consultar as tuas notas</h2>
-        <p className="text-sm leading-6 text-slate-700">{accessError}</p>
+        <p className="text-sm leading-6 text-muted-foreground">{accessError}</p>
         <button type="button" onClick={() => setRefreshVersion(v => v+1)} className={`min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-[#2B6044] ${focus}`}>Tentar novamente</button>
       </section> : !matriculaEncontrada ? <section className="rounded-xl bg-muted p-4">
         <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">Contacta a secretaria para confirmar a tua matrícula.</p>
