@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { getAlunoContext } from "@/lib/alunoContext";
-import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
 import { isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
 import { AcademicYearContextError } from "@/lib/academic-year/context";
@@ -17,7 +17,6 @@ export async function POST(request: Request) {
     if (!ctx?.escolaId || !ctx.userId) {
         return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
-    const { data: userRes } = await supabase.auth.getUser();
 
     const formData = await request.formData();
     const intentId = formData.get("intentId")?.toString();
@@ -41,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     const routeClient = await createRouteClient();
-    const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: userRes?.user?.email });
+    const authorizedIds = ctx.alunoIds;
     const alunoId = resolveSelectedStudentId({ selectedId: studentIdParam, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: false, error: "Educando não autorizado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });
     
