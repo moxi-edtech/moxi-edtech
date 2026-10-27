@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { AcademicYearContextError } from "@/lib/academic-year/context";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
-import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: "Não foi possível identificar o aluno ou encarregado", next_action: { type: "contact_secretaria", label: "Contactar a secretaria", href: "/aluno/avisos" } }, { status: 401 });
     }
 
-    const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: (await supabase.auth.getUser()).data.user?.email });
+    const authorizedIds = ctx.alunoIds;
     const requestedId = new URL(request.url).searchParams.get("studentId");
     if (requestedId && !authorizedIds.includes(requestedId)) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
     const selectedId = resolveSelectedStudentId({ selectedId: requestedId, authorizedIds, fallbackId: ctx.alunoId });
