@@ -58,30 +58,30 @@ export function DisciplinasList() {
   return (
     <div className="min-w-0 space-y-4" data-testid="aluno-disciplinas">
       <div className="space-y-1">
-        <h2 className="text-lg font-semibold text-slate-900">As tuas disciplinas</h2>
-        {isCurrent && <p className="text-sm text-slate-600">{yearLabel ? `Ano letivo ${yearLabel} · ` : ""}${disciplinas.length} disciplinas da tua turma</p>}
+        <h2 className="text-lg font-semibold text-foreground">As tuas disciplinas</h2>
+        {isCurrent && <p className="text-sm text-muted-foreground">{yearLabel ? `Ano letivo ${yearLabel} · ` : ""}${disciplinas.length} disciplinas da tua turma</p>}
       </div>
       {loading || (scope !== query && !error) ? (
         <div role="status" aria-label="A carregar disciplinas" className="grid gap-3 sm:grid-cols-2">
-          {[1,2,3].map((key) => <div key={key} className="h-20 animate-pulse rounded-xl bg-slate-100" />)}
+          {[1,2,3].map((key) => <div key={key} className="h-20 animate-pulse rounded-xl bg-muted" />)}
         </div>
       ) : error ? (
         <div role="alert" className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm text-rose-900">{error}</p>
-          <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-rose-800">
+          <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-card px-4 text-sm font-semibold text-rose-800">
             <RefreshCw className="h-4 w-4" /> Tentar novamente
           </button>
         </div>
       ) : disciplinas.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
           Ainda não existem disciplinas associadas à matrícula selecionada. Contacta a secretaria.
         </div>
       ) : (
         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
           {disciplinas.map((disciplina) => (
-            <article key={disciplina.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
+            <article key={disciplina.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4">
               <BookOpen aria-hidden className="h-5 w-5 shrink-0 text-emerald-800" />
-              <h3 className="min-w-0 break-words text-sm font-medium leading-6 text-slate-900">{disciplina.nome}</h3>
+              <h3 className="min-w-0 break-words text-sm font-medium leading-6 text-foreground">{disciplina.nome}</h3>
             </article>
           ))}
         </div>
