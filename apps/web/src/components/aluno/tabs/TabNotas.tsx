@@ -256,11 +256,11 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const visibleLoading = loading || (loadedScope !== bulletinQuery && !accessError);
   const periods = availablePeriods(safeDisciplinas);
   const period = selectedPeriod !== null && periods.includes(selectedPeriod) ? selectedPeriod : chooseInitialPeriod(safeDisciplinas);
-  const moneyStatus = boletimServico?.status === "pending_payment" ? "available" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
+  const moneyStatus = boletimServico?.status === "pending_payment" ? "pending_payment" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
   // Não anunciar um pagamento impossível: a escola pode ter o serviço ativo,
   // mas ainda sem uma taxa positiva configurada para boletins.
   const paymentConfigured = boletimServico?.pagamento_configurado !== false && Number(boletimServico?.valor) > 0;
-  const serviceUnconfigured = moneyStatus === "available" && !paymentConfigured;
+  const serviceUnconfigured = (moneyStatus === "available" || moneyStatus === "pending_payment") && !paymentConfigured;
   const access = serviceUnconfigured
     ? {
         title: "Boletim ainda indisponível",
@@ -294,12 +294,12 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
       {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-2 motion-safe:animate-pulse">
         <div className="h-5 w-36 rounded-lg bg-muted"/><div className="h-24 rounded-xl bg-muted"/>
-      </section> : accessError ? <section role="alert" className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
+      </section> : accessError ? <section role="alert" className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4">
         <h2 className="text-lg font-semibold">Não foi possível consultar as tuas notas</h2>
-        <p className="text-sm leading-6 text-slate-700">{accessError} Não precisas de fazer outro pagamento.</p>
+        <p className="text-sm leading-6 text-slate-700">{accessError}</p>
         <button type="button" onClick={() => setRefreshVersion(v => v+1)} className={`min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-[#2B6044] ${focus}`}>Tentar novamente</button>
-      </section> : !matriculaEncontrada ? <section className="rounded-2xl bg-slate-50 p-5">
-        <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-2 text-sm leading-6 text-slate-600">Contacta a secretaria para confirmar a tua matrícula antes de solicitar o boletim.</p>
+      </section> : !matriculaEncontrada ? <section className="rounded-xl bg-muted p-4">
+        <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">Contacta a secretaria para confirmar a tua matrícula.</p>
       </section> : !safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="flex min-w-0 items-start gap-3">
           <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -323,8 +323,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
             )}
           </div>
         </div>
-      </section> : <section aria-labelledby="pauta-title" className="space-y-6">
-        <div className="space-y-4">
+      </section> : <section aria-labelledby="pauta-title" className="space-y-4">
+        <div className="space-y-3">
           <h2 id="pauta-title" className="text-xl font-semibold tracking-tight text-slate-900">Avaliações por período</h2>
           {periods.length>0 ? <div role="group" aria-label="Selecionar período das avaliações" className="flex flex-wrap gap-2">
             {periods.map(p => <button type="button" key={p} onClick={() => setSelectedPeriod(p)}
