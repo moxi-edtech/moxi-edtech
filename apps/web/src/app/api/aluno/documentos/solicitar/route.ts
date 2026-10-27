@@ -59,6 +59,27 @@ export async function POST(req: Request) {
       }
     }
 
+    // Serviços cuja política exige pagamento não podem ser solicitados como
+    // gratuitos por falta de tarifa. A mesma regra já se aplica ao boletim.
+    if (codigo !== "DOC_BOLETIM_TRIMESTRAL") {
+      const { data: configuredService, error: configuredServiceError } = await supabase
+        .from("servicos_escola")
+        .select("valor_base, exige_pagamento_antes_de_liberar")
+        .eq("escola_id", escolaId)
+        .eq("codigo", codigo)
+        .eq("ativo", true)
+        .maybeSingle();
+      if (configuredServiceError) {
+        return NextResponse.json({ ok: false, error: "Não foi possível consultar o serviço." }, { status: 503 });
+      }
+      if (configuredService?.exige_pagamento_antes_de_liberar && Number(configuredService.valor_base) <= 0) {
+        return NextResponse.json({
+          ok: false,
+          error: "A escola ainda não definiu a taxa deste documento. Contacta a secretaria.",
+        }, { status: 409 });
+      }
+    }
+
     // Boletim: contratação atómica com matrícula e session_id explícitos.
     // Outros documentos mantêm o contrato legado (sem alteração do motor financeiro).
     const resolved = codigo === "DOC_BOLETIM_TRIMESTRAL"
