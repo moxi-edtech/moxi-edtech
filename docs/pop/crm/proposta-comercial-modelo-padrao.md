@@ -18,7 +18,10 @@ A proposta do Makuntima Zinga é o **modelo de conteúdo e estrutura**, não a n
 | Plano | `plano_estimado` (formulário) | Essencial / Profissional / Premium |
 | Preço e taxa | `mensalidade_kz` e `taxa_ativacao` | Valores negociados; pagamento inicial = soma |
 | Trial | `trial_days` | 0–30; período e efeito na cobrança dependem do Termo de Adesão |
-| Níveis de ensino | `niveis_ensino` | Apresentar só níveis reconhecidos |
+| Níveis de ensino | `niveis_ensino` | Pré-escolar, Primário, I Ciclo, PUNIV, Técnico; códigos desconhecidos bloqueiam impressão |
+| Modelo curricular | `preset_curricular` do formulário | Exibir o preset escolhido; se não houver, marcar configuração manual; sujeito à validação no onboarding |
+| Contactos operacionais | `contato_secretaria`, `contato_financeiro`, `contato_pedagogico` (nome, e-mail, telefone) | Mostrar os três pontos focais na implantação; campos vazios como «A confirmar», não obrigatórios para impressão |
+| Estado comercial | `commercial_status` | **Não imprimir**: estado de workflow interno, não declaração de aceite ou assinatura |
 | Data | Navegador na abertura | Validade 15 dias corridos |
 | Prestadora / contas | Dados oficiais no documento de referência | Estáticos; revisão obrigatória se alterarem |
 
@@ -35,10 +38,10 @@ Capacidades do plano são declaradas em `apps/web/src/lib/crm/commercial-proposa
 
 ## Segurança e dívida técnica
 
-A rota prévia continua a receber escola, contacto e condições comerciais na query string — comportamento **pré-existente**. Eliminámos da URL os dados pessoais dos responsáveis de secretaria, financeiro e pedagogia que já não entram no documento. A solução final para emissão/auditoria deverá usar ID persistido, autenticação CRM, snapshot imutável versionado e endpoint de geração de PDF controlado em servidor; **não** considerar uma URL de preview como prova de autorização, assinatura ou negociação aprovada. Evitar expor estas URLs em analytics ou logs com query string.
+A pré-visualização passa os dados negociados, a seleção curricular e os três contactos por **fragmento URL (`#`)**, que não é transmitido ao servidor no pedido HTTP nem no cabeçalho Referer. Os antigos links com parâmetros em query string continuam a ser lidos por compatibilidade, mas o CRM deixa de os gerar. **O fragmento ainda é visível no histórico e na barra de endereços**, pelo que não substitui controlos de acesso, autorização, armazenamento seguro ou emissão oficial. A solução auditável deverá gerar por ID persistido com autenticação CRM, snapshot imutável versionado e PDF no servidor. Uma prévia não comprova autorização, assinatura ou negociação aprovada.
 
 ## Verificação
 
-Executar `node --test --import tsx tests/unit/crm-commercial-proposal.spec.ts` a partir de `apps/web`, `pnpm --filter web typecheck`, lint dos ficheiros alterados e ensaio de impressão A4 nas versões desktop e telemóvel. Casos obrigatórios: taxa zero, ausência de mensalidade, plano excedido, proposta premium negociada, trial 0/30/31 e campos longos.
+Executar `node --test --import tsx tests/unit/crm-commercial-proposal.spec.ts` a partir de `apps/web`, `pnpm --filter web typecheck`, lint dos ficheiros alterados e ensaio de impressão A4 nas versões desktop e telemóvel. Casos obrigatórios: taxa zero, ausência de mensalidade, plano excedido, proposta premium negociada, trial 0/30/31, pré-escolar e os restantes níveis, presets curriculares, três contactos (preenchidos e vazios), códigos desconhecidos e campos longos. O estado comercial continua no CRM, fora do papel.
 
 A proposta fonte é preservada intacta no Google Docs.
