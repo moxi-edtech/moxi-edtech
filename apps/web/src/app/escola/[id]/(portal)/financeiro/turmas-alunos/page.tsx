@@ -60,9 +60,9 @@ const StatusBadge = ({ status, diasAtraso }: { status: string, diasAtraso?: numb
   // Enterprise Palette
   const config = {
     paga: { bg: 'bg-[#1F6B3B]/10', text: 'text-[#1F6B3B]', border: 'border-[#1F6B3B]/20', icon: CheckCircle, label: 'Regular' },
-    pendente: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200', icon: Clock, label: 'A vencer' },
+    pendente: { bg: 'bg-muted', text: 'text-foreground/80', border: 'border-border', icon: Clock, label: 'A vencer' },
     atrasada: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: AlertCircle, label: `${diasAtraso || 0}d Atraso` },
-    cancelada: { bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-100', icon: Ban, label: 'Inativo' },
+    cancelada: { bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-border', icon: Ban, label: 'Inativo' },
   };
 
   const current = config[status as keyof typeof config] || config.cancelada;
@@ -77,12 +77,12 @@ const StatusBadge = ({ status, diasAtraso }: { status: string, diasAtraso?: numb
 };
 
 const TurmaSkeleton = () => (
-  <div className="bg-white border border-slate-200 rounded-xl p-6 mb-4 animate-pulse flex justify-between items-center shadow-sm">
+  <div className="bg-card border border-border rounded-xl p-6 mb-4 animate-pulse flex justify-between items-center shadow-sm">
     <div className="space-y-3 w-1/2">
-      <div className="h-5 bg-slate-100 rounded w-1/3"></div>
-      <div className="h-3 bg-slate-50 rounded w-2/3"></div>
+      <div className="h-5 bg-muted rounded w-1/3"></div>
+      <div className="h-3 bg-muted rounded w-2/3"></div>
     </div>
-    <div className="h-8 w-8 bg-slate-100 rounded-full"></div>
+    <div className="h-8 w-8 bg-muted rounded-full"></div>
   </div>
 );
 
@@ -317,39 +317,39 @@ const TurmasAlunosFinanceiro: React.FC = () => {
 
       {/* CABEÇALHO PARA IMPRESSÃO */}
       <div className="hidden print:block border-b-2 border-slate-900 pb-4 mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 uppercase">Relatório Executivo de Mensalidades</h1>
-        <p className="text-slate-500 text-xs mt-1">Escola: {escolaParam} | Data de Emissão: {new Date().toLocaleDateString('pt-PT')}</p>
+        <h1 className="text-2xl font-bold text-foreground uppercase">Relatório Executivo de Mensalidades</h1>
+        <p className="text-muted-foreground text-xs mt-1">Escola: {escolaParam} | Data de Emissão: {new Date().toLocaleDateString('pt-PT')}</p>
       </div>
 
       {/* HEADER PROFISSIONAL */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 pb-6 print:hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-border pb-6 print:hidden">
         <div>
-          <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">
             <Wallet className="w-4 h-4" />
             Gestão Financeira
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Turmas & Mensalidades</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Acompanhamento de inadimplência e arrecadação por turma.</p>
+          <h1 className="text-2xl font-black text-foreground tracking-tight">Turmas & Mensalidades</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Acompanhamento de inadimplência e arrecadação por turma.</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-semibold shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-xl text-foreground hover:bg-muted hover:border-border transition-all text-sm font-semibold shadow-sm"
           >
             <Download className="w-4 h-4" /> Relatório
           </button>
           {whatsappStatus === 'connected' && (
-            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100/50 shadow-sm print:hidden">
+            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-bold border border-emerald-100/50 shadow-sm print:hidden">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> WAHA Online
             </span>
           )}
           {whatsappStatus === 'disconnected' && (
-            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-100/50 shadow-sm print:hidden" title="O serviço de WhatsApp está desconectado.">
+            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 text-xs font-bold border border-rose-100/50 shadow-sm print:hidden" title="O serviço de WhatsApp está desconectado.">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> WAHA Offline
             </span>
           )}
           {whatsappStatus === 'checking' && (
-            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 text-slate-400 text-xs font-bold border border-slate-100 shadow-sm print:hidden">
+            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-bold border border-border shadow-sm print:hidden">
               <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> WAHA status...
             </span>
           )}
@@ -365,18 +365,18 @@ const TurmasAlunosFinanceiro: React.FC = () => {
 
       <nav
         aria-label="Vistas de cobranças"
-        className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm print:hidden"
+        className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-sm print:hidden"
       >
         <button
           type="button"
           onClick={() => setFiltroStatus('todos')}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          className="rounded-lg px-3 py-2 text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
         >
           Alunos e turmas
         </button>
         <Link
           href={contextualPortalHref('/financeiro/radar')}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          className="rounded-lg px-3 py-2 text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
         >
           Inadimplência
         </Link>
@@ -385,8 +385,8 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       {/* RESUMO GERAL EXECUTIVO (KPIs Globais) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:break-avoid">
         {/* KPI 1: Arrecadação Global */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:border-slate-300">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Taxa de Arrecadação</span>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm print:border-slate-300">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Taxa de Arrecadação</span>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-xl font-black text-[#1F6B3B]">{resumoGeral.taxaArrecadacao.toFixed(1)}%</span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 print:hidden">Meta: 90%</span>
@@ -394,60 +394,60 @@ const TurmasAlunosFinanceiro: React.FC = () => {
         </div>
 
         {/* KPI 2: Total em Dívida */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:border-slate-300">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Carteira em Atraso</span>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm print:border-slate-300">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Carteira em Atraso</span>
           <div className="mt-3">
             <span className="text-xl font-black text-rose-600">{formatCurrency(resumoGeral.totalDivida)}</span>
           </div>
         </div>
 
         {/* KPI 3: Alunos Regulares */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:border-slate-300">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alunos Regulares</span>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm print:border-slate-300">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Alunos Regulares</span>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-xl font-black text-slate-800">{resumoGeral.totalPagas}</span>
-            <span className="text-xs text-slate-400">de {resumoGeral.totalAlunos} ativos</span>
+            <span className="text-xl font-black text-foreground">{resumoGeral.totalPagas}</span>
+            <span className="text-xs text-muted-foreground">de {resumoGeral.totalAlunos} ativos</span>
           </div>
         </div>
 
         {/* KPI 4: Atrasos Pendentes */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:border-slate-300">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Casos em Aberto</span>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm print:border-slate-300">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Casos em Aberto</span>
           {/* Mesma anatomia do KPI 3 (`valor` + `de N …`), em vez de dois números
               grandes empilhados que quebravam o ritmo da linha. */}
           <div className="mt-3">
             <span className="text-xl font-black text-rose-600">{resumoGeral.totalAtrasadas}</span>
-            <span className="text-xs text-slate-400"> e {resumoGeral.totalPendentes} a vencer</span>
+            <span className="text-xs text-muted-foreground"> e {resumoGeral.totalPendentes} a vencer</span>
           </div>
         </div>
       </div>
 
       {/* TOOLBAR & FILTROS */}
-      <div className="bg-white rounded-xl p-2 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-card rounded-xl p-2 shadow-sm border border-border flex flex-col md:flex-row gap-4 items-center justify-between">
         
         {/* Search Input */}
         <div className="relative w-full md:max-w-md group px-2">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-[#E3B23C] transition-colors" />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 group-focus-within:text-[#E3B23C] transition-colors" />
           <input 
             type="text" 
             placeholder="Buscar aluno, ID ou turma..." 
-            className="w-full pl-10 pr-4 py-2.5 bg-transparent border-none text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:ring-0 outline-none transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-transparent border-none text-sm font-medium text-foreground placeholder:text-muted-foreground focus:ring-0 outline-none transition-all"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
         </div>
 
         {/* Filtros */}
-        <div className="flex items-center gap-2 w-full md:w-auto p-1 bg-slate-100 rounded-xl">
+        <div className="flex items-center gap-2 w-full md:w-auto p-1 bg-muted rounded-xl">
           <button 
             onClick={() => setFiltroStatus('todos')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filtroStatus === 'todos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filtroStatus === 'todos' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Todas as Turmas
           </button>
           <button 
             onClick={() => setFiltroStatus('inadimplentes')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filtroStatus === 'inadimplentes' ? 'bg-white text-rose-700 shadow-sm' : 'text-slate-500 hover:text-rose-700'}`}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filtroStatus === 'inadimplentes' ? 'bg-card text-rose-700 shadow-sm' : 'text-muted-foreground hover:text-rose-700'}`}
           >
             Apenas Inadimplentes
           </button>
@@ -462,12 +462,12 @@ const TurmasAlunosFinanceiro: React.FC = () => {
             <TurmaSkeleton />
           </>
         ) : turmasProcessadas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
-            <div className="p-4 bg-slate-50 rounded-full mb-4">
-              <Search className="w-8 h-8 text-slate-300" />
+          <div className="flex flex-col items-center justify-center py-20 bg-card rounded-xl border border-dashed border-border">
+            <div className="p-4 bg-muted rounded-full mb-4">
+              <Search className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Nenhum resultado</h3>
-            <p className="text-slate-500 text-sm">Tente ajustar os filtros ou termo de busca.</p>
+            <h3 className="text-lg font-bold text-foreground">Nenhum resultado</h3>
+            <p className="text-muted-foreground text-sm">Tente ajustar os filtros ou termo de busca.</p>
           </div>
         ) : (
           turmasProcessadas.map(turma => {
@@ -487,7 +487,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
             if (filtroStatus === 'inadimplentes' && stats.atrasadas === 0) return null;
 
             return (
-              <div key={turma.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm transition-all hover:border-slate-300 hover:shadow-sm">
+              <div key={turma.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-sm transition-all hover:border-border hover:shadow-sm">
                 
                 {/* Header da Turma (Resumo) */}
                 <div 
@@ -497,13 +497,13 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                   {/* Info Básica */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-base font-semibold text-slate-900 group-hover:text-[#E3B23C] transition-colors truncate">
+                      <h3 className="text-base font-semibold text-foreground group-hover:text-[#E3B23C] transition-colors truncate">
                         {formatTurmaDisplayName(turma)}
                       </h3>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-slate-50 text-slate-500 border-slate-200">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-muted text-muted-foreground border-border">
                         {turma.cursoNome}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-slate-50 text-slate-500 border-slate-200">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-muted text-muted-foreground border-border">
                         {turma.turno === 'M' ? 'Manhã' : 'Tarde'}
                       </span>
                       <span
@@ -522,12 +522,12 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                     {/* Barra de Progresso Financeiro */}
                     <div className="w-full max-w-sm">
                       <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1.5">
-                        <span className="text-slate-400">Arrecadação</span>
+                        <span className="text-muted-foreground">Arrecadação</span>
                         <span className={stats.arrecadacao < 80 ? 'text-amber-600' : 'text-[#1F6B3B]'}>
                           {stats.arrecadacao.toFixed(0)}%
                         </span>
                       </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                         <div 
                           className={`h-full transition-all duration-1000 ease-out ${stats.arrecadacao < 50 ? 'bg-rose-500' : stats.arrecadacao < 80 ? 'bg-amber-400' : 'bg-[#1F6B3B]'}`}
                           style={{ width: `${stats.arrecadacao}%` }}
@@ -539,26 +539,26 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                   {/* KPIs Rápidos */}
                   {/* Os números da linha da turma descem um degrau para não competirem
                       com os KPIs do topo (24px). Eram 20px, quase iguais. */}
-                  <div className="flex items-center gap-6 border-l border-slate-100 pl-6">
+                  <div className="flex items-center gap-6 border-l border-border pl-6">
                     <div className="text-center">
-                      <div className="text-base font-bold text-slate-900">{stats.qtdAlunos}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Alunos</div>
+                      <div className="text-base font-bold text-foreground">{stats.qtdAlunos}</div>
+                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Alunos</div>
                     </div>
                     <div className="text-center">
-                      <div className={`text-base font-bold ${stats.atrasadas > 0 ? 'text-rose-600' : 'text-slate-300'}`}>{stats.atrasadas}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Atrasos</div>
+                      <div className={`text-base font-bold ${stats.atrasadas > 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>{stats.atrasadas}</div>
+                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Atrasos</div>
                     </div>
                     <div className="text-center">
-                      <div className={`text-base font-bold ${stats.pendentes > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{stats.pendentes}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pendentes</div>
+                      <div className={`text-base font-bold ${stats.pendentes > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>{stats.pendentes}</div>
+                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Pendentes</div>
                     </div>
-                    <div className="text-center border-l border-slate-100 pl-4 min-w-[90px]">
-                      <div className={`text-sm font-black ${stats.totalEmDivida > 0 ? 'text-rose-600' : 'text-slate-300'}`}>
+                    <div className="text-center border-l border-border pl-4 min-w-[90px]">
+                      <div className={`text-sm font-black ${stats.totalEmDivida > 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>
                         {stats.totalEmDivida > 0 ? formatCurrency(stats.totalEmDivida) : '—'}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Dívida</div>
+                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-1">Dívida</div>
                     </div>
-                    <div className={`p-2 rounded-full transition-colors ${isExpanded ? 'bg-slate-100 text-slate-600' : 'text-slate-300 group-hover:text-slate-500'}`}>
+                    <div className={`p-2 rounded-full transition-colors ${isExpanded ? 'bg-muted text-foreground/80' : 'text-muted-foreground group-hover:text-muted-foreground'}`}>
                         {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </div>
                   </div>
@@ -566,9 +566,9 @@ const TurmasAlunosFinanceiro: React.FC = () => {
 
                 {/* Tabela Expandida (Detalhes) */}
                 {isExpanded && (
-                  <div className="border-t border-slate-100 bg-slate-50/50">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-slate-200">
+                  <div className="overflow-x-auto border-t border-border bg-muted/50">
+                    <table className="min-w-[640px] w-full text-left text-sm">
+                      <thead className="bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wider border-b border-border">
                         <tr>
                           <th className="px-6 py-3 pl-8">Aluno</th>
                           <th className="px-6 py-3 text-center">Status</th>
@@ -576,27 +576,27 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                           <th className="px-6 py-3 text-right pr-8">Ações</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
+                      <tbody className="divide-y divide-border bg-card">
                         {alunosFiltrados.map(aluno => {
                           // Filtro Interno
                           if (filtroStatus === 'inadimplentes' && aluno.statusFinanceiro !== 'atrasada') return null;
 
                           return (
-                            <tr key={aluno.id} className="group hover:bg-slate-50 transition-colors">
+                            <tr key={aluno.id} className="group hover:bg-muted transition-colors">
                               <td className="px-6 py-4 pl-8">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold border border-slate-200 text-xs">
+                                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold border border-border text-xs">
                                     {aluno.nome.charAt(0)}
                                   </div>
                                   <div>
                                     <Link
                                       href={contextualPortalHref(`/secretaria/alunos/${aluno.id}`)}
                                       onClick={(e) => e.stopPropagation()}
-                                      className="font-bold text-slate-700 hover:text-[#1F6B3B] hover:underline"
+                                      className="font-bold text-foreground hover:text-[#1F6B3B] hover:underline"
                                     >
                                       {aluno.nome}
                                     </Link>
-                                    <div className="text-[10px] text-slate-400 font-mono">
+                                    <div className="text-[10px] text-muted-foreground font-mono">
                                       ID: {aluno.numeroEstudante || 'N/A'}
                                     </div>
                                   </div>
@@ -606,10 +606,10 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                 {aluno.possuiMensalidades ? (
                                   <StatusBadge status={aluno.statusFinanceiro} diasAtraso={aluno.diasAtraso} />
                                 ) : (
-                                  <span className="text-slate-300 text-xs italic">Sem registro</span>
+                                  <span className="text-muted-foreground text-xs italic">Sem registro</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 text-right font-medium text-slate-700 tabular-nums">
+                              <td className="px-6 py-4 text-right font-medium text-foreground tabular-nums">
                                 {aluno.valorEmDivida > 0 ? formatCurrency(aluno.valorEmDivida) : '-'}
                               </td>
                               <td className="px-6 py-4 pr-8 text-right">
@@ -633,7 +633,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                   {/* Botão Cobrar: Slate (Neutro) */}
                                   <button 
                                     title="Cobrar por Email"
-                                    className="p-1.5 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                                    className="p-1.5 text-muted-foreground bg-muted hover:bg-border rounded-lg transition-colors"
                                   >
                                     <Mail className="w-4 h-4" />
                                   </button>
@@ -641,7 +641,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                   <Link
                                     href={contextualPortalHref(`/secretaria/alunos/${aluno.id}`)}
                                     title="Ver perfil completo"
-                                    className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors"
+                                    className="inline-flex items-center gap-1 rounded-lg bg-muted px-2 py-1.5 text-xs font-bold text-foreground/80 hover:bg-border hover:text-foreground transition-colors"
                                   >
                                     <ArrowUpRight className="w-4 h-4" />
                                     <span className="hidden lg:inline">Perfil</span>
@@ -653,7 +653,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                         })}
                         {alunosFiltrados.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="px-6 py-8 text-center text-slate-400 italic text-sm">
+                            <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground italic text-sm">
                               Nenhum aluno encontrado nesta turma com os filtros atuais.
                             </td>
                           </tr>
@@ -767,13 +767,13 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl flex flex-col">
+        <div className="p-6 border-b border-border flex justify-between items-center bg-muted">
           <div>
-            <h3 className="text-lg font-black text-slate-900">Disparar Cobranças</h3>
-            <p className="text-slate-500 text-xs mt-0.5">Envio de lembretes e avisos financeiros.</p>
+            <h3 className="text-lg font-black text-foreground">Disparar Cobranças</h3>
+            <p className="text-muted-foreground text-xs mt-0.5">Envio de lembretes e avisos financeiros.</p>
           </div>
-          <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="p-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground/80 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -781,13 +781,13 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
         <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
           {/* Canal */}
           <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Canal de Comunicação</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Canal de Comunicação</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setCanal('whatsapp')}
                 className={`py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition ${
-                  canal === 'whatsapp' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  canal === 'whatsapp' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-border text-foreground/80 hover:border-border'
                 }`}
               >
                 <MessageCircle className="w-4 h-4" /> WhatsApp (WAHA)
@@ -796,7 +796,7 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
                 type="button"
                 onClick={() => setCanal('email')}
                 className={`py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition ${
-                  canal === 'email' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  canal === 'email' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-border text-foreground/80 hover:border-border'
                 }`}
               >
                 <Mail className="w-4 h-4" /> E-mail
@@ -806,11 +806,11 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
 
           {/* Turmas */}
           <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Turma Alvo</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Turma Alvo</label>
             <select
               value={turmaId}
               onChange={(e) => setTurmaId(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 focus:ring-0 outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground focus:ring-0 outline-none"
             >
               <option value="todas">Todas as turmas</option>
               {turmas.map(t => (
@@ -821,13 +821,13 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
 
           {/* Grupo Financeiro */}
           <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Grupo Financeiro</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Grupo Financeiro</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setGrupo('inadimplentes')}
                 className={`py-2 px-3 rounded-lg border text-xs font-bold transition ${
-                  grupo === 'inadimplentes' ? 'border-rose-300 bg-rose-50/50 text-rose-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  grupo === 'inadimplentes' ? 'border-rose-300 bg-rose-50/50 text-rose-700' : 'border-border text-foreground/80 hover:border-border'
                 }`}
               >
                 Apenas Inadimplentes
@@ -836,7 +836,7 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
                 type="button"
                 onClick={() => setGrupo('todos')}
                 className={`py-2 px-3 rounded-lg border text-xs font-bold transition ${
-                  grupo === 'todos' ? 'border-amber-300 bg-amber-50/50 text-amber-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  grupo === 'todos' ? 'border-amber-300 bg-amber-50/50 text-amber-700' : 'border-border text-foreground/80 hover:border-border'
                 }`}
               >
                 Todos os Pendentes
@@ -845,33 +845,33 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
           </div>
 
           {/* Preview Count */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">Destinatários Estimados</span>
-            <span className="px-2 py-0.5 bg-slate-200 text-slate-800 rounded text-xs font-black">
+          <div className="p-3.5 bg-muted border border-border rounded-xl flex items-center justify-between">
+            <span className="text-xs text-muted-foreground font-medium">Destinatários Estimados</span>
+            <span className="px-2 py-0.5 bg-border text-foreground rounded text-xs font-black">
               {targetAlunos.length} Encarregados
             </span>
           </div>
 
           {/* Mensagem */}
           <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Corpo da Mensagem</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Corpo da Mensagem</label>
             <textarea
               value={mensagem}
               onChange={(e) => setMensagem(e.target.value)}
               rows={4}
               maxLength={1000}
               placeholder="Escreva a mensagem de cobrança..."
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 focus:ring-0 outline-none resize-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground focus:ring-0 outline-none resize-none"
             />
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+        <div className="p-6 border-t border-border flex justify-end gap-3 bg-muted">
           <button
             type="button"
             disabled={sending}
             onClick={onClose}
-            className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-bold transition"
+            className="px-4 py-2 border border-border rounded-xl text-foreground/80 hover:bg-muted text-xs font-bold transition"
           >
             Cancelar
           </button>

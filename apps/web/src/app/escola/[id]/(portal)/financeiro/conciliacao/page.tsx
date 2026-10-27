@@ -123,7 +123,7 @@ function pillClasses(tone: "ok" | "warn" | "neutral") {
     "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide",
     tone === "ok" && "border-emerald/25 bg-emerald/10 text-emerald",
     tone === "warn" && "border-amber/25 bg-amber/10 text-amber",
-    tone === "neutral" && "border-slate-200 bg-white text-slate-700"
+    tone === "neutral" && "border-border bg-card text-foreground"
   );
 }
 
@@ -132,7 +132,7 @@ function iconBadge(tone: "ok" | "warn" | "neutral") {
     "inline-flex h-10 w-10 items-center justify-center rounded-2xl border",
     tone === "ok" && "border-emerald/25 bg-emerald/10",
     tone === "warn" && "border-amber/25 bg-amber/10",
-    tone === "neutral" && "border-slate-200 bg-slate-100"
+    tone === "neutral" && "border-border bg-muted"
   );
 }
 
@@ -141,7 +141,7 @@ function iconColor(tone: "ok" | "warn" | "neutral") {
     "h-5 w-5",
     tone === "ok" && "text-emerald",
     tone === "warn" && "text-amber",
-    tone === "neutral" && "text-slate-700"
+    tone === "neutral" && "text-foreground"
   );
 }
 
@@ -154,16 +154,16 @@ function confidenceBar(n: number) {
     "h-1.5 rounded-full",
     t === "high" && "bg-emerald/70",
     t === "mid" && "bg-amber/70",
-    t === "low" && "bg-slate-300"
+    t === "low" && "bg-border"
   );
 
   return (
     <div className="min-w-[140px]">
-      <div className="flex items-center justify-between text-[11px] text-slate-500">
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
         <span>Confiança</span>
-        <span className="font-semibold text-slate-700">{p}%</span>
+        <span className="font-semibold text-foreground">{p}%</span>
       </div>
-      <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
+      <div className="mt-1 h-1.5 w-full rounded-full bg-muted border border-border overflow-hidden">
         <div className={bar} style={{ width: `${p}%` }} />
       </div>
     </div>
@@ -180,10 +180,10 @@ function SectionHeader(props: {
 }) {
   const Icon = props.icon;
   return (
-    <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-      <h2 className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-        <span className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-slate-100 border border-slate-200">
-          <Icon className="h-4 w-4 text-slate-600" />
+    <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+      <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
+        <span className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-muted border border-border">
+          <Icon className="h-4 w-4 text-foreground/80" />
         </span>
         {props.title}
       </h2>
@@ -203,14 +203,14 @@ function StatCard(props: {
   const tone = props.tone ?? "neutral";
 
   return (
-    <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 p-4">
+    <div className="rounded-2xl bg-card shadow-sm ring-1 ring-ring p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">
+          <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
             {props.title}
           </div>
-          <div className="mt-1 text-2xl font-black text-slate-900 truncate">{props.value}</div>
-          {props.hint ? <div className="mt-1 text-xs text-slate-500">{props.hint}</div> : null}
+          <div className="mt-1 text-2xl font-black text-foreground truncate">{props.value}</div>
+          {props.hint ? <div className="mt-1 text-xs text-muted-foreground">{props.hint}</div> : null}
         </div>
         <span className={iconBadge(tone)}>
           <Icon className={iconColor(tone)} />
@@ -240,11 +240,11 @@ function SoftButton(props: {
         props.disabled && "opacity-60 cursor-not-allowed",
         variant === "primary" && "bg-amber text-white hover:brightness-95",
         variant === "secondary" &&
-          "border border-slate-200 bg-white text-slate-900 hover:bg-slate-50",
-        variant === "ghost" && "text-slate-700 hover:bg-slate-100"
+          "border border-border bg-card text-foreground hover:bg-muted",
+        variant === "ghost" && "text-foreground hover:bg-muted"
       )}
     >
-      <Icon className={cx("h-4 w-4", variant !== "primary" && "text-slate-600")} />
+      <Icon className={cx("h-4 w-4", variant !== "primary" && "text-foreground/80")} />
       {props.children}
     </button>
   );
@@ -256,10 +256,10 @@ function SelectPill(props: {
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-      <Filter className="h-4 w-4 text-slate-500" />
+    <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+      <Filter className="h-4 w-4 text-muted-foreground" />
       <select
-        className="bg-transparent text-sm font-medium text-slate-900 outline-none"
+        className="bg-transparent text-sm font-medium text-foreground outline-none"
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
       >
@@ -487,7 +487,7 @@ const ConciliacaoBancaria: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Top header */}
-      <header className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <header className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-ring">
         <div className="h-1 bg-gradient-to-r from-transparent via-amber/60 to-transparent" />
         <div className="px-6 py-6 md:px-8 md:py-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -551,27 +551,27 @@ const ConciliacaoBancaria: React.FC = () => {
       </div>
 
       {/* Upload + settings */}
-      <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 p-6">
+      <section className="rounded-2xl bg-card shadow-sm ring-1 ring-ring p-6">
         <SectionHeader
           icon={Landmark}
           title="Importar extrato bancário"
           action={
             <button
               onClick={() => setMostrarConfiguracoes((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/20"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/20"
             >
-              <Settings className="h-4 w-4 text-slate-600" />
+              <Settings className="h-4 w-4 text-foreground/80" />
               Configurar matching
             </button>
           }
         />
 
         {mostrarConfiguracoes ? (
-          <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="mb-6 rounded-2xl border border-border bg-muted p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-sm font-semibold text-slate-900">Motor de matching</div>
-                <p className="mt-1 text-xs text-slate-600">
+                <div className="text-sm font-semibold text-foreground">Motor de matching</div>
+                <p className="mt-1 text-xs text-foreground/80">
                   Ajuste a agressividade. Menos risco = mais trabalho manual.
                 </p>
               </div>
@@ -580,19 +580,19 @@ const ConciliacaoBancaria: React.FC = () => {
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <label className="block">
-                <span className="text-sm font-medium text-slate-700">Tolerância de valor (Kz)</span>
+                <span className="text-sm font-medium text-foreground">Tolerância de valor (Kz)</span>
                 <input
                   type="number"
                   value={configMatching.toleranciaValor}
                   onChange={(e) =>
                     setConfigMatching((p) => ({ ...p, toleranciaValor: Number(e.target.value || 0) }))
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                  className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 />
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-slate-700">Dias tolerância (vencimento)</span>
+                <span className="text-sm font-medium text-foreground">Dias tolerância (vencimento)</span>
                 <input
                   type="number"
                   value={configMatching.diasToleranciaVencimento}
@@ -602,12 +602,12 @@ const ConciliacaoBancaria: React.FC = () => {
                       diasToleranciaVencimento: Number(e.target.value || 0),
                     }))
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                  className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 />
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-slate-700">Confiança mínima (%)</span>
+                <span className="text-sm font-medium text-foreground">Confiança mínima (%)</span>
                 <input
                   type="number"
                   min={0}
@@ -616,23 +616,23 @@ const ConciliacaoBancaria: React.FC = () => {
                   onChange={(e) =>
                     setConfigMatching((p) => ({ ...p, confiancaMinima: Number(e.target.value || 0) }))
                   }
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                  className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 />
               </label>
 
-              <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3">
+              <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-3">
                 <input
                   type="checkbox"
                   checked={configMatching.usarNomeSimilar}
                   onChange={(e) =>
                     setConfigMatching((p) => ({ ...p, usarNomeSimilar: e.target.checked }))
                   }
-                  className="h-4 w-4 rounded border-slate-300"
+                  className="h-4 w-4 rounded border-border"
                 />
-                <span className="text-sm text-slate-700">Usar matching por nome</span>
+                <span className="text-sm text-foreground">Usar matching por nome</span>
               </label>
 
-              <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3">
+              <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-3">
                 <input
                   type="checkbox"
                   checked={configMatching.autoConciliarAltaConfianca}
@@ -642,9 +642,9 @@ const ConciliacaoBancaria: React.FC = () => {
                       autoConciliarAltaConfianca: e.target.checked,
                     }))
                   }
-                  className="h-4 w-4 rounded border-slate-300"
+                  className="h-4 w-4 rounded border-border"
                 />
-                <span className="text-sm text-slate-700">Auto-conciliar alta confiança</span>
+                <span className="text-sm text-foreground">Auto-conciliar alta confiança</span>
               </label>
             </div>
           </div>
@@ -652,7 +652,7 @@ const ConciliacaoBancaria: React.FC = () => {
 
         {/* Bank select */}
         <div className="mb-4">
-          <div className="text-sm font-medium text-slate-700">Banco</div>
+          <div className="text-sm font-medium text-foreground">Banco</div>
           <div className="mt-2 flex flex-wrap gap-2">
             {["BAI", "BFA", "BIC", "MBWay", "Multicaixa", "Outro"].map((banco) => {
               const active = bancoSelecionado === banco;
@@ -663,8 +663,8 @@ const ConciliacaoBancaria: React.FC = () => {
                   className={cx(
                     "rounded-xl px-4 py-2 text-sm font-medium transition border",
                     active
-                      ? "border-amber/30 bg-amber/10 text-slate-900"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      ? "border-amber/30 bg-amber/10 text-foreground"
+                      : "border-border bg-card text-foreground hover:bg-muted"
                   )}
                 >
                   {banco}
@@ -675,13 +675,13 @@ const ConciliacaoBancaria: React.FC = () => {
 
           {bancoSelecionado !== "MBWay" ? (
             <div className="mt-4">
-              <label className="block text-sm font-medium text-slate-700">
-                Conta bancária <span className="text-slate-400">(opcional)</span>
+              <label className="block text-sm font-medium text-foreground">
+                Conta bancária <span className="text-muted-foreground">(opcional)</span>
               </label>
               <input
                 value={contaSelecionada}
                 onChange={(e) => setContaSelecionada(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 placeholder="Número da conta"
               />
             </div>
@@ -695,7 +695,7 @@ const ConciliacaoBancaria: React.FC = () => {
             "rounded-2xl border-2 border-dashed p-8 text-center transition cursor-pointer",
             isDragActive
               ? "border-amber/60 bg-amber/10"
-              : "border-slate-300 hover:border-slate-400"
+              : "border-border hover:border-border"
           )}
         >
           <input {...getInputProps()} />
@@ -704,12 +704,12 @@ const ConciliacaoBancaria: React.FC = () => {
               <Skeleton className="h-12 w-12 rounded-full" />
             </div>
           ) : (
-            <Upload className="mx-auto mb-3 h-12 w-12 text-slate-400" />
+            <Upload className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
           )}
-          <p className="text-lg font-semibold text-slate-900">
+          <p className="text-lg font-semibold text-foreground">
             {isDragActive ? "Solte o arquivo aqui" : "Arraste ou clique para selecionar"}
           </p>
-          <p className="mt-1 text-sm text-slate-600">CSV, XLS, XLSX</p>
+          <p className="mt-1 text-sm text-foreground/80">CSV, XLS, XLSX</p>
 
           <div className="mt-4">
             <button
@@ -724,18 +724,18 @@ const ConciliacaoBancaria: React.FC = () => {
         {/* Processed file */}
         {arquivos.length > 0 ? (
           <div className="mt-6">
-            <div className="text-sm font-medium text-slate-700">Arquivo processado</div>
+            <div className="text-sm font-medium text-foreground">Arquivo processado</div>
             <div className="mt-2 space-y-2">
               {arquivos.map((file, idx) => (
                 <div
                   key={`${file.name}-${idx}`}
-                  className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                  className="flex items-center justify-between rounded-2xl border border-border bg-muted p-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <FileUp className="h-5 w-5 text-slate-600" />
+                    <FileUp className="h-5 w-5 text-foreground/80" />
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900">{file.name}</div>
-                      <div className="text-xs text-slate-500">{(file.size / 1024).toFixed(2)} KB</div>
+                      <div className="truncate text-sm font-semibold text-foreground">{file.name}</div>
+                      <div className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(2)} KB</div>
                     </div>
                   </div>
                   <button
@@ -743,7 +743,7 @@ const ConciliacaoBancaria: React.FC = () => {
                       setArquivos([]);
                       setTransacoes([]);
                     }}
-                    className="rounded-xl p-2 text-slate-500 hover:text-red-600 hover:bg-white focus:outline-none focus:ring-4 focus:ring-amber/20"
+                    className="rounded-xl p-2 text-muted-foreground hover:text-red-600 hover:bg-card focus:outline-none focus:ring-4 focus:ring-amber/20"
                     title="Remover"
                   >
                     <Trash2 className="h-5 w-5" />
@@ -755,14 +755,14 @@ const ConciliacaoBancaria: React.FC = () => {
         ) : null}
 
         {!processingUpload && transacoes.length === 0 && arquivos.length > 0 ? (
-          <div className="mt-6 rounded-2xl border border-amber/25 bg-amber/10 p-4 text-slate-900">
+          <div className="mt-6 rounded-2xl border border-amber/25 bg-amber/10 p-4 text-foreground">
             <div className="flex items-start gap-3">
               <span className={iconBadge("warn")}>
                 <AlertTriangle className={iconColor("warn")} />
               </span>
               <div>
                 <div className="font-semibold">Nenhuma transação válida encontrada.</div>
-                <div className="mt-1 text-sm text-slate-700">
+                <div className="mt-1 text-sm text-foreground">
                   Verifique o formato do arquivo e/ou ajuste as configurações de matching.
                 </div>
               </div>
@@ -772,14 +772,14 @@ const ConciliacaoBancaria: React.FC = () => {
       </section>
 
       {/* Table */}
-      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <section className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-ring">
         <div className="px-6 py-5">
           <SectionHeader
             icon={FileText}
             title="Transações"
             action={
-              <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                <Search className="h-4 w-4 text-slate-500" />
+              <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground">
+                <Search className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">Revisão</span>
                 <span className={pillClasses("neutral")}>{matchSugestoes.length} sugestões</span>
               </div>
@@ -788,40 +788,40 @@ const ConciliacaoBancaria: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+          <table className="min-w-[720px] w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Data
                 </th>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Descrição
                 </th>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Referência
                 </th>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Valor
                 </th>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Banco
                 </th>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Match
                 </th>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Ações
                 </th>
               </tr>
             </thead>
 
-            <tbody className="bg-white divide-y divide-slate-200">
+            <tbody className="bg-card divide-y divide-border">
               {loadingTransactions ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-slate-500">
+                  <td colSpan={8} className="px-6 py-10 text-center text-muted-foreground">
                     <div className="mx-auto space-y-2 max-w-xs">
                       <Skeleton className="h-4 w-40 mx-auto" />
                       <Skeleton className="h-3 w-56 mx-auto" />
@@ -830,7 +830,7 @@ const ConciliacaoBancaria: React.FC = () => {
                 </tr>
               ) : transacoes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-slate-500">
+                  <td colSpan={8} className="px-6 py-10 text-center text-muted-foreground">
                     Nenhuma transação encontrada.
                   </td>
                 </tr>
@@ -842,54 +842,54 @@ const ConciliacaoBancaria: React.FC = () => {
                     const isCredito = t.tipo === "credito";
 
                     return (
-                      <tr key={t.id} className="hover:bg-slate-50">
+                      <tr key={t.id} className="hover:bg-muted">
                         <td className="px-6 py-4 align-top whitespace-nowrap">
-                          <div className="text-sm font-medium text-slate-900">{safeDate(t.data)}</div>
+                          <div className="text-sm font-medium text-foreground">{safeDate(t.data)}</div>
                         </td>
 
                         <td className="px-6 py-4 align-top">
-                          <div className="text-sm font-semibold text-slate-900">{t.descricao}</div>
-                          <div className="mt-1 text-xs text-slate-500 truncate">{t.conta}</div>
+                          <div className="text-sm font-semibold text-foreground">{t.descricao}</div>
+                          <div className="mt-1 text-xs text-muted-foreground truncate">{t.conta}</div>
                         </td>
 
                         <td className="px-6 py-4 align-top whitespace-nowrap">
-                          <div className="text-sm text-slate-900">{t.referencia || "—"}</div>
+                          <div className="text-sm text-foreground">{t.referencia || "—"}</div>
                         </td>
 
                         <td className="px-6 py-4 align-top whitespace-nowrap">
                           <div
                             className={cx(
                               "text-sm font-black",
-                              isCredito ? "text-emerald" : "text-slate-900"
+                              isCredito ? "text-emerald" : "text-foreground"
                             )}
                             title={kwanza.format(t.valor)}
                           >
                             {formatKz(t.valor)}
                           </div>
-                          <div className="mt-1 text-[11px] text-slate-500">
+                          <div className="mt-1 text-[11px] text-muted-foreground">
                             {isCredito ? "Crédito" : "Débito"}
                           </div>
                         </td>
 
                         <td className="px-6 py-4 align-top whitespace-nowrap">
-                          <div className="text-sm font-medium text-slate-900">{t.banco}</div>
+                          <div className="text-sm font-medium text-foreground">{t.banco}</div>
                         </td>
 
                         <td className="px-6 py-4 align-top">
                           {t.alunoMatch ? (
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
-                                <div className="text-sm font-semibold text-slate-900 truncate">
+                                <div className="text-sm font-semibold text-foreground truncate">
                                   {t.alunoMatch.nome}
                                 </div>
-                                <div className="mt-1 text-xs text-slate-500">
+                                <div className="mt-1 text-xs text-muted-foreground">
                                   {t.alunoMatch.turma} • {clampPercent(t.matchConfianca)}%
                                 </div>
                               </div>
                               {confidenceBar(t.matchConfianca)}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <div className="flex items-center gap-2 text-sm text-foreground/80">
                               <span className={iconBadge("neutral")}>
                                 <AlertTriangle className={iconColor("neutral")} />
                               </span>
@@ -929,7 +929,7 @@ const ConciliacaoBancaria: React.FC = () => {
                             {t.status === "pendente" && !t.alunoMatch ? (
                               <button
                                 onClick={() => rawToast({ variant: "info", title: "Busca manual em preparação." })}
-                                className="rounded-xl p-2 text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                                className="rounded-xl p-2 text-foreground hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/20"
                                 title="Buscar aluno"
                               >
                                 <Search className="h-5 w-5" />
@@ -938,7 +938,7 @@ const ConciliacaoBancaria: React.FC = () => {
 
                             <button
                               onClick={() => ignorarTransacao(t.id)}
-                              className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                              className="rounded-xl p-2 text-foreground/80 hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/20"
                               title="Ignorar"
                             >
                               <XCircle className="h-5 w-5" />
@@ -946,7 +946,7 @@ const ConciliacaoBancaria: React.FC = () => {
 
                             <button
                               onClick={() => rawToast({ variant: "info", title: "Detalhes em preparação." })}
-                              className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-amber/20"
+                              className="rounded-xl p-2 text-foreground/80 hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/20"
                               title="Detalhes"
                             >
                               <Eye className="h-5 w-5" />
@@ -962,15 +962,15 @@ const ConciliacaoBancaria: React.FC = () => {
         </div>
 
         {/* Footer hint */}
-        <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
+        <div className="border-t border-border bg-muted px-6 py-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm text-slate-600">
-              Dica: use <span className="font-semibold text-slate-900">Confiança mínima</span> com cuidado.
+            <div className="text-sm text-foreground/80">
+              Dica: use <span className="font-semibold text-foreground">Confiança mínima</span> com cuidado.
               Auto-conciliar errado vira dor no suporte.
             </div>
             <Link
               href={`/escola/${escolaId}/financeiro`}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
+              className="inline-flex items-center justify-center rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
             >
               Voltar ao Financeiro
             </Link>
