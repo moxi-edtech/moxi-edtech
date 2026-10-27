@@ -52,6 +52,18 @@ try {
         if (name.startsWith("dashboard-")) await page.getByTestId("aluno-dashboard-editorial").waitFor({timeout:10000});
         else if (name.startsWith("grade-")) await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
         else await page.locator("#root > *").first().waitFor({timeout:12000}).catch(() => { throw new Error(`${name}: fixture root did not render; browser errors: ${errors.slice(-5).join(" | ") || "none"}`); });
+        // Espera pelo estado facultativo relevante, sem tratar a primeira
+        // renderização da dashboard como se os endpoints já tivessem concluído.
+        const expectedState = {
+          "dashboard-pending": "Documento em análise",
+          "dashboard-rejected": "Reenviar no mesmo pedido",
+          "dashboard-rematricula": "A tua rematrícula",
+          "dashboard-overdue": "1 mensalidade vencida",
+          "grade-unpaid": "Solicitar boletim",
+          "grade-pending": "Pagamento em análise",
+          "grade-rejected": "Corrigir comprovativo",
+        }[name];
+        if (expectedState) await page.getByText(expectedState, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {});
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
         await page.waitForTimeout(200);
         const metrics = await page.evaluate(() => {
@@ -85,7 +97,7 @@ try {
           if (name === "grade-paid" && !metrics.bodyText.includes("Exame do período")) errors.push(`${name}: paid assessments missing`);
           if (name === "grade-pending" && !metrics.bodyText.includes("Pagamento em análise")) errors.push(`${name}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
-          if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido")) errors.push(`${name}: resubmit action missing`);
+          if (name === "grade-rejected" && !metrics.bodyText.includes("Corrigir comprovativo")) errors.push(`${name}: resubmit action missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
         }
         if ((name.startsWith("grade-") || name.startsWith("notice-")) && metrics.nestedScrolls) errors.push(`${name}: unnecessary nested scroll`);
