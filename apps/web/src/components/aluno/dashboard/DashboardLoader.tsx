@@ -6,6 +6,11 @@ import { ArrowRight, BookOpen, CalendarDays, FileText, Wallet, Bell, GraduationC
 import { ErrorState } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { buildStudentAttention, nextLessonLabel, type StudentDocument, type StudentRematricula } from "@/lib/aluno/dashboardPresentation";
+import { PortalAction } from "@/components/portal/ui/PortalAction";
+import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
+import { PortalSection } from "@/components/portal/ui/PortalSection";
+import { PortalStatCard } from "@/components/portal/ui/PortalStatCard";
+import { PortalSurface } from "@/components/portal/ui/PortalSurface";
 
 type DashboardData = {
   ok: boolean;
@@ -133,10 +138,25 @@ export default function DashboardLoader() {
         </div>
       </div>
     </header>
+    <PortalSection id="aluno-summary" title="Em resumo">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3" data-testid="aluno-summary-cards">
+        <PortalStatCard label="Avisos" accessibleLabel="Consultar avisos recentes"
+          icon={<Bell className="h-4 w-4" aria-hidden="true" />}
+          value={(screen.dashboard.avisos_recentes ?? []).length} href={go("/aluno/avisos")} />
+        <PortalStatCard label="Notas" accessibleLabel="Consultar o estado das notas"
+          icon={<BookOpen className="h-4 w-4" aria-hidden="true" />}
+          value={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Abertas" : "Por abrir") : null}
+          href={go("/aluno/academico")} />
+        <PortalStatCard label="Vencidas" accessibleLabel="Consultar mensalidades vencidas"
+          icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
+          value={screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error
+            ? screen.dashboard.status_financeiro.pendentes : null}
+          href={go("/aluno/financeiro")} />
+      </div>
+    </PortalSection>
     <div className="grid items-start gap-5 lg:grid-cols-5">
-      <section aria-labelledby="next-class" className="space-y-2 lg:col-span-3">
-        <h2 id="next-class" className={heading}>A tua próxima aula</h2>
-        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <PortalSection id="next-class" title="A tua próxima aula" className="lg:col-span-3">
+        <PortalSurface>
           {lesson ? <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="rounded-lg bg-muted px-3 py-2 text-emerald-800"><p className="text-2xl font-semibold tabular-nums">{lesson.time}</p></div>
@@ -144,11 +164,12 @@ export default function DashboardLoader() {
             </div>
             {lesson.details.length > 0 && <p className="text-sm text-slate-600">{lesson.details.join(" · ")}</p>}
           </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-muted-foreground"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
-          <Link className={`${action} mt-5`} href={go("/aluno/horario")}>Ver o horário completo <ArrowRight className="h-4 w-4"/></Link>
-        </div>
-      </section>
-      {attentions.length > 0 && <section aria-labelledby="attention-title" className="space-y-2 lg:col-span-2" data-testid="attention">
-        <h2 id="attention-title" className={heading}>A acompanhar</h2>
+          <PortalAction className="mt-3 -ml-3" href={go("/aluno/horario")}>
+            Ver o horário completo <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </PortalAction>
+        </PortalSurface>
+      </PortalSection>
+      {attentions.length > 0 && <PortalSection id="attention-title" title="A acompanhar" className="lg:col-span-2" testId="attention">
         <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {attentions.slice(0,3).map(item => {
             const needsAction = item.kind === "rejected" || item.kind === "mensalidade" || item.kind === "rematricula";
@@ -157,26 +178,27 @@ export default function DashboardLoader() {
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-semibold leading-5 text-foreground">{item.title}</h3>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.description}</p>
-                <Link href={go(item.href)} className={action}>{item.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/></Link>
+                <PortalAction href={go(item.href)} className="-ml-3">{item.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/></PortalAction>
               </div>
             </article>;
           })}
         </div>
-      </section>}
+      </PortalSection>}
     </div>
-    <section aria-labelledby="school-links" className="space-y-3">
-      <h2 id="school-links" className={heading}>A tua vida escolar</h2>
+    <PortalSection id="school-links" title="A tua vida escolar">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-emerald-700/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} bg-card`}>
           <Icon className="h-5 w-5 text-emerald-800" aria-hidden="true"/><div><p className="text-sm font-semibold text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{hint}</p></div>
         </Link>)}
       </div>
-    </section>
-    <section aria-labelledby="notices" className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="notices" className={heading}>Avisos da escola</h2><Link className={action} href={go("/aluno/avisos")}>Ver todos<ArrowRight className="h-4 w-4"/></Link></div>
-      {(screen.dashboard.avisos_recentes??[]).length===0 ? <p className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-3 text-sm text-muted-foreground"><Bell className="h-5 w-5 shrink-0"/> Não há avisos recentes.</p> : <ul className="divide-y divide-border rounded-xl border border-border bg-card px-4">
+    </PortalSection>
+    <PortalSection id="notices" title="Avisos da escola" action={
+      <PortalAction href={go("/aluno/avisos")}>Ver todos <ArrowRight aria-hidden="true" className="h-4 w-4" /></PortalAction>
+    }>
+      {(screen.dashboard.avisos_recentes??[]).length===0 ? <PortalEmptyState
+        icon={<Bell className="h-5 w-5" />} title="Sem avisos recentes" /> : <ul className="divide-y divide-border rounded-xl border border-border bg-card px-4">
         {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-3"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
       </ul>}
-    </section>
+    </PortalSection>
   </main>;
 }
