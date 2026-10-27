@@ -49,7 +49,7 @@ export async function getAlunoContext() {
     // O ano letivo e os vínculos académicos são leituras independentes.
     // Executá-las simultaneamente remove uma ida sequencial ao banco,
     // preservando a validação de identidade e o RLS em cada requisição.
-    const [authorizedIds, activeAno] = escolaId
+    const resolved = escolaId
       ? await Promise.all([
           resolveAuthorizedStudentIds({
             supabase,
@@ -59,8 +59,9 @@ export async function getAlunoContext() {
           }),
           resolveAnoLetivoScope(supabase, escolaId).then((scope) => scope?.ano ?? null),
         ])
-      : [[], null] as const;
-    alunoIds = authorizedIds;
+      : null;
+    alunoIds = resolved?.[0] ?? [];
+    const activeAno = resolved?.[1] ?? null;
     alunoId = alunoIds[0] ?? null;
 
     if (alunoId) {
