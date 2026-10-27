@@ -37,7 +37,7 @@ const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_CERTIFICADO_HABILITACOES',
 ]);
 
-export function TabDocumentos() {
+export function TabDocumentos({ embedded = false, focusServiceCode = null }: { embedded?: boolean; focusServiceCode?: string | null } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const escolaSlug = getEscolaParamFromPath(pathname);
@@ -45,7 +45,8 @@ export function TabDocumentos() {
   const studentId = searchParams?.get("aluno") ?? null;
   const rawServiceCode = searchParams?.get("servico") ?? null;
   // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
-  const serviceCode = rawServiceCode === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : rawServiceCode;
+  const requestedService = focusServiceCode ?? rawServiceCode;
+  const serviceCode = requestedService === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : requestedService;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
   const queryParams = new URLSearchParams();
   if (studentId) queryParams.set("studentId", studentId);
@@ -240,14 +241,15 @@ export function TabDocumentos() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="min-w-0 space-y-4 pb-8">
       {/* Cabeçalho */}
-      <header className="px-1 space-y-1">
+      {!embedded && <header className="px-1 space-y-1">
         <h2 className="text-xl font-black text-slate-900 tracking-tight">Secretaria Digital</h2>
         <p className="text-xs font-medium text-slate-500 leading-relaxed">
           Escolha o documento, envie o comprovativo de pagamento e acompanhe a validação da secretaria.
         </p>
-      </header>
+      </header>}
+      {embedded && <p className="text-sm leading-6 text-slate-600">Solicita documentos e acompanha o estado dos teus pedidos.</p>}
 
       {catalogError ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900" role="alert">
@@ -267,65 +269,60 @@ export function TabDocumentos() {
       ) : (
         <div className="space-y-4">
           {visibleDocs.map((doc) => (
-            <AlunoCard 
-              key={doc.id}
-              className="group relative transition-all duration-300 hover:shadow-md active:scale-[0.99] border border-slate-100/80 bg-white p-5 sm:p-6 rounded-3xl space-y-4"
-            >
-              <div className="flex items-start justify-between gap-4 sm:gap-6">
-                
-                {/* Lado Esquerdo: Ícone + Conteúdo */}
-                <div className="flex items-start gap-4 min-w-0 flex-1">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors shadow-sm ${
-                    doc.status === 'granted' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                    doc.status === 'pending_payment' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                    doc.status === 'pending' || doc.status === 'blocked' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-                    doc.status === 'rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
-                    'bg-slate-50 text-slate-500 border border-slate-100'
-                  }`}>
-                    <FileText className="h-6 w-6" />
-                  </div>
+             <AlunoCard
+               key={doc.id}
+               className="min-w-0 space-y-3 rounded-2xl border-slate-200 bg-white p-4 shadow-none sm:p-5"
+             >
+               <div className="flex min-w-0 items-start gap-3">
+                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                   doc.status === "granted" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
+                   doc.status === "pending_payment" ? "border-amber-100 bg-amber-50 text-amber-700" :
+                   doc.status === "pending" || doc.status === "blocked" ? "border-blue-100 bg-blue-50 text-blue-700" :
+                   doc.status === "rejected" ? "border-rose-100 bg-rose-50 text-rose-700" :
+                   "border-slate-100 bg-slate-50 text-slate-500"
+                 }`}>
+                   <FileText aria-hidden="true" className="h-5 w-5" />
+                 </div>
+                 <div className="min-w-0 flex-1 space-y-2">
+                   <div className="flex flex-wrap items-start gap-2">
+                     <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-slate-900 sm:text-base">{doc.nome}</h3>
+                     <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                       {doc.pagamento_configurado === false ? "Taxa não configurada" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
+                     </span>
+                   </div>
+                   {doc.descricao && (
+                     <p className="break-words text-sm leading-6 text-slate-600">{doc.descricao}</p>
+                   )}
+                   <div className="flex flex-wrap items-center gap-2">
+                     {doc.pagamento_configurado === false
+                       ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Aguarda configuração</span>
+                       : <StatusBadge status={doc.status} />}
+                     {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" && (
+                       <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="text-xs font-semibold text-emerald-800 underline">
+                         Ver notas
+                       </Link>
+                     )}
+                   </div>
+                 </div>
+               </div>
+               <div className="flex min-w-0 items-center justify-start border-t border-slate-100 pt-3 sm:justify-end">
+                 {loading === doc.codigo ? (
+                   <span role="status" className="inline-flex h-11 items-center gap-2 text-sm text-slate-600">
+                     <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar
+                   </span>
+                 ) : doc.pagamento_configurado === false ? (
+                   <p className="text-xs font-medium leading-5 text-amber-800">Contacta a secretaria para definir a taxa.</p>
+                 ) : (
+                   <button type="button" onClick={() => void handleAction(doc)}
+                     className="inline-flex min-h-11 w-full items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 sm:w-auto"
+                     aria-label={`${doc.status === "granted" ? "Descarregar" : doc.status === "pending" ? "Acompanhar" : "Solicitar"}: ${doc.nome}`}>
+                     <ActionButton status={doc.status} codigo={doc.codigo} gratuito={doc.valor <= 0} />
+                   </button>
+                 )}
+               </div>
 
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-bold text-slate-900 leading-snug">{doc.nome}</h3>
-                      <span className="text-[11px] font-black text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-0.5 rounded-full shrink-0">
-                        {doc.pagamento_configurado === false ? "Taxa não definida" : doc.valor > 0 ? formatKwanza(doc.valor) : 'Gratuito'}
-                      </span>
-                    </div>
-
-                    {doc.descricao && (
-                      <p className="text-xs text-slate-500 leading-relaxed font-normal">
-                        {doc.descricao}
-                      </p>
-                    )}
-
-                    <div className="pt-1">
-                      {doc.pagamento_configurado === false ? <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold text-amber-900">Contactar secretaria</span> : <StatusBadge status={doc.status} />}
-                      {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" ? (
-                        <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</Link>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lado Direito: Botão de Ação */}
-                <div className="shrink-0 pt-0.5">
-                  {loading === doc.codigo ? (
-                    <div className="flex h-10 w-10 items-center justify-center">
-                      <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                    </div>
-                  ) : (
-                    doc.pagamento_configurado === false ? <span className="text-xs font-semibold text-amber-800">Taxa pendente</span> : (
-                      <button type="button" onClick={() => void handleAction(doc)} className="rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" aria-label={`${doc.status === 'granted' ? 'Descarregar' : doc.status === 'pending' ? 'Acompanhar' : 'Solicitar'}: ${doc.nome}`}>
-                        <ActionButton status={doc.status} codigo={doc.codigo} gratuito={doc.valor <= 0} />
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Minimal Track & Trace Stepper (se o documento estiver em andamento) */}
-              {doc.status !== 'available' && (
+               {/* Minimal Track & Trace Stepper (se o documento estiver em andamento) */}
+              {doc.status !== 'available' && doc.status !== 'granted' && (
                 <div className="pt-3 border-t border-slate-100">
                   <TrackAndTraceStepper status={doc.status} />
                 </div>
@@ -478,43 +475,43 @@ function ActionButton({ status, codigo, gratuito }: { status: DocumentoStatus; c
     case 'granted':
       if (!DIGITAL_DOCUMENT_CODES.has(codigo)) {
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm">
+          <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm">
             Contactar secretaria
           </span>
         );
       }
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95">
           <Download size={14} /> Baixar
         </span>
       );
     case 'pending_payment':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-amber-600 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-amber-600 active:scale-95">
           <Upload size={14} /> Pagar
         </span>
       );
     case 'pending':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-50 px-3 py-2.5 text-xs font-bold text-blue-700">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-blue-50 px-3 py-2.5 text-xs font-bold text-blue-700">
           <Clock size={14} /> Acompanhar
         </span>
       );
     case 'blocked':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-2.5 text-xs font-bold text-slate-600">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-slate-100 px-3 py-2.5 text-xs font-bold text-slate-600">
           <Clock size={14} /> Actualizar
         </span>
       );
     case 'rejected':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-rose-700 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-rose-700 active:scale-95">
           <Upload size={14} /> Reenviar
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95">
           {gratuito ? "Solicitar grátis" : "Solicitar"} <ChevronRight size={14} />
         </span>
       );
