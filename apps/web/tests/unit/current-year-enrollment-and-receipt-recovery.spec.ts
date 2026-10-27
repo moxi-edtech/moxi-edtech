@@ -100,6 +100,9 @@ test("confirm current enrollment only resumes settled, issued, linked and academ
   assert.match(route, /servico_codigo", "SERV_REMATRICULA"/);
   assert.match(route, /summarizeOverdueRematriculaDebt/);
   assert.match(route, /recibo_doc_id/);
+  assert.match(route, /receiptPaymentId = snapshot\.pagamento_id/);
+  assert.match(route, /receiptIntentId = snapshot\.pagamento_intent_id/);
+  assert.match(route, /"ENROLLMENT_RECEIPT_MISMATCH"/);
   assert.match(route, /rpc\("finalizar_rematricula_balcao"/);
   assert.match(route, /"ENROLLMENT_STALE"/);
   assert.match(route, /"ENROLLMENT_RECONCILIATION_REQUIRED"/);
