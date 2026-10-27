@@ -37,7 +37,7 @@ const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_CERTIFICADO_HABILITACOES',
 ]);
 
-export function TabDocumentos({ embedded = false, focusServiceCode = null }: { embedded?: boolean; focusServiceCode?: string | null } = {}) {
+export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpenNotas }: { embedded?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const escolaSlug = getEscolaParamFromPath(pathname);
@@ -298,9 +298,13 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null }: { e
                        ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Aguarda configuração</span>
                        : <StatusBadge status={doc.status} />}
                      {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" && (
-                       <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="text-xs font-semibold text-emerald-800 underline">
-                         Ver notas
-                       </Link>
+                       onOpenNotas ? (
+                         <button type="button" onClick={onOpenNotas} className="text-xs font-semibold text-emerald-800 underline">Ver notas</button>
+                       ) : (
+                         <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="text-xs font-semibold text-emerald-800 underline">
+                           Ver notas
+                         </Link>
+                       )
                      )}
                    </div>
                  </div>
