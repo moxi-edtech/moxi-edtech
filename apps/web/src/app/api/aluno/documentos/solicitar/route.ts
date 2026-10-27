@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { AcademicYearContextError } from "@/lib/academic-year/context";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
-import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     const { codigo, studentId, ano_letivo_id: anoLetivoId } = parsed.data;
     const { escolaId } = ctx;
-    const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId, userEmail: (await supabase.auth.getUser()).data.user?.email });
+    const authorizedIds = ctx.alunoIds;
     if (studentId && !authorizedIds.includes(studentId)) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
     const alunoId = resolveSelectedStudentId({ selectedId: studentId ?? null, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: false, error: "Educando não autorizado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });

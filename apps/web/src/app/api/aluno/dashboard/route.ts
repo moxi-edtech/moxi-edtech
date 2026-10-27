@@ -67,13 +67,21 @@ type DatabaseWithHorarioVersoes = Database & {
 };
 
 export async function GET() {
+  const startedAt = performance.now();
   try {
     const { supabase, ctx } = await getAlunoContext();
+    const contextMs = performance.now() - startedAt;
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const { escolaId, matriculaId, turmaId, anoLetivo } = ctx;
-    // Identidade da turma verificada pelo próprio contexto autenticado do aluno.
-    const turma_nome = escolaId && turmaId ? (await supabase.from("turmas").select("nome").eq("escola_id", escolaId).eq("id", turmaId).maybeSingle()).data?.nome ?? null : null;
 
+    // O contexto da sessão é resolvido uma vez. Consultas independentes arrancam
+    // juntas; regras RLS e a autorização do boletim permanecem em cada consulta.
+    const turmaNomePromise = escolaId && turmaId
+      ? supabase.from("turmas").select("nome").eq("escola_id", escolaId).eq("id", turmaId)
+          .maybeSingle().then(({ data }) => data?.nome ?? null)
+      : Promise.resolve(null);
+
+    const proximaAulaPromise = (async (): Promise<ProximaAulaRow | null> => {
     // Próxima aula (lê apenas versão publicada do quadro oficial)
     let proxima_aula: ProximaAulaRow | null = null;
     try {
@@ -126,6 +134,10 @@ export async function GET() {
       }
     } catch {}
 
+      return proxima_aula;
+    })();
+
+    const notasPromise = (async () => {
     // A Dashboard não pode contornar o pagamento protegido nos restantes endpoints.
     let ultima_nota: NotaRow | null = null;
     let notas_acesso_indisponivel = false;
@@ -146,6 +158,10 @@ export async function GET() {
       }
     } catch { notas_acesso_indisponivel = true; }
 
+      return { ultima_nota, notas_acesso_indisponivel };
+    })();
+
+    const financeiroPromise = (async (): Promise<StatusFinanceiro> => {
     // Status financeiro (baseado em mensalidades do aluno)
     let status_financeiro: StatusFinanceiro = { emDia: true, pendentes: 0 };
     try {
@@ -190,6 +206,10 @@ export async function GET() {
       status_financeiro = { emDia: false, pendentes: 0, error: 'Falha ao carregar' };
     }
 
+      return status_financeiro;
+    })();
+
+    const avisosPromise = (async () => {
     // Avisos recentes (até 3)
     let avisos_recentes: Array<{ id: string; titulo: string | null; resumo: string | null; origem: string | null; data: string | null }> = [];
     try {
@@ -211,40 +231,60 @@ export async function GET() {
       }
     } catch {}
 
-    return NextResponse.json({
+      return avisos_recentes;
+    })();
+
+    const dadosPagamentoPromise = (async (): Promise<DadosPagamento | null> => {
+      try {
+        if (!escolaId) return null;
+        const { data: escola } = await supabase
+          .from("escolas")
+          .select("dados_pagamento")
+          .eq("id", escolaId)
+          .maybeSingle();
+        if (!escola?.dados_pagamento) return null;
+        const raw = escola.dados_pagamento as Record<string, unknown>;
+        return {
+          iban: typeof raw.iban === "string" ? raw.iban : undefined,
+          banco: typeof raw.banco === "string" ? raw.banco : undefined,
+          titular: typeof raw.titular === "string" ? raw.titular : undefined,
+          titular_conta: typeof raw.titular_conta === "string" ? raw.titular_conta : undefined,
+          kwik_chave: typeof raw.kwik_chave === "string" ? raw.kwik_chave : undefined,
+        };
+      } catch (e) {
+        console.error("Erro ao buscar dados de pagamento:", e);
+        return null;
+      }
+    })();
+
+    const [turma_nome, proxima_aula, notas, status_financeiro, avisos_recentes, dados_pagamento] =
+      await Promise.all([
+        turmaNomePromise, proximaAulaPromise, notasPromise, financeiroPromise,
+        avisosPromise, dadosPagamentoPromise,
+      ]);
+    const totalMs = performance.now() - startedAt;
+    const response = NextResponse.json({
       ok: true,
       proxima_aula,
       ano_letivo: anoLetivo,
       turma_nome,
-      ultima_nota,
-      notas_acesso_indisponivel,
+      ultima_nota: notas.ultima_nota,
+      notas_acesso_indisponivel: notas.notas_acesso_indisponivel,
       status_financeiro,
       avisos_recentes,
-      dados_pagamento: await (async () => {
-        try {
-          if (!escolaId) return null;
-          const { data: escola } = await supabase
-            .from("escolas")
-            .select("dados_pagamento")
-            .eq("id", escolaId)
-            .maybeSingle();
-
-          if (escola?.dados_pagamento) {
-            const raw = escola.dados_pagamento as Record<string, unknown>;
-            return {
-              iban: typeof raw.iban === "string" ? raw.iban : undefined,
-              banco: typeof raw.banco === "string" ? raw.banco : undefined,
-              titular: typeof raw.titular === "string" ? raw.titular : undefined,
-              titular_conta: typeof raw.titular_conta === "string" ? raw.titular_conta : undefined,
-              kwik_chave: typeof raw.kwik_chave === "string" ? raw.kwik_chave : undefined,
-            } as DadosPagamento;
-          }
-        } catch (e) {
-          console.error("Erro ao buscar dados de pagamento:", e);
-        }
-        return null;
-      })(),
+      dados_pagamento,
     });
+    // Não inclui IDs, dados pessoais ou conteúdo académico nos diagnósticos.
+    response.headers.set("Server-Timing", `context;dur=${contextMs.toFixed(1)},data;dur=${(totalMs - contextMs).toFixed(1)},total;dur=${totalMs.toFixed(1)}`);
+    if (totalMs >= 1000) {
+      console.info(JSON.stringify({
+        event: "aluno_dashboard_slow",
+        context_ms: Math.round(contextMs),
+        data_ms: Math.round(totalMs - contextMs),
+        total_ms: Math.round(totalMs),
+      }));
+    }
+    return response;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

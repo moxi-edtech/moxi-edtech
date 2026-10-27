@@ -46,20 +46,25 @@ export async function getAlunoContext() {
       escolaId = directAluno?.escola_id ?? null;
     }
 
-    if (escolaId) {
-      alunoIds = await resolveAuthorizedStudentIds({
-        supabase,
-        userId: user.id,
-        escolaId,
-        userEmail: user.email,
-      });
-    }
+    // O ano letivo e os vínculos académicos são leituras independentes.
+    // Executá-las simultaneamente remove uma ida sequencial ao banco,
+    // preservando a validação de identidade e o RLS em cada requisição.
+    const resolved = escolaId
+      ? await Promise.all([
+          resolveAuthorizedStudentIds({
+            supabase,
+            userId: user.id,
+            escolaId,
+            userEmail: user.email,
+          }),
+          resolveAnoLetivoScope(supabase, escolaId).then((scope) => scope?.ano ?? null),
+        ])
+      : null;
+    alunoIds = resolved?.[0] ?? [];
+    const activeAno = resolved?.[1] ?? null;
     alunoId = alunoIds[0] ?? null;
 
     if (alunoId) {
-      const activeAno = escolaId
-        ? (await resolveAnoLetivoScope(supabase, escolaId))?.ano ?? null
-        : null;
 
       let matQuery = supabase
         .from("matriculas")

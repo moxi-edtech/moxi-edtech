@@ -9,36 +9,42 @@ export async function resolveAuthorizedStudentIds(params: {
 }) {
   const { supabase, userId, escolaId, userEmail } = params;
 
-  const { data: directRows } = await supabase
+  // A associação direta e a identidade do encarregado não dependem entre si.
+  // Mantemos ambas no Supabase com RLS; nenhum vínculo é reutilizado entre pedidos.
+  const directRowsPromise = supabase
     .from("alunos")
     .select("id")
     .eq("profile_id", userId)
     .eq("escola_id", escolaId)
     .limit(50);
 
-  const directIds = (directRows ?? []).map((r) => r.id);
+  const normalizedEmail = userEmail?.trim();
+  const encarregadoPromise = normalizedEmail
+    ? supabase
+        .from("encarregados")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("email", normalizedEmail)
+        .limit(1)
+        .maybeSingle()
+    : Promise.resolve({ data: null });
+
+  const [directResult, encarregadoResult] = await Promise.all([
+    directRowsPromise,
+    encarregadoPromise,
+  ]);
+  const directIds = (directResult.data ?? []).map((r) => r.id);
 
   let linkedIds: string[] = [];
-  if (userEmail) {
-    const normalizedEmail = userEmail.trim();
-
-    const { data: encarregado } = await supabase
-      .from("encarregados")
-      .select("id")
+  const encarregadoId = encarregadoResult.data?.id;
+  if (encarregadoId) {
+    const { data: links } = await supabase
+      .from("aluno_encarregados")
+      .select("aluno_id")
       .eq("escola_id", escolaId)
-      .eq("email", normalizedEmail)
-      .limit(1)
-      .maybeSingle();
-
-    if (encarregado?.id) {
-      const { data: links } = await supabase
-        .from("aluno_encarregados")
-        .select("aluno_id")
-        .eq("escola_id", escolaId)
-        .eq("encarregado_id", encarregado.id)
-        .limit(100);
-      linkedIds = (links ?? []).map((l) => l.aluno_id);
-    }
+      .eq("encarregado_id", encarregadoId)
+      .limit(100);
+    linkedIds = (links ?? []).map((link) => link.aluno_id);
   }
 
   const unique = Array.from(new Set([...directIds, ...linkedIds]));

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
-import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,14 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const { data: userRes } = await supabase.auth.getUser();
-    const authUser = userRes?.user;
-    const authorizedIds = await resolveAuthorizedStudentIds({
-      supabase,
-      userId: ctx.userId,
-      escolaId: ctx.escolaId,
-      userEmail: authUser?.email,
-    });
+    const authorizedIds = ctx.alunoIds;
 
     const selectedId = new URL(request.url).searchParams.get("studentId");
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });

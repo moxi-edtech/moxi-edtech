@@ -11,38 +11,41 @@ export const metadata: Metadata = {
 const resolveAlunoIds = async (supabase: Awaited<ReturnType<typeof supabaseServer>>, escolaId: string, userId: string, email?: string | null) => {
   const alunoIds = new Set<string>();
 
-  const { data: alunosDiretos } = await supabase
+  // Consultas independentes: alunos diretos e identidade do encarregado.
+  const directPromise = supabase
     .from("alunos")
     .select("id")
     .eq("profile_id", userId)
     .eq("escola_id", escolaId)
     .limit(20);
 
-  (alunosDiretos ?? []).forEach((aluno) => {
+  const guardianPromise = email
+    ? supabase
+        .from("encarregados")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .ilike("email", email)
+        .limit(1)
+        .maybeSingle()
+    : Promise.resolve({ data: null });
+
+  const [directResult, guardianResult] = await Promise.all([directPromise, guardianPromise]);
+  (directResult.data ?? []).forEach((aluno) => {
     if (aluno?.id) alunoIds.add(aluno.id);
   });
 
-  if (email) {
-    const { data: encarregado } = await supabase
-      .from("encarregados")
-      .select("id")
+  const encarregadoId = guardianResult.data?.id;
+  if (encarregadoId) {
+    const { data: alunoLinks } = await supabase
+      .from("aluno_encarregados")
+      .select("aluno_id")
       .eq("escola_id", escolaId)
-      .ilike("email", email)
-      .limit(1)
-      .maybeSingle();
+      .eq("encarregado_id", encarregadoId)
+      .limit(50);
 
-    if (encarregado?.id) {
-      const { data: alunoLinks } = await supabase
-        .from("aluno_encarregados")
-        .select("aluno_id")
-        .eq("escola_id", escolaId)
-        .eq("encarregado_id", encarregado.id)
-        .limit(50);
-
-      (alunoLinks ?? []).forEach((link) => {
-        if (link?.aluno_id) alunoIds.add(link.aluno_id);
-      });
-    }
+    (alunoLinks ?? []).forEach((link) => {
+      if (link?.aluno_id) alunoIds.add(link.aluno_id);
+    });
   }
 
   return Array.from(alunoIds);
@@ -70,16 +73,17 @@ const alunoTemInadimplencia = async (
 
 export default async function AlunoLayout({ children }: { children: React.ReactNode }) {
   const supabase = await supabaseServer();
-  let user: any;
+  let user: { id: string; email?: string | null } | null = null;
   try {
-    const sessionResult = await supabase.auth.getSession();
-    if (isRefreshTokenNotFoundError(sessionResult.error)) {
+    // A identidade é validada no servidor: getSession() apenas lê cookies.
+    const userResult = await supabase.auth.getUser();
+    if (isRefreshTokenNotFoundError(userResult.error)) {
       redirect("/auth-recover?next=/redirect");
     }
-    if (sessionResult.error && !isAuthSessionMissingError(sessionResult.error)) {
-      throw sessionResult.error;
+    if (userResult.error && !isAuthSessionMissingError(userResult.error)) {
+      throw userResult.error;
     }
-    user = sessionResult.data.session?.user ?? null;
+    user = userResult.data.user ?? null;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
       redirect("/auth-recover?next=/redirect");
@@ -110,18 +114,25 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   }
 
   const escolaId = vincPortal.escola_id;
-  const { data: escolaInfo } = await supabase
-    .from("escolas")
-    .select("slug")
-    .eq("id", escolaId)
-    .maybeSingle();
-  const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : String(escolaId);
-
-  const { data: configuracoes } = await (supabase as any)
-    .from("configuracoes_financeiro")
-    .select("bloquear_inadimplentes")
-    .eq("escola_id", escolaId)
-    .maybeSingle();
+  // Apenas depois de validar o vínculo: escola e política financeira
+  // pertencem ao mesmo tenant, mas não dependem uma da outra.
+  const [escolaResult, configuracoesResult] = await Promise.all([
+    supabase
+      .from("escolas")
+      .select("nome, slug, aluno_portal_enabled, status")
+      .eq("id", escolaId)
+      .maybeSingle(),
+    (supabase as any)
+      .from("configuracoes_financeiro")
+      .select("bloquear_inadimplentes")
+      .eq("escola_id", escolaId)
+      .maybeSingle(),
+  ]);
+  const escolaInfo = escolaResult.data;
+  const configuracoes = configuracoesResult.data;
+  if (!escolaInfo) redirect("/");
+  if (escolaInfo.status === "suspensa") redirect("/escola/suspensa");
+  const escolaParam = escolaInfo.slug ? String(escolaInfo.slug) : String(escolaId);
 
   if (configuracoes?.bloquear_inadimplentes) {
     const alunoIds = await resolveAlunoIds(supabase, escolaId, user.id, user.email);
@@ -131,5 +142,17 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
     }
   }
 
-  return <AlunoLayoutClient>{children}</AlunoLayoutClient>;
+  return (
+    <AlunoLayoutClient
+      key={`${escolaId}:${user.id}`}
+      escolaId={escolaId}
+      escolaParam={escolaParam}
+      escolaNome={escolaInfo.nome ?? null}
+      portalEnabled={Boolean(escolaInfo.aluno_portal_enabled)}
+      userId={user.id}
+      userEmail={user.email ?? null}
+    >
+      {children}
+    </AlunoLayoutClient>
+  );
 }
