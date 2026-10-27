@@ -36,6 +36,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Current-year confirmation and read-only receipt recovery
         run: node --test --import tsx apps/web/tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts
+      - name: Existing transactional class-correction guard regression
+        run: node scripts/ci/class-rectification-contract.mjs
       - name: TypeScript
         run: pnpm -C apps/web typecheck
       - name: Targeted ESLint
