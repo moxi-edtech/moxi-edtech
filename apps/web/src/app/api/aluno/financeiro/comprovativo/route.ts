@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { getAlunoContext } from "@/lib/alunoContext";
-import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,8 +13,7 @@ export async function POST(request: Request) {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx?.escolaId || !ctx.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const { data: userRes } = await supabase.auth.getUser();
-    const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: userRes?.user?.email });
+    const authorizedIds = ctx.alunoIds;
 
     const formData = await request.formData();
     const mensalidadeIds = Array.from(new Set([
