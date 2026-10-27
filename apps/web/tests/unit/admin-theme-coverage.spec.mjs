@@ -24,6 +24,10 @@ const themedSurfaces = [
   "super-admin/UsuariosListClient.tsx",
   "super-admin/ConfirmActionModal.tsx",
   "super-admin/SchoolBillingModal.tsx",
+  "escola/settings/ConfigSystemShell.tsx",
+  "escola/settings/SettingsHub.tsx",
+  "escola/settings/AuthRequiredNotice.tsx",
+  "escola/onboarding/AcademicSetupWizard.tsx",
 ];
 
 test("administrative surfaces use theme-aware neutral backgrounds and text", () => {
@@ -76,4 +80,10 @@ test("gold and amber primary actions never use insufficient-contrast white text"
     const styleLines = source.split("\n").filter(line => /bg-amber(?:-\d+)?\b/.test(line) && /text-white/.test(line));
     assert.deepEqual(styleLines, [], "Amber buttons must use dark readable text");
   }
+});
+
+test("operational shell theme changes do not override white print pages", () => {
+  const shell = load("layout/klasse/AppShell.tsx");
+  assert.match(shell, /isPrintView[\s\S]*min-h-screen bg-white/);
+  assert.match(shell, /border-b border-border\/70 bg-muted/);
 });

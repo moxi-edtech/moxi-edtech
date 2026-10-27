@@ -63,23 +63,23 @@ export default function ConfigSystemShell({
         {!embedded && backHref && (
           <Link
             href={backHref}
-            className="text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+            className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground/80"
           >
             Voltar ao painel
           </Link>
         )}
-        <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
-        <p className="text-sm text-slate-600">{subtitle}</p>
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        <p className="text-sm text-foreground/80">{subtitle}</p>
       </header>
 
       {embedded ? (
-        <main className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 w-full h-full">
+        <main className="rounded-xl border border-border bg-card p-6 space-y-4 w-full h-full">
           {children}
           <div className="flex flex-wrap gap-3">
             {prevHref && (
               <Link
                 href={prevHref}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
               >
                 Anterior
               </Link>
@@ -96,7 +96,7 @@ export default function ConfigSystemShell({
           <div className="flex flex-col gap-2">
             {onSave && (
               <button
-                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
                 onClick={onSave}
                 disabled={saveDisabled}
               >
@@ -131,7 +131,7 @@ export default function ConfigSystemShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:border-slate-200"
+                  className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:text-foreground hover:border-border"
                 >
                   {item.label}
                 </Link>
@@ -139,13 +139,13 @@ export default function ConfigSystemShell({
             </aside>
           ) : null}
 
-          <main className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <main className="rounded-xl border border-border bg-card p-6 space-y-4">
             {children}
             <div className="flex flex-wrap gap-3">
               {prevHref && (
                 <Link
                   href={prevHref}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
                 >
                   Anterior
                 </Link>
@@ -162,22 +162,22 @@ export default function ConfigSystemShell({
           </main>
 
           {showRightPanel ? (
-            <aside className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+            <aside className="rounded-xl border border-border bg-card p-4 space-y-4">
               {hasStatusData ? (
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800">Barra de status</h3>
-                  <p className="text-xs text-slate-500">Impacto estimado das mudanças.</p>
+                  <h3 className="text-sm font-semibold text-foreground">Barra de status</h3>
+                  <p className="text-xs text-muted-foreground">Impacto estimado das mudanças.</p>
                 </div>
               ) : null}
               {status.length > 0 && (
-                <ul className="text-xs text-slate-600 space-y-2">
+                <ul className="text-xs text-foreground/80 space-y-2">
                   {status.map((item, index) => (
                     <li key={`${item}-${index}`}>{item}</li>
                   ))}
                 </ul>
               )}
               {impactSummary.length > 0 && (
-                <ul className="text-xs text-slate-600 space-y-2">
+                <ul className="text-xs text-foreground/80 space-y-2">
                   {impactSummary.map((item, index) => (
                     <li key={`${item}-${index}`}>{item}</li>
                   ))}
@@ -187,7 +187,7 @@ export default function ConfigSystemShell({
                 <div className="flex flex-col gap-2">
                   {onSave && (
                     <button
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
                       onClick={onSave}
                       disabled={saveDisabled}
                     >

@@ -15,6 +15,7 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 - Fundamentos: RootLayout, ThemeProvider, ThemeToggle, bootstrap pré-paint, preferência tipada, testes unitários e workflow `Theme Switcher Guard`.
 - Shell: Topbar, fundo principal de AppShell; **ModuleSwitcher removido** tanto do Topbar como do antigo PortalLayout. A sidebar mantém o padrão escuro institucional nos dois temas.
 - Admin/Operações: dashboard académica, KPIs, cards, atalhos, painéis operacionais e gráficos usam tokens semânticos; eixos dos gráficos seguem `--muted-foreground` / `--border`.
+- Configuração administrativa: `ConfigSystemShell`, `SettingsHub`, avisos de autenticação e wizard académico recebem superfícies semânticas; o AppShell mantém impressão branca e adapta o chrome académico.
 - Financeiro: geração e registo de pagamentos, validações, tabelas de mensalidades e listas com modais scrolláveis no viewport móvel.
 - Super Admin: rede de escolas, utilizadores, filtros, tabelas, diálogos de confirmação e cobrança convertidos para cores adaptativas.
 - Partilhados: Card, KpiCard, SecondaryAction, TaskList, DashboardHeader, Button, Drawer, ModalShell, StatusPill, Alert, Sheet, Input, Select e notificações.

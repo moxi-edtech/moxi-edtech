@@ -21,7 +21,7 @@ export default function AuthRequiredNotice({
   return (
     <div className={className}>
       <div
-        className={`rounded-2xl border border-amber-200 bg-white p-6 shadow-sm ${
+        className={`rounded-2xl border border-amber-200 bg-card p-6 shadow-sm ${
           compact ? "" : "w-full max-w-xl"
         }`}
       >
@@ -30,8 +30,8 @@ export default function AuthRequiredNotice({
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-base font-bold text-slate-900">{title}</h2>
-            <p className="text-sm text-slate-600">{description}</p>
+            <h2 className="text-base font-bold text-foreground">{title}</h2>
+            <p className="text-sm text-foreground/80">{description}</p>
             <div className="pt-1 flex flex-wrap gap-2">
               <Link
                 href={`/login?redirect=${encodeURIComponent(nextPath)}`}
@@ -43,7 +43,7 @@ export default function AuthRequiredNotice({
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-md border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
               >
                 Recarregar
               </button>
