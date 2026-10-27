@@ -61,13 +61,26 @@ function Signature({ title, role }: { title: string; role: string }) {
 
 function ProposalPreviewContent() {
   const params = useSearchParams();
-  const proposal = readProposalParams(new URLSearchParams(params?.toString() || ""));
-  const errors = proposalPrintErrors(proposal);
+  const [proposal, setProposal] = useState<ReturnType<typeof readProposalParams> | null>(null);
   const [issuedOn, setIssuedOn] = useState("");
+
+  useEffect(() => {
+    const read = () => {
+      const fragment = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+      // Links antigos com query string continuam a abrir; novas propostas usam fragmento.
+      setProposal(readProposalParams(new URLSearchParams(fragment || params?.toString() || "")));
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, [params]);
 
   useEffect(() => {
     setIssuedOn(new Date().toLocaleDateString("pt-AO"));
   }, []);
+
+  if (!proposal) return <div className="p-8 text-sm text-slate-500">A preparar proposta...</div>;
+  const errors = proposalPrintErrors(proposal);
 
   const plan = proposal.plano ? PROPOSAL_PLANS[proposal.plano] : null;
   const valorInicial = proposal.taxa !== null && proposal.mensalidade !== null
@@ -154,11 +167,15 @@ function ProposalPreviewContent() {
           <ul className="mt-3 list-disc space-y-1 pl-4 text-[11px] leading-[1.6]">
             {CORE_FEATURES.map((item) => <li key={item}>{item}</li>)}
           </ul>
-          {proposal.niveis.length > 0 && (
-            <p className="mt-3 text-[10px] text-slate-600">
-              <span className="font-bold">Níveis de ensino previstos:</span> {proposal.niveis.join(" · ")}.
+          <div className="proposal-keep mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-[10px] leading-relaxed text-slate-700">
+            <p><span className="font-bold">Níveis de ensino previstos:</span>{" "}
+              {proposal.niveis.length > 0 ? proposal.niveis.join(" · ") : "A confirmar no levantamento inicial"}.
             </p>
-          )}
+            <p className="mt-1"><span className="font-bold">Modelo curricular de referência:</span>{" "}
+              {proposal.preset || "A definir durante o onboarding (configuração manual)"}.
+            </p>
+            <p className="mt-1 text-slate-500">O currículo definitivo, as classes e disciplinas serão validados com a escola durante a parametrização inicial.</p>
+          </div>
         </Section>
 
         <Section index={3} title="Condições comerciais">
@@ -211,6 +228,26 @@ function ProposalPreviewContent() {
             acessos administrativos, apoio à importação inicial dos dados acordados, formação da equipa e
             acompanhamento assistido durante os primeiros 7–14 dias após a entrada em funcionamento.
           </p>
+          <div className="mt-4 proposal-keep">
+            <h3 className="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-[#1F6B3B]">Contactos de referência para implantação</h3>
+            <p className="mb-3 text-[10px] text-slate-500">Indicados pela escola no CRM; confirmar nomes e canais antes do início do onboarding.</p>
+            <div className="grid gap-3 sm:grid-cols-3 print:grid-cols-3">
+              {([
+                ["Secretaria Geral", proposal.contactos.secretaria],
+                ["Direção Financeira", proposal.contactos.financeiro],
+                ["Coordenação Pedagógica / Operações", proposal.contactos.pedagogico],
+              ] as const).map(([title, contact]) => (
+                <div key={title} className="proposal-keep min-w-0 rounded-md border border-slate-200 p-3">
+                  <p className="mb-2 text-[10px] font-extrabold text-[#1F6B3B]">{title}</p>
+                  <div className="break-words">
+                    <Field title="Nome" value={contact.nome || "A confirmar"} />
+                    <Field title="E-mail" value={contact.email || "A confirmar"} />
+                    <Field title="Telefone" value={contact.telefone || "A confirmar"} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </Section>
 
         <Section index={6} title="Premissas">
