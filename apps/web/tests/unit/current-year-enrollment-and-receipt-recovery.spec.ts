@@ -140,7 +140,9 @@ test("full profile and Command Center share the same class correction and curren
   assert.match(panel, /canConfirm/);
   assert.match(panel, /confirmar: true/);
   assert.match(panel, /matricula-corrente/);
-  assert.match(panel, /Abrir Balcão de Atendimento/);
+  assert.match(panel, /Iniciar matrícula no Balcão/);
+  assert.match(panel, /Abrir rematrícula no Balcão/);
+  assert.match(panel, /state\.estado === "sem_matricula" \? "enrollment" : "reenrollment"/);
 });
 
 test("class correction stays an audited transactional move, never deletes linked historical data", () => {
