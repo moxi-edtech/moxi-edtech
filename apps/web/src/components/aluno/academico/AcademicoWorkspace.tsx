@@ -32,7 +32,7 @@ export function AcademicoWorkspace() {
     setActiveTab(tab);
     setVisited((current) => current.includes(tab) ? current : [...current, tab]);
     setFocusService(tab === "documentos" ? service ?? null : null);
-    // Muda apenas o separador. Não executa router.push/replace nem remonta
+    // Muda apenas o separador. Não executa navegação Next nem remonta
     // o layout servidor; preserva aluno, ano letivo e os dados já carregados.
     const url = new URL(window.location.href);
     if (tab === "notas") url.searchParams.delete("aba");
