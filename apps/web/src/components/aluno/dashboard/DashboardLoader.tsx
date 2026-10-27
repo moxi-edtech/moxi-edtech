@@ -135,10 +135,10 @@ export default function DashboardLoader() {
     <div className="grid items-start gap-5 lg:grid-cols-5">
       <section aria-labelledby="next-class" className="space-y-2 lg:col-span-3">
         <h2 id="next-class" className={heading}>A tua próxima aula</h2>
-        <div className="rounded-xl border border-[#D7E5DC] bg-[#E5F0E8] p-4 sm:p-5">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
           {lesson ? <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-4">
-              <div className="rounded-xl bg-white/85 px-4 py-3 text-[#24573e] shadow-sm"><p className="text-2xl font-semibold tabular-nums">{lesson.time}</p></div>
+              <div className="rounded-lg bg-muted px-3 py-2 text-emerald-800"><p className="text-2xl font-semibold tabular-nums">{lesson.time}</p></div>
               <div className="min-w-0"><p className="text-sm text-slate-500">{lesson.day}</p><p className="mt-1 text-lg font-semibold text-slate-900">{lesson.subject}</p></div>
             </div>
             {lesson.details.length > 0 && <p className="text-sm text-slate-600">{lesson.details.join(" · ")}</p>}
@@ -166,15 +166,15 @@ export default function DashboardLoader() {
     <section aria-labelledby="school-links" className="space-y-3">
       <h2 id="school-links" className={heading}>A tua vida escolar</h2>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-[#2B6044]/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} ${label === "Disciplinas" ? "bg-[#E6EDEB]" : label === "Boletim" ? "bg-[#EBE8F3]" : label === "Pagamentos" ? "bg-[#F5EBDD]" : "bg-[#E4EBF5]"}`}>
-          <Icon className="h-6 w-6 text-[#2B6044]" aria-hidden="true"/><div><p className="text-sm font-semibold text-slate-900">{label}</p><p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">{hint}</p></div>
+        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-[#2B6044]/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} bg-card`}>
+          <Icon className="h-5 w-5 text-emerald-800" aria-hidden="true"/><div><p className="text-sm font-semibold text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{hint}</p></div>
         </Link>)}
       </div>
     </section>
     <section aria-labelledby="notices" className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="notices" className={heading}>Avisos da escola</h2><Link className={action} href={go("/aluno/avisos")}>Ver todos<ArrowRight className="h-4 w-4"/></Link></div>
       {(screen.dashboard.avisos_recentes??[]).length===0 ? <p className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-3 text-sm text-muted-foreground"><Bell className="h-5 w-5 shrink-0"/> Não há avisos recentes.</p> : <ul className="divide-y divide-border rounded-xl border border-border bg-card px-4">
-        {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-3"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 text-sm leading-6 text-slate-600">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
+        {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-3"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
       </ul>}
     </section>
   </main>;
