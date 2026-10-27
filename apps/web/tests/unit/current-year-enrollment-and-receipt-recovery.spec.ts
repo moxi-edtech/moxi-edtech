@@ -81,6 +81,21 @@ test("rapid checkout reserves print tab before fetch and does not generate anoth
   assert.doesNotMatch(code, /setTimeout\(\(\) => window\.print\(\)/);
 });
 
+test("issued receipt print page offers a manual fallback if automatic printing is blocked", () => {
+  const printPage = source("app/secretaria/documentos/_print/ReciboPrintDocument.tsx");
+  const trigger = source("app/secretaria/documentos/_print/PrintTrigger.tsx");
+  const rapidCheckout = source("components/secretaria/ModalPagamentoRapido.tsx");
+  assert.match(printPage, /<PrintTrigger showManualButton \/>/);
+  assert.match(trigger, /Imprimir recibo/);
+  assert.match(trigger, /manuallyRequested\.current = true;[\s\S]*?window\.print\(\)/);
+  assert.match(trigger, /!cancelled && !manuallyRequested\.current/);
+  assert.match(trigger, /print:hidden/);
+  assert.match(trigger, /Promise\.race\(/);
+  assert.match(trigger, /Promise\.all\(\[imagesReady, fontsReady\]\)/);
+  assert.match(rapidCheckout, /Imprimir recibo/);
+  assert.match(rapidCheckout, /href=\{receiptHandoff\.url\}/);
+});
+
 test("current-year enrollment status uses active school year, not historical dossier selection", () => {
   const route = source("app/api/secretaria/alunos/[id]/matricula-corrente/route.ts");
   assert.match(route, /context\(studentId, parsed\.data\.escola_id\)/);
