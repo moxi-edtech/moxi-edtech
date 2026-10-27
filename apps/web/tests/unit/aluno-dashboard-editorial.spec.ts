@@ -5,9 +5,9 @@ import { buildStudentAttention, nextLessonLabel } from "../../src/lib/aluno/dash
 test("sem pendências não desenha dívida nem alertas", () => {
   assert.deepEqual(buildStudentAttention({pendentes:0,documentos:[],rematricula:{eligible:false}}),[]);
 });
-test("comprovativo pendente informa que não está liquidado e não pede novo pagamento", () => {
+test("comprovativo em análise apresenta próximo passo, não pede novo pagamento", () => {
   const a=buildStudentAttention({pendentes:0,documentos:[{codigo:"DOC_BOLETIM_TRIMESTRAL",status:"pending"}]});
-  assert.match(a[0].description,/não é um pagamento liquidado/i);
+  assert.match(a[0].description,/secretaria está a verificar/i);
   assert.equal(a[0].action,"Acompanhar pedido");
 });
 test("comprovativo rejeitado mostra motivo e reenvia no mesmo pedido", () => {
@@ -24,7 +24,7 @@ test("rematrícula elegível tem prioridade antes de mensalidade e atalhos", () 
 test("mensalidade em atraso aparece uma vez e sem inventar valor", () => {
   const a=buildStudentAttention({pendentes:1});
   assert.equal(a.length,1);
-  assert.match(a[0].title,/uma mensalidade/);
+  assert.equal(a[0].title,"1 mensalidade vencida");
   assert.doesNotMatch(JSON.stringify(a),/Kz|AOA/);
 });
 test("sem aula publicada a UI recebe estado vazio, não horários inventados", () => {
@@ -96,4 +96,30 @@ test("A e B: identidades sintéticas isoladas por escola no resolvedor de autori
   assert.equal(resolveSelectedStudentId({selectedId:"aluno-fixture-B",authorizedIds:idsA,fallbackId:"aluno-fixture-A"}),"aluno-fixture-A");
   assert.equal(resolveSelectedStudentId({selectedId:"aluno-fixture-A",authorizedIds:idsB,fallbackId:"aluno-fixture-B"}),"aluno-fixture-B");
   assert.deepEqual(await resolveAuthorizedStudentIds({supabase:fake,userId:"user-fixture-A",escolaId:"school-fixture-B",userEmail:"a@example.invalid"}),[]);
+});
+
+test("resultados académicos incompletos não são alertas do aluno; resultados graves podem ser consultados", () => {
+  assert.deepEqual(buildStudentAttention({
+    pendentes: 0,
+    academic: { status: "pendente", mensagem: "O resultado final aguarda dados ou fórmula." },
+  }), []);
+  const grave = buildStudentAttention({
+    pendentes: 0,
+    academic: { status: "reprovado", mensagem: "Existem disciplinas com resultado negativo." },
+  });
+  assert.equal(grave[0].kind, "academico");
+  assert.equal(grave[0].action, "Ver situação académica");
+});
+
+test("a dashboard usa só mensalidades vencidas na data de Angola; navegação conserva aluno e ano", async () => {
+  const fs = await import("node:fs/promises");
+  const api = await fs.readFile(new URL("../../src/app/api/aluno/dashboard/route.ts",import.meta.url), "utf8");
+  const ui = await fs.readFile(new URL("../../src/components/aluno/dashboard/DashboardLoader.tsx",import.meta.url), "utf8");
+  assert.match(api, /timeZone: 'Africa\/Luanda'/);
+  assert.match(api, /\.lt\('data_vencimento', todayLuanda\)/);
+  assert.match(api, /\.in\('status', \['pendente', 'atrasado'\]\)/);
+  assert.match(ui, /params\.set\("aluno", studentId\)/);
+  assert.match(ui, /params\.set\("ano_letivo_id", academicYearId\)/);
+  assert.match(ui, /"A acompanhar"/);
+  assert.doesNotMatch(ui, /Precisa da tua atenção|border-\[#E5CF9F\]/);
 });
