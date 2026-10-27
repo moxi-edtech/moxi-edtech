@@ -219,7 +219,7 @@ export async function POST(
     const { data: payments, error: paymentsError } = await db.from("pagamentos")
       .select("id,valor_pago,status,meta")
       .eq("escola_id", escolaId).eq("aluno_id", studentId)
-      .eq("status", "settled").limit(150);
+      .eq("status", "settled").limit(1000);
     if (intentError || paymentsError) return NextResponse.json({ ok: false, error: "Não foi possível validar os pagamentos." }, { status: 503 });
     const creditedIntents = (intents ?? []).reduce((sum: number, i: { amount: number | string }) => sum + Number(i.amount || 0), 0);
     const orderPayments = (payments ?? []).filter((p: { meta?: Record<string, unknown> }) =>
