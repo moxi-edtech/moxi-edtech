@@ -3,7 +3,7 @@
 /**
  * UsuariosListClient — Super Admin Portal
  * Design: Clean Enterprise — clareza, confiança institucional, legibilidade B2B.
- * Tokens KLASSE: Primary (#1F6B3B), Accent (#E3B23C), Light UI (slate-50 / white).
+ * Tokens KLASSE: superfícies semânticas light/dark.
  */
 
 import { useEffect, useState } from "react";
@@ -31,14 +31,14 @@ type Usuario = {
 
 type Escola = { id: string; nome: string };
 
-// ─── Tokens & Mapas (Versão Light) ────────────────────────────────────────────
+// ─── Tokens & Mapas (Light/Dark) ────────────────────────────────────────────
 
 const ROLE_META: Record<string, { bg: string; border: string; text: string; dot: string; label: string }> = {
-  super_admin:  { bg: "bg-green-50",   border: "border-green-200", text: "text-[#1F6B3B]", dot: "bg-[#1F6B3B]", label: "Super Admin"  },
-  global_admin: { bg: "bg-amber-50",   border: "border-amber-200", text: "text-[#E3B23C]", dot: "bg-[#E3B23C]", label: "Global Admin" },
-  admin:        { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-slate-500", label: "Admin"        },
-  admin_escola: { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-slate-500", label: "Admin"        },
-  staff_admin:  { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-slate-500", label: "Admin"        },
+  super_admin:  { bg: "bg-emerald/10", border: "border-emerald/30", text: "text-foreground", dot: "bg-emerald", label: "Super Admin"  },
+  global_admin: { bg: "bg-amber/10", border: "border-amber/30", text: "text-foreground", dot: "bg-amber", label: "Global Admin" },
+  admin:        { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-muted-foreground", label: "Admin"        },
+  admin_escola: { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-muted-foreground", label: "Admin"        },
+  staff_admin:  { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-muted-foreground", label: "Admin"        },
   secretaria:   { bg: "bg-blue-50",    border: "border-blue-200",  text: "text-blue-700", dot: "bg-blue-500",  label: "Secretaria"   },
   financeiro:   { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500", label: "Financeiro" },
   secretaria_financeiro: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", dot: "bg-indigo-500", label: "Sec. + Fin" },
@@ -112,7 +112,7 @@ function SkeletonRow() {
 // Input reutilizável (Focado nos tokens KLASSE Light)
 const inputCls = `w-full px-3 py-2 rounded-xl text-sm font-geist bg-card border border-border
   text-foreground placeholder:text-muted-foreground transition-all shadow-sm
-  focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20 focus:border-[#E3B23C]`;
+  focus:outline-none focus:ring-4 focus:ring-ring/20 focus:border-ring`;
 
 // ─── Password Helpers ─────────────────────────────────────────────────────────
 
@@ -324,15 +324,15 @@ function ListaUsuarios() {
   );
 
   return (
-    <div className="min-h-full bg-background text-foreground font-sora selection:bg-[#E3B23C]/20">
+    <div className="min-h-full bg-background text-foreground font-sora selection:bg-amber/20">
 
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-3 w-3 rounded-full bg-[#1F6B3B] ring-4 ring-[#1F6B3B]/10" />
+            <div className="flex h-3 w-3 rounded-full bg-emerald ring-4 ring-emerald/10" />
             <div>
-              <h1 className="text-sm font-bold text-[#1F6B3B] tracking-wide uppercase">KLASSE Overwatch</h1>
+              <h1 className="text-sm font-bold text-foreground tracking-wide uppercase">KLASSE Overwatch</h1>
               <p className="text-[10px] text-muted-foreground font-geist">Gestão Global de Identidades</p>
             </div>
           </div>
@@ -345,12 +345,12 @@ function ListaUsuarios() {
                 placeholder="Procurar utilizador..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64 pl-9 pr-4 py-2 rounded-xl text-xs font-geist bg-muted border border-border text-foreground focus:outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 transition-all shadow-sm"
+                className="w-64 pl-9 pr-4 py-2 rounded-xl text-xs font-geist bg-muted border border-border text-foreground focus:outline-none focus:border-ring focus:ring-4 focus:ring-ring/20 transition-all shadow-sm"
               />
             </div>
             <Link
               href="/super-admin/usuarios/novo"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#E3B23C] hover:brightness-95 text-white text-xs font-bold transition-all shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber hover:brightness-95 text-white text-xs font-bold transition-all shadow-sm"
             >
               <Plus className="w-4 h-4" />
               Novo Registo
@@ -500,7 +500,7 @@ function ListaUsuarios() {
                             <button onClick={() => setEditingId(null)} className="px-4 py-2 rounded-xl bg-card border border-border text-foreground/80 text-xs font-semibold hover:bg-muted transition-colors shadow-sm">
                               Cancelar
                             </button>
-                            <button onClick={() => handleSave(u.id)} disabled={isSaving} className="flex items-center gap-1 px-4 py-2 rounded-xl bg-amber text-white text-xs font-bold hover:brightness-95 transition-colors shadow-sm disabled:opacity-50">
+                            <button onClick={() => handleSave(u.id)} disabled={isSaving} className="flex items-center gap-1 px-4 py-2 rounded-xl bg-amber text-amber-900 text-xs font-bold hover:brightness-95 transition-colors shadow-sm disabled:opacity-50">
                               <Check className="w-3 h-3" /> {isSaving ? "A gravar..." : "Guardar"}
                             </button>
                           </div>
@@ -536,7 +536,7 @@ function ListaUsuarios() {
 
       {/* ── Modal Reset Senha (Isolado e Crítico) ── */}
       {resetUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
             <div className="p-5 border-b border-border flex justify-between items-center bg-muted/50">
@@ -579,7 +579,7 @@ function ListaUsuarios() {
                   type="checkbox" 
                   checked={resetMustChange}
                   onChange={e => setResetMustChange(e.target.checked)}
-                  className="w-4 h-4 rounded border-border bg-card text-[#E3B23C] focus:ring-[#E3B23C]/20 accent-[#E3B23C]" 
+                  className="w-4 h-4 rounded border-border bg-card text-foreground focus:ring-ring/20 accent-amber" 
                 />
                 <span className="text-xs text-foreground/80 font-medium">Obrigar utilizador a redefinir no próximo login</span>
               </label>
@@ -587,7 +587,7 @@ function ListaUsuarios() {
               <button 
                 onClick={handleResetPassword} 
                 disabled={!resetPassword || resetLoading}
-                className="w-full py-3 rounded-xl bg-[#E3B23C] text-white text-sm font-bold hover:brightness-95 disabled:opacity-50 transition-all shadow-sm"
+                className="w-full py-3 rounded-xl bg-amber text-amber-900 text-sm font-bold hover:brightness-95 disabled:opacity-50 transition-all shadow-sm"
               >
                 {resetLoading ? "A Injetar..." : "Forçar Override"}
               </button>

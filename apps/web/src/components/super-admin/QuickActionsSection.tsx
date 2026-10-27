@@ -24,7 +24,7 @@ interface QuickAction {
 }
 
 const RISK_CONFIG: Record<RiskLevel, { dot: string; bg: string; text: string }> = {
-  low: { dot: "bg-slate-400", bg: "bg-muted", text: "text-foreground/80" },
+  low: { dot: "bg-muted-foreground", bg: "bg-muted", text: "text-foreground/80" },
   medium: { dot: "bg-amber", bg: "bg-amber/5", text: "text-amber" },
   high: { dot: "bg-rose-500", bg: "bg-rose-50", text: "text-rose-600" },
 };
@@ -292,7 +292,7 @@ export default function QuickActionsSection() {
                           <action.icon className="h-5 w-5" />
                         </div>
                         {action.badge && (
-                          <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-white">
+                          <span className="rounded-full bg-destructive px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-background">
                             {action.badge}
                           </span>
                         )}
@@ -313,7 +313,7 @@ export default function QuickActionsSection() {
                           Risco {action.risk_level}
                         </span>
                       </div>
-                      <div className="rounded-full bg-slate-950 p-1.5 text-white opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                      <div className="rounded-full bg-foreground p-1.5 text-background opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                         <ArrowRight className="h-3 w-3" />
                       </div>
                     </div>
@@ -331,13 +331,13 @@ export default function QuickActionsSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="w-full max-w-md rounded-[2.5rem] border border-white/20 bg-card p-8 shadow-2xl"
+              className="w-full max-w-md rounded-[2.5rem] border border-border bg-card p-8 shadow-2xl"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 mb-6">
                 <AlertCircle className="h-6 w-6" />
@@ -359,7 +359,7 @@ export default function QuickActionsSection() {
               <div className="mt-8 flex flex-col gap-3">
                 <button
                   onClick={confirmPending}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 py-4 text-sm font-black text-white transition hover:bg-slate-800"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black text-primary-foreground transition hover:bg-primary/90"
                 >
                   <Check className="h-4 w-4" />
                   Confirmar Execução

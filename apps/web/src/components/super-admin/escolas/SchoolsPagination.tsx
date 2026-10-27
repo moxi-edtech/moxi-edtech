@@ -12,7 +12,7 @@ type SchoolsPaginationProps = {
 export function SchoolsPagination({ currentPage, totalPages, onPageChange }: SchoolsPaginationProps) {
   if (totalPages <= 1) return null;
 
-  const btnCls = "h-9 w-9 rounded-xl border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-[#1F6B3B] hover:border-[#1F6B3B] transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm";
+  const btnCls = "h-9 w-9 rounded-xl border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-ring transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm";
 
   return (
     <div className="mt-8 flex items-center justify-center gap-6">
