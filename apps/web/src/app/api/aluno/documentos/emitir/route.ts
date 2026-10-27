@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAlunoContext } from '@/lib/alunoContext'
 import { resolveBoletimMatricula } from '@/lib/aluno/resolveBoletimMatricula'
-import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from '@/lib/portalAlunoAuth'
+import { resolveSelectedStudentId } from '@/lib/portalAlunoAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
 
     const { type, studentId, serviceCode, ano_letivo_id: anoLetivoId } = parsed.data
-    const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: (await supabase.auth.getUser()).data.user?.email })
+    const authorizedIds = ctx.alunoIds;
     const alunoId = resolveSelectedStudentId({ selectedId: studentId ?? null, authorizedIds, fallbackId: ctx.alunoId })
     if (!alunoId) return NextResponse.json({ ok: false, error: 'Educando não autorizado', next_action: { type: 'contact_secretaria', label: 'Regularizar acesso', href: '/aluno/avisos' } }, { status: 403 })
     const { escolaId } = ctx
