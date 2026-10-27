@@ -287,16 +287,14 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                    <div className="flex flex-wrap items-start gap-2">
                      <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-foreground sm:text-base">{doc.nome}</h3>
                      <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                       {doc.pagamento_configurado === false ? "Taxa não configurada" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
+                       {doc.pagamento_configurado === false ? "Taxa por definir" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
                      </span>
                    </div>
                    {doc.descricao && (
                      <p className="line-clamp-2 break-words text-sm leading-5 text-muted-foreground">{doc.descricao}</p>
                    )}
                    <div className="flex flex-wrap items-center gap-2">
-                     {doc.pagamento_configurado === false
-                       ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Taxa por definir</span>
-                       : <StatusBadge status={doc.status} />}
+                     {doc.pagamento_configurado !== false && <StatusBadge status={doc.status} />}
                      {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" && (
                        onOpenNotas ? (
                          <button type="button" onClick={onOpenNotas} className="text-xs font-semibold text-emerald-800 underline">Ver notas</button>
