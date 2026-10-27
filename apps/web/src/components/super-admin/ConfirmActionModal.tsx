@@ -18,10 +18,10 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
   const { success, error } = useToast()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmar ação</h3>
-        <p className="text-sm text-gray-600">
+    <div role="dialog" aria-modal="true" aria-label="Confirmar ação" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xl sm:p-5">
+        <h3 className="text-lg font-semibold text-foreground mb-2">Confirmar ação</h3>
+        <p className="text-sm text-foreground/80">
           {action === 'suspend' && (
             <>Deseja realmente suspender a escola <strong>{escolaNome}</strong>? Usuários perderão o acesso até reativação.</>
           )}
@@ -37,13 +37,13 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
         </p>
         {action === 'suspend' && (
           <div className="mt-4">
-            <label className="block text-sm text-gray-700 mb-1">Motivo (opcional)</label>
+            <label className="block text-sm text-foreground mb-1">Motivo (opcional)</label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ex: Inadimplência, auditoria em andamento, solicitação da escola, etc."
               rows={3}
-              className="w-full px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+              className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
             />
           </div>
         )}

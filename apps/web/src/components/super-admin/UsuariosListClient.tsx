@@ -36,9 +36,9 @@ type Escola = { id: string; nome: string };
 const ROLE_META: Record<string, { bg: string; border: string; text: string; dot: string; label: string }> = {
   super_admin:  { bg: "bg-green-50",   border: "border-green-200", text: "text-[#1F6B3B]", dot: "bg-[#1F6B3B]", label: "Super Admin"  },
   global_admin: { bg: "bg-amber-50",   border: "border-amber-200", text: "text-[#E3B23C]", dot: "bg-[#E3B23C]", label: "Global Admin" },
-  admin:        { bg: "bg-slate-100",  border: "border-slate-200", text: "text-slate-700", dot: "bg-slate-500", label: "Admin"        },
-  admin_escola: { bg: "bg-slate-100",  border: "border-slate-200", text: "text-slate-700", dot: "bg-slate-500", label: "Admin"        },
-  staff_admin:  { bg: "bg-slate-100",  border: "border-slate-200", text: "text-slate-700", dot: "bg-slate-500", label: "Admin"        },
+  admin:        { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-slate-500", label: "Admin"        },
+  admin_escola: { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-slate-500", label: "Admin"        },
+  staff_admin:  { bg: "bg-muted",  border: "border-border", text: "text-foreground", dot: "bg-slate-500", label: "Admin"        },
   secretaria:   { bg: "bg-blue-50",    border: "border-blue-200",  text: "text-blue-700", dot: "bg-blue-500",  label: "Secretaria"   },
   financeiro:   { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500", label: "Financeiro" },
   secretaria_financeiro: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", dot: "bg-indigo-500", label: "Sec. + Fin" },
@@ -47,7 +47,7 @@ const ROLE_META: Record<string, { bg: string; border: string; text: string; dot:
   formacao_secretaria: { bg: "bg-cyan-50", border: "border-cyan-200", text: "text-cyan-700", dot: "bg-cyan-500", label: "Centro Sec." },
   formacao_financeiro: { bg: "bg-teal-50", border: "border-teal-200", text: "text-teal-700", dot: "bg-teal-500", label: "Centro Fin." },
   formador: { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", dot: "bg-violet-500", label: "Formador" },
-  user:         { bg: "bg-white",      border: "border-slate-200", text: "text-slate-500", dot: "bg-slate-300", label: "User"         },
+  user:         { bg: "bg-card",      border: "border-border", text: "text-muted-foreground", dot: "bg-border", label: "User"         },
 };
 
 const PAPEL_LABEL: Record<string, string> = {
@@ -99,10 +99,10 @@ function RoleBadge({ role }: { role: string }) {
 
 function SkeletonRow() {
   return (
-    <tr className="border-b border-slate-100">
+    <tr className="border-b border-border">
       {Array.from({ length: 5 }).map((_, j) => (
         <td key={j} className="py-4 px-6">
-          <div className="h-3 rounded-md bg-slate-200 animate-pulse" style={{ width: `${40 + (j * 15) % 40}%` }} />
+          <div className="h-3 rounded-md bg-border animate-pulse" style={{ width: `${40 + (j * 15) % 40}%` }} />
         </td>
       ))}
     </tr>
@@ -110,8 +110,8 @@ function SkeletonRow() {
 }
 
 // Input reutilizável (Focado nos tokens KLASSE Light)
-const inputCls = `w-full px-3 py-2 rounded-xl text-sm font-geist bg-white border border-slate-300
-  text-slate-900 placeholder:text-slate-400 transition-all shadow-sm
+const inputCls = `w-full px-3 py-2 rounded-xl text-sm font-geist bg-card border border-border
+  text-foreground placeholder:text-muted-foreground transition-all shadow-sm
   focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20 focus:border-[#E3B23C]`;
 
 // ─── Password Helpers ─────────────────────────────────────────────────────────
@@ -324,28 +324,28 @@ function ListaUsuarios() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sora selection:bg-[#E3B23C]/20">
+    <div className="min-h-full bg-background text-foreground font-sora selection:bg-[#E3B23C]/20">
 
       {/* ── Top Bar ── */}
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur-md">
+      <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-3 w-3 rounded-full bg-[#1F6B3B] ring-4 ring-[#1F6B3B]/10" />
             <div>
               <h1 className="text-sm font-bold text-[#1F6B3B] tracking-wide uppercase">KLASSE Overwatch</h1>
-              <p className="text-[10px] text-slate-500 font-geist">Gestão Global de Identidades</p>
+              <p className="text-[10px] text-muted-foreground font-geist">Gestão Global de Identidades</p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input 
                 type="text" 
                 placeholder="Procurar utilizador..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64 pl-9 pr-4 py-2 rounded-xl text-xs font-geist bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 transition-all shadow-sm"
+                className="w-64 pl-9 pr-4 py-2 rounded-xl text-xs font-geist bg-muted border border-border text-foreground focus:outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 transition-all shadow-sm"
               />
             </div>
             <Link
@@ -370,25 +370,25 @@ function ListaUsuarios() {
         )}
 
         {/* ── Tabela Principal ── */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Identidade</th>
-                  <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Acesso Global</th>
-                  <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tenant (Escola)</th>
-                  <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Último acesso</th>
-                  <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Comandos</th>
+                <tr className="bg-muted border-b border-border">
+                  <th className="py-4 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Identidade</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Acesso Global</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tenant (Escola)</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Último acesso</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-right">Comandos</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-geist text-sm">
+              <tbody className="divide-y divide-border font-geist text-sm">
                 
                 {loading && Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
                 
                 {!loading && filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-16 text-center text-slate-500">
+                    <td colSpan={5} className="py-16 text-center text-muted-foreground">
                       Nenhum utilizador encontrado no ecossistema.
                     </td>
                   </tr>
@@ -399,7 +399,7 @@ function ListaUsuarios() {
                   const isSaving  = saving === u.id;
 
                   return (
-                    <tr key={u.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <tr key={u.id} className="hover:bg-muted/80 transition-colors group">
                       
                       {/* Identidade */}
                       <td className="py-4 px-6">
@@ -410,8 +410,8 @@ function ListaUsuarios() {
                           </div>
                         ) : (
                           <div>
-                            <p className="font-semibold text-slate-900">{u.nome || "S/ Nome Registado"}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{u.email}</p>
+                            <p className="font-semibold text-foreground">{u.nome || "S/ Nome Registado"}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{u.email}</p>
                           </div>
                         )}
                       </td>
@@ -422,7 +422,7 @@ function ListaUsuarios() {
                           editForm.escola_id ? (
                             <div className="space-y-1">
                               <RoleBadge role={mapPapelToRole(editForm.papel_escola) || "user"} />
-                              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Derivado do papel da escola</p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Derivado do papel da escola</p>
                             </div>
                           ) : (
                             <select
@@ -477,8 +477,8 @@ function ListaUsuarios() {
                           </div>
                         ) : (
                           <div>
-                            <p className="text-slate-700 font-medium">{u.escola_nome || <span className="text-slate-400 italic">Sem Tenant</span>}</p>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{PAPEL_LABEL[u.papel_escola ?? ""] ?? "N/A"}</p>
+                            <p className="text-foreground font-medium">{u.escola_nome || <span className="text-muted-foreground italic">Sem Tenant</span>}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{PAPEL_LABEL[u.papel_escola ?? ""] ?? "N/A"}</p>
                           </div>
                         )}
                       </td>
@@ -486,8 +486,8 @@ function ListaUsuarios() {
                       {/* Último Acesso */}
                       <td className="py-4 px-6">
                         <div>
-                          <p className="text-slate-700 font-medium">{formatLastAccess(u.last_access)}</p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">
+                          <p className="text-foreground font-medium">{formatLastAccess(u.last_access)}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
                             {u.last_access_location || u.last_access_ip || "Sem localização"}
                           </p>
                         </div>
@@ -497,7 +497,7 @@ function ListaUsuarios() {
                       <td className="py-4 px-6 text-right">
                         {isEditing ? (
                           <div className="flex justify-end gap-2">
-                            <button onClick={() => setEditingId(null)} className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-colors shadow-sm">
+                            <button onClick={() => setEditingId(null)} className="px-4 py-2 rounded-xl bg-card border border-border text-foreground/80 text-xs font-semibold hover:bg-muted transition-colors shadow-sm">
                               Cancelar
                             </button>
                             <button onClick={() => handleSave(u.id)} disabled={isSaving} className="flex items-center gap-1 px-4 py-2 rounded-xl bg-amber text-white text-xs font-bold hover:brightness-95 transition-colors shadow-sm disabled:opacity-50">
@@ -506,19 +506,19 @@ function ListaUsuarios() {
                           </div>
                         ) : (
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEdit(u)} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-amber hover:bg-slate-50 transition-all shadow-sm inline-flex items-center gap-2" title="Editar Perfil">
+                            <button onClick={() => handleEdit(u)} className="px-3 py-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-amber hover:bg-muted transition-all shadow-sm inline-flex items-center gap-2" title="Editar Perfil">
                               <Pencil className="w-4 h-4" />
                               <span className="hidden md:inline text-xs font-semibold">Editar</span>
                             </button>
-                            <button onClick={() => { setResetUser(u); setResetPassword(""); setResetError(null); }} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-amber hover:bg-amber-50 transition-all shadow-sm inline-flex items-center gap-2" title="Forçar Nova Senha">
+                            <button onClick={() => { setResetUser(u); setResetPassword(""); setResetError(null); }} className="px-3 py-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-amber hover:bg-amber-50 transition-all shadow-sm inline-flex items-center gap-2" title="Forçar Nova Senha">
                               <Filter className="w-4 h-4" />
                               <span className="hidden md:inline text-xs font-semibold">Reset</span>
                             </button>
-                            <button onClick={() => handleResendInvite(u)} disabled={isSaving} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-amber hover:bg-green-50 transition-all shadow-sm disabled:opacity-50 inline-flex items-center gap-2" title="Reenviar Convite">
+                            <button onClick={() => handleResendInvite(u)} disabled={isSaving} className="px-3 py-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-amber hover:bg-green-50 transition-all shadow-sm disabled:opacity-50 inline-flex items-center gap-2" title="Reenviar Convite">
                               <Mail className="w-4 h-4" />
                               <span className="hidden md:inline text-xs font-semibold">Reenviar</span>
                             </button>
-                            <button onClick={() => handleDelete(u.id, u.email)} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm inline-flex items-center gap-2" title="Revogar Acesso">
+                            <button onClick={() => handleDelete(u.id, u.email)} className="px-3 py-2 rounded-xl bg-card border border-border text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm inline-flex items-center gap-2" title="Revogar Acesso">
                               <Trash2 className="w-4 h-4" />
                               <span className="hidden md:inline text-xs font-semibold">Remover</span>
                             </button>
@@ -537,35 +537,35 @@ function ListaUsuarios() {
       {/* ── Modal Reset Senha (Isolado e Crítico) ── */}
       {resetUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-muted/50">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <Filter className="w-4 h-4 text-amber" />
                   Override de Credenciais
                 </h3>
-                <p className="text-[10px] text-slate-500 mt-1">{resetUser.email}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{resetUser.email}</p>
               </div>
-              <button onClick={() => setResetUser(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={() => setResetUser(null)} className="text-muted-foreground hover:text-foreground/80 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-5 space-y-5">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Nova Senha Gerada</label>
+                <label className="block text-xs font-semibold text-foreground/80 mb-2 uppercase tracking-wide">Nova Senha Gerada</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     readOnly
                     value={resetPassword}
-                    className="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono text-sm focus:outline-none"
+                    className="flex-1 px-3 py-2 rounded-xl bg-muted border border-border text-foreground font-mono text-sm focus:outline-none"
                     placeholder="Clique em gerar..."
                   />
                   <button 
                     onClick={() => setResetPassword(generateStrongPassword())}
-                    className="px-4 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                    className="px-4 rounded-xl bg-card border border-border text-foreground text-xs font-bold hover:bg-muted transition-colors shadow-sm"
                   >
                     Gerar
                   </button>
@@ -574,14 +574,14 @@ function ListaUsuarios() {
 
               {resetError && <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-200 font-medium">{resetError}</p>}
 
-              <label className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+              <label className="flex items-center gap-3 p-3 rounded-xl bg-muted border border-border cursor-pointer hover:bg-muted transition-colors">
                 <input 
                   type="checkbox" 
                   checked={resetMustChange}
                   onChange={e => setResetMustChange(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 bg-white text-[#E3B23C] focus:ring-[#E3B23C]/20 accent-[#E3B23C]" 
+                  className="w-4 h-4 rounded border-border bg-card text-[#E3B23C] focus:ring-[#E3B23C]/20 accent-[#E3B23C]" 
                 />
-                <span className="text-xs text-slate-600 font-medium">Obrigar utilizador a redefinir no próximo login</span>
+                <span className="text-xs text-foreground/80 font-medium">Obrigar utilizador a redefinir no próximo login</span>
               </label>
 
               <button 

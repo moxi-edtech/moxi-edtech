@@ -46,22 +46,22 @@ export function SchoolsTable({
 
   if (schools.length === 0) {
     return (
-      <div className="bg-white rounded-[2.5rem] border border-slate-200/60 p-20 text-center shadow-sm">
-        <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+      <div className="bg-card rounded-[2.5rem] border border-border/60 p-20 text-center shadow-sm">
+        <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
           <Info size={32} />
         </div>
-        <h3 className="text-base font-bold text-slate-900 uppercase tracking-tight">Nenhuma unidade encontrada</h3>
-        <p className="text-sm text-slate-400 mt-1">Tente ajustar os filtros para encontrar o que procura.</p>
+        <h3 className="text-base font-bold text-foreground uppercase tracking-tight">Nenhuma unidade encontrada</h3>
+        <p className="text-sm text-muted-foreground mt-1">Tente ajustar os filtros para encontrar o que procura.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-[2.5rem] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+    <div className="bg-card rounded-[2.5rem] border border-border/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left">
+        <table className="min-w-[640px] w-full text-left">
           <TableHeader />
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {schools.map((school) => (
               <SchoolRow
                 key={school.id}
@@ -90,15 +90,15 @@ export function SchoolsTable({
 
 function TableHeader() {
   return (
-    <thead className="bg-slate-50/50 border-b border-slate-100">
+    <thead className="bg-muted/50 border-b border-border">
       <tr>
-        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Escola</th>
-        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Responsável</th>
-        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Localização</th>
-        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Estado</th>
-        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Saúde</th>
-        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Plano</th>
-        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Acções</th>
+        <th className="py-5 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Escola</th>
+        <th className="py-5 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Responsável</th>
+        <th className="py-5 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Localização</th>
+        <th className="py-5 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Estado</th>
+        <th className="py-5 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Saúde</th>
+        <th className="py-5 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Plano</th>
+        <th className="py-5 px-6 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Acções</th>
       </tr>
     </thead>
   );
@@ -106,9 +106,9 @@ function TableHeader() {
 
 function TableSkeleton() {
   return (
-    <div className="bg-white rounded-[2.5rem] border border-slate-200/60 p-8 space-y-4 shadow-sm animate-pulse">
+    <div className="bg-card rounded-[2.5rem] border border-border/60 p-8 space-y-4 shadow-sm animate-pulse">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-16 bg-slate-50 rounded-2xl w-full" />
+        <div key={i} className="h-16 bg-muted rounded-2xl w-full" />
       ))}
     </div>
   );
