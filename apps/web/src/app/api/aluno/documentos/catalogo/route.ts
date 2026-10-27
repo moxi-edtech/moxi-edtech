@@ -110,7 +110,12 @@ export async function GET(request: Request) {
         valor: item.codigo === BOLETIM_SERVICE_CODE && boletimPago
           ? pedidoBoletimPago?.valor_cobrado ?? item.valor_base
           : pedido?.valor_cobrado ?? item.valor_base,
-        pagamento_configurado: !isBoletimServiceCode(item.codigo) || Number(pedido?.valor_cobrado ?? item.valor_base) > 0 || boletimPago,
+        // Uma taxa de 0 Kz não significa automaticamente gratuidade:
+        // há escolas com pagamento obrigatório ainda sem preço configurado.
+        pagamento_configurado: Number(pedido?.valor_cobrado ?? item.valor_base) > 0 ||
+          (!item.exige_pagamento_antes_de_liberar && !isBoletimServiceCode(item.codigo)) ||
+          (isBoletimServiceCode(item.codigo) && boletimPago) ||
+          (status === "granted" && !isBoletimServiceCode(item.codigo)),
         reject_reason: typeof metadata?.reject_reason === "string" ? metadata.reject_reason : pedido?.reason_detail ?? null,
         next_action: status === "granted"
           ? { type: "download", label: "Descarregar", href: "/aluno/documentos" }
