@@ -55,18 +55,29 @@ export default function DashboardLoader() {
     const load = async () => {
       setLoading(true);
       setError(null);
+      setScreen(null);
       try {
-        // O resumo é a única fonte obrigatória; as outras APIs de domínio já aplicam auth,
-        // seleção de matrícula/ano letivo e as regras de liquidação existentes.
-        const dashRes = await fetch("/api/aluno/dashboard", {cache:"no-store",signal:controller.signal});
-        const dash = await dashRes.json() as DashboardData & {error?: string};
+        // Só o resumo é obrigatório para mostrar a página. Os restantes endpoints
+        // mantêm as suas próprias regras de autorização e bloqueio financeiro.
+        const dashRes = await fetch("/api/aluno/dashboard", { cache: "no-store", signal: controller.signal });
+        const dash = await dashRes.json() as DashboardData & { error?: string };
         if (!dashRes.ok || !dash.ok) throw new Error(dash.error || "Não foi possível carregar a tua página.");
-        // Pedidos adicionais são sequenciais e facultativos, não consultas paralelas nem SQL novo.
-        const boletim = await fetchJson<BoletimData>("/api/aluno/boletim", controller.signal);
-        const catalogo = await fetchJson<CatalogoData>("/api/aluno/documentos/catalogo", controller.signal);
-        const rematricula = await fetchJson<StudentRematricula & {ok:boolean}>("/api/aluno/rematricula/status", controller.signal);
-        const raa = await fetchJson<RaaData>("/api/aluno/home/raa-status", controller.signal);
-        if (!controller.signal.aborted) setScreen({dashboard:dash,boletim,catalogo,rematricula,raa});
+        if (controller.signal.aborted) return;
+
+        setScreen({ dashboard: dash, boletim: null, catalogo: null, rematricula: null, raa: null });
+
+        // Dados facultativos chegam em paralelo e atualizam a interface independentemente.
+        // O skeleton principal não deve aguardar por boletim, catálogo, RAA ou rematrícula.
+        const update = <K extends Exclude<keyof ScreenData, "dashboard">>(key: K, value: ScreenData[K]) => {
+          if (controller.signal.aborted) return;
+          setScreen(current => current ? { ...current, [key]: value } : current);
+        };
+        void Promise.allSettled([
+          fetchJson<BoletimData>("/api/aluno/boletim", controller.signal).then(data => update("boletim", data)),
+          fetchJson<CatalogoData>("/api/aluno/documentos/catalogo", controller.signal).then(data => update("catalogo", data)),
+          fetchJson<StudentRematricula & { ok: boolean }>("/api/aluno/rematricula/status", controller.signal).then(data => update("rematricula", data)),
+          fetchJson<RaaData>("/api/aluno/home/raa-status", controller.signal).then(data => update("raa", data)),
+        ]);
       } catch(e) {
         if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Não foi possível carregar a tua página.");
       } finally { if (!controller.signal.aborted) setLoading(false); }
