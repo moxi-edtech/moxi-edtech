@@ -338,7 +338,7 @@ export default function PortalLayout({
 
                   <SignOutButton
                     label="Sair"
-                    className="px-3 py-1.5 text-xs bg-muted text-foreground rounded-md hover:bg-slate-600 transition-colors"
+                    className="px-3 py-1.5 text-xs bg-muted text-foreground rounded-md hover:bg-accent transition-colors"
                     title="Sair"
                   />
                 </div>
