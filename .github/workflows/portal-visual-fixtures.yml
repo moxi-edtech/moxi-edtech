@@ -4,6 +4,11 @@ on:
     paths:
       - 'apps/web/src/components/aluno/PortalVisualFixtures.stories.tsx'
       - 'apps/web/scripts/visual/portais-screenshot.mjs'
+      - 'apps/web/scripts/visual/theme-switcher-smoke.mjs'
+      - 'apps/web/src/components/ThemePreferences.tsx'
+      - 'apps/web/src/components/ThemeToggle.tsx'
+      - 'apps/web/src/components/providers/ThemeProvider.tsx'
+      - 'apps/web/src/app/globals.css'
       - 'apps/web/visual-harness/**'
       - 'apps/web/src/components/aluno/tabs/TabDocumentos.tsx'
       - 'apps/web/src/components/aluno/tabs/TabNotas.tsx'
@@ -53,6 +58,10 @@ jobs:
         run: node --test --import tsx apps/web/tests/unit/aluno-dashboard-editorial.spec.ts
       - name: Test editorial grades and payment access
         run: node --test --import tsx apps/web/tests/unit/aluno-notas-editorial.spec.ts
+      - name: Browser test for light/dark/system (synthetic)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/theme-switcher-smoke.mjs
       - name: Capture synthetic responsive/zoom matrix
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs

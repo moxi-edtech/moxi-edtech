@@ -61,30 +61,30 @@ const TIPO_CONFIG: Record<string, {
   },
   financeiro: {
     borderColor: "border-l-slate-300",
-    bgContainer: "bg-white",
-    iconColor: "text-slate-500",
-    iconBg: "bg-slate-100",
+    bgContainer: "bg-card",
+    iconColor: "text-muted-foreground",
+    iconBg: "bg-muted",
     Icon: Wallet,
   },
   academico: {
     borderColor: "border-l-slate-300",
-    bgContainer: "bg-white",
-    iconColor: "text-slate-500",
-    iconBg: "bg-slate-100",
+    bgContainer: "bg-card",
+    iconColor: "text-muted-foreground",
+    iconBg: "bg-muted",
     Icon: GraduationCap,
   },
   sistema: {
     borderColor: "border-l-slate-300",
-    bgContainer: "bg-white",
-    iconColor: "text-slate-600",
-    iconBg: "bg-slate-100",
+    bgContainer: "bg-card",
+    iconColor: "text-foreground/80",
+    iconBg: "bg-muted",
     Icon: Settings,
   },
   geral: {
     borderColor: "border-l-slate-300",
-    bgContainer: "bg-white",
-    iconColor: "text-slate-500",
-    iconBg: "bg-slate-100",
+    bgContainer: "bg-card",
+    iconColor: "text-muted-foreground",
+    iconBg: "bg-muted",
     Icon: Megaphone,
   },
 };
@@ -131,7 +131,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
   });
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="mb-5 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -142,14 +142,14 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="truncate text-base font-bold text-slate-900">Avisos recentes</h3>
+              <h3 className="truncate text-base font-bold text-foreground">Avisos recentes</h3>
               {unreadCount > 0 && (
                 <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald">
                   {unreadCount} {unreadCount === 1 ? "novo" : "novos"}
                 </span>
               )}
             </div>
-            <p className="truncate text-xs text-slate-500">Comunicados e mensagens</p>
+            <p className="truncate text-xs text-muted-foreground">Comunicados e mensagens</p>
           </div>
         </div>
 
@@ -165,13 +165,13 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
       {notices.length === 0 ? (
         /* Gracioso empty state — §2 cada bloqueio apresenta o próximo passo */
         <div
-          className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center"
+          className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/50 px-4 py-8 text-center"
         >
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Megaphone className="h-6 w-6" aria-hidden="true" />
           </div>
-          <h4 className="text-sm font-semibold text-slate-900">Sem avisos por enquanto</h4>
-          <p className="mx-auto mt-1 max-w-[220px] text-xs text-slate-500">
+          <h4 className="text-sm font-semibold text-foreground">Sem avisos por enquanto</h4>
+          <p className="mx-auto mt-1 max-w-[220px] text-xs text-muted-foreground">
             Quando houver comunicados, eles aparecem aqui.
           </p>
           {portalBase === "admin" && (
@@ -199,7 +199,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
               const { Icon } = config;
 
               // Unread items get subtle visual distinction
-              const unreadBg = n.lido ? "bg-slate-50/50" : "bg-white shadow-sm";
+              const unreadBg = n.lido ? "bg-muted/50" : "bg-card shadow-sm";
               const baseBg = isUrgente ? config.bgContainer : unreadBg;
 
               return (
@@ -233,17 +233,17 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                     <div className="min-w-0 flex-1">
                       <p
                         className={`truncate text-sm font-bold ${
-                          !n.lido ? "text-slate-900" : "text-slate-700"
+                          !n.lido ? "text-foreground" : "text-foreground"
                         }`}
                       >
                         {n.titulo}
                       </p>
                       {n.resumo && (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                           {n.resumo}
                         </p>
                       )}
-                      <div className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
                         {n.autor && <span>{n.autor} &bull;</span>}
                         <span>{date}</span>
                       </div>
@@ -266,10 +266,10 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
-                      className="basis-full border-t border-slate-100 pt-3 text-xs leading-5 text-slate-600"
+                      className="basis-full border-t border-border pt-3 text-xs leading-5 text-foreground/80"
                     >
                       <p>{n.resumo || "Este aviso não possui detalhes adicionais."}</p>
-                      {n.autor && <p className="mt-1 text-slate-400">Publicado por {n.autor}</p>}
+                      {n.autor && <p className="mt-1 text-muted-foreground">Publicado por {n.autor}</p>}
                     </motion.div>
                   )}
                 </motion.li>

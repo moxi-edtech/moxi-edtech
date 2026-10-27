@@ -29,13 +29,13 @@ export default function NextSteps() {
 
   return (
     <div>
-      <h3 className="font-bold text-slate-700 mb-4 text-sm">Próximos Passos</h3>
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+      <h3 className="font-bold text-foreground mb-4 text-sm">Próximos Passos</h3>
+      <div className="bg-card rounded-xl border border-border shadow-sm divide-y divide-border">
         {steps.map((step) => (
           <div 
             key={step.id}
             className={`p-4 flex items-center gap-4 ${
-              step.current ? 'bg-slate-50/50' : ''
+              step.current ? 'bg-muted/50' : ''
             } ${!step.completed && !step.current ? 'opacity-60' : ''}`}
           >
             <div className={`
@@ -44,7 +44,7 @@ export default function NextSteps() {
                 ? 'bg-emerald-100 text-emerald-600'
                 : step.current
                 ? 'border-2 border-brand-900'
-                : 'border-2 border-slate-200'
+                : 'border-2 border-border'
               }
             `}>
               {step.completed ? (
@@ -56,15 +56,15 @@ export default function NextSteps() {
             <div className="flex-1">
               <p className={`text-sm font-bold ${
                 step.completed 
-                  ? 'text-slate-400 line-through'
+                  ? 'text-muted-foreground line-through'
                   : step.current
-                  ? 'text-slate-800'
-                  : 'text-slate-600'
+                  ? 'text-foreground'
+                  : 'text-foreground/80'
               }`}>
                 {step.title}
               </p>
               {step.description && (
-                <p className="text-xs text-slate-500 mt-0.5">{step.description}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
               )}
             </div>
             {step.current && (

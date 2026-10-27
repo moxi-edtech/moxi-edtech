@@ -50,14 +50,14 @@ export function CommandCenterShell({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                 KLASSE · Central de atendimento
               </p>
             </div>
-            <h1 className="mt-1 truncate text-lg font-black text-slate-900">
+            <h1 className="mt-1 truncate text-lg font-black text-foreground">
               {activeAction === "enrollment" ? "Nova matrícula" : (student?.label || "Atendimento")}
             </h1>
-            <p className="mt-0.5 truncate text-xs text-slate-500">
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {(activeAction === "enrollment" ? action.description : student?.subtitle) || (student || activeAction === "enrollment"
                 ? action.description
                 : "Pesquise um aluno para iniciar um atendimento.")}
@@ -70,7 +70,7 @@ export function CommandCenterShell({
             <button
               type="button"
               onClick={onSwitchStudent}
-              className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:border-amber hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C]"
+              className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground transition hover:border-amber hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
               aria-label={`Trocar aluno em atendimento: ${student.label}`}
             >
               <ArrowLeftRight className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function CommandCenterShell({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
               aria-label="Fechar central de atendimento"
             >
               <X className="h-4 w-4" />
@@ -94,7 +94,7 @@ export function CommandCenterShell({
 
       {aboveActions}
       {shortcuts ? (
-        <details className="text-[11px] text-slate-500">
+        <details className="text-[11px] text-muted-foreground">
           <summary className="cursor-pointer select-none font-medium" aria-label="Ajuda de atalhos de teclado do Balcão">Atalhos do Balcão</summary>
           <div className="flex flex-wrap items-center gap-2 py-1">
             <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd>: pesquisar aluno</span>
@@ -131,11 +131,11 @@ export function CommandCenterShell({
           onClick={onClose}
           aria-label="Fechar central de atendimento"
         />
-        <div className="relative flex h-[min(94dvh,calc(100dvh-1rem))] w-full max-w-[1540px] min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
-          <header className="flex shrink-0 flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
+        <div className="relative flex h-[min(94dvh,calc(100dvh-1rem))] w-full max-w-[1540px] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+          <header className="flex shrink-0 flex-col gap-3 border-b border-border bg-card px-4 py-3 sm:px-6 sm:py-4">
             {header}
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-muted/60">
             <div className="mx-auto min-h-full w-full max-w-[1440px] px-3 py-4 sm:px-5 sm:py-6 xl:px-8">
               {children}
             </div>
@@ -146,8 +146,8 @@ export function CommandCenterShell({
   }
 
   return (
-    <div className="min-w-0 bg-slate-50 pb-6 sm:pb-8">
-      <header className="relative z-20 border-b border-slate-200/70 bg-white/90 px-3 py-3 backdrop-blur sm:px-5 lg:px-6 2xl:px-8">
+    <div className="min-w-0 bg-muted pb-6 sm:pb-8">
+      <header className="relative z-20 border-b border-border bg-card/90 px-3 py-3 backdrop-blur sm:px-5 lg:px-6 2xl:px-8">
         <div className="mx-auto flex w-full max-w-[1440px] min-w-0 flex-col gap-3">
           {header}
         </div>

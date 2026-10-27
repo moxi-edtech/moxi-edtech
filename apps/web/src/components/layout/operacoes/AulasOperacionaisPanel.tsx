@@ -29,12 +29,12 @@ const POLLING_MS = 60_000;
 const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED !== "false";
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof Clock3 }> = {
-  agendada: { label: "Agendada", className: "bg-slate-100 text-slate-600", icon: Clock3 },
+  agendada: { label: "Agendada", className: "bg-muted text-foreground/80", icon: Clock3 },
   aguardando_confirmacao: { label: "Aguardando confirmação", className: "bg-amber-50 text-amber-700", icon: AlertCircle },
   em_andamento: { label: "Em andamento", className: "bg-emerald-50 text-emerald-700", icon: Activity },
   finalizada: { label: "Finalizada", className: "bg-emerald/10 text-emerald", icon: CheckCircle2 },
   nao_realizada: { label: "Não realizada", className: "bg-rose-50 text-rose-700", icon: AlertCircle },
-  cancelada: { label: "Cancelada", className: "bg-slate-100 text-slate-500", icon: AlertCircle },
+  cancelada: { label: "Cancelada", className: "bg-muted text-muted-foreground", icon: AlertCircle },
 };
 
 function todayInLuanda() {
@@ -53,7 +53,7 @@ function formatTime(value: string | null) {
 }
 
 function formatStatus(status: string | null) {
-  return statusConfig[status ?? ""] ?? { label: status ?? "Sem status", className: "bg-slate-100 text-slate-600", icon: Clock3 };
+  return statusConfig[status ?? ""] ?? { label: status ?? "Sem status", className: "bg-muted text-foreground/80", icon: Clock3 };
 }
 
 export default function AulasOperacionaisPanel({ escolaId }: { escolaId: string }) {
@@ -144,9 +144,9 @@ export default function AulasOperacionaisPanel({ escolaId }: { escolaId: string 
           <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${realtimeState === "live" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
             {realtimeState === "live" ? "Ao vivo" : "Atualização periódica"}
           </span>
-          <p className="text-sm text-slate-500">Confirmações, aulas em andamento e relatórios recebidos.</p>
+          <p className="text-sm text-muted-foreground">Confirmações, aulas em andamento e relatórios recebidos.</p>
         </div>
-        <button type="button" onClick={() => void fetchAulas()} disabled={refreshing} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60">
+        <button type="button" onClick={() => void fetchAulas()} disabled={refreshing} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground/80 transition hover:bg-muted disabled:opacity-60">
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Atualizar
         </button>
       </header>
@@ -158,36 +158,36 @@ export default function AulasOperacionaisPanel({ escolaId }: { escolaId: string 
         <StatCard label="Finalizadas" value={totals.finalizadas} icon={<CheckCircle2 className="h-4 w-4" />} />
       </div>
 
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center">
-        <div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar turma, disciplina ou professor" className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-emerald/20 focus:ring-2" /></div>
-        <div className="relative md:w-56"><Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-emerald/20 focus:ring-2"><option value="todos">Todos os estados</option>{Object.entries(statusConfig).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}</select></div>
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted p-3 md:flex-row md:items-center">
+        <div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar turma, disciplina ou professor" className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none ring-emerald/20 focus:ring-2" /></div>
+        <div className="relative md:w-56"><Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full appearance-none rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none ring-emerald/20 focus:ring-2"><option value="todos">Todos os estados</option>{Object.entries(statusConfig).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}</select></div>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 py-10 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Carregando aulas...</div>
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando aulas...</div>
       ) : error ? (
         <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center"><BookOpen className="mx-auto mb-2 h-7 w-7 text-slate-300" /><p className="font-bold text-slate-700">Nenhuma aula registada para hoje.</p><p className="mt-1 text-sm text-slate-500">As ocorrências aparecem aqui quando o professor confirmar a aula.</p></div>
+        <div className="rounded-xl border border-dashed border-border p-8 text-center"><BookOpen className="mx-auto mb-2 h-7 w-7 text-muted-foreground" /><p className="font-bold text-foreground">Nenhuma aula registada para hoje.</p><p className="mt-1 text-sm text-muted-foreground">As ocorrências aparecem aqui quando o professor confirmar a aula.</p></div>
       ) : filteredItems.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center"><Search className="mx-auto mb-2 h-7 w-7 text-slate-300" /><p className="font-bold text-slate-700">Nenhuma aula corresponde aos filtros.</p><button type="button" onClick={() => { setSearch(""); setStatusFilter("todos"); }} className="mt-2 text-sm font-bold text-emerald hover:underline">Limpar filtros</button></div>
+        <div className="rounded-xl border border-dashed border-border p-8 text-center"><Search className="mx-auto mb-2 h-7 w-7 text-muted-foreground" /><p className="font-bold text-foreground">Nenhuma aula corresponde aos filtros.</p><button type="button" onClick={() => { setSearch(""); setStatusFilter("todos"); }} className="mt-2 text-sm font-bold text-emerald hover:underline">Limpar filtros</button></div>
       ) : (
         <div className="space-y-2">
           {filteredItems.map((aula) => {
             const status = formatStatus(aula.status);
             const StatusIcon = status.icon;
-            return <div key={aula.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-slate-200 hover:bg-slate-50/60">
-              <div className="w-16 shrink-0 text-sm font-black text-slate-700">{formatTime(aula.inicio_previsto)}</div>
+            return <div key={aula.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3 transition hover:border-border hover:bg-muted/60">
+              <div className="w-16 shrink-0 text-sm font-black text-foreground">{formatTime(aula.inicio_previsto)}</div>
               <div className="min-w-[180px] flex-1">
-                <p className="font-bold text-slate-900">{aula.turma_nome ?? "Turma não identificada"}</p>
-                <p className="text-xs text-slate-500">{aula.disciplina_nome ?? "Disciplina não identificada"} · {aula.professor_nome ?? "Professor não identificado"}</p>
+                <p className="font-bold text-foreground">{aula.turma_nome ?? "Turma não identificada"}</p>
+                <p className="text-xs text-muted-foreground">{aula.disciplina_nome ?? "Disciplina não identificada"} · {aula.professor_nome ?? "Professor não identificado"}</p>
               </div>
               <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${status.className}`}><StatusIcon className="h-3.5 w-3.5" />{status.label}</div>
-              <div className="min-w-[170px] text-[11px] text-slate-500">
+              <div className="min-w-[170px] text-[11px] text-muted-foreground">
                 {aula.presencas?.total ? <p><span className="font-bold text-emerald-700">{aula.presencas.presentes} presentes</span> · <span className="font-bold text-rose-700">{aula.presencas.faltas} faltas</span>{aula.presencas.atrasos ? ` · ${aula.presencas.atrasos} atrasos` : ""}</p> : <p>Chamada pendente</p>}
                 <p className="mt-0.5">Plano: {aula.plano_aula ? `${aula.plano_aula.status}${aula.plano_aula.tema ? ` · ${aula.plano_aula.tema}` : ""}` : "não associado"}</p>
               </div>
-              {aula.status === "finalizada" ? <Link href={`/escola/${escolaId}/operacoes/aulas/${aula.id}`} className="text-xs font-bold text-emerald hover:underline">Ver relatório</Link> : <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Users className="h-3.5 w-3.5" /> Operacional</span>}
+              {aula.status === "finalizada" ? <Link href={`/escola/${escolaId}/operacoes/aulas/${aula.id}`} className="text-xs font-bold text-emerald hover:underline">Ver relatório</Link> : <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground"><Users className="h-3.5 w-3.5" /> Operacional</span>}
             </div>;
           })}
         </div>

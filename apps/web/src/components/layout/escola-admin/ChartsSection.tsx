@@ -21,8 +21,8 @@ import type { PagamentosResumo } from "./definitions";
 
 const KLASSE_GREEN  = klasseColors.green.DEFAULT;
 const KLASSE_GOLD   = klasseColors.gold.DEFAULT;
-const SLATE_GRID    = "rgba(148, 163, 184, 0.08)";
-const SLATE_TICK    = "#94a3b8";
+const SLATE_GRID    = "var(--border)";
+const SLATE_TICK    = "var(--muted-foreground)";
 
 // ─── Shared chart defaults ────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ function ChartTooltip({
     <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 text-xs shadow-lg">
       {label ? <p className="mb-1 font-semibold text-slate-100">{label}</p> : null}
       {payload.map((item) => (
-        <p key={`${item.name}-${item.value}`} className="font-medium text-slate-300">
+        <p key={`${item.name}-${item.value}`} className="font-medium text-slate-200">
           <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
           {item.name}: {Number(item.value ?? 0).toLocaleString("pt-AO")}
         </p>
@@ -70,12 +70,12 @@ function ChartCard({
   isOperacoes?: boolean;
 }) {
   return (
-    <div className={`min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md`}>
-      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 min-[1700px]:px-5 min-[1700px]:py-4">
+    <div className={`min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md`}>
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3 min-[1700px]:px-5 min-[1700px]:py-4">
         <div className={`p-2 rounded-lg ${iconBg}`}>{icon}</div>
         <div>
-          <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-          <p className="text-xs text-slate-400">{subtitle}</p>
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
       </div>
       <div className="p-4 min-[1700px]:p-5">{children}</div>
@@ -85,9 +85,9 @@ function ChartCard({
 
 function EmptyState() {
   return (
-    <div className="flex flex-col h-full items-center justify-center gap-2 text-slate-300">
+    <div className="flex flex-col h-full items-center justify-center gap-2 text-muted-foreground">
       <BarChart3 className="h-10 w-10" />
-      <p className="text-sm font-medium text-slate-400">Sem dados disponíveis</p>
+      <p className="text-sm font-medium text-muted-foreground">Sem dados disponíveis</p>
     </div>
   );
 }
@@ -190,12 +190,12 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
         isOperacoes={isOperacoes}
       >
         <div className="mb-4 flex items-center justify-end">
-          <div className={`inline-flex border border-slate-200 bg-slate-50 p-1 rounded-lg`}>
+          <div className={`inline-flex border border-border bg-muted p-1 rounded-lg`}>
             <button
               type="button"
               onClick={() => setBillingView("quantidade")}
               className={`rounded-md px-3 py-1.5 text-[11px] font-bold transition ${
-                billingView === "quantidade" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                billingView === "quantidade" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >
               Faturas
@@ -204,7 +204,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
               type="button"
               onClick={() => setBillingView("valor")}
               className={`rounded-md px-3 py-1.5 text-[11px] font-bold transition ${
-                billingView === "valor" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                billingView === "valor" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >
               Valor AOA

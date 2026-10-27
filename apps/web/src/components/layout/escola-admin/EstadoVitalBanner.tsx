@@ -25,15 +25,15 @@ export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
     : isExames ? 'Exames' : 'Aulas';
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
       {/* Lado Esquerdo: Título e Status Resumido */}
       <div className="flex items-center gap-3">
-        <div className="rounded-xl border border-slate-100 bg-slate-50 p-2 text-slate-500">
+        <div className="rounded-xl border border-border bg-muted p-2 text-muted-foreground">
           <Activity className="h-4 w-4" />
         </div>
         <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Estado Académico</p>
-          <p className="text-xs font-bold text-slate-700 mt-0.5">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estado Académico</p>
+          <p className="text-xs font-bold text-foreground mt-0.5">
             {estado.evento_hoje_nome ? `Hoje: ${estado.evento_hoje_nome}` : 'Operação regular'}
           </p>
         </div>
@@ -43,23 +43,23 @@ export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
         {/* Metrica 1 */}
         <div className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-slate-400 font-medium">Ano:</span>
-          <span className="font-bold text-slate-800">{estado.ano_ativo || '—'}</span>
+          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground font-medium">Ano:</span>
+          <span className="font-bold text-foreground">{estado.ano_ativo || '—'}</span>
         </div>
 
         {/* Metrica 2 */}
         <div className="flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-slate-400 font-medium">Período:</span>
-          <span className="font-bold text-slate-800">
+          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground font-medium">Período:</span>
+          <span className="font-bold text-foreground">
             {estado.periodo_tipo ? `${estado.periodo_tipo} ${estado.periodo_numero || ''}` : 'Intervalo'}
           </span>
         </div>
 
         {/* Metrica 3 (Fase como Pill suave) */}
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 font-medium">Fase:</span>
+          <span className="text-muted-foreground font-medium">Fase:</span>
           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
             isExames ? 'bg-amber-50 text-amber-700 border border-amber-100/50' : 'bg-emerald-50 text-emerald-700 border border-emerald-100/50'
           }`}>
@@ -69,7 +69,7 @@ export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
 
         {/* Metrica 4 (Status Diário como Pill suave) */}
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 font-medium">Diário:</span>
+          <span className="text-muted-foreground font-medium">Diário:</span>
           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
             isBloqueado ? 'bg-rose-50 text-rose-700 border border-rose-100/50' : 'bg-emerald-50 text-emerald-700 border border-emerald-100/50'
           }`}>

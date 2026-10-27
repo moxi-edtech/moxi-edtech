@@ -60,37 +60,37 @@ export interface ButtonProps
 }
 
 const toneClasses: Record<ButtonTone, string> = {
-  amber: "bg-amber-500 text-white hover:bg-amber-600",
-  blue: "bg-slate-600 text-white hover:bg-slate-700",
+  amber: "bg-amber-500 text-amber-900 hover:bg-amber-400",
+  blue: "bg-primary text-primary-foreground hover:bg-primary/90",
   emerald: "bg-emerald-600 text-white hover:bg-emerald-700",
-  gray: "bg-slate-100 text-slate-700 hover:bg-slate-200",
+  gray: "bg-muted text-foreground hover:bg-accent",
   green: "bg-emerald-600 text-white hover:bg-emerald-700",
-  gold: "bg-amber text-white hover:bg-[#D4A32C]", // Using the color from TipoPresencaStep.tsx
-  navy: "bg-slate-900 text-white hover:bg-slate-800",
-  neutral: "bg-slate-200 text-slate-800 hover:bg-slate-300",
+  gold: "bg-amber text-amber-900 hover:bg-amber-400",
+  navy: "bg-primary text-primary-foreground hover:bg-primary/90",
+  neutral: "bg-muted text-foreground hover:bg-accent",
   ok: "bg-emerald-600 text-white hover:bg-emerald-700",
   red: "bg-red-600 text-white hover:bg-red-700",
-  slate: "bg-slate-900 text-white hover:bg-slate-800",
+  slate: "bg-primary text-primary-foreground hover:bg-primary/90",
   teal: "bg-teal-600 text-white hover:bg-teal-700",
   violet: "bg-violet-600 text-white hover:bg-violet-700",
-  warn: "bg-amber-500 text-white hover:bg-amber-600",
+  warn: "bg-amber-500 text-amber-900 hover:bg-amber-400",
 }
 
 const outlineToneClasses: Record<ButtonTone, string> = {
-  amber: "border-amber-400 text-amber-700 hover:bg-amber-50",
-  blue: "border-slate-500 text-slate-600 hover:bg-slate-50",
+  amber: "border-amber/40 text-foreground hover:bg-amber/10",
+  blue: "border-border text-muted-foreground hover:bg-muted",
   emerald: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
-  gray: "border-slate-300 text-slate-700 hover:bg-slate-50",
+  gray: "border-border text-foreground hover:bg-muted",
   green: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
-  gold: "border-amber text-amber hover:bg-amber/10", // Using the color from TipoPresencaStep.tsx
-  navy: "border-slate-700 text-slate-700 hover:bg-slate-50",
-  neutral: "border-slate-300 text-slate-700 hover:bg-slate-50",
+  gold: "border-amber/40 text-foreground hover:bg-amber/10", // Using the color from TipoPresencaStep.tsx
+  navy: "border-border text-foreground hover:bg-muted",
+  neutral: "border-border text-foreground hover:bg-muted",
   ok: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
-  red: "border-red-500 text-red-600 hover:bg-red-50",
-  slate: "border-slate-700 text-slate-700 hover:bg-slate-50",
+  red: "border-destructive/40 text-foreground hover:bg-destructive/10",
+  slate: "border-border text-foreground hover:bg-muted",
   teal: "border-teal-500 text-teal-600 hover:bg-teal-50",
   violet: "border-violet-500 text-violet-600 hover:bg-violet-50",
-  warn: "border-amber-400 text-amber-700 hover:bg-amber-50",
+  warn: "border-amber/40 text-foreground hover:bg-amber/10",
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

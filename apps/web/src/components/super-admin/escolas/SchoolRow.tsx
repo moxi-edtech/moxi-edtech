@@ -59,10 +59,10 @@ export function SchoolRow({
     const cor = valor >= 80 ? "bg-[#1F6B3B]" : valor >= 60 ? "bg-[#E3B23C]" : "bg-rose-500";
     return (
       <div className="flex items-center gap-3">
-        <div className="w-16 h-1.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden border border-border">
           <div className={`h-full rounded-full ${cor} transition-all duration-1000`} style={{ width: `${valor}%` }} />
         </div>
-        <span className="text-[10px] font-black text-slate-900">{valor}%</span>
+        <span className="text-[10px] font-black text-foreground">{valor}%</span>
       </div>
     );
   };
@@ -71,30 +71,30 @@ export function SchoolRow({
     const s = (status || '').toLowerCase();
     if (s === 'ativa') return <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-[#1F6B3B]/10 text-[#1F6B3B] border border-[#1F6B3B]/20">Ativa</span>;
     if (s === 'suspensa') return <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100">Suspensa</span>;
-    return <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-400 border border-slate-100">Pendente</span>;
+    return <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-muted text-muted-foreground border border-border">Pendente</span>;
   };
 
   const renderReadonly = () => (
-    <tr className="group transition-colors hover:bg-slate-50/50">
+    <tr className="group transition-colors hover:bg-muted/50">
       <td className="py-5 px-6">
         <div>
-          <div className="text-sm font-black text-slate-900 uppercase tracking-tight">{school.name}</div>
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {school.id.toString().substring(0, 8)}...</div>
+          <div className="text-sm font-black text-foreground uppercase tracking-tight">{school.name}</div>
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">ID: {school.id.toString().substring(0, 8)}...</div>
         </div>
       </td>
       <td className="py-5 px-6">
-        <div className="text-sm font-bold text-slate-700">{school.responsavel || '—'}</div>
-        <div className="text-[10px] font-medium text-slate-400">{school.email || '—'}</div>
+        <div className="text-sm font-bold text-foreground">{school.responsavel || '—'}</div>
+        <div className="text-[10px] font-medium text-muted-foreground">{school.email || '—'}</div>
       </td>
       <td className="py-5 px-6">
-        <div className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">
+        <div className="text-[11px] font-bold text-foreground/80 uppercase tracking-tight">
           {school.city || school.state ? `${school.city || ''} / ${school.state || ''}` : '—'}
         </div>
       </td>
       <td className="py-5 px-6">{statusBadge(String(school.status))}</td>
       <td className="py-5 px-6"><SaudeBar valor={saude} /></td>
       <td className="py-5 px-6">
-        <span className="text-[10px] font-black text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full uppercase tracking-widest">
+        <span className="text-[10px] font-black text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-full uppercase tracking-widest">
           {school.plan}
         </span>
       </td>
@@ -103,7 +103,7 @@ export function SchoolRow({
           <button 
             title="Ver Portal" 
             onClick={() => onEnterPortal(school.id)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber/10 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-muted-foreground hover:text-amber hover:bg-amber/10 transition-all"
           >
             <Eye size={16} />
             <span className="hidden md:inline text-xs font-semibold">Ver</span>
@@ -112,7 +112,7 @@ export function SchoolRow({
           <button 
             title="Financeiro" 
             onClick={() => onSendBilling(school.id)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber/10 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-muted-foreground hover:text-amber hover:bg-amber/10 transition-all"
           >
             <CreditCard size={16} />
             <span className="hidden md:inline text-xs font-semibold">Financeiro</span>
@@ -121,18 +121,18 @@ export function SchoolRow({
           <button 
             title="Editar Unidade" 
             onClick={() => onEdit(school)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber/10 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-muted-foreground hover:text-amber hover:bg-amber/10 transition-all"
           >
             <Pencil size={16} />
             <span className="hidden md:inline text-xs font-semibold">Editar</span>
           </button>
           
-          <div className="w-px h-4 bg-slate-100 mx-1" />
+          <div className="w-px h-4 bg-muted mx-1" />
 
           <button 
             title={String(school.status).toLowerCase() === 'suspensa' ? 'Reactivar' : 'Suspender'} 
             onClick={() => onSuspend(school)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-amber hover:bg-amber/10 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-muted-foreground hover:text-amber hover:bg-amber/10 transition-all"
           >
             <Power size={16} />
             <span className="hidden md:inline text-xs font-semibold">{String(school.status).toLowerCase() === 'suspensa' ? 'Reativar' : 'Suspender'}</span>
@@ -141,7 +141,7 @@ export function SchoolRow({
           <button 
             title="Remover Unidade" 
             onClick={() => onDelete(school)} 
-            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-all"
           >
             <Trash2 size={16} />
             <span className="hidden md:inline text-xs font-semibold">Remover</span>
@@ -156,7 +156,7 @@ export function SchoolRow({
     return v === undefined || v === null ? fallback : v;
   };
 
-  const inputCls = "h-9 border border-slate-200 bg-white rounded-xl px-3 text-xs font-bold text-slate-900 outline-none focus:border-amber focus:ring-4 focus:ring-amber/20 transition-all w-full";
+  const inputCls = "h-9 border border-border bg-card rounded-xl px-3 text-xs font-bold text-foreground outline-none focus:border-amber focus:ring-4 focus:ring-amber/20 transition-all w-full";
 
   const renderEditing = () => (
     <tr className="bg-[#1F6B3B]/5">
@@ -200,7 +200,7 @@ export function SchoolRow({
             {String(saving) === String(school.id) ? <span className="animate-spin text-[10px]">...</span> : <Check size={16} />}
             <span className="hidden md:inline text-xs font-semibold">Guardar</span>
           </button>
-          <button onClick={onCancel} className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-400 inline-flex items-center gap-2 hover:bg-slate-50 transition-colors">
+          <button onClick={onCancel} className="h-9 px-3 rounded-xl border border-border bg-card text-muted-foreground inline-flex items-center gap-2 hover:bg-muted transition-colors">
             <X size={16} />
             <span className="hidden md:inline text-xs font-semibold">Cancelar</span>
           </button>

@@ -28,7 +28,6 @@ jobs:
             '+refs/heads/perf/balcao-measured-20261021:refs/remotes/origin/perf/balcao-measured-20261021' \
             '+refs/heads/feat/balcao-nice-to-haves-20261021:refs/remotes/origin/feat/balcao-nice-to-haves-20261021' \
             '+refs/heads/work/klasse-ai-20261013:refs/remotes/origin/work/klasse-ai-20261013' \
-            '+refs/heads/fix/operations-layout-composition-20261022:refs/remotes/origin/fix/operations-layout-composition-20261022' \
             '+refs/heads/fix/command-center-professor-search-modal-20261021:refs/remotes/origin/fix/command-center-professor-search-modal-20261021'
       - name: Individual and sequential git merge-tree --write-tree, never merge a PR
         run: |

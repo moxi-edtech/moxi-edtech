@@ -71,13 +71,13 @@ export default function ControlPanelSection({
   ];
 
   return (
-    <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Zona 1 — Controle</h2>
-          <p className="text-sm text-slate-500">Saúde sistémica, compliance, alertas críticos e risco financeiro.</p>
+          <h2 className="text-xl font-bold text-foreground">Zona 1 — Controle</h2>
+          <p className="text-sm text-muted-foreground">Saúde sistémica, compliance, alertas críticos e risco financeiro.</p>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+        <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm text-foreground/80">
           <BarChart3 className="h-4 w-4" />
           Painel de Controle
         </span>
@@ -85,14 +85,14 @@ export default function ControlPanelSection({
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <article key={card.title} className="rounded-xl border border-slate-200 p-4 transition hover:ring-1 hover:ring-amber/25">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+          <article key={card.title} className="rounded-xl border border-border p-4 transition hover:ring-1 hover:ring-amber/25">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm text-foreground/80">
               <card.icon className="h-4 w-4" />
               {card.title}
             </div>
-            <p className="text-2xl font-bold text-slate-950">{card.value}</p>
-            <p className="mt-2 text-sm text-slate-600">{card.owner}</p>
-            <p className="text-sm text-slate-500">{card.action}</p>
+            <p className="text-2xl font-bold text-foreground">{card.value}</p>
+            <p className="mt-2 text-sm text-foreground/80">{card.owner}</p>
+            <p className="text-sm text-muted-foreground">{card.action}</p>
           </article>
         ))}
       </div>

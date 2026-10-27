@@ -128,7 +128,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <Loader2 className="w-8 h-8 animate-spin mb-4" />
         <p className="text-sm font-medium">Carregando cockpit de receitas...</p>
       </div>
@@ -139,50 +139,50 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
     <div className="space-y-6">
       {/* Cards de Resumo de Receita Unificada */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total em Validação (Caixa)</p>
-            <p className="mt-1.5 text-2xl font-black text-slate-900 leading-none">
+            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Total em Validação (Caixa)</p>
+            <p className="mt-1.5 text-2xl font-black text-foreground leading-none">
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(stats.total)}
             </p>
           </div>
-          <p className="text-[10px] text-slate-500 font-semibold mt-2">Fluxo geral de entrada pendente</p>
+          <p className="text-[10px] text-muted-foreground font-semibold mt-2">Fluxo geral de entrada pendente</p>
         </div>
 
-        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Mensalidades & Matrículas</p>
+            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mensalidades & Matrículas</p>
             <p className="mt-1.5 text-2xl font-black leading-none text-emerald">
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(stats.mensalidades)}
             </p>
           </div>
-          <p className="text-[10px] text-slate-500 font-semibold mt-2">{stats.mensalidadesCount} lançamentos aguardando</p>
+          <p className="text-[10px] text-muted-foreground font-semibold mt-2">{stats.mensalidadesCount} lançamentos aguardando</p>
         </div>
 
-        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Serviços & Emolumentos</p>
+            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Serviços & Emolumentos</p>
             <p className="mt-1.5 text-2xl font-black leading-none text-amber">
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(stats.servicos)}
             </p>
           </div>
-          <p className="text-[10px] text-slate-500 font-semibold mt-2">{stats.servicosCount} solicitações aguardando</p>
+          <p className="text-[10px] text-muted-foreground font-semibold mt-2">{stats.servicosCount} solicitações aguardando</p>
         </div>
       </div>
 
       {/* Conteúdo Dinâmico: Tabela ou Empty State */}
       {pagamentos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-20">
-          <CheckCircle className="w-12 h-12 text-slate-300 mb-4" />
-          <h3 className="text-lg font-semibold text-slate-900">Tudo em dia!</h3>
-          <p className="text-sm text-slate-500 max-w-xs text-center">Nenhum lançamento de mensalidade ou serviço aguarda validação no momento.</p>
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted py-20">
+          <CheckCircle className="w-12 h-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold text-foreground">Tudo em dia!</h3>
+          <p className="text-sm text-muted-foreground max-w-xs text-center">Nenhum lançamento de mensalidade ou serviço aguarda validação no momento.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="bg-muted px-6 py-4 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-amber" />
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Aguardando Validação</h2>
+              <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Aguardando Validação</h2>
             </div>
             <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">
               {pagamentos.length} Lançamentos
@@ -191,7 +191,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-white text-slate-500 border-b border-slate-100">
+              <thead className="bg-card text-muted-foreground border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Aluno / Turma</th>
                   <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Item / Serviço</th>
@@ -201,12 +201,12 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                   <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {pagamentos.map((p) => (
-                  <tr key={p.pagamento_id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={p.pagamento_id} className="hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-bold text-slate-900">{p.aluno_nome}</div>
-                      <div className="text-[10px] text-slate-500 font-medium uppercase tracking-tighter">{p.turma_codigo || "Sem turma"}</div>
+                      <div className="font-bold text-foreground">{p.aluno_nome}</div>
+                      <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">{p.turma_codigo || "Sem turma"}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1">
@@ -217,16 +217,16 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                         }`}>
                           {p.tipo_entidade === "servico" ? "Serviço" : "Mensalidade"}
                         </span>
-                        <div className="font-semibold text-slate-700">{p.servico_nome || "Mensalidade Escolar"}</div>
+                        <div className="font-semibold text-foreground">{p.servico_nome || "Mensalidade Escolar"}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-mono font-bold text-slate-700">
+                    <td className="px-6 py-4 font-mono font-bold text-foreground">
                       {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(p.valor_enviado)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1">
                         <StatusPill status={p.metodo} variant="financeiro" size="xs" />
-                        <span className="text-[10px] text-slate-500 font-mono">{p.reference || "—"}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{p.reference || "—"}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -235,12 +235,12 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                           href={p.comprovante_url} 
                           target="_blank" 
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-xs font-semibold"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-foreground hover:bg-border transition-colors text-xs font-semibold"
                         >
                           Ver Doc <ExternalLink className="w-3 h-3" />
                         </a>
                       ) : (
-                        <span className="text-slate-400 italic text-xs">Não enviado</span>
+                        <span className="text-muted-foreground italic text-xs">Não enviado</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -248,7 +248,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                         <button
                           onClick={() => handleReject(p)}
                           disabled={processingId === p.pagamento_id}
-                          className="inline-flex items-center gap-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 px-3 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                          className="inline-flex items-center gap-2 bg-card hover:bg-rose-50 text-rose-600 border border-rose-200 px-3 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
                           title="Rejeitar comprovativo"
                         >
                           {processingId === p.pagamento_id ? (
@@ -278,8 +278,8 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
             </table>
           </div>
           
-          <div className="bg-slate-50 px-6 py-3 border-t border-slate-200">
-            <p className="flex items-center gap-1.5 text-[10px] text-slate-500 italic">
+          <div className="bg-muted px-6 py-3 border-t border-border">
+            <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground italic">
               <AlertCircle className="w-3 h-3" />
               A validação liquida automaticamente a mensalidade ou defere o serviço no Ledger da escola.
             </p>
@@ -335,15 +335,15 @@ function RecebimentoApprovalModal({
   return (
     <ModalShell open title="Revisar recebimento" description="Confirme o contexto antes de concluir a validação." onClose={onClose} footer={
       <div className="flex flex-wrap justify-end gap-2">
-        <button type="button" onClick={onClose} disabled={processing} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50">Cancelar</button>
+        <button type="button" onClick={onClose} disabled={processing} className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground disabled:opacity-50">Cancelar</button>
         <button type="button" onClick={onConfirm} disabled={processing} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{processing ? "A processar..." : label}</button>
       </div>
     }>
       <div className="space-y-4">
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aluno</p>
-          <p className="mt-1 font-bold text-slate-900">{pagamento.aluno_nome}</p>
-          <p className="mt-1 text-xs text-slate-600">Turma: {pagamento.turma_codigo || "Não indicada"}</p>
+        <div className="rounded-xl border border-border bg-muted p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aluno</p>
+          <p className="mt-1 font-bold text-foreground">{pagamento.aluno_nome}</p>
+          <p className="mt-1 text-xs text-foreground/80">Turma: {pagamento.turma_codigo || "Não indicada"}</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <ContextDetail label="Tipo" value={isRematricula ? "Rematrícula" : isGratuito ? "Pedido gratuito" : isLote ? "Lote de mensalidades" : isServico ? pagamento.servico_nome || "Serviço escolar" : "Mensalidade"} />
@@ -355,7 +355,7 @@ function RecebimentoApprovalModal({
           {isLote ? <ContextDetail label="Itens" value={`${pagamento.quantidade_itens} mensalidades`} /> : null}
         </div>
         {pagamento.mensagem_aluno ? <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"><p className="font-bold">Mensagem do aluno</p><p className="mt-1">{pagamento.mensagem_aluno}</p></div> : null}
-        <p className="text-xs text-slate-500">Confira no comprovativo a referência da operação bancária. Ela não é extraída automaticamente deste documento.</p>
+        <p className="text-xs text-muted-foreground">Confira no comprovativo a referência da operação bancária. Ela não é extraída automaticamente deste documento.</p>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><p className="font-bold">Depois da aprovação</p><p className="mt-1">{consequence}</p></div>
         {!pagamento.comprovante_url && !isGratuito ? <p className="text-sm text-rose-700">Não há comprovativo anexado. Revise antes de aprovar.</p> : null}
       </div>
@@ -368,5 +368,5 @@ function formatKwanza(value: unknown) {
 }
 
 function ContextDetail({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 break-words text-sm font-bold text-slate-800">{value}</p></div>;
+  return <div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 break-words text-sm font-bold text-foreground">{value}</p></div>;
 }

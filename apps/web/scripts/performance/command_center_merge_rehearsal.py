@@ -28,7 +28,8 @@ branches=[
   ("balcao-p1-213","origin/perf/balcao-measured-20261021"),
   ("balcao-p2-216","origin/feat/balcao-nice-to-haves-20261021"),
   ("klasse-ia-192","origin/work/klasse-ai-20261013"),
-  ("operacoes-layout-247","origin/fix/operations-layout-composition-20261022"),
+  # PR #247 foi integrada na main; repetir o HEAD histórico no merge
+  # sintético cria conflitos falsos de CSS, sem representar uma branch concorrente.
   ("professores-pesquisa-231","origin/fix/command-center-professor-search-modal-20261021"),
 ]
 known_conflicts={
@@ -112,7 +113,8 @@ for label,ref in [("command-center-C",CC_REF),*branches]:
                         "conflictFiles":comparison["conflictFiles"]})
 
 # Synthetic composite starts with CC, then main, finance, Balcão, AI,
-# responsive layout and professor search. No PR commit changes.
+# already-merged responsive layout (via main), and professor search.
+# No PR commit changes.
 current=git("rev-parse",CC_REF,check=True).stdout.strip()
 steps=[]
 for label,ref in [("main",BASE_REF),*branches]:

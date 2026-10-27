@@ -223,19 +223,19 @@ export default function FinanceiroConfiguracoesPage() {
       saveDisabled={saving}
     >
       {loading ? (
-         <div className="py-12 text-center text-sm text-slate-500">Carregando dados financeiros...</div>
+         <div className="py-12 text-center text-sm text-muted-foreground">Carregando dados financeiros...</div>
       ) : (
         <div className="space-y-6">
           
           {/* CARD 1: REGRAS GERAIS */}
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-6 border-b border-border pb-4">
               <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Regras de Cobrança</h3>
-                <p className="text-xs text-slate-500">Padrões aplicados a todas as mensalidades.</p>
+                <h3 className="text-sm font-bold text-foreground">Regras de Cobrança</h3>
+                <p className="text-xs text-muted-foreground">Padrões aplicados a todas as mensalidades.</p>
               </div>
             </div>
 
@@ -243,28 +243,28 @@ export default function FinanceiroConfiguracoesPage() {
               
               {/* Dia de Vencimento */}
               <div>
-                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                  <CalendarClock className="h-3.5 w-3.5 text-slate-400" />
+                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
                   Dia de Vencimento Padrão
                 </label>
                 <select
                   value={config.dia_vencimento_padrao}
                   onChange={(e) => setConfig({ ...config, dia_vencimento_padrao: Number(e.target.value) })}
-                  className="w-full rounded-lg border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 focus:border-amber focus:ring-amber"
+                  className="w-full rounded-lg border-border bg-muted text-sm font-medium text-foreground focus:border-amber focus:ring-amber"
                 >
                   {[1, 5, 10, 15, 20, 25, 30].map(d => (
                     <option key={d} value={d}>Dia {d}</option>
                   ))}
                 </select>
-                <p className="mt-1.5 text-[10px] text-slate-400">
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
                   Data limite padrão para evitar multas.
                 </p>
               </div>
 
               {/* Multa Fixa */}
               <div>
-                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                  <AlertTriangle className="h-3.5 w-3.5 text-slate-400" />
+                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
                   Multa por Atraso (%)
                 </label>
                 <div className="relative">
@@ -272,19 +272,19 @@ export default function FinanceiroConfiguracoesPage() {
                     type="number"
                     value={config.multa_atraso_percent}
                     onChange={(e) => setConfig({ ...config, multa_atraso_percent: Number(e.target.value) })}
-                    className="w-full rounded-lg border-slate-200 pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-amber focus:ring-amber"
+                    className="w-full rounded-lg border-border pl-3 pr-8 text-sm font-semibold text-foreground focus:border-amber focus:ring-amber"
                   />
-                  <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">%</span>
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-muted-foreground">%</span>
                 </div>
-                <p className="mt-1.5 text-[10px] text-slate-400">
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
                   Aplicada uma única vez após o vencimento.
                 </p>
               </div>
 
               {/* Juros Diários */}
               <div>
-                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                  <Percent className="h-3.5 w-3.5 text-slate-400" />
+                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Percent className="h-3.5 w-3.5 text-muted-foreground" />
                   Juros Diários (Mora)
                 </label>
                 <div className="relative">
@@ -293,11 +293,11 @@ export default function FinanceiroConfiguracoesPage() {
                     step="0.01"
                     value={config.juros_diarios_percent}
                     onChange={(e) => setConfig({ ...config, juros_diarios_percent: Number(e.target.value) })}
-                    className="w-full rounded-lg border-slate-200 pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-amber focus:ring-amber"
+                    className="w-full rounded-lg border-border pl-3 pr-8 text-sm font-semibold text-foreground focus:border-amber focus:ring-amber"
                   />
-                  <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">%</span>
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-muted-foreground">%</span>
                 </div>
-                <p className="mt-1.5 text-[10px] text-slate-400">
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
                   Acumulado a cada dia de atraso.
                 </p>
               </div>
@@ -311,8 +311,8 @@ export default function FinanceiroConfiguracoesPage() {
                 <Wallet className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-bold text-slate-900">Benefício para irmãos</h3>
-                <p className="mt-1 text-xs text-slate-600">
+                <h3 className="text-sm font-bold text-foreground">Benefício para irmãos</h3>
+                <p className="mt-1 text-xs text-foreground/80">
                   Identifica irmãos pelo telefone do encarregado e aplica a maior faixa configurada às mensalidades pendentes.
                   Descontos manuais e pagamentos já feitos são preservados.
                 </p>
@@ -320,7 +320,7 @@ export default function FinanceiroConfiguracoesPage() {
                   {[2, 3].map((minimum) => {
                     const key = minimum === 2 ? "desconto_familiar_2_filhos" : "desconto_familiar_3_filhos";
                     return (
-                      <label key={key} className="text-xs font-semibold text-slate-700">
+                      <label key={key} className="text-xs font-semibold text-foreground">
                         {minimum === 2 ? "2 filhos" : "3 ou mais filhos"}
                         <div className="relative mt-1.5">
                           <input
@@ -330,38 +330,38 @@ export default function FinanceiroConfiguracoesPage() {
                             step="0.5"
                             value={config[key]}
                             onChange={(e) => setConfig({ ...config, [key]: Number(e.target.value) })}
-                            className="w-full rounded-lg border-slate-200 bg-white pl-3 pr-8 text-sm font-semibold text-slate-900 focus:border-emerald focus:ring-emerald"
+                            className="w-full rounded-lg border-border bg-card pl-3 pr-8 text-sm font-semibold text-foreground focus:border-ring focus:ring-ring"
                           />
-                          <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">%</span>
+                          <span className="absolute right-3 top-2.5 text-xs font-bold text-muted-foreground">%</span>
                         </div>
                       </label>
                     );
                   })}
                 </div>
-                <p className="mt-3 text-[10px] text-slate-500">Exemplo: 5% para duas crianças e 10% para três ou mais.</p>
+                <p className="mt-3 text-[10px] text-muted-foreground">Exemplo: 5% para duas crianças e 10% para três ou mais.</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Agregados familiares</h3>
-                <p className="mt-1 text-xs text-slate-500">Associe explicitamente irmãos. O telefone serve apenas como referência e não ativa descontos sozinho.</p>
+                <h3 className="text-sm font-bold text-foreground">Agregados familiares</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Associe explicitamente irmãos. O telefone serve apenas como referência e não ativa descontos sozinho.</p>
               </div>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">{familyGroups.length} agregado(s)</span>
+              <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground">{familyGroups.length} agregado(s)</span>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <select value={familyGroupId} onChange={(e) => setFamilyGroupId(e.target.value)} className="rounded-lg border-slate-200 text-sm">
+              <select value={familyGroupId} onChange={(e) => setFamilyGroupId(e.target.value)} className="rounded-lg border-border text-sm">
                 <option value="">Novo agregado familiar</option>
                 {familyGroups.map((group) => <option key={group.id} value={group.id}>{group.nome}</option>)}
               </select>
-              <select value={familyStudentId} onChange={(e) => setFamilyStudentId(e.target.value)} className="rounded-lg border-slate-200 text-sm">
+              <select value={familyStudentId} onChange={(e) => setFamilyStudentId(e.target.value)} className="rounded-lg border-border text-sm">
                 <option value="">Selecionar aluno</option>
                 {familyStudents.filter((student) => !assignedStudentIds.has(student.id)).map((student) => <option key={student.id} value={student.id}>{student.nome_completo || student.nome}</option>)}
               </select>
-              {!familyGroupId && <input value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder="Nome do encarregado / família" className="rounded-lg border-slate-200 text-sm" />}
-              {!familyGroupId && <input value={familyPhone} onChange={(e) => setFamilyPhone(e.target.value)} placeholder="Telefone de referência (opcional)" className="rounded-lg border-slate-200 text-sm" />}
+              {!familyGroupId && <input value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder="Nome do encarregado / família" className="rounded-lg border-border text-sm" />}
+              {!familyGroupId && <input value={familyPhone} onChange={(e) => setFamilyPhone(e.target.value)} placeholder="Telefone de referência (opcional)" className="rounded-lg border-border text-sm" />}
             </div>
             <button type="button" onClick={() => void handleFamilySave()} disabled={familySaving || !familyStudentId || (!familyGroupId && !familyName.trim())} className="mt-4 rounded-lg bg-emerald px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
               {familySaving ? "A associar..." : "Associar aluno ao agregado"}
@@ -369,19 +369,19 @@ export default function FinanceiroConfiguracoesPage() {
             {familyFeedback ? <p className="mt-3 text-xs font-semibold text-emerald-700">{familyFeedback}</p> : null}
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {familyGroups.map((group) => (
-                <div key={group.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <div key={group.id} className="rounded-lg border border-border bg-muted p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-bold text-slate-800">{group.nome}</p>
-                    {group.telefone ? <span className="text-[10px] text-slate-400">{group.telefone}</span> : null}
+                    <p className="text-xs font-bold text-foreground">{group.nome}</p>
+                    {group.telefone ? <span className="text-[10px] text-muted-foreground">{group.telefone}</span> : null}
                   </div>
                   <div className="mt-2 space-y-1">
                     {(group.financeiro_agregados_membros ?? []).map((member) => (
-                      <div key={member.aluno_id} className="flex items-center justify-between gap-2 text-[11px] text-slate-600">
+                      <div key={member.aluno_id} className="flex items-center justify-between gap-2 text-[11px] text-foreground/80">
                         <span>{member.alunos?.nome_completo || member.alunos?.nome || "Aluno"}</span>
                         <button type="button" onClick={() => void handleFamilyRemove(group.id, member.aluno_id)} className="font-semibold text-rose-600 hover:text-rose-700">Remover</button>
                       </div>
                     ))}
-                    {!group.financeiro_agregados_membros?.length ? <p className="text-[10px] text-slate-400">Sem alunos associados.</p> : null}
+                    {!group.financeiro_agregados_membros?.length ? <p className="text-[10px] text-muted-foreground">Sem alunos associados.</p> : null}
                   </div>
                 </div>
               ))}
@@ -396,7 +396,7 @@ export default function FinanceiroConfiguracoesPage() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-900">Restrição Automática</h3>
+                  <h3 className="text-sm font-bold text-foreground">Restrição Automática</h3>
                   
                   {/* Toggle Switch */}
                   <label className="relative inline-flex cursor-pointer items-center">
@@ -406,11 +406,11 @@ export default function FinanceiroConfiguracoesPage() {
                       checked={config.bloquear_inadimplentes}
                       onChange={(e) => setConfig({ ...config, bloquear_inadimplentes: e.target.checked })}
                     />
-                    <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-red-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-red-300"></div>
+                    <div className="peer h-6 w-11 rounded-full bg-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-background after:transition-all after:content-[''] peer-checked:bg-red-600 peer-checked:after:translate-x-full peer-checked:after:border-border peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring"></div>
                   </label>
                 </div>
                 
-                <p className="mt-1 text-xs text-slate-600">
+                <p className="mt-1 text-xs text-foreground/80">
                   Se ativado, alunos com mensalidades vencidas há mais de 30 dias terão o acesso ao Portal do Aluno bloqueado automaticamente.
                 </p>
                 {config.bloquear_inadimplentes && (
@@ -424,14 +424,14 @@ export default function FinanceiroConfiguracoesPage() {
           </div>
 
           {/* CARD 3: INFO SOBRE MENSALIDADES */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-6">
+          <div className="rounded-xl border border-border bg-muted p-6">
             <div className="flex items-center gap-4">
-              <div className="rounded-lg bg-white p-2 shadow-sm ring-1 ring-slate-100 text-slate-600">
+              <div className="rounded-lg bg-card p-2 shadow-sm ring-1 ring-ring text-foreground/80">
                 <Landmark className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Mensalidades & Emolumentos</h3>
-                <p className="text-xs text-slate-500">
+                <h3 className="text-sm font-bold text-foreground">Mensalidades & Emolumentos</h3>
+                <p className="text-xs text-muted-foreground">
                   Configure preços e catálogo na aba dedicada do menu.
                 </p>
               </div>

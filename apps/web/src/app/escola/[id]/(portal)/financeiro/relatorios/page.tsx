@@ -22,33 +22,33 @@ export default async function RelatoriosPage({
         ]}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link href={`/escola/${escolaId}/financeiro/relatorios/mensal-escolar`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition border-blue-100 bg-gradient-to-br from-white to-blue-50/30">
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/mensal-escolar`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition border-blue-100 bg-gradient-to-br from-white to-blue-50/30">
           <div className="text-lg font-semibold mb-1 text-blue-900">Relatório Mensal Escolar</div>
-          <div className="text-sm text-gray-600">Visão executiva consolidada: propinas, arrecadação e inadimplência</div>
+          <div className="text-sm text-foreground/80">Visão executiva consolidada: propinas, arrecadação e inadimplência</div>
         </Link>
-        <Link href={`/escola/${escolaId}/financeiro/relatorios/propinas`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/propinas`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition">
           <div className="text-lg font-semibold mb-1">Propinas</div>
-          <div className="text-sm text-gray-600">Resumo mensal e ranking por turma</div>
+          <div className="text-sm text-foreground/80">Resumo mensal e ranking por turma</div>
         </Link>
-        <Link href={`/escola/${escolaId}/financeiro/relatorios/fluxo-caixa`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/fluxo-caixa`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition">
           <div className="text-lg font-semibold mb-1">Fluxo de Caixa</div>
-          <div className="text-sm text-gray-600">Pagamentos por dia (progresso)</div>
+          <div className="text-sm text-foreground/80">Pagamentos por dia (progresso)</div>
         </Link>
-        <Link href={`/escola/${escolaId}/financeiro/relatorios/pagamentos-status`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/pagamentos-status`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition">
           <div className="text-lg font-semibold mb-1">Pagamentos por Status</div>
-          <div className="text-sm text-gray-600">Distribuição entre pago, pendente, atrasado</div>
+          <div className="text-sm text-foreground/80">Distribuição entre pago, pendente, atrasado</div>
         </Link>
-        <Link href={`/escola/${escolaId}/financeiro/relatorios/extratos-alunos`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/extratos-alunos`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition">
           <div className="text-lg font-semibold mb-1">Extratos de Alunos</div>
-          <div className="text-sm text-gray-600">Gerar extrato (JSON/PDF) por aluno</div>
+          <div className="text-sm text-foreground/80">Gerar extrato (JSON/PDF) por aluno</div>
         </Link>
-        <Link href={`/escola/${escolaId}/financeiro/relatorios/detalhados`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/detalhados`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition">
           <div className="text-lg font-semibold mb-1">Relatórios Detalhados</div>
-          <div className="text-sm text-gray-600">Auditoria por período e exportação</div>
+          <div className="text-sm text-foreground/80">Auditoria por período e exportação</div>
         </Link>
-        <Link href={`/escola/${escolaId}/financeiro/relatorios/reconciliacao-mensalidades`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition border-amber-200 bg-amber-50/30">
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/reconciliacao-mensalidades`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition border-amber-200 bg-amber-50/30">
           <div className="text-lg font-semibold mb-1">Reconciliação de Mensalidades</div>
-          <div className="text-sm text-gray-600">Identifica mensalidades sem matrícula, com ano/turma divergente ou fora do calendário.</div>
+          <div className="text-sm text-foreground/80">Identifica mensalidades sem matrícula, com ano/turma divergente ou fora do calendário.</div>
         </Link>
       </div>
     </div>

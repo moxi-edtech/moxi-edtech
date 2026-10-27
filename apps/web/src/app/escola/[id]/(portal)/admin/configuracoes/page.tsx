@@ -181,7 +181,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   if (authRequired) {
     const nextPath = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+      <div className="min-h-full bg-background flex items-center justify-center px-6">
         <AuthRequiredNotice
           nextPath={nextPath}
           description="Não foi possível carregar as configurações porque você não está autenticado."
@@ -238,23 +238,23 @@ export default function ConfiguracoesPage({ params }: Props) {
   // 4. MODO WIZARD (apenas quando forçado)
   if (forceWizard) {
     return (
-      <div className="bg-slate-50 min-h-screen">
+      <div className="bg-muted min-h-screen">
         {cameFromPublicOnboarding && (
           <div className="max-w-6xl mx-auto pt-6 px-6">
-            <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-slate-900 shadow-sm">
+            <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-foreground shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
                     Continuação do onboarding
                   </div>
-                  <div className="mt-1 text-base font-semibold text-slate-900">
+                  <div className="mt-1 text-base font-semibold text-foreground">
                     Você já caiu no passo certo do setup interno.
                   </div>
-                  <div className="mt-1 text-sm text-slate-600">
+                  <div className="mt-1 text-sm text-foreground/80">
                     Siga o assistente abaixo para concluir o próximo passo real da escola sem voltar ao portal público.
                   </div>
                 </div>
-                <div className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm">
+                <div className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 shadow-sm">
                   {statusLoading ? "A carregar progresso..." : `Setup interno: ${progressPercent}%`}
                 </div>
               </div>
@@ -266,7 +266,7 @@ export default function ConfiguracoesPage({ params }: Props) {
           <div className="max-w-6xl mx-auto pt-6 px-6">
             <button 
               onClick={() => setForceWizard(false)} 
-              className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-2 transition-colors"
+              className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
             >
               ← Voltar ao menu
             </button>
@@ -288,48 +288,48 @@ export default function ConfiguracoesPage({ params }: Props) {
 
   // 5. MODO HUB (Painel de Configurações)
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <div className="bg-muted min-h-screen">
       <div className="max-w-6xl mx-auto px-6 pt-6">
         {cameFromPublicOnboarding && (
-          <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-slate-900 shadow-sm">
+          <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-foreground shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
                   Continuação do onboarding
                 </div>
-                <div className="mt-1 text-base font-semibold text-slate-900">
+                <div className="mt-1 text-base font-semibold text-foreground">
                   Você saiu do portal público e entrou no hub interno da escola.
                 </div>
-                <div className="mt-1 text-sm text-slate-600">
+                <div className="mt-1 text-sm text-foreground/80">
                   A partir daqui, conclua o setup académico e operacional usando o próximo passo guiado abaixo.
                 </div>
               </div>
-              <div className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm">
+              <div className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm">
                 {statusLoading ? "A carregar progresso..." : `Setup interno: ${progressPercent}%`}
               </div>
             </div>
           </div>
         )}
         {!setupComplete && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-5 text-foreground shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                   Configuração académica
                 </div>
-                <div className="mt-1 text-base font-semibold text-slate-900">
+                <div className="mt-1 text-base font-semibold text-foreground">
                   {primaryBlocker?.title || "O assistente continua disponível para completar o setup."}
                 </div>
-                <div className="text-sm mt-1 text-slate-500">
+                <div className="text-sm mt-1 text-muted-foreground">
                   {primaryBlocker?.detail || "Pode retomar de onde parou ou rever o checklist antes de continuar."}
                 </div>
                 {pageSetupStatus && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-foreground/80">
                       Progresso: {statusLoading ? "..." : `${progressPercent}%`}
                     </span>
                     {pageSetupStatus.next_action?.label && (
-                      <span className="rounded-full bg-[#1F6B3B]/8 px-2.5 py-1 font-medium text-[#1F6B3B]">
+                      <span className="rounded-full bg-emerald/10 px-2.5 py-1 font-medium text-foreground">
                         Próximo passo: {pageSetupStatus.next_action.label}
                       </span>
                     )}
@@ -340,14 +340,14 @@ export default function ConfiguracoesPage({ params }: Props) {
                 <button
                   type="button"
                   onClick={() => setForceWizard(true)}
-                  className="inline-flex items-center justify-center rounded-xl bg-[#1F6B3B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#17532e]"
+                  className="inline-flex items-center justify-center rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
                 >
                   {nextActionLabel}
                 </button>
                 {nextActionHref ? (
                   <Link
                     href={nextActionHref}
-                    className="inline-flex items-center justify-center rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 px-4 py-2.5 text-sm font-semibold text-[#1F6B3B] hover:bg-[#1F6B3B]/10"
+                    className="inline-flex items-center justify-center rounded-xl border border-emerald/20 bg-emerald/10 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-emerald/10"
                   >
                     Abrir módulo recomendado
                   </Link>
@@ -355,7 +355,7 @@ export default function ConfiguracoesPage({ params }: Props) {
                 {!nextActionHref && primaryBlockerAction?.kind === "link" ? (
                   <Link
                     href={primaryBlockerAction.href}
-                    className="inline-flex items-center justify-center rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 px-4 py-2.5 text-sm font-semibold text-[#1F6B3B] hover:bg-[#1F6B3B]/10"
+                    className="inline-flex items-center justify-center rounded-xl border border-emerald/20 bg-emerald/10 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-emerald/10"
                   >
                     {primaryBlockerAction.label}
                   </Link>
@@ -363,7 +363,7 @@ export default function ConfiguracoesPage({ params }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowChecklist((prev) => !prev)}
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
                 >
                   {showChecklist ? "Ocultar checklist" : "Ver checklist"}
                 </button>
@@ -376,11 +376,11 @@ export default function ConfiguracoesPage({ params }: Props) {
                     key={item.label}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${
                       item.ok
-                        ? "border-[#1F6B3B]/15 bg-[#1F6B3B]/5 text-[#1F6B3B]"
-                        : "border-slate-200 bg-slate-50 text-slate-600"
+                        ? "border-emerald/20 bg-emerald/10 text-foreground"
+                        : "border-border bg-muted text-foreground/80"
                     }`}
                   >
-                    <span className={`inline-block h-2 w-2 rounded-full ${item.ok ? "bg-[#1F6B3B]" : "bg-slate-300"}`} />
+                    <span className={`inline-block h-2 w-2 rounded-full ${item.ok ? "bg-emerald" : "bg-border"}`} />
                     <span>{item.label}</span>
                   </div>
                 ))}

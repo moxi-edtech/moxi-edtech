@@ -36,7 +36,7 @@ const Progress = ({ value, className }: { value: number; className?: string }) =
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 const Skeleton = ({ className }: { className?: string }) => (
-  <div className={`animate-pulse rounded bg-slate-100 ${className}`} />
+  <div className={`animate-pulse rounded bg-muted ${className}`} />
 );
 
 
@@ -215,7 +215,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-[1400px] mx-auto px-8 py-10 space-y-10 bg-slate-50/50 min-h-screen">
+    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-8 bg-background min-h-full sm:px-8 sm:py-10 sm:space-y-10">
 
       {/* ── 1. PAGE HEADER ───────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -223,25 +223,25 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
           <p className="text-xs font-bold uppercase tracking-widest text-[#1F6B3B] mb-1">
             Ano Letivo {anoLetivoAtual}
           </p>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">
             Configurações
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Gestão global da estrutura acadêmica e operacional.
           </p>
         </div>
 
         {/* Global progress — single source of truth */}
-        <div className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-6 py-4 shadow-sm min-w-[280px]">
+        <div className="flex items-center gap-4 bg-card border border-border rounded-2xl px-6 py-4 shadow-sm min-w-0">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Setup concluído
               </span>
               {loading ? (
                 <Skeleton className="h-4 w-8" />
               ) : (
-                <span className="text-sm font-bold text-slate-900">
+                <span className="text-sm font-bold text-foreground">
                   {progress ?? 0}%
                 </span>
               )}
@@ -249,7 +249,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
             {loading ? (
               <Skeleton className="h-2 w-full" />
             ) : (
-              <Progress value={progress ?? 0} className="h-2 bg-slate-100" />
+              <Progress value={progress ?? 0} className="h-2 bg-muted" />
             )}
           </div>
           <button
@@ -264,36 +264,36 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
 
       {/* ── 2. STATUS BADGES ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs text-slate-400 font-medium mr-1">Status:</span>
+        <span className="text-xs text-muted-foreground font-medium mr-1">Status:</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">Ano Letivo</span>
+          <span className="text-xs text-muted-foreground">Ano Letivo</span>
           <StatusBadge ok={anoLetivoOk} loading={loading} />
         </div>
-        <span className="text-slate-200">·</span>
+        <span className="text-muted-foreground">·</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">Períodos</span>
+          <span className="text-xs text-muted-foreground">Períodos</span>
           <StatusBadge ok={periodosOk} loading={loading} />
         </div>
-        <span className="text-slate-200">·</span>
+        <span className="text-muted-foreground">·</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">Avaliação</span>
+          <span className="text-xs text-muted-foreground">Avaliação</span>
           <StatusBadge ok={avaliacaoOk} loading={loading} />
         </div>
-        <span className="text-slate-200">·</span>
+        <span className="text-muted-foreground">·</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">Currículo</span>
+          <span className="text-xs text-muted-foreground">Currículo</span>
           <StatusBadge ok={curriculoOk} loading={loading} />
         </div>
-        <span className="text-slate-200">·</span>
+        <span className="text-muted-foreground">·</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">Turmas</span>
+          <span className="text-xs text-muted-foreground">Turmas</span>
           <StatusBadge ok={turmasOk} loading={loading} />
         </div>
       </div>
 
       {/* ── 3. QUICK CARDS ───────────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">
           Acesso rápido
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -305,7 +305,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
                   hover:-translate-y-0.5 hover:shadow-md flex flex-col gap-3
                   ${card.highlight
                     ? "bg-gradient-to-br from-[#E3B23C]/8 to-white border-[#E3B23C]/40 hover:border-[#E3B23C]"
-                    : "bg-white border-slate-200 hover:border-slate-300"
+                    : "bg-card border-border hover:border-border"
                   }
                 `}
               >
@@ -314,21 +314,21 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
                     className={`p-2 rounded-xl transition-colors ${
                       card.highlight
                         ? "bg-[#E3B23C] text-white"
-                        : "bg-slate-50 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-600"
+                        : "bg-muted text-muted-foreground group-hover:bg-muted group-hover:text-foreground/80"
                     }`}
                   >
                     <card.icon size={16} strokeWidth={1.75} />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-sm text-slate-900 mb-0.5">{card.title}</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed">{card.desc}</p>
+                  <h3 className="font-semibold text-sm text-foreground mb-0.5">{card.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{card.desc}</p>
                 </div>
 
                 {card.highlight && !loading && progress !== null && (
-                  <Progress value={progress} className="h-1 bg-slate-100 mt-auto" />
+                  <Progress value={progress} className="h-1 bg-muted mt-auto" />
                 )}
               </div>
             );
@@ -354,34 +354,34 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       {/* ── 4. FULL SCREEN MODULES ───────────────────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Módulos em tela cheia</h2>
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Módulos em tela cheia</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {configModules.map((item) => (
             <Link
               key={item.id}
               href={item.href}
-              className="rounded-xl border border-slate-200 bg-white p-4 hover:border-slate-300 hover:shadow-sm transition-all"
+              className="rounded-xl border border-border bg-card p-4 hover:border-border hover:shadow-sm transition-all"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <item.icon className="w-4 h-4 text-slate-500" />
-                  <span className="text-sm font-semibold text-slate-800">{item.label}</span>
+                  <item.icon className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">{item.label}</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-300" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </div>
             </Link>
           ))}
           <Link
             href={portalHref("/admin/configuracoes/sandbox")}
-            className="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:bg-slate-100 transition-colors"
+            className="rounded-xl border border-border bg-muted p-4 hover:bg-muted transition-colors"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Play className="w-4 h-4 text-slate-500" />
-                <span className="text-sm font-semibold text-slate-700">Testar Fluxo</span>
+                <Play className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Testar Fluxo</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </div>
           </Link>
         </div>
@@ -411,7 +411,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
             <div className="pt-4">
               <Link
                 href={portalHref("/admin/configuracoes")}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-rose-300 bg-white text-sm font-semibold text-rose-700 hover:bg-rose-50 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-rose-300 bg-card text-sm font-semibold text-rose-700 hover:bg-rose-50 transition-colors"
               >
                 <AlertTriangle className="w-4 h-4" />
                 Acessar configurações avançadas de reset

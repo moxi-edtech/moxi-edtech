@@ -81,7 +81,7 @@ function getActivityPriority(item: ActivityFeedItem): "urgente" | "importante" |
 const priorityStyles = {
   urgente: "bg-rose-50 text-rose-700 ring-rose-200",
   importante: "bg-amber-50 text-amber-700 ring-amber-200",
-  informativa: "bg-slate-50 text-slate-500 ring-slate-200",
+  informativa: "bg-muted text-muted-foreground ring-ring",
 } as const;
 
 const detailIcons: Record<ActivityDetailKind, React.ElementType> = {
@@ -116,18 +116,18 @@ function ActivityPayloadDetails({
             key={`${detail.label}:${detail.value}`}
             className={
               discreet
-                ? "rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5"
-                : "flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
+                ? "rounded-lg border border-border bg-muted/70 px-3 py-2.5"
+                : "flex items-start gap-3 rounded-xl border border-border bg-card p-3 shadow-sm"
             }
           >
             {!discreet && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                 <Icon className="h-4 w-4" />
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{detail.label}</dt>
-              <dd className="mt-0.5 break-words text-sm font-semibold leading-5 text-slate-800">{detail.value}</dd>
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{detail.label}</dt>
+              <dd className="mt-0.5 break-words text-sm font-semibold leading-5 text-foreground">{detail.value}</dd>
             </div>
           </div>
         );
@@ -178,17 +178,17 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
   const isOperacoes = portalBase === "operacoes";
 
   return (
-    <section className={`rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md ${isOperacoes ? "p-4 min-[1700px]:p-5" : "p-5"}`}>
+    <section className={`rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md ${isOperacoes ? "p-4 min-[1700px]:p-5" : "p-5"}`}>
       {isOperacoes ? (
         // Versão discreta (só operações): sem o selo escuro do cabeçalho, título
         // em minúsculas e um ponto de estado em vez de um bloco de cor.
-        <header className="mb-2 flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <header className="mb-2 flex items-center justify-between gap-3 border-b border-border pb-3">
           <div className="flex min-w-0 items-center gap-2">
-            <h3 className="truncate text-xs font-bold uppercase tracking-widest text-slate-500">
+            <h3 className="truncate text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Fila operacional
             </h3>
             {realtimeState === "live" ? (
-              <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-slate-400">
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 ao vivo
               </span>
@@ -209,8 +209,8 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
               <Activity className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-sm font-black text-slate-900 tracking-tight uppercase">Fila Operacional</h3>
-              <p className="truncate text-[10px] font-bold text-slate-400 uppercase">Acções pendentes e actividade</p>
+              <h3 className="truncate text-sm font-black text-foreground tracking-tight uppercase">Fila Operacional</h3>
+              <p className="truncate text-[10px] font-bold text-muted-foreground uppercase">Acções pendentes e actividade</p>
             </div>
           </div>
 
@@ -229,8 +229,8 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
             <p className="text-[10px] font-black uppercase tracking-widest text-emerald">
               Nova actividade{newCount > 1 ? ` · ${newCount} novidades` : ""}
             </p>
-            <p className="truncate text-sm font-bold text-slate-900">{newItem.headline}</p>
-            <p className="truncate text-xs text-slate-500">{toFeedSubline(newItem) || "Acção registada no sistema."}</p>
+            <p className="truncate text-sm font-bold text-foreground">{newItem.headline}</p>
+            <p className="truncate text-xs text-muted-foreground">{toFeedSubline(newItem) || "Acção registada no sistema."}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {getActivityAction(newItem, escolaParam) && (
@@ -245,7 +245,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
             <button
               type="button"
               onClick={() => { setNewItem(null); setNewCount(0); }}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-border bg-card px-3 py-2 text-[10px] font-black uppercase tracking-wider text-foreground/80 hover:bg-muted"
             >
               Entendi
             </button>
@@ -263,16 +263,16 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
       {loading ? (
         <ul className="space-y-3">
           {Array.from({ length: 5 }).map((_, idx) => (
-            <li key={idx} className="animate-pulse rounded-xl border border-slate-50 p-4">
-              <div className="mb-2 h-2.5 w-12 rounded bg-slate-100" />
-              <div className="mb-2 h-3 w-3/4 rounded bg-slate-100" />
-              <div className="h-8 w-full rounded-xl bg-slate-50" />
+            <li key={idx} className="animate-pulse rounded-xl border border-border p-4">
+              <div className="mb-2 h-2.5 w-12 rounded bg-muted" />
+              <div className="mb-2 h-3 w-3/4 rounded bg-muted" />
+              <div className="h-8 w-full rounded-xl bg-muted" />
             </li>
           ))}
         </ul>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sem actividade recente</p>
+        <div className="rounded-xl border border-dashed border-border bg-muted/50 p-8 text-center">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Sem actividade recente</p>
         </div>
       ) : (
         <ul className={isOperacoes ? "max-h-[400px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200" : "space-y-3"}>
@@ -287,21 +287,21 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                 key={item.id}
                 className={
                   isOperacoes
-                    ? "group border-b border-slate-100 py-3 last:border-0"
-                    : "group rounded-xl border border-slate-50 bg-white p-3 shadow-sm transition-all hover:border-slate-200 hover:shadow-md"
+                    ? "group border-b border-border py-3 last:border-0"
+                    : "group rounded-xl border border-border bg-card p-3 shadow-sm transition-all hover:border-border hover:shadow-md"
                 }
               >
                 <div className="flex items-start gap-3">
                   {isOperacoes ? (
                     // Sem cartão por linha nem barra de cor: a hora alinha com o texto
                     // e o evento lê-se como uma linha da lista.
-                    <span className="w-10 shrink-0 pt-0.5 text-[11px] font-semibold tabular-nums text-slate-400">
+                    <span className="w-10 shrink-0 pt-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
                       {formatTime(item.occurred_at)}
                     </span>
                   ) : (
                     <div className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] font-black text-slate-400">{formatTime(item.occurred_at)}</span>
-                      <div className={`w-1 h-8 rounded-full ${item.event_family === 'financeiro' ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                      <span className="text-[10px] font-black text-muted-foreground">{formatTime(item.occurred_at)}</span>
+                      <div className={`w-1 h-8 rounded-full ${item.event_family === 'financeiro' ? 'bg-emerald-400' : 'bg-border'}`} />
                     </div>
                   )}
 
@@ -316,12 +316,12 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                       >
                         {familyLabel(item.event_family)}
                       </span>
-                      <p className="truncate text-sm font-bold text-slate-900 group-hover:text-emerald transition-colors">{item.headline}</p>
+                      <p className="truncate text-sm font-bold text-foreground group-hover:text-emerald transition-colors">{item.headline}</p>
                       {/* A prioridade continua a ser dita — só deixa de ser um segundo selo com anel. */}
                       <span
                         className={
                           isOperacoes
-                            ? "text-[10px] font-medium uppercase text-slate-400"
+                            ? "text-[10px] font-medium uppercase text-muted-foreground"
                             : `rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ring-1 ${priorityStyles[priority]}`
                         }
                       >
@@ -329,7 +329,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                       </span>
                     </div>
                     {toFeedSubline(item) && (
-                      <p className="truncate text-xs font-medium text-slate-500 mb-3">{toFeedSubline(item)}</p>
+                      <p className="truncate text-xs font-medium text-muted-foreground mb-3">{toFeedSubline(item)}</p>
                     )}
 
                     <div className="flex flex-wrap items-center gap-2 transition-opacity">
@@ -366,7 +366,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                           type="button"
                           aria-expanded={expandedId === item.id}
                           onClick={() => toggleExpanded(item.id)}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                          className="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
                         >
                           {expandedId === item.id ? (
                             <ChevronUp className="h-3 w-3" />
@@ -379,7 +379,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 px-2 text-[10px] font-black uppercase tracking-wider border-slate-200 text-slate-600"
+                          className="h-7 px-2 text-[10px] font-black uppercase tracking-wider border-border text-foreground/80"
                           onClick={() => handleAction(item, "details")}
                         >
                           <Eye className="mr-1.5 h-3 w-3" /> Detalhes
@@ -392,7 +392,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                 {isOperacoes && expandedId === item.id && (
                   // Alinha com a coluna do texto (hora w-10 + gap-3 = 52px) em ecrã
                   // largo; em telemóvel ocupa a largura toda.
-                  <div className="mt-3 border-t border-slate-100 pt-3 sm:pl-[52px]">
+                  <div className="mt-3 border-t border-border pt-3 sm:pl-[52px]">
                     <ActivityPayloadDetails item={item} variant="discreet" />
                   </div>
                 )}
@@ -404,9 +404,9 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
 
       <Sheet open={!!selectedItem} onOpenChange={(open) => !open && setSelectedAction(null)}>
         <SheetContent side="right" className="sm:max-w-xl">
-          <SheetHeader className="border-b border-slate-100 pb-4 mb-6">
+          <SheetHeader className="border-b border-border pb-4 mb-6">
             <SheetTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
-              {viewType === "validate" ? <CheckCircle2 className="h-5 w-5 text-emerald" /> : <Activity className="h-5 w-5 text-slate-400" />}
+              {viewType === "validate" ? <CheckCircle2 className="h-5 w-5 text-emerald" /> : <Activity className="h-5 w-5 text-muted-foreground" />}
               {viewType === "validate" ? "Validação Expressa" : "Detalhes do Evento"}
             </SheetTitle>
             <SheetDescription>
@@ -416,14 +416,14 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
 
           {selectedItem && (
             <div className="space-y-6">
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <div className="rounded-xl border border-border bg-muted p-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Data/Hora</p>
-                    <p className="text-sm font-bold text-slate-900">{new Date(selectedItem.occurred_at).toLocaleString('pt-PT')}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Data/Hora</p>
+                    <p className="text-sm font-bold text-foreground">{new Date(selectedItem.occurred_at).toLocaleString('pt-PT')}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Categoria</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Categoria</p>
                     <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-black uppercase ${familyBadgeClasses(selectedItem.event_family)}`}>
                       {familyLabel(selectedItem.event_family)}
                     </span>
@@ -433,11 +433,11 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
 
               {viewType === "validate" ? (
                 <div className="space-y-6">
-                   <div className="relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-200 bg-slate-100">
+                   <div className="relative flex aspect-[3/4] w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-muted">
                       <div className="text-center p-8">
-                        <Activity className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Pré-visualização do Comprovativo</p>
-                        <p className="text-[10px] text-slate-400 mt-2 font-medium">O ficheiro PDF/Imagem será renderizado aqui.</p>
+                        <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Pré-visualização do Comprovativo</p>
+                        <p className="text-[10px] text-muted-foreground mt-2 font-medium">O ficheiro PDF/Imagem será renderizado aqui.</p>
                       </div>
                    </div>
                    
@@ -454,7 +454,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                 <div className="space-y-4">
                   <ActivityPayloadDetails item={selectedItem} />
                   
-                  <Button variant="outline" className="w-full h-11 border-slate-200 text-slate-900 font-bold uppercase tracking-widest gap-2">
+                  <Button variant="outline" className="w-full h-11 border-border text-foreground font-bold uppercase tracking-widest gap-2">
                     Ver Contexto Completo <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>

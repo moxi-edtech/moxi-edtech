@@ -160,7 +160,7 @@ export default function QuickActionsSection({
       case "nota":
         return (
           <div className="py-6 space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-foreground/80">
               A gestão completa de notas fica disponível na página dedicada. Abra para lançar,
               revisar e exportar notas com todos os filtros.
             </p>
@@ -178,14 +178,14 @@ export default function QuickActionsSection({
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <header className="mb-5">
         <SecaoLabel className="text-emerald">Atalhos do portal</SecaoLabel>
         <div className="mt-1 flex items-center gap-2.5">
           <div className="rounded-lg bg-emerald/10 p-2 text-emerald">
             <PlusCircle className="h-4 w-4" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900">Ações rápidas</h3>
+          <h3 className="text-sm font-bold text-foreground">Ações rápidas</h3>
         </div>
       </header>
 
@@ -206,7 +206,7 @@ export default function QuickActionsSection({
 
       <Sheet open={!!selectedAction} onOpenChange={(open) => !open && setSelectedAction(null)}>
         <SheetContent side="right" className="sm:max-w-3xl overflow-y-auto scrollbar-hide">
-          <SheetHeader className="border-b border-slate-100 pb-4 mb-4">
+          <SheetHeader className="border-b border-border pb-4 mb-4">
             <SheetTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
               {selectedAction?.icon && <selectedAction.icon className="h-5 w-5 text-emerald" />}
               {selectedAction?.label}
@@ -230,14 +230,14 @@ function CadastroColaboradoresBody({ allowProfessor }: { allowProfessor: boolean
   
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h4 className="text-sm font-bold text-slate-900 mb-1">Tipo de Colaborador</h4>
-        <div className="inline-flex rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
+      <div className="rounded-xl border border-border bg-muted p-4">
+        <h4 className="text-sm font-bold text-foreground mb-1">Tipo de Colaborador</h4>
+        <div className="inline-flex rounded-xl bg-card p-1 shadow-sm ring-1 ring-ring">
           <button
             type="button"
             onClick={() => setTab("funcionario")}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              tab === "funcionario" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900"
+              tab === "funcionario" ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Funcionário
@@ -247,7 +247,7 @@ function CadastroColaboradoresBody({ allowProfessor }: { allowProfessor: boolean
             onClick={() => allowProfessor && setTab("professor")}
             disabled={!allowProfessor}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              tab === "professor" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900"
+              tab === "professor" ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:text-foreground"
             } ${!allowProfessor ? "opacity-40 cursor-not-allowed" : ""}`}
           >
             Professor
@@ -258,12 +258,12 @@ function CadastroColaboradoresBody({ allowProfessor }: { allowProfessor: boolean
       {tab === "funcionario" ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="inline-flex rounded-xl bg-slate-100 p-1">
+            <div className="inline-flex rounded-xl bg-muted p-1">
               <button
                 type="button"
                 onClick={() => setFuncionarioTab("listar")}
                 className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all ${
-                  funcionarioTab === "listar" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                  funcionarioTab === "listar" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                 }`}
               >
                 Listagem
@@ -272,19 +272,19 @@ function CadastroColaboradoresBody({ allowProfessor }: { allowProfessor: boolean
                 type="button"
                 onClick={() => setFuncionarioTab("cadastrar")}
                 className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all ${
-                  funcionarioTab === "cadastrar" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                  funcionarioTab === "cadastrar" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                 }`}
               >
                 Novo Cadastro
               </button>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-1">
+          <div className="rounded-xl border border-border bg-card p-1">
             {funcionarioTab === "listar" ? <FuncionariosPage embedded /> : <NovoFuncionarioPage embedded />}
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-100 bg-white">
+        <div className="rounded-xl border border-border bg-card">
           <ProfessoresPage />
         </div>
       )}

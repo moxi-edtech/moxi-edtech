@@ -25,12 +25,12 @@ const dateFormat = new Intl.DateTimeFormat("pt-AO", {
 
 function statusBadgeClass(status: FiscalDocStatus) {
   if (status === "EMITIDO") {
-    return "border-green-200 bg-green-50 text-[#1F6B3B]";
+    return "border-emerald/30 bg-emerald/10 text-foreground";
   }
   if (status === "RETIFICADO") {
-    return "border-yellow-200 bg-yellow-50 text-[#92400e]";
+    return "border-amber/40 bg-amber/10 text-foreground";
   }
-  return "border-red-200 bg-red-50 text-red-700";
+  return "border-destructive/40 bg-destructive/10 text-foreground";
 }
 
 function FiscalStatusBadge({ status }: { status: FiscalDocStatus }) {
@@ -51,10 +51,10 @@ export function FiscalLedgerTable({ docs, onRefresh }: FiscalLedgerTableProps) {
   const router = useRouter();
 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">Data</th>
               <th className="px-4 py-3 text-left font-semibold">Documento</th>
@@ -68,26 +68,26 @@ export function FiscalLedgerTable({ docs, onRefresh }: FiscalLedgerTableProps) {
           <tbody>
             {docs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
                   Sem documentos fiscais para este contexto.
                 </td>
               </tr>
             ) : (
               docs.map((doc) => {
                 const isAnulado = doc.status === "ANULADO";
-                const muted = isAnulado ? "text-slate-400 line-through" : "text-slate-700";
+                const muted = isAnulado ? "text-muted-foreground line-through" : "text-foreground/80";
                 const hashShort = doc.hash_control ? `${doc.hash_control.slice(0, 8)}...` : "-";
 
                 return (
-                  <tr key={doc.id} className="border-b border-slate-100 transition hover:bg-slate-50/50">
+                  <tr key={doc.id} className="border-b border-border transition hover:bg-muted/50">
                     <td className={`px-4 py-3 ${muted}`}>{formatDate(doc.emitido_em)}</td>
-                    <td className={`px-4 py-3 font-sora font-semibold text-slate-900 ${isAnulado ? "line-through text-slate-400" : ""}`}>
+                    <td className={`px-4 py-3 font-sora font-semibold text-foreground ${isAnulado ? "line-through text-muted-foreground" : ""}`}>
                       {doc.numero}
                     </td>
                     <td className={`px-4 py-3 ${muted}`}>{doc.cliente_nome}</td>
                     <td className={`px-4 py-3 ${muted}`}>{kwanza.format(doc.total_aoa)}</td>
                     <td
-                      className={`px-4 py-3 text-xs text-slate-500 ${isAnulado ? "line-through text-slate-400" : ""}`}
+                      className={`px-4 py-3 text-xs text-muted-foreground ${isAnulado ? "line-through text-muted-foreground" : ""}`}
                       style={{ fontFamily: "Geist Mono, monospace" }}
                       title={doc.hash_control}
                     >

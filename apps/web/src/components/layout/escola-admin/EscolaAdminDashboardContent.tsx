@@ -153,21 +153,21 @@ function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, child
   children:   React.ReactNode;
 }) {
   return (
-    <motion.div variants={itemVariants} className={`flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md`}>
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+    <motion.div variants={itemVariants} className={`flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md`}>
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${iconBg}`}>{icon}</div>
           <div>
             <SecaoLabel className="text-emerald">Financeiro</SecaoLabel>
-            <h3 className="mt-1 text-sm font-bold tracking-tight text-slate-900">{title}</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{subtitle}</p>
+            <h3 className="mt-1 text-sm font-bold tracking-tight text-foreground">{title}</h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{subtitle}</p>
           </div>
         </div>
         <Link href={linkHref} className="text-[11px] font-bold uppercase tracking-wider text-emerald hover:underline">
           {linkLabel}
         </Link>
       </div>
-      <div className="px-5 divide-y divide-slate-100 flex-1">{children}</div>
+      <div className="px-5 divide-y divide-border flex-1">{children}</div>
     </motion.div>
   );
 }
@@ -186,7 +186,7 @@ function StatusPill({ status }: { status: string | null }) {
   if (s === "failed" || s === "falhado") {
     return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Falhado</span>;
   }
-  return <span className="text-xs text-slate-400">{status ? status[0].toUpperCase() + status.slice(1) : "—"}</span>;
+  return <span className="text-xs text-muted-foreground">{status ? status[0].toUpperCase() + status.slice(1) : "—"}</span>;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -326,17 +326,17 @@ export default function EscolaAdminDashboardContent({
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12" style={isOperacoes ? { containerType: "inline-size" } : undefined}
+      className="min-w-0 space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12" style={isOperacoes ? { containerType: "inline-size" } : undefined}
     >
 
       {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black leading-none tracking-tight text-slate-900 min-[1700px]:text-3xl">
+          <h1 className="text-2xl font-black leading-none tracking-tight text-foreground min-[1700px]:text-3xl">
             {dashboardTitle}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 min-[1700px]:flex-nowrap">
-            <p className="text-sm font-medium text-slate-500">{saudacao}</p>
+            <p className="text-sm font-medium text-muted-foreground">{saudacao}</p>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
@@ -345,7 +345,7 @@ export default function EscolaAdminDashboardContent({
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className={`flex items-center justify-center p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all ${
+                className={`flex items-center justify-center p-1 rounded-full text-muted-foreground hover:text-foreground/80 hover:bg-muted transition-all ${
                   isRefreshing ? "animate-spin text-emerald" : ""
                 }`}
                 title="Atualizar dados"
@@ -353,7 +353,7 @@ export default function EscolaAdminDashboardContent({
                 <RefreshCw className="h-3 w-3" />
               </button>
             </div>
-            {escolaNome && <p className="text-sm font-medium text-slate-400">· {escolaNome}</p>}
+            {escolaNome && <p className="text-sm font-medium text-muted-foreground">· {escolaNome}</p>}
           </div>
         </div>
       </motion.div>
@@ -403,16 +403,16 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
       {hasMovimentoReceita && (
-        <motion.section variants={itemVariants} className="relative min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md min-[1700px]:p-6">
+        <motion.section variants={itemVariants} className="relative min-w-0 overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md min-[1700px]:p-6">
           <div className="relative z-10 mb-5 flex flex-col items-start justify-between gap-4 min-[1700px]:mb-8 min-[1700px]:gap-6 md:flex-row">
             <div className="space-y-4 flex-1">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recebido no Mês (Caixa)</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Recebido no Mês (Caixa)</p>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-                  <div className="text-2xl font-black tracking-tight text-slate-900">
+                  <div className="text-2xl font-black tracking-tight text-foreground">
                     {mounted ? moeda.format(realizadoReceita) : "—"}
                   </div>
-                  <span className="text-sm font-medium text-slate-400">
+                  <span className="text-sm font-medium text-muted-foreground">
                     {hasMetaReceita
                       ? `de ${mounted ? moeda.format(previstoReceita) : "—"} previstos`
                       : "sem previsão definida"}
@@ -428,16 +428,16 @@ export default function EscolaAdminDashboardContent({
 
               <div className="flex flex-wrap items-center gap-6">
                  <div className="space-y-1">
-                   <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Cobrança da Competência</p>
+                   <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Cobrança da Competência</p>
                    <div className="flex items-center gap-2">
-                     <span className="text-sm font-black text-slate-700">{mounted ? moeda.format(pagoCompetencia) : "—"}</span>
-                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{percentualCompetencia}%</span>
+                     <span className="text-sm font-black text-foreground">{mounted ? moeda.format(pagoCompetencia) : "—"}</span>
+                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{percentualCompetencia}%</span>
                    </div>
                  </div>
-                 <div className="grid grid-cols-1 gap-1 text-[10px] text-slate-500 sm:grid-cols-3 sm:gap-3">
-                   <span>Mensalidades: <strong className="text-slate-700">{mounted ? moeda.format(caixaMensalidades) : "—"}</strong></span>
-                   <span>Dívidas antigas: <strong className="text-slate-700">{mounted ? moeda.format(caixaDividasAnteriores) : "—"}</strong></span>
-                   <span>Serviços: <strong className="text-slate-700">{mounted ? moeda.format(caixaServicos) : "—"}</strong></span>
+                 <div className="grid grid-cols-1 gap-1 text-[10px] text-muted-foreground sm:grid-cols-3 sm:gap-3">
+                   <span>Mensalidades: <strong className="text-foreground">{mounted ? moeda.format(caixaMensalidades) : "—"}</strong></span>
+                   <span>Dívidas antigas: <strong className="text-foreground">{mounted ? moeda.format(caixaDividasAnteriores) : "—"}</strong></span>
+                   <span>Serviços: <strong className="text-foreground">{mounted ? moeda.format(caixaServicos) : "—"}</strong></span>
                  </div>
                  {isAcimaDaMeta && (
                    <div className="flex items-center gap-2 p-2 rounded-xl bg-amber-50 border border-amber-100 max-w-xs">
@@ -464,13 +464,13 @@ export default function EscolaAdminDashboardContent({
           </div>
 
           <div className="relative mt-2">
-            <div className="h-2 overflow-hidden rounded-full bg-slate-50 border border-slate-100">
+            <div className="h-2 overflow-hidden rounded-full bg-muted border border-border">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
                 className={`h-full rounded-full ${
-                  hasMovimentoReceita ? "bg-emerald" : "bg-slate-300"
+                  hasMovimentoReceita ? "bg-emerald" : "bg-border"
                 }`}
               />
             </div>
@@ -478,12 +478,12 @@ export default function EscolaAdminDashboardContent({
             {/* Pacing marker (Target based on days of the month elapsed) */}
             {hasMetaReceita && mounted && (
               <div 
-                className="absolute top-0 bottom-0 w-0.5 bg-slate-200 z-10 flex flex-col items-center"
+                className="absolute top-0 bottom-0 w-0.5 bg-border z-10 flex flex-col items-center"
                 style={{ left: `${dynamicPacingTarget}%` }}
               >
                 <div className="w-1.5 h-1.5 rounded-full bg-slate-400 -mt-0.5" />
-                <div className="absolute top-3 bg-white border border-slate-100 px-1 py-0.5 rounded shadow-sm">
-                  <span className="text-[8px] font-black text-slate-400 whitespace-nowrap">
+                <div className="absolute top-3 bg-card border border-border px-1 py-0.5 rounded shadow-sm">
+                  <span className="text-[8px] font-black text-muted-foreground whitespace-nowrap">
                     HOJE {dynamicPacingTarget}%
                   </span>
                 </div>
@@ -491,9 +491,9 @@ export default function EscolaAdminDashboardContent({
             )}
           </div>
           
-          <div className="mt-5 flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+          <div className="mt-5 flex items-center justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
             <p>0% Iniciado</p>
-            <p className="text-slate-900">Actual: {displayPercentualReceita}%</p>
+            <p className="text-foreground">Actual: {displayPercentualReceita}%</p>
             <p>100% Meta Final</p>
           </div>
         </motion.section>
@@ -535,21 +535,21 @@ export default function EscolaAdminDashboardContent({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="flex items-center justify-between gap-3 py-2.5 group/row transition-colors hover:bg-slate-50/50"
+                  className="flex items-center justify-between gap-3 py-2.5 group/row transition-colors hover:bg-muted/50"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-900 truncate group-hover/row:text-emerald transition-colors">
+                    <p className="text-sm font-bold text-foreground truncate group-hover/row:text-emerald transition-colors">
                       {p.aluno_nome?.trim() || "Aluno não identificado"}
                     </p>
-                    <p className="text-[11px] font-medium text-slate-400">{formatMetodoPagamento(p.metodo)}</p>
+                    <p className="text-[11px] font-medium text-muted-foreground">{formatMetodoPagamento(p.metodo)}</p>
                   </div>
                   <div className="flex items-center gap-4 flex-shrink-0">
                     <StatusPill status={p.status} />
                     <div className="text-right">
-                      <p className="text-sm font-black text-slate-900">
+                      <p className="text-sm font-black text-foreground">
                         {mounted ? moeda.format(Number(p.valor_pago ?? 0)) : "—"}
                       </p>
-                      <p className="text-[10px] font-bold text-slate-400">
+                      <p className="text-[10px] font-bold text-muted-foreground">
                         {mounted && p.created_at
                           ? new Date(p.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
                           : "—"}

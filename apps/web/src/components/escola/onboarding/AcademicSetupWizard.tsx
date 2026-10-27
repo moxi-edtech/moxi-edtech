@@ -208,9 +208,9 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
   return (
     <div className="mx-auto mb-10 w-full max-w-3xl">
       <div className="relative flex justify-between">
-        <div className="absolute left-0 top-1/2 -z-10 h-0.5 w-full -translate-y-1/2 bg-slate-200" />
+        <div className="absolute left-0 top-1/2 -z-10 h-0.5 w-full -translate-y-1/2 bg-border" />
         <div 
-          className="absolute left-0 top-1/2 -z-10 h-0.5 -translate-y-1/2 bg-[#1F6B3B] transition-all duration-500"
+          className="absolute left-0 top-1/2 -z-10 h-0.5 -translate-y-1/2 bg-emerald transition-all duration-500"
           style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
         />
 
@@ -218,21 +218,21 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
           const isCompleted = currentStep > s.num;
           const isActive = currentStep === s.num;
           return (
-            <div key={s.num} className="flex flex-col items-center gap-2 bg-slate-50 px-2">
+            <div key={s.num} className="flex flex-col items-center gap-2 bg-muted px-2">
               <div 
                 className={`
                   flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300
                   ${isCompleted 
-                    ? "border-[#1F6B3B] bg-[#1F6B3B] text-white" 
+                    ? "border-emerald bg-emerald text-white" 
                     : isActive 
-                      ? "border-[#1F6B3B] bg-white text-[#1F6B3B] ring-4 ring-[#1F6B3B]/10" 
-                      : "border-slate-300 bg-white text-slate-400"
+                      ? "border-emerald bg-card text-foreground ring-4 ring-emerald/10" 
+                      : "border-border bg-card text-muted-foreground"
                   }
                 `}
               >
                 {isCompleted ? <Check className="h-5 w-5" /> : <s.icon className="h-5 w-5" />}
               </div>
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive || isCompleted ? "text-slate-900" : "text-slate-400"}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive || isCompleted ? "text-foreground" : "text-muted-foreground"}`}>
                 {s.label}
               </span>
             </div>
@@ -858,18 +858,18 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
             };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 font-sans text-left">
+    <div className="min-h-full bg-background py-6 px-4 sm:py-12 sm:px-6 font-sans text-left">
       <div className="mx-auto mb-10 max-w-5xl text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#1F6B3B]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B]">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-foreground">
           <School className="h-3 w-3" /> Setup Inicial
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 text-center">Setup do {schoolDisplayName || "Sistema"}</h1>
+        <h1 className="text-3xl font-bold text-foreground text-center">Setup do {schoolDisplayName || "Sistema"}</h1>
       </div>
 
       <div className="mx-auto mb-8 max-w-5xl rounded-2xl border border-emerald-100 bg-emerald-50 px-6 py-5 text-left">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">{wizardStatusMeta.badge}</p>
-        <h2 className="mt-1 text-lg font-bold text-slate-900">{wizardStatusMeta.title}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">{wizardStatusMeta.description}</p>
+        <h2 className="mt-1 text-lg font-bold text-foreground">{wizardStatusMeta.title}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-foreground/80">{wizardStatusMeta.description}</p>
       </div>
 
       {setupGuide?.next_action?.label || primaryGuideBlocker?.title ? (
@@ -889,27 +889,27 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
               >
                 {stepIsRecommended ? "Este passo destrava o setup" : "Próximo passo sugerido pelo sistema"}
               </p>
-              <h3 className="mt-1 text-base font-bold text-slate-900">
+              <h3 className="mt-1 text-base font-bold text-foreground">
                 {stepIsRecommended
                   ? setupGuide?.next_action?.label || "Continue este passo para destravar o setup."
                   : setupGuide?.next_action?.label || "O sistema detectou uma pendência anterior."}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+              <p className="mt-2 text-sm leading-relaxed text-foreground">
                 {primaryGuideBlocker?.detail ||
                   (stepIsRecommended
                     ? "Ao concluir esta etapa, o fluxo interno avança automaticamente para a próxima pendência real."
                     : "Se preferir reduzir fricção, conclua primeiro o passo recomendado antes de avançar para os demais.")}
               </p>
             </div>
-            <div className="rounded-lg bg-white/80 px-4 py-3 text-xs shadow-sm md:min-w-[210px]">
-              <p className="font-black uppercase tracking-widest text-slate-500">Progresso real</p>
-              <p className="mt-1 font-semibold text-slate-900">
+            <div className="rounded-lg bg-card/80 px-4 py-3 text-xs shadow-sm md:min-w-[210px]">
+              <p className="font-black uppercase tracking-widest text-muted-foreground">Progresso real</p>
+              <p className="mt-1 font-semibold text-foreground">
                 {typeof setupGuide?.completion_percent === "number"
                   ? `${setupGuide.completion_percent}% concluído`
                   : "Em andamento"}
               </p>
               {setupGuideStep ? (
-                <p className="mt-2 text-slate-600">
+                <p className="mt-2 text-foreground/80">
                   Passo recomendado agora: {setupGuideStep}/5.
                 </p>
               ) : null}
@@ -920,7 +920,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
       <WizardStepper currentStep={step} />
 
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div className="p-8">
           {step === 1 && (
             <AcademicStep1
@@ -983,63 +983,63 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                       <Check className="h-8 w-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900">
+                    <h3 className="text-xl font-bold text-foreground">
                       {finalSummary.school_name || schoolDisplayName || "Escola"} saiu do onboarding com base operacional criada
                     </h3>
-                    <p className="text-sm leading-relaxed text-slate-600">
+                    <p className="text-sm leading-relaxed text-foreground/80">
                       O currículo foi publicado, as turmas base foram geradas e o sistema tentou deixar a escola pronta para começar. Abaixo está o resumo e os atalhos para ajustes finos.
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Currículo</p>
-                      <p className="mt-2 text-2xl font-black text-slate-900">{finalSummary.curriculos_publicados}</p>
-                      <p className="mt-1 text-xs text-slate-600">curso(s) publicados</p>
+                    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Currículo</p>
+                      <p className="mt-2 text-2xl font-black text-foreground">{finalSummary.curriculos_publicados}</p>
+                      <p className="mt-1 text-xs text-foreground/80">curso(s) publicados</p>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Turmas</p>
-                      <p className="mt-2 text-2xl font-black text-slate-900">{finalSummary.turmas_planeadas}</p>
-                      <p className="mt-1 text-xs text-slate-600">turma(s) planeadas na geração inicial</p>
+                    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Turmas</p>
+                      <p className="mt-2 text-2xl font-black text-foreground">{finalSummary.turmas_planeadas}</p>
+                      <p className="mt-1 text-xs text-foreground/80">turma(s) planeadas na geração inicial</p>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Horários</p>
+                    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Horários</p>
                       <p className="mt-2 text-2xl font-black text-emerald-700">{finalSummary.horarios_publicados}</p>
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-foreground/80">
                         publicados · {finalSummary.horarios_pendentes} pendente(s)
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Auto-ajustes aplicados</p>
-                      <div className="mt-3 space-y-2 text-sm text-slate-700">
+                    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Auto-ajustes aplicados</p>
+                      <div className="mt-3 space-y-2 text-sm text-foreground">
                         <p><strong>{finalSummary.professores_auto_atribuidos}</strong> professor(es) auto-atribuídos</p>
                         <p><strong>{finalSummary.cargas_auto_corrigidas}</strong> carga(s) corrigidas automaticamente</p>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Como editar depois</p>
+                    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Como editar depois</p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Link href={portalHref("/admin/configuracoes/calendario")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/admin/configuracoes/calendario")} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground no-underline">
                           Calendário
                         </Link>
-                        <Link href={portalHref("/admin/configuracoes/turmas")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/admin/configuracoes/turmas")} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground no-underline">
                           Turmas e currículo
                         </Link>
-                        <Link href={portalHref("/horarios/quadro")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/horarios/quadro")} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground no-underline">
                           Quadro de horários
                         </Link>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Passo a passo para alterações</p>
+                  <div className="rounded-xl border border-border bg-muted p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Passo a passo para alterações</p>
                     <div className="mt-3 space-y-2">
                       {finalSummary.next_steps.map((item, index) => (
-                        <p key={`${item}-${index}`} className="text-sm text-slate-700">
+                        <p key={`${item}-${index}`} className="text-sm text-foreground">
                           <strong>{index + 1}.</strong> {item}
                         </p>
                       ))}
@@ -1050,11 +1050,11 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                     <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Pendências restantes</p>
                     <div className="mt-3 space-y-3">
                       {finalSummary.pending_actions.map((item) => (
-                        <div key={`${item.href}-${item.title}`} className="rounded-lg border border-amber-100 bg-white px-4 py-3">
-                          <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                          <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.detail}</p>
+                        <div key={`${item.href}-${item.title}`} className="rounded-lg border border-amber-100 bg-card px-4 py-3">
+                          <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-foreground/80">{item.detail}</p>
                           <div className="mt-3">
-                            <Link href={item.href} className="inline-flex rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-white no-underline">
+                            <Link href={item.href} className="inline-flex rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-amber-900 no-underline">
                               Abrir correção
                             </Link>
                           </div>
@@ -1066,33 +1066,33 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
               ) : (
                 <>
               <div className="text-center max-w-xl mx-auto space-y-3">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald/10 text-foreground">
                   <Wand2 className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">Resumo e Preview de Geração</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h3 className="text-lg font-bold text-foreground">Resumo e Preview de Geração</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Revise abaixo todos os parâmetros do ano letivo de {anoLetivo} antes de iniciar a geração dos registros no banco de dados.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                 {/* CARD 1: CALENDÁRIO & PERÍODOS */}
-                <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <CalendarCheck className="h-4 w-4 text-[#1F6B3B]" />
-                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Sessão & Trimestres</h4>
+                <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <CalendarCheck className="h-4 w-4 text-foreground" />
+                    <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Sessão & Trimestres</h4>
                   </div>
-                  <div className="text-xs text-slate-600 space-y-1">
+                  <div className="text-xs text-foreground/80 space-y-1">
                     <p><strong>Período Letivo:</strong> {safeFormatDate(dataInicio)} a {safeFormatDate(dataFim)}</p>
                   </div>
                   <div className="space-y-2.5">
                     {periodosConfig.map((p) => (
-                      <div key={p.numero} className="p-3 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
-                        <div className="flex justify-between items-center text-[11px] font-bold text-slate-700">
+                      <div key={p.numero} className="p-3 rounded-lg bg-muted border border-border space-y-1">
+                        <div className="flex justify-between items-center text-[11px] font-bold text-foreground">
                           <span>{p.numero}º Trimestre</span>
-                          <span className="text-[9px] text-[#1F6B3B] bg-[#1F6B3B]/10 px-1.5 py-0.5 rounded-md font-semibold">Ativo</span>
+                          <span className="text-[9px] text-foreground bg-emerald/10 px-1.5 py-0.5 rounded-md font-semibold">Ativo</span>
                         </div>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-muted-foreground">
                           Datas: {safeFormatDate(p.data_inicio)} a {safeFormatDate(p.data_fim)}
                         </p>
                         {p.trava_notas_em && (
@@ -1106,24 +1106,24 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                 </div>
 
                 {/* CARD 2: REGRAS PEDAGÓGICAS */}
-                <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <GraduationCap className="h-4 w-4 text-[#1F6B3B]" />
-                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Regras de Lançamento</h4>
+                <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <GraduationCap className="h-4 w-4 text-foreground" />
+                    <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Regras de Lançamento</h4>
                   </div>
-                  <div className="space-y-3 text-xs text-slate-600">
+                  <div className="space-y-3 text-xs text-foreground/80">
                     <div>
-                      <p className="font-semibold text-slate-800">Modelo de Avaliação:</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">{selectedModeloMeta?.nome || "Modelo Padrão"}</p>
+                      <p className="font-semibold text-foreground">Modelo de Avaliação:</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{selectedModeloMeta?.nome || "Modelo Padrão"}</p>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {avaliacaoConfig?.componentes?.map((c: any) => (
-                          <span key={c.code} className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[9px] font-bold">
+                          <span key={c.code} className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-foreground font-mono text-[9px] font-bold">
                             {c.code}: {c.peso}%
                           </span>
                         ))}
                       </div>
                     </div>
-                    <div className="pt-3 border-t border-slate-100 space-y-1">
+                    <div className="pt-3 border-t border-border space-y-1">
                       <p><strong>Frequência Mínima:</strong> {frequenciaMinPercent}%</p>
                       <p><strong>Controle de Presença:</strong> {frequenciaModelo === "POR_AULA" ? "Por Aula (Carga Horária)" : "Por Período (Global)"}</p>
                     </div>
@@ -1131,47 +1131,47 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                 </div>
 
                 {/* CARD 3: ESTRUTURA ACADÉMICA (TURMAS) */}
-                <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <Layers className="h-4 w-4 text-[#1F6B3B]" />
-                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Estrutura & Turmas</h4>
+                <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <Layers className="h-4 w-4 text-foreground" />
+                    <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Estrutura & Turmas</h4>
                   </div>
-                  <div className="space-y-3 text-xs text-slate-600">
+                  <div className="space-y-3 text-xs text-foreground/80">
                     <div className="grid grid-cols-2 gap-3 text-center">
-                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <span className="block text-lg font-black text-slate-800">{matrix.length}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Classes Ativas</span>
+                      <div className="p-3 bg-muted rounded-lg border border-border">
+                        <span className="block text-lg font-black text-foreground">{matrix.length}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Classes Ativas</span>
                       </div>
-                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <span className="block text-lg font-black text-[#1F6B3B]">{totalTurmas}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-[#1F6B3B]/70">Total Turmas</span>
+                      <div className="p-3 bg-muted rounded-lg border border-border">
+                        <span className="block text-lg font-black text-foreground">{totalTurmas}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Total Turmas</span>
                       </div>
                     </div>
                     <div className="pt-2 space-y-1.5">
                       <p><strong>Turnos Ativos:</strong> {Object.entries(turnos).filter(([_, active]) => active).map(([name]) => name).join(", ")}</p>
-                      <p><strong>Exemplo de Nome:</strong> <code className="bg-slate-50 border border-slate-200/60 px-1 py-0.5 rounded text-[10.5px] font-mono text-slate-800 leading-normal">{sampleNomeTurma}</code></p>
+                      <p><strong>Exemplo de Nome:</strong> <code className="bg-muted border border-border/60 px-1 py-0.5 rounded text-[10.5px] font-mono text-foreground leading-normal">{sampleNomeTurma}</code></p>
                     </div>
                   </div>
                 </div>
 
                 {/* CARD 4: MENSALIDADES & PREÇOS */}
-                <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <Banknote className="h-4 w-4 text-[#1F6B3B]" />
-                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Financeiro Base</h4>
+                <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-border pb-3">
+                    <Banknote className="h-4 w-4 text-foreground" />
+                    <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Financeiro Base</h4>
                   </div>
-                  <div className="space-y-3 text-xs text-slate-600">
+                  <div className="space-y-3 text-xs text-foreground/80">
                     <div className="grid grid-cols-2 gap-3 text-center">
-                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                        <span className="block text-base font-black text-slate-800">{valorMatricula.toLocaleString("pt-PT")} Kz</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Matrícula Padrão</span>
+                      <div className="p-2.5 bg-muted rounded-lg border border-border">
+                        <span className="block text-base font-black text-foreground">{valorMatricula.toLocaleString("pt-PT")} Kz</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Matrícula Padrão</span>
                       </div>
-                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                        <span className="block text-base font-black text-slate-800">{valorMensalidade.toLocaleString("pt-PT")} Kz</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Propina Padrão</span>
+                      <div className="p-2.5 bg-muted rounded-lg border border-border">
+                        <span className="block text-base font-black text-foreground">{valorMensalidade.toLocaleString("pt-PT")} Kz</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Propina Padrão</span>
                       </div>
                     </div>
-                    <div className="pt-2 border-t border-slate-100 space-y-1">
+                    <div className="pt-2 border-t border-border space-y-1">
                       <p><strong>Vencimento:</strong> Dia {diaVencimento} de cada mês</p>
                       <p><strong>IBAN da Escola:</strong> {iban || <span className="text-amber-600 font-semibold italic">Não configurado</span>}</p>
                     </div>
@@ -1185,11 +1185,11 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-700">
                       Prontidão operacional
                     </p>
-                    <h4 className="mt-1 text-sm font-bold text-slate-900">
+                    <h4 className="mt-1 text-sm font-bold text-foreground">
                       O setup base termina aqui, mas a escola só fica operacional quando as áreas abaixo estiverem verdes.
                     </h4>
                   </div>
-                  <div className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-violet-700 shadow-sm">
+                  <div className="rounded-full bg-card px-3 py-1 text-[11px] font-semibold text-violet-700 shadow-sm">
                     {readinessSummary?.operational_ok ? "Operacional" : "Go-live pendente"}
                   </div>
                 </div>
@@ -1199,11 +1199,11 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                     <div
                       key={area.key}
                       className={`rounded-xl border px-3 py-3 shadow-sm ${
-                        area.ok ? "border-emerald-100 bg-white" : "border-amber-100 bg-white"
+                        area.ok ? "border-emerald-100 bg-card" : "border-amber-100 bg-card"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                           {area.label}
                         </span>
                         <span
@@ -1216,36 +1216,36 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                           {area.ok ? "OK" : "Pendente"}
                         </span>
                       </div>
-                      <p className="mt-2 text-[11px] leading-relaxed text-slate-600">{area.description}</p>
+                      <p className="mt-2 text-[11px] leading-relaxed text-foreground/80">{area.description}</p>
                     </div>
                   ))}
                 </div>
 
                 {topReadinessBlockers.length > 0 ? (
-                  <div className="rounded-xl border border-amber-200 bg-white p-4">
+                  <div className="rounded-xl border border-amber-200 bg-card p-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700">
                       O que ainda impede a escola de operar
                     </p>
                     <div className="mt-3 space-y-3">
                       {readinessBlockersWithActions.map(({ blocker, action }, index) => (
-                        <div key={`${blocker.code || blocker.title || "blocker"}-${index}`} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
+                        <div key={`${blocker.code || blocker.title || "blocker"}-${index}`} className="rounded-lg border border-border bg-muted px-3 py-3">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-slate-900">
+                            <p className="text-sm font-semibold text-foreground">
                               {blocker.title || "Bloqueador operacional"}
                             </p>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                               {blocker.area || "setup"}
                             </span>
                           </div>
                           {blocker.detail ? (
-                            <p className="mt-1 text-xs leading-relaxed text-slate-600">{blocker.detail}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-foreground/80">{blocker.detail}</p>
                           ) : null}
                           {action ? (
                             <div className="mt-3">
                               {action.kind === "link" ? (
                                 <Link
                                   href={action.href}
-                                  className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-slate-800"
+                                  className="inline-flex items-center rounded-lg bg-primary px-3 py-2 text-[11px] font-bold text-primary-foreground no-underline transition-colors hover:bg-primary/90"
                                 >
                                   {action.label}
                                 </Link>
@@ -1254,7 +1254,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                                   type="button"
                                   onClick={() => handleAutoResolve(action.action)}
                                   disabled={Boolean(resolvingAction)}
-                                  className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+                                  className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-amber-900 transition-colors hover:bg-amber-700 disabled:opacity-50"
                                 >
                                   {resolvingAction === action.action ? "A executar..." : action.label}
                                 </button>
@@ -1266,7 +1266,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-emerald-200 bg-white p-4 text-sm text-emerald-800">
+                  <div className="rounded-xl border border-emerald-200 bg-card p-4 text-sm text-emerald-800">
                     Nenhum bloqueador operacional crítico foi identificado neste momento. Ao finalizar, a escola pode seguir para a validação final de go-live.
                   </div>
                 )}
@@ -1285,23 +1285,23 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-8 py-5">
-          <button onClick={() => step > 1 && setStep(p => p - 1)} disabled={step === 1 || applyingPreset || finalizing || showFinalSuccess} className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-30">
+        <div className="flex items-center justify-between border-t border-border bg-muted px-8 py-5">
+          <button onClick={() => step > 1 && setStep(p => p - 1)} disabled={step === 1 || applyingPreset || finalizing || showFinalSuccess} className="flex items-center gap-2 text-sm font-semibold text-foreground/80 hover:text-foreground disabled:opacity-30">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </button>
           {showFinalSuccess && finalSummary ? (
             <div className="flex items-center gap-3">
-              <Link href={portalHref("/admin/dashboard")} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white no-underline shadow-md">
+              <Link href={portalHref("/admin/dashboard")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground no-underline shadow-md">
                 Ir ao dashboard
               </Link>
               {onComplete ? (
-                <button onClick={onComplete} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-3 text-sm font-bold text-white shadow-md">
+                <button onClick={onComplete} className="inline-flex items-center gap-2 rounded-xl bg-amber px-6 py-3 text-sm font-bold text-amber-900 shadow-md">
                   Fechar onboarding
                 </button>
               ) : null}
             </div>
           ) : (
-            <button onClick={handleNext} disabled={applyingPreset || creatingSession || finalizing || !isContextReady || (step === 3 && matrix.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:brightness-105 disabled:opacity-50">
+            <button onClick={handleNext} disabled={applyingPreset || creatingSession || finalizing || !isContextReady || (step === 3 && matrix.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-amber px-8 py-3 text-sm font-bold text-amber-900 shadow-md transition-all hover:brightness-105 disabled:opacity-50">
               {applyingPreset || creatingSession || finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : (step === 5 ? "Finalizar" : "Continuar")}
               <ChevronRight className="h-4 w-4" />
             </button>

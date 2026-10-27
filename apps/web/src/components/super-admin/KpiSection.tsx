@@ -42,8 +42,8 @@ export default function KpiSection({ data, isLoading = false }: { data?: KpiData
       icon: Users,
       trend: "+124",
       trendUp: true,
-      color: "text-slate-950",
-      bgColor: "bg-slate-50",
+      color: "text-foreground",
+      bgColor: "bg-muted",
     },
     {
       title: "Alunos Matriculados",
@@ -52,8 +52,8 @@ export default function KpiSection({ data, isLoading = false }: { data?: KpiData
       icon: GraduationCap,
       trend: "+4.1%",
       trendUp: true,
-      color: "text-slate-950",
-      bgColor: "bg-slate-50",
+      color: "text-foreground",
+      bgColor: "bg-muted",
     },
     {
       title: "Eficiência",
@@ -75,10 +75,10 @@ export default function KpiSection({ data, isLoading = false }: { data?: KpiData
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: idx * 0.1 }}
-          className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 transition-all hover:border-amber/30 hover:shadow-xl hover:shadow-amber/5"
+          className="group relative overflow-hidden rounded-3xl border border-border bg-card p-6 transition-all hover:border-amber/30 hover:shadow-xl hover:shadow-amber/5"
         >
           {/* Efeito Hover */}
-          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-slate-50 transition-transform group-hover:scale-150" />
+          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-muted transition-transform group-hover:scale-150" />
 
           <div className="relative z-10">
             <div className="flex items-start justify-between">
@@ -95,15 +95,15 @@ export default function KpiSection({ data, isLoading = false }: { data?: KpiData
             </div>
 
             <div className="mt-5">
-              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">{card.title}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">{card.title}</p>
               <div className="mt-1 flex items-baseline gap-2">
                 <h3 className={`text-3xl font-black tracking-tight ${card.color}`}>{card.value}</h3>
               </div>
-              <p className="mt-2 text-xs font-medium text-slate-500">{card.desc}</p>
+              <p className="mt-2 text-xs font-medium text-muted-foreground">{card.desc}</p>
             </div>
             
             {/* Mini Sparkline Placeholder */}
-            <div className="mt-4 flex h-1 items-center gap-1 overflow-hidden rounded-full bg-slate-100">
+            <div className="mt-4 flex h-1 items-center gap-1 overflow-hidden rounded-full bg-muted">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: "60%" }}

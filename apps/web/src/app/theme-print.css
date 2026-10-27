@@ -1,0 +1,16 @@
+/* Documentos e comprovativos continuam claros, mesmo em modo Dark. */
+@media print {
+  html.dark {
+    color-scheme: light !important;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+  }
+}

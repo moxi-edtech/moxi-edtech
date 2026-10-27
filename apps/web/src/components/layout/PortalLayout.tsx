@@ -6,6 +6,7 @@ import SignOutButton from "@/components/auth/SignOutButton";
 import LockScreenButton from "@/components/session/LockScreenButton";
 import { requestSessionConfig } from "@/components/session/SessionLockProvider";
 import BackButton from "@/components/navigation/BackButton";
+import ThemeToggle from "@/components/ThemeToggle";
 import Link from "next/link"; // Add this import
 import {
   ChevronDownIcon,
@@ -19,7 +20,6 @@ import { useUserRole } from "@/hooks/useUserRole"; // Import useUserRole
 import { sidebarConfig, type IconName } from "@/lib/sidebarNav"; // Import sidebarConfig and IconName
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { fetchEscolaInfo } from "@/lib/escolaInfoClient";
-import ModuleSwitcher from "@/components/layout/klasse/ModuleSwitcher";
 
 import Image from "next/image";
 import { usePathname } from "next/navigation"; // Import usePathname
@@ -52,8 +52,8 @@ const Logo = ({ collapsed = false, href = "/" }: { collapsed?: boolean; href?: s
     </div>
     {!collapsed && (
       <div className="min-w-0">
-        <div className="font-semibold tracking-tight leading-5 text-slate-900">KLASSE</div>
-        <div className="text-xs text-slate-500 font-medium">gestão escolar</div>
+        <div className="font-semibold tracking-tight leading-5 text-foreground">KLASSE</div>
+        <div className="text-xs text-muted-foreground font-medium">gestão escolar</div>
       </div>
     )}
   </Link>
@@ -184,11 +184,11 @@ export default function PortalLayout({
   const sidebarW = collapsed ? 64 : 256;
 
   return (
-        <div className="flex min-h-screen w-full bg-slate-50">
+        <div className="flex min-h-screen w-full bg-background text-foreground">
           {/* Sidebar */}
           <aside
             className={clsx(
-              "fixed top-0 left-0 z-40 h-screen border-r border-slate-200 bg-white transition-[width] duration-200 ease-in-out flex flex-col",
+              "fixed top-0 left-0 z-40 h-screen border-r border-border bg-card transition-[width] duration-200 ease-in-out flex flex-col",
             )}
             style={{ width: "var(--sidebar-w, 256px)" }}
             // Adiciona flex-shrink-0 para garantir que a sidebar não encolha
@@ -202,7 +202,7 @@ export default function PortalLayout({
               <button
                 type="button"
                 onClick={() => setCollapsed((v) => !v)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/60"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/60"
                 aria-pressed={collapsed}
                 aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
                 title={collapsed ? "Expandir" : "Recolher"}
@@ -246,12 +246,12 @@ export default function PortalLayout({
                         className={clsx(
                           "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium w-full transition-all duration-200",
                           isActive
-                            ? "bg-[#1F6B3B]/10 text-[#1F6B3B] ring-1 ring-[#1F6B3B]/20"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            ? "bg-primary/10 text-foreground ring-1 ring-primary/20"
+                            : "text-foreground hover:bg-muted hover:text-foreground"
                         )}
                         title={item.label}
                       >
-                        <IconComponent className={clsx("h-5 w-5 shrink-0 transition-colors", isActive ? "text-[#1F6B3B]" : "text-slate-400 group-hover:text-slate-600")} />
+                        <IconComponent className={clsx("h-5 w-5 shrink-0 transition-colors", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                         {!collapsed && <span className="truncate">{item.label}</span>}
                         {item.badge && !collapsed && (
                           <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
@@ -266,20 +266,20 @@ export default function PortalLayout({
             </nav>
 
             {/* Footer fixo no fundo */}
-            <div className="mt-auto p-4 border-t border-slate-100">
+            <div className="mt-auto p-4 border-t border-border">
               <div className={clsx(
                 "flex items-center gap-3 rounded-2xl p-2 transition-colors",
-                !collapsed && "bg-slate-50 border border-slate-100"
+                !collapsed && "bg-muted border border-border"
               )}>
-                <div className="h-10 w-10 rounded-xl bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-black text-[#1F6B3B]">{userInitials}</span>
+                <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-black text-foreground">{userInitials}</span>
                 </div>
                 {!collapsed && (
                   <div className="min-w-0">
-                    <div className="text-xs font-black text-slate-900 truncate uppercase tracking-tight">
+                    <div className="text-xs font-black text-foreground truncate uppercase tracking-tight">
                       {escolaNome || "Klasse"}
                     </div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">
                       {plan ? PLAN_NAMES[plan] : "SaaS"}
                     </div>
                   </div>
@@ -295,23 +295,23 @@ export default function PortalLayout({
           >
             <main className="flex flex-col min-h-full">
               {/* Header modernizado */}
-              <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm m-4">
+              <div className="m-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
                 <div className="flex items-center gap-4">
-                  <h1 className="text-xl font-semibold text-moxinexa-dark">
+                  <h1 className="text-xl font-semibold text-foreground">
                     {navItems.find(item => !!pathname && (pathname === item.href || pathname.startsWith(item.href + "/")))?.label || "Dashboard"}
                   </h1>
-                  <ModuleSwitcher />
                   {plan && (
-                    <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {PLAN_NAMES[plan]}</span>
+                    <span className="rounded-full border border-border bg-muted px-2 py-1 text-[10px] uppercase text-muted-foreground">Plano: {PLAN_NAMES[plan]}</span>
                   )}
                   {escolaNome && (
-                    <span className="text-[10px] px-2 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-700" title={escolaNome}>
+                    <span className="rounded-full border border-border bg-muted px-2 py-1 text-[10px] text-muted-foreground" title={escolaNome}>
                       Escola: {escolaNome}
                     </span>
                   )}
                 </div>
                 
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <ThemeToggle iconOnly />
                   <button className="relative p-2 rounded-full bg-moxinexa-light/30 hover:bg-moxinexa-light/50 transition-colors">
                     <BellIcon className="w-5 h-5 text-moxinexa-dark" />
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -319,13 +319,13 @@ export default function PortalLayout({
                   
                   <div className="hidden md:flex h-6 w-px bg-moxinexa-light/50"></div>
                   
-                  <button className="flex items-center gap-2 bg-white rounded-full pl-1 pr-3 py-1 shadow-sm border border-moxinexa-light/50 hover:shadow-md transition-shadow">
+                  <button className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-3 shadow-sm hover:shadow-md transition-shadow">
                     <UserAvatar initials={userInitials} name={userName || 'Administrador'} />
                   </button>
 
                   <button
                     onClick={() => requestSessionConfig()}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors hover:bg-accent"
                     title="Preferências de Sessão"
                   >
                     <Icons.Settings className="h-4 w-4" />
@@ -333,19 +333,19 @@ export default function PortalLayout({
 
                   <LockScreenButton
                     iconOnly
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-muted text-foreground transition-colors hover:bg-accent"
                   />
 
                   <SignOutButton
                     label="Sair"
-                    className="px-3 py-1.5 text-xs bg-slate-500 text-white rounded-md hover:bg-slate-600 transition-colors"
+                    className="px-3 py-1.5 text-xs bg-muted text-foreground rounded-md hover:bg-accent transition-colors"
                     title="Sair"
                   />
                 </div>
               </div>
     
               {/* Conteúdo dinâmico com card moderno */}
-              <div className="bg-white rounded-2xl shadow-sm p-6 border border-moxinexa-light/30 mx-4 flex-grow">
+              <div className="mx-4 flex-grow rounded-2xl border border-border bg-card p-6 shadow-sm">
                 <div className="mb-3">
                   <BackButton />
                 </div>
@@ -353,7 +353,7 @@ export default function PortalLayout({
               </div>
     
               {/* Footer moderno */}
-              <footer className="mt-8 text-center text-sm text-slate-400">
+              <footer className="mt-8 text-center text-sm text-muted-foreground">
                 <p>KLASSE • Gestão escolar em escala</p>
                 <p className="mt-1">Sistema de gestão escolar · Todos os direitos reservados</p>
               </footer>

@@ -60,7 +60,7 @@ export default function ProfessorPerfilPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         <div>
           <DashboardHeader
@@ -75,82 +75,82 @@ export default function ProfessorPerfilPage() {
         </div>
 
         {loading ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 animate-pulse space-y-2">
-            <div className="h-4 w-40 rounded-md bg-slate-200" />
-            <div className="h-3 w-full rounded-md bg-slate-200" />
-            <div className="h-3 w-5/6 rounded-md bg-slate-200" />
+          <div className="rounded-xl border border-border bg-card p-3 sm:p-4 animate-pulse space-y-2">
+            <div className="h-4 w-40 rounded-md bg-muted" />
+            <div className="h-3 w-full rounded-md bg-muted" />
+            <div className="h-3 w-5/6 rounded-md bg-muted" />
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-            <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
-              <div className="text-sm font-semibold text-slate-900">Dados pessoais</div>
+            <section className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <div className="text-sm font-semibold text-foreground">Dados pessoais</div>
               <div className="grid gap-3 md:grid-cols-2 text-sm">
                 <div>
-                  <div className="text-xs text-slate-500">Nome completo</div>
-                  <div className="text-sm font-semibold text-slate-900">{form.nome_completo || "—"}</div>
+                  <div className="text-xs text-muted-foreground">Nome completo</div>
+                  <div className="text-sm font-semibold text-foreground">{form.nome_completo || "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-500">BI</div>
-                  <div className="text-sm font-semibold text-slate-900">{form.numero_bi || "—"}</div>
+                  <div className="text-xs text-muted-foreground">BI</div>
+                  <div className="text-sm font-semibold text-foreground">{form.numero_bi || "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-500">Gênero</div>
-                  <div className="text-sm font-semibold text-slate-900">{form.genero || "—"}</div>
+                  <div className="text-xs text-muted-foreground">Gênero</div>
+                  <div className="text-sm font-semibold text-foreground">{form.genero || "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-500">Nascimento</div>
-                  <div className="text-sm font-semibold text-slate-900">{form.data_nascimento || "—"}</div>
+                  <div className="text-xs text-muted-foreground">Nascimento</div>
+                  <div className="text-sm font-semibold text-foreground">{form.data_nascimento || "—"}</div>
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Telefone</div>
-                <div className="text-sm font-semibold text-slate-900">{form.telefone_principal || "—"}</div>
+                <div className="text-xs text-muted-foreground">Telefone</div>
+                <div className="text-sm font-semibold text-foreground">{form.telefone_principal || "—"}</div>
               </div>
             </section>
 
-            <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
-              <div className="text-sm font-semibold text-slate-900">Disponibilidade</div>
+            <section className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <div className="text-sm font-semibold text-foreground">Disponibilidade</div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <div className="text-xs text-slate-500">Carga horária máxima</div>
-                  <div className="text-sm font-semibold text-slate-900">
+                  <div className="text-xs text-muted-foreground">Carga horária máxima</div>
+                  <div className="text-sm font-semibold text-foreground">
                     {form.carga_horaria_maxima ?? "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-500">Turnos disponíveis</div>
+                  <div className="text-xs text-muted-foreground">Turnos disponíveis</div>
                   <div className="mt-1 flex flex-wrap gap-2">
                     {form.turnos_disponiveis.length > 0 ? (
                       form.turnos_disponiveis.map((turno) => (
                         <span
                           key={turno}
-                          className="rounded-full border border-amber bg-amber/10 px-3 py-1 text-xs font-semibold text-amber"
+                          className="rounded-full border border-amber/40 bg-amber/10 px-3 py-1 text-xs font-semibold text-foreground"
                         >
                           {turno}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">—</span>
+                      <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-500">Habilitações</div>
-                  <div className="text-sm font-semibold text-slate-900">{form.habilitacoes || "—"}</div>
+                  <div className="text-xs text-muted-foreground">Habilitações</div>
+                  <div className="text-sm font-semibold text-foreground">{form.habilitacoes || "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-500">Vínculo contratual</div>
-                  <div className="text-sm font-semibold text-slate-900">{form.vinculo_contratual || "—"}</div>
+                  <div className="text-xs text-muted-foreground">Vínculo contratual</div>
+                  <div className="text-sm font-semibold text-foreground">{form.vinculo_contratual || "—"}</div>
                 </div>
                 <div className="md:col-span-2">
-                  <div className="text-xs text-slate-500">Área de formação</div>
-                  <div className="text-sm font-semibold text-slate-900">{form.area_formacao || "—"}</div>
+                  <div className="text-xs text-muted-foreground">Área de formação</div>
+                  <div className="text-sm font-semibold text-foreground">{form.area_formacao || "—"}</div>
                 </div>
               </div>
             </section>
 
-            <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 lg:col-span-2">
-              <div className="text-sm font-semibold text-slate-900">Disciplinas habilitadas</div>
+            <section className="rounded-xl border border-border bg-card p-5 space-y-4 lg:col-span-2">
+              <div className="text-sm font-semibold text-foreground">Disciplinas habilitadas</div>
               <div className="flex flex-wrap gap-2 text-sm">
                 {form.disciplinas_habilitadas.length > 0 ? (
                   disciplinas
@@ -158,13 +158,13 @@ export default function ProfessorPerfilPage() {
                     .map((disc) => (
                       <span
                         key={disc.id}
-                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600"
+                        className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground"
                       >
                         {disc.nome}
                       </span>
                     ))
                 ) : (
-                  <span className="text-sm text-slate-500">—</span>
+                  <span className="text-sm text-muted-foreground">—</span>
                 )}
               </div>
             </section>

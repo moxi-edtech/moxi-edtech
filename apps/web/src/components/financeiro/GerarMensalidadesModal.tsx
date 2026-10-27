@@ -126,11 +126,20 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
     }
   }
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !loading) setIsOpen(false);
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [isOpen, loading]);
+
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="bg-amber-400 text-white hover:brightness-95 focus:ring-4 focus:ring-amber-400/20 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm"
+        className="bg-amber-400 text-amber-950 hover:brightness-95 focus:ring-4 focus:ring-amber-400/20 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm"
       >
         <Calendar className="w-4 h-4" />
         Gerar Cobranças
@@ -139,19 +148,20 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative">
-        <h2 className="text-lg font-bold text-slate-900 mb-1">Gerar Mensalidades em Lote</h2>
-        <p className="text-sm text-slate-500 mb-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="gerar-mensalidades-title" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-4">
+      <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xl sm:p-6">
+        <h2 id="gerar-mensalidades-title" className="text-lg font-bold text-foreground mb-1">Gerar Mensalidades em Lote</h2>
+        <p className="text-sm text-muted-foreground mb-4">
           O sistema buscará alunos ativos e gerará a cobrança automaticamente (processo idempotente).
         </p>
 
         <div className="mb-4">
-          <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">Ano letivo</label>
+          <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase">Ano letivo</label>
           <select
+            autoFocus
             value={selectedSession}
             onChange={(e) => setSelectedSession(e.target.value)}
-            className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
+            className="w-full border-border border rounded-xl p-2 text-sm bg-card focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
           >
             <option value="">Selecione uma sessão/ano</option>
             {sessions.map((s) => (
@@ -161,7 +171,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
             ))}
           </select>
           {!selectedSession && (
-            <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
+            <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900 rounded-lg p-2">
               Escolha o ano letivo para filtrar as turmas e gerar cobranças corretamente.
             </p>
           )}
@@ -169,22 +179,22 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">Ano</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase">Ano</label>
             <input
               type="number"
               value={ano}
               onChange={(e) => setAno(Number(e.target.value))}
-              className="w-full border-slate-300 border rounded-xl p-2 text-sm focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
+              className="w-full border-border border rounded-xl p-2 text-sm focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">
+            <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase">
               Mês referência
             </label>
             <select
               value={mes}
               onChange={(e) => setMes(Number(e.target.value))}
-              className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
+              className="w-full border-border border rounded-xl p-2 text-sm bg-card focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
             >
               {[...Array(12)].map((_, i) => (
                 <option key={i} value={i + 1}>
@@ -196,7 +206,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
         </div>
 
         <div className="mb-6">
-          <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">
+          <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase">
             Turma (opcional)
           </label>
           <select
@@ -205,7 +215,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
             onFocus={() => {
               if (turmas.length === 0) loadTurmas();
             }}
-            className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
+            className="w-full border-border border rounded-xl p-2 text-sm bg-card focus:ring-4 focus:ring-amber-400/20 focus:border-amber-400"
           >
             <option value="todas">Todas as turmas</option>
             {turmas.map((turma) => (
@@ -214,18 +224,18 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Selecione uma turma para gerar apenas para esse grupo.
           </p>
         </div>
 
         {status === "success" && (
-          <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-xl text-sm flex items-center gap-2">
+          <div className="mb-4 p-3 bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300 rounded-xl text-sm flex items-center gap-2">
             <CheckCircle className="w-4 h-4" /> {msg}
           </div>
         )}
         {status === "error" && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <div className="mb-4 p-3 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 rounded-xl text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4" /> {msg}
           </div>
         )}
@@ -234,14 +244,14 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
           <button
             onClick={() => setIsOpen(false)}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl"
+            className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-xl"
           >
             Cancelar
           </button>
           <button
             onClick={handleGerar}
             disabled={loading || status === "success"}
-            className="bg-amber-400 hover:brightness-95 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+            className="bg-amber-400 hover:brightness-95 text-amber-950 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar geração"}
           </button>

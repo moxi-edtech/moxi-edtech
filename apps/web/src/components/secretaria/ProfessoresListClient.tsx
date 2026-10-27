@@ -104,10 +104,10 @@ export default function ProfessoresListClient() {
 
   const getCargoColor = (cargo: string | null) => {
     switch (cargo) {
-      case 'diretor': return 'bg-slate-100 text-slate-700';
-      case 'coordenador': return 'bg-slate-100 text-slate-700';
+      case 'diretor': return 'bg-muted text-foreground';
+      case 'coordenador': return 'bg-muted text-foreground';
       case 'assistente': return 'bg-green-100 text-green-700';
-      default: return 'bg-slate-100 text-slate-700';
+      default: return 'bg-muted text-foreground';
     }
   };
 
@@ -121,12 +121,12 @@ export default function ProfessoresListClient() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+    <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-muted rounded-xl">
       {/* --- BOTÃO VOLTAR --- */}
       <div className="flex items-center gap-3">
         <button 
           onClick={() => window.history.back()}
-          className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 border border-slate-200 transition-all"
+          className="inline-flex items-center gap-2 rounded-lg bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted border border-border transition-all"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar
@@ -135,36 +135,36 @@ export default function ProfessoresListClient() {
 
       {/* --- HEADER COM MÉTRICAS --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="text-2xl font-bold text-moxinexa-navy">{total}</div>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Users className="h-4 w-4" />
             Total de Professores
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="text-2xl font-bold text-orange-600">
             {Object.keys(professoresPorCargo).length}
           </div>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Briefcase className="h-4 w-4" />
             Cargos Diferentes
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="text-2xl font-bold text-moxinexa-teal">
             {professoresComEmail}
           </div>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Mail className="h-4 w-4" />
             Com E-mail
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="text-2xl font-bold text-green-600">
             {professoresComTelefone}
           </div>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Phone className="h-4 w-4" />
             Com Telefone
           </div>
@@ -172,13 +172,13 @@ export default function ProfessoresListClient() {
       </div>
 
       {/* --- HEADER DE AÇÃO --- */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card p-5 rounded-xl border border-border shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-slate-500" />
+            <div className="w-3 h-3 rounded-full bg-muted0" />
             Gestão de Professores
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {total} professores cadastrados • {Object.keys(professoresPorCargo).length} cargos • {professoresComEmail} com e-mail
           </p>
         </div>
@@ -195,16 +195,16 @@ export default function ProfessoresListClient() {
       </div>
 
       {/* --- FILTROS E PESQUISA --- */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input 
               type="text" 
               placeholder="Buscar por nome, e-mail ou telefone..." 
               value={q} 
               onChange={(e) => setQ(e.target.value)} 
-              className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
+              className="w-full pl-10 pr-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
             />
           </div>
           <button 
@@ -217,7 +217,7 @@ export default function ProfessoresListClient() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-slate-600 font-medium">Período:</span>
+          <span className="text-sm text-muted-foreground font-medium">Período:</span>
           {['1','7','30','90'].map((d) => (
             <button 
               key={d} 
@@ -225,20 +225,20 @@ export default function ProfessoresListClient() {
               className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
                 days === d 
                   ? 'bg-moxinexa-teal text-white border-moxinexa-teal shadow-lg shadow-teal-900/20' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  : 'bg-card text-foreground border-border hover:bg-muted'
               }`}
             >
               {d === '1' ? '1 dia' : `${d} dias`}
             </button>
           ))}
           
-          <span className="mx-2 h-4 w-px bg-slate-200" />
+          <span className="mx-2 h-4 w-px bg-border" />
           
-          <span className="text-sm text-slate-600 font-medium">Cargo:</span>
+          <span className="text-sm text-muted-foreground font-medium">Cargo:</span>
           <select 
             value={cargoFilter} 
             onChange={(e) => setCargoFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
+            className="border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
           >
             <option value="">Todos os cargos</option>
             <option value="professor">Professor</option>
@@ -247,11 +247,11 @@ export default function ProfessoresListClient() {
             <option value="assistente">Assistente</option>
           </select>
           
-          <span className="mx-2 h-4 w-px bg-slate-200" />
+          <span className="mx-2 h-4 w-px bg-border" />
           
           <a 
             href={`professores/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-all"
             target="_blank"
             rel="noreferrer"
           >
@@ -260,7 +260,7 @@ export default function ProfessoresListClient() {
           </a>
           <a 
             href={`professores/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-all"
             target="_blank"
             rel="noreferrer"
           >
@@ -271,32 +271,32 @@ export default function ProfessoresListClient() {
       </div>
 
       {/* --- TABELA DE PROFESSORES --- */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="overflow-x-auto">
           <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
-          <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+          <table className="min-w-full table-fixed divide-y divide-border text-sm">
+            <thead className="bg-muted sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
               <tr>
-                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Professor
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Contato
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Cargo
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Cadastrado em
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Ações
                 </th>
               </tr>
             </thead>
 
             <tbody
-              className="divide-y divide-slate-100"
+              className="divide-y divide-border"
               style={
                 hasRows
                   ? {
@@ -309,7 +309,7 @@ export default function ProfessoresListClient() {
             >
               {loading ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
                     <div className="space-y-2">
                       <Skeleton className="h-4 w-40 mx-auto" />
                       <Skeleton className="h-3 w-56 mx-auto" />
@@ -318,8 +318,8 @@ export default function ProfessoresListClient() {
                 </tr>
               ) : items.length === 0 ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
-                    <Users className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                     Nenhum professor encontrado.
                     <div className="mt-2 text-sm">
                       {q || cargoFilter ? 'Tente ajustar os filtros de busca.' : 'Comece cadastrando o primeiro professor.'}
@@ -336,7 +336,7 @@ export default function ProfessoresListClient() {
                   return (
                     <tr
                       key={professor.user_id || professor.id}
-                      className="hover:bg-slate-50 transition-colors"
+                      className="hover:bg-muted transition-colors"
                       style={{
                         position: "absolute",
                         top: 0,
@@ -347,20 +347,20 @@ export default function ProfessoresListClient() {
                         tableLayout: "fixed",
                       }}
                     >
-                      <td className="px-4 py-4 text-slate-900">
+                      <td className="px-4 py-4 text-foreground">
                         <div className="font-bold text-moxinexa-navy">
                           {professor.nome}
                         </div>
-                        <div className="text-xs text-slate-500 space-y-1 mt-1">
+                        <div className="text-xs text-muted-foreground space-y-1 mt-1">
                           {numeroLogin && (
                             <div className="flex items-center gap-1">
                               <IdCard className="h-3 w-3" />
-                              <span className="font-mono bg-slate-100 px-2 py-1 rounded">
+                              <span className="font-mono bg-muted px-2 py-1 rounded">
                                 {numeroLogin}
                               </span>
                             </div>
                           )}
-                          <div className="font-mono text-slate-400">
+                          <div className="font-mono text-muted-foreground">
                             {(professor.user_id || professor.id).slice(0, 8)}...
                           </div>
                         </div>
@@ -368,20 +368,20 @@ export default function ProfessoresListClient() {
                       <td className="px-4 py-3">
                         <div className="space-y-2">
                           {professor.email ? (
-                            <div className="flex items-center gap-2 text-slate-700">
-                              <Mail className="h-4 w-4 text-slate-400" />
+                            <div className="flex items-center gap-2 text-foreground">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
                               {professor.email}
                             </div>
                           ) : (
-                            <span className="text-slate-400 text-xs">—</span>
+                            <span className="text-muted-foreground text-xs">—</span>
                           )}
                           {professor.telefone ? (
-                            <div className="flex items-center gap-2 text-slate-700">
-                              <Phone className="h-4 w-4 text-slate-400" />
+                            <div className="flex items-center gap-2 text-foreground">
+                              <Phone className="h-4 w-4 text-muted-foreground" />
                               {professor.telefone}
                             </div>
                           ) : (
-                            <span className="text-slate-400 text-xs">—</span>
+                            <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </div>
                       </td>
@@ -390,9 +390,9 @@ export default function ProfessoresListClient() {
                           {getCargoIcon(professor.cargo)} {professor.cargo || 'professor'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-slate-400" />
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
                           {new Date(professor.created_at).toLocaleDateString('pt-AO')}
                         </div>
                       </td>
@@ -400,7 +400,7 @@ export default function ProfessoresListClient() {
                         <div className="flex justify-center gap-1">
                           <Link
                             href={buildContextualPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}`, pathname)}
-                            className="text-slate-600 hover:text-white hover:bg-slate-600 p-2 rounded-lg transition-all"
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted p-2 rounded-lg transition-all"
                             title="Ver detalhes"
                           >
                             <Eye className="w-4 h-4" />
@@ -425,34 +425,34 @@ export default function ProfessoresListClient() {
       </section>
 
       {/* --- PAGINAÇÃO --- */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="text-sm text-slate-600">
+      <div className="flex items-center justify-between bg-card p-4 rounded-xl border border-border shadow-sm">
+        <div className="text-sm text-muted-foreground">
           Mostrando <strong>{(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)}</strong> de <strong>{total}</strong> professores
         </div>
         <div className="flex gap-2">
           <button 
             disabled={page <= 1} 
             onClick={() => setPage((p) => Math.max(1, p - 1))} 
-            className={`inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm ${
+            className={`inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm ${
               page <= 1 
-                ? 'pointer-events-none opacity-50 text-slate-400' 
-                : 'text-slate-700 hover:bg-slate-50'
+                ? 'pointer-events-none opacity-50 text-muted-foreground' 
+                : 'text-foreground hover:bg-muted'
             }`}
           >
             ← Anterior
           </button>
           
-          <span className="px-3 py-2 text-sm text-slate-600">
+          <span className="px-3 py-2 text-sm text-muted-foreground">
             Página <strong>{page}</strong> de <strong>{totalPages}</strong>
           </span>
           
           <button 
             disabled={page >= totalPages} 
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))} 
-            className={`inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm ${
+            className={`inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm ${
               page >= totalPages 
-                ? 'pointer-events-none opacity-50 text-slate-400' 
-                : 'text-slate-700 hover:bg-slate-50'
+                ? 'pointer-events-none opacity-50 text-muted-foreground' 
+                : 'text-foreground hover:bg-muted'
             }`}
           >
             Próxima →

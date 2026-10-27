@@ -19,7 +19,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navegação do portal do aluno"
     >
@@ -32,7 +32,7 @@ export function BottomNav() {
               key={href}
               href={href}
               className={`flex min-h-11 flex-col items-center justify-center rounded-xl text-xs font-medium transition ${
-                active ? "bg-emerald/10 text-emerald" : "text-slate-500 hover:bg-slate-100"
+                active ? "bg-emerald/10 text-emerald" : "text-muted-foreground hover:bg-muted"
               }`}
               aria-current={active ? "page" : undefined}
             >

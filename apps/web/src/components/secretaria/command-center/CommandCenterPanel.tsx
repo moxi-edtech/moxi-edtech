@@ -16,15 +16,15 @@ import {
 // route. Large matrícula, profile and grade modules load on first use.
 const AdmissaoWizardClient = dynamic(() => import("@/components/secretaria/AdmissaoWizardClient"), {
   ssr: false,
-  loading: () => <p role="status" className="p-5 text-sm text-slate-600">A abrir nova matrícula...</p>,
+  loading: () => <p role="status" className="p-5 text-sm text-muted-foreground">A abrir nova matrícula...</p>,
 });
 const CommandCenterStudentDossier = dynamic(() => import("@/components/secretaria/command-center/CommandCenterStudentDossier").then(m => m.CommandCenterStudentDossier), {
   ssr: false,
-  loading: () => <p role="status" className="p-5 text-sm text-slate-600">A abrir perfil integral...</p>,
+  loading: () => <p role="status" className="p-5 text-sm text-muted-foreground">A abrir perfil integral...</p>,
 });
 const PautaRapidaModal = dynamic(() => import("@/components/secretaria/PautaRapidaModal").then(m => m.PautaRapidaModal), {
   ssr: false,
-  loading: () => <p role="status" className="p-5 text-sm text-slate-600">A abrir lançamento de notas...</p>,
+  loading: () => <p role="status" className="p-5 text-sm text-muted-foreground">A abrir lançamento de notas...</p>,
 });
 
 type Props = {
@@ -81,9 +81,9 @@ export function CommandCenterPanel({
 
   if (!alunoId) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
-        <p className="text-sm font-black text-slate-900">Selecione um aluno</p>
-        <p className="mt-1 text-xs leading-5 text-slate-500">
+      <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
+        <p className="text-sm font-black text-foreground">Selecione um aluno</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
           Pesquise um aluno no atendimento para continuar esta operação.
         </p>
       </div>
@@ -94,8 +94,8 @@ export function CommandCenterPanel({
     return (
       <section className="min-w-0 space-y-3" aria-label="Perfil integral do aluno">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">Perfil integral do aluno</h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <h2 className="text-sm font-bold text-foreground">Perfil integral do aluno</h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Consulte dados pessoais, financeiro, histórico académico e documentos no mesmo atendimento.
           </p>
         </div>
@@ -105,11 +105,11 @@ export function CommandCenterPanel({
           alunoId={alunoId}
           refreshKey={profileRefreshKey + refreshRevision}
         />
-        <details className="group min-w-0 rounded-xl border border-slate-200 bg-white">
-          <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-slate-700 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C] sm:px-5">
+        <details className="group min-w-0 rounded-xl border border-border bg-card">
+          <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber sm:px-5">
             Atualizar dados pessoais
           </summary>
-          <div className="min-w-0 border-t border-slate-100 p-3 sm:p-5">
+          <div className="min-w-0 border-t border-border p-3 sm:p-5">
             <AlunoProfilePanel alunoId={alunoId} onSuccess={handleProfileSuccess} />
           </div>
         </details>

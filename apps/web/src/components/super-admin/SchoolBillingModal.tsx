@@ -16,22 +16,26 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
   const { success, error } = useToast()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Enviar cobrança</h3>
+    <div role="dialog" aria-modal="true" aria-label="Enviar cobrança" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xl sm:p-5">
+        <h3 className="text-lg font-semibold text-foreground mb-2">Enviar cobrança</h3>
         <div className="space-y-3">
+          <label htmlFor="billing-amount" className="block text-sm font-medium text-foreground">Valor</label>
           <input
+            id="billing-amount"
             type="text"
             placeholder="Valor (R$)"
             value={valor}
             onChange={(e)=>setValor(e.target.value)}
-            className="w-full px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+            className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
+          <label htmlFor="billing-due-date" className="block text-sm font-medium text-foreground">Vencimento</label>
           <input
+            id="billing-due-date"
             type="date"
             value={vencimento}
             onChange={(e)=>setVencimento(e.target.value)}
-            className="w-full px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+            className="w-full bg-background text-foreground px-3 py-2 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">

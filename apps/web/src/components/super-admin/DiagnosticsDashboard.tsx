@@ -69,18 +69,18 @@ export default function DiagnosticsDashboard() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Diagnostics</h1>
-          <p className="text-sm text-gray-500">Status de outbox, cron e filas críticas.</p>
+          <p className="text-sm text-muted-foreground">Status de outbox, cron e filas críticas.</p>
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground hover:bg-muted"
         >
           Recarregar
         </button>
       </header>
 
       {loading ? (
-        <div className="rounded-lg border border-dashed border-gray-200 p-6 text-sm text-gray-500">Carregando…</div>
+        <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">Carregando…</div>
       ) : error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
       ) : null}
@@ -89,10 +89,10 @@ export default function DiagnosticsDashboard() {
         {outboxStatuses.map((status) => {
           const entry = outboxEntries[status] ?? { total: 0, oldest_age_minutes: null };
           return (
-            <div key={status} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="text-xs uppercase text-gray-400">Outbox · {status}</div>
-              <div className="mt-2 text-2xl font-semibold text-gray-900">{entry.total}</div>
-              <div className="mt-1 text-xs text-gray-500">
+            <div key={status} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+              <div className="text-xs uppercase text-muted-foreground">Outbox · {status}</div>
+              <div className="mt-2 text-2xl font-semibold text-foreground">{entry.total}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
                 {entry.oldest_age_minutes !== null
                   ? `Mais antigo: ${entry.oldest_age_minutes} min`
                   : "Sem itens"}
@@ -102,11 +102,11 @@ export default function DiagnosticsDashboard() {
         })}
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="text-sm font-semibold text-gray-900">Cron · Últimas execuções</div>
+      <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="text-sm font-semibold text-foreground">Cron · Últimas execuções</div>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="text-left text-xs text-gray-500">
+            <thead className="text-left text-xs text-muted-foreground">
               <tr>
                 <th className="py-2 pr-4">Job</th>
                 <th className="py-2 pr-4">Status</th>
@@ -117,8 +117,8 @@ export default function DiagnosticsDashboard() {
             </thead>
             <tbody>
               {(data?.cronRuns ?? []).map((run) => (
-                <tr key={`${run.jobid}-${run.start_time}`} className="border-t border-gray-100">
-                  <td className="py-2 pr-4 text-gray-700">{run.jobid}</td>
+                <tr key={`${run.jobid}-${run.start_time}`} className="border-t border-border">
+                  <td className="py-2 pr-4 text-foreground">{run.jobid}</td>
                   <td className="py-2 pr-4">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -130,14 +130,14 @@ export default function DiagnosticsDashboard() {
                       {run.status ?? "unknown"}
                     </span>
                   </td>
-                  <td className="py-2 pr-4 text-gray-600">{formatDate(run.start_time)}</td>
-                  <td className="py-2 pr-4 text-gray-600">{formatDate(run.end_time)}</td>
-                  <td className="py-2 text-xs text-gray-500">{run.return_message ?? ""}</td>
+                  <td className="py-2 pr-4 text-foreground/80">{formatDate(run.start_time)}</td>
+                  <td className="py-2 pr-4 text-foreground/80">{formatDate(run.end_time)}</td>
+                  <td className="py-2 text-xs text-muted-foreground">{run.return_message ?? ""}</td>
                 </tr>
               ))}
               {data?.cronRuns?.length ? null : (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-xs text-gray-400">
+                  <td colSpan={5} className="py-4 text-center text-xs text-muted-foreground">
                     Sem registros recentes.
                   </td>
                 </tr>

@@ -18,22 +18,22 @@ export function SchoolsHeader({ fallbackSource, onRepairAdmins, loading }: Schoo
       <div>
         <div className="flex items-center gap-2 mb-2">
           <span className="h-1.5 w-1.5 rounded-full bg-[#E3B23C]" />
-          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
             Gestão de Infraestrutura
           </h3>
         </div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tighter flex items-center gap-3">
+        <h1 className="text-3xl font-black text-foreground tracking-tighter flex items-center gap-3">
           Nossas Escolas
           {fallbackSource && (
             <span
               title="A usar base de dados de contingência"
-              className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-[#E3B23C] border border-amber-100"
+              className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-900 dark:text-amber-200 dark:bg-amber-950/40 dark:border-amber-900 border border-amber-100"
             >
               Modo Contingência
             </span>
           )}
         </h1>
-        <p className="text-sm font-medium text-slate-500 mt-2 max-w-lg">
+        <p className="text-sm font-medium text-muted-foreground mt-2 max-w-lg">
           Acompanhe, configure e apoie todas as unidades que utilizam o ecossistema Klasse.
         </p>
       </div>
@@ -42,7 +42,7 @@ export function SchoolsHeader({ fallbackSource, onRepairAdmins, loading }: Schoo
         <button 
           onClick={() => onRepairAdmins(true)} 
           disabled={loading}
-          className="h-11 px-5 rounded-xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50"
+          className="h-11 px-5 rounded-xl border border-border bg-card text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-muted hover:border-border transition-all disabled:opacity-50"
         >
           <div className="flex items-center gap-2">
             <Settings size={14} /> Auditoria de Admins

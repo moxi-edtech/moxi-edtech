@@ -29,16 +29,16 @@ function AcademicItem({ item }: { item: Item }) {
     <div className={`
       group relative flex items-start gap-3 rounded-xl border p-3 transition-all
       ${item.locked
-        ? "border-slate-100 bg-slate-50/50 cursor-not-allowed"
-        : "border-slate-100 bg-white hover:border-[#1F6B3B]/25 hover:bg-slate-50 hover:shadow-sm cursor-pointer"
+        ? "border-border bg-muted/50 cursor-not-allowed"
+        : "border-border bg-card hover:border-primary/25 hover:bg-muted hover:shadow-sm cursor-pointer"
       }
     `}>
       {/* Icon */}
       <div className={`
         flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors
         ${item.locked
-          ? "bg-slate-100 text-slate-300"
-          : "bg-slate-100 text-slate-600 group-hover:bg-[#1F6B3B]/10 group-hover:text-[#1F6B3B]"
+          ? "bg-muted text-muted-foreground"
+          : "bg-muted text-foreground/80 group-hover:bg-primary/10 group-hover:text-primary"
         }
       `}>
         {item.locked ? <Lock className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
@@ -46,10 +46,10 @@ function AcademicItem({ item }: { item: Item }) {
 
       {/* Text */}
       <div className="min-w-0 flex-1">
-        <p className={`text-sm font-bold truncate ${item.locked ? "text-slate-400" : "text-slate-900"}`}>
+        <p className={`text-sm font-bold truncate ${item.locked ? "text-muted-foreground" : "text-foreground"}`}>
           {item.title}
         </p>
-        <p className="text-xs text-slate-400 truncate">{item.description}</p>
+        <p className="text-xs text-muted-foreground truncate">{item.description}</p>
 
         {/* Badge (e.g. "Preços pendentes") */}
         {item.badge && !item.locked && (
@@ -63,12 +63,12 @@ function AcademicItem({ item }: { item: Item }) {
       {item.locked && item.reason && (
         <div className="
           absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 z-10
-          bg-slate-900 text-white text-[11px] font-medium rounded-lg px-3 py-2 text-center
+          bg-foreground text-background text-[11px] font-medium rounded-lg px-3 py-2 text-center
           opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150
           shadow-lg
         ">
           {item.reason}
-          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-foreground" />
         </div>
       )}
     </div>
@@ -158,15 +158,15 @@ export default function AcademicSection({
   ];
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <header className="mb-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="rounded-xl bg-slate-100 p-2 text-slate-500 flex-shrink-0">
+          <div className="rounded-xl bg-muted p-2 text-muted-foreground flex-shrink-0">
             <Layers className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-bold text-slate-900">Gestão Académica</h3>
-            <p className="text-xs text-slate-400 truncate">Módulos principais</p>
+            <h3 className="text-sm font-bold text-foreground">Gestão Académica</h3>
+            <p className="text-xs text-muted-foreground truncate">Módulos principais</p>
           </div>
         </div>
 

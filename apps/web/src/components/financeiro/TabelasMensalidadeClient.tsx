@@ -141,47 +141,47 @@ export default function TabelasMensalidadeClient({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 lg:p-10 font-sans text-slate-900">
+    <div className="min-h-full bg-background p-4 text-foreground sm:p-6 lg:p-10 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
 
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <h1 className="text-3xl font-bold text-slate-900">Tabelas de Preço</h1>
-                <p className="text-slate-500 mt-1">Defina quanto custa a propina para cada curso ou classe.</p>
+                <h1 className="text-3xl font-bold text-foreground">Tabelas de Preço</h1>
+                <p className="text-muted-foreground mt-1">Defina quanto custa a propina para cada curso ou classe.</p>
             </div>
             <button 
                 onClick={() => { setEditingItem(null); setShowModal(true); }}
-                className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 shadow-lg flex items-center gap-2 transition-all hover:-translate-y-0.5"
+                className="bg-foreground text-background px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-foreground/90 shadow-lg flex items-center gap-2 transition-all hover:-translate-y-0.5"
             >
                 <Plus size={18}/> Nova Regra
             </button>
         </div>
 
         {/* FILTROS */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-1 w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"/>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4"/>
                 <input 
                     value={search} onChange={e => setSearch(e.target.value)}
                     placeholder="Pesquisar regra..." 
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 text-sm font-medium"
+                    className="w-full pl-10 pr-4 py-2 bg-muted border-none rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 text-sm font-medium"
                 />
             </div>
             <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
-                <Filter size={16} className="text-slate-400"/>
+                <Filter size={16} className="text-muted-foreground"/>
                 <input
                     type="number"
                     value={fAno}
                     onChange={e => setFAno(e.target.value)}
-                    className="w-28 bg-slate-50 border-none text-sm font-bold text-slate-600 py-2 pl-3 pr-3 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20"
+                    className="w-28 bg-muted border-none text-sm font-bold text-foreground/80 py-2 pl-3 pr-3 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20"
                     placeholder="Ano"
                     min="2000"
                     max="3000"
                 />
                 <select 
                     value={fCurso} onChange={e => setFCurso(e.target.value)}
-                    className="bg-slate-50 border-none text-sm font-bold text-slate-600 py-2 pl-3 pr-8 rounded-xl cursor-pointer outline-none focus:ring-2 focus:ring-teal-500/20"
+                    className="bg-muted border-none text-sm font-bold text-foreground/80 py-2 pl-3 pr-8 rounded-xl cursor-pointer outline-none focus:ring-2 focus:ring-teal-500/20"
                 >
                     <option value="">Todos os Cursos</option>
                     {cursosReais.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -191,49 +191,49 @@ export default function TabelasMensalidadeClient({
 
         {/* GRID DE REGRAS */}
         {loading ? (
-             <div className="text-center py-12 text-slate-400">Carregando preçário...</div>
+             <div className="text-center py-12 text-muted-foreground">Carregando preçário...</div>
         ) : filtered.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
-                <DollarSign className="w-12 h-12 text-slate-200 mx-auto mb-3"/>
-                <p className="text-slate-500 font-medium">Nenhuma regra encontrada.</p>
+            <div className="text-center py-16 bg-card rounded-xl border border-dashed border-border">
+                <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-3"/>
+                <p className="text-muted-foreground font-medium">Nenhuma regra encontrada.</p>
                 <button onClick={() => setShowModal(true)} className="text-teal-600 text-sm font-bold mt-2 hover:underline">Criar a primeira regra</button>
             </div>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map(item => (
-                    <div key={item.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group relative">
+                    <div key={item.id} className="bg-card p-5 rounded-xl border border-border shadow-sm hover:shadow-md transition-all group relative">
                         <div className="flex justify-between items-start mb-3">
-                            <div className={`p-2 rounded-lg ${item.ativo ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                            <div className={`p-2 rounded-lg ${item.ativo ? 'bg-emerald-50 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
                                 <DollarSign size={20}/>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => { setEditingItem(item); setShowModal(true); }} className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 transition"><Edit size={16}/></button>
-                                <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition"><Trash2 size={16}/></button>
+                                <button onClick={() => { setEditingItem(item); setShowModal(true); }} className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground/80 transition"><Edit size={16}/></button>
+                                <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-50 rounded-lg text-muted-foreground hover:text-red-600 transition"><Trash2 size={16}/></button>
                             </div>
                         </div>
                         
-                        <h3 className="font-bold text-slate-800 text-lg mb-1">{formatMoney(item.valor)}</h3>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-4">Mensalidade</p>
+                        <h3 className="font-bold text-foreground text-lg mb-1">{formatMoney(item.valor)}</h3>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Mensalidade</p>
 
-                        <div className="space-y-2 pt-4 border-t border-slate-100">
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <Layers size={14} className="text-slate-400"/>
-                                <span className="font-medium text-slate-800">{getRuleName(item)}</span>
+                        <div className="space-y-2 pt-4 border-t border-border">
+                            <div className="flex items-center gap-2 text-sm text-foreground/80">
+                                <Layers size={14} className="text-muted-foreground"/>
+                                <span className="font-medium text-foreground">{getRuleName(item)}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                <Calendar size={14} className="text-slate-400"/>
-                                Vence dia <strong className="text-slate-700">{item.dia_vencimento || 10}</strong>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Calendar size={14} className="text-muted-foreground"/>
+                                Vence dia <strong className="text-foreground">{item.dia_vencimento || 10}</strong>
                             </div>
                             {item.ano_letivo && (
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                    <BookOpen size={14} className="text-slate-400"/>
-                                    Ano letivo <strong className="text-slate-700">{item.ano_letivo}</strong>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <BookOpen size={14} className="text-muted-foreground"/>
+                                    Ano letivo <strong className="text-foreground">{item.ano_letivo}</strong>
                                 </div>
                             )}
                         </div>
                         
                         {!item.ativo && (
-                            <div className="absolute top-4 right-4 bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded">INATIVO</div>
+                            <div className="absolute top-4 right-4 bg-muted text-muted-foreground text-[10px] font-bold px-2 py-1 rounded">INATIVO</div>
                         )}
                     </div>
                 ))}
@@ -386,11 +386,11 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5 scale-100 animate-in zoom-in-95">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                    <h3 className="font-bold text-lg text-slate-800">{initialData ? "Editar Regra" : "Nova Regra de Preço"}</h3>
-                    <button onClick={onClose}><X className="w-5 h-5 text-slate-400 hover:text-slate-600"/></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-2xl sm:p-6 space-y-5 scale-100 animate-in zoom-in-95">
+                <div className="flex justify-between items-center border-b border-border pb-4">
+                    <h3 className="font-bold text-lg text-foreground">{initialData ? "Editar Regra" : "Nova Regra de Preço"}</h3>
+                    <button onClick={onClose}><X className="w-5 h-5 text-muted-foreground hover:text-foreground/80"/></button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -398,14 +398,14 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                         <button
                             type="button"
                             onClick={() => { setRegime('geral'); }}
-                            className={`p-3 rounded-xl border text-sm font-bold transition ${regime === 'geral' ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                            className={`p-3 rounded-xl border text-sm font-bold transition ${regime === 'geral' ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm' : 'border-border bg-card text-foreground/80 hover:border-border'}`}
                         >
                             Ensino Geral
                         </button>
                         <button
                             type="button"
                             onClick={() => { setRegime('curso'); }}
-                            className={`p-3 rounded-xl border text-sm font-bold transition ${regime === 'curso' ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                            className={`p-3 rounded-xl border text-sm font-bold transition ${regime === 'curso' ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm' : 'border-border bg-card text-foreground/80 hover:border-border'}`}
                         >
                             Curso Técnico / PUNIV
                         </button>
@@ -413,11 +413,11 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
 
                     {regime === 'curso' && (
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Curso</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Curso</label>
                             <select 
                                 value={formData.curso_id}
                                 onChange={e => setFormData({...formData, curso_id: e.target.value, classe_id: ''})}
-                                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                                className="w-full p-2 bg-muted border border-border rounded-lg text-sm"
                                 required
                             >
                                 <option value="">Selecione...</option>
@@ -427,20 +427,20 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                     )}
 
                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Ano Letivo</label>
+                        <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Ano Letivo</label>
                         <input
                             type="number"
                             min="2000"
                             max="3000"
                             value={formData.ano_letivo}
                             onChange={e => setFormData({...formData, ano_letivo: e.target.value})}
-                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                            className="w-full p-2 bg-muted border border-border rounded-lg text-sm"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{regime === 'geral' ? 'Classe (1ª a 9ª)' : 'Classe do Curso'}</label>
+                        <label className="text-xs font-bold text-muted-foreground uppercase mb-2 block">{regime === 'geral' ? 'Classe (1ª a 9ª)' : 'Classe do Curso'}</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {(regime === 'geral' ? generalClasses : courseSpecificClasses).map((c: Ref) => (
                                 <button
@@ -448,7 +448,7 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                                     type="button"
                                     onClick={() => setFormData({...formData, classe_id: c.id})}
                                     disabled={regime === 'curso' && !formData.curso_id}
-                                    className={`py-2 px-3 rounded-lg border text-sm font-bold transition ${formData.classe_id === c.id ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'} ${regime === 'curso' && !formData.curso_id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`py-2 px-3 rounded-lg border text-sm font-bold transition ${formData.classe_id === c.id ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-border bg-card text-foreground/80 hover:border-border'} ${regime === 'curso' && !formData.curso_id ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {c.nome}
                                 </button>
@@ -460,18 +460,18 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                             </p>
                         )}
                          {regime === 'curso' && formData.curso_id && courseSpecificClasses.length === 0 && (
-                            <p className="text-sm text-slate-500 mt-2">Nenhuma classe encontrada para este curso.</p>
+                            <p className="text-sm text-muted-foreground mt-2">Nenhuma classe encontrada para este curso.</p>
                         )}
                     </div>
 
                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Valor da Propina (KZ)</label>
+                        <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Valor da Propina (KZ)</label>
                         <input 
                             type="number" 
                             required
                             value={formData.valor}
                             onChange={e => setFormData({...formData, valor: e.target.value})}
-                            className="w-full p-3 bg-white border border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                            className="w-full p-3 bg-background border border-border rounded-xl text-lg font-bold text-foreground focus:ring-2 focus:ring-teal-500 outline-none"
                             placeholder="0.00"
                             autoFocus
                         />
@@ -479,12 +479,12 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
 
                     <div className="flex items-center gap-4">
                         <div className="flex-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Dia Vencimento</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Dia Vencimento</label>
                             <select
                                 required
                                 value={formData.dia_vencimento}
                                 onChange={e => setFormData({...formData, dia_vencimento: e.target.value})}
-                                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                                className="w-full p-2 bg-muted border border-border rounded-lg text-sm"
                             >
                                 {Array.from({ length: 31 }, (_, idx) => idx + 1).map((day) => (
                                     <option key={day} value={String(day)}>{day}</option>
@@ -498,19 +498,19 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                                 onChange={e => setFormData({...formData, ativo: e.target.checked})}
                                 className="w-4 h-4 text-teal-600 rounded"
                             />
-                            <span className="text-sm font-medium text-slate-700">Regra Ativa</span>
+                            <span className="text-sm font-medium text-foreground">Regra Ativa</span>
                         </div>
                     </div>
 
-                    <div className="pt-4 border-t border-slate-100">
-                        <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer">
+                    <div className="pt-4 border-t border-border">
+                        <label className="flex items-start gap-3 p-3 bg-muted rounded-xl border border-border cursor-pointer">
                             <input 
                                 type="checkbox" 
                                 checked={formData.applyExisting} 
                                 onChange={e => setFormData({...formData, applyExisting: e.target.checked})}
-                                className="mt-1 w-4 h-4 text-slate-600 rounded"
+                                className="mt-1 w-4 h-4 text-foreground/80 rounded"
                             />
-                            <div className="text-xs text-slate-800">
+                            <div className="text-xs text-foreground">
                                 <span className="font-bold block">Aplicar a alunos existentes?</span>
                                 Atualiza o valor das próximas mensalidades de quem já está matriculado nesta regra.
                             </div>
@@ -518,7 +518,7 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                     </div>
 
                     <div className="flex justify-end pt-2">
-                        <button type="submit" disabled={saving} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition disabled:opacity-50">
+                        <button type="submit" disabled={saving} className="w-full bg-foreground text-background py-3 rounded-xl font-bold shadow-lg hover:bg-foreground/90 transition disabled:opacity-50">
                             {saving ? "A guardar..." : "Salvar Regra"}
                         </button>
                     </div>

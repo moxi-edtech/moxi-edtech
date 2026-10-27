@@ -41,11 +41,11 @@ export default function ChartsSection({ escolaId, data }: Props) {
 
   return (
     <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-950">Fluxo de Pagamentos</h2>
-            <p className="mt-1 text-sm text-slate-500">Visão consolidada de cobrança por status.</p>
+            <h2 className="text-xl font-bold text-foreground">Fluxo de Pagamentos</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Visão consolidada de cobrança por status.</p>
           </div>
         </div>
 
@@ -59,12 +59,12 @@ export default function ChartsSection({ escolaId, data }: Props) {
                 <div key={payment.label}>
                   <div className="mb-2 flex items-end justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-700">{config.label}</p>
-                      <p className="text-2xl font-bold text-slate-950">{payment.value.toLocaleString()}</p>
+                      <p className="text-sm font-semibold text-foreground">{config.label}</p>
+                      <p className="text-2xl font-bold text-foreground">{payment.value.toLocaleString()}</p>
                     </div>
-                    <p className="text-sm font-medium text-slate-500">{pct.toFixed(1)}%</p>
+                    <p className="text-sm font-medium text-muted-foreground">{pct.toFixed(1)}%</p>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div className={`h-full rounded-full ${config.colorClass}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -80,14 +80,14 @@ export default function ChartsSection({ escolaId, data }: Props) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold text-slate-700">Saúde Financeira</p>
-        <p className="mt-1 text-sm text-slate-500">Eficiência consolidada de adimplência.</p>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <p className="text-sm font-semibold text-foreground">Saúde Financeira</p>
+        <p className="mt-1 text-sm text-muted-foreground">Eficiência consolidada de adimplência.</p>
         <div className="mt-6 flex items-end gap-2">
           <span className="text-5xl font-bold text-emerald">{data.eficiencia ?? 0}</span>
-          <span className="text-lg font-semibold text-slate-500">%</span>
+          <span className="text-lg font-semibold text-muted-foreground">%</span>
         </div>
-        <p className="mt-2 text-sm text-slate-500">Próximo passo: priorizar cobranças com risco alto.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Próximo passo: priorizar cobranças com risco alto.</p>
       </div>
     </section>
   );

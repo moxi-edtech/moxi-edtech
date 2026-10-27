@@ -38,13 +38,13 @@ export function KpiCard({
 }: KpiCardProps) {
   const styles = {
     default: {
-      box: "bg-white border-slate-200",
-      icon: "bg-slate-100 text-slate-600",
-      value: "text-slate-900",
+      box: "bg-card border-border",
+      icon: "bg-muted text-muted-foreground",
+      value: "text-foreground",
       chart: "#94a3b8", // slate-400
     },
     brand: {
-      box: "bg-white border-slate-200",
+      box: "bg-card border-border",
       icon: "bg-emerald/10 text-emerald ring-1 ring-emerald/20",
       value: "text-emerald",
       chart: klasseColors.green.DEFAULT,
@@ -56,7 +56,7 @@ export function KpiCard({
       chart: "#D4AF37", // amber
     },
     success: {
-      box: "bg-white border-slate-200",
+      box: "bg-card border-border",
       icon: "bg-emerald-100 text-emerald-700",
       value: "text-emerald-700",
       chart: "#15803d", // green-700
@@ -67,7 +67,7 @@ export function KpiCard({
     <>
       <div className="flex items-start justify-between relative z-10">
         <div className={compact ? "space-y-0.5" : "space-y-1"}>
-          <span className={`font-bold uppercase tracking-widest text-slate-400 ${compact ? "text-[10px]" : "text-[11px]"}`}>
+          <span className={`font-bold uppercase tracking-widest text-muted-foreground ${compact ? "text-[10px]" : "text-[11px]"}`}>
             {label}
           </span>
           <div className={`flex items-baseline ${compact ? "gap-1.5" : "gap-2"}`}>
@@ -92,7 +92,7 @@ export function KpiCard({
             )}
           </div>
           {description && (
-            <p className={`text-slate-400 font-medium leading-none ${compact ? "text-[9px]" : "text-[10px]"}`}>
+            <p className={`text-muted-foreground font-medium leading-none ${compact ? "text-[9px]" : "text-[10px]"}`}>
               {description}
             </p>
           )}

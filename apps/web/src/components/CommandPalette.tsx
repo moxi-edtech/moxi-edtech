@@ -83,18 +83,18 @@ function SearchResultRow({ item, onSelect, portal }: { item: MinimalSearchResult
   const secondary = item.highlight?.trim();
   const showSecondary = Boolean(secondary && secondary !== item.label?.trim());
   return (
-    <Command.Item value={`${item.type}:${item.id}`} onSelect={onSelect} className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-700 transition-colors aria-selected:bg-slate-100 aria-selected:text-slate-900">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 group-aria-selected:bg-white">
+    <Command.Item value={`${item.type}:${item.id}`} onSelect={onSelect} className="group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm text-foreground transition-colors aria-selected:bg-muted aria-selected:text-foreground">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground group-aria-selected:bg-card">
         {student || employee ? <User className="h-5 w-5" /> : item.type === "turma" ? <GraduationCap className="h-5 w-5" /> : item.type === "candidatura" ? <Bookmark className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="break-words font-semibold leading-5 text-slate-900">{item.label?.trim() || "Nome não informado"}</div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+        <div className="break-words font-semibold leading-5 text-foreground">{item.label?.trim() || "Nome não informado"}</div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
           <span>{student ? "Aluno" : employee ? "Funcionário" : item.type}</span>
-          {showSecondary && <span className="break-all text-slate-600">{student ? "Processo/BI: " : "· "}{secondary}</span>}
+          {showSecondary && <span className="break-all text-muted-foreground">{student ? "Processo/BI: " : "· "}{secondary}</span>}
         </div>
       </div>
-      <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 group-aria-selected:text-slate-700" />
+      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground group-aria-selected:text-foreground" />
     </Command.Item>
   );
 }
@@ -315,46 +315,46 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
   return (
     <>
       {!hideTrigger && (
-        <button type="button" onClick={() => setOpen(true)} className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-amber/10">
-          <Search className="h-4 w-4 text-slate-400 group-hover:text-slate-500" aria-hidden />
+        <button type="button" onClick={() => setOpen(true)} className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm transition-all hover:border-border hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/10">
+          <Search className="h-4 w-4 text-muted-foreground group-hover:text-muted-foreground" aria-hidden />
           <span className="flex-1 text-left">Pesquisar ou digitar acção...</span>
-          <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-mono text-[10px] font-medium text-slate-400 sm:flex"><span className="text-xs">⌘</span>K</kbd>
+          <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex"><span className="text-xs">⌘</span>K</kbd>
         </button>
       )}
       <QueryClientProvider client={queryClient}>
         <Command.Dialog open={open} onOpenChange={handleOpenChange} label="Menu de comandos KLASSE" shouldFilter={false} className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => handleOpenChange(false)} />
-          <motion.div layout={!reduceMotion} transition={{ layout: { duration: 0.18, ease: "easeOut" } }} className={`relative mx-2 w-full ${entityContext ? "max-w-4xl" : "max-w-2xl"} overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:mx-0`}>
+          <motion.div layout={!reduceMotion} transition={{ layout: { duration: 0.18, ease: "easeOut" } }} className={`relative mx-2 w-full ${entityContext ? "max-w-4xl" : "max-w-2xl"} overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:mx-0`}>
             <DialogTitle className="sr-only">Pesquisar ou digitar acção</DialogTitle>
             <DialogDescription className="sr-only">Pesquisar alunos, turmas e operações disponíveis neste portal.</DialogDescription>
             {entityContext && (
-              <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
-                <button type="button" onClick={() => { setEntityContext(contextTrail[contextTrail.length - 1] ?? null); setContextTrail((t) => t.slice(0, -1)); }} className="mt-0.5 flex shrink-0 items-center gap-2 rounded-xl px-2 py-2 text-sm text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-emerald-600">
+              <div className="flex items-start gap-2 border-b border-border px-4 py-3">
+                <button type="button" onClick={() => { setEntityContext(contextTrail[contextTrail.length - 1] ?? null); setContextTrail((t) => t.slice(0, -1)); }} className="mt-0.5 flex shrink-0 items-center gap-2 rounded-xl px-2 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-emerald-600">
                   <ArrowLeft className="h-4 w-4" aria-hidden />
                   <span className="sr-only sm:not-sr-only sm:inline">{contextTrail.length ? BACK_LABELS[contextTrail[contextTrail.length - 1].type] : "Voltar à pesquisa"}</span>
                 </button>
                 <nav aria-label="Percurso contextual" className="min-w-0 flex-1">
-                  <ol className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
-                    <li><button type="button" className="rounded px-1 py-0.5 hover:bg-slate-100" onClick={() => { setEntityContext(null); setContextTrail([]); }}>Pesquisa</button></li>
+                  <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                    <li><button type="button" className="rounded px-1 py-0.5 hover:bg-muted" onClick={() => { setEntityContext(null); setContextTrail([]); }}>Pesquisa</button></li>
                     {contextTrail.map((step, index) => (
                       <li key={`${step.type}:${step.id}:${index}`} className="flex items-center gap-1">
-                        <span aria-hidden className="text-slate-300">/</span>
-                        <button type="button" className="max-w-[9rem] truncate rounded px-1 py-0.5 hover:bg-slate-100" onClick={() => { setEntityContext(step); setContextTrail((t) => t.slice(0, index)); }} title={step.label}>{step.label}</button>
+                        <span aria-hidden className="text-muted-foreground">/</span>
+                        <button type="button" className="max-w-[9rem] truncate rounded px-1 py-0.5 hover:bg-muted" onClick={() => { setEntityContext(step); setContextTrail((t) => t.slice(0, index)); }} title={step.label}>{step.label}</button>
                       </li>
                     ))}
-                    <li className="flex items-center gap-1"><span aria-hidden className="text-slate-300">/</span><span aria-current="page" className="max-w-[12rem] truncate font-semibold text-slate-900" title={entityContext.label}>{entityContext.label}</span></li>
+                    <li className="flex items-center gap-1"><span aria-hidden className="text-muted-foreground">/</span><span aria-current="page" className="max-w-[12rem] truncate font-semibold text-foreground" title={entityContext.label}>{entityContext.label}</span></li>
                   </ol>
-                  <p className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">{ENTITY_LABELS[entityContext.type]}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{ENTITY_LABELS[entityContext.type]}</p>
                 </nav>
-                <button type="button" onClick={() => handleOpenChange(false)} className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100" aria-label="Fechar Command Center"><X className="h-4 w-4" aria-hidden /></button>
+                <button type="button" onClick={() => handleOpenChange(false)} className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted" aria-label="Fechar Command Center"><X className="h-4 w-4" aria-hidden /></button>
               </div>
             )}
             {!entityContext && (
-              <div className="flex items-center border-b border-slate-100 px-4 py-3">
-                <Search className="mr-3 h-5 w-5 shrink-0 text-slate-400" aria-hidden />
-                <Command.Input value={query} onValueChange={setQuery} placeholder="O que precisa hoje?" className="flex-1 bg-transparent text-lg text-slate-900 placeholder:text-slate-400 outline-none" />
-                {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin text-emerald" aria-hidden /> : <kbd className="mr-1 hidden h-6 select-none items-center gap-1 rounded border border-slate-200 bg-slate-50 px-2 font-mono text-[10px] font-medium text-slate-400 sm:flex">ESC</kbd>}
-                <button type="button" onClick={() => handleOpenChange(false)} className="ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100" aria-label="Fechar pesquisa"><X className="h-4 w-4" aria-hidden /></button>
+              <div className="flex items-center border-b border-border px-4 py-3">
+                <Search className="mr-3 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                <Command.Input value={query} onValueChange={setQuery} placeholder="O que precisa hoje?" className="flex-1 bg-transparent text-lg text-foreground placeholder:text-muted-foreground outline-none" />
+                {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin text-emerald" aria-hidden /> : <kbd className="mr-1 hidden h-6 select-none items-center gap-1 rounded border border-border bg-muted px-2 font-mono text-[10px] font-medium text-muted-foreground sm:flex">ESC</kbd>}
+                <button type="button" onClick={() => handleOpenChange(false)} className="ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted" aria-label="Fechar pesquisa"><X className="h-4 w-4" aria-hidden /></button>
               </div>
             )}
             <AnimatePresence mode="wait" initial={false}>
@@ -370,20 +370,20 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                     {searchError && query.trim().length >= 2 && (
                       <div role="alert" className="mx-2 mb-2 space-y-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800">
                         <p>{searchError}</p>
-                        <button type="button" className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold" onClick={() => { clearError(); const q = query; setQuery(q + " "); setTimeout(() => setQuery(q), 0); }}><RefreshCw className="h-3.5 w-3.5" aria-hidden /> Tentar novamente</button>
+                        <button type="button" className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-card px-3 py-1.5 text-xs font-semibold" onClick={() => { clearError(); const q = query; setQuery(q + " "); setTimeout(() => setQuery(q), 0); }}><RefreshCw className="h-3.5 w-3.5" aria-hidden /> Tentar novamente</button>
                       </div>
                     )}
                     {query.length === 0 && (
                       <>
                         {recentResults.length > 0 && (
-                          <Command.Group heading="Recentes" className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                          <Command.Group heading="Recentes" className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                             {recentResults.map((item) => <SearchResultRow key={`recent-${item.type}-${item.id}`} item={item} portal={portal} onSelect={() => selectResult(item)} />)}
                           </Command.Group>
                         )}
-                        <Command.Group heading="Acções frequentes" className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                        <Command.Group heading="Acções frequentes" className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                           {staticActions.map((action) => (
-                            <Command.Item key={action.id} onSelect={() => runCommand(action.onSelect)} className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-emerald">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 group-aria-selected:bg-emerald/10"><action.icon className="h-4 w-4" /></div>
+                            <Command.Item key={action.id} onSelect={() => runCommand(action.onSelect)} className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-foreground hover:bg-muted aria-selected:bg-muted aria-selected:text-emerald">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted group-aria-selected:bg-emerald/10"><action.icon className="h-4 w-4" /></div>
                               <span>{action.label}</span>
                             </Command.Item>
                           ))}
@@ -391,16 +391,16 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                       </>
                     )}
                     {results.length > 0 && (
-                      <Command.Group heading="Resultados da pesquisa" className="mt-4 px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                      <Command.Group heading="Resultados da pesquisa" className="mt-4 px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                         {results.map((item) => <SearchResultRow key={`${item.type}-${item.id}`} item={item} portal={portal} onSelect={() => selectResult(item)} />)}
                       </Command.Group>
                     )}
                     {!loading && !searchError && query.trim().length >= 2 && results.length === 0 && (
-                      <p className="px-3 py-6 text-center text-sm text-slate-500">Nenhum resultado para &ldquo;{query}&rdquo;.</p>
+                      <p className="px-3 py-6 text-center text-sm text-muted-foreground">Nenhum resultado para &ldquo;{query}&rdquo;.</p>
                     )}
                     {hasMore && results.length > 0 && (
                       <div className="px-2 pb-2">
-                        <button type="button" disabled={loading} onClick={() => void loadMore()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                        <button type="button" disabled={loading} onClick={() => void loadMore()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50">
                           {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null} Ver mais resultados
                         </button>
                       </div>
@@ -437,13 +437,13 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                 </motion.section>
               )}
             </AnimatePresence>
-            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3">
-              <div className="flex flex-wrap items-center gap-3 text-[10px] font-medium text-slate-400">
-                {!entityContext && (<><span className="flex items-center gap-1"><kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">↑↓</kbd> Navegar</span><span className="flex items-center gap-1"><kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">↵</kbd> Selecionar</span></>)}
-                <span className="flex items-center gap-1"><kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">Esc</kbd> Fechar</span>
-                <span className="flex items-center gap-1"><kbd className="rounded border border-slate-200 bg-white px-1 shadow-sm">⌘K</kbd> Abrir</span>
+            <div className="flex items-center justify-between border-t border-border bg-muted/50 px-4 py-3">
+              <div className="flex flex-wrap items-center gap-3 text-[10px] font-medium text-muted-foreground">
+                {!entityContext && (<><span className="flex items-center gap-1"><kbd className="rounded border border-border bg-card px-1 shadow-sm">↑↓</kbd> Navegar</span><span className="flex items-center gap-1"><kbd className="rounded border border-border bg-card px-1 shadow-sm">↵</kbd> Selecionar</span></>)}
+                <span className="flex items-center gap-1"><kbd className="rounded border border-border bg-card px-1 shadow-sm">Esc</kbd> Fechar</span>
+                <span className="flex items-center gap-1"><kbd className="rounded border border-border bg-card px-1 shadow-sm">⌘K</kbd> Abrir</span>
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-300">KLASSE Command Center</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">KLASSE Command Center</div>
             </div>
           </motion.div>
         </Command.Dialog>
