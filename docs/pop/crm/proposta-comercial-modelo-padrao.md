@@ -19,7 +19,7 @@ A proposta do Makuntima Zinga é o **modelo de conteúdo e estrutura**, não a n
 | Preço e taxa | `mensalidade_kz` e `taxa_ativacao` | Valores negociados; pagamento inicial = soma |
 | Trial | `trial_days` | 0–30; período e efeito na cobrança dependem do Termo de Adesão |
 | Níveis de ensino | `niveis_ensino` | Pré-escolar, Primário, I Ciclo, PUNIV, Técnico; códigos desconhecidos bloqueiam impressão |
-| Modelo curricular | `preset_curricular` do formulário | Exibir o preset escolhido; se não houver, marcar configuração manual; sujeito à validação no onboarding |
+| Modelo curricular | `curriculum_preset` do formulário | Exibir o preset escolhido; se não houver, marcar configuração manual; sujeito à validação no onboarding |
 | Contactos operacionais | `contato_secretaria`, `contato_financeiro`, `contato_pedagogico` (nome, e-mail, telefone) | Mostrar os três pontos focais na implantação; campos vazios como «A confirmar», não obrigatórios para impressão |
 | Estado comercial | `commercial_status` | **Não imprimir**: estado de workflow interno, não declaração de aceite ou assinatura |
 | Data | Navegador na abertura | Validade 15 dias corridos |
