@@ -18,6 +18,7 @@ test("formatação pt-AO respeita dados sem escala ou arredondamento arbitrário
 });
 test("quatro estados e ação única de pagamento",()=>{
  assert.equal(accessPresentation("available").action,"Solicitar boletim");
+ assert.equal(accessPresentation("pending_payment").action,"Continuar pagamento");
  assert.equal(accessPresentation("pending").action,"Acompanhar pedido");
  assert.match(accessPresentation("pending").message,/secretaria está a verificar/);
  assert.equal(accessPresentation("rejected","Ficheiro ilegível").action,"Corrigir comprovativo");
