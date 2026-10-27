@@ -56,6 +56,9 @@ function ScopedTopbar({
   // initialised afresh, rather than synchronously reset in an effect.
   useEffect(() => () => clearExplorerReturnContext(), []);
 
+  // The student and teacher portals do not yet support theme selection.
+  const showThemeControls = portal !== "aluno" && portal !== "professor";
+
   const userInitial =
     (userName || portalSubtitle || "U")
       .trim()
@@ -114,7 +117,7 @@ function ScopedTopbar({
           />
 
           <div className="ml-auto flex items-center gap-2">
-            <ThemeToggle className="hidden sm:inline-flex" />
+            {showThemeControls && <ThemeToggle className="hidden sm:inline-flex" />}
             <NotificacoesDropdown />
             <LockScreenButton
               iconOnly
@@ -155,9 +158,13 @@ function ScopedTopbar({
                     Preferências de Sessão
                   </button>
 
-                  <div className="my-2 border-t border-border" />
-                  <ThemePreferences />
-                  <div className="my-2 border-t border-border" />
+                  {showThemeControls && (
+                    <>
+                      <div className="my-2 border-t border-border" />
+                      <ThemePreferences />
+                      <div className="my-2 border-t border-border" />
+                    </>
+                  )}
 
                   <SignOutButton
                     label="Sair"

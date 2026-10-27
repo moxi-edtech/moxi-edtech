@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseThemePreference, resolveDarkTheme } from "../../src/lib/theme-preference";
+import { isLightOnlyPortalPath, parseThemePreference, resolveDarkTheme } from "../../src/lib/theme-preference";
 
 test("aceita apenas preferências suportadas", () => {
   assert.equal(parseThemePreference("dark"), "dark");
@@ -19,4 +19,23 @@ test("preferência explícita prevalece sobre o sistema", () => {
 test("preferência sistema acompanha o dispositivo", () => {
   assert.equal(resolveDarkTheme("system", true), true);
   assert.equal(resolveDarkTheme("system", false), false);
+});
+
+test("portais de aluno e professor mantêm tema claro sem afetar áreas administrativas", () => {
+  for (const path of [
+    "/aluno", "/aluno/dashboard", "/professor", "/professor/turmas",
+    "/escola/escola-klasse/aluno/academico",
+    "/escola/123/professor/diario",
+  ]) {
+    assert.equal(isLightOnlyPortalPath(path), true, path);
+  }
+  for (const path of [
+    "/", "/login", "/admin", "/professores", "/alunos", "/professorado",
+    "/escola/escola-klasse/admin", "/escola/escola-klasse/professores",
+    "/escola/escola-klasse/alunos", "/escola/escola-klasse/secretaria",
+    "/escola/escola-klasse/professorado",
+    null, undefined,
+  ]) {
+    assert.equal(isLightOnlyPortalPath(path), false, String(path));
+  }
 });
