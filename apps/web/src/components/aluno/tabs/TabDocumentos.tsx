@@ -255,7 +255,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900" role="alert">
           <p className="font-black">Não foi possível carregar os serviços.</p>
           <p className="mt-1 text-xs">{catalogError} Os seus pedidos anteriores não foram alterados.</p>
-          <button type="button" onClick={() => void fetchCatalogo()} className="mt-3 rounded-xl bg-rose-700 px-4 py-2 text-xs font-black text-white">Tentar novamente</button>
+          <button type="button" onClick={() => void fetchCatalogo()} className="mt-3 min-h-11 rounded-xl bg-rose-700 px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-ring">Tentar novamente</button>
         </div>
       ) : null}
 
@@ -297,9 +297,9 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                      {doc.pagamento_configurado !== false && <StatusBadge status={doc.status} />}
                      {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" && (
                        onOpenNotas ? (
-                         <button type="button" onClick={onOpenNotas} className="text-xs font-semibold text-emerald-800 underline">Ver notas</button>
+                         <button type="button" onClick={onOpenNotas} className="inline-flex min-h-11 items-center rounded-md px-1 text-sm font-semibold text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Ver notas</button>
                        ) : (
-                         <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="text-xs font-semibold text-emerald-800 underline">
+                         <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="text-xs font-semibold text-primary underline">
                            Ver notas
                          </Link>
                        )
@@ -316,7 +316,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                    <p className="text-xs font-medium leading-5 text-amber-800">A escola precisa definir a taxa.</p>
                  ) : (
                    <button type="button" onClick={() => void handleAction(doc)}
-                     className="inline-flex min-h-11 w-full items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 sm:w-auto"
+                     className="inline-flex min-h-11 w-full items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-auto"
                      aria-label={`${doc.status === "granted" ? "Descarregar" : doc.status === "pending" ? "Acompanhar" : "Solicitar"}: ${doc.nome}`}>
                      <ActionButton status={doc.status} codigo={doc.codigo} gratuito={doc.valor <= 0} />
                    </button>
