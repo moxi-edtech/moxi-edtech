@@ -118,7 +118,7 @@ export default function DashboardLoader() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-[#2B6044]"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-slate-500">/ Portal do aluno</span></p>
         <nav aria-label="Navegação rápida" className="hidden gap-5 text-sm lg:flex">
-          {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/academico?aba=disciplinas"],["Notas","/aluno/academico"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(path)} className={`min-h-11 content-center text-slate-600 hover:text-[#2B6044] ${focus}`}>{label}</Link>)}
+          {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/academico?aba=disciplinas"],["Notas","/aluno/academico"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(path)} className={`min-h-11 content-center text-muted-foreground hover:text-emerald-800 ${focus}`}>{label}</Link>)}
         </nav>
       </div>
       <div className="relative overflow-hidden rounded-2xl bg-[#142D3B] px-5 py-5 text-white shadow-[0_18px_42px_-28px_rgba(15,42,54,0.65)] sm:px-8 sm:py-7">
@@ -142,7 +142,7 @@ export default function DashboardLoader() {
               <div className="min-w-0"><p className="text-sm text-slate-500">{lesson.day}</p><p className="mt-1 text-lg font-semibold text-slate-900">{lesson.subject}</p></div>
             </div>
             {lesson.details.length > 0 && <p className="text-sm text-slate-600">{lesson.details.join(" · ")}</p>}
-          </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-slate-400"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
+          </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-muted-foreground"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
           <Link className={`${action} mt-5`} href={go("/aluno/horario")}>Ver o horário completo <ArrowRight className="h-4 w-4"/></Link>
         </div>
       </section>
@@ -166,7 +166,7 @@ export default function DashboardLoader() {
     <section aria-labelledby="school-links" className="space-y-3">
       <h2 id="school-links" className={heading}>A tua vida escolar</h2>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-[#2B6044]/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} bg-card`}>
+        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-emerald-700/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} bg-card`}>
           <Icon className="h-5 w-5 text-emerald-800" aria-hidden="true"/><div><p className="text-sm font-semibold text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{hint}</p></div>
         </Link>)}
       </div>
