@@ -1,7 +1,7 @@
 /** A pauta só enumera períodos devolvidos pelo domínio; não inventa trimestres. */
 export type GradeEntry = { nome: string; tipo: string; trimestre: number; nota: number };
 export type GradeSubject = { id: string; nome: string; avaliacoes: GradeEntry[] };
-export type AccessStatus = "available" | "pending" | "rejected" | "granted" | "unknown";
+export type AccessStatus = "available" | "pending_payment" | "pending" | "rejected" | "granted" | "unknown";
 export function availablePeriods(subjects: GradeSubject[]): number[] {
   return [...new Set(subjects.flatMap(d => d.avaliacoes.map(a => a.trimestre)))]
     .filter(n => Number.isInteger(n) && n > 0).sort((a,b) => a-b);
@@ -22,6 +22,7 @@ export function formatPublishedGrade(value: number): string {
 }
 export function accessPresentation(status: AccessStatus, reason?: string | null) {
   switch(status) {
+    case "pending_payment": return {title:"Pagamento por concluir",message:"Continua o pagamento do boletim.",action:"Continuar pagamento"};
     case "pending": return {title:"Pagamento em análise",message:"A secretaria está a verificar o comprovativo.",action:"Acompanhar pedido"};
     case "rejected": return {title:"Comprovativo rejeitado",message:reason?.trim() || "Corrige o comprovativo para continuar.",action:"Corrigir comprovativo"};
     case "available": return {title:"Consulta as tuas notas",message:"Solicita o boletim para aceder às avaliações.",action:"Solicitar boletim"};
