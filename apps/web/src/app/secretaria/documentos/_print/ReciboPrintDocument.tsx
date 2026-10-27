@@ -117,7 +117,7 @@ export async function ReciboPrintDocument({
 
   return (
     <div className={`min-h-screen ${styles.printRoot} text-slate-900`}>
-      <PrintTrigger />
+      <PrintTrigger showManualButton />
       <div className={`${styles.sheet} ${styles.receiptCompactSheet} shadow-lg`}>
         {showSecondVia ? (
           <p className="mb-2 text-right text-[10px] text-slate-400 print:hidden">
