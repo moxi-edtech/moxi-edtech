@@ -40,17 +40,17 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
     <Link
       href={card.href}
       title={card.description}
-      className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 transition hover:border-slate-300 hover:shadow-md"
+      className="flex flex-col justify-between rounded-xl border border-border bg-card p-3.5 transition hover:border-border hover:shadow-md"
     >
       <div className="flex min-w-0 items-center gap-2">
         <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${card.tone}`}>
           <Icon className="h-4 w-4" />
         </div>
-        <span className="truncate text-xs font-semibold text-slate-600">{card.label}</span>
+        <span className="truncate text-xs font-semibold text-foreground/80">{card.label}</span>
       </div>
 
       <div className="mt-3">
-        <span className={`text-2xl font-black ${isZero ? "text-slate-400" : "text-slate-900"}`}>
+        <span className={`text-2xl font-black ${isZero ? "text-muted-foreground" : "text-foreground"}`}>
           {card.value}
         </span>
       </div>

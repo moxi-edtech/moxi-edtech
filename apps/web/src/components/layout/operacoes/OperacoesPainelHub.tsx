@@ -91,7 +91,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
               type="button"
               onClick={refresh}
               disabled={refreshing}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground/80 transition hover:bg-muted disabled:opacity-60"
             >
               <Activity className={`h-3.5 w-3.5 ${refreshing ? "animate-pulse" : ""}`} />
               Atualizar
@@ -110,7 +110,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
           <div className="mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4">
             {loading
               ? [0, 1, 2].map((i) => (
-                  <div key={i} className="h-[104px] animate-pulse rounded-xl border border-slate-100 bg-white" />
+                  <div key={i} className="h-[104px] animate-pulse rounded-xl border border-border bg-card" />
                 ))
               : contadores.map(({ id, icon: Icon, label, value, tone }) => (
                   <StatCard

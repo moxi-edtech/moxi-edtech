@@ -6,7 +6,7 @@ type Props = {
 };
 
 /**
- * O AppShell já fornece o fundo (bg-slate-50) e o padding da página (p-4 md:p-6).
+ * O AppShell já fornece o fundo (bg-background) e o padding da página (p-4 md:p-6).
  * Aqui define-se apenas a largura de leitura e o ritmo vertical.
  *
  * Os painéis operacionais deixaram de ser empilhados no fim da página: vivem no
