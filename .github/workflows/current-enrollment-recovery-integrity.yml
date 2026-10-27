@@ -1,0 +1,59 @@
+name: Current Enrollment, Class Correction and Receipt Recovery
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/api/secretaria/alunos/**/matricula-corrente/**"
+      - "apps/web/src/app/api/secretaria/recibos/consultar/**"
+      - "apps/web/src/components/aluno/CurrentYearEnrollmentPanel.tsx"
+      - "apps/web/src/components/aluno/RetificarMatriculaAction.tsx"
+      - "apps/web/src/components/aluno/AlunoPerfilPage.tsx"
+      - "apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx"
+      - "apps/web/src/components/secretaria/ModalPagamentoRapido.tsx"
+      - "apps/web/src/lib/financeiro/recover-receipt-after-payment.ts"
+      - "apps/web/tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts"
+      - ".github/workflows/current-enrollment-recovery-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Current-year confirmation and read-only receipt recovery
+        run: node --test --import tsx apps/web/tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts
+      - name: TypeScript
+        run: pnpm -C apps/web typecheck
+      - name: Targeted ESLint
+        run: |
+          pnpm -C apps/web exec eslint \
+            'src/app/api/secretaria/alunos/[id]/matricula-corrente/route.ts' \
+            src/app/api/secretaria/recibos/consultar/route.ts \
+            src/components/aluno/CurrentYearEnrollmentPanel.tsx \
+            src/components/aluno/RetificarMatriculaAction.tsx \
+            src/components/aluno/AlunoPerfilPage.tsx \
+            src/components/secretaria/command-center/CommandCenterStudentDossier.tsx \
+            src/components/secretaria/ModalPagamentoRapido.tsx \
+            src/lib/financeiro/recover-receipt-after-payment.ts \
+            tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts \
+            --max-warnings 10000
+      - name: No schema, AGT or fiscal activation
+        run: |
+          git diff --check
+          changed="$(git diff --name-only 'origin/${{ github.base_ref }}...HEAD')"
+          if printf '%s\n' "$changed" | grep -E '^(supabase/migrations/|apps/web/src/app/api/fiscal/|apps/web/src/lib/server/fiscal)' ; then
+            echo 'Fiscal or schema scope modified unexpectedly' >&2
+            exit 1
+          fi
