@@ -58,8 +58,6 @@ test("receipt lookup validates user, staff role, school, monthly and issued docu
   assert.match(route, /supabaseServerTyped/);
   assert.match(route, /auth\.getUser\(\)/);
   assert.match(route, /requireRoleInSchool/);
-  assert.match(route, /context\(studentId, parsed\.data\.escola_id\)/);
-  assert.match(route, /resolveEscolaIdForUser\(db, user\.id, requestedEscolaId\)/);
   assert.match(route, /resolveEscolaIdForUser/);
   assert.match(route, /\.eq\("escola_id", escolaId\)/);
   assert.match(route, /\.eq\("aluno_id", monthly\.aluno_id\)/);
@@ -85,6 +83,8 @@ test("rapid checkout reserves print tab before fetch and does not generate anoth
 
 test("current-year enrollment status uses active school year, not historical dossier selection", () => {
   const route = source("app/api/secretaria/alunos/[id]/matricula-corrente/route.ts");
+  assert.match(route, /context\(studentId, parsed\.data\.escola_id\)/);
+  assert.match(route, /resolveEscolaIdForUser\(db, user\.id, requestedEscolaId\)/);
   assert.match(route, /resolveAnoLetivoScope\(db, escolaId\)/);
   assert.match(route, /\.eq\("ano_letivo", activeYear\.ano\)/);
   assert.match(route, /current\.session_id !== activeYear\.id/);
