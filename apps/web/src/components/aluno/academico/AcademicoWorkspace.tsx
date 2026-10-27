@@ -60,10 +60,10 @@ export function AcademicoWorkspace() {
     <div className="mx-auto w-full min-w-0 max-w-4xl space-y-5 pb-8">
       <header className="space-y-1">
         <p className="text-xs font-semibold text-emerald-800">Portal do aluno</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Académico</h1>
-        <p className="text-sm leading-6 text-slate-600">Acompanha o teu percurso escolar e os serviços da secretaria.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Académico</h1>
+        <p className="text-sm leading-6 text-muted-foreground">Acompanha o teu percurso escolar e os serviços da secretaria.</p>
       </header>
-      <div role="tablist" aria-label="Área académica" className="flex min-w-0 gap-1 overflow-x-auto border-b border-slate-200" data-testid="academic-local-tabs">
+      <div role="tablist" aria-label="Área académica" className="flex min-w-0 gap-1 overflow-x-auto border-b border-border" data-testid="academic-local-tabs">
         {sections.map(({ id, title, icon: Icon }) => (
           <button
             key={id}
@@ -74,7 +74,7 @@ export function AcademicoWorkspace() {
             aria-selected={activeTab === id}
             onClick={() => navigateTab(id)}
             className={`inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 sm:gap-2 sm:px-4 sm:text-sm ${
-              activeTab === id ? "border-emerald-700 text-emerald-900" : "border-transparent text-slate-600 hover:text-slate-900"
+              activeTab === id ? "border-emerald-700 text-emerald-900" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
