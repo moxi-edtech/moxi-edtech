@@ -7,13 +7,14 @@ import TransferForm from "@/components/secretaria/TransferForm";
 
 type Session = { id: string; ano_letivo?: string | number | null; nome?: string | null; data_inicio?: string | null };
 
-export function RetificarMatriculaAction({ matriculaId, turmaId, anoLetivo, canRectifyClass, onChanged }: { matriculaId: string; turmaId: string; anoLetivo: number; canRectifyClass: boolean; onChanged?: () => void }) {
+export function RetificarMatriculaAction({ matriculaId, turmaId, anoLetivo, anoLetivoId, canRectifyClass, onChanged }: { matriculaId: string; turmaId: string; anoLetivo: number; anoLetivoId?: string | null; canRectifyClass: boolean; onChanged?: () => void }) {
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    if (!open) return;
+    // Reuse the already validated current-year ID. Only legacy callers need a lookup.
+    if (!open || anoLetivoId) return;
     let active = true;
     fetch("/api/secretaria/school-sessions")
       .then((response) => response.json())
@@ -24,7 +25,7 @@ export function RetificarMatriculaAction({ matriculaId, turmaId, anoLetivo, canR
       })
       .catch(() => { if (active) setSessionId(null); });
     return () => { active = false; };
-  }, [open, anoLetivo]);
+  }, [open, anoLetivo, anoLetivoId]);
 
   return (
     <>
@@ -38,7 +39,7 @@ export function RetificarMatriculaAction({ matriculaId, turmaId, anoLetivo, canR
               <h2 id="retificar-matricula-title" className="text-xl font-bold text-slate-900">Retificar matrícula</h2>
               <button type="button" aria-label="Fechar" onClick={() => setOpen(false)} className="rounded-lg p-2 hover:bg-slate-100"><X size={20} /></button>
             </div>
-            <TransferForm matriculaId={matriculaId} currentTurmaId={turmaId} anoLetivo={anoLetivo} anoLetivoId={sessionId} canRectifyClass={canRectifyClass} onSuccess={() => { setOpen(false); onChanged?.(); router.refresh(); }} />
+            <TransferForm matriculaId={matriculaId} currentTurmaId={turmaId} anoLetivo={anoLetivo} anoLetivoId={anoLetivoId ?? sessionId} canRectifyClass={canRectifyClass} onSuccess={() => { setOpen(false); onChanged?.(); router.refresh(); }} />
           </section>
         </div>
       )}
