@@ -59,7 +59,7 @@ export type CommercialProposal = ReturnType<typeof readProposalParams>;
 
 export function formatNumber(value: number): string {
   // Uniformizar a apresentação impressa angolana: 140.000 em vez de 140 000.
-  return value.toLocaleString("pt-PT").replace(/[\u00a0\u202f\s]/g, ".");
+  return new Intl.NumberFormat("en-US").format(value).replace(/,/g, ".");
 }
 
 export function formatKz(value: number | null): string {
