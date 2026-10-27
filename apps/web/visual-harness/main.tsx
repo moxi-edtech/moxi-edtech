@@ -20,10 +20,11 @@ import "./fixture.css";
 import "../src/app/globals.css";
 import "../src/app/theme-print.css";
 import {
-  DocumentosPendentes, DocumentosRejeitados, NotasPagas, ProfessorComTurmas, DashboardClean, DashboardPending, DashboardRejected, DashboardRematricula, DashboardOverdue, DashboardEmpty, DashboardApproved, GradePaid, GradeUnpaid, GradePending, GradeRejected, GradeEmpty, NoticeInformativo, NoticeAtencao, NoticeCritico, NoticeSucesso, NoticeRematricula, NoticeFinanceiro,
+  AcademicoAcessivel, DocumentosPendentes, DocumentosRejeitados, NotasPagas, ProfessorComTurmas, DashboardClean, DashboardPending, DashboardRejected, DashboardRematricula, DashboardOverdue, DashboardEmpty, DashboardApproved, GradePaid, GradeUnpaid, GradePending, GradeRejected, GradeEmpty, NoticeInformativo, NoticeAtencao, NoticeCritico, NoticeSucesso, NoticeRematricula, NoticeFinanceiro,
 } from "../src/components/aluno/PortalVisualFixtures.stories";
 
 const stories: Record<string, { render?: (...args: unknown[]) => React.ReactNode }> = {
+  "academic-tabs": AcademicoAcessivel,
   "documentos-pendentes": DocumentosPendentes,
   "documentos-rejeitados": DocumentosRejeitados,
   "notas-pagas": NotasPagas,
@@ -50,6 +51,7 @@ const stories: Record<string, { render?: (...args: unknown[]) => React.ReactNode
 const name = new URLSearchParams(window.location.search).get("story") || "documentos-pendentes";
 // Fixture identity and mode are set before React mounts. No global mutation during render.
 const fixtureModes: Record<string, NonNullable<Window["__klasseVisualFixture"]>> = {
+  "academic-tabs": "academic-tabs",
   "documentos-pendentes": "pending", "documentos-rejeitados": "rejected",
   "notas-pagas": "paid", "professor-com-turmas": "professor",
   "dashboard-clean": "dashboard-clean", "dashboard-pending": "dashboard-pending",

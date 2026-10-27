@@ -37,49 +37,51 @@ export function buildStudentAttention(s: DashboardSituation): Attention[] {
     ?? docs.find(d => d.status === "rejected");
   if (rejected) items.push({
     kind: "rejected", priority: 0, title: "Comprovativo não aceite",
-    description: rejected.reject_reason?.trim() || "A secretaria não aceitou o comprovativo. Consulta o pedido para saber o motivo.",
+    description: rejected.reject_reason?.trim() || "O comprovativo precisa de ser corrigido.",
     action: "Reenviar no mesmo pedido", href: docsHref,
   });
   const payment = s.rematricula?.rematricula?.paymentIntent;
   if (payment?.status === "failed") items.push({
     kind: "rejected", priority: 0, title: "Comprovativo da rematrícula rejeitado",
-    description: payment.rejection_reason?.trim() || "A secretaria não aceitou o comprovativo da rematrícula.",
+    description: payment.rejection_reason?.trim() || "Corrige o comprovativo para continuar.",
     action: "Corrigir a rematrícula", href: "/aluno/academico",
   });
   if (s.rematricula?.eligible && !s.rematricula.alreadyDone) {
     if (payment?.status === "pending" && payment.has_evidence) items.push({
-      kind: "pending", priority: 2, title: "Rematrícula em verificação",
-      description: "Recebemos o comprovativo da rematrícula. Aguarda a confirmação da secretaria.",
+      kind: "pending", priority: 2, title: "Rematrícula em análise",
+      description: "A secretaria está a verificar o pagamento.",
       action: "Acompanhar rematrícula", href: "/aluno/academico",
     });
     else if (payment?.status !== "settled" && payment?.status !== "failed") items.push({
       kind: "rematricula", priority: 1, title: "A tua rematrícula está disponível",
-      description: s.rematricula.nextAno ? `Podes tratar da rematrícula para ${s.rematricula.nextAno}.` : "Podes tratar da tua rematrícula.",
+      description: s.rematricula.nextAno ? `Disponível para ${s.rematricula.nextAno}.` : "Já podes iniciar a rematrícula.",
       action: "Ver rematrícula", href: "/aluno/academico",
     });
   }
   const pending = docs.find(d => d.status === "pending" && d.codigo === "DOC_BOLETIM_TRIMESTRAL")
     ?? docs.find(d => d.status === "pending");
   if (pending) items.push({
-    kind: "pending", priority: 2, title: "Comprovativo recebido",
-    description: "O pedido aguarda a confirmação da secretaria. Ainda não é um pagamento liquidado.",
+    kind: "pending", priority: 2, title: "Documento em análise",
+    description: "A secretaria está a verificar o teu pedido.",
     action: "Acompanhar pedido", href: docsHref,
   });
   if (s.pendentes > 0 && !s.financialError) items.push({
-    kind: "mensalidade", priority: 3, title: s.pendentes === 1 ? "Tens uma mensalidade por regularizar" : "Tens mensalidades por regularizar",
-    description: "Consulta os valores em aberto e o estado dos pagamentos na área financeira.",
+    kind: "mensalidade", priority: 3, title: s.pendentes === 1 ? "1 mensalidade vencida" : `${s.pendentes} mensalidades vencidas`,
+    description: "Consulta o saldo e os pagamentos.",
     action: "Ver pagamentos", href: "/aluno/financeiro",
   });
   const blockedDoc = docs.find(d => d.status === "blocked");
   if (blockedDoc) items.push({
-    kind: "documento", priority: 4, title: "Documento a aguardar aprovação",
-    description: "A secretaria precisa de concluir o pedido.",
+    kind: "documento", priority: 4, title: "Documento em análise",
+    description: "A secretaria está a tratar do teu pedido.",
     action: "Acompanhar documento", href: docsHref,
   });
-  if (s.academic && ["retido","reprovado","pendente"].includes(s.academic.status)) items.push({
-    kind: "academico", priority: 5, title: "Situação académica em acompanhamento",
+  // Um resultado ainda incompleto durante o ano não é uma pendência do aluno.
+  // Estados académicos graves continuam acessíveis com uma ação de consulta.
+  if (s.academic && ["retido", "reprovado"].includes(s.academic.status)) items.push({
+    kind: "academico", priority: 5, title: "Consulta a tua situação escolar",
     description: s.academic.mensagem,
-    action: "Consultar a área académica", href: "/aluno/academico",
+    action: "Ver situação académica", href: "/aluno/academico",
   });
   // Um único assunto por origem: a rejeição prevalece sobre o estado pendente da mesma solicitação.
   return items.filter(item => !(item.kind === "pending" && item.href === docsHref && rejected))

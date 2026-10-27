@@ -1,46 +1,91 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabaseClient";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { BookOpen, RefreshCw } from "lucide-react";
 
 type Disciplina = { id: string; nome: string };
 
 export function DisciplinasList() {
+  const searchParams = useSearchParams();
+  const studentId = searchParams?.get("aluno") ?? null;
+  const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (studentId) params.set("studentId", studentId);
+    if (academicYearId) params.set("ano_letivo_id", academicYearId);
+    return params.toString();
+  }, [studentId, academicYearId]);
+  const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [scope, setScope] = useState<string | null>(null);
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
+  const [yearLabel, setYearLabel] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const reload = useCallback(() => setRetry((value) => value + 1), []);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
+    const controller = new AbortController();
+    let active = true;
+    setLoading(true);
+    setScope(null);
+    setDisciplinas([]);
+    setError(null);
+
+    void (async () => {
       try {
-        setLoading(true);
-        const res = await fetch('/api/aluno/disciplinas', { cache: 'no-store' });
-        const json = await res.json();
-        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar disciplinas');
-        if (mounted) setDisciplinas(json.disciplinas || []);
-      } catch (e) {
-        if (mounted) setDisciplinas([]);
+        const url = query ? `/api/aluno/disciplinas?${query}` : "/api/aluno/disciplinas";
+        const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok || !data?.ok) throw new Error(data?.error || "Não foi possível carregar disciplinas.");
+        if (!active) return;
+        setDisciplinas(Array.isArray(data.disciplinas) ? data.disciplinas : []);
+        setYearLabel(data.context?.anoLetivoLabel ?? null);
+        setScope(query);
+      } catch (caught) {
+        if (active && !controller.signal.aborted) {
+          setError(caught instanceof Error ? caught.message : "Não foi possível consultar as disciplinas.");
+        }
       } finally {
-        if (mounted) setLoading(false);
+        if (active) setLoading(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
-  if (loading) return <div className="h-20 sm:h-24 animate-pulse rounded-2xl bg-slate-100" />;
+    return () => { active = false; controller.abort(); };
+  }, [query, retry]);
 
-  if (!disciplinas.length) return <div className="text-sm text-slate-500">Nenhuma disciplina encontrada.</div>;
-
+  const isCurrent = !loading && scope === query && !error;
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {disciplinas.map((d) => (
-        <div key={d.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-semibold text-slate-900">{d.nome}</p>
-          <p className="text-xs text-slate-400">Disciplina ativa</p>
+    <div className="min-w-0 space-y-4" data-testid="aluno-disciplinas">
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold text-foreground">As tuas disciplinas</h2>
+        {isCurrent && <p className="text-sm text-muted-foreground">{yearLabel ? `Ano letivo ${yearLabel} · ` : ""}${disciplinas.length} disciplinas da tua turma</p>}
+      </div>
+      {loading || (scope !== query && !error) ? (
+        <div role="status" aria-live="polite" className="grid gap-3 sm:grid-cols-2"><span className="sr-only">A carregar disciplinas</span>
+          {[1,2,3].map((key) => <div key={key} aria-hidden="true" className="h-20 animate-pulse rounded-xl bg-muted" />)}
         </div>
-      ))}
+      ) : error ? (
+        <div role="alert" className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <p className="text-sm text-rose-900">{error}</p>
+          <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-card px-4 text-sm font-semibold text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <RefreshCw className="h-4 w-4" /> Tentar novamente
+          </button>
+        </div>
+      ) : disciplinas.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+          Ainda não existem disciplinas associadas à matrícula selecionada. Contacta a secretaria.
+        </div>
+      ) : (
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          {disciplinas.map((disciplina) => (
+            <article key={disciplina.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4">
+              <BookOpen aria-hidden className="h-5 w-5 shrink-0 text-primary" />
+              <h3 className="min-w-0 break-words text-sm font-medium leading-6 text-foreground">{disciplina.nome}</h3>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

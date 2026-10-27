@@ -34,7 +34,7 @@ test('um único serviço inicia novos pedidos de boletim, preservando pagamentos
   const docs = read('components/aluno/tabs/TabDocumentos.tsx');
   const notas = read('components/aluno/tabs/TabNotas.tsx');
   const access = read('lib/aluno/boletimAccess.ts');
-  assert.match(docs, /rawServiceCode === BOLETIM_LEGACY_SERVICE_CODE \? BOLETIM_SERVICE_CODE/);
+  assert.match(docs, /requestedService === BOLETIM_LEGACY_SERVICE_CODE \? BOLETIM_SERVICE_CODE/);
   assert.match(docs, /doc.codigo !== BOLETIM_LEGACY_SERVICE_CODE/);
   assert.doesNotMatch(notas, /servicos.find\(\(item\) => item.codigo === "DOC_DECLARACAO_NOTAS"/);
   assert.match(notas, /item.codigo === BOLETIM_SERVICE_CODE/);

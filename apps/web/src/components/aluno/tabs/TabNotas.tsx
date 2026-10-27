@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { Lock as LockIcon, FileText, ChevronDown, Loader2, Download, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 import { accessPresentation, availablePeriods, chooseInitialPeriod, formatPublishedGrade, periodAssessments } from "@/lib/aluno/gradesPresentation";
 
@@ -25,12 +26,12 @@ type BoletimResponse = {
   context?: { anoLetivoLabel?: string | null; mode?: "CURRENT" | "HISTORICAL_READ" } | null;
 };
 
-type BoletimServico = { codigo: string; valor: number; status: string; reject_reason?: string | null; pedido_id?: string | null };
+type BoletimServico = { codigo: string; valor: number; status: string; pagamento_configurado?: boolean; reject_reason?: string | null; pedido_id?: string | null };
 
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
 
-export function TabNotas() {
+export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boolean; onOpenDocuments?: (serviceCode?: string | null) => void } = {}) {
   const searchParams = useSearchParams();
   const escolaSlug = getEscolaParamFromPath(usePathname());
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
@@ -53,6 +54,8 @@ export function TabNotas() {
   const [academicYear, setAcademicYear] = useState<string | null>(null);
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [historicalRead, setHistoricalRead] = useState(false);
+  const dialogOpener = useRef<HTMLElement | null>(null);
+  const restoreDialogFocus = (event: Event) => { event.preventDefault(); dialogOpener.current?.focus(); };
   const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("");
   const [reapreciacaoSaving, setReapreciacaoSaving] = useState(false);
@@ -256,17 +259,31 @@ export function TabNotas() {
   const visibleLoading = loading || (loadedScope !== bulletinQuery && !accessError);
   const periods = availablePeriods(safeDisciplinas);
   const period = selectedPeriod !== null && periods.includes(selectedPeriod) ? selectedPeriod : chooseInitialPeriod(safeDisciplinas);
-  const moneyStatus = boletimServico?.status === "pending_payment" ? "available" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
-  const access = accessPresentation(moneyStatus, boletimServico?.reject_reason);
-  const docsUrl = buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`);
+  const moneyStatus = boletimServico?.status === "pending_payment" ? "pending_payment" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
+  // Não anunciar um pagamento impossível: a escola pode ter o serviço ativo,
+  // mas ainda sem uma taxa positiva configurada para boletins.
+  const paymentConfigured = boletimServico?.pagamento_configurado !== false && Number(boletimServico?.valor) > 0;
+  const serviceUnconfigured = (moneyStatus === "available" || moneyStatus === "pending_payment") && !paymentConfigured;
+  const access = serviceUnconfigured
+    ? {
+        title: "Boletim ainda indisponível",
+        message: "A escola ainda não definiu a taxa deste serviço.",
+        action: "Ver documentos",
+      }
+    : accessPresentation(moneyStatus, boletimServico?.reject_reason);
+  const docsParams = new URLSearchParams();
+  if (!serviceUnconfigured) docsParams.set("servico", BOLETIM_SERVICE_CODE);
+  if (studentId) docsParams.set("aluno", studentId);
+  if (academicYearId) docsParams.set("ano_letivo_id", academicYearId);
+  const docsUrl = buildPortalHref(escolaSlug, `/aluno/documentos${docsParams.size ? `?${docsParams.toString()}` : ""}`);
   const navParams = new URLSearchParams();
   if (studentId) navParams.set("aluno", studentId);
   if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
   const navQuery = navParams.size ? `?${navParams.toString()}` : "";
-  const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
+  const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-12 text-slate-800" data-testid="aluno-pauta-editorial">
-      <header className="space-y-3">
+    <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-3 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
+      {!embedded && <header className="space-y-3">
         <p className="text-sm font-medium text-[#2B6044]">KLASSE / Portal do aluno</p>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">As tuas notas</h1>
         <p className="text-base leading-7 text-slate-600">Acompanha as avaliações que já foram lançadas.</p>
@@ -276,25 +293,41 @@ export function TabNotas() {
           <Link href={buildPortalHref(escolaSlug, `/aluno/disciplinas${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Disciplinas</Link>
           <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Documentos</Link>
         </nav>
-      </header>
-      {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-5 motion-safe:animate-pulse">
-        <div className="h-12 max-w-sm rounded-xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/><div className="h-28 rounded-2xl bg-slate-100"/>
-      </section> : accessError ? <section role="alert" className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
+      </header>}
+      {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
+      {visibleLoading ? <section aria-label="A carregar as tuas notas" role="status" aria-live="polite" className="space-y-2 motion-safe:animate-pulse">
+        <span className="sr-only">A carregar as tuas notas</span><div aria-hidden="true" className="h-5 w-36 rounded-lg bg-muted"/><div aria-hidden="true" className="h-24 rounded-xl bg-muted"/>
+      </section> : accessError ? <section role="alert" className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4">
         <h2 className="text-lg font-semibold">Não foi possível consultar as tuas notas</h2>
-        <p className="text-sm leading-6 text-slate-700">{accessError} Não precisas de fazer outro pagamento.</p>
+        <p className="text-sm leading-6 text-muted-foreground">{accessError}</p>
         <button type="button" onClick={() => setRefreshVersion(v => v+1)} className={`min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-[#2B6044] ${focus}`}>Tentar novamente</button>
-      </section> : !matriculaEncontrada ? <section className="rounded-2xl bg-slate-50 p-5">
-        <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-2 text-sm leading-6 text-slate-600">Contacta a secretaria para confirmar a tua matrícula antes de solicitar o boletim.</p>
-      </section> : !safeIsLiberado ? <section aria-labelledby="boletim-locked" className="space-y-4 rounded-2xl border border-[#C8902A]/30 bg-white p-5 sm:p-6">
-        <LockIcon aria-hidden className="h-6 w-6 text-[#A06D17]"/>
-        <h2 id="boletim-locked" className="text-xl font-semibold text-slate-900">{access.title}</h2>
-        <p className="text-sm leading-6 text-slate-600">{access.message}</p>
-        {boletimServico?.valor && boletimServico.valor > 0 && moneyStatus === "available" && <p className="text-sm font-medium">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(boletimServico.valor)}</p>}
-        {moneyStatus === "available" && !boletimServico?.valor && <p className="text-sm text-slate-600">A taxa do boletim ainda não está configurada. Contacta a secretaria.</p>}
-        {(boletimServico?.valor || moneyStatus !== "available") && <Link href={docsUrl} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#2B6044] px-5 text-sm font-semibold text-white hover:bg-[#214d36] ${focus}`}>{access.action}<ArrowRight className="h-4 w-4"/></Link>}
-        <p className="text-xs leading-5 text-slate-500">A aprovação do pedido, por si só, não libera as avaliações. É preciso confirmar a liquidação.</p>
-      </section> : <section aria-labelledby="pauta-title" className="space-y-6">
-        <div className="space-y-4">
+      </section> : !matriculaEncontrada ? <section className="rounded-xl bg-muted p-4">
+        <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">Contacta a secretaria para confirmar a tua matrícula.</p>
+      </section> : !safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <LockIcon className="h-4.5 w-4.5"/>
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <h2 id="boletim-locked" className="text-base font-semibold leading-6 text-foreground">{access.title}</h2>
+            <p className="text-sm leading-5 text-muted-foreground">{access.message}</p>
+            {paymentConfigured && moneyStatus === "available" && (
+              <p className="text-sm font-semibold text-foreground">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(Number(boletimServico?.valor))}</p>
+            )}
+            {onOpenDocuments ? (
+              <button type="button" onClick={() => onOpenDocuments(serviceUnconfigured ? null : BOLETIM_SERVICE_CODE)}
+                className={focus + " inline-flex min-h-11 items-center gap-1.5 px-1 text-sm font-semibold text-primary hover:underline"}>
+                {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
+              </button>
+            ) : (
+              <Link href={docsUrl} className={focus + " inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-primary hover:underline"}>
+                {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
+              </Link>
+            )}
+          </div>
+        </div>
+      </section> : <section aria-labelledby="pauta-title" className="space-y-4">
+        <div className="space-y-3">
           <h2 id="pauta-title" className="text-xl font-semibold tracking-tight text-slate-900">Avaliações por período</h2>
           {periods.length>0 ? <div role="group" aria-label="Selecionar período das avaliações" className="flex flex-wrap gap-2">
             {periods.map(p => <button type="button" key={p} onClick={() => setSelectedPeriod(p)}
@@ -314,8 +347,8 @@ export function TabNotas() {
                     Opções <ChevronDown aria-hidden className="h-4 w-4"/>
                   </summary>
                   <div className="absolute right-0 z-20 mt-1 w-52 max-w-[80vw] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                    <button type="button" onClick={() => { setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Pedir reapreciação</button>
-                    <button type="button" onClick={() => void abrirMelhoria(disc)} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Solicitar melhoria</button>
+                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted ${focus}`}>Pedir reapreciação</button>
+                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; void abrirMelhoria(disc); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted ${focus}`}>Solicitar melhoria</button>
                   </div>
                 </details>}
               </div>
@@ -338,27 +371,55 @@ export function TabNotas() {
       {safeIsLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
       {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-raa-title">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-            <h2 id="aluno-raa-title" className="font-semibold text-slate-900">Solicitar reapreciação — {reapreciacaoDisc.nome}</h2>
-            <p className="mt-1 text-xs text-slate-500">O pedido será vinculado ao seu ano letivo, turma e disciplina. O prazo de resposta é contado a partir do registo.</p>
-            {reapreciacaoMessage && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{reapreciacaoMessage}</p>}
-            <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={5} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Explique o motivo do pedido." />
-            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setReapreciacaoDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()} className="rounded-lg bg-emerald px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button></div>
-          </div>
-        </div>
+        <Dialog open onOpenChange={(open) => { if (!open) setReapreciacaoDisc(null); }}>
+          <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
+            className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
+            <DialogTitle>Solicitar reapreciação — {reapreciacaoDisc.nome}</DialogTitle>
+            <DialogDescription>Explica por que pretendes rever esta avaliação.</DialogDescription>
+            {reapreciacaoMessage && <p role="status" aria-live="polite" className="rounded-lg bg-muted p-3 text-sm text-foreground">{reapreciacaoMessage}</p>}
+            <label htmlFor="aluno-raa-motivo" className="text-sm font-medium">Motivo da reapreciação</label>
+            <textarea id="aluno-raa-motivo" required minLength={10} value={reapreciacaoMotivo}
+              onChange={(event) => setReapreciacaoMotivo(event.target.value)}
+              rows={4} className="w-full rounded-lg border border-input bg-background px-3 py-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder="Descreve o motivo (mínimo de 10 caracteres)" />
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => setReapreciacaoDisc(null)} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring">Cancelar</button>
+              <button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()}
+                className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
-
       {safeIsLiberado && !historicalRead && melhoriaDisc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-melhoria-title">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-            <h2 id="aluno-melhoria-title" className="font-semibold text-slate-900">Solicitar melhoria — {melhoriaDisc.nome}</h2>
-            <p className="mt-1 text-xs text-slate-500">A melhoria usa uma sessão oficial de recurso e preserva a maior nota entre a anterior e a obtida.</p>
-            {melhoriaMessage && <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{melhoriaMessage}</p>}
-            {melhoriaLoading ? <p className="mt-4 text-sm text-slate-500">A carregar sessões...</p> : melhoriaSessoes.length > 0 && <><label className="mt-4 block text-sm font-medium text-slate-700">Sessão de recurso</label><select value={melhoriaSessaoId} onChange={(event) => setMelhoriaSessaoId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">{melhoriaSessoes.map((sessao) => <option key={sessao.id} value={sessao.id}>{new Date(sessao.data_inicio).toLocaleDateString("pt-PT")} — {new Date(sessao.data_fim).toLocaleDateString("pt-PT")} ({sessao.estado})</option>)}</select><textarea value={melhoriaMotivo} onChange={(event) => setMelhoriaMotivo(event.target.value)} rows={4} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Explique o motivo do pedido." /></>}
-            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setMelhoriaDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={melhoriaSaving || melhoriaLoading || melhoriaSessoes.length === 0} onClick={() => void solicitarMelhoria()} className="rounded-lg bg-emerald px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{melhoriaSaving ? "A enviar..." : "Enviar pedido"}</button></div>
-          </div>
-        </div>
+        <Dialog open onOpenChange={(open) => { if (!open) setMelhoriaDisc(null); }}>
+          <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
+            className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
+            <DialogTitle>Solicitar melhoria — {melhoriaDisc.nome}</DialogTitle>
+            <DialogDescription>Seleciona uma sessão de recurso e explica o pedido.</DialogDescription>
+            {melhoriaMessage && <p role="status" aria-live="polite" className="rounded-lg bg-muted p-3 text-sm text-foreground">{melhoriaMessage}</p>}
+            {melhoriaLoading ? <p role="status" className="text-sm text-muted-foreground">A carregar sessões...</p> : melhoriaSessoes.length > 0 && <>
+              <label htmlFor="aluno-melhoria-sessao" className="text-sm font-medium">Sessão de recurso</label>
+              <select id="aluno-melhoria-sessao" value={melhoriaSessaoId} onChange={(event) => setMelhoriaSessaoId(event.target.value)}
+                className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                {melhoriaSessoes.map((sessao) => <option key={sessao.id} value={sessao.id}>
+                  {new Date(sessao.data_inicio).toLocaleDateString("pt-PT")} — {new Date(sessao.data_fim).toLocaleDateString("pt-PT")} ({sessao.estado})
+                </option>)}
+              </select>
+              <label htmlFor="aluno-melhoria-motivo" className="text-sm font-medium">Motivo da melhoria</label>
+              <textarea id="aluno-melhoria-motivo" required minLength={10} value={melhoriaMotivo}
+                onChange={(event) => setMelhoriaMotivo(event.target.value)} rows={4}
+                className="w-full rounded-lg border border-input bg-background px-3 py-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Descreve o motivo (mínimo de 10 caracteres)" />
+            </>}
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => setMelhoriaDisc(null)} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring">Cancelar</button>
+              <button type="button" disabled={melhoriaSaving || melhoriaLoading || melhoriaSessoes.length === 0}
+                onClick={() => void solicitarMelhoria()} className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+                {melhoriaSaving ? "A enviar..." : "Enviar pedido"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

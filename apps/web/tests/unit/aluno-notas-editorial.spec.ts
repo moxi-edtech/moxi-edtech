@@ -17,12 +17,13 @@ test("formatação pt-AO respeita dados sem escala ou arredondamento arbitrário
  assert.equal(formatPublishedGrade(0),new Intl.NumberFormat("pt-AO",{maximumFractionDigits:12,useGrouping:false}).format(0));
 });
 test("quatro estados e ação única de pagamento",()=>{
- assert.equal(accessPresentation("available").action,"Pagar boletim");
- assert.equal(accessPresentation("pending").action,"Acompanhar pagamento");
- assert.match(accessPresentation("pending").message,/não precisas de pagar outra vez/);
- assert.equal(accessPresentation("rejected","Ficheiro ilegível").action,"Reenviar no mesmo pedido");
+ assert.equal(accessPresentation("available").action,"Solicitar boletim");
+ assert.equal(accessPresentation("pending_payment").action,"Continuar pagamento");
+ assert.equal(accessPresentation("pending").action,"Acompanhar pedido");
+ assert.match(accessPresentation("pending").message,/secretaria está a verificar/);
+ assert.equal(accessPresentation("rejected","Ficheiro ilegível").action,"Corrigir comprovativo");
  assert.match(accessPresentation("rejected","Ficheiro ilegível").message,/Ficheiro ilegível/);
- assert.equal(accessPresentation("granted").action,"Acompanhar pagamento");
+ assert.equal(accessPresentation("granted").action,"Ver pedido");
 });
 test("notas protegidas nunca aparecem quando API nega is_liberado; modal preserva contratos",async()=>{
  const fs=await import("node:fs/promises");
@@ -104,4 +105,14 @@ test("histórico só permite leitura, sem enviar reapreciação ou melhoria da m
  assert.match(ui,/!historicalRead && disc\.avaliacoes\.length/);
  assert.match(ui,/safeIsLiberado && !historicalRead && reapreciacaoDisc/);
  assert.match(ui,/safeIsLiberado && !historicalRead && melhoriaDisc/);
+});
+
+test("cartão das notas bloqueadas é conciso e não repete explicações de pagamento", async () => {
+ const fs=await import("node:fs/promises");
+ const ui=await fs.readFile(new URL("../../src/components/aluno/tabs/TabNotas.tsx",import.meta.url),"utf8");
+ assert.match(ui,/serviceUnconfigured/);
+ assert.match(ui,/Boletim ainda indisponível/);
+ assert.match(ui,/onOpenDocuments\(serviceUnconfigured \? null : BOLETIM_SERVICE_CODE\)/);
+ assert.match(ui,/rounded-xl border border-border bg-card p-4/);
+ assert.doesNotMatch(ui,/A aprovação do pedido, por si só, não libera as avaliações/);
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from "react";
-import { FileText, Download, Loader2, CheckCircle2, Wallet, Clock, AlertCircle, Upload, XCircle, ChevronRight, ShieldCheck } from "lucide-react";
+import { FileText, Download, Loader2, CheckCircle2, Wallet, Clock, AlertCircle, Upload, XCircle, ChevronRight, } from "lucide-react";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -37,7 +37,7 @@ const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_CERTIFICADO_HABILITACOES',
 ]);
 
-export function TabDocumentos() {
+export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpenNotas }: { embedded?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const escolaSlug = getEscolaParamFromPath(pathname);
@@ -45,7 +45,8 @@ export function TabDocumentos() {
   const studentId = searchParams?.get("aluno") ?? null;
   const rawServiceCode = searchParams?.get("servico") ?? null;
   // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
-  const serviceCode = rawServiceCode === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : rawServiceCode;
+  const requestedService = focusServiceCode ?? rawServiceCode;
+  const serviceCode = requestedService === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : requestedService;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
   const queryParams = new URLSearchParams();
   if (studentId) queryParams.set("studentId", studentId);
@@ -240,20 +241,21 @@ export function TabDocumentos() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="min-w-0 space-y-4 pb-8">
       {/* Cabeçalho */}
-      <header className="px-1 space-y-1">
+      {!embedded && <header className="px-1 space-y-1">
         <h2 className="text-xl font-black text-slate-900 tracking-tight">Secretaria Digital</h2>
         <p className="text-xs font-medium text-slate-500 leading-relaxed">
           Escolha o documento, envie o comprovativo de pagamento e acompanhe a validação da secretaria.
         </p>
-      </header>
+      </header>}
+      {embedded && <p className="text-sm leading-6 text-muted-foreground">Solicita documentos e acompanha o estado dos teus pedidos.</p>}
 
       {catalogError ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900" role="alert">
           <p className="font-black">Não foi possível carregar os serviços.</p>
           <p className="mt-1 text-xs">{catalogError} Os seus pedidos anteriores não foram alterados.</p>
-          <button type="button" onClick={() => void fetchCatalogo()} className="mt-3 rounded-xl bg-rose-700 px-4 py-2 text-xs font-black text-white">Tentar novamente</button>
+          <button type="button" onClick={() => void fetchCatalogo()} className="mt-3 min-h-11 rounded-xl bg-rose-700 px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-ring">Tentar novamente</button>
         </div>
       ) : null}
 
@@ -265,108 +267,79 @@ export function TabDocumentos() {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {visibleDocs.map((doc) => (
-            <AlunoCard 
-              key={doc.id}
-              className="group relative transition-all duration-300 hover:shadow-md active:scale-[0.99] border border-slate-100/80 bg-white p-5 sm:p-6 rounded-3xl space-y-4"
-            >
-              <div className="flex items-start justify-between gap-4 sm:gap-6">
-                
-                {/* Lado Esquerdo: Ícone + Conteúdo */}
-                <div className="flex items-start gap-4 min-w-0 flex-1">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors shadow-sm ${
-                    doc.status === 'granted' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                    doc.status === 'pending_payment' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                    doc.status === 'pending' || doc.status === 'blocked' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-                    doc.status === 'rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
-                    'bg-slate-50 text-slate-500 border border-slate-100'
-                  }`}>
-                    <FileText className="h-6 w-6" />
-                  </div>
-
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-bold text-slate-900 leading-snug">{doc.nome}</h3>
-                      <span className="text-[11px] font-black text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-0.5 rounded-full shrink-0">
-                        {doc.pagamento_configurado === false ? "Taxa não definida" : doc.valor > 0 ? formatKwanza(doc.valor) : 'Gratuito'}
-                      </span>
-                    </div>
-
-                    {doc.descricao && (
-                      <p className="text-xs text-slate-500 leading-relaxed font-normal">
-                        {doc.descricao}
-                      </p>
-                    )}
-
-                    <div className="pt-1">
-                      {doc.pagamento_configurado === false ? <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold text-amber-900">Contactar secretaria</span> : <StatusBadge status={doc.status} />}
-                      {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" ? (
-                        <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="ml-3 text-xs font-bold text-emerald-700 underline">Ver notas</Link>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lado Direito: Botão de Ação */}
-                <div className="shrink-0 pt-0.5">
-                  {loading === doc.codigo ? (
-                    <div className="flex h-10 w-10 items-center justify-center">
-                      <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                    </div>
-                  ) : (
-                    doc.pagamento_configurado === false ? <span className="text-xs font-semibold text-amber-800">Taxa pendente</span> : (
-                      <button type="button" onClick={() => void handleAction(doc)} className="rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" aria-label={`${doc.status === 'granted' ? 'Descarregar' : doc.status === 'pending' ? 'Acompanhar' : 'Solicitar'}: ${doc.nome}`}>
-                        <ActionButton status={doc.status} codigo={doc.codigo} gratuito={doc.valor <= 0} />
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Minimal Track & Trace Stepper (se o documento estiver em andamento) */}
-              {doc.status !== 'available' && (
-                <div className="pt-3 border-t border-slate-100">
-                  <TrackAndTraceStepper status={doc.status} />
-                </div>
-              )}
+             <AlunoCard
+               key={doc.id}
+               className="min-w-0 space-y-2 rounded-xl border-border bg-card p-3.5 shadow-none sm:p-4"
+             >
+               <div className="flex min-w-0 items-start gap-3">
+                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                   doc.status === "granted" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
+                   doc.status === "pending_payment" ? "border-amber-100 bg-amber-50 text-amber-700" :
+                   doc.status === "pending" || doc.status === "blocked" ? "border-blue-100 bg-blue-50 text-blue-700" :
+                   doc.status === "rejected" ? "border-rose-100 bg-rose-50 text-rose-700" :
+                   "border-border bg-muted text-muted-foreground"
+                 }`}>
+                   <FileText aria-hidden="true" className="h-5 w-5" />
+                 </div>
+                 <div className="min-w-0 flex-1 space-y-1.5">
+                   <div className="flex flex-wrap items-start gap-2">
+                     <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-foreground sm:text-base">{doc.nome}</h3>
+                     <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                       {doc.pagamento_configurado === false ? "Taxa por definir" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
+                     </span>
+                   </div>
+                   {doc.descricao && (
+                     <p className="line-clamp-2 break-words text-sm leading-5 text-muted-foreground">{doc.descricao}</p>
+                   )}
+                   <div className="flex flex-wrap items-center gap-2">
+                     {doc.pagamento_configurado !== false && <StatusBadge status={doc.status} />}
+                     {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" && (
+                       onOpenNotas ? (
+                         <button type="button" onClick={onOpenNotas} className="inline-flex min-h-11 items-center rounded-md px-1 text-sm font-semibold text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Ver notas</button>
+                       ) : (
+                         <Link href={buildPortalHref(escolaSlug, `/aluno/academico${studentId || academicYearId ? `?${new URLSearchParams({ ...(studentId ? { aluno: studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) })}` : ""}`)} className="text-xs font-semibold text-primary underline">
+                           Ver notas
+                         </Link>
+                       )
+                     )}
+                   </div>
+                 </div>
+               </div>
+               <div className="flex min-w-0 items-center justify-start border-t border-border pt-2 sm:justify-end">
+                 {loading === doc.codigo ? (
+                   <span role="status" className="inline-flex h-11 items-center gap-2 text-sm text-muted-foreground">
+                     <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar
+                   </span>
+                 ) : doc.pagamento_configurado === false ? (
+                   <p className="text-xs font-medium leading-5 text-amber-800">A escola precisa definir a taxa.</p>
+                 ) : (
+                   <button type="button" onClick={() => void handleAction(doc)}
+                     className="inline-flex min-h-11 w-full items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-auto"
+                     aria-label={`${doc.status === "granted" ? "Descarregar" : doc.status === "pending" ? "Acompanhar" : "Solicitar"}: ${doc.nome}`}>
+                     <ActionButton status={doc.status} codigo={doc.codigo} gratuito={doc.valor <= 0} />
+                   </button>
+                 )}
+               </div>
 
               {/* Motivo de Rejeição (se houver) */}
               {doc.status === 'rejected' && doc.reject_reason && (
-                <div className="mt-2 rounded-2xl bg-rose-50/70 p-3.5 text-xs font-medium text-rose-700 border border-rose-100/80 flex items-start gap-2.5">
+                <div className="mt-1 flex items-start gap-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">
                   <AlertCircle size={15} className="shrink-0 mt-0.5" />
-                  <span className="leading-relaxed"><b>Motivo da Secretaria:</b> {doc.reject_reason}</span>
+                  <span className="leading-relaxed"><b>Motivo:</b> {doc.reject_reason}</span>
                 </div>
-              )}
-              {doc.status !== 'available' && doc.status !== 'granted' && (
-                <p className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
-                  <strong className="text-slate-800">Próximo passo: </strong>
-                  {doc.pagamento_configurado === false ? 'contacte a secretaria para definir o valor do boletim.' : doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria. Não pague novamente.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' && isBoletimServiceCode(doc.codigo) ? 'corrija o comprovativo e reenvie-o no mesmo pedido. Não pague novamente.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
-                </p>
               )}
             </AlunoCard>
           ))}
         </div>
       )}
 
-      {/* Card Informativo Espaçoso */}
-      <div className="rounded-3xl bg-slate-50/80 border border-slate-100 p-5 flex items-start gap-3.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200/60 text-slate-500 shadow-sm">
-          <ShieldCheck size={18} />
-        </div>
-        <div className="space-y-1">
-          <p className="text-xs font-black uppercase tracking-wider text-slate-700">Autenticidade & Segurança</p>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Consulte sempre o documento emitido e os seus dados. Os documentos que possuem código de verificação incluem instruções para confirmar a autenticidade; o boletim de notas apresenta as avaliações lançadas até à emissão.
-          </p>
-        </div>
-      </div>
-
       <ServicePaymentDrawer 
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
         onSuccess={() => {
-          success("Comprovativo recebido", "A secretaria irá validar o pagamento. Não precisa pagar novamente.");
+          success("Comprovativo enviado", "A secretaria vai verificar o teu comprovativo.");
           void fetchCatalogo(true);
         }}
         studentId={studentId}
@@ -383,67 +356,18 @@ export function TabDocumentos() {
   );
 }
 
-// Track & Trace Sobrio e Minimalista
-function TrackAndTraceStepper({ status }: { status: DocumentoStatus }) {
-  const steps = [
-    { label: "Solicitado", key: "requested" },
-    { label: "Análise", key: "review" },
-    { label: "Assinatura", key: "signing" },
-    { label: "Pronto", key: "ready" },
-  ];
-
-  let currentStepIndex = 0;
-  if (status === 'pending_payment') currentStepIndex = 1;
-  else if (status === 'pending' || status === 'blocked') currentStepIndex = 2;
-  else if (status === 'granted') currentStepIndex = 3;
-  else if (status === 'rejected') currentStepIndex = 1;
-
-  return (
-    <div className="space-y-1.5 pt-1">
-      <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400">
-        <span>Rastreamento do Pedido</span>
-        <span className="text-slate-700 font-bold">Passo {currentStepIndex + 1} de {steps.length}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        {steps.map((step, idx) => {
-          const isPassed = idx <= currentStepIndex;
-          const isCurrent = idx === currentStepIndex;
-          return (
-            <div key={step.key} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className={`h-1.5 w-full rounded-full transition-all ${
-                  isPassed
-                    ? status === 'rejected' && isCurrent
-                      ? 'bg-rose-500'
-                      : 'bg-emerald-600'
-                    : 'bg-slate-100'
-                }`}
-              />
-              <span className={`text-[9px] font-bold tracking-tight text-center ${
-                isCurrent ? 'text-slate-900' : 'text-slate-400'
-              }`}>
-                {step.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function StatusBadge({ status }: { status: DocumentoStatus }) {
   switch (status) {
     case 'pending_payment':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-700 border border-amber-200/60">
-          <Wallet size={11} /> Pagar para Liberar
+          <Wallet size={11} /> Pagamento pendente
         </span>
       );
     case 'pending':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold text-blue-700 border border-blue-200/60">
-          <Clock size={11} /> Validando Comprovativo
+          <Clock size={11} /> Em análise
         </span>
       );
     case 'rejected':
@@ -455,13 +379,13 @@ function StatusBadge({ status }: { status: DocumentoStatus }) {
     case 'blocked':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold text-blue-700 border border-blue-200/60">
-          <Clock size={11} /> Aguardando aprovação
+          <Clock size={11} /> Em análise
         </span>
       );
     case 'granted':
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700 border border-emerald-200/60">
-          <CheckCircle2 size={11} /> Disponível para Download
+          <CheckCircle2 size={11} /> Disponível
         </span>
       );
     default:
@@ -478,43 +402,43 @@ function ActionButton({ status, codigo, gratuito }: { status: DocumentoStatus; c
     case 'granted':
       if (!DIGITAL_DOCUMENT_CODES.has(codigo)) {
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm">
+          <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm">
             Contactar secretaria
           </span>
         );
       }
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95">
           <Download size={14} /> Baixar
         </span>
       );
     case 'pending_payment':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-amber-600 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-amber-600 active:scale-95">
           <Upload size={14} /> Pagar
         </span>
       );
     case 'pending':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-50 px-3 py-2.5 text-xs font-bold text-blue-700">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-blue-50 px-3 py-2.5 text-xs font-bold text-blue-700">
           <Clock size={14} /> Acompanhar
         </span>
       );
     case 'blocked':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-2.5 text-xs font-bold text-slate-600">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-muted px-3 py-2.5 text-xs font-bold text-muted-foreground">
           <Clock size={14} /> Actualizar
         </span>
       );
     case 'rejected':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-rose-700 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1.5 rounded-2xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-rose-700 active:scale-95">
           <Upload size={14} /> Reenviar
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95">
+        <span className="inline-flex min-h-10 w-full items-center justify-center sm:w-auto gap-1 rounded-2xl bg-foreground px-4 py-2.5 text-xs font-bold text-background shadow-sm transition-all hover:bg-foreground/90 active:scale-95">
           {gratuito ? "Solicitar grátis" : "Solicitar"} <ChevronRight size={14} />
         </span>
       );
