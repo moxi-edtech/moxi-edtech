@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from "react";
-import { FileText, Download, Loader2, CheckCircle2, Wallet, Clock, AlertCircle, Upload, XCircle, ChevronRight, ShieldCheck } from "lucide-react";
+import { FileText, Download, Loader2, CheckCircle2, Wallet, Clock, AlertCircle, Upload, XCircle, ChevronRight, } from "lucide-react";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -267,11 +267,11 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {visibleDocs.map((doc) => (
              <AlunoCard
                key={doc.id}
-               className="min-w-0 space-y-3 rounded-2xl border-border bg-card p-4 shadow-none sm:p-5"
+               className="min-w-0 space-y-2 rounded-xl border-border bg-card p-3.5 shadow-none sm:p-4"
              >
                <div className="flex min-w-0 items-start gap-3">
                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
@@ -283,7 +283,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                  }`}>
                    <FileText aria-hidden="true" className="h-5 w-5" />
                  </div>
-                 <div className="min-w-0 flex-1 space-y-2">
+                 <div className="min-w-0 flex-1 space-y-1.5">
                    <div className="flex flex-wrap items-start gap-2">
                      <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-foreground sm:text-base">{doc.nome}</h3>
                      <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
@@ -291,11 +291,11 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                      </span>
                    </div>
                    {doc.descricao && (
-                     <p className="break-words text-sm leading-6 text-muted-foreground">{doc.descricao}</p>
+                     <p className="line-clamp-2 break-words text-sm leading-5 text-muted-foreground">{doc.descricao}</p>
                    )}
                    <div className="flex flex-wrap items-center gap-2">
                      {doc.pagamento_configurado === false
-                       ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Aguarda configuração</span>
+                       ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">Taxa por definir</span>
                        : <StatusBadge status={doc.status} />}
                      {doc.codigo === BOLETIM_SERVICE_CODE && doc.status === "granted" && (
                        onOpenNotas ? (
@@ -309,13 +309,13 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                    </div>
                  </div>
                </div>
-               <div className="flex min-w-0 items-center justify-start border-t border-border pt-3 sm:justify-end">
+               <div className="flex min-w-0 items-center justify-start border-t border-border pt-2 sm:justify-end">
                  {loading === doc.codigo ? (
                    <span role="status" className="inline-flex h-11 items-center gap-2 text-sm text-muted-foreground">
                      <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar
                    </span>
                  ) : doc.pagamento_configurado === false ? (
-                   <p className="text-xs font-medium leading-5 text-amber-800">Contacta a secretaria para definir a taxa.</p>
+                   <p className="text-xs font-medium leading-5 text-amber-800">A escola precisa definir a taxa.</p>
                  ) : (
                    <button type="button" onClick={() => void handleAction(doc)}
                      className="inline-flex min-h-11 w-full items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 sm:w-auto"
@@ -325,13 +325,6 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                  )}
                </div>
 
-               {/* Minimal Track & Trace Stepper (se o documento estiver em andamento) */}
-              {doc.status !== 'available' && doc.status !== 'granted' && (
-                <div className="pt-3 border-t border-slate-100">
-                  <TrackAndTraceStepper status={doc.status} />
-                </div>
-              )}
-
               {/* Motivo de Rejeição (se houver) */}
               {doc.status === 'rejected' && doc.reject_reason && (
                 <div className="mt-2 rounded-2xl bg-rose-50/70 p-3.5 text-xs font-medium text-rose-700 border border-rose-100/80 flex items-start gap-2.5">
@@ -339,35 +332,16 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                   <span className="leading-relaxed"><b>Motivo da Secretaria:</b> {doc.reject_reason}</span>
                 </div>
               )}
-              {doc.status !== 'available' && doc.status !== 'granted' && (
-                <p className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
-                  <strong className="text-slate-800">Próximo passo: </strong>
-                  {doc.pagamento_configurado === false ? 'contacte a secretaria para definir o valor do boletim.' : doc.status === 'pending_payment' ? 'efetue o pagamento e envie o comprovativo.' : doc.status === 'pending' ? 'aguarde a validação do comprovativo pela secretaria. Não pague novamente.' : doc.status === 'blocked' ? 'a secretaria deve aprovar este pedido gratuito.' : doc.status === 'rejected' && isBoletimServiceCode(doc.codigo) ? 'corrija o comprovativo e reenvie-o no mesmo pedido. Não pague novamente.' : doc.status === 'rejected' ? 'consulte o motivo e solicite novamente o documento.' : 'aguarde a actualização ou contacte a secretaria.'}
-                </p>
-              )}
             </AlunoCard>
           ))}
         </div>
       )}
 
-      {/* Card Informativo Espaçoso */}
-      <div className="rounded-3xl bg-slate-50/80 border border-slate-100 p-5 flex items-start gap-3.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200/60 text-slate-500 shadow-sm">
-          <ShieldCheck size={18} />
-        </div>
-        <div className="space-y-1">
-          <p className="text-xs font-black uppercase tracking-wider text-slate-700">Autenticidade & Segurança</p>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Consulte sempre o documento emitido e os seus dados. Os documentos que possuem código de verificação incluem instruções para confirmar a autenticidade; o boletim de notas apresenta as avaliações lançadas até à emissão.
-          </p>
-        </div>
-      </div>
-
       <ServicePaymentDrawer 
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
         onSuccess={() => {
-          success("Comprovativo recebido", "A secretaria irá validar o pagamento. Não precisa pagar novamente.");
+          success("Comprovativo recebido", "A secretaria vai verificar o teu comprovativo.");
           void fetchCatalogo(true);
         }}
         studentId={studentId}
@@ -380,55 +354,6 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
           intentId: selectedDoc.pagamento_intent_id
         } : null}
       />
-    </div>
-  );
-}
-
-// Track & Trace Sobrio e Minimalista
-function TrackAndTraceStepper({ status }: { status: DocumentoStatus }) {
-  const steps = [
-    { label: "Solicitado", key: "requested" },
-    { label: "Análise", key: "review" },
-    { label: "Assinatura", key: "signing" },
-    { label: "Pronto", key: "ready" },
-  ];
-
-  let currentStepIndex = 0;
-  if (status === 'pending_payment') currentStepIndex = 1;
-  else if (status === 'pending' || status === 'blocked') currentStepIndex = 2;
-  else if (status === 'granted') currentStepIndex = 3;
-  else if (status === 'rejected') currentStepIndex = 1;
-
-  return (
-    <div className="space-y-1.5 pt-1">
-      <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400">
-        <span>Rastreamento do Pedido</span>
-        <span className="text-slate-700 font-bold">Passo {currentStepIndex + 1} de {steps.length}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        {steps.map((step, idx) => {
-          const isPassed = idx <= currentStepIndex;
-          const isCurrent = idx === currentStepIndex;
-          return (
-            <div key={step.key} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className={`h-1.5 w-full rounded-full transition-all ${
-                  isPassed
-                    ? status === 'rejected' && isCurrent
-                      ? 'bg-rose-500'
-                      : 'bg-emerald-600'
-                    : 'bg-slate-100'
-                }`}
-              />
-              <span className={`text-[9px] font-bold tracking-tight text-center ${
-                isCurrent ? 'text-slate-900' : 'text-slate-400'
-              }`}>
-                {step.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
