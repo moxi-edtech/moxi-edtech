@@ -36,9 +36,9 @@ test("fiscal document state is semantic while text stays legible on both themes"
 test("notices and notifications retain semantic warning, danger and success indicators", () => {
   const notice = repoFile("apps/web/src/components/ui/alert.tsx");
   const notifications = repoFile("apps/web/src/components/ui/NotificacoesDropdown.tsx");
-  assert.match(notice, /border-amber\/40 bg-amber\/5 text-foreground/);
-  assert.match(notice, /border-destructive\/40 bg-destructive\/5 text-foreground/);
-  assert.match(notice, /border-emerald\/30 bg-emerald\/5 text-foreground/);
+  assert.match(notice, /border-amber\/40 bg-card text-foreground/);
+  assert.match(notice, /border-destructive\/40 bg-card text-foreground/);
+  assert.match(notice, /border-emerald\/30 bg-card text-foreground/);
   assert.match(notifications, /bg-destructive text-background/);
   assert.match(notifications, /bg-amber\/10/);
   assert.match(notifications, /bg-destructive\/10/);

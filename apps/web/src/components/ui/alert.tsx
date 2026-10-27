@@ -78,9 +78,9 @@ export type NoticeProps = {
 };
 const noticeTones: Record<NoticeTone,string> = {
   neutral: "border-border bg-card",
-  attention: "border-amber/40 bg-amber/5 text-foreground",
-  critical: "border-destructive/40 bg-destructive/5 text-foreground",
-  success: "border-emerald/30 bg-emerald/5 text-foreground",
+  attention: "border-amber/40 bg-card text-foreground",
+  critical: "border-destructive/40 bg-card text-foreground",
+  success: "border-emerald/30 bg-card text-foreground",
 };
 export function Notice({title,description,eyebrow,icon,action,detail,tone="neutral",className,children,role="region"}: NoticeProps) {
   return (
