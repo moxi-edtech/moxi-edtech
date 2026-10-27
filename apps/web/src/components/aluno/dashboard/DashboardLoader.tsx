@@ -36,9 +36,7 @@ async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T | null
     return null;
   }
 }
-const heading = "text-lg font-semibold tracking-tight text-foreground sm:text-xl";
 const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
-const action = `inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-primary underline-offset-4 hover:underline ${focus}`;
 function LoadingDashboard() {
   return <div role="status" aria-live="polite" className="mx-auto max-w-6xl animate-pulse space-y-8 px-4 py-6 sm:px-8" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
     <div className="space-y-4"><div className="h-4 w-40 rounded-lg bg-slate-200"/><div className="h-9 w-56 rounded-lg bg-slate-200"/><div className="h-4 w-44 rounded-lg bg-slate-200"/></div>
