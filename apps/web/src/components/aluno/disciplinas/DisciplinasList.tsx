@@ -62,8 +62,8 @@ export function DisciplinasList() {
         {isCurrent && <p className="text-sm text-muted-foreground">{yearLabel ? `Ano letivo ${yearLabel} · ` : ""}${disciplinas.length} disciplinas da tua turma</p>}
       </div>
       {loading || (scope !== query && !error) ? (
-        <div role="status" aria-label="A carregar disciplinas" aria-hidden="true" className="grid gap-3 sm:grid-cols-2">
-          {[1,2,3].map((key) => <div key={key} className="h-20 animate-pulse rounded-xl bg-muted" />)}
+        <div role="status" aria-live="polite" className="grid gap-3 sm:grid-cols-2"><span className="sr-only">A carregar disciplinas</span>
+          {[1,2,3].map((key) => <div key={key} aria-hidden="true" className="h-20 animate-pulse rounded-xl bg-muted" />)}
         </div>
       ) : error ? (
         <div role="alert" className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
