@@ -94,6 +94,12 @@ function ProposalPreviewContent() {
       )}
 
       <main className="commercial-proposal mx-auto w-full max-w-[210mm] rounded-xl bg-white px-9 py-10 shadow-sm print:w-auto print:max-w-none print:rounded-none print:p-0 print:shadow-none">
+        {errors.length > 0 && (
+          <p className="proposal-keep mb-5 border-2 border-red-300 p-3 text-center text-[11px] font-extrabold uppercase tracking-wide text-red-700">
+            Rascunho incompleto — não utilizar como proposta emitida
+          </p>
+        )}
+
         <header className="proposal-keep border-b-2 border-[#E3B23C] pb-5 text-center">
           <p className="text-[22px] font-extrabold tracking-[0.14em] text-[#1F6B3B]">KLASSE</p>
           <h1 className="mt-2 text-[21px] font-extrabold uppercase tracking-tight text-[#1F6B3B]">Proposta Comercial</h1>
