@@ -146,10 +146,20 @@ try {
       await page.locator("details summary").first().click();
       await page.getByRole("button",{name:"Pedir reapreciação"}).click();
       await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor();
-      await page.getByRole("button",{name:"Fechar"}).click();
+      await page.keyboard.press("Tab");
+      if (!(await page.evaluate(() => {
+        const dialog = document.querySelector('[role="dialog"]');
+        return dialog?.contains(document.activeElement) ?? false;
+      }))) errors.push("grade-paid: modal did not retain keyboard focus");
+      await page.keyboard.press("Escape");
+      await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor({state:"hidden"});
+      if (!(await page.getByRole("button",{name:"Pedir reapreciação"}).evaluate(el => el === document.activeElement))) {
+        errors.push("grade-paid: focus not restored after Escape");
+      }
       await page.getByRole("button",{name:"Solicitar melhoria"}).click();
       await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor();
-      await page.getByRole("button",{name:"Fechar"}).click();
+      await page.getByRole("button",{name:"Cancelar"}).click();
+      await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor({state:"hidden"});
     }
     if (["notice-info","notice-attention","notice-finance"].includes(name)) {
       await page.keyboard.press("Tab");
