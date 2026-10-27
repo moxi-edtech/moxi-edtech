@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-export default function PrintTrigger() {
+export default function PrintTrigger({ showManualButton = false }: { showManualButton?: boolean }) {
+  const manuallyRequested = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     let fallbackTimer: number | undefined;
@@ -27,19 +29,21 @@ export default function PrintTrigger() {
 
     void (async () => {
       const imagesReady = Promise.all(Array.from(document.images, waitForImage));
-      // Nunca bloqueamos a impressão indefinidamente se um recurso remoto falhar,
-      // mas o logótipo passa a ter tempo para carregar e ser decodificado.
+      const fontsReady = document.fonts?.ready?.catch(() => undefined) ?? Promise.resolve();
+      // Both images AND web fonts share a bounded wait: remote assets must not
+      // prevent printing forever. The user can always print manually below.
       await Promise.race([
-        imagesReady,
+        Promise.all([imagesReady, fontsReady]),
         new Promise<void>((resolve) => {
           fallbackTimer = window.setTimeout(resolve, 4000);
         }),
       ]);
-      await document.fonts?.ready?.catch(() => undefined);
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          if (!cancelled) window.print();
+          // A manual click wins over delayed automatic printing: never show
+          // a second dialog after the user has already requested printing.
+          if (!cancelled && !manuallyRequested.current) window.print();
         });
       });
     })();
@@ -50,5 +54,21 @@ export default function PrintTrigger() {
     };
   }, []);
 
-  return null;
+  if (!showManualButton) return null;
+
+  return (
+    <div className="fixed right-4 top-4 z-[100] flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg print:hidden" role="group" aria-label="Impressão do recibo">
+      <span className="text-xs text-slate-700">A impressão não abriu?</span>
+      <button
+        type="button"
+        onClick={() => {
+          manuallyRequested.current = true;
+          window.print();
+        }}
+        className="rounded-lg bg-[#1F6B3B] px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F6B3B]"
+      >
+        Imprimir recibo
+      </button>
+    </div>
+  );
 }
