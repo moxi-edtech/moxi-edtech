@@ -67,15 +67,15 @@ try {
         if (name.startsWith("dashboard-")) {
           if (["Prova trimestral", "Trabalho prático", "16/20", "17/20"].some(marker => metrics.bodyText.includes(marker)))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: protected grades leaked`);
-          if (name === "dashboard-clean" && metrics.bodyText.includes("Precisa da tua atenção"))
+          if (name === "dashboard-clean" && metrics.bodyText.includes("A acompanhar"))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: false pending section`);
-          if (name === "dashboard-pending" && !metrics.bodyText.includes("Comprovativo recebido"))
+          if (name === "dashboard-pending" && !metrics.bodyText.includes("Documento em análise"))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: pending state missing`);
           if (name === "dashboard-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido"))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: recovery action missing`);
           if (name === "dashboard-rematricula" && !metrics.bodyText.includes("A tua rematrícula"))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: rematrícula missing`);
-          if (name === "dashboard-overdue" && !metrics.bodyText.includes("uma mensalidade por regularizar"))
+          if (name === "dashboard-overdue" && !metrics.bodyText.includes("1 mensalidade vencida"))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: overdue missing`);
           if (name === "dashboard-empty" && (metrics.bodyText.includes("08:00") || metrics.bodyText.includes("Reunião de encarregados")))
             errors.push(`${name} ${width}x${height} zoom ${zoom}: invented schedule or notices`);
@@ -83,8 +83,8 @@ try {
         if (name.startsWith("grade-")) {
           if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name}: protected assessments leaked`);
           if (name === "grade-paid" && !metrics.bodyText.includes("Exame do período")) errors.push(`${name}: paid assessments missing`);
-          if (name === "grade-pending" && !metrics.bodyText.includes("Comprovativo em análise")) errors.push(`${name}: pending state missing`);
-          if (name === "grade-unpaid" && !metrics.bodyText.includes("Pagar boletim")) errors.push(`${name}: payment CTA missing`);
+          if (name === "grade-pending" && !metrics.bodyText.includes("Pagamento em análise")) errors.push(`${name}: pending state missing`);
+          if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
           if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar no mesmo pedido")) errors.push(`${name}: resubmit action missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
         }
