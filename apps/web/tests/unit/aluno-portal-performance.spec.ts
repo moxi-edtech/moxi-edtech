@@ -67,3 +67,30 @@ test("layout valida acesso e consulta escola e política financeira em paralelo"
   assert.match(layout, /if \(bloqueado\)/);
   assert.match(layout, /key=\{\x60\$\{escolaId\}:\$\{user\.id\}\x60\}/);
 });
+
+test("endpoints usam IDs autorizados do contexto corrente, sem duplicar getUser e consultas a vínculos", async () => {
+  const paths = [
+    "boletim/route.ts",
+    "boletim/pdf/route.ts",
+    "horario/route.ts",
+    "home/status/route.ts",
+    "home/finance-alert/route.ts",
+    "home/recent-grades/route.ts",
+    "raa/dependencias/route.ts",
+    "financeiro/route.ts",
+    "financeiro/comprovativo/route.ts",
+    "perfil/identidade/route.ts",
+    "documentos/catalogo/route.ts",
+    "documentos/solicitar/route.ts",
+    "documentos/emitir/route.ts",
+    "documentos/comprovativo/route.ts",
+  ];
+  await Promise.all(paths.map(async (path) => {
+    const route = await source(`app/api/aluno/${path}`);
+    assert.match(route, /getAlunoContext\(\)/, path);
+    assert.match(route, /const authorizedIds = ctx\.alunoIds;/, path);
+    assert.match(route, /resolveSelectedStudentId\(/, path);
+    assert.doesNotMatch(route, /resolveAuthorizedStudentIds\(/, path);
+    assert.doesNotMatch(route, /supabase\.auth\.getUser\(\)/, path);
+  }));
+});
