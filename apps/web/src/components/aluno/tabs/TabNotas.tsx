@@ -347,8 +347,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
                     Opções <ChevronDown aria-hidden className="h-4 w-4"/>
                   </summary>
                   <div className="absolute right-0 z-20 mt-1 w-52 max-w-[80vw] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Pedir reapreciação</button>
-                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; void abrirMelhoria(disc); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-slate-50 ${focus}`}>Solicitar melhoria</button>
+                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted ${focus}`}>Pedir reapreciação</button>
+                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; void abrirMelhoria(disc); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted ${focus}`}>Solicitar melhoria</button>
                   </div>
                 </details>}
               </div>
