@@ -239,9 +239,27 @@ export async function POST(
       return NextResponse.json({ ok: false, code: "ENROLLMENT_RECEIPT_PENDING", error: "Taxa liquidada, mas ainda não há recibo identificado no pedido. Reconcilie o recibo antes de confirmar." }, { status: 409 });
     }
     const { data: receipt, error: receiptError } = await db.from("documentos_emitidos")
-      .select("id").eq("id", receiptId).eq("escola_id", escolaId)
-      .eq("aluno_id", studentId).eq("tipo", "recibo").is("revoked_at", null).maybeSingle();
+      .select("id,dados_snapshot").eq("id", receiptId).eq("escola_id", escolaId)
+      .eq("aluno_id", studentId).eq("tipo", "recibo")
+      .is("mensalidade_id", null).is("revoked_at", null).maybeSingle();
     if (receiptError || !receipt) return NextResponse.json({ ok: false, code: "ENROLLMENT_RECEIPT_INVALID", error: "Recibo da taxa não encontrado ou revogado." }, { status: 409 });
+    // A receipt belonging to another operation on the same student is NOT
+    // proof of this rematrícula's fee. Cross-reference its payment/intent.
+    const snapshot = receipt.dados_snapshot && typeof receipt.dados_snapshot === "object"
+      && !Array.isArray(receipt.dados_snapshot)
+      ? receipt.dados_snapshot as Record<string, unknown> : {};
+    const receiptPaymentId = snapshot.pagamento_id;
+    const receiptIntentId = snapshot.pagamento_intent_id;
+    const matchPayment = typeof receiptPaymentId === "string" &&
+      orderPayments.some((p: { id: string }) => p.id === receiptPaymentId);
+    const matchIntent = typeof receiptIntentId === "string" &&
+      (intents ?? []).some((i: { id: string }) => i.id === receiptIntentId);
+    if (!matchPayment && !matchIntent) {
+      return NextResponse.json({
+        ok: false, code: "ENROLLMENT_RECEIPT_MISMATCH",
+        error: "O recibo identificado não comprova o pagamento deste pedido de rematrícula. É necessária reconciliação.",
+      }, { status: 409 });
+    }
 
     // Canonical overdue-debt definition: Luanda date, positive unpaid balance,
     // and due date strictly in the past. Future fees never block enrollment.
