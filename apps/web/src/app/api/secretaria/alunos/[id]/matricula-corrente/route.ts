@@ -19,6 +19,7 @@ const confirmationSchema = z.object({
   turma_id: uuid,
   pedido_id: uuid,
   confirmar: z.literal(true),
+  escola_id: uuid,
 });
 
 type CurrentEnrollment = {
@@ -54,13 +55,13 @@ function orderForEnrollment(order: OrderRow, row: CurrentEnrollment, yearId: str
     (ctx.destino_turma_id === row.turma_id || ctx.matricula_destino_id === row.id);
 }
 
-async function context(studentId: string) {
+async function context(studentId: string, requestedEscolaId: string | null) {
   const db = await supabaseServerTyped<any>();
   const { data: { user }, error: sessionError } = await db.auth.getUser();
   if (!user || sessionError) {
     return { error: NextResponse.json({ ok: false, error: "Sessão expirada." }, { status: 401 }) };
   }
-  const escolaId = await resolveEscolaIdForUser(db, user.id);
+  const escolaId = await resolveEscolaIdForUser(db, user.id, requestedEscolaId);
   if (!escolaId) return { error: NextResponse.json({ ok: false, error: "Escola não identificada." }, { status: 403 }) };
 
   const authorization = await requireRoleInSchool({ supabase: db, escolaId, roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP] });
@@ -92,13 +93,13 @@ async function context(studentId: string) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: studentId } = await params;
   if (!uuid.safeParse(studentId).success) return NextResponse.json({ ok: false, error: "Aluno inválido." }, { status: 400 });
   try {
-    const ctx = await context(studentId);
+    const ctx = await context(studentId, new URL(request.url).searchParams.get("escolaId"));
     if (ctx.error) return ctx.error;
     const { db, escolaId, activeYear, current, inconsistent, canRectifyClass, count } = ctx;
     const result: Record<string, unknown> = {
@@ -177,7 +178,7 @@ export async function POST(
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Confirmação inválida." }, { status: 400 });
 
   try {
-    const ctx = await context(studentId);
+    const ctx = await context(studentId, parsed.data.escola_id);
     if (ctx.error) return ctx.error;
     const { db, escolaId, activeYear, current, inconsistent } = ctx;
     if (inconsistent || !current) {
