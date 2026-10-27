@@ -3,6 +3,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { ToastProvider } from "@/components/feedback/FeedbackSystem";
 import { TabDocumentos } from "@/components/aluno/tabs/TabDocumentos";
+import { AcademicoWorkspace } from "@/components/aluno/academico/AcademicoWorkspace";
 import { TabNotas } from "@/components/aluno/tabs/TabNotas";
 import ProfessorPage from "@/app/professor/page";
 import DashboardLoader from "@/components/aluno/dashboard/DashboardLoader";
@@ -15,7 +16,7 @@ import { RematriculaBanner } from "@/components/aluno/home/RematriculaBanner";
 const SCHOOL = "00000000-0000-4000-8000-000000000401";
 const STUDENT = "00000000-0000-4000-8000-000000000402";
 const INTENT = "00000000-0000-4000-8000-000000000403";
-type FixtureMode = "pending" | "rejected" | "paid" | "professor" | "dashboard-clean" | "dashboard-pending" | "dashboard-rejected" | "dashboard-rematricula" | "dashboard-overdue" | "dashboard-empty" | "dashboard-approved" | "grade-paid" | "grade-unpaid" | "grade-pending" | "grade-rejected" | "grade-empty" | "notice-info" | "notice-attention" | "notice-critical" | "notice-success" | "notice-rematricula" | "notice-finance";
+type FixtureMode = "academic-tabs" | "pending" | "rejected" | "paid" | "professor" | "dashboard-clean" | "dashboard-pending" | "dashboard-rejected" | "dashboard-rematricula" | "dashboard-overdue" | "dashboard-empty" | "dashboard-approved" | "grade-paid" | "grade-unpaid" | "grade-pending" | "grade-rejected" | "grade-empty" | "notice-info" | "notice-attention" | "notice-critical" | "notice-success" | "notice-rematricula" | "notice-finance";
 declare global {
   interface Window { __klasseVisualFixture?: FixtureMode; __klasseVisualFetchInstalled?: boolean }
 }
@@ -53,7 +54,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
       ] : [] },
       "/api/aluno/raa/melhoria": { ok: true, sessoes: [] },
       "/api/aluno/raa/dependencias": { ok: true, summary: { total: 0, abertas: 0, resolvidas: 0 }, items: [] },
-      "/api/aluno/disciplinas": { ok: true, disciplinas: [] },
+      "/api/aluno/disciplinas": { ok: true, disciplinas: [{ id: "disc-fictional", nome: "Disciplina de teste" }], context: { anoLetivoLabel: "2026" } },
       "/api/professor/atribuicoes": { ok: true, items: [
         { turma: { id: "turma-fixture", nome: "7ª Classe A" }, disciplina: { id: "disc-mat", nome: "Matemática" } },
         { turma: { id: "turma-fixture", nome: "7ª Classe A" }, disciplina: { id: "disc-por", nome: "Língua Portuguesa" } },
@@ -80,6 +81,7 @@ const meta: Meta = { title: "KLASSE/Portal Visual Fixtures", parameters: { nextj
 export default meta;
 type Story = StoryObj;
 
+export const AcademicoAcessivel: Story = { render: () => <Surface mode="academic-tabs"><AcademicoWorkspace /></Surface> };
 export const DocumentosPendentes: Story = { render: () => <Surface mode="pending"><TabDocumentos /></Surface> };
 export const DocumentosRejeitados: Story = { render: () => <Surface mode="rejected"><TabDocumentos /></Surface> };
 export const NotasPagas: Story = { render: () => <Surface mode="paid"><TabNotas /></Surface> };
