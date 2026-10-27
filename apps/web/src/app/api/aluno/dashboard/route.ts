@@ -162,7 +162,8 @@ export async function GET() {
     })();
 
     const financeiroPromise = (async (): Promise<StatusFinanceiro> => {
-    // Status financeiro (baseado em mensalidades do aluno)
+    // Apenas mensalidades vencidas são pendências acionáveis; parcelas futuras
+    // continuam na área financeira e não geram avisos de atraso.
     let status_financeiro: StatusFinanceiro = { emDia: true, pendentes: 0 };
     try {
       const { data: matriculaData, error: matriculaError } = escolaId && matriculaId
@@ -177,12 +178,14 @@ export async function GET() {
       if (matriculaError) throw matriculaError;
 
       if (matriculaData && escolaId) {
+        const todayLuanda = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Africa/Luanda', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         let mensalidadesQuery = supabase
           .from('mensalidades')
-          .select('status')
+          .select('status, data_vencimento')
           .eq('escola_id', escolaId)
           .eq('aluno_id', matriculaData.aluno_id)
-          .not('status', 'in', '(pago,isento,cancelado)');
+          .in('status', ['pendente', 'atrasado'])
+          .lt('data_vencimento', todayLuanda);
         if (matriculaId) mensalidadesQuery = mensalidadesQuery.eq('matricula_id', matriculaId);
         if (typeof anoLetivo === 'number') {
           mensalidadesQuery = mensalidadesQuery.or(`ano_letivo.eq.${anoLetivo},ano_referencia.eq.${anoLetivo}`);
