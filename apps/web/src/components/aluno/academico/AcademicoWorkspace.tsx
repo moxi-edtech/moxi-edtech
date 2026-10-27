@@ -6,7 +6,6 @@ import { BookOpen, FileText, GraduationCap } from "lucide-react";
 import { TabNotas } from "@/components/aluno/tabs/TabNotas";
 import { TabDocumentos } from "@/components/aluno/tabs/TabDocumentos";
 import { DisciplinasList } from "@/components/aluno/disciplinas/DisciplinasList";
-import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 
 type AcademicTab = "notas" | "disciplinas" | "documentos";
 const validTabs: AcademicTab[] = ["notas", "disciplinas", "documentos"];
@@ -83,7 +82,7 @@ export function AcademicoWorkspace() {
         ))}
       </div>
       <section id="academic-panel-notas" role="tabpanel" aria-labelledby="academic-tab-notas" hidden={activeTab !== "notas"}>
-        <TabNotas embedded onOpenDocuments={() => navigateTab("documentos", BOLETIM_SERVICE_CODE)} />
+        <TabNotas embedded onOpenDocuments={(serviceCode) => navigateTab("documentos", serviceCode ?? undefined)} />
       </section>
       {visited.includes("disciplinas") && (
         <section id="academic-panel-disciplinas" role="tabpanel" aria-labelledby="academic-tab-disciplinas" hidden={activeTab !== "disciplinas"}>
