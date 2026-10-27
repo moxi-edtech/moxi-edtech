@@ -56,7 +56,7 @@ test("pagamento do boletim só é oferecido quando existe taxa válida; nunca de
   assert.match(notes, /boletimServico\?\.pagamento_configurado !== false/);
   assert.match(notes, /Number\(boletimServico\?\.valor\) > 0/);
   assert.match(notes, /serviceUnconfigured/);
-  assert.match(notes, /A secretaria precisa configurar o serviço/);
+  assert.match(notes, /A escola ainda não definiu a taxa deste serviço/);
   assert.match(notes, /onOpenDocuments/);
   assert.match(notes, /safeIsLiberado/);
   assert.match(notes, /json\.is_liberado \? json\.disciplinas \?\? \[\] : \[\]/);
@@ -64,9 +64,9 @@ test("pagamento do boletim só é oferecido quando existe taxa válida; nunca de
 
 test("documentos usam descrição na largura total e ação no rodapé, sem comprimir cartões em ecrãs estreitos", async () => {
   const catalog = await source("components/aluno/tabs/TabDocumentos.tsx");
-  assert.match(catalog, /min-w-0 space-y-3 rounded-2xl/);
-  assert.match(catalog, /break-words text-sm leading-6/);
-  assert.match(catalog, /border-t border-border pt-3 sm:justify-end/);
+  assert.match(catalog, /min-w-0 space-y-2 rounded-xl/);
+  assert.match(catalog, /line-clamp-2 break-words text-sm leading-5/);
+  assert.match(catalog, /border-t border-border pt-2 sm:justify-end/);
   assert.match(catalog, /min-h-11 w-full items-center justify-center/);
   assert.match(catalog, /onOpenNotas/);
   assert.match(catalog, /pagamento_configurado === false/);
