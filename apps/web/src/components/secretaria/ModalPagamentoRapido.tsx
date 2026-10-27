@@ -700,9 +700,9 @@ function usePagamentoSubmit({
       error("Comprovativo obrigatório para Transferência."); return;
     }
 
-    // This is still the direct user click. Reserve the tab BEFORE any await;
-    // opening after fetch is routinely blocked by popup blockers.
+    // Reserve the print tab while still in the user's click event.
     const receiptWindow = reserveReceiptWindow();
+    let paymentCommitted = false;
     setProcessando(true);
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -776,6 +776,7 @@ function usePagamentoSubmit({
       onReceiptStatus({ url: immediateUrl, mensalidadeId: lastMonthlyId, pending: !immediateUrl });
       if (immediateUrl) showIssuedReceipt(receiptWindow, immediateUrl);
 
+      paymentCommitted = true;
       onRecibos(recibosGerados);
       onPagamentosConcluidos(pagamentosConcluidos);
       onConcluido();
@@ -800,7 +801,10 @@ function usePagamentoSubmit({
       pendingCheckout.current = null;
 
     } catch (err: any) {
-      receiptWindow?.close();
+      // Never discard proof of a committed payment because a callback,
+      // receipt lookup, or network response failed after settlement.
+      if (paymentCommitted) showReceiptPending(receiptWindow);
+      else receiptWindow?.close();
       if (err?.name === "AbortError") return;
       error(err instanceof Error ? err.message : "Não foi possível processar o pagamento.");
     } finally {
