@@ -149,6 +149,7 @@ export function CurrentYearEnrollmentPanel({
                 matriculaId={state.matricula.id}
                 turmaId={state.matricula.turmaId}
                 anoLetivo={state.matricula.ano}
+                anoLetivoId={state.matricula.anoLetivoId}
                 canRectifyClass
                 onChanged={refresh}
               />
