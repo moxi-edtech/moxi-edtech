@@ -136,6 +136,7 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
 
   return (
     <AlunoLayoutClient
+      key={`${escolaId}:${user.id}`}
       escolaId={escolaId}
       escolaParam={escolaParam}
       escolaNome={escolaInfo.nome ?? null}
