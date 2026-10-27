@@ -280,7 +280,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   if (studentId) navParams.set("aluno", studentId);
   if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
   const navQuery = navParams.size ? `?${navParams.toString()}` : "";
-  const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
+  const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
   return (
     <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-3 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
       {!embedded && <header className="space-y-3">
@@ -295,8 +295,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         </nav>
       </header>}
       {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
-      {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-2 motion-safe:animate-pulse">
-        <div className="h-5 w-36 rounded-lg bg-muted"/><div className="h-24 rounded-xl bg-muted"/>
+      {visibleLoading ? <section aria-label="A carregar as tuas notas" role="status" aria-live="polite" className="space-y-2 motion-safe:animate-pulse">
+        <span className="sr-only">A carregar as tuas notas</span><div aria-hidden="true" className="h-5 w-36 rounded-lg bg-muted"/><div aria-hidden="true" className="h-24 rounded-xl bg-muted"/>
       </section> : accessError ? <section role="alert" className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4">
         <h2 className="text-lg font-semibold">Não foi possível consultar as tuas notas</h2>
         <p className="text-sm leading-6 text-muted-foreground">{accessError}</p>
@@ -316,11 +316,11 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
             )}
             {onOpenDocuments ? (
               <button type="button" onClick={() => onOpenDocuments(serviceUnconfigured ? null : BOLETIM_SERVICE_CODE)}
-                className={focus + " inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-emerald-800 hover:underline"}>
+                className={focus + " inline-flex min-h-11 items-center gap-1.5 px-1 text-sm font-semibold text-primary hover:underline"}>
                 {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
               </button>
             ) : (
-              <Link href={docsUrl} className={focus + " inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-emerald-800 hover:underline"}>
+              <Link href={docsUrl} className={focus + " inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-primary hover:underline"}>
                 {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
               </Link>
             )}
