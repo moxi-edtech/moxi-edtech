@@ -67,8 +67,10 @@ type DatabaseWithHorarioVersoes = Database & {
 };
 
 export async function GET() {
+  const startedAt = performance.now();
   try {
     const { supabase, ctx } = await getAlunoContext();
+    const contextMs = performance.now() - startedAt;
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const { escolaId, matriculaId, turmaId, anoLetivo } = ctx;
 
@@ -260,7 +262,8 @@ export async function GET() {
         turmaNomePromise, proximaAulaPromise, notasPromise, financeiroPromise,
         avisosPromise, dadosPagamentoPromise,
       ]);
-    return NextResponse.json({
+    const totalMs = performance.now() - startedAt;
+    const response = NextResponse.json({
       ok: true,
       proxima_aula,
       ano_letivo: anoLetivo,
@@ -271,6 +274,17 @@ export async function GET() {
       avisos_recentes,
       dados_pagamento,
     });
+    // Não inclui IDs, dados pessoais ou conteúdo académico nos diagnósticos.
+    response.headers.set("Server-Timing", `context;dur=${contextMs.toFixed(1)},data;dur=${(totalMs - contextMs).toFixed(1)},total;dur=${totalMs.toFixed(1)}`);
+    if (totalMs >= 1000) {
+      console.info(JSON.stringify({
+        event: "aluno_dashboard_slow",
+        context_ms: Math.round(contextMs),
+        data_ms: Math.round(totalMs - contextMs),
+        total_ms: Math.round(totalMs),
+      }));
+    }
+    return response;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
