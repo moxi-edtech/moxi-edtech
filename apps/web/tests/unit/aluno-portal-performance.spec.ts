@@ -40,3 +40,30 @@ test("a API mantém autorização do boletim, isolamento por escola e consultas 
   assert.match(route, /dadosPagamentoPromise/);
   assert.doesNotMatch(route, /searchParams\.get\(['"]studentId['"]\)/);
 });
+
+test("resolução de contexto sobrepõe vínculos e ano letivo sem cache de permissão entre pedidos", async () => {
+  const context = await source("lib/alunoContext.ts");
+  const studentAuth = await source("lib/portalAlunoAuth.ts");
+  assert.match(context, /supabase\.auth\.getUser\(\)/);
+  assert.match(context, /Promise\.all\(\[/);
+  assert.match(context, /resolveAuthorizedStudentIds\(\{/);
+  assert.match(context, /resolveAnoLetivoScope\(supabase, escolaId\)/);
+  assert.match(context, /\.eq\('aluno_id', alunoId\)/);
+  assert.match(context, /ACTIVE_MATRICULA_STATUSES/);
+  assert.doesNotMatch(context, /unstable_cache|localStorage|sessionStorage/);
+  assert.match(studentAuth, /Promise\.all\(\[\s*directRowsPromise,\s*encarregadoPromise/);
+  assert.match(studentAuth, /\.eq\("escola_id", escolaId\)/);
+  assert.match(studentAuth, /\.eq\("encarregado_id", encarregadoId\)/);
+});
+
+test("layout valida acesso e consulta escola e política financeira em paralelo", async () => {
+  const layout = await source("app/(portal-aluno)/aluno/layout.tsx");
+  assert.match(layout, /supabase\.auth\.getUser\(\)/);
+  assert.match(layout, /const vincPortal =/);
+  assert.match(layout, /Promise\.all\(\[directPromise, guardianPromise\]\)/);
+  assert.match(layout, /const \[escolaResult, configuracoesResult\] = await Promise\.all\(\[/);
+  assert.match(layout, /if \(escolaInfo\.status === "suspensa"\)/);
+  assert.match(layout, /if \(configuracoes\?\.bloquear_inadimplentes\)/);
+  assert.match(layout, /if \(bloqueado\)/);
+  assert.match(layout, /key=\{\x60\$\{escolaId\}:\$\{user\.id\}\x60\}/);
+});
