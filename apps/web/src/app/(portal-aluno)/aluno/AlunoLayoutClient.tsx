@@ -12,132 +12,102 @@ import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 
 type Educando = { id: string; nome: string; escola_id: string | null };
 
-export default function AlunoLayoutClient({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [escolaNome, setEscolaNome] = useState<string | null>(null);
-  const [escolaParam, setEscolaParam] = useState<string | null>(null);
-  const [educandos, setEducandos] = useState<Educando[]>([]);
+type AlunoLayoutProps = {
+  children: React.ReactNode;
+  escolaId: string;
+  escolaParam: string;
+  escolaNome: string | null;
+  portalEnabled: boolean;
+  userId: string;
+  userEmail: string | null;
+};
 
+export default function AlunoLayoutClient({
+  children, escolaId, escolaParam, escolaNome, portalEnabled, userId, userEmail,
+}: AlunoLayoutProps) {
+  const [educandos, setEducandos] = useState<Educando[]>([]);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchValue = searchParams?.toString() ?? "";
+  const safePathname = pathname ?? "";
+  const pathSchool = getEscolaParamFromPath(safePathname);
+  const disabledPath = buildPortalHref(escolaParam, "/aluno/desabilitado");
+
+  // Uma navegação não deve reconstruir sessão, vínculo, escola e educandos.
+  // O layout servidor já validou a identidade e o vínculo; as APIs continuam com RLS.
+  const query = searchValue ? `?${searchValue}` : "";
+  let redirectTarget: string | null = null;
+  if (!portalEnabled && safePathname !== disabledPath) {
+    redirectTarget = disabledPath;
+  } else if (portalEnabled && safePathname.startsWith("/aluno")) {
+    redirectTarget = `${buildPortalHref(escolaParam, safePathname)}${query}`;
+  } else if (pathSchool && pathSchool !== escolaParam && safePathname.startsWith(`/escola/${pathSchool}/aluno`)) {
+    const tail = safePathname.slice(`/escola/${pathSchool}`.length);
+    redirectTarget = `${buildPortalHref(escolaParam, tail)}${query}`;
+  }
 
   useEffect(() => {
+    if (redirectTarget) router.replace(redirectTarget);
+  }, [redirectTarget, router]);
+
+  useEffect(() => {
+    const { data: { subscription } } = createClient().auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && session?.user.id !== userId)) {
+        router.replace("/redirect");
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [router, userId]);
+
+  // A lista de educandos é acessória ao cabeçalho. Carrega depois do primeiro
+  // render sem bloquear a dashboard nem executar novamente a cada clique.
+  useEffect(() => {
+    if (!portalEnabled) return;
     let active = true;
     const s = createClient();
+    setEducandos([]);
 
-    (async () => {
-      const { data: userRes } = await s.auth.getUser();
-      const user = userRes?.user;
-      if (!user) {
-        router.replace("/redirect");
-        return;
-      }
-
-      const { data: vinc } = await s
-        .from("escola_users")
-        .select("escola_id, papel, role")
-        .eq("user_id", user.id)
-        .limit(10);
-
-      const vincPortal = (vinc || []).find((v) => {
-        const papel = v.papel ?? v.role ?? null;
-        return papel === "aluno" || papel === "encarregado";
-      });
-
-      if (!vincPortal?.escola_id) {
-        router.replace("/");
-        return;
-      }
-
-      const escolaId = vincPortal.escola_id;
-
-      const { data: esc } = await s
-        .from("escolas")
-        .select("nome, slug, plano_atual, aluno_portal_enabled, status")
-        .eq("id", escolaId)
-        .maybeSingle();
-
-      if (esc?.status === "suspensa") {
-        router.replace("/escola/suspensa");
-        return;
-      }
-
-      const enabled = Boolean(esc?.aluno_portal_enabled);
-      const acessoPortal = enabled;
-
-      const alunosDiretosPromise = s
-        .from("alunos")
+    void (async () => {
+      const alunosDiretosPromise = s.from("alunos")
         .select("id, nome, escola_id")
-        .eq("profile_id", user.id)
+        .eq("profile_id", userId)
         .eq("escola_id", escolaId)
         .limit(20);
-
-      const encarregadoPromise = user.email
-        ? s
-            .from("encarregados")
+      const encarregadoPromise = userEmail
+        ? s.from("encarregados")
             .select("id")
             .eq("escola_id", escolaId)
-            .ilike("email", user.email)
+            .ilike("email", userEmail)
             .limit(1)
             .maybeSingle()
         : Promise.resolve({ data: null as { id: string } | null });
 
-      const [{ data: alunosDiretos }, { data: encarregado }] = await Promise.all([alunosDiretosPromise, encarregadoPromise]);
+      const [{ data: alunosDiretos }, { data: encarregado }] =
+        await Promise.all([alunosDiretosPromise, encarregadoPromise]);
 
       let alunosVinculados: Educando[] = [];
       if (encarregado?.id) {
-        const { data: alunoLinks } = await s
-          .from("aluno_encarregados")
+        const { data: links } = await s.from("aluno_encarregados")
           .select("aluno:alunos!aluno_encarregados_aluno_id_fkey(id, nome, escola_id)")
           .eq("escola_id", escolaId)
           .eq("encarregado_id", encarregado.id)
           .limit(20);
-
-        alunosVinculados = (alunoLinks || [])
-          .map((row) => row.aluno)
-          .flat()
-          .filter(Boolean) as Educando[];
+        alunosVinculados = (links || []).flatMap(row => row.aluno ?? []) as Educando[];
       }
-
-      const merged = [...(alunosDiretos || []), ...alunosVinculados].reduce<Educando[]>((acc, row) => {
-        if (!acc.some((a) => a.id === row.id)) acc.push({ id: row.id, nome: row.nome ?? "Educando", escola_id: row.escola_id });
-        return acc;
-      }, []);
-
-      if (!active) return;
-
-      setEscolaNome(esc?.nome ?? null);
-      const resolvedEscolaParam = esc?.slug ? String(esc.slug) : String(escolaId);
-      setEscolaParam(resolvedEscolaParam);
-      setEducandos(merged);
-
-      const safePath = pathname ?? "";
-      const query = searchValue ? `?${searchValue}` : "";
-      const disabledPath = buildPortalHref(resolvedEscolaParam, "/aluno/desabilitado");
-
-      if (!acessoPortal) {
-        if (safePath !== disabledPath) {
-          router.replace(disabledPath);
-          return;
-        }
-        setReady(true);
-        return;
+      const merged = new Map<string, Educando>();
+      for (const row of [...(alunosDiretos || []), ...alunosVinculados]) {
+        if (row?.id) merged.set(row.id, {
+          id: row.id, nome: row.nome ?? "Educando", escola_id: row.escola_id,
+        });
       }
-
-      if (acessoPortal && safePath.startsWith("/aluno")) {
-        router.replace(`${buildPortalHref(resolvedEscolaParam, safePath)}${query}`);
-        return;
-      }
-
-      setReady(true);
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [pathname, router, searchValue]);
+      if (active) setEducandos(Array.from(merged.values()));
+    })().catch(() => {
+      // Falha acessória não impede as páginas; os endpoints continuam protegidos.
+      if (active) setEducandos([]);
+    });
+    return () => { active = false; };
+  }, [escolaId, portalEnabled, userEmail, userId]);
 
   const alunoSelecionado = useMemo(() => searchParams?.get("aluno") ?? educandos[0]?.id ?? null, [searchParams, educandos]);
   const alunoSelecionadoNome = useMemo(
@@ -145,9 +115,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
     [educandos, alunoSelecionado]
   );
 
-  const safePathname = pathname ?? "";
-  const escolaParamFromPath = getEscolaParamFromPath(safePathname);
-  const navEscolaParam = escolaParamFromPath ?? escolaParam;
+  const navEscolaParam = escolaParam;
   const navItems = useMemo(
     () =>
       [
@@ -204,15 +172,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
     router.replace(`${pathname}?${params.toString()}`);
   };
 
-  useEffect(() => {
-    navItems.forEach((item) => {
-      router.prefetch(withAlunoParam(item.href));
-    });
-  }, [navItems, router, withAlunoParam]);
-
-  if (!ready) {
-    return <div className="p-6">🔒 Verificando acesso do aluno…</div>;
-  }
+  if (redirectTarget) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
