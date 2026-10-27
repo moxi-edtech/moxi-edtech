@@ -66,7 +66,7 @@ test("documentos usam descrição na largura total e ação no rodapé, sem comp
   const catalog = await source("components/aluno/tabs/TabDocumentos.tsx");
   assert.match(catalog, /min-w-0 space-y-3 rounded-2xl/);
   assert.match(catalog, /break-words text-sm leading-6/);
-  assert.match(catalog, /border-t border-slate-100 pt-3 sm:justify-end/);
+  assert.match(catalog, /border-t border-border pt-3 sm:justify-end/);
   assert.match(catalog, /min-h-11 w-full items-center justify-center/);
   assert.match(catalog, /onOpenNotas/);
   assert.match(catalog, /pagamento_configurado === false/);
