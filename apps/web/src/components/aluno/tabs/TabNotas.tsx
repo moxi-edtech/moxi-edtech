@@ -30,7 +30,7 @@ type BoletimServico = { codigo: string; valor: number; status: string; pagamento
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
 
-export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boolean; onOpenDocuments?: () => void } = {}) {
+export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boolean; onOpenDocuments?: (serviceCode?: string | null) => void } = {}) {
   const searchParams = useSearchParams();
   const escolaSlug = getEscolaParamFromPath(usePathname());
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
@@ -263,19 +263,23 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const serviceUnconfigured = moneyStatus === "available" && !paymentConfigured;
   const access = serviceUnconfigured
     ? {
-        title: "Boletim indisponível nesta escola",
-        message: "A secretaria ainda não configurou uma taxa para disponibilizar o boletim. Não há pagamento a efetuar neste momento.",
-        action: "Ver serviços da secretaria",
+        title: "Boletim ainda indisponível",
+        message: "A escola ainda não definiu a taxa deste serviço.",
+        action: "Ver documentos",
       }
     : accessPresentation(moneyStatus, boletimServico?.reject_reason);
-  const docsUrl = buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`);
+  const docsParams = new URLSearchParams();
+  if (!serviceUnconfigured) docsParams.set("servico", BOLETIM_SERVICE_CODE);
+  if (studentId) docsParams.set("aluno", studentId);
+  if (academicYearId) docsParams.set("ano_letivo_id", academicYearId);
+  const docsUrl = buildPortalHref(escolaSlug, `/aluno/documentos${docsParams.size ? `?${docsParams.toString()}` : ""}`);
   const navParams = new URLSearchParams();
   if (studentId) navParams.set("aluno", studentId);
   if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
   const navQuery = navParams.size ? `?${navParams.toString()}` : "";
   const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-12 text-slate-800" data-testid="aluno-pauta-editorial">
+    <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-3 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
       {!embedded && <header className="space-y-3">
         <p className="text-sm font-medium text-[#2B6044]">KLASSE / Portal do aluno</p>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">As tuas notas</h1>
@@ -288,30 +292,37 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         </nav>
       </header>}
       {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
-      {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-5 motion-safe:animate-pulse">
-        <div className="h-12 max-w-sm rounded-xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/><div className="h-28 rounded-2xl bg-slate-100"/>
+      {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-2 motion-safe:animate-pulse">
+        <div className="h-5 w-36 rounded-lg bg-muted"/><div className="h-24 rounded-xl bg-muted"/>
       </section> : accessError ? <section role="alert" className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
         <h2 className="text-lg font-semibold">Não foi possível consultar as tuas notas</h2>
         <p className="text-sm leading-6 text-slate-700">{accessError} Não precisas de fazer outro pagamento.</p>
         <button type="button" onClick={() => setRefreshVersion(v => v+1)} className={`min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-[#2B6044] ${focus}`}>Tentar novamente</button>
       </section> : !matriculaEncontrada ? <section className="rounded-2xl bg-slate-50 p-5">
         <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-2 text-sm leading-6 text-slate-600">Contacta a secretaria para confirmar a tua matrícula antes de solicitar o boletim.</p>
-      </section> : !safeIsLiberado ? <section aria-labelledby="boletim-locked" className="space-y-4 rounded-2xl border border-[#C8902A]/30 bg-white p-5 sm:p-6">
-        <LockIcon aria-hidden className="h-6 w-6 text-[#A06D17]"/>
-        <h2 id="boletim-locked" className="text-xl font-semibold text-slate-900">{access.title}</h2>
-        <p className="text-sm leading-6 text-slate-600">{access.message}</p>
-        {boletimServico?.valor && boletimServico.valor > 0 && moneyStatus === "available" && <p className="text-sm font-medium">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(boletimServico.valor)}</p>}
-        {serviceUnconfigured && <p className="text-sm text-amber-900">A secretaria precisa configurar o serviço para permitir o pagamento.</p>}
-        {onOpenDocuments ? (
-          <button type="button" onClick={onOpenDocuments} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-800 px-5 text-sm font-semibold text-white hover:bg-emerald-900 ${focus}`}>
-            {access.action}<ArrowRight className="h-4 w-4"/>
-          </button>
-        ) : (
-          <Link href={docsUrl} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-800 px-5 text-sm font-semibold text-white hover:bg-emerald-900 ${focus}`}>
-            {access.action}<ArrowRight className="h-4 w-4"/>
-          </Link>
-        )}
-        {!serviceUnconfigured && <p className="text-xs leading-5 text-muted-foreground">A aprovação do pedido, por si só, não libera as avaliações. É preciso confirmar a liquidação.</p>}
+      </section> : !safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <LockIcon className="h-4.5 w-4.5"/>
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <h2 id="boletim-locked" className="text-base font-semibold leading-6 text-foreground">{access.title}</h2>
+            <p className="text-sm leading-5 text-muted-foreground">{access.message}</p>
+            {paymentConfigured && moneyStatus === "available" && (
+              <p className="text-sm font-semibold text-foreground">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(Number(boletimServico?.valor))}</p>
+            )}
+            {onOpenDocuments ? (
+              <button type="button" onClick={() => onOpenDocuments(serviceUnconfigured ? null : BOLETIM_SERVICE_CODE)}
+                className={focus + " inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-emerald-800 hover:underline"}>
+                {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
+              </button>
+            ) : (
+              <Link href={docsUrl} className={focus + " inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-emerald-800 hover:underline"}>
+                {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
+              </Link>
+            )}
+          </div>
+        </div>
       </section> : <section aria-labelledby="pauta-title" className="space-y-6">
         <div className="space-y-4">
           <h2 id="pauta-title" className="text-xl font-semibold tracking-tight text-slate-900">Avaliações por período</h2>
