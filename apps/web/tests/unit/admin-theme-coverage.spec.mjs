@@ -65,3 +65,15 @@ test("financial inputs remain labeled and distinguishable from the surrounding m
   assert.match(load("financeiro/RegistoPagamentoModal.tsx"), /htmlFor="pagamento-metodo"/);
   assert.match(load("financeiro/RegistoPagamentoModal.tsx"), /bg-background text-foreground/);
 });
+
+test("gold and amber primary actions never use insufficient-contrast white text", () => {
+  const actions = [
+    load("financeiro/RegistoPagamentoModal.tsx"),
+    load("financeiro/GerarMensalidadesModal.tsx"),
+    readFileSync(new URL("../../src/app/escola/[id]/(portal)/financeiro/conciliacao/page.tsx", import.meta.url), "utf8"),
+  ];
+  for (const source of actions) {
+    const styleLines = source.split("\n").filter(line => /bg-amber(?:-\d+)?\b/.test(line) && /text-white/.test(line));
+    assert.deepEqual(styleLines, [], "Amber buttons must use dark readable text");
+  }
+});

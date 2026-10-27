@@ -36,7 +36,7 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 - O contraste das fixtures passou a calcular a luminância a partir de OKLCH, em vez de interpretar números OKLCH incorretamente como RGB.
 - `KF2 Search Audit`: garantir nenhum hexadecimal de marca introduzido em novas linhas operacionais.
 - `module-switcher-removal.spec.mjs`: impede regressão que volte a importar/renderizar ModuleSwitcher no Topbar ou PortalLayout; garante que ThemeSwitcher permanece acessível.
-- `admin-theme-coverage.spec.mjs`: protege superfícies administrativas contra reintrodução de branco fixo e texto neutro ilegível, e verifica altura/scroll de modais e rótulos dos campos.
+- `admin-theme-coverage.spec.mjs`: protege superfícies administrativas contra reintrodução de branco fixo e texto neutro ilegível, verifica altura/scroll de modais, rótulos de campos e contraste das ações douradas.
 - Gates de CI gerais e homologação autenticada continuam obrigatórios antes de tirar a PR do modo draft.
 
 

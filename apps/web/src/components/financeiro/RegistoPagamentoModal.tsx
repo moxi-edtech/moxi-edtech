@@ -150,7 +150,7 @@ export function RegistoPagamentoModal({
           <button
             type="submit"
             disabled={loading || !escolaUuid}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm shadow-amber-500/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-amber-950 px-6 py-2.5 rounded-lg font-bold shadow-sm shadow-amber-500/20 transition-all disabled:opacity-50"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />

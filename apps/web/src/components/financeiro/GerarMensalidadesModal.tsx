@@ -139,7 +139,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="bg-amber-400 text-white hover:brightness-95 focus:ring-4 focus:ring-amber-400/20 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm"
+        className="bg-amber-400 text-amber-950 hover:brightness-95 focus:ring-4 focus:ring-amber-400/20 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm"
       >
         <Calendar className="w-4 h-4" />
         Gerar Cobranças
@@ -251,7 +251,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
           <button
             onClick={handleGerar}
             disabled={loading || status === "success"}
-            className="bg-amber-400 hover:brightness-95 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+            className="bg-amber-400 hover:brightness-95 text-amber-950 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar geração"}
           </button>
