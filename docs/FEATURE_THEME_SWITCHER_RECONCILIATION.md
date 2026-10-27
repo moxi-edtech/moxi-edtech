@@ -41,3 +41,7 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 - Executar typecheck, testes do provider/alternância e Playwright com autenticação nos portais e módulos operacionais.
 - Validar com sessão real o comando, Balcão, formulários, impressões de recibos e a troca entre escolas; testes sintéticos não substituem esta homologação.
 - Não apagar a branch histórica antes de validar o restante do escopo P1/P2.
+
+## Integração paralela de Outubro
+- O ensaio do Command Center deixou de repetir a PR #247 (`fix/operations-layout-composition-20261022`): está **merged em main**, logo o seu CSS responsivo já pertence à base do teste. Preservar a sua lógica em `globals.css` e validar as restantes branches em merge sintético.
+- Não introduzimos resolução automática nem ignorámos novos conflitos entre branches realmente independentes.
