@@ -1,9 +1,7 @@
 /**
- * Contrato do modelo comercial impresso pelo CRM.
- * Referência: Proposta Comercial — Makuntima Zinga (26/09/2026).
- * Capacidades: app_plan_limits (migração 20260306090000) e landing.ts.
- *
- * Não inferir preço a partir do plano: os valores são negociados no CRM.
+ * Modelo comercial CRM, baseado na Proposta Comercial — Makuntima Zinga
+ * (26/09/2026). Capacidade alinhada com app_plan_limits / landing.ts.
+ * Preços e concessões são negociados no CRM, nunca inferidos do plano.
  */
 export type ProposalPlan = "essencial" | "profissional" | "premium";
 
@@ -37,15 +35,15 @@ const EDUCATION_LEVELS: Record<string, string> = {
 };
 
 function safeNonnegativeInteger(raw: string | null): number | null {
-  if (raw === null || !new RegExp('^[0-9]+) return null;
+  if (raw === null || !/^[0-9]+$/.test(raw.trim())) return null;
   const value = Number(raw);
   return Number.isSafeInteger(value) ? value : null;
 }
 
 export function readProposalParams(params: URLSearchParams) {
-  const planoParam = params.get("plano");
-  const plano: ProposalPlan | null = planoParam === "essencial" || planoParam === "profissional" || planoParam === "premium"
-    ? planoParam : null;
+  const rawPlan = params.get("plano");
+  const plano: ProposalPlan | null = rawPlan === "essencial" || rawPlan === "profissional" || rawPlan === "premium"
+    ? rawPlan : null;
   const escola = (params.get("escola") || "").trim().slice(0, 180);
   const contacto = (params.get("contacto") || "").trim().slice(0, 180);
   const alunos = safeNonnegativeInteger(params.get("alunos"));
@@ -59,71 +57,31 @@ export function readProposalParams(params: URLSearchParams) {
 
 export type CommercialProposal = ReturnType<typeof readProposalParams>;
 
-export function proposalPrintErrors(data: CommercialProposal): string[] {
-  const errors: string[] = [];
-  if (!data.escola) errors.push("Indique a escola.");
-  if (!data.plano) errors.push("Selecione um plano válido.");
-  if (data.alunos === null || data.alunos < 1) errors.push("Indique o número estimado de alunos.");
-  if (data.taxa === null) errors.push("Indique a taxa de ativação (0 para isenção).");
-  if (data.mensalidade === null || data.mensalidade < 1) errors.push("Indique uma mensalidade válida.");
-  if (data.trial === null || data.trial > 30) errors.push("O período de teste deve estar entre 0 e 30 dias.");
-  if (data.plano && data.alunos !== null) {
-    const limite = PROPOSAL_PLANS[data.plano].alunos;
-    if (limite !== null && data.alunos > limite) {
-      errors.push(`O plano ${PROPOSAL_PLANS[data.plano].label} admite até ${formatNumber(limite)} alunos.`);
-    }
-  }
-  if (data.mensalidade !== null && data.taxa !== null && !Number.isSafeInteger(data.mensalidade + data.taxa)) {
-    errors.push("O pagamento inicial ultrapassa o limite numérico permitido.");
-  }
-  return errors;
-}
-
-export function formatNumber(value: number): string {\n  return value.toLocaleString("pt-PT").replace(/[\\u00a0\\u202f\\s]/g, ".");\n}\n\nexport function formatKz(value: number | null): string {
-  return value === null ? "A definir" : `Kz ${value.toLocaleString("pt-PT")}`;
-}
-).test(raw.trim())) return null;
-  const value = Number(raw);
-  return Number.isSafeInteger(value) ? value : null;
-}
-
-export function readProposalParams(params: URLSearchParams) {
-  const planoParam = params.get("plano");
-  const plano: ProposalPlan | null = planoParam === "essencial" || planoParam === "profissional" || planoParam === "premium"
-    ? planoParam : null;
-  const escola = (params.get("escola") || "").trim().slice(0, 180);
-  const contacto = (params.get("contacto") || "").trim().slice(0, 180);
-  const alunos = safeNonnegativeInteger(params.get("alunos"));
-  const taxa = safeNonnegativeInteger(params.get("taxa"));
-  const mensalidade = safeNonnegativeInteger(params.get("mensalidade"));
-  const trial = safeNonnegativeInteger(params.get("trial"));
-  const niveis = [...new Set((params.get("niveis") || "").split(",").filter((v) => Object.hasOwn(EDUCATION_LEVELS, v)))]
-    .map((v) => EDUCATION_LEVELS[v]);
-  return { plano, escola, contacto, alunos, taxa, mensalidade, trial, niveis };
-}
-
-export type CommercialProposal = ReturnType<typeof readProposalParams>;
-
-export function proposalPrintErrors(data: CommercialProposal): string[] {
-  const errors: string[] = [];
-  if (!data.escola) errors.push("Indique a escola.");
-  if (!data.plano) errors.push("Selecione um plano válido.");
-  if (data.alunos === null || data.alunos < 1) errors.push("Indique o número estimado de alunos.");
-  if (data.taxa === null) errors.push("Indique a taxa de ativação (0 para isenção).");
-  if (data.mensalidade === null || data.mensalidade < 1) errors.push("Indique uma mensalidade válida.");
-  if (data.trial === null || data.trial > 30) errors.push("O período de teste deve estar entre 0 e 30 dias.");
-  if (data.plano && data.alunos !== null) {
-    const limite = PROPOSAL_PLANS[data.plano].alunos;
-    if (limite !== null && data.alunos > limite) {
-      errors.push(`O plano ${PROPOSAL_PLANS[data.plano].label} admite até ${limite.toLocaleString("pt-PT")} alunos.`);
-    }
-  }
-  if (data.mensalidade !== null && data.taxa !== null && !Number.isSafeInteger(data.mensalidade + data.taxa)) {
-    errors.push("O pagamento inicial ultrapassa o limite numérico permitido.");
-  }
-  return errors;
+export function formatNumber(value: number): string {
+  // Uniformizar a apresentação impressa angolana: 140.000 em vez de 140 000.
+  return value.toLocaleString("pt-PT").replace(/[\u00a0\u202f\s]/g, ".");
 }
 
 export function formatKz(value: number | null): string {
-  return value === null ? "A definir" : `Kz ${value.toLocaleString("pt-PT")}`;
+  return value === null ? "A definir" : "Kz " + formatNumber(value);
+}
+
+export function proposalPrintErrors(data: CommercialProposal): string[] {
+  const errors: string[] = [];
+  if (!data.escola) errors.push("Indique a escola.");
+  if (!data.plano) errors.push("Selecione um plano válido.");
+  if (data.alunos === null || data.alunos < 1) errors.push("Indique o número estimado de alunos.");
+  if (data.taxa === null) errors.push("Indique a taxa de ativação (0 para isenção).");
+  if (data.mensalidade === null || data.mensalidade < 1) errors.push("Indique uma mensalidade válida.");
+  if (data.trial === null || data.trial > 30) errors.push("O período de teste deve estar entre 0 e 30 dias.");
+  if (data.plano && data.alunos !== null) {
+    const limite = PROPOSAL_PLANS[data.plano].alunos;
+    if (limite !== null && data.alunos > limite) {
+      errors.push("O plano " + PROPOSAL_PLANS[data.plano].label + " admite até " + formatNumber(limite) + " alunos.");
+    }
+  }
+  if (data.mensalidade !== null && data.taxa !== null && !Number.isSafeInteger(data.mensalidade + data.taxa)) {
+    errors.push("O pagamento inicial ultrapassa o limite numérico permitido.");
+  }
+  return errors;
 }
