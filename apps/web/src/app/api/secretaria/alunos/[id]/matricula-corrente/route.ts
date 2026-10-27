@@ -144,11 +144,16 @@ export async function GET(
             result.reason = "Não foi possível verificar a confirmação financeira da matrícula.";
           } else {
             const matches = (orders ?? []).filter((order: OrderRow) => orderForEnrollment(order, current, activeYear!.id));
-            // GET is a hint only. POST revalidates payment, debt, RAA and school scope.
-            result.canConfirm = matches.length === 1 && turma.status_fecho === "aberto";
-            result.pedidoId = matches.length === 1 ? matches[0].id : null;
+            const linkedOrder = matches.length === 1 ? matches[0] : null;
+            const receiptId = linkedOrder?.contexto?.recibo_doc_id;
+            // GET is only a hint, but must not offer confirmation for an
+            // unpaid/no-receipt order. POST independently revalidates everything.
+            const hasReceiptReference = typeof receiptId === "string" && uuid.safeParse(receiptId).success;
+            result.canConfirm = Boolean(linkedOrder && hasReceiptReference
+              && ["aberto", "open"].includes(String(turma.status_fecho).toLowerCase()));
+            result.pedidoId = result.canConfirm && linkedOrder ? linkedOrder.id : null;
             if (!result.canConfirm) {
-              result.reason = "Reserva pendente. A confirmação exige um pedido de rematrícula associado e validado; utilize o Balcão ou a reconciliação.";
+              result.reason = "Reserva pendente: antes de confirmar, reconcilie o pedido, pagamento e recibo de rematrícula no Balcão.";
             }
           }
         }
