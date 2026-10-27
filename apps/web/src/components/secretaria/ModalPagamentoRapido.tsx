@@ -13,6 +13,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildContextualPortalHref } from "@/lib/navigation";
 import { ReceiptBlockReclassificacaoModal } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
+import { findIssuedOperationalReceipt, reserveReceiptWindow, showIssuedReceipt, showReceiptPending } from "@/lib/financeiro/recover-receipt-after-payment";
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 // Fonte de verdade: nunca usar cores avulsas fora deste mapa.
@@ -659,6 +660,7 @@ function usePagamentoSubmit({
   trocoValido,
   onConcluido,
   onRecibos,
+  onReceiptStatus,
   onPagamentosConcluidos,
   safeClose,
   onSuccess,
@@ -673,6 +675,7 @@ function usePagamentoSubmit({
   trocoValido:    boolean;
   onConcluido:    () => void;
   onRecibos:      (r: ReciboBatchItem[]) => void;
+  onReceiptStatus: (value: { url: string | null; mensalidadeId: string | null; pending: boolean }) => void;
   onPagamentosConcluidos: (p: PagamentoConcluido[]) => void;
   safeClose:      () => void;
   onSuccess?:     () => void;
@@ -681,6 +684,8 @@ function usePagamentoSubmit({
 }) {
   const [processando, setProcessando] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  // Network uncertainty reuses the same key; changing checkout data creates a new attempt.
+  const pendingCheckout = useRef<{ fingerprint: string; key: string } | null>(null);
   const { error } = useToast();
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -695,6 +700,9 @@ function usePagamentoSubmit({
       error("Comprovativo obrigatório para Transferência."); return;
     }
 
+    // This is still the direct user click. Reserve the tab BEFORE any await;
+    // opening after fetch is routinely blocked by popup blockers.
+    const receiptWindow = reserveReceiptWindow();
     setProcessando(true);
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -707,11 +715,18 @@ function usePagamentoSubmit({
         preco: mensalidadesSelecionadas.length === 1 ? (valorPagoNum || mensalidade.valor) : mensalidade.valor,
         origem_matricula_id: posViradaContext?.matriculaOrigemId ?? null,
       }));
+      const fingerprint = JSON.stringify({
+        alunoId: aluno.id, metodo, detalhes, valorPagoNum,
+        itens, origem: posViradaContext ?? null,
+      });
+      if (!pendingCheckout.current || pendingCheckout.current.fingerprint !== fingerprint) {
+        pendingCheckout.current = { fingerprint, key: crypto.randomUUID() };
+      }
       const res = await fetch("/api/secretaria/pagamentos/processar", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
+          "Idempotency-Key": pendingCheckout.current.key,
         },
         signal: abortRef.current.signal,
         body: JSON.stringify({
@@ -754,15 +769,38 @@ function usePagamentoSubmit({
           }]
         : [];
 
-      if (typeof json.recibo?.print_url === "string" && json.recibo.print_url.trim()) {
-        window.open(json.recibo.print_url, "_blank", "noopener,noreferrer");
-      }
+      const immediateUrl = typeof json.recibo?.print_url === "string"
+        && json.recibo.print_url.startsWith("/secretaria/documentos/")
+        ? json.recibo.print_url : null;
+      const lastMonthlyId = itens[itens.length - 1]?.id ?? null;
+      onReceiptStatus({ url: immediateUrl, mensalidadeId: lastMonthlyId, pending: !immediateUrl });
+      if (immediateUrl) showIssuedReceipt(receiptWindow, immediateUrl);
+
       onRecibos(recibosGerados);
       onPagamentosConcluidos(pagamentosConcluidos);
       onConcluido();
       if (onSuccess) onSuccess();
+      // The payment is already committed. Poll READ-ONLY for the document;
+      // do not retry checkout or emit another receipt just to print.
+      if (!immediateUrl && lastMonthlyId) {
+        try {
+          const recoveredUrl = await findIssuedOperationalReceipt(lastMonthlyId, {
+            signal: abortRef.current?.signal, attempts: 12,
+          });
+          if (recoveredUrl) {
+            onReceiptStatus({ url: recoveredUrl, mensalidadeId: lastMonthlyId, pending: false });
+            showIssuedReceipt(receiptWindow, recoveredUrl);
+          } else {
+            showReceiptPending(receiptWindow);
+          }
+        } catch {
+          showReceiptPending(receiptWindow);
+        }
+      }
+      pendingCheckout.current = null;
 
     } catch (err: any) {
+      receiptWindow?.close();
       if (err?.name === "AbortError") return;
       error(err instanceof Error ? err.message : "Não foi possível processar o pagamento.");
     } finally {
@@ -771,7 +809,7 @@ function usePagamentoSubmit({
   }, [
     mensalidadesSelecionadas, trocoValido, processando, metodo, detalhes,
     valorPagoNum, aluno.id,
-    onConcluido, onRecibos, onSuccess, error,
+    onConcluido, onRecibos, onReceiptStatus, onSuccess, error,
     onPagamentosConcluidos,
     posViradaContext,
   ]);
