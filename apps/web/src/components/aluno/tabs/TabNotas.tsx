@@ -25,12 +25,12 @@ type BoletimResponse = {
   context?: { anoLetivoLabel?: string | null; mode?: "CURRENT" | "HISTORICAL_READ" } | null;
 };
 
-type BoletimServico = { codigo: string; valor: number; status: string; reject_reason?: string | null; pedido_id?: string | null };
+type BoletimServico = { codigo: string; valor: number; status: string; pagamento_configurado?: boolean; reject_reason?: string | null; pedido_id?: string | null };
 
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
 
-export function TabNotas() {
+export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boolean; onOpenDocuments?: () => void } = {}) {
   const searchParams = useSearchParams();
   const escolaSlug = getEscolaParamFromPath(usePathname());
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
@@ -257,7 +257,17 @@ export function TabNotas() {
   const periods = availablePeriods(safeDisciplinas);
   const period = selectedPeriod !== null && periods.includes(selectedPeriod) ? selectedPeriod : chooseInitialPeriod(safeDisciplinas);
   const moneyStatus = boletimServico?.status === "pending_payment" ? "available" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
-  const access = accessPresentation(moneyStatus, boletimServico?.reject_reason);
+  // Não anunciar um pagamento impossível: a escola pode ter o serviço ativo,
+  // mas ainda sem uma taxa positiva configurada para boletins.
+  const paymentConfigured = boletimServico?.pagamento_configurado !== false && Number(boletimServico?.valor) > 0;
+  const serviceUnconfigured = moneyStatus === "available" && !paymentConfigured;
+  const access = serviceUnconfigured
+    ? {
+        title: "Boletim indisponível nesta escola",
+        message: "A secretaria ainda não configurou uma taxa para disponibilizar o boletim. Não há pagamento a efetuar neste momento.",
+        action: "Ver serviços da secretaria",
+      }
+    : accessPresentation(moneyStatus, boletimServico?.reject_reason);
   const docsUrl = buildPortalHref(escolaSlug, `/aluno/documentos?servico=${BOLETIM_SERVICE_CODE}${studentId ? `&aluno=${encodeURIComponent(studentId)}` : ""}${academicYearId ? `&ano_letivo_id=${encodeURIComponent(academicYearId)}` : ""}`);
   const navParams = new URLSearchParams();
   if (studentId) navParams.set("aluno", studentId);
@@ -266,7 +276,7 @@ export function TabNotas() {
   const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2B6044] focus-visible:ring-offset-2";
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-12 text-slate-800" data-testid="aluno-pauta-editorial">
-      <header className="space-y-3">
+      {!embedded && <header className="space-y-3">
         <p className="text-sm font-medium text-[#2B6044]">KLASSE / Portal do aluno</p>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">As tuas notas</h1>
         <p className="text-base leading-7 text-slate-600">Acompanha as avaliações que já foram lançadas.</p>
@@ -276,7 +286,8 @@ export function TabNotas() {
           <Link href={buildPortalHref(escolaSlug, `/aluno/disciplinas${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Disciplinas</Link>
           <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Documentos</Link>
         </nav>
-      </header>
+      </header>}
+      {embedded && academicYear !== null && <p className="text-xs font-medium text-slate-500">Ano letivo {academicYear}</p>}
       {visibleLoading ? <section aria-label="A carregar as tuas notas" className="space-y-5 motion-safe:animate-pulse">
         <div className="h-12 max-w-sm rounded-xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/><div className="h-28 rounded-2xl bg-slate-100"/>
       </section> : accessError ? <section role="alert" className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
@@ -290,9 +301,17 @@ export function TabNotas() {
         <h2 id="boletim-locked" className="text-xl font-semibold text-slate-900">{access.title}</h2>
         <p className="text-sm leading-6 text-slate-600">{access.message}</p>
         {boletimServico?.valor && boletimServico.valor > 0 && moneyStatus === "available" && <p className="text-sm font-medium">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(boletimServico.valor)}</p>}
-        {moneyStatus === "available" && !boletimServico?.valor && <p className="text-sm text-slate-600">A taxa do boletim ainda não está configurada. Contacta a secretaria.</p>}
-        {(boletimServico?.valor || moneyStatus !== "available") && <Link href={docsUrl} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#2B6044] px-5 text-sm font-semibold text-white hover:bg-[#214d36] ${focus}`}>{access.action}<ArrowRight className="h-4 w-4"/></Link>}
-        <p className="text-xs leading-5 text-slate-500">A aprovação do pedido, por si só, não libera as avaliações. É preciso confirmar a liquidação.</p>
+        {serviceUnconfigured && <p className="text-sm text-amber-900">A secretaria precisa configurar o serviço para permitir o pagamento.</p>}
+        {onOpenDocuments ? (
+          <button type="button" onClick={onOpenDocuments} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-800 px-5 text-sm font-semibold text-white hover:bg-emerald-900 ${focus}`}>
+            {access.action}<ArrowRight className="h-4 w-4"/>
+          </button>
+        ) : (
+          <Link href={docsUrl} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-800 px-5 text-sm font-semibold text-white hover:bg-emerald-900 ${focus}`}>
+            {access.action}<ArrowRight className="h-4 w-4"/>
+          </Link>
+        )}
+        {!serviceUnconfigured && <p className="text-xs leading-5 text-slate-500">A aprovação do pedido, por si só, não libera as avaliações. É preciso confirmar a liquidação.</p>}
       </section> : <section aria-labelledby="pauta-title" className="space-y-6">
         <div className="space-y-4">
           <h2 id="pauta-title" className="text-xl font-semibold tracking-tight text-slate-900">Avaliações por período</h2>
