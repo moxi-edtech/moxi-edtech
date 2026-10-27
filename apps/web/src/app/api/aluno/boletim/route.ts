@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
-import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import { AcademicYearContextError } from "@/lib/academic-year/context";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
 import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
@@ -15,10 +15,7 @@ export async function GET(request: Request) {
     if (!ctx?.escolaId || !ctx.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const selectedId = new URL(request.url).searchParams.get("studentId");
-    const { data: userRes } = await supabase.auth.getUser();
-    const authorizedIds = await resolveAuthorizedStudentIds({
-      supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: userRes?.user?.email,
-    });
+    const authorizedIds = ctx.alunoIds;
     if (selectedId && !authorizedIds.includes(selectedId)) {
       return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
     }
