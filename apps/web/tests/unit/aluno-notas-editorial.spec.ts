@@ -39,10 +39,10 @@ test("notas protegidas nunca aparecem quando API nega is_liberado; modal preserv
   assert.match(source,/resolveBoletimMatricula\(/);
   // getAlunoContext valida os vínculos uma vez por pedido; ambas as rotas
   // reutilizam apenas os IDs autorizados nesse contexto.
-  assert.match(source,/getAlunoContext\\(\\)/);
-  assert.match(source,/const authorizedIds = ctx\\.alunoIds;/);
-  assert.match(source,/resolveSelectedStudentId\\(/);
-  assert.doesNotMatch(source,/resolveAuthorizedStudentIds\\(/);
+  assert.match(source,/getAlunoContext\(\)/);
+  assert.match(source,/const authorizedIds = ctx\.alunoIds;/);
+  assert.match(source,/resolveSelectedStudentId\(/);
+  assert.doesNotMatch(source,/resolveAuthorizedStudentIds\(/);
  }
  assert.match(api,/is_liberado: false[^\n]*disciplinas: \[\]/);
  assert.match(pdf,/!access\.granted\)[^\n]*403/);
