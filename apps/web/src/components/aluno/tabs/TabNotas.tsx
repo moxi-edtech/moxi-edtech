@@ -15,6 +15,8 @@ type Disciplina = {
   id: string;
   nome: string;
   avaliacoes: Array<{ nome: string; tipo: string; trimestre: number; nota: number }>;
+  periodosAtivos?: number[] | null;
+  classificacoes?: Array<{ trimestre: number; nota: number | null; status: "disponivel" | "pendente" }>;
 };
 
 type BoletimResponse = {
@@ -271,7 +273,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           cache: "no-store", signal: controller.signal,
         });
         const json = await response.json() as {
-          ok?: boolean; error?: string; disciplinas?: Array<{ id: string; nome: string }>;
+          ok?: boolean; error?: string; disciplinas?: Array<{ id: string; nome: string; periodos_ativos?: number[] | null }>;
           context?: { anoLetivoLabel?: string | null };
         };
         if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível consultar as disciplinas.");
@@ -279,7 +281,12 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         const subjects = Array.isArray(json.disciplinas) ? json.disciplinas : [];
         // Defensive whitelist: no assessment field is ever copied from this API.
         const permitted = subjects.filter((d) => typeof d.id === "string" && typeof d.nome === "string")
-          .map((d) => ({ id: d.id, nome: d.nome, avaliacoes: [] }));
+          .map((d) => ({
+            id: d.id, nome: d.nome, avaliacoes: [],
+            periodosAtivos: Array.isArray(d.periodos_ativos)
+              ? d.periodos_ativos.filter((p) => Number.isInteger(p) && p >= 1 && p <= 3) : null,
+            classificacoes: [],
+          }));
         setCurriculum(permitted);
         setCurriculumYear(json.context?.anoLetivoLabel ?? null);
         setCurriculumScope(bulletinQuery);
@@ -304,7 +311,12 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const byId = new Map(safeDisciplinas.map((disc) => [disc.id, disc]));
   const curriculumIds = new Set(safeCurriculum.map((disc) => disc.id));
   const gridSubjects = safeIsLiberado
-    ? [...safeCurriculum.map((disc) => byId.get(disc.id) ?? disc),
+    ? [...safeCurriculum.map((disc) => ({
+        ...disc,
+        ...(byId.get(disc.id) ?? {}),
+        // Only the authorized curriculum decides whether a subject is taught.
+        periodosAtivos: disc.periodosAtivos,
+      })),
       ...safeDisciplinas.filter((disc) => !curriculumIds.has(disc.id))]
     : safeCurriculum;
   const gridYearLabel = academicYear ?? (curriculumScope === bulletinQuery ? curriculumYear : null);
