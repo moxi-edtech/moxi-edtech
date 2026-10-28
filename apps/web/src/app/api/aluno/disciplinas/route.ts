@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from("turma_disciplinas")
-      .select("curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome))")
+      .select("periodos_ativos, curso_matriz:curso_matriz_id(periodos_ativos, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome))")
       .eq("escola_id", ctx.escolaId)
       .eq("turma_id", matricula.turma_id);
 
@@ -44,12 +44,29 @@ export async function GET(request: Request) {
     const { data, error } = await query;
     if (error) throw error;
 
-    const seen = new Map<string, string>();
+    const safePeriodos = (raw: unknown): number[] | null => {
+      if (!Array.isArray(raw)) return null;
+      return [...new Set(raw.filter((p) => Number.isInteger(p) && p >= 1 && p <= 3))].sort((a, b) => a - b);
+    };
+    const seen = new Map<string, { id: string; nome: string; periodos_ativos: number[] | null }>();
     (data ?? []).forEach((row: any) => {
       const disciplina = row?.curso_matriz?.disciplina;
-      if (disciplina?.id && !seen.has(disciplina.id)) seen.set(disciplina.id, disciplina.nome);
+      if (!disciplina?.id || typeof disciplina.nome !== "string") return;
+      // Assignment overrides the curriculum matrix only when explicitly defined.
+      // Null is unknown, not equivalent to all trimesters.
+      const configured = safePeriodos(row.periodos_ativos) ?? safePeriodos(row.curso_matriz?.periodos_ativos);
+      const previous = seen.get(disciplina.id);
+      if (!previous) {
+        seen.set(disciplina.id, { id: disciplina.id, nome: disciplina.nome, periodos_ativos: configured });
+      } else if (configured !== null) {
+        // Legacy duplicated assignments: a period must not disappear because one
+        // of several linked rows was selected first.
+        previous.periodos_ativos = previous.periodos_ativos === null
+          ? configured
+          : [...new Set([...previous.periodos_ativos, ...configured])].sort((a, b) => a - b);
+      }
     });
-    const disciplinas = [...seen].map(([id, nome]) => ({ id, nome }));
+    const disciplinas = [...seen.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt"));
     return NextResponse.json({
       ok: true, disciplinas,
       context: { anoLetivoLabel: context.anoLetivoLabel, mode: context.mode },

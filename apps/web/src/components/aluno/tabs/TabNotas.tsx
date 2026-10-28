@@ -3,17 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
-import { Lock as LockIcon, FileText, ChevronDown, Loader2, Download, ArrowRight } from "lucide-react";
+import { Lock as LockIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
+import { BoletimGradeGrid } from "@/components/aluno/academico/BoletimGradeGrid";
+import { ServicePaymentDrawer } from "@/components/aluno/layout/ServicePaymentDrawer";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
-import { accessPresentation, availablePeriods, chooseInitialPeriod, formatPublishedGrade, periodAssessments } from "@/lib/aluno/gradesPresentation";
+import { accessPresentation } from "@/lib/aluno/gradesPresentation";
 
 type Disciplina = {
   id: string;
   nome: string;
   avaliacoes: Array<{ nome: string; tipo: string; trimestre: number; nota: number }>;
+  periodosAtivos?: number[] | null;
+  classificacoes?: Array<{ trimestre: number; nota: number | null; status: "disponivel" | "pendente" }>;
 };
 
 type BoletimResponse = {
@@ -26,7 +30,7 @@ type BoletimResponse = {
   context?: { anoLetivoLabel?: string | null; mode?: "CURRENT" | "HISTORICAL_READ" } | null;
 };
 
-type BoletimServico = { codigo: string; valor: number; status: string; pagamento_configurado?: boolean; reject_reason?: string | null; pedido_id?: string | null };
+type BoletimServico = { codigo: string; nome?: string; valor: number; status: string; pagamento_configurado?: boolean; reject_reason?: string | null; pedido_id?: string | null; pagamento_intent_id?: string | null };
 
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
@@ -45,15 +49,26 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const [matriculaEncontrada, setMatriculaEncontrada] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [boletimServico, setBoletimServico] = useState<BoletimServico | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<{ iban?: string; banco?: string; titular_conta?: string; kwik_chave?: string } | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
   const [academicYear, setAcademicYear] = useState<string | null>(null);
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [historicalRead, setHistoricalRead] = useState(false);
+  // Curriculum is independently authorized by the existing /disciplinas API.
+  // It NEVER includes protected grades and remains visible while the bulletin is locked.
+  const [curriculum, setCurriculum] = useState<Disciplina[]>([]);
+  const [curriculumScope, setCurriculumScope] = useState<string | null>(null);
+  const [curriculumYear, setCurriculumYear] = useState<string | null>(null);
+  const [curriculumLoading, setCurriculumLoading] = useState(true);
+  const [curriculumError, setCurriculumError] = useState<string | null>(null);
   const dialogOpener = useRef<HTMLElement | null>(null);
   const restoreDialogFocus = (event: Event) => { event.preventDefault(); dialogOpener.current?.focus(); };
   const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
@@ -159,13 +174,16 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
     setLoading(true);
     setIsLiberado(false);
     setDisciplinas([]);
-    setSelectedPeriod(null);
     setAcademicYear(null);
     setLoadedScope(null);
     setHistoricalRead(false);
     setReapreciacaoDisc(null);
     setMelhoriaDisc(null);
     setBoletimServico(null);
+    setPaymentDetails(null);
+    setPaymentIntentId(null);
+    setPaymentOpen(false);
+    setPaymentError(null);
     setAccessError(null);
   }, [studentId, bulletinQuery]);
 
@@ -219,12 +237,11 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         setHistoricalRead(json.context?.mode === "HISTORICAL_READ");
         const published = json.is_liberado ? json.disciplinas ?? [] : [];
         setDisciplinas(published);
-        setSelectedPeriod(chooseInitialPeriod(published));
         const label = json.context?.anoLetivoLabel?.trim() || null;
         setAcademicYear(label);
         if (!json.is_liberado && json.matricula_encontrada !== false) {
           const catalogResponse = await fetch(`/api/aluno/documentos/catalogo${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
-          const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[] };
+          const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[]; dados_pagamento?: { iban?: string; banco?: string; titular_conta?: string; kwik_chave?: string } };
           if (!catalogResponse.ok || !catalog.ok) throw new Error(catalog.error || "Não foi possível consultar a taxa do boletim.");
           if (!active) return;
           const servicos = catalog.documentos ?? [];
@@ -232,6 +249,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           // antiga só é aceite como pagamento já concluído (na API), nunca cobrada de novo.
           const servico = servicos.find((item) => item.codigo === BOLETIM_SERVICE_CODE);
           setBoletimServico(servico ?? null);
+          setPaymentDetails(catalog.dados_pagamento ?? null);
+          setPaymentIntentId(servico?.pagamento_intent_id ?? null);
         }
       } catch (error: unknown) {
         if (active && !(error instanceof DOMException && error.name === "AbortError")) {
@@ -240,7 +259,6 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           setLoadedScope(null);
           setHistoricalRead(false);
           setDisciplinas([]);
-          setSelectedPeriod(null);
         }
       } finally {
         if (active) {
@@ -253,12 +271,67 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
     return () => { active = false; ctrl.abort(); };
   }, [studentId, bulletinQuery, refreshVersion]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    setCurriculumLoading(true);
+    setCurriculum([]);
+    setCurriculumScope(null);
+    setCurriculumYear(null);
+    setCurriculumError(null);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/aluno/disciplinas${bulletinQuery}`, {
+          cache: "no-store", signal: controller.signal,
+        });
+        const json = await response.json() as {
+          ok?: boolean; error?: string; disciplinas?: Array<{ id: string; nome: string; periodos_ativos?: number[] | null }>;
+          context?: { anoLetivoLabel?: string | null };
+        };
+        if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível consultar as disciplinas.");
+        if (!active) return;
+        const subjects = Array.isArray(json.disciplinas) ? json.disciplinas : [];
+        // Defensive whitelist: no assessment field is ever copied from this API.
+        const permitted = subjects.filter((d) => typeof d.id === "string" && typeof d.nome === "string")
+          .map((d) => ({
+            id: d.id, nome: d.nome, avaliacoes: [],
+            periodosAtivos: Array.isArray(d.periodos_ativos)
+              ? d.periodos_ativos.filter((p) => Number.isInteger(p) && p >= 1 && p <= 3) : null,
+            classificacoes: [],
+          }));
+        setCurriculum(permitted);
+        setCurriculumYear(json.context?.anoLetivoLabel ?? null);
+        setCurriculumScope(bulletinQuery);
+      } catch (e) {
+        if (active && !controller.signal.aborted) {
+          setCurriculumError(e instanceof Error ? e.message : "Não foi possível consultar as disciplinas.");
+        }
+      } finally {
+        if (active) setCurriculumLoading(false);
+      }
+    })();
+    return () => { active = false; controller.abort(); };
+  }, [bulletinQuery]);
+
   // Fail closed synchronously on student/year change, before effects clear prior state.
   const safeIsLiberado = loadedScope === bulletinQuery && isLiberado;
   const safeDisciplinas = safeIsLiberado ? disciplinas : [];
   const visibleLoading = loading || (loadedScope !== bulletinQuery && !accessError);
-  const periods = availablePeriods(safeDisciplinas);
-  const period = selectedPeriod !== null && periods.includes(selectedPeriod) ? selectedPeriod : chooseInitialPeriod(safeDisciplinas);
+  const safeCurriculum = curriculumScope === bulletinQuery ? curriculum : [];
+  // Grades may have no assessments yet. Keep curriculum rows visible while
+  // merging only the grade API's explicitly authorized scores.
+  const byId = new Map(safeDisciplinas.map((disc) => [disc.id, disc]));
+  const curriculumIds = new Set(safeCurriculum.map((disc) => disc.id));
+  const gridSubjects = safeIsLiberado
+    ? [...safeCurriculum.map((disc) => ({
+        ...disc,
+        ...(byId.get(disc.id) ?? {}),
+        // Only the authorized curriculum decides whether a subject is taught.
+        periodosAtivos: disc.periodosAtivos,
+      })),
+      ...safeDisciplinas.filter((disc) => !curriculumIds.has(disc.id))]
+    : safeCurriculum;
+  const gridYearLabel = academicYear ?? (curriculumScope === bulletinQuery ? curriculumYear : null);
   const moneyStatus = boletimServico?.status === "pending_payment" ? "pending_payment" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
   // Não anunciar um pagamento impossível: a escola pode ter o serviço ativo,
   // mas ainda sem uma taxa positiva configurada para boletins.
@@ -280,6 +353,36 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   if (studentId) navParams.set("aluno", studentId);
   if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
   const navQuery = navParams.size ? `?${navParams.toString()}` : "";
+  const startBoletimPayment = async () => {
+    if (!boletimServico || !paymentConfigured || paymentBusy || historicalRead) return;
+    setPaymentError(null);
+    if (moneyStatus === "pending_payment" || moneyStatus === "rejected") {
+      if (!paymentIntentId) {
+        setPaymentError("Não foi possível recuperar o pagamento original. Contacta a secretaria; não voltes a pagar.");
+        return;
+      }
+      setPaymentOpen(true);
+      return;
+    }
+    if (moneyStatus !== "available") return;
+    setPaymentBusy(true);
+    try {
+      const response = await fetch(`/api/aluno/documentos/solicitar${bulletinQuery}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo: BOLETIM_SERVICE_CODE, ...(studentId ? { studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.pagamento_id) throw new Error(json?.error || "Não foi possível iniciar o pagamento.");
+      setPaymentIntentId(json.pagamento_id);
+      setPaymentOpen(true);
+      setRefreshVersion(v => v + 1);
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Falha ao iniciar o pagamento.");
+    } finally {
+      setPaymentBusy(false);
+    }
+  };
   const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
   return (
     <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-3 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
@@ -297,77 +400,81 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
       {visibleLoading ? <section aria-label="A carregar as tuas notas" role="status" aria-live="polite" className="space-y-2 motion-safe:animate-pulse">
         <span className="sr-only">A carregar as tuas notas</span><div aria-hidden="true" className="h-5 w-36 rounded-lg bg-muted"/><div aria-hidden="true" className="h-24 rounded-xl bg-muted"/>
-      </section> : accessError ? <section role="alert" className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4">
+      </section> : accessError ? <section role="alert" className="space-y-2 rounded-xl border border-destructive/40 bg-card p-4">
         <h2 className="text-lg font-semibold">Não foi possível consultar as tuas notas</h2>
         <p className="text-sm leading-6 text-muted-foreground">{accessError}</p>
-        <button type="button" onClick={() => setRefreshVersion(v => v+1)} className={`min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-[#2B6044] ${focus}`}>Tentar novamente</button>
-      </section> : !matriculaEncontrada ? <section className="rounded-xl bg-muted p-4">
-        <h2 className="font-semibold">Sem matrícula neste ano letivo</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">Contacta a secretaria para confirmar a tua matrícula.</p>
-      </section> : !safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5">
-        <div className="flex min-w-0 items-start gap-3">
-          <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-            <LockIcon className="h-4.5 w-4.5"/>
+        <button type="button" onClick={() => setRefreshVersion(v => v+1)} className={`min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground ${focus}`}>Tentar novamente</button>
+      </section> : !matriculaEncontrada ? <section className="rounded-xl border border-border bg-card p-4">
+        <h2 className="font-semibold">Sem matrícula neste ano letivo</h2>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">Contacta a secretaria para confirmar a tua matrícula.</p>
+      </section> : <div className="space-y-4">
+        <BoletimGradeGrid
+          scope={bulletinQuery}
+          subjects={gridSubjects}
+          locked={!safeIsLiberado}
+          yearLabel={gridYearLabel}
+          loadingSubjects={!safeIsLiberado && curriculumLoading}
+          subjectsError={!safeIsLiberado ? curriculumError : null}
+          historicalRead={historicalRead}
+          downloading={downloading}
+          downloadError={downloadError}
+          onDownload={() => void descarregarBoletim()}
+          onReapreciacao={!historicalRead ? (disc) => {
+            dialogOpener.current = document.activeElement as HTMLElement | null;
+            setReapreciacaoDisc(disc);
+            setReapreciacaoMessage(null);
+          } : undefined}
+          onMelhoria={!historicalRead ? (disc) => {
+            dialogOpener.current = document.activeElement as HTMLElement | null;
+            void abrirMelhoria(disc);
+          } : undefined}
+        />
+        {!safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <LockIcon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <h2 id="boletim-locked" className="text-base font-semibold leading-6 text-foreground">{access.title}</h2>
+              <p className="text-sm leading-5 text-muted-foreground">{access.message}</p>
+              {paymentConfigured && moneyStatus === "available" && (
+                <p className="text-sm font-semibold text-foreground">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(Number(boletimServico?.valor))}</p>
+              )}
+              {(moneyStatus === "available" || moneyStatus === "pending_payment" || moneyStatus === "rejected") && !serviceUnconfigured && !historicalRead ? (
+                <button type="button" disabled={paymentBusy} onClick={() => void startBoletimPayment()}
+                  className={focus + " inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"}>
+                  {paymentBusy ? "A preparar pagamento…" : access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
+                </button>
+              ) : onOpenDocuments ? (
+                <button type="button" onClick={() => onOpenDocuments(serviceUnconfigured ? null : BOLETIM_SERVICE_CODE)}
+                  className={focus + " inline-flex min-h-11 items-center gap-1.5 px-1 text-sm font-semibold text-primary hover:underline"}>
+                  {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
+                </button>
+              ) : (
+                <Link href={docsUrl} className={focus + " inline-flex min-h-11 items-center gap-1.5 px-1 text-sm font-semibold text-primary hover:underline"}>
+                  {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
+                </Link>
+              )}
+              {moneyStatus === "pending" && <p role="status" className="text-xs text-muted-foreground">Solicitação realizada. Aguardando liberação pela secretaria. Atualizamos o estado automaticamente.</p>}
+              {paymentError && <p role="alert" className="text-sm text-destructive">{paymentError}</p>}
+            </div>
           </div>
-          <div className="min-w-0 flex-1 space-y-2">
-            <h2 id="boletim-locked" className="text-base font-semibold leading-6 text-foreground">{access.title}</h2>
-            <p className="text-sm leading-5 text-muted-foreground">{access.message}</p>
-            {paymentConfigured && moneyStatus === "available" && (
-              <p className="text-sm font-semibold text-foreground">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(Number(boletimServico?.valor))}</p>
-            )}
-            {onOpenDocuments ? (
-              <button type="button" onClick={() => onOpenDocuments(serviceUnconfigured ? null : BOLETIM_SERVICE_CODE)}
-                className={focus + " inline-flex min-h-11 items-center gap-1.5 px-1 text-sm font-semibold text-primary hover:underline"}>
-                {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
-              </button>
-            ) : (
-              <Link href={docsUrl} className={focus + " inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-primary hover:underline"}>
-                {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
-              </Link>
-            )}
-          </div>
-        </div>
-      </section> : <section aria-labelledby="pauta-title" className="space-y-4">
-        <div className="space-y-3">
-          <h2 id="pauta-title" className="text-xl font-semibold tracking-tight text-slate-900">Avaliações por período</h2>
-          {periods.length>0 ? <div role="group" aria-label="Selecionar período das avaliações" className="flex flex-wrap gap-2">
-            {periods.map(p => <button type="button" key={p} onClick={() => setSelectedPeriod(p)}
-              aria-pressed={period === p} className={`min-h-11 rounded-xl border px-4 text-sm font-semibold transition-colors motion-reduce:transition-none ${period === p ? "border-[#2B6044] bg-[#2B6044] text-white" : "border-slate-200 bg-white text-slate-700 hover:border-[#2B6044]"} ${focus}`}>
-              {p}.º trimestre
-            </button>)}
-          </div> : <p className="rounded-xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">Ainda não há avaliações publicadas. Os períodos aparecem quando a escola lançar as notas.</p>}
-        </div>
-        {periods.length > 0 && <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-4 sm:px-6">
-          {safeDisciplinas.map(disc => {
-            const published = periodAssessments(disc,period);
-            return <article key={disc.id} className="space-y-4 py-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <h3 className="min-w-0 flex-1 break-words text-base font-semibold text-slate-900">{disc.nome}</h3>
-                {!historicalRead && disc.avaliacoes.length > 0 && <details className="group relative">
-                  <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 ${focus}`}>
-                    Opções <ChevronDown aria-hidden className="h-4 w-4"/>
-                  </summary>
-                  <div className="absolute right-0 z-20 mt-1 w-52 max-w-[80vw] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted ${focus}`}>Pedir reapreciação</button>
-                    <button type="button" onClick={() => { dialogOpener.current = document.activeElement as HTMLElement | null; void abrirMelhoria(disc); }} className={`block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted ${focus}`}>Solicitar melhoria</button>
-                  </div>
-                </details>}
-              </div>
-              {published.length ? <ul className="space-y-3">{published.map((avaliacao,index)=><li key={`${disc.id}-${avaliacao.nome}-${index}`} className="flex min-w-0 items-baseline justify-between gap-5 text-sm">
-                <span className="min-w-0 break-words leading-6 text-slate-600">{avaliacao.nome}</span>
-                <span className="shrink-0 font-semibold tabular-nums text-slate-900" aria-label={`Nota ${formatPublishedGrade(avaliacao.nota)}`}>{formatPublishedGrade(avaliacao.nota)}</span>
-              </li>)}</ul> : <p className="text-sm leading-6 text-slate-500">Ainda não há avaliações lançadas de {disc.nome} neste período.</p>}
-            </article>;
-          })}
-        </div>}
-        <aside className="space-y-3 border-t border-slate-200 pt-6">
-          <div className="flex items-center gap-3"><FileText aria-hidden className="h-5 w-5 text-[#2B6044]"/><h2 className="text-lg font-semibold text-slate-900">Precisas do boletim em PDF?</h2></div>
-          <p className="text-sm leading-6 text-slate-600">Descarrega o boletim com as avaliações já publicadas.</p>
-          {downloadError && <p role="alert" className="text-sm text-rose-800">{downloadError}</p>}
-          <button type="button" onClick={() => void descarregarBoletim()} disabled={downloading} className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#2B6044] px-5 text-sm font-semibold text-[#2B6044] disabled:opacity-50 ${focus}`}>
-            {downloading ? <Loader2 className="h-4 w-4 motion-safe:animate-spin"/> : <Download className="h-4 w-4"/>}{downloading ? "A preparar o PDF..." : "Descarregar boletim"}
-          </button>
-        </aside>
-      </section>}
+        </section> : null}
+      </div>}
+      <ServicePaymentDrawer
+        open={paymentOpen && !safeIsLiberado && !historicalRead}
+        onClose={() => setPaymentOpen(false)}
+        onSuccess={() => { setPaymentOpen(false); setRefreshVersion(v => v + 1); }}
+        studentId={studentId}
+        academicYearId={academicYearId}
+        dadosPagamento={paymentDetails}
+        documento={boletimServico && paymentIntentId ? {
+          codigo: BOLETIM_SERVICE_CODE,
+          nome: boletimServico.nome || "Boletim de notas",
+          valor: Number(boletimServico.valor),
+          intentId: paymentIntentId,
+        } : null}
+      />
       {safeIsLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
       {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (

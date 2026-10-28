@@ -51,7 +51,10 @@ try {
         const url = `${baseUrl}/?story=${name}`;
         await page.goto(url, { waitUntil: "domcontentloaded" });
         if (name.startsWith("dashboard-")) await page.getByTestId("aluno-dashboard-editorial").waitFor({timeout:10000});
-        else if (name.startsWith("grade-")) await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
+        else if (name.startsWith("grade-")) {
+          await page.getByTestId("aluno-boletim-grid").waitFor({timeout:10000});
+          await page.getByTestId("aluno-boletim-grid").getByText("Matemática", {exact:true}).first().waitFor({timeout:10000});
+        }
         else await page.locator("#root > *").first().waitFor({timeout:12000}).catch(() => { throw new Error(`${name}: fixture root did not render; browser errors: ${errors.slice(-5).join(" | ") || "none"}`); });
         // Espera pelo estado facultativo relevante, sem tratar a primeira
         // renderização da dashboard como se os endpoints já tivessem concluído.
@@ -61,8 +64,8 @@ try {
           "dashboard-rematricula": "A tua rematrícula",
           "dashboard-overdue": "1 mensalidade vencida",
           "grade-unpaid": "Solicitar boletim",
-          "grade-pending": "Pagamento em análise",
-          "grade-rejected": "Corrigir comprovativo",
+          "grade-pending": "Comprovativo recebido",
+          "grade-rejected": "Reenviar comprovativo",
         }[name];
         if (expectedState) await page.getByText(expectedState, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {});
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
@@ -95,11 +98,13 @@ try {
         }
         if (name.startsWith("grade-")) {
           if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name}: protected assessments leaked`);
-          if (name === "grade-paid" && !metrics.bodyText.includes("Exame do período")) errors.push(`${name}: paid assessments missing`);
-          if (name === "grade-pending" && !metrics.bodyText.includes("Pagamento em análise")) errors.push(`${name}: pending state missing`);
+          if (name === "grade-paid" && (!metrics.bodyText.includes("Matemática") || !metrics.bodyText.includes("16") || !metrics.bodyText.includes("17"))) errors.push(`${name}: paid grades missing from trimester grid`);
+          if (name === "grade-pending" && !metrics.bodyText.includes("Comprovativo recebido")) errors.push(`${name}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
-          if (name === "grade-rejected" && !metrics.bodyText.includes("Corrigir comprovativo")) errors.push(`${name}: resubmit action missing`);
+          if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar comprovativo")) errors.push(`${name}: resubmit action missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
+          if (!metrics.bodyText.includes("Boletim de notas")) errors.push(`${name}: grade grid missing`);
+          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Matemática")) errors.push(`${name}: locked curriculum missing`);
         }
         if ((name.startsWith("grade-") || name.startsWith("notice-")) && metrics.nestedScrolls) errors.push(`${name}: unnecessary nested scroll`);
         report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, nestedScrolls: metrics.nestedScrolls, fixtureRendered: visible, output });
@@ -137,29 +142,55 @@ try {
       }
     }
     if (name === "grade-paid") {
-      await page.goto(`${baseUrl}/?story=grade-paid`, {waitUntil:"domcontentloaded"});
-      await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
-      await page.getByRole("button",{name:"1.º trimestre"}).click();
-      await page.getByText("Prova trimestral").waitFor();
-      await page.getByRole("button",{name:"2.º trimestre"}).click();
-      await page.getByText("Exame do período").waitFor();
-      await page.locator("details summary").first().click();
-      await page.getByRole("button",{name:"Pedir reapreciação"}).click();
-      await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor();
+      await page.goto(`${baseUrl}/?story=grade-paid`, { waitUntil: "domcontentloaded" });
+      const grid = page.getByTestId("aluno-boletim-grid");
+      await grid.waitFor({ timeout: 10000 });
+      await grid.getByText("16", { exact: true }).first().waitFor({ timeout: 10000 });
+      const printButton = grid.getByRole("button", { name: /Descarregar boletim em PDF para imprimir/ });
+      if (await printButton.isDisabled()) errors.push("grade-paid: PDF unexpectedly disabled");
+      await grid.getByRole("button", { name: "Ocultar notas" }).click();
+      if (await grid.getByText("16", { exact: true }).count()) errors.push("grade-paid: score remained visible after hiding");
+      await grid.getByRole("button", { name: "Exibir notas" }).click();
+      await grid.getByText("16", { exact: true }).first().waitFor();
+      await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
+      await grid.getByText("Prova trimestral").waitFor();
+      await grid.getByRole("button", { name: "Pedir reapreciação" }).click();
+      await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor();
       await page.keyboard.press("Tab");
       if (!(await page.evaluate(() => {
         const dialog = document.querySelector('[role="dialog"]');
         return dialog?.contains(document.activeElement) ?? false;
       }))) errors.push("grade-paid: modal did not retain keyboard focus");
       await page.keyboard.press("Escape");
-      await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor({state:"hidden"});
-      if (!(await page.getByRole("button",{name:"Pedir reapreciação"}).evaluate(el => el === document.activeElement))) {
+      await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor({ state: "hidden" });
+      if (!(await grid.getByRole("button", { name: "Pedir reapreciação" }).evaluate(el => el === document.activeElement))) {
         errors.push("grade-paid: focus not restored after Escape");
       }
-      await page.getByRole("button",{name:"Solicitar melhoria"}).click();
-      await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor();
-      await page.getByRole("button",{name:"Cancelar"}).click();
-      await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor({state:"hidden"});
+      await grid.getByRole("button", { name: "Solicitar melhoria" }).click();
+      await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor();
+      await page.getByRole("button", { name: "Cancelar" }).click();
+      await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor({ state: "hidden" });
+      await grid.getByRole("button", { name: "2.º trimestre" }).click();
+      await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
+      await grid.getByText("Exame do período").waitFor();
+      if (await grid.getByText("Biologia", { exact: true }).count()) errors.push("grade-paid: first-term-only subject appears in second trimester");
+      await grid.getByRole("button", { name: "Por disciplina" }).click();
+      const selector = grid.getByRole("combobox", { name: "Disciplina" });
+      await selector.selectOption("disc-3");
+      if (!(await grid.getByText("Disciplina não lecionada neste período").count())) errors.push("grade-paid: annual subject missing non-taught term");
+      await grid.getByRole("button", { name: "Por trimestre" }).click();
+    }
+    if (name === "grade-unpaid") {
+      await page.goto(`${baseUrl}/?story=grade-unpaid`, { waitUntil: "domcontentloaded" });
+      const grid = page.getByTestId("aluno-boletim-grid");
+      await grid.waitFor({ timeout: 10000 });
+      await grid.getByText("Matemática", { exact: true }).first().waitFor({ timeout: 10000 });
+      if (!(await grid.getByRole("button", { name: /Exibir notas indisponível/ }).isDisabled())) {
+        errors.push("grade-unpaid: protected grade reveal unexpectedly enabled");
+      }
+      if (!(await grid.getByRole("button", { name: /Imprimir boletim indisponível/ }).isDisabled())) {
+        errors.push("grade-unpaid: protected PDF unexpectedly enabled");
+      }
     }
     if (["notice-info","notice-attention","notice-finance"].includes(name)) {
       await page.keyboard.press("Tab");

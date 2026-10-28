@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X, Upload, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useId, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Upload, Loader2 } from "lucide-react";
 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -56,19 +56,23 @@ export function ServicePaymentDrawer({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setError(null);
       setProgress(0);
       setMensagem("");
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [open, documento?.intentId]);
 
-  if (!open || !documento) return null;
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const selectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const original = e.target.files?.[0];
+    setSelectedFile(null);
     if (!original) return;
 
     setError(null);
@@ -85,7 +89,12 @@ export function ServicePaymentDrawer({
       setError("Arquivo muito grande. Limite de 5MB.");
       return;
     }
+    setSelectedFile(original);
+  };
 
+  const handleUpload = async () => {
+    if (!documento?.intentId || !selectedFile || sending) return;
+    const original = selectedFile;
     const fd = new FormData();
     fd.append("intentId", documento.intentId || "");
     fd.append("file", original);
@@ -99,6 +108,7 @@ export function ServicePaymentDrawer({
     try {
       const json = await uploadWithProgress("/api/aluno/documentos/comprovativo", fd, setProgress);
       if (!json?.ok) throw new Error(json?.error ?? "Falha ao enviar");
+      setSelectedFile(null);
       onSuccess();
       onClose();
     } catch (err: unknown) {
@@ -109,121 +119,58 @@ export function ServicePaymentDrawer({
   };
 
   return (
-    <AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end justify-center"
-        onClick={() => { if (!sending) onClose(); }}
-      >
-        <motion.div 
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="w-full max-w-lg bg-white rounded-t-[2.5rem] shadow-2xl p-6 pb-12 overflow-y-auto max-h-[90vh]"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-black text-slate-900">Pagamento de Serviço</h3>
-            <button type="button" aria-label="Fechar pagamento" disabled={sending} onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition disabled:opacity-40">
-              <X size={20} />
-            </button>
-          </div>
-
-          <div className="bg-slate-50 rounded-3xl p-5 mb-6 border border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Documento Solicitado</p>
-            <p className="text-lg font-black text-slate-900">{documento.nome}</p>
-            <div className="mt-4 flex items-center justify-between">
-                <span className="text-sm text-slate-500">Valor a pagar:</span>
-                <span className="text-xl font-black text-emerald">{money.format(documento.valor)}</span>
-            </div>
-          </div>
-
-          {!dadosPagamento?.iban && !dadosPagamento?.kwik_chave && (
-            <p role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              A escola ainda não disponibilizou IBAN ou chave KWIK. Contacte a secretaria para confirmar como pagar antes de enviar um comprovativo.
-            </p>
-          )}
-
-          {dadosPagamento && (
-            <div className="mb-6 rounded-2xl bg-emerald-50/50 p-4 border border-emerald-100">
-                <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mb-3">Coordenadas para Pagamento</p>
-                <div className="space-y-2 text-sm text-slate-700 font-medium">
-                    {dadosPagamento.banco && <p><span className="text-slate-400 font-normal">Banco:</span> {dadosPagamento.banco}</p>}
-                    {dadosPagamento.iban && (
-                        <div className="flex items-center justify-between gap-2">
-                            <p className="break-all text-xs"><span className="text-slate-400 font-normal">IBAN:</span> {dadosPagamento.iban}</p>
-                        </div>
-                    )}
-                    {dadosPagamento.titular_conta && <p><span className="text-slate-400 font-normal">Titular:</span> {dadosPagamento.titular_conta}</p>}
-                    {dadosPagamento.kwik_chave && <p><span className="text-slate-400 font-normal">KWIK:</span> {dadosPagamento.kwik_chave}</p>}
-                </div>
-            </div>
-          )}
-
+    <Dialog open={open && Boolean(documento)} onOpenChange={(next) => { if (!next && !sending) onClose(); }}>
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-2xl bg-background p-5 text-foreground sm:p-6">
+        <DialogTitle>Pagamento do boletim</DialogTitle>
+        <DialogDescription>
+          Confere o valor, realiza a transferência e envia o comprovativo. A secretaria irá validar antes de liberar as notas.
+        </DialogDescription>
+        {documento && (
           <div className="space-y-4">
-             <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">
-                    Mensagem (opcional)
-                </label>
-                <textarea
-                    value={mensagem}
-                    onChange={(e) => setMensagem(e.target.value)}
-                    placeholder="Alguma observação sobre o pagamento?"
-                    className="w-full rounded-2xl border-slate-200 text-sm focus:ring-emerald focus:border-emerald p-4 bg-slate-50 border-0"
-                    rows={2}
-                    disabled={sending}
-                />
-             </div>
-
-             <div className="relative">
-                <input
-                    type="file"
-                    id="doc-upload"
-                    className="hidden"
-                    accept=".pdf,image/jpeg,image/png,image/webp"
-                    onChange={handleUpload}
-                    disabled={sending}
-                />
-                <label 
-                    htmlFor="doc-upload"
-                    className={`flex flex-col items-center justify-center gap-3 w-full py-8 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer ${
-                        sending ? 'bg-slate-50 border-slate-200' : 'bg-emerald-50/30 border-emerald-200 hover:bg-emerald-50'
-                    }`}
-                >
-                    {sending ? (
-                        <>
-                            <Loader2 size={32} className="text-emerald animate-spin" />
-                            <p className="text-sm font-bold text-emerald">Enviando... {progress}%</p>
-                        </>
-                    ) : (
-                        <>
-                            <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-emerald">
-                                <Upload size={24} />
-                            </div>
-                            <div className="text-center">
-                                <p className="text-sm font-bold text-slate-900">Anexar Comprovativo</p>
-                                <p className="text-[10px] text-slate-500 mt-1">PDF ou Imagem (Máx 5MB)</p>
-                            </div>
-                        </>
-                    )}
-                </label>
-             </div>
-
-             {error && (
-                <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-[11px] font-bold flex items-center gap-2">
-                    <X size={14} /> {error}
-                </div>
-             )}
+            <div className="rounded-xl border border-border bg-muted/50 p-4">
+              <p className="text-xs font-medium text-muted-foreground">Serviço solicitado</p>
+              <p className="mt-1 font-semibold">{documento.nome}</p>
+              <p className="mt-2 text-lg font-semibold">{money.format(documento.valor)}</p>
+            </div>
+            {!dadosPagamento?.iban && !dadosPagamento?.kwik_chave ? (
+              <p role="status" className="rounded-xl border border-amber-500/40 p-3 text-sm">
+                A escola ainda não disponibilizou IBAN ou chave KWIK. Confirma os dados com a secretaria antes de pagar.
+              </p>
+            ) : (
+              <div className="space-y-1 rounded-xl border border-border p-4 text-sm">
+                <p className="font-semibold">Dados para pagamento</p>
+                {dadosPagamento?.banco && <p>Banco: {dadosPagamento.banco}</p>}
+                {dadosPagamento?.iban && <p className="break-all">IBAN: {dadosPagamento.iban}</p>}
+                {dadosPagamento?.titular_conta && <p>Titular: {dadosPagamento.titular_conta}</p>}
+                {dadosPagamento?.kwik_chave && <p>KWIK: {dadosPagamento.kwik_chave}</p>}
+              </div>
+            )}
+            <div className="space-y-2">
+              <label htmlFor={fileInputId + "-message"} className="text-sm font-medium">Mensagem à secretaria (opcional)</label>
+              <textarea id={fileInputId + "-message"} value={mensagem} onChange={(event) => setMensagem(event.target.value)}
+                disabled={sending} maxLength={500} rows={2} placeholder="Ex.: Referência da transferência"
+                className="w-full rounded-lg border border-input bg-background p-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor={fileInputId} className="text-sm font-medium">Comprovativo (PDF ou imagem, até 5 MB)</label>
+              <input ref={fileInputRef} id={fileInputId} type="file" accept=".pdf,image/jpeg,image/png,image/webp"
+                onChange={selectFile} disabled={sending}
+                className="block w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              {selectedFile && <p className="break-all text-sm text-muted-foreground">Selecionado: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB). Ainda não foi enviado.</p>}
+            </div>
+            {sending && <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> A enviar comprovativo: {progress}%</p>}
+            {error && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
+            <p className="text-sm text-muted-foreground">O envio não confirma o pagamento. Aguarda a validação da secretaria; não precisas de realizar outra transferência.</p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={onClose} disabled={sending} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold disabled:opacity-50">Cancelar</button>
+              <button type="button" onClick={() => void handleUpload()} disabled={!selectedFile || !documento.intentId || sending}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+                <Upload className="h-4 w-4" /> {sending ? "A enviar…" : "Confirmar e enviar comprovativo"}
+              </button>
+            </div>
           </div>
-
-          <p className="mt-6 text-xs text-slate-600 text-center leading-relaxed px-4">
-            Depois de enviar o comprovativo, aguarde a secretaria confirmar o pagamento. Não precisa efectuar outra transferência. As notas e o boletim ficam disponíveis após a confirmação.
-          </p>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
