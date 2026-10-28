@@ -95,11 +95,13 @@ try {
         }
         if (name.startsWith("grade-")) {
           if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name}: protected assessments leaked`);
-          if (name === "grade-paid" && !metrics.bodyText.includes("Exame do período")) errors.push(`${name}: paid assessments missing`);
+          if (name === "grade-paid" && (!metrics.bodyText.includes("Matemática") || !metrics.bodyText.includes("16") || !metrics.bodyText.includes("15"))) errors.push(`${name}: paid grades missing from trimester grid`);
           if (name === "grade-pending" && !metrics.bodyText.includes("Pagamento em análise")) errors.push(`${name}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
           if (name === "grade-rejected" && !metrics.bodyText.includes("Corrigir comprovativo")) errors.push(`${name}: resubmit action missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
+          if (!metrics.bodyText.includes("Boletim de notas")) errors.push(`${name}: grade grid missing`);
+          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Matemática")) errors.push(`${name}: locked curriculum missing`);
         }
         if ((name.startsWith("grade-") || name.startsWith("notice-")) && metrics.nestedScrolls) errors.push(`${name}: unnecessary nested scroll`);
         report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, nestedScrolls: metrics.nestedScrolls, fixtureRendered: visible, output });
