@@ -13,8 +13,28 @@ const paramsSchema = z.object({
   mensalidade_id: z.string().uuid(),
 });
 
-/** Read-only recovery of a receipt already emitted in documentos_emitidos.
- * Never calls emit_*, does not create a new charge, and cannot access fiscal docs.
+const noStore = { "Cache-Control": "private, no-store, max-age=0" };
+
+function readyReceipt(docId: string, source: "monthly" | "consolidated") {
+  return NextResponse.json({
+    ok: true,
+    status: "ready",
+    doc_id: docId,
+    source,
+    print_url: "/secretaria/documentos/" + encodeURIComponent(docId) + "/recibo/print",
+  }, { headers: noStore });
+}
+
+/**
+ * Read-only retrieval of the operational receipt for an already settled payment.
+ *
+ * The batch writer intentionally sets emitir_recibo=false for intermediate
+ * payments and issues ONE receipt from its terminal payment, which can be a
+ * service with mensalidade_id=NULL (e.g. a matrícula with paid mensalidades).
+ * Searching only by mensalidade_id made those existing consolidated receipts
+ * appear permanently "pending" in the Balcão.
+ *
+ * Never invokes payment or document emission RPCs.
  */
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
@@ -37,29 +57,82 @@ export async function GET(request: Request) {
   if (monthlyError) return NextResponse.json({ ok: false, error: "Falha ao validar mensalidade." }, { status: 500 });
   if (!monthly) return NextResponse.json({ ok: false, error: "Mensalidade não encontrada nesta escola." }, { status: 404 });
 
+  // Prefer the actual receipt for the requested mensalidade.
   const { data: document, error: documentError } = await db.from("documentos_emitidos")
     .select("id").eq("escola_id", escolaId).eq("aluno_id", monthly.aluno_id)
     .eq("mensalidade_id", monthly.id).eq("tipo", "recibo")
     .is("revoked_at", null)
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (documentError) {
-    console.warn("[OPERATIONAL-RECEIPT-LOOKUP]", { code: documentError.code ?? null });
+    console.warn("[OPERATIONAL-RECEIPT-LOOKUP][MONTHLY]", { code: documentError.code ?? null });
     return NextResponse.json({ ok: false, error: "Falha ao consultar documento." }, { status: 500 });
   }
+  if (document) return readyReceipt(document.id, "monthly");
 
-  if (document) {
-    return NextResponse.json({
-      ok: true, status: "ready", doc_id: document.id,
-      print_url: "/secretaria/documentos/" + encodeURIComponent(document.id) + "/recibo/print",
-    }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  // A suppressed intermediate item does not have its own receipt. Look up
+  // the terminal payment in the SAME authorized student/school/batch, then
+  // locate its previously issued document (including service-only receipts).
+  const { data: payments, error: paymentsError } = await db.from("pagamentos")
+    .select("id,meta").eq("escola_id", escolaId).eq("aluno_id", monthly.aluno_id)
+    .eq("mensalidade_id", monthly.id).eq("status", "settled")
+    .order("created_at", { ascending: false }).limit(10);
+  if (paymentsError) {
+    console.warn("[OPERATIONAL-RECEIPT-LOOKUP][PAYMENTS]", { code: paymentsError.code ?? null });
+    return NextResponse.json({ ok: false, error: "Falha ao validar pagamento." }, { status: 500 });
   }
-  // The transaction may have committed before the outbox worker issues the
-  // document. Returning pending is NOT proof of payment nor permission to retry.
+
+  const batchIds = new Set<string>();
+  for (const payment of payments ?? []) {
+    const meta = payment.meta;
+    if (!meta || typeof meta !== "object" || Array.isArray(meta) || meta.emitir_recibo !== false) continue;
+    const batchId = meta.batch_idempotency_key;
+    if (typeof batchId === "string" && batchId.length >= 8 && batchId.length <= 200) {
+      batchIds.add(batchId);
+    }
+    if (batchIds.size >= 3) break;
+  }
+
+  for (const batchId of batchIds) {
+    const { data: issuers, error: issuerError } = await db.from("pagamentos")
+      .select("id,mensalidade_id").eq("escola_id", escolaId).eq("aluno_id", monthly.aluno_id)
+      .eq("status", "settled")
+      .contains("meta", { batch_idempotency_key: batchId, emitir_recibo: true })
+      .limit(2);
+    if (issuerError) {
+      console.warn("[OPERATIONAL-RECEIPT-LOOKUP][BATCH]", { code: issuerError.code ?? null });
+      return NextResponse.json({ ok: false, error: "Falha ao validar lote." }, { status: 500 });
+    }
+    if ((issuers ?? []).length > 1) {
+      console.warn("[OPERATIONAL-RECEIPT-LOOKUP][AMBIGUOUS_BATCH]");
+      return NextResponse.json({ ok: false, error: "Lote financeiro inconsistente. Solicite reconciliação." }, { status: 409 });
+    }
+    const issuer = issuers?.[0];
+    if (!issuer) continue; // The terminal payment may not have committed yet.
+
+    // Monthly terminal: the operational document is indexed by mensalidade_id.
+    // Service terminal: the consolidated document references its payment ID
+    // in dados_snapshot, not the intermediate mensalidade_id.
+    const query = db.from("documentos_emitidos")
+      .select("id").eq("escola_id", escolaId).eq("aluno_id", monthly.aluno_id)
+      .eq("tipo", "recibo").is("revoked_at", null);
+    const scopedQuery = issuer.mensalidade_id
+      ? query.eq("mensalidade_id", issuer.mensalidade_id)
+      : query.filter("dados_snapshot->>pagamento_id", "eq", issuer.id);
+    const { data: batchReceipt, error: receiptError } = await scopedQuery
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (receiptError) {
+      console.warn("[OPERATIONAL-RECEIPT-LOOKUP][CONSOLIDATED]", { code: receiptError.code ?? null });
+      return NextResponse.json({ ok: false, error: "Falha ao consultar recibo consolidado." }, { status: 500 });
+    }
+    if (batchReceipt) return readyReceipt(batchReceipt.id, "consolidated");
+  }
+
+  // A pending document does not authorize checkout retry or new emission.
   return NextResponse.json({
     ok: true, status: "pending", doc_id: null, print_url: null,
     message: "O recibo operacional ainda está em preparação. Não repita o pagamento.",
   }, {
     status: 202,
-    headers: { "Cache-Control": "private, no-store, max-age=0", "Retry-After": "2" },
+    headers: { ...noStore, "Retry-After": "2" },
   });
 }
