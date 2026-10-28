@@ -128,6 +128,16 @@ test("admission preserves its success receipt actions until explicit continue", 
   assert.match(wizard, /AdmissionReceiptRecovery/);
 });
 
+test("intermediate batch payment never returns an unrelated receipt for the same mensalidade", () => {
+  const route = source("app/api/secretaria/recibos/consultar/route.ts");
+  const start = route.indexOf("if (parsed.data.pagamento_id) {");
+  const suppressed = route.indexOf("if (payment.meta?.emitir_recibo === false)", start);
+  const direct = route.indexOf("const document = payment.mensalidade_id", start);
+  assert.ok(start >= 0 && suppressed > start && direct > suppressed);
+  assert.match(route.slice(suppressed, direct), /findConsolidatedReceipt\(db, escolaId, payment\.aluno_id, batches\)/);
+  assert.match(route.slice(suppressed, direct), /return pendingReceipt\(\)/);
+});
+
 test("rapid checkout hands the receipt to an independent payment-scoped page BEFORE parent callbacks", () => {
   const code = source("components/secretaria/ModalPagamentoRapido.tsx");
   const submit = code.slice(code.indexOf("const submit = useCallback(async () =>"));
