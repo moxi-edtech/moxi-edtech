@@ -7,7 +7,7 @@ import {
   resolveAcademicYearContext,
 } from "@/lib/academic-year/context";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
-import { resolveOpenRematriculaWindow, resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
+import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progression-server";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
@@ -88,12 +88,15 @@ export async function GET(request: Request) {
       requestedAcademicYearId: ano_letivo_id,
       operation: "READ",
     });
-    const sourceAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
+    // O ano seleccionado no contexto é a sessão destino do atendimento.
+    // Ex.: ano=2026 corresponde a 2026/2027 conforme o calendário MED.
+    // Não saltar para 2027/2028 em função de matricula.ano_letivo+1.
+    const targetAnoLetivoAno = resolveBalcaoRematriculaTargetYear({
+      selectedAcademicYear: Number(academicContext.anoLetivoLabel.slice(0, 4)),
+    });
 
-    // Operações já existentes do ano académico seleccionado têm precedência
-    // sobre a sugestão do próximo ano. A janela controla novas operações;
-    // não deve esconder uma rematrícula já paga/pendente que precisa de
-    // leitura, retomada ou reconciliação.
+    // Pedidos desta sessão permanecem recuperáveis mesmo depois de a janela
+    // fechar, sem criar uma nova cobrança ou associá-los a outro ano.
     const { data: rematriculaPedidosAtivos } = await supabase
       .from("servico_pedidos")
       .select("id, status, created_at, reason_code, reason_detail, valor_cobrado, contexto")
@@ -102,38 +105,6 @@ export async function GET(request: Request) {
       .eq("servico_codigo", "SERV_REMATRICULA")
       .in("status", ["pending_payment", "granted"])
       .order("created_at", { ascending: false });
-    const pedidoDoAnoAcademicoAtual = (rematriculaPedidosAtivos ?? []).find(
-      (pedido: any) => pedido.contexto?.ano_letivo_id === academicContext.anoLetivoId
-        || Number(pedido.contexto?.ano_letivo) === sourceAnoLetivoAno,
-    );
-
-    const openTargetWindow = await resolveOpenRematriculaWindow(supabase, escolaId, sourceAnoLetivoAno);
-
-    // O ano-alvo é o ano seguinte ao da matrícula do aluno, não o ano activo da
-    // escola mais um. Para um aluno atrasado as duas contas divergem: com a
-    // escola em 2026 e a última matrícula em 2025, o balcão anunciava
-    // "2027/2028" — um ano que não existe e que nenhuma janela cobre, enquanto
-    // o ano para que ele realmente precisa de se rematricular é 2026. Para quem
-    // já está no ano activo o resultado é o mesmo de antes (2026 + 1 = 2027),
-    // pelo que só os alunos atrasados mudam de comportamento.
-    const { data: ultimaMatriculaDoAluno } = await supabase
-      .from("matriculas")
-      .select("ano_letivo")
-      .eq("escola_id", escolaId)
-      .eq("aluno_id", aluno_id)
-      .not("ano_letivo", "is", null)
-      .in("status", MATRICULA_STATUS_REAIS)
-      .order("ano_letivo", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const anoLetivoDoAluno = Number(ultimaMatriculaDoAluno?.ano_letivo ?? 0);
-
-    const targetAnoLetivoAno = resolveBalcaoRematriculaTargetYear({
-      sourceAcademicYear: sourceAnoLetivoAno,
-      latestStudentAcademicYear: anoLetivoDoAluno,
-      openWindowAcademicYear: openTargetWindow?.ano_letivo ?? null,
-      hasCurrentAcademicYearOperation: Boolean(pedidoDoAnoAcademicoAtual),
-    });
     const targetScope = await resolveAnoLetivoScope(supabase, escolaId, { ano: targetAnoLetivoAno });
     // Nunca associar o ano destino ao ID do ano de origem. Isso criava um
     // contexto contraditório (ex.: etiqueta 2027/2028, sessão real 2026/2027).
@@ -161,9 +132,7 @@ export async function GET(request: Request) {
       (pedido: any) => pedido.contexto?.ano_letivo_id === targetAnoLetivoId
         || Number(pedido.contexto?.ano_letivo) === Number(targetAnoLetivoAno),
     );
-    const rematriculaWindow = openTargetWindow
-      ? { configured: true, open: true, window: openTargetWindow }
-      : await resolveRematriculaWindow(supabase, escolaId, targetAnoLetivoAno);
+    const rematriculaWindow = await resolveRematriculaWindow(supabase, escolaId, targetAnoLetivoAno);
 
     if (shouldBlockClosedRematriculaWindow({
       windowOpen: rematriculaWindow.open,
