@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { CalendarClock, CheckCircle2, Loader2, RefreshCw, X } from "lucide-react";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type Janela = {
   id: string;
@@ -48,6 +49,7 @@ function formatLuanda(value: string) {
  * selected student, the cart, the rematricula modal, notes, or any payment.
  */
 export function RematriculaWindowRecovery({ escolaId, anoLetivo, onRecheck }: Props) {
+  const { success: toastSuccess, error: toastError } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,6 +120,11 @@ export function RematriculaWindowRecovery({ escolaId, anoLetivo, onRecheck }: Pr
       if (!response.ok || !data.ok) throw new Error(data.error ?? "Não foi possível reabrir a janela.");
       setDone(true);
       setJanela(data.item ?? null);
+      if (data.audit_warning) {
+        toastError("Janela reaberta — auditoria pendente", "A alteração foi guardada, mas o registo secundário de auditoria precisa de verificação.");
+      } else {
+        toastSuccess("Período atualizado", `Rematrículas de ${anoLetivo.label} abertas até ${formatLuanda(endIso)}.`);
+      }
       await onRecheck();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Falha ao reabrir a janela.");
