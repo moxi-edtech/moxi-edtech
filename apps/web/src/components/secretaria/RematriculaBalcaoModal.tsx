@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { canSelectRematriculaDestination } from "@/lib/rematricula/balcao-destino";
 import {
   Banknote,
   Check,
@@ -264,7 +265,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       && !(decisaoFonte === "declaracao_administrativa_escola" && !decisaoMotivo.trim())
     : skipTurmaSelection
       ? true
-      : ["aprovado", "condicional"].includes(progressao?.estado ?? "") && Boolean(selectedTurmaId);
+      : canSelectRematriculaDestination(progressao, selectedTurmaId);
 
   const canSubmit =
     !submitting &&
