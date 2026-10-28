@@ -163,7 +163,9 @@ export async function GET(
       }
     }
 
-    result.cicloVida = await carregarCicloVidaAluno(db, escolaId, studentId);
+    const cicloVida = await carregarCicloVidaAluno(db, escolaId, studentId).catch(() => null);
+    result.cicloVida = cicloVida;
+    result.cicloVidaIndisponivel = cicloVida === null;
     return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
     console.error("[CURRENT-ENROLLMENT][GET]", { message: error instanceof Error ? error.message : "UNEXPECTED" });
