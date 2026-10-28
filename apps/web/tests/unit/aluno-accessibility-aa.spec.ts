@@ -8,14 +8,15 @@ async function source(path: string) {
 
 test("academic tabs implement roving focus, arrow keys, Home/End and stable accessible panels", async () => {
   const s = await source("components/aluno/academico/AcademicoWorkspace.tsx");
-  assert.match(s, /event\.key === "ArrowRight"/);
-  assert.match(s, /event\.key === "ArrowLeft"/);
-  assert.match(s, /event\.key === "Home"/);
-  assert.match(s, /event\.key === "End"/);
-  assert.match(s, /event\.preventDefault\(\)/);
-  assert.match(s, /tabIndex=\{activeTab === id \? 0 : -1\}/);
-  assert.match(s, /tabRefs\.current\[tab\]\?\.focus\(\)/);
-  assert.match(s, /onKeyDown=\{\(event\) => onTabKeyDown\(event, id\)\}/);
+  const tabs = await source("components/portal/ui/PortalTabs.tsx");
+  assert.match(tabs, /event\.key === "ArrowRight"/);
+  assert.match(tabs, /event\.key === "ArrowLeft"/);
+  assert.match(tabs, /event\.key === "Home"/);
+  assert.match(tabs, /event\.key === "End"/);
+  assert.match(tabs, /event\.preventDefault\(\)/);
+  assert.match(tabs, /tabIndex=\{value === tab.id \? 0 : -1\}/);
+  assert.match(tabs, /refs\.current\[value\]\?\.focus\(\)/);
+  assert.match(tabs, /onKeyDown=\{\(event\) => onTabKeyDown\(event, tab.id\)\}/);
   for (const tab of ["notas", "disciplinas", "documentos"]) {
     assert.match(s, new RegExp('id="academic-panel-' + tab + '"'));
     assert.match(s, new RegExp('aria-labelledby="academic-tab-' + tab + '"'));
@@ -50,10 +51,12 @@ test("mobile interactive targets have at least 44px, theme-aware foregrounds and
     source("components/aluno/disciplinas/DisciplinasList.tsx"),
   ]);
   assert.match(notes, /inline-flex min-h-11 items-center gap-1\.5 px-1 text-sm/);
-  assert.match(dash, /inline-flex min-h-11 items-center gap-1\.5/);
-  assert.match(docs, /inline-flex min-h-11 w-full items-center justify-center/);
+  assert.match(dash, /<PortalAction href=\{go\(item.href\)\}/);
+  const portalAction = await source("components/portal/ui/PortalAction.tsx");
+  assert.match(docs, /<PortalAction onClick=\{\(\) => void handleAction\(doc\)\}/);
+  assert.match(portalAction, /inline-flex min-h-11/);
   assert.match(disciplines, /inline-flex min-h-11 items-center gap-2/);
-  for (const file of [notes, docs, dash, disciplines]) assert.match(file, /focus-visible:ring-(2|ring)/);
+  for (const file of [notes, dash, disciplines, portalAction]) assert.match(file, /focus-visible:ring-(2|ring)/);
   assert.match(dash, /text-primary/);
   assert.match(notes, /text-primary/);
 });

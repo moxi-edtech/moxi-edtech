@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, FileText, GraduationCap } from "lucide-react";
 import { TabNotas } from "@/components/aluno/tabs/TabNotas";
 import { TabDocumentos } from "@/components/aluno/tabs/TabDocumentos";
 import { DisciplinasList } from "@/components/aluno/disciplinas/DisciplinasList";
+import { PortalTabs } from "@/components/portal/ui/PortalTabs";
 
 type AcademicTab = "notas" | "disciplinas" | "documentos";
 const validTabs: AcademicTab[] = ["notas", "disciplinas", "documentos"];
@@ -15,9 +16,9 @@ export function resolveAcademicTab(value: string | null | undefined): AcademicTa
 }
 
 const sections = [
-  { id: "notas" as const, title: "Notas", icon: GraduationCap },
-  { id: "disciplinas" as const, title: "Disciplinas", icon: BookOpen },
-  { id: "documentos" as const, title: "Documentos", icon: FileText },
+  { id: "notas" as const, label: "Notas", icon: <GraduationCap className="h-4 w-4" /> },
+  { id: "disciplinas" as const, label: "Disciplinas", icon: <BookOpen className="h-4 w-4" /> },
+  { id: "documentos" as const, label: "Documentos", icon: <FileText className="h-4 w-4" /> },
 ];
 
 export function AcademicoWorkspace() {
@@ -26,13 +27,11 @@ export function AcademicoWorkspace() {
   const [activeTab, setActiveTab] = useState<AcademicTab>(selectedFromUrl);
   const [visited, setVisited] = useState<AcademicTab[]>([selectedFromUrl]);
   const [focusService, setFocusService] = useState<string | null>(null);
-  const tabRefs = useRef<Partial<Record<AcademicTab, HTMLButtonElement | null>>>({});
 
   const navigateTab = useCallback((tab: AcademicTab, service?: string) => {
     setActiveTab(tab);
     setVisited((current) => current.includes(tab) ? current : [...current, tab]);
     setFocusService(tab === "documentos" ? service ?? null : null);
-    tabRefs.current[tab]?.focus();
     // Muda apenas o separador. Não executa navegação Next nem remonta
     // o layout servidor; preserva aluno, ano letivo e os dados já carregados.
     const url = new URL(window.location.href);
@@ -40,18 +39,6 @@ export function AcademicoWorkspace() {
     else url.searchParams.set("aba", tab);
     window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }, []);
-
-  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, current: AcademicTab) => {
-    const index = validTabs.indexOf(current);
-    let next: AcademicTab | undefined;
-    if (event.key === "ArrowRight") next = validTabs[(index + 1) % validTabs.length];
-    else if (event.key === "ArrowLeft") next = validTabs[(index + validTabs.length - 1) % validTabs.length];
-    else if (event.key === "Home") next = validTabs[0];
-    else if (event.key === "End") next = validTabs[validTabs.length - 1];
-    if (!next) return;
-    event.preventDefault();
-    navigateTab(next);
-  };
 
   useEffect(() => {
     const selected = resolveAcademicTab(searchParams?.get("aba"));
@@ -76,28 +63,8 @@ export function AcademicoWorkspace() {
         <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Académico</h1>
         <p className="text-sm leading-6 text-muted-foreground">Acompanha o teu percurso escolar e os serviços da secretaria.</p>
       </header>
-      <div role="tablist" aria-label="Área académica" className="flex min-w-0 gap-1 overflow-x-auto border-b border-border" data-testid="academic-local-tabs">
-        {sections.map(({ id, title, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`academic-tab-${id}`}
-            aria-controls={`academic-panel-${id}`}
-            aria-selected={activeTab === id}
-            tabIndex={activeTab === id ? 0 : -1}
-            ref={(element) => { tabRefs.current[id] = element; }}
-            onKeyDown={(event) => onTabKeyDown(event, id)}
-            onClick={() => navigateTab(id)}
-            className={`inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-2 sm:px-4 sm:text-sm ${
-              activeTab === id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {title}
-          </button>
-        ))}
-      </div>
+      <PortalTabs items={sections} value={activeTab} onChange={navigateTab}
+        idPrefix="academic" label="Área académica" testId="academic-local-tabs" />
       <section id="academic-panel-notas" role="tabpanel" aria-labelledby="academic-tab-notas" hidden={activeTab !== "notas"} tabIndex={0}>
         <TabNotas embedded onOpenDocuments={(serviceCode) => navigateTab("documentos", serviceCode ?? undefined)} />
       </section>

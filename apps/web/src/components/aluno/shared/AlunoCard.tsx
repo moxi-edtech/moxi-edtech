@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 
 type CardVariant = "default" | "glass" | "hero" | "subtle";
 
@@ -7,29 +7,34 @@ type Props = {
   className?: string;
   variant?: CardVariant;
   onClick?: () => void;
+  ariaLabel?: string;
 };
 
 const variantStyles: Record<CardVariant, string> = {
-  default: "border-slate-200/80 bg-white shadow-[0_2px_12px_rgba(15,23,42,0.03)]",
-  glass: "border-white/20 bg-white/70 backdrop-blur-md shadow-[0_4px_20px_rgba(15,23,42,0.05)]",
-  hero: "border-[#1f4028] bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white shadow-[0_8px_30px_rgba(13,31,18,0.25)]",
-  subtle: "border-slate-100 bg-slate-50/80 shadow-none",
+  default: "border-border bg-card text-foreground shadow-none",
+  glass: "border-border bg-card/90 text-foreground shadow-none backdrop-blur-sm",
+  hero: "border-primary bg-primary text-primary-foreground shadow-none",
+  subtle: "border-border bg-muted/50 text-foreground shadow-none",
 };
 
-export function AlunoCard({ children, className = "", variant = "default", onClick }: Props) {
-  const baseVariant = variantStyles[variant];
-
+/** Backward-compatible student card aligned to portal surfaces.
+ * Clickable cards work by keyboard; prefer PortalAction for standalone actions.
+ */
+export function AlunoCard({ children, className = "", variant = "default", onClick, ariaLabel }: Props) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (onClick && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      onClick();
+    }
+  };
   return (
-    <div
-      onClick={onClick}
-      className={`rounded-2xl border p-4 sm:p-5 transition-all duration-200 ${baseVariant} ${
-        onClick
-          ? "cursor-pointer active:scale-[0.99] hover:-translate-y-0.5 hover:border-emerald-600/30 hover:shadow-[0_8px_24px_rgba(22,163,74,0.08)]"
-          : ""
-      } ${className}`}
-    >
+    <div onClick={onClick} onKeyDown={onClick ? handleKeyDown : undefined}
+      role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined}
+      aria-label={ariaLabel}
+      className={`min-w-0 rounded-xl border p-3.5 sm:p-4 ${variantStyles[variant]} ${onClick
+        ? "min-h-11 cursor-pointer transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+        : ""} ${className}`}>
       {children}
     </div>
   );
 }
-
