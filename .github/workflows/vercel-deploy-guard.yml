@@ -1,0 +1,36 @@
+name: Vercel Monorepo Deployment Guard
+
+on:
+  pull_request:
+    paths:
+      - "vercel.json"
+      - "apps/**/vercel.json"
+      - "apps/**/package.json"
+      - "pnpm-workspace.yaml"
+      - "scripts/vercel-deploy-config.test.mjs"
+      - ".github/workflows/vercel-deploy-guard.yml"
+  push:
+    branches: [main]
+    paths:
+      - "vercel.json"
+      - "apps/**/vercel.json"
+      - "apps/**/package.json"
+      - "pnpm-workspace.yaml"
+      - "scripts/vercel-deploy-config.test.mjs"
+      - ".github/workflows/vercel-deploy-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deployment-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Guard against billable ignored build steps
+        run: node --test scripts/vercel-deploy-config.test.mjs
