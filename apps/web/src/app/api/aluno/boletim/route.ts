@@ -4,7 +4,7 @@ import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import { AcademicYearContextError } from "@/lib/academic-year/context";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
 import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
-import { loadNotasLancadas } from "@/lib/aluno/boletimNotas";
+import { loadClassificacoesTrimestrais, loadNotasLancadas } from "@/lib/aluno/boletimNotas";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,7 +51,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: true, context: academicContext, matricula_encontrada: true, is_liberado: false, total_faltas: totalFaltas, total_faltas_max: totalFaltasMax, disciplinas: [], nome_aluno: aluno?.nome ?? null });
     }
 
-    const disciplinas = await loadNotasLancadas(supabase, { escolaId: ctx.escolaId, matriculaId: matricula.id, turmaId: matricula.turma_id });
+    const scope = { escolaId: ctx.escolaId, matriculaId: matricula.id, turmaId: matricula.turma_id };
+    const [notas, classificacoes] = await Promise.all([
+      loadNotasLancadas(supabase, scope),
+      loadClassificacoesTrimestrais(supabase, scope),
+    ]);
+    const byId = new Map(classificacoes.map((row) => [row.id, row.classificacoes]));
+    const disciplinas = notas.map((disc) => ({
+      ...disc,
+      classificacoes: byId.get(disc.id) ?? [],
+    }));
     return NextResponse.json({ ok: true, context: academicContext, matricula_encontrada: true, is_liberado: true, total_faltas: totalFaltas, total_faltas_max: totalFaltasMax, disciplinas, nome_aluno: aluno?.nome ?? null });
   } catch (error: unknown) {
     if (error instanceof AcademicYearContextError) {
