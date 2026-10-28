@@ -17,7 +17,7 @@ for (const required of prerequisites) {
 }
 // Future migrations are permitted, but cannot silently overwrite the
 // stabilized lifecycle RPCs, SSOT view, or role policies.
-const protectedWriters = /(?:CREATE\\s+OR\\s+REPLACE\\s+(?:FUNCTION|VIEW)\\s+public\\.(?:finalizar_matricula_blindada|gerar_historico_anual|sync_historico_anos_compat|lifecycle_sync_matricula_ativo|activate_aluno_after_matricula|v_student_lifecycle_ssot_v1)\\b|(?:DROP|CREATE)\\s+POLICY\\s+lifecycle_matriculas_)/i;
+const protectedWriters = /(?:CREATE\s+OR\s+REPLACE\s+(?:FUNCTION|VIEW)\s+public\.(?:finalizar_matricula_blindada|gerar_historico_anual|sync_historico_anos_compat|lifecycle_sync_matricula_ativo|activate_aluno_after_matricula|v_student_lifecycle_ssot_v1)\b|(?:DROP|CREATE)\s+POLICY\s+lifecycle_matriculas_)/i;
 for (const migration of migrations.filter((file) => file > finalName)) {
   const source = readFileSync(join(dir, migration), "utf8");
   assert.ok(!protectedWriters.test(source),
