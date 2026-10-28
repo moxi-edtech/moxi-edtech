@@ -24,9 +24,9 @@ type BoletimData = { ok: boolean; nome_aluno?: string | null; is_liberado?: bool
 type CatalogoData = { ok: boolean; documentos?: StudentDocument[]; boletim_pago?: boolean };
 type RaaData = { ok: boolean; result?: { status: string; mensagem: string } | null };
 type ScreenData = { dashboard: DashboardData; boletim: BoletimData | null; catalogo: CatalogoData | null; rematricula: StudentRematricula | null; raa: RaaData | null };
-async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T | null> {
+async function fetchJson<T>(path: string, signal: AbortSignal, scopedQuery = ""): Promise<T | null> {
   try {
-    const res = await fetch(path, { cache: "no-store", signal });
+    const res = await fetch(`${path}${scopedQuery}`, { cache: "no-store", signal });
     if (!res.ok) return null;
     const value: unknown = await res.json();
     if (!value || typeof value !== "object" || !("ok" in value) || (value as {ok:unknown}).ok !== true) return null;
@@ -59,6 +59,12 @@ export default function DashboardLoader() {
     const suffix = params.toString();
     return `${buildPortalHref(school, route)}${suffix ? `?${suffix}` : ""}`;
   };
+  // APIs com suporte de seleção só recebem IDs já validados pelo próprio endpoint.
+  // Os outros endpoints conservam o contexto da sessão existente.
+  const serviceScope = new URLSearchParams();
+  if (studentId) serviceScope.set("studentId", studentId);
+  if (academicYearId) serviceScope.set("ano_letivo_id", academicYearId);
+  const scopedQuery = serviceScope.size ? `?${serviceScope.toString()}` : "";
   const [screen, setScreen] = useState<ScreenData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,8 +93,8 @@ export default function DashboardLoader() {
           setScreen(current => current ? { ...current, [key]: value } : current);
         };
         void Promise.allSettled([
-          fetchJson<BoletimData>("/api/aluno/boletim", controller.signal).then(data => update("boletim", data)),
-          fetchJson<CatalogoData>("/api/aluno/documentos/catalogo", controller.signal).then(data => update("catalogo", data)),
+          fetchJson<BoletimData>("/api/aluno/boletim", controller.signal, scopedQuery).then(data => update("boletim", data)),
+          fetchJson<CatalogoData>("/api/aluno/documentos/catalogo", controller.signal, scopedQuery).then(data => update("catalogo", data)),
           fetchJson<StudentRematricula & { ok: boolean }>("/api/aluno/rematricula/status", controller.signal).then(data => update("rematricula", data)),
           fetchJson<RaaData>("/api/aluno/home/raa-status", controller.signal).then(data => update("raa", data)),
         ]);
@@ -98,7 +104,7 @@ export default function DashboardLoader() {
     };
     void load();
     return () => controller.abort();
-  }, [reload]);
+  }, [reload, scopedQuery]);
   const attentions = useMemo(() => screen ? buildStudentAttention({
     pendentes: screen.dashboard.status_financeiro?.pendentes ?? 0,
     financialError: Boolean(screen.dashboard.status_financeiro?.error),
