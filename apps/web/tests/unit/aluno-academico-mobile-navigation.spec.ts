@@ -10,8 +10,7 @@ test("separadores académicos são internos, com histórico e sem router.refresh
   const workspace = await source("components/aluno/academico/AcademicoWorkspace.tsx");
   const page = await source("app/(portal-aluno)/aluno/academico/page.tsx");
   assert.match(page, /<AcademicoWorkspace\s*\/>/);
-  assert.match(workspace, /role="tablist"/);
-  assert.match(workspace, /role="tab"/);
+  assert.match(workspace, /<PortalTabs items=\{sections\}/);
   assert.match(workspace, /window\.history\.pushState/);
   assert.match(workspace, /popstate/);
   assert.match(workspace, /visited\.includes\("documentos"\)/);
@@ -67,7 +66,7 @@ test("documentos usam descrição na largura total e ação no rodapé, sem comp
   assert.match(catalog, /min-w-0 space-y-2 rounded-xl/);
   assert.match(catalog, /line-clamp-2 break-words text-sm leading-5/);
   assert.match(catalog, /border-t border-border pt-2 sm:justify-end/);
-  assert.match(catalog, /min-h-11 w-full items-center justify-center/);
+  assert.match(catalog, /<PortalAction onClick=\{\(\) => void handleAction\(doc\)\}/);
   assert.match(catalog, /onOpenNotas/);
   assert.match(catalog, /pagamento_configurado === false/);
   assert.doesNotMatch(catalog, /flex items-start justify-between gap-4 sm:gap-6/);
