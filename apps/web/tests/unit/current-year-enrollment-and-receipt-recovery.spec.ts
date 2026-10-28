@@ -113,7 +113,7 @@ test("receipt recovery finds a consolidated service-terminated batch without exp
   assert.doesNotMatch(route, /\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/);
   assert.match(admission, /<AdmissionReceiptRecovery pagamentoId=\{result\.pagamento_id\} escolaId=\{escolaId\} \/>/);
   assert.match(recovery, /findIssuedOperationalReceiptByPayment\(pagamentoId/);
-  assert.match(page, /escola_id\?: string/);
+  assert.match(route, /escola_id/);
   assert.match(recovery, /Imprimir recibo/);
   assert.doesNotMatch(recovery, /fetch\(.+method: "POST"/);
 });
@@ -150,7 +150,7 @@ test("rapid checkout hands the receipt to an independent payment-scoped page BEF
 test("receipt handoff page survives closing the modal and polls only the persisted payment", () => {
   const page = source("app/secretaria/recibos/acompanhar/page.tsx");
   const recovery = source("components/secretaria/AdmissionReceiptRecovery.tsx");
-  assert.match(page, /searchParams: Promise<\{ pagamento_id\?: string \}>/);
+  assert.match(page, /searchParams: Promise<\{ pagamento_id\?: string; escola_id\?: string \}>/);
   assert.match(page, /UUID\.test\(pagamentoId\)/);
   assert.match(page, /<AdmissionReceiptRecovery pagamentoId=\{pagamentoId\} escolaId=\{validEscolaId\} \/>/);
   assert.match(recovery, /findIssuedOperationalReceiptByPayment\(pagamentoId/);
