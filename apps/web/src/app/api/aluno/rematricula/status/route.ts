@@ -8,6 +8,7 @@ import { resolveValorConfirmacao } from '@/lib/financeiro/resolve-confirmacao'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { classifyRematriculaAcademicEligibility } from '@/lib/rematricula/eligibility'
 import { summarizeOverdueRematriculaDebt } from '@/lib/rematricula/debt'
+import { carregarCicloVidaAluno } from '@/lib/matriculas/load-student-lifecycle'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,9 +31,11 @@ export async function GET() {
     if (!escolaId || escolaId !== ctx.escolaId) {
       return NextResponse.json({ ok: false, error: 'Sem acesso à escola do aluno.' }, { status: 403 })
     }
+    // Projeção SSOT informativa; o RAA e as RPCs continuam a autorizar operações.
+    const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, alunoId).catch(() => null)
     const activeAno = await resolveAnoLetivoScope(supabase, escolaId)
     if (!activeAno) {
-      return NextResponse.json({ ok: true, eligible: false, code: 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE', reason: 'A escola ainda não configurou um ano letivo ativo.' })
+      return NextResponse.json({ ok: true, cicloVida, eligible: false, code: 'ACTIVE_ACADEMIC_YEAR_UNAVAILABLE', reason: 'A escola ainda não configurou um ano letivo ativo.' })
     }
 
     const openWindow = await resolveOpenRematriculaWindow(supabase, escolaId, activeAno.ano)
@@ -53,6 +56,7 @@ export async function GET() {
         ok: true,
         eligible: false,
         code: 'REMATRICULA_WINDOW_CLOSED',
+        cicloVida,
         reason: 'A janela de rematrícula ainda não está aberta.',
         nextWindow: nextWindow ? { ano: Number(nextWindow.ano_letivo), data_inicio: nextWindow.data_inicio, data_fim: nextWindow.data_fim } : null,
       })
@@ -68,7 +72,7 @@ export async function GET() {
     )
     if (sourceMatriculaError) throw new Error('Falha ao verificar matrícula de origem')
     if (!sourceMatricula?.id) {
-      return NextResponse.json({ ok: true, eligible: false, code: 'ACADEMIC_PROMOTION_PENDING', reason: 'A escola ainda está a concluir a sua situação académica.' })
+      return NextResponse.json({ ok: true, cicloVida, eligible: false, code: 'ACADEMIC_PROMOTION_PENDING', reason: 'A escola ainda está a concluir a sua situação académica.' })
     }
 
     let academic: Awaited<ReturnType<typeof resolveRaaProgressionForMatricula>> | null = null
@@ -324,6 +328,7 @@ export async function GET() {
       }
     }
     const rematriculaData = {
+      cicloVida,
       service: rematriculaService && targetPricing && targetPricing.valor > 0 ? {
         id: rematriculaService.id,
         nome: rematriculaService.nome,
