@@ -65,7 +65,7 @@ try {
           "dashboard-overdue": "1 mensalidade vencida",
           "grade-unpaid": "Solicitar boletim",
           "grade-pending": "Pagamento em análise",
-          "grade-rejected": "Corrigir comprovativo",
+          "grade-rejected": "Reenviar comprovativo",
         }[name];
         if (expectedState) await page.getByText(expectedState, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {});
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
@@ -101,7 +101,7 @@ try {
           if (name === "grade-paid" && (!metrics.bodyText.includes("Matemática") || !metrics.bodyText.includes("16") || !metrics.bodyText.includes("17"))) errors.push(`${name}: paid grades missing from trimester grid`);
           if (name === "grade-pending" && !metrics.bodyText.includes("Pagamento em análise")) errors.push(`${name}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
-          if (name === "grade-rejected" && !metrics.bodyText.includes("Corrigir comprovativo")) errors.push(`${name}: resubmit action missing`);
+          if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar comprovativo")) errors.push(`${name}: resubmit action missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
           if (!metrics.bodyText.includes("Boletim de notas")) errors.push(`${name}: grade grid missing`);
           if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Matemática")) errors.push(`${name}: locked curriculum missing`);
