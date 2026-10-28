@@ -7,6 +7,7 @@ import { Lock as LockIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
 import { BoletimGradeGrid } from "@/components/aluno/academico/BoletimGradeGrid";
+import { ServicePaymentDrawer } from "@/components/aluno/layout/ServicePaymentDrawer";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 import { accessPresentation } from "@/lib/aluno/gradesPresentation";
@@ -29,7 +30,7 @@ type BoletimResponse = {
   context?: { anoLetivoLabel?: string | null; mode?: "CURRENT" | "HISTORICAL_READ" } | null;
 };
 
-type BoletimServico = { codigo: string; valor: number; status: string; pagamento_configurado?: boolean; reject_reason?: string | null; pedido_id?: string | null };
+type BoletimServico = { codigo: string; nome?: string; valor: number; status: string; pagamento_configurado?: boolean; reject_reason?: string | null; pedido_id?: string | null; pagamento_intent_id?: string | null };
 
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
@@ -48,6 +49,11 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const [matriculaEncontrada, setMatriculaEncontrada] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [boletimServico, setBoletimServico] = useState<BoletimServico | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<{ iban?: string; banco?: string; titular_conta?: string; kwik_chave?: string } | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -174,6 +180,10 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
     setReapreciacaoDisc(null);
     setMelhoriaDisc(null);
     setBoletimServico(null);
+    setPaymentDetails(null);
+    setPaymentIntentId(null);
+    setPaymentOpen(false);
+    setPaymentError(null);
     setAccessError(null);
   }, [studentId, bulletinQuery]);
 
@@ -231,7 +241,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         setAcademicYear(label);
         if (!json.is_liberado && json.matricula_encontrada !== false) {
           const catalogResponse = await fetch(`/api/aluno/documentos/catalogo${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
-          const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[] };
+          const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[]; dados_pagamento?: { iban?: string; banco?: string; titular_conta?: string; kwik_chave?: string } };
           if (!catalogResponse.ok || !catalog.ok) throw new Error(catalog.error || "Não foi possível consultar a taxa do boletim.");
           if (!active) return;
           const servicos = catalog.documentos ?? [];
@@ -239,6 +249,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           // antiga só é aceite como pagamento já concluído (na API), nunca cobrada de novo.
           const servico = servicos.find((item) => item.codigo === BOLETIM_SERVICE_CODE);
           setBoletimServico(servico ?? null);
+          setPaymentDetails(catalog.dados_pagamento ?? null);
+          setPaymentIntentId(servico?.pagamento_intent_id ?? null);
         }
       } catch (error: unknown) {
         if (active && !(error instanceof DOMException && error.name === "AbortError")) {
@@ -341,6 +353,36 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   if (studentId) navParams.set("aluno", studentId);
   if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
   const navQuery = navParams.size ? `?${navParams.toString()}` : "";
+  const startBoletimPayment = async () => {
+    if (!boletimServico || !paymentConfigured || paymentBusy || historicalRead) return;
+    setPaymentError(null);
+    if (moneyStatus === "pending_payment" || moneyStatus === "rejected") {
+      if (!paymentIntentId) {
+        setPaymentError("Não foi possível recuperar o pagamento original. Contacta a secretaria; não voltes a pagar.");
+        return;
+      }
+      setPaymentOpen(true);
+      return;
+    }
+    if (moneyStatus !== "available") return;
+    setPaymentBusy(true);
+    try {
+      const response = await fetch(`/api/aluno/documentos/solicitar${bulletinQuery}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo: BOLETIM_SERVICE_CODE, ...(studentId ? { studentId } : {}), ...(academicYearId ? { ano_letivo_id: academicYearId } : {}) }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.pagamento_id) throw new Error(json?.error || "Não foi possível iniciar o pagamento.");
+      setPaymentIntentId(json.pagamento_id);
+      setPaymentOpen(true);
+      setRefreshVersion(v => v + 1);
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Falha ao iniciar o pagamento.");
+    } finally {
+      setPaymentBusy(false);
+    }
+  };
   const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
   return (
     <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-3 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
@@ -398,7 +440,12 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
               {paymentConfigured && moneyStatus === "available" && (
                 <p className="text-sm font-semibold text-foreground">Taxa: {new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"}).format(Number(boletimServico?.valor))}</p>
               )}
-              {onOpenDocuments ? (
+              {(moneyStatus === "available" || moneyStatus === "pending_payment" || moneyStatus === "rejected") && !serviceUnconfigured && !historicalRead ? (
+                <button type="button" disabled={paymentBusy} onClick={() => void startBoletimPayment()}
+                  className={focus + " inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"}>
+                  {paymentBusy ? "A preparar pagamento…" : access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
+                </button>
+              ) : onOpenDocuments ? (
                 <button type="button" onClick={() => onOpenDocuments(serviceUnconfigured ? null : BOLETIM_SERVICE_CODE)}
                   className={focus + " inline-flex min-h-11 items-center gap-1.5 px-1 text-sm font-semibold text-primary hover:underline"}>
                   {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
@@ -408,10 +455,26 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
                   {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
                 </Link>
               )}
+              {moneyStatus === "pending" && <p role="status" className="text-xs text-muted-foreground">Comprovativo recebido → Em validação pela secretaria → Pagamento confirmado → Boletim disponível. O estado é atualizado automaticamente.</p>}
+              {paymentError && <p role="alert" className="text-sm text-destructive">{paymentError}</p>}
             </div>
           </div>
         </section> : null}
       </div>}
+      <ServicePaymentDrawer
+        open={paymentOpen && !safeIsLiberado && !historicalRead}
+        onClose={() => setPaymentOpen(false)}
+        onSuccess={() => { setPaymentOpen(false); setRefreshVersion(v => v + 1); }}
+        studentId={studentId}
+        academicYearId={academicYearId}
+        dadosPagamento={paymentDetails}
+        documento={boletimServico && paymentIntentId ? {
+          codigo: BOLETIM_SERVICE_CODE,
+          nome: boletimServico.nome || "Boletim de notas",
+          valor: Number(boletimServico.valor),
+          intentId: paymentIntentId,
+        } : null}
+      />
       {safeIsLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
       {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
