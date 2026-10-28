@@ -8,6 +8,8 @@ import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { recordAuditServer } from "@/lib/audit";
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
+import { normalizarEstadoMatricula } from "@/lib/matriculas/student-lifecycle";
+import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,9 +45,9 @@ type OrderRow = {
 
 function canonicalEnrollmentStatus(value: string): "ativa" | "pendente" | "outro" {
   const text = value.toLowerCase().trim();
-  if (["ativo", "ativa", "active"].includes(text)) return "ativa";
-  if (text === "pendente") return "pendente";
-  return "outro";
+  const active = ["ativo", "ativa", "active"].includes(text);
+  const estado = normalizarEstadoMatricula(value, active);
+  return estado === "ativa" || estado === "pendente" ? estado : "outro";
 }
 
 function orderForEnrollment(order: OrderRow, row: CurrentEnrollment, yearId: string): boolean {
@@ -161,6 +163,7 @@ export async function GET(
       }
     }
 
+    result.cicloVida = await carregarCicloVidaAluno(db, escolaId, studentId);
     return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
     console.error("[CURRENT-ENROLLMENT][GET]", { message: error instanceof Error ? error.message : "UNEXPECTED" });
