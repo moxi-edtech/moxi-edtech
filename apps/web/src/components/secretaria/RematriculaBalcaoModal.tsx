@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { canSelectRematriculaDestination } from "@/lib/rematricula/balcao-destino";
+import type { StudentLifecycle } from "@/lib/matriculas/student-lifecycle";
 import {
   Banknote,
   Check,
@@ -39,6 +40,7 @@ interface RematriculaBalcaoModalProps {
   setResponsavelContato: (value: string) => void;
   // Academic
   anoLetivo: { id: string; ano: number; label: string };
+  cicloVida?: StudentLifecycle | null;
   // Financial
   service: { id: string; nome: string; valor_base: number };
   itensPagamento?: RematriculaPaymentItem[];
@@ -160,6 +162,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     responsavelContato,
     setResponsavelContato,
     anoLetivo,
+    cicloVida = null,
     service,
     itensPagamento = [],
     itensDisponiveis = [],
@@ -308,6 +311,13 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
         ? "Rever cobrança"
         : "Confirmar rematrícula";
 
+  // Revisão histórica é informativa: a elegibilidade continua decidida pelo RAA.
+  const divergenciasHistoricas = cicloVida?.matriculas.filter((row) =>
+    row.anoLetivo != null && row.anoLetivo < anoLetivo.ano && row.pendencias.some((issue) =>
+      issue.codigo === "ORIGEM_PENDENTE_COM_DESTINO_ATIVO" || issue.codigo === "HISTORICO_EM_CONSTRUCAO",
+    ),
+  ).length ?? 0;
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div
@@ -389,7 +399,14 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
             />
           ) : step === 1 ? (
             /* ── Step 1: Academic summary ───────────────────────── */
-            <StepAcademico
+            <div className="space-y-3">
+              {divergenciasHistoricas > 0 && (
+                <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+                  <strong>Histórico académico a conciliar</strong>
+                  <p className="mt-1">Existe uma matrícula anterior com fecho ou histórico pendente de validação. A decisão desta rematrícula continua sujeita ao RAA; nenhum resultado é presumido.</p>
+                </div>
+              )}
+              <StepAcademico
               alunoNome={alunoNome}
               alunoProcesso={alunoProcesso}
               turmaAtual={turmaAtual}
