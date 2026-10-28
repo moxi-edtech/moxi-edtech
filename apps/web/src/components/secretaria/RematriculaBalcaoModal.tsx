@@ -434,7 +434,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               setSelectedTurmaId={setSelectedTurmaId}
               selectRef={firstFocusRef as React.RefObject<HTMLSelectElement>}
               compact={embedded}
-            />
+              />
+            </div>
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
             <StepFinanceiro
