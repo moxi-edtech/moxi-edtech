@@ -455,7 +455,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
                   {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
                 </Link>
               )}
-              {moneyStatus === "pending" && <p role="status" className="text-xs text-muted-foreground">Comprovativo recebido → Em validação pela secretaria → Pagamento confirmado → Boletim disponível. O estado é atualizado automaticamente.</p>}
+              {moneyStatus === "pending" && <p role="status" className="text-xs text-muted-foreground">Solicitação realizada. Aguardando liberação pela secretaria. Atualizamos o estado automaticamente.</p>}
               {paymentError && <p role="alert" className="text-sm text-destructive">{paymentError}</p>}
             </div>
           </div>
