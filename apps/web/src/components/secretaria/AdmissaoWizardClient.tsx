@@ -2189,7 +2189,7 @@ function Step3Pagamento(props: {
             {result.recibo?.status === 'error' && (
               <>
                 <p className="mt-3 text-xs text-muted-foreground">O pagamento foi registado. O recibo pode estar em processamento.</p>
-                {result.pagamento_id && <AdmissionReceiptRecovery pagamentoId={result.pagamento_id} />}
+                {result.pagamento_id && <AdmissionReceiptRecovery pagamentoId={result.pagamento_id} escolaId={escolaId} />}
               </>
             )}
           </div>
