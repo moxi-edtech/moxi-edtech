@@ -95,7 +95,7 @@ test("a matrícula e o aluno anteriores nunca disponibilizam notas enquanto a no
  const source=await fs.readFile(new URL("../../src/components/aluno/tabs/TabNotas.tsx",import.meta.url),"utf8");
  assert.match(source,/loadedScope === bulletinQuery && isLiberado/);
  assert.match(source,/safeIsLiberado \? disciplinas : \[\]/);
- assert.match(source,/safeIsLiberado \? safeDisciplinas : safeCurriculum/);
+ assert.match(source,/const gridSubjects = safeIsLiberado/);
  assert.match(source,/setCurriculumScope\(bulletinQuery\)/);
  const grid=await fs.readFile(new URL("../../src/components/aluno/academico/BoletimGradeGrid.tsx",import.meta.url),"utf8");
  assert.match(grid,/safeSubjects\.map/);
