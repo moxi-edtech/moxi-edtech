@@ -152,7 +152,11 @@ export async function POST(request: Request) {
       motivo: parsed.data.motivo, submitted_by: scope.userId,
     }).select("id,status").single();
     if (error?.code === "23505") {
-      return NextResponse.json({ ok: true, idempotent: true, status: "pending", message: "Solicitação já recebida. Aguardando análise." });
+      const { data: current } = await (supabase as any).from("aluno_falta_justificacoes")
+        .select("status").eq("escola_id", scope.escolaId).eq("matricula_id", scope.matriculaId)
+        .eq("frequencia_id", falta.id).in("status", ["pending", "approved"]).limit(1).maybeSingle();
+      return NextResponse.json({ ok: true, idempotent: true, status: current?.status ?? "pending",
+        message: current?.status === "approved" ? "Esta falta já foi justificada." : "Solicitação já recebida. Aguardando análise da secretaria." });
     }
     if (error || !data) throw error ?? Error("Pedido não persistido");
     await recordAuditServer({
