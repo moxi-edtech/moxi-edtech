@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       base().eq("status", "falta"),
       base().eq("status", "presente"),
       base().eq("status", "atraso"),
-      supabase.from("frequencias").select("id,data,status,observacao,periodo_letivo_id")
+      supabase.from("frequencias").select("id,data,status,observacao,periodo_letivo_id,aula_id")
         .eq("escola_id", scope.escolaId).eq("matricula_id", scope.matriculaId)
         .eq("status", "falta").order("data", { ascending: false }).limit(100),
       // Types will be regenerated when the migration is applied.
@@ -93,12 +93,41 @@ export async function GET(request: Request) {
     ]);
     const failure = missing.error ?? present.error ?? delayed.error ?? attendance.error ?? petitions.error;
     if (failure) throw failure;
+    // Best-effort curriculum labels: an attendance day may contain several lessons.
+    // These lookups never gate the actual, scoped frequency data.
+    const aulaIds = [...new Set((attendance.data ?? []).map((item) => item.aula_id).filter((id): id is string => !!id))];
+    const subjectByAula = new Map<string, string>();
+    if (aulaIds.length > 0) {
+      const { data: aulas, error: aulasError } = await supabase.from("aulas")
+        .select("id,turma_disciplina_id")
+        .eq("escola_id", scope.escolaId).in("id", aulaIds).limit(100);
+      if (!aulasError && aulas?.length) {
+        const assignmentIds = [...new Set(aulas.map((aula) => aula.turma_disciplina_id).filter((id): id is string => !!id))];
+        if (assignmentIds.length) {
+          const { data: assignments, error: assignmentError } = await supabase.from("turma_disciplinas")
+            .select("id,curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(nome))")
+            .eq("escola_id", scope.escolaId).in("id", assignmentIds).limit(100);
+          if (!assignmentError) {
+            const byAssignment = new Map<string, string>();
+            for (const assignment of (assignments ?? []) as Array<{id:string; curso_matriz?: {disciplina?: {nome?:string}} | null}>) {
+              const nome = assignment.curso_matriz?.disciplina?.nome;
+              if (nome) byAssignment.set(assignment.id, nome);
+            }
+            for (const aula of aulas) {
+              const nome = aula.turma_disciplina_id && byAssignment.get(aula.turma_disciplina_id);
+              if (nome) subjectByAula.set(aula.id, nome);
+            }
+          }
+        }
+      }
+    }
     const byFrequency = new Map<string, Petition>();
     for (const item of (petitions.data ?? []) as Petition[]) {
       if (!byFrequency.has(item.frequencia_id)) byFrequency.set(item.frequencia_id, item);
     }
     const items = (attendance.data ?? []).map((item) => ({
       id: item.id, data: item.data, observacao: item.observacao,
+      disciplina_nome: item.aula_id ? subjectByAula.get(item.aula_id) ?? null : null,
       periodo_letivo_id: item.periodo_letivo_id,
       justificacao: byFrequency.get(item.id) ?? null,
     }));
