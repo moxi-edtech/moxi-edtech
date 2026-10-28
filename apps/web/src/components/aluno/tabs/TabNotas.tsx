@@ -299,7 +299,14 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const safeDisciplinas = safeIsLiberado ? disciplinas : [];
   const visibleLoading = loading || (loadedScope !== bulletinQuery && !accessError);
   const safeCurriculum = curriculumScope === bulletinQuery ? curriculum : [];
-  const gridSubjects = safeIsLiberado ? safeDisciplinas : safeCurriculum;
+  // Grades may have no assessments yet. Keep curriculum rows visible while
+  // merging only the grade API's explicitly authorized scores.
+  const byId = new Map(safeDisciplinas.map((disc) => [disc.id, disc]));
+  const curriculumIds = new Set(safeCurriculum.map((disc) => disc.id));
+  const gridSubjects = safeIsLiberado
+    ? [...safeCurriculum.map((disc) => byId.get(disc.id) ?? disc),
+      ...safeDisciplinas.filter((disc) => !curriculumIds.has(disc.id))]
+    : safeCurriculum;
   const gridYearLabel = academicYear ?? (curriculumScope === bulletinQuery ? curriculumYear : null);
   const moneyStatus = boletimServico?.status === "pending_payment" ? "pending_payment" : boletimServico?.status === "pending" || boletimServico?.status === "rejected" || boletimServico?.status === "granted" ? boletimServico.status : "available";
   // Não anunciar um pagamento impossível: a escola pode ter o serviço ativo,
