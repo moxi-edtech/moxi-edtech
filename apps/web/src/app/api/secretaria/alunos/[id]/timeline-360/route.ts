@@ -46,10 +46,11 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
-    const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, params.data.id);
+    const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, params.data.id).catch(() => null);
     return NextResponse.json({
       ok: true,
       cicloVida,
+      cicloVidaIndisponivel: cicloVida === null,
       aluno_id: params.data.id,
       timeline: Array.isArray(data) ? data : [],
     });
