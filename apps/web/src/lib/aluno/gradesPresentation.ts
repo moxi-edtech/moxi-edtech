@@ -33,8 +33,8 @@ export function trimesterClassification(subject: GradeSubject, trimester: number
 export function trimesterStatus(subject: GradeSubject, trimester: number): "nao_lecionada" | "desconhecida" | "pendente" | "sem_classificacao" | "disponivel" {
   const offered = isSubjectOffered(subject, trimester);
   if (offered === false) return "nao_lecionada";
-  if (offered === null) return "desconhecida";
   if (trimesterClassification(subject, trimester)) return "disponivel";
+  if (offered === null) return "desconhecida";
   return subject.classificacoes?.some(c => c.trimestre === trimester && c.status === "pendente")
     ? "pendente"
     : "sem_classificacao";
