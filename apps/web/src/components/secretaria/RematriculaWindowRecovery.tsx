@@ -73,6 +73,13 @@ export function RematriculaWindowRecovery({ escolaId, anoLetivo, onRecheck }: Pr
       const target = sameYear.find((row) => row.ativa) ?? sameYear[0] ?? null;
       setJanela(target);
       setCanReopen(data.can_reopen === true);
+      if (target?.ativa && new Date(target.data_inicio).getTime() <= Date.now()
+        && new Date(target.data_fim).getTime() >= Date.now()) {
+        // Outra pessoa já reabriu a janela; não pedir uma segunda autorização.
+        setDone(true);
+        await onRecheck();
+        return;
+      }
       const defaultEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       setDataFim(luandaInput(defaultEnd));
     } catch (cause) {
@@ -80,7 +87,7 @@ export function RematriculaWindowRecovery({ escolaId, anoLetivo, onRecheck }: Pr
     } finally {
       setLoading(false);
     }
-  }, [anoLetivo.ano, escolaId]);
+  }, [anoLetivo.ano, escolaId, onRecheck]);
 
   const save = async () => {
     if (!canReopen || saving || motivo.trim().length < 10) return;
@@ -161,7 +168,7 @@ export function RematriculaWindowRecovery({ escolaId, anoLetivo, onRecheck }: Pr
           ) : (
             <div className="mt-3 space-y-3">
               <p className="text-xs text-muted-foreground">
-                {janela ? `Último período: ${formatLuanda(janela.data_inicio)} até ${formatLuanda(janela.data_fim)} · ${janela.ativa ? "Ativa, fora do prazo" : "Desativada"}.` : "Nenhuma janela configurada para este ano."}
+                {janela ? `Período: ${formatLuanda(janela.data_inicio)} até ${formatLuanda(janela.data_fim)} · ${!janela.ativa ? "Desativada" : new Date(janela.data_inicio).getTime() > Date.now() ? "Agendada" : "Encerrada"}.` : "Nenhuma janela configurada para este ano."}
               </p>
               {!canReopen ? (
                 <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
