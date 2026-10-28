@@ -73,7 +73,7 @@ export type StudentLifecycle = {
 };
 
 const ativos = new Set(["ativo", "ativa", "active"]);
-const encerrados = new Set(["concluido", "concluida", "encerrado", "encerrada", "transferido", "transferida"]);
+const encerrados = new Set(["concluido", "concluida", "encerrado", "encerrada", "transferido", "transferida", "reprovado", "reprovado_por_faltas", "inativo", "trancado"]);
 const cancelados = new Set(["cancelado", "cancelada", "anulado", "anulada", "desistente"]);
 
 const statusTexto = (value: string | null | undefined) => String(value ?? "").trim().toLowerCase();
@@ -84,7 +84,7 @@ export function normalizarEstadoMatricula(status: string | null | undefined, ati
   if (value === "pendente") return ativo === false ? "pendente" : "revisao";
   if (encerrados.has(value)) return ativo === false ? "encerrada" : "revisao";
   if (cancelados.has(value)) return ativo === false ? "cancelada" : "revisao";
-  // Não inventar estado para 'aprovado', 'reprovado', 'trancado' ou legados.
+  // O status legado 'reprovado' apenas encerra o vínculo; o resultado académico vem do histórico.
   return "revisao";
 }
 
@@ -100,6 +100,7 @@ export function normalizarResultadoAcademico(value: string | null | undefined): 
 export function construirCicloVidaAluno(
   matriculas: readonly MatriculaLifecycleInput[],
   historicos: readonly HistoricoLifecycleInput[],
+  oficiaisPorMatricula?: ReadonlyMap<string, string | null>,
 ): StudentLifecycle {
   const ids = new Map(matriculas.map((m) => [m.id, m]));
   const porMatricula = new Map<string, HistoricoLifecycleInput[]>();
@@ -176,12 +177,19 @@ export function construirCicloVidaAluno(
     }
     const registrado = normalizarResultadoAcademico(historico?.resultado_final);
     const fechado = statusTexto(historico?.snapshot_status) === "fechado";
-    const oficial = fechado && registrado !== "pendente" ? registrado : null;
+    // Quando a projeção SQL está presente, ela exige histórico FECHADO
+    // e lock legal confirmado. Não publicar uma aprovação apenas pelo campo
+    // snapshot_status, sem a autoridade do banco.
+    const resultadoDb = oficiaisPorMatricula?.get(matricula.id);
+    const resultadoOficialDb = normalizarResultadoAcademico(resultadoDb);
+    const oficial = oficiaisPorMatricula
+      ? resultadoOficialDb === "pendente" ? null : resultadoOficialDb
+      : fechado && registrado !== "pendente" ? registrado : null;
     if (historico && !fechado) {
       pendencias.push({ codigo: "HISTORICO_EM_CONSTRUCAO", mensagem: "Histórico anual ainda não congelado pelo fechamento oficial." });
     }
-    if (registrado !== "pendente" && !fechado) {
-      pendencias.push({ codigo: "RESULTADO_AINDA_NAO_OFICIAL", mensagem: "Resultado registado sem fechamento legal do histórico." });
+    if (registrado !== "pendente" && (!fechado || (oficiaisPorMatricula && !oficial))) {
+      pendencias.push({ codigo: "RESULTADO_AINDA_NAO_OFICIAL", mensagem: "Resultado registado sem confirmação integral do fechamento e bloqueio legal." });
     }
 
     const proximaAcao: StudentLifecycleEntry["proximaAcao"] =
