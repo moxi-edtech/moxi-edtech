@@ -166,6 +166,20 @@ export async function GET(
     const cicloVida = await carregarCicloVidaAluno(db, escolaId, studentId).catch(() => null);
     result.cicloVida = cicloVida;
     result.cicloVidaIndisponivel = cicloVida === null;
+    // A ausência de matrícula ativa não significa que a matrícula não exista.
+    // Fecho, cancelamento e estado legado do ano selecionado mantêm a identidade.
+    const registroAno = cicloVida?.matriculas.find((item) => item.anoLetivo === activeYear!.ano);
+    if (!current && !inconsistent && registroAno) {
+      if (registroAno.estadoOperacional === "encerrada" || registroAno.estadoOperacional === "cancelada") {
+        result.estado = registroAno.estadoOperacional;
+        result.reason = registroAno.estadoOperacional === "encerrada"
+          ? "A matrícula deste ano já está encerrada. Consulte o histórico oficial."
+          : "A matrícula deste ano foi cancelada. Consulte o motivo e a auditoria.";
+      } else if (registroAno.estadoOperacional === "revisao") {
+        result.estado = "reconciliacao";
+        result.reason = "O estado histórico desta matrícula exige revisão administrativa.";
+      }
+    }
     return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
     console.error("[CURRENT-ENROLLMENT][GET]", { message: error instanceof Error ? error.message : "UNEXPECTED" });
