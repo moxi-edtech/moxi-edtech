@@ -59,6 +59,9 @@ test("reabertura contextual exige direção, motivo e sessão ativa com prazo v�
   assert.match(route, /expected_updated_at/);
   assert.match(route, /\.eq\("updated_at", parsed\.data\.expected_updated_at\)/);
   assert.match(route, /WindowPermissionError/);
+  assert.match(route, /from\("escola_auditoria"\)/);
+  assert.match(route, /before,\s*reason/);
+  assert.match(route, /audit_warning/);
 });
 
 test("UI permite resolver sem sair e retorna ao mesmo atendimento", () => {
