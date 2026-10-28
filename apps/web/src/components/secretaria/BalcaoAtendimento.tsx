@@ -1010,6 +1010,10 @@ const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> =
     titulo: "O período de rematrícula está fechado",
     descricao: "Abra uma janela de rematrícula para este ano letivo antes de iniciar novas operações.",
   },
+  TARGET_YEAR_NOT_CONFIGURED: {
+    titulo: "Ano letivo de destino ainda não configurado",
+    descricao: "A escola precisa de criar o ano letivo seguinte antes de abrir a rematrícula. Os registos atuais serão preservados.",
+  },
   PAYMENT_IN_PROGRESS: {
     titulo: "Pagamento de rematrícula já iniciado",
     descricao: "Não será criada nova cobrança; confirme a liquidação no aviso acima.",
@@ -1639,6 +1643,17 @@ function Catalogo({
                   <RefreshCw className={`h-4 w-4 ${reconcilingPedido ? "animate-spin" : ""}`} />
                   {reconcilingPedido ? "A confirmar o pagamento…" : "Confirmar pagamento"}
                 </button>
+              </div>
+            ) : null}
+            {rematriculaState === "TARGET_YEAR_NOT_CONFIGURED" ? (
+              <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
+                <strong className="block">Ano letivo de destino não configurado</strong>
+                <p className="mt-1">
+                  O ano {rematriculaAnoLabel ?? "seguinte"} ainda não existe na configuração da escola.
+                  Solicite à administração que configure o ano e as turmas destino antes de iniciar a operação.
+                  Nenhuma matrícula nem cobrança foi criada.
+                </p>
+                <CodigoEstado estado="TARGET_YEAR_NOT_CONFIGURED" />
               </div>
             ) : null}
             {rematriculaState === "WINDOW_CLOSED" ? (
@@ -3140,7 +3155,7 @@ export default function BalcaoAtendimento({
                       : null
                   }
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
-                  rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
+                  rematriculaAnoLabel={rematricula.targetYearLabel ?? rematricula.anoLetivo?.label ?? null}
                   rematriculaAcademic={rematricula.academic}
                   reconcilingPedido={rematricula.reconciling}
                   rematriculaError={rematricula.apiError}
