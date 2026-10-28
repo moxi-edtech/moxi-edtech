@@ -98,7 +98,7 @@ try {
         }
         if (name.startsWith("grade-")) {
           if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name}: protected assessments leaked`);
-          if (name === "grade-paid" && (!metrics.bodyText.includes("Matemática") || !metrics.bodyText.includes("16") || !metrics.bodyText.includes("15"))) errors.push(`${name}: paid grades missing from trimester grid`);
+          if (name === "grade-paid" && (!metrics.bodyText.includes("Matemática") || !metrics.bodyText.includes("16") || !metrics.bodyText.includes("17"))) errors.push(`${name}: paid grades missing from trimester grid`);
           if (name === "grade-pending" && !metrics.bodyText.includes("Pagamento em análise")) errors.push(`${name}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
           if (name === "grade-rejected" && !metrics.bodyText.includes("Corrigir comprovativo")) errors.push(`${name}: resubmit action missing`);
@@ -154,7 +154,6 @@ try {
       await grid.getByText("16", { exact: true }).first().waitFor();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
       await grid.getByText("Prova trimestral").waitFor();
-      await grid.getByText("Exame do período").waitFor();
       await grid.getByRole("button", { name: "Pedir reapreciação" }).click();
       await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor();
       await page.keyboard.press("Tab");
@@ -171,6 +170,15 @@ try {
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor();
       await page.getByRole("button", { name: "Cancelar" }).click();
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor({ state: "hidden" });
+      await grid.getByRole("button", { name: "2.º trimestre" }).click();
+      await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
+      await grid.getByText("Exame do período").waitFor();
+      if (await grid.getByText("Biologia", { exact: true }).count()) errors.push("grade-paid: first-term-only subject appears in second trimester");
+      await grid.getByRole("button", { name: "Por disciplina" }).click();
+      const selector = grid.getByRole("combobox", { name: "Disciplina" });
+      await selector.selectOption("disc-3");
+      if (!(await grid.getByText("Disciplina não lecionada neste período").count())) errors.push("grade-paid: annual subject missing non-taught term");
+      await grid.getByRole("button", { name: "Por trimestre" }).click();
     }
     if (name === "grade-unpaid") {
       await page.goto(`${baseUrl}/?story=grade-unpaid`, { waitUntil: "domcontentloaded" });
