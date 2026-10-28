@@ -32,7 +32,8 @@ test('o portal não duplica MAC e NPP nem apresenta notas como nota anual fictí
   assert.doesNotMatch(source, /<span>MAC:<\/span>/);
   assert.doesNotMatch(source, /<span>NPP:<\/span>/);
   assert.doesNotMatch(source, /Nota Final/);
-  assert.match(read("components/aluno/academico/BoletimGradeGrid.tsx"), /avaliacao\.nome/);
+  assert.match(read("components/aluno/academico/BoletimGradeGrid.tsx"), /grade\.nome/);
+  assert.match(read("components/aluno/academico/BoletimGradeGrid.tsx"), /trimesterClassification\(subject, term\)/);
 });
 
 test('a secretaria confirma o pagamento no mesmo fluxo de recebimentos e alerta para liberação de notas', () => {
