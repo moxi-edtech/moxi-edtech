@@ -160,7 +160,9 @@ export async function GET(req: Request) {
       } | null;
     } | null = null;
 
-    if (matriculaId && alunoId && sessionId && anoLetivo && items.length > 0) {
+    // Mesmo quando a view não traz turmas, devolvemos o diagnóstico do RAA
+    // em vez de ocultar a causa com progressao=null e dropdown vazio.
+    if (matriculaId && alunoId && sessionId && anoLetivo) {
       const { data: origem } = await supabase
         .from('matriculas')
         .select('id, aluno_id, status, ano_letivo, turma_id, turmas:turma_id(classe_id, curso_id)')
