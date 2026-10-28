@@ -807,10 +807,14 @@ function usePagamentoSubmit({
       if (onSuccess) onSuccess();
 
     } catch (err: any) {
-      // Never discard proof of a committed payment because a callback,
-      // receipt lookup, or network response failed after settlement.
-      if (paymentCommitted) showReceiptPending(receiptWindow);
-      else receiptWindow?.close();
+      // A confirmed settlement must NEVER turn into a "payment failed"
+      // message because a UI callback or receipt handoff threw afterwards.
+      if (paymentCommitted) {
+        console.warn("[BALCAO-POST-COMMIT-UI][FAILED]");
+        error("Pagamento confirmado. Consulte o recibo no histórico financeiro do aluno.");
+        return;
+      }
+      receiptWindow?.close();
       if (err?.name === "AbortError") return;
       error(err instanceof Error ? err.message : "Não foi possível processar o pagamento.");
     } finally {
