@@ -157,6 +157,28 @@ test("receipt handoff page survives closing the modal and polls only the persist
   assert.doesNotMatch(page + recovery, /\/api\/secretaria\/pagamentos\/processar/);
 });
 
+test("batch settlement is never converted to HTTP failure by a thrown receipt RPC", () => {
+  const route = source("app/api/secretaria/pagamentos/processar/route.ts");
+  const commit = route.indexOf("const batch = asRecord(batchData);");
+  const deferred = route.indexOf("let recibo: BatchReceiptResult;", commit);
+  const result = route.indexOf("return NextResponse.json({\n    ok: true,", deferred);
+  assert.ok(commit >= 0 && deferred > commit && result > deferred);
+  assert.match(route.slice(deferred, result), /try \{\s*recibo = await emitBatchReceipt\(/);
+  assert.match(route.slice(deferred, result), /catch \(receiptError\)/);
+  assert.match(route.slice(deferred, result), /recibo = \{ ok: false, error: "Pagamento confirmado; recibo em processamento\." \}/);
+  assert.match(route.slice(result), /data: ultimoPagamento/);
+});
+
+test("single-item checkout retains canonical data.id for reversal and follow-up", () => {
+  const code = source("components/secretaria/ModalPagamentoRapido.tsx");
+  const submit = code.slice(code.indexOf("const submit = useCallback(async () =>"));
+  assert.match(submit, /terminalPaymentId = typeof json\.data\?\.id === "string"/);
+  assert.match(submit, /mensalidadesSelecionadas\.length === 1 \? terminalPaymentId : null/);
+  assert.doesNotMatch(submit, /pagamento_id:.*json\.recibo\?\.doc_id/);
+  assert.match(submit, /pendingCheckout\.current = null;/);
+  assert.match(submit, /paymentCommitted = true;/);
+});
+
 test("issued receipt print page offers a manual fallback if automatic printing is blocked", () => {
   const printPage = source("app/secretaria/documentos/_print/ReciboPrintDocument.tsx");
   const trigger = source("app/secretaria/documentos/_print/PrintTrigger.tsx");
