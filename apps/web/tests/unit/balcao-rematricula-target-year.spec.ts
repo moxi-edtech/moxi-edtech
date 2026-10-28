@@ -5,31 +5,18 @@ import {
   shouldBlockClosedRematriculaWindow,
 } from "../../src/lib/rematricula/balcao-target-year";
 
-test("operação existente do ano actual impede salto prematuro para o ano seguinte", () => {
-  assert.equal(resolveBalcaoRematriculaTargetYear({
-    sourceAcademicYear: 2026,
-    latestStudentAcademicYear: 2026,
-    openWindowAcademicYear: null,
-    hasCurrentAcademicYearOperation: true,
-  }), 2026);
+test("2026 representa 2026/2027 e não salta para 2027/2028", () => {
+  assert.equal(resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: 2026 }), 2026);
 });
 
-test("janela futura aberta tem precedência sobre operação concluída do ano actual", () => {
-  assert.equal(resolveBalcaoRematriculaTargetYear({
-    sourceAcademicYear: 2026,
-    latestStudentAcademicYear: 2026,
-    openWindowAcademicYear: 2027,
-    hasCurrentAcademicYearOperation: true,
-  }), 2027);
+test("2025/2026 e anos futuros só são operados quando a sessão é seleccionada", () => {
+  assert.equal(resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: 2025 }), 2025);
+  assert.equal(resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: 2027 }), 2027);
 });
 
-test("sem operação existente o Balcão aponta para o próximo ano do aluno", () => {
-  assert.equal(resolveBalcaoRematriculaTargetYear({
-    sourceAcademicYear: 2026,
-    latestStudentAcademicYear: 2026,
-    openWindowAcademicYear: null,
-    hasCurrentAcademicYearOperation: false,
-  }), 2027);
+test("ano inválido não é usado como destino", () => {
+  assert.throws(() => resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: NaN }));
+  assert.throws(() => resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: 0 }));
 });
 
 test("janela fechada não bloqueia reconciliação de operação já existente", () => {
