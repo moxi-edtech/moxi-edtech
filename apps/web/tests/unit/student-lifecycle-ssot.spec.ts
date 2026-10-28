@@ -109,3 +109,30 @@ test("route consumers import the canonical lifecycle without writing enrollment 
   assert.match(readOnlyRoute, /resolveEscolaIdForUser/);
   assert.doesNotMatch(readOnlyRoute, /export async function POST|export async function PATCH|export async function PUT/);
 });
+
+test("active enrollment duplication is scoped to school + student + year", () => {
+  const differentStudent = "77777777-7777-4777-8777-777777777777";
+  const cycle = construirCicloVidaAluno([
+    matricula({ status: "ativo", ativo: true, ano_letivo: 2026 }),
+    matricula({ id: destinoId, aluno_id: differentStudent, status: "ativo", ativo: true, ano_letivo: 2026 }),
+  ], []);
+  assert.equal(cycle.matriculas.filter((entry) =>
+    entry.pendencias.some((issue) => issue.codigo === "ATIVAS_DUPLICADAS_NO_ANO"),
+  ).length, 0);
+});
+
+test("legacy enrollment status cannot overwrite academic decisions by changing one column", () => {
+  const source = readFileSync(
+    new URL("../../src/app/api/secretaria/matriculas/[matriculaId]/status/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /LIFECYCLE_CANONICAL_FLOW_REQUIRED/);
+  assert.match(source, /requireRoleInSchool/);
+  assert.match(source, /normalizarEstadoMatricula/);
+  assert.doesNotMatch(source, /\.update\(/);
+  const alias = readFileSync(
+    new URL("../../src/app/api/secretaria/admissoes/matriculas/[matriculaId]/status/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(alias, /export \{ PUT \}/);
+});
