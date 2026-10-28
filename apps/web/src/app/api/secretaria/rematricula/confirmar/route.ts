@@ -274,11 +274,11 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
     const anoLetivoNum = normalizeAnoLetivo(anoLetivoNome ?? dataInicioSess.getFullYear());
     const anoLetivo = String(anoLetivoNum);
 
-    const [{ data: matriculas }, { data: turma }] = await Promise.all([
+    const [{ data: matriculas }] = await Promise.all([
       client.from('matriculas').select('id, aluno_id, data_inicio_financeiro, data_matricula, created_at')
         .eq('escola_id', escolaId).eq('turma_id', turmaId).eq('ano_letivo', anoLetivoNum)
         .in('aluno_id', alunoIds).in('status', ['ativo', 'ativa', 'active']),
-      client.from('turmas').select('is_classe_exame, classe_num, nome').eq('id', turmaId).maybeSingle(),
+
     ]);
     if (!matriculas || matriculas.length === 0) return;
     const regime = await resolveRegimeAcademico(client, turmaId);
