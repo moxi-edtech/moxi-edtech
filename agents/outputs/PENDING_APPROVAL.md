@@ -1,79 +1,43 @@
 # Aprovação necessária — Agent 3
-run_id:    51fc910e-e33c-41b1-8eb5-e61689eb9eac
-timestamp: 2026-09-30T09:26:12Z
+run_id:    8c426762-0ebb-43d8-b5a0-7856de85c343
+timestamp: 2026-10-28T22:09:26.787466+00:00
 
 ## Acção proposta
-
-Corrigir o P1 aberto no PR #136 tornando o checkout multi-item da Secretaria atomicamente transacional.
-
-A mudança proposta:
-
-1. adiciona a RPC `financeiro_registrar_pagamentos_secretaria_batch`, que:
-   - valida tenant/role;
-   - aceita 1–50 itens;
-   - serializa concorrência pela chave do checkout com `pg_advisory_xact_lock`;
-   - usa uma chave filha `<batch-key>:<index>` por pagamento;
-   - chama o writer canónico `financeiro_registrar_pagamento_secretaria` dentro de **uma única transação Postgres**;
-   - replica as guardas de mensalidade, matrícula, ano letivo e janela de cobrança necessárias ao fluxo;
-   - rejeita estado parcial preexistente em vez de “completar” silenciosamente;
-   - devolve todos os pagamentos e marca retries completos como idempotentes.
-
-2. altera `/api/secretaria/pagamentos/processar`:
-   - mantém o caminho canónico existente para checkout de 1 item;
-   - usa uma única chamada RPC batch para 2+ itens;
-   - emite/enriquece recibo somente após commit bem-sucedido;
-   - não reemite recibo automaticamente em retry idempotente;
-   - preserva audit trail e o contrato de resposta.
-
-3. altera `BalcaoAtendimento` para reutilizar a mesma `Idempotency-Key` quando o utilizador repete exactamente o mesmo checkout após timeout/erro de rede.
-
-O P0 checklist foi verificado antes desta proposta e está integralmente marcado como concluído.
+Permitir AppyPay no domínio de provedores de pagamento existente. Proposta apenas: nenhum SQL aplicado e nenhuma configuração financeira alterada.
 
 ## Diff
-
-O diff exacto proposto, incluindo o SQL completo da migration e os hunks exactos de API/UI, está versionado em:
-
-`agents/outputs/APPLY_DIFF_51fc910e-e33c-41b1-8eb5-e61689eb9eac.md`
-
-Migration reservada pelo comando oficial `supabase migration new fix_secretaria_batch_payment_atomicity`:
-
-`supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql`
-
-Resumo dos ficheiros funcionais que serão alterados somente após aprovação:
-
 ```diff
-+ supabase/migrations/20260930104911_fix_secretaria_batch_payment_atomicity.sql
-~ apps/web/src/app/api/secretaria/pagamentos/processar/route.ts
-~ apps/web/src/components/secretaria/BalcaoAtendimento.tsx
+--- /dev/null
++++ b/supabase/migrations/<gerar-com-supabase-migration-new>_allow_appypay_provider.sql
+@@ -0,0 +1,8 @@
++BEGIN;
++ALTER TABLE public.school_payment_providers
++  DROP CONSTRAINT school_payment_providers_provider_type_check;
++ALTER TABLE public.school_payment_providers
++  ADD CONSTRAINT school_payment_providers_provider_type_check
++  CHECK (provider_type IN ('proxypay', 'appypay'));
++COMMIT;
 ```
 
-Nenhum SQL remoto, migration repair, merge ou deployment de Production faz parte deste apply.
-
 ## Risco
+A restrição é partilhada pelas escolas; a alteração amplia os valores aceites no schema financeiro. Não habilita cobranças sozinha. Aplicação e rollback exigem validar a inexistência de registos AppyPay antes de restaurar a restrição original.
 
-A migration cria um novo contrato SQL financeiro e executa writes em `pagamentos` através do writer canónico. Se a validação batch estiver errada, o impacto possível é bloqueio indevido de checkout ou alteração da semântica de recebimento multi-item.
-
-Mitigações obrigatórias antes de qualquer merge/deploy:
-
-- testar primeiro em ambiente local/descartável;
-- provar rollback integral quando um item posterior falha;
-- provar idempotência e concorrência;
-- manter checkout de item único no caminho canónico actual;
-- KF2 verde;
-- build/preview Next/Vercel verde;
-- nenhuma aplicação remota em produção durante a validação.
-
-Rollback de código: `git revert` dos commits deste run.
-A migration ainda não foi aplicada ao Supabase remoto, portanto não existe rollback de banco a executar neste momento.
-
-## Aprovação
-
-Aprovado explicitamente pelo responsável em 2026-09-30.
-
-Commit de aprovação: `APPROVE: 51fc910e-e33c-41b1-8eb5-e61689eb9eac`
+## Como aprovar
+Commit com mensagem: `APPROVE: 8c426762-0ebb-43d8-b5a0-7856de85c343`
 
 ## Como rejeitar
+Commit com mensagem: `REJECT: 8c426762-0ebb-43d8-b5a0-7856de85c343 [motivo]`
 
-Commit com mensagem:
+## Evidência e limites
+- Base: origin/main 074f96b21; branch codex/appypay-escola-klasse.
+- Escola identificada por consulta somente leitura: Escola KLASSE, f406f5a7-a077-431c-b118-297224925726.
+- Constraint actual confirmada no banco: school_payment_providers_provider_type_check, CHECK (provider_type = 'proxypay'::text).
+- P0_CHECKLIST.md revisto: sem item desmarcado ou FAIL explícito; isto não equivale a revalidar os testes.
+- Navegador AppyPay indisponível após timeout; credenciais, aplicações e webhook não verificados.
+- Sandbox obrigatório nesta tarefa: https://app-tst.appypay.co.ao ; API https://gwy-api-tst.appypay.co.ao/v2.0.
+- Após aprovação ainda é necessário implementar o adaptador, configurar segredos no servidor com vínculo à escola, confirmar cobranças por GET /charges/{id} antes da baixa e testar idempotência e isolamento. Nada disto está implementado ou validado neste run.
+- Não houve merge, deploy, cobrança ou escrita de dados no Supabase.
 
-`REJECT: 51fc910e-e33c-41b1-8eb5-e61689eb9eac [motivo]`
+## Documentação consultada
+- https://suporte-appypay.freshdesk.com/support/solutions/articles/501000385502-criar-uma-cobranca-charge-na-api-appypay-gpo-e-refer%C3%AAncia
+- https://suporte-appypay.freshdesk.com/support/solutions/articles/501000385504-passo-a-passo-para-configurar-um-webhook-no-portal-appypay
