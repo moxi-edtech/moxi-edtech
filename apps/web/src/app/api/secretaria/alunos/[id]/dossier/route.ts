@@ -73,9 +73,9 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ ok: false, error: "Ficha integral indisponível." }, { status: 404 });
     }
-    const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, alunoId);
+    const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, alunoId).catch(() => null);
     return NextResponse.json(
-      { ok: true, ...result, cicloVida },
+      { ok: true, ...result, cicloVida, cicloVidaIndisponivel: cicloVida === null },
       { headers: { "Cache-Control": "private, no-store, max-age=0" } },
     );
   } catch {
