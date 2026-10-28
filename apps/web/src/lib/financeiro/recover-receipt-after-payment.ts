@@ -10,19 +10,22 @@ export type ReceiptLookup = {
   error?: string;
 };
 
-export async function findIssuedOperationalReceipt(
-  mensalidadeId: string,
-  opts: {
+export type ReceiptLookupOptions = {
     fetcher?: typeof fetch;
     pause?: (ms: number) => Promise<void>;
     signal?: AbortSignal;
     attempts?: number;
-  } = {},
+};
+
+async function findIssuedReceipt(
+  idKind: "mensalidade_id" | "pagamento_id",
+  id: string,
+  opts: ReceiptLookupOptions = {},
 ): Promise<string | null> {
   const fetcher = opts.fetcher ?? fetch;
   const pause = opts.pause ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const max = Math.min(Math.max(opts.attempts ?? 12, 1), 20);
-  const path = "/api/secretaria/recibos/consultar?mensalidade_id=" + encodeURIComponent(mensalidadeId);
+  const path = "/api/secretaria/recibos/consultar?" + idKind + "=" + encodeURIComponent(id);
   for (let attempt = 0; attempt < max; attempt += 1) {
     if (opts.signal?.aborted) return null;
     const response = await fetcher(path, { method: "GET", cache: "no-store", signal: opts.signal });
@@ -36,6 +39,22 @@ export async function findIssuedOperationalReceipt(
     if (attempt < max - 1) await pause(1000);
   }
   return null;
+}
+
+/** Resolve by mensalidade, including a consolidated batch receipt. */
+export function findIssuedOperationalReceipt(
+  mensalidadeId: string,
+  opts: ReceiptLookupOptions = {},
+): Promise<string | null> {
+  return findIssuedReceipt("mensalidade_id", mensalidadeId, opts);
+}
+
+/** Resolve admission/service receipts using the settled payment's identity. */
+export function findIssuedOperationalReceiptByPayment(
+  pagamentoId: string,
+  opts: ReceiptLookupOptions = {},
+): Promise<string | null> {
+  return findIssuedReceipt("pagamento_id", pagamentoId, opts);
 }
 
 /**
