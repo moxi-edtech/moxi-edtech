@@ -802,7 +802,7 @@ function usePagamentoSubmit({
         showIssuedReceipt(
           receiptWindow,
           "/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(terminalPaymentId)
-            + (escolaId && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(escolaId)
+            + (escolaId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(escolaId)
                 ? "&escola_id=" + encodeURIComponent(escolaId) : ""),
         );
       } else {
@@ -1223,7 +1223,7 @@ export function ModalPagamentoRapido({
                     </p>
                     <a
                       href={"/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(receiptHandoff.pagamentoId)
-                        + (escolaId && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(escolaId)
+                        + (escolaId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(escolaId)
                             ? "&escola_id=" + encodeURIComponent(escolaId) : "")}
                       target="_blank"
                       rel="noopener noreferrer"
