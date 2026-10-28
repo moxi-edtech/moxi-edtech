@@ -128,10 +128,31 @@ issues_candidatura AS (
       OR m.escola_id IS DISTINCT FROM c.escola_id
       OR (c.aluno_id IS NOT NULL AND m.aluno_id IS DISTINCT FROM c.aluno_id))
 ),
+issues_historico AS (
+  SELECT h.escola_id, h.aluno_id, h.matricula_id, h.ano_letivo,
+    'historico'::text AS entidade, r.codigo, r.severidade, r.proximo_passo
+  FROM public.historico_anos h
+  LEFT JOIN public.matriculas m ON m.id = h.matricula_id
+  CROSS JOIN LATERAL (VALUES
+    ('HISTORICO_SEM_MATRICULA_VINCULADA', 'REVISAR',
+      h.matricula_id IS NULL OR (h.matricula_id IS NOT NULL AND m.id IS NULL),
+      'Verificar se existe matrícula histórica única e compatível; nunca associar por nome.'),
+    ('HISTORICO_VINCULO_INCOERENTE', 'CRITICO',
+      m.id IS NOT NULL AND (
+        h.escola_id IS DISTINCT FROM m.escola_id
+        OR h.aluno_id IS DISTINCT FROM m.aluno_id
+        OR h.ano_letivo IS DISTINCT FROM m.ano_letivo
+      ),
+      'Bloquear conciliação automática e rever escola, aluno e ano do histórico.')
+  ) AS r(codigo,severidade,aplica,proximo_passo)
+  WHERE r.aplica
+),
 issues AS (
   SELECT * FROM issues_matricula
   UNION ALL
   SELECT * FROM issues_candidatura
+  UNION ALL
+  SELECT * FROM issues_historico
 )
 SELECT escola_id, aluno_id, matricula_id, ano_letivo, entidade, codigo,
   severidade, proximo_passo
