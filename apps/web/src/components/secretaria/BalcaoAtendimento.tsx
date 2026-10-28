@@ -27,6 +27,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
+import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
@@ -1376,6 +1377,7 @@ function Catalogo({
   rematriculaState,
   rematriculaPrice,
   rematriculaAnoLabel,
+  rematriculaContextYear,
   rematriculaWindow,
   rematriculaAcademic,
   reconcilingPedido,
@@ -1403,6 +1405,7 @@ function Catalogo({
   rematriculaState: RematriculaCardState | "CHECKING" | null;
   rematriculaPrice: number | null;
   rematriculaAnoLabel: string | null;
+  rematriculaContextYear: { id: string; ano: number; label: string } | null;
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: {
     reason?: string;
@@ -1672,6 +1675,13 @@ function Catalogo({
                   </p>
                 ) : null}
                 <CodigoEstado estado="WINDOW_CLOSED" />
+                {rematriculaContextYear && (
+                  <RematriculaWindowRecovery
+                    key={rematriculaContextYear.id}
+                    anoLetivo={rematriculaContextYear}
+                    onRecheck={onRefreshRematricula}
+                  />
+                )}
               </div>
             ) : null}
             {rematriculaState === "ACADEMIC_PENDING" ? (
@@ -3164,6 +3174,7 @@ export default function BalcaoAtendimento({
                   }
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
                   rematriculaAnoLabel={rematricula.targetYearLabel ?? rematricula.anoLetivo?.label ?? null}
+                  rematriculaContextYear={rematricula.anoLetivo}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
                   reconcilingPedido={rematricula.reconciling}
