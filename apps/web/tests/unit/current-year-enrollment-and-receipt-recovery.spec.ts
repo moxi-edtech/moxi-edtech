@@ -117,6 +117,16 @@ test("receipt recovery finds a consolidated service-terminated batch without exp
   assert.doesNotMatch(recovery, /fetch\(.+method: "POST"/);
 });
 
+test("admission preserves its success receipt actions until explicit continue", () => {
+  const wizard = source("components/secretaria/AdmissaoWizardClient.tsx");
+  const before = wizard.slice(wizard.indexOf("const handleFinalizarMatricula ="), wizard.indexOf("const handleSaveForLater ="));
+  assert.match(before, /setResult\(\{[\s\S]*?convertResp\.data/);
+  assert.doesNotMatch(before, /onCompleted\?\.\(convertResp\.data\.aluno_id\)/);
+  assert.match(wizard, /if \(onCompleted\) onCompleted\(result\.aluno_id\)/);
+  assert.match(wizard, /onActionChange\?\.\("desk"\)/);
+  assert.match(wizard, /AdmissionReceiptRecovery/);
+});
+
 test("rapid checkout reserves print tab before fetch and does not generate another payment on polling", () => {
   const code = source("components/secretaria/ModalPagamentoRapido.tsx");
   const submit = code.slice(code.indexOf("const submit = useCallback(async () =>"));
