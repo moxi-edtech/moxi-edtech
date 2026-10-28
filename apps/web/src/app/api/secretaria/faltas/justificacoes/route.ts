@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       escolaId, portal: "secretaria",
       acao: parsed.data.decision === "approved" ? "FALTA_JUSTIFICACAO_APROVADA" : "FALTA_JUSTIFICACAO_REJEITADA",
       entity: "aluno_falta_justificacoes", entityId: decided.id,
-      details: { aluno_id: petition.aluno_id, frequencia_id: petition.frequencia_id, motivo_decisao: parsed.data.motivo ?? null },
+      details: { aluno_id: petition.aluno_id, frequencia_id: petition.frequencia_id, decisao: parsed.data.decision },
     });
     return NextResponse.json({
       ok: true, item: decided,
