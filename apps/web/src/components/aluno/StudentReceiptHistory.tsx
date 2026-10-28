@@ -224,7 +224,8 @@ export function StudentReceiptHistory({
                   </p>
                 </div>
                 <a
-                  href={"/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(pagamento.id)}
+                  href={"/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(pagamento.id)
+                    + "&escola_id=" + encodeURIComponent(escolaId)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex min-h-10 items-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
