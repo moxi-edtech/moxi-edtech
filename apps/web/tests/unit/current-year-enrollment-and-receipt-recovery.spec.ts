@@ -127,17 +127,34 @@ test("admission preserves its success receipt actions until explicit continue", 
   assert.match(wizard, /AdmissionReceiptRecovery/);
 });
 
-test("rapid checkout reserves print tab before fetch and does not generate another payment on polling", () => {
+test("rapid checkout hands the receipt to an independent payment-scoped page BEFORE parent callbacks", () => {
   const code = source("components/secretaria/ModalPagamentoRapido.tsx");
   const submit = code.slice(code.indexOf("const submit = useCallback(async () =>"));
   assert.ok(submit.indexOf("reserveReceiptWindow()") >= 0);
   assert.ok(submit.indexOf("reserveReceiptWindow()") < submit.indexOf('await fetch("/api/secretaria/pagamentos/processar"'));
   assert.match(submit, /pendingCheckout\.current\.key/);
-  assert.match(submit, /findIssuedOperationalReceipt\(lastMonthlyId/);
-  assert.match(submit, /showIssuedReceipt\(receiptWindow, recoveredUrl\)/);
+  assert.match(submit, /terminalPaymentId = typeof json\.data\?\.id/);
+  assert.match(submit, /"\/secretaria\/recibos\/acompanhar\?pagamento_id="/);
+  assert.match(submit, /onReceiptStatus\(\{ url: immediateUrl, pagamentoId: terminalPaymentId, pending: !immediateUrl \}\)/);
+  assert.ok(submit.indexOf("showIssuedReceipt(\n          receiptWindow,") < submit.indexOf("onConcluido();"));
+  assert.ok(submit.indexOf("onConcluido();") < submit.indexOf("if (onSuccess) onSuccess();"));
+  assert.doesNotMatch(submit, /findIssuedOperationalReceipt\(lastMonthlyId/);
+  assert.doesNotMatch(submit, /await findIssuedOperationalReceipt/);
   assert.match(code, /Pagamento confirmado — recibo em preparação/);
-  assert.match(code, /Verificar recibo sem repetir pagamento/);
+  assert.match(code, /Consultar recibo/);
+  assert.match(code, /Pagamento confirmado\. Consulte o recibo no histórico financeiro do aluno\./);
   assert.doesNotMatch(code, /setTimeout\(\(\) => window\.print\(\)/);
+});
+
+test("receipt handoff page survives closing the modal and polls only the persisted payment", () => {
+  const page = source("app/secretaria/recibos/acompanhar/page.tsx");
+  const recovery = source("components/secretaria/AdmissionReceiptRecovery.tsx");
+  assert.match(page, /searchParams: Promise<\{ pagamento_id\?: string \}>/);
+  assert.match(page, /UUID\.test\(pagamentoId\)/);
+  assert.match(page, /<AdmissionReceiptRecovery pagamentoId=\{pagamentoId\} \/>/);
+  assert.match(recovery, /findIssuedOperationalReceiptByPayment\(pagamentoId/);
+  assert.match(recovery, /Imprimir recibo/);
+  assert.doesNotMatch(page + recovery, /\/api\/secretaria\/pagamentos\/processar/);
 });
 
 test("issued receipt print page offers a manual fallback if automatic printing is blocked", () => {
