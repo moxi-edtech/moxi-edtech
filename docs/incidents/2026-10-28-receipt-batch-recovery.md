@@ -19,6 +19,7 @@ A Vercel Hobby não retornou registos úteis de recibo no horizonte de 45 minuto
 3. Se o pagamento liquidado possui `meta.emitir_recibo=false`, pesquisa o único emissor da **mesma escola, aluno e `meta.batch_idempotency_key`**; seleciona por `mensalidade_id` se o terminal for mensalidade, senão pelo `dados_snapshot.pagamento_id` do terminal de serviço.
 4. Não aceita lote com múltiplos emissores: devolve conflito para reconciliação. Só aceita documentos operacionais `tipo=recibo` não revogados, com autorização de staff financeiro.
 5. Na admissão, caso a chamada síncrona de emissão responda com erro depois do pagamento, a interface pode consultar o documento já emitido pelo worker usando o `pagamento_id` devolvido pelo servidor, sem segunda cobrança nem segundo RPC de emissão.
+6. A admissão já concluída deixava de mostrar as ações de recibo porque `onCompleted` alterava imediatamente a seleção/aba do Balcão. Agora a confirmação permanece visível até o utilizador escolher **Continuar atendimento**, garantindo acesso à ação de impressão ou consulta.
 
 Nenhuma alteração a banco, liquidação, event handlers, migrações, fiscal/AGT ou geração de recibos históricos.
 
