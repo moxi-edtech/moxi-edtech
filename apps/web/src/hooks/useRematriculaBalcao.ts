@@ -1,6 +1,6 @@
 import { classifyRematriculaResponse } from "@/lib/secretaria/rematricula-result";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 // ─── Exported Types ──────────────────────────────────────────────────────────
 
@@ -263,6 +263,9 @@ export function useRematriculaBalcao(opts: {
   const [decisaoObservacao, setDecisaoObservacao] = useState("");
   const [turmasLoading, setTurmasLoading] = useState(false);
   const [turmasFetchedFor, setTurmasFetchedFor] = useState<ResultadoDecisaoBalcao | null>(null);
+  const [turmasError, setTurmasError] = useState<string | null>(null);
+  const turmasRequestGeneration = useRef(0);
+  const statusRequestGeneration = useRef(0);
 
   // ── Modal wizard ────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
@@ -298,6 +301,7 @@ export function useRematriculaBalcao(opts: {
       return;
     }
 
+    const requestGeneration = ++statusRequestGeneration.current;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -313,6 +317,7 @@ export function useRematriculaBalcao(opts: {
         `/api/secretaria/balcao/rematriculas/status?${params.toString()}`,
       );
       const data: StatusResponse = await res.json();
+      if (requestGeneration !== statusRequestGeneration.current) return;
 
       if (res.ok && data.ok) {
         setApiError(null);
@@ -332,10 +337,12 @@ export function useRematriculaBalcao(opts: {
         setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
       }
     } catch (e) {
+      if (requestGeneration !== statusRequestGeneration.current) return;
       console.error("[useRematriculaBalcao] Error fetching status:", e);
+      setCardState("ERROR");
       setApiError("Não foi possível atualizar o estado da rematrícula. Verifique a ligação e tente novamente.");
     } finally {
-      setLoading(false);
+      if (requestGeneration === statusRequestGeneration.current) setLoading(false);
     }
   }, [opts.alunoId, opts.matriculaId, opts.academicYearId]);
 
@@ -349,8 +356,10 @@ export function useRematriculaBalcao(opts: {
     setSelectedTurmaId(null);
     setResult(null);
     setApiError(null);
+    turmasRequestGeneration.current += 1;
     setTurmasFetchedFor(null);
     setTurmas([]);
+    setTurmasError(null);
     setProgressao(null);
     setCohort(null);
     setAcademic(null);
@@ -428,11 +437,14 @@ export function useRematriculaBalcao(opts: {
   const fetchTurmas = useCallback(async (
     decision: ResultadoDecisaoBalcao = decisaoResultado,
     allowManualDecision = false,
+    force = false,
   ) => {
     if (!anoLetivo?.id || !opts.alunoId) return;
-    if (turmasFetchedFor === decision && !allowManualDecision) return;
+    if (turmasFetchedFor === decision && !allowManualDecision && !force) return;
 
+    const requestGeneration = ++turmasRequestGeneration.current;
     setTurmasLoading(true);
+    setTurmasError(null);
     try {
       const params = new URLSearchParams({
         session_id: anoLetivo.id,
@@ -443,9 +455,17 @@ export function useRematriculaBalcao(opts: {
       const res = await fetch(
         `/api/secretaria/turmas-simples?${params.toString()}`,
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (requestGeneration !== turmasRequestGeneration.current) return;
+      if (!res.ok || data.ok !== true || !Array.isArray(data.items)) {
+        setTurmas([]);
+        setProgressao(null);
+        setTurmasFetchedFor(null);
+        setTurmasError(data.error || "Não foi possível carregar as turmas de destino.");
+        return;
+      }
       setProgressao(data.progressao ?? null);
-      if (data.items && Array.isArray(data.items)) {
+      if (Array.isArray(data.items)) {
         setTurmas(
           data.items.map((t: TurmaPayload) => ({
             id: t.id,
@@ -462,9 +482,13 @@ export function useRematriculaBalcao(opts: {
         setTurmasFetchedFor(decision);
       }
     } catch (e) {
+      if (requestGeneration !== turmasRequestGeneration.current) return;
       console.error("[useRematriculaBalcao] Error fetching turmas:", e);
+      setTurmas([]);
+      setTurmasFetchedFor(null);
+      setTurmasError("Falha de comunicação ao consultar as turmas. Tente novamente.");
     } finally {
-      setTurmasLoading(false);
+      if (requestGeneration === turmasRequestGeneration.current) setTurmasLoading(false);
     }
   }, [anoLetivo?.id, decisaoResultado, opts.alunoId, opts.matriculaId, turmasFetchedFor]);
 
@@ -780,6 +804,8 @@ export function useRematriculaBalcao(opts: {
     // Turmas
     turmas,
     turmasLoading,
+    turmasError,
+    retryTurmas: () => fetchTurmas(decisaoResultado, reconciliationMode, true),
     progressao,
     decisaoResultado,
     setDecisaoResultado,
