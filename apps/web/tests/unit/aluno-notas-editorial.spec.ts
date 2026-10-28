@@ -28,11 +28,14 @@ test("quatro estados e ação única de pagamento",()=>{
 test("notas protegidas nunca aparecem quando API nega is_liberado; modal preserva contratos",async()=>{
  const fs=await import("node:fs/promises");
  const ui=await fs.readFile(new URL("../../src/components/aluno/tabs/TabNotas.tsx",import.meta.url),"utf8");
+ const grid=await fs.readFile(new URL("../../src/components/aluno/academico/BoletimGradeGrid.tsx",import.meta.url),"utf8");
  assert.match(ui,/json\.is_liberado \? json\.disciplinas \?\? \[\] : \[\]/);
  assert.match(ui,/!safeIsLiberado \?/);
+ assert.match(ui,/safeIsLiberado \? safeDisciplinas : safeCurriculum/);
+ assert.match(grid,/locked \? \[\] : subject\.avaliacoes/);
  assert.match(ui,/reapreciacao/);
  assert.match(ui,/melhoria/);
- assert.doesNotMatch(ui,/toFixed\(|Math\.round\(|reduce\([^\n]*(nota|media)/);
+ for (const source of [ui,grid]) assert.doesNotMatch(source,/toFixed\(|Math\.round\(|reduce\([^\n]*(nota|media)/);
  const api=await fs.readFile(new URL("../../src/app/api/aluno/boletim/route.ts",import.meta.url),"utf8");
  const pdf=await fs.readFile(new URL("../../src/app/api/aluno/boletim/pdf/route.ts",import.meta.url),"utf8");
  for(const source of [api,pdf]){
@@ -92,7 +95,10 @@ test("a matrícula e o aluno anteriores nunca disponibilizam notas enquanto a no
  const source=await fs.readFile(new URL("../../src/components/aluno/tabs/TabNotas.tsx",import.meta.url),"utf8");
  assert.match(source,/loadedScope === bulletinQuery && isLiberado/);
  assert.match(source,/safeIsLiberado \? disciplinas : \[\]/);
- assert.match(source,/safeDisciplinas\.map/);
+ assert.match(source,/safeIsLiberado \? safeDisciplinas : safeCurriculum/);
+ assert.match(source,/setCurriculumScope\(bulletinQuery\)/);
+ const grid=await fs.readFile(new URL("../../src/components/aluno/academico/BoletimGradeGrid.tsx",import.meta.url),"utf8");
+ assert.match(grid,/safeSubjects\.map/);
  assert.match(source,/setLoadedScope\(bulletinQuery\)/);
  assert.match(source,/safeIsLiberado && !historicalRead && reapreciacaoDisc/);
  assert.match(source,/safeIsLiberado && !historicalRead && melhoriaDisc/);
@@ -102,7 +108,8 @@ test("histórico só permite leitura, sem enviar reapreciação ou melhoria da m
  const fs=await import("node:fs/promises");
  const ui=await fs.readFile(new URL("../../src/components/aluno/tabs/TabNotas.tsx",import.meta.url),"utf8");
  assert.match(ui,/json\.context\?\.mode === "HISTORICAL_READ"/);
- assert.match(ui,/!historicalRead && disc\.avaliacoes\.length/);
+ assert.match(ui,/onReapreciacao=\{!historicalRead \?/);
+ assert.match(ui,/onMelhoria=\{!historicalRead \?/);
  assert.match(ui,/safeIsLiberado && !historicalRead && reapreciacaoDisc/);
  assert.match(ui,/safeIsLiberado && !historicalRead && melhoriaDisc/);
 });
