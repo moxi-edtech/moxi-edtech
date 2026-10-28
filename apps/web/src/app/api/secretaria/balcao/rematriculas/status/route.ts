@@ -135,7 +135,27 @@ export async function GET(request: Request) {
       hasCurrentAcademicYearOperation: Boolean(pedidoDoAnoAcademicoAtual),
     });
     const targetScope = await resolveAnoLetivoScope(supabase, escolaId, { ano: targetAnoLetivoAno });
-    const targetAnoLetivoId = targetScope?.id ?? academicContext.anoLetivoId;
+    // Nunca associar o ano destino ao ID do ano de origem. Isso criava um
+    // contexto contraditório (ex.: etiqueta 2027/2028, sessão real 2026/2027).
+    if (!targetScope) {
+      return NextResponse.json({
+        ok: true,
+        status: "TARGET_YEAR_NOT_CONFIGURED",
+        service: null,
+        debt: null,
+        academic: null,
+        pedido: null,
+        comprovante: null,
+        ano_letivo: null,
+        target_ano_label: `${targetAnoLetivoAno}/${targetAnoLetivoAno + 1}`,
+        destino_turma_id: null,
+        reclassificacao: null,
+        reconciliation: null,
+        window: { configured: false, open: false },
+        context: academicContext,
+      });
+    }
+    const targetAnoLetivoId = targetScope.id;
     const targetAnoLetivoLabel = `${targetAnoLetivoAno}/${targetAnoLetivoAno + 1}`;
     const pedidosDoAno = (rematriculaPedidosAtivos ?? []).filter(
       (pedido: any) => pedido.contexto?.ano_letivo_id === targetAnoLetivoId
