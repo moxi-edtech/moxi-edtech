@@ -33,6 +33,7 @@ test("notas protegidas nunca aparecem quando API nega is_liberado; modal preserv
  assert.match(ui,/!safeIsLiberado \?/);
  assert.match(ui,/const gridSubjects = safeIsLiberado/);
  assert.match(grid,/locked \? \[\] : subject\.avaliacoes/);
+ assert.match(grid,/locked \? \[\] : \(subject\.classificacoes \?\? \[\]\)/);
  assert.match(ui,/reapreciacao/);
  assert.match(ui,/melhoria/);
  for (const source of [ui,grid]) assert.doesNotMatch(source,/toFixed\(|Math\.round\(|reduce\([^\n]*(nota|media)/);
@@ -98,7 +99,7 @@ test("a matrícula e o aluno anteriores nunca disponibilizam notas enquanto a no
  assert.match(source,/const gridSubjects = safeIsLiberado/);
  assert.match(source,/setCurriculumScope\(bulletinQuery\)/);
  const grid=await fs.readFile(new URL("../../src/components/aluno/academico/BoletimGradeGrid.tsx",import.meta.url),"utf8");
- assert.match(grid,/safeSubjects\.map/);
+ assert.match(grid,/subjects\.map/);
  assert.match(source,/setLoadedScope\(bulletinQuery\)/);
  assert.match(source,/safeIsLiberado && !historicalRead && reapreciacaoDisc/);
  assert.match(source,/safeIsLiberado && !historicalRead && melhoriaDisc/);
