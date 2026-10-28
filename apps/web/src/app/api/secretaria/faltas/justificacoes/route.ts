@@ -8,7 +8,7 @@ import { recordAuditServer } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-const roles = ["diretor", ...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP];
+const roles: Array<"diretor" | (typeof K12_SECRETARIA_OPERACIONAL_ROLE_GROUP)[number]> = ["diretor", ...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP];
 const Decision = z.object({
   id: z.string().uuid(),
   decision: z.enum(["approved", "rejected"]),
@@ -46,7 +46,7 @@ export async function GET() {
         .eq("escola_id", escolaId).in("id", ids)
       : { data: [], error: null };
     if (alunosError) throw alunosError;
-    const byId = new Map((alunos ?? []).map((item: {id: string}) => [item.id, item]));
+    const byId = new Map((alunos ?? []).map((item: {id: string}) => [item.id, item] as const));
     return NextResponse.json({
       ok: true,
       items: (data ?? []).map((item: { aluno_id: string }) => ({
