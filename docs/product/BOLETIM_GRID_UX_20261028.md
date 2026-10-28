@@ -1,25 +1,39 @@
-# Boletim do Aluno — Grelha curricular e notas protegidas
+# Boletim do Aluno — Trimestres, disciplinas e classificações
 
 ## Problema
 
-A vista anterior era uma longa lista de avaliações por período e, quando o acesso ao boletim estava bloqueado, escondia também as disciplinas. O aluno não reconhecia o seu boletim como uma grelha escolar nem conseguia antecipar a estrutura das avaliações.
+O KLASSE precisa respeitar disciplinas que só são lecionadas num ou dois trimestres. A pauta do aluno deve mostrar a classificação trimestral, não vários números de avaliações como se fossem o resultado final.
 
-## Proposta implementada
+## UX implementada na PR #278
 
-- **Grelha responsiva:** linhas de disciplinas reais e colunas de trimestre (1.º, 2.º e 3.º são placeholders editoriais; os demais períodos só aparecem quando o servidor devolve avaliações nesse período). Não se fabricam notas, médias, classificações anuais, estados de lançamento ou horários.
-- **Acesso protegido:** a API `/api/aluno/disciplinas` devolve apenas a lista curricular autorizada por matrícula, escola, aluno e ano letivo. A API `/api/aluno/boletim` continua a devolver `disciplinas: []` quando `checkBoletimAccess` nega a liberação. Nenhuma pontuação é guardada nos placeholders, sequer de forma desfocada.
-- **Exibir / Ocultar:** o utilizador pode ocultar as notas liberadas no próprio ecrã, sem mudar a autorização. Antes da liberação, o botão está indisponível e diz claramente porquê.
-- **Detalhes por disciplina:** ao expandir, mostra a designação e o valor efetivo de cada avaliação. Se ainda não houver lançamento, indica ausência de avaliações, em vez de apresentar zero.
-- **Imprimir / PDF:** disponível apenas quando o boletim é liberado; reutiliza `/api/aluno/boletim/pdf`, com o seu próprio `checkBoletimAccess`. A ação descarrega o PDF para imprimir, sem gerar um PDF de notas bloqueadas no cliente.
-- **Reapreciação e melhoria:** ações contextuais no detalhe da disciplina, somente para histórico atual, com os modais Radix e lógica existentes.
-- **Segurança ao mudar de matrícula:** o estado das notas usa `loadedScope === bulletinQuery && isLiberado`; a lista curricular usa `curriculumScope === bulletinQuery`. Requisições anteriores são abortadas e componentes não mostram notas do educando anterior.
+- **Por trimestre (padrão):** três escolhas simples (1.º/2.º/3.º); apenas disciplinas configuradas para o período selecionado, com **uma classificação trimestral** por disciplina, quando apurada e disponibilizada.
+- **Por disciplina:** escolhe uma disciplina do ano e consulta os três trimestres, distinguindo disciplinas não lecionadas, períodos por confirmar, classificação em apuramento e classificação disponível.
+- **Detalhes opcionais:** clicar numa disciplina/trimestre apresenta provas e avaliações individuais realmente lançadas, sem fabricar componentes, notas anuais ou médias.
+- **Exibir/Ocultar:** proteção visual para notas já autorizadas; nunca desbloqueia notas ou PDFs protegidos.
+- **Imprimir / PDF:** permanece o PDF existente, acessível apenas após checkBoletimAccess; o modo de consulta não muda a autorização.
+- **Correção/melhoria:** só em disciplina com avaliações autorizadas, ano académico atual; histórico é apenas leitura.
 
-## Nota de produto
+## Contratos das APIs
 
-A pré-visualização é uma representação de **campos protegidos**, não uma promessa de que há avaliações já lançadas. O texto de desbloqueio deriva do estado real do pedido ou da configuração da taxa, sem pressão artificial ou cobrança duplicada.
+A rota autorizada `/api/aluno/disciplinas` continua **sem acesso à tabela notas**. Ela passa a expor `periodos_ativos` a partir da atribuição da turma, usando a matriz curricular como fallback quando a atribuição não definiu os períodos. `null` não significa todos os trimestres: significa **não configurado**. Configurações ambíguas não podem ser usadas para inventar que a disciplina não foi lecionada.
 
-## Homologação
+A rota `/api/aluno/boletim` preserva `disciplinas: []` se o pagamento não liberou as notas. Quando `checkBoletimAccess` autoriza, a lista de avaliações individuais é combinada, por disciplina, com `nota_final` de `vw_boletim_por_matricula`, que segue o motor de cálculo configurado da escola.
 
-Executar testes de autorização, UI e snapshots responsivos com dados sintéticos para estados liberado, bloqueado, pagamento pendente, rejeitado e sem avaliações. Em produção, verificar em Safari/VoiceOver que a grelha não transborda horizontalmente a 360px, os controlos têm alvo mínimo de 44px e a impressão apenas é acessível após autenticação e pagamento efetivamente liberados.
+**Não se calcula a classificação final no frontend.** Uma linha da vista só é apresentada como conclusão trimestral se não houver `has_missing`, `needs_config`, status impeditivo e se houver notas reais; os demais casos são `Em apuramento` ou `Sem classificação`. Um resultado zero real continua válido.
 
-Não altera tabelas Supabase, políticas RLS ou regras de pagamento. O merge e o deploy exigem CI e validação dos comportamentos de acesso.
+### Limitação de frescura e histórico
+
+`vw_boletim_por_matricula` lê uma *materialized view* (`internal.mv_boletim_por_matricula`). Notas recém-lançadas podem demorar até à atualização da vista; não fazer fallback para média improvisada. A vista atual está condicionada a matrículas ativas; se o histórico não existir na vista, os detalhes de avaliação registados continuam acessíveis após autorização, mas uma classificação trimestral não é inventada. A evolução do cálculo de notas em tempo real e dos snapshots históricos deve ser tratada separadamente.
+
+## Homologação necessária
+
+1. Disciplina apenas no primeiro trimestre desaparece dos outros dois, mas é visível no histórico anual como «Não lecionada».
+2. Disciplina não configurada para qualquer período identificável aparece com «Período por confirmar», não com falso valor ou uma ausência presumida.
+3. Boletim bloqueado mostra nomes de disciplinas e períodos, mas nem notas trimestrais nem individuais chegam do servidor.
+4. Boletim liberado mostra apenas a classificação trimestral na grelha; avaliações individuais exigem expandir.
+5. Classificação incompleta é apresentada como «Em apuramento»; sem qualquer lançamento, «Sem classificação».
+6. Zero real é apresentado como 0; seleção de aluno/ano nunca reaproveita notas de outro contexto.
+7. Modal de reapreciação e melhoria preserva foco, e o PDF continua protegido.
+8. Capturas sintéticas a 360px, 390px e diferentes zooms sem transbordamento.
+
+Sem migração de banco, atualização de estado de pagamento, alteração de RLS ou manipulação da classificação em browser.
