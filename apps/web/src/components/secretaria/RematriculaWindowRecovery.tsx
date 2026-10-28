@@ -86,10 +86,6 @@ export function RematriculaWindowRecovery({ escolaId, anoLetivo, onRecheck }: Pr
     try {
       const endIso = toUtcFromLuanda(dataFim);
       if (new Date(endIso).getTime() <= Date.now()) throw new Error("A nova data final deve estar no futuro.");
-      if (!window.confirm(
-        `Abrir a rematrícula ${anoLetivo.label} para toda a escola até ${formatLuanda(endIso)}? Esta decisão também afeta o portal do aluno.`,
-      )) return;
-
       setSaving(true);
       const now = new Date().toISOString();
       const firstStart = janela ? new Date(janela.data_inicio).getTime() : null;
@@ -174,10 +170,10 @@ export function RematriculaWindowRecovery({ escolaId, anoLetivo, onRecheck }: Pr
                     <label htmlFor="balcao-window-reason" className="mb-1 block text-xs font-semibold">Motivo da reabertura</label>
                     <textarea id="balcao-window-reason" rows={2} maxLength={450} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: Período excepcional autorizado pela direção" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
                   </div>
-                  <p className="text-xs text-muted-foreground">A reabertura vale para toda a escola e para o portal do aluno. A elegibilidade académica e financeira continua obrigatória.</p>
+                  <p className="text-xs text-muted-foreground">Ao confirmar, a janela ficará aberta para toda a escola e para o portal do aluno até à data escolhida. A elegibilidade académica e financeira continua obrigatória.</p>
                   <button type="button" onClick={() => void save()} disabled={saving || motivo.trim().length < 10 || !dataFim} className="inline-flex w-full justify-center gap-2 rounded-lg bg-foreground px-3 py-2.5 text-xs font-bold text-background disabled:opacity-50">
                     {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {janela ? "Confirmar reabertura" : "Confirmar abertura"}
+                    {janela ? "Confirmar reabertura para toda a escola" : "Abrir janela para toda a escola"}
                   </button>
                 </>
               )}
