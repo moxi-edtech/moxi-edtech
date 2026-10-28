@@ -139,29 +139,47 @@ try {
       }
     }
     if (name === "grade-paid") {
-      await page.goto(`${baseUrl}/?story=grade-paid`, {waitUntil:"domcontentloaded"});
-      await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
-      await page.getByRole("button",{name:"1.º trimestre"}).click();
-      await page.getByText("Prova trimestral").waitFor();
-      await page.getByRole("button",{name:"2.º trimestre"}).click();
-      await page.getByText("Exame do período").waitFor();
-      await page.locator("details summary").first().click();
-      await page.getByRole("button",{name:"Pedir reapreciação"}).click();
-      await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor();
+      await page.goto(`${baseUrl}/?story=grade-paid`, { waitUntil: "domcontentloaded" });
+      const grid = page.getByTestId("aluno-boletim-grid");
+      await grid.waitFor({ timeout: 10000 });
+      await grid.getByText("16", { exact: true }).first().waitFor({ timeout: 10000 });
+      const printButton = grid.getByRole("button", { name: /Descarregar boletim em PDF para imprimir/ });
+      if (await printButton.isDisabled()) errors.push("grade-paid: PDF unexpectedly disabled");
+      await grid.getByRole("button", { name: "Ocultar notas" }).click();
+      if (await grid.getByText("16", { exact: true }).count()) errors.push("grade-paid: score remained visible after hiding");
+      await grid.getByRole("button", { name: "Exibir notas" }).click();
+      await grid.getByText("16", { exact: true }).first().waitFor();
+      await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
+      await grid.getByText("Prova trimestral").waitFor();
+      await grid.getByText("Exame do período").waitFor();
+      await grid.getByRole("button", { name: "Pedir reapreciação" }).click();
+      await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor();
       await page.keyboard.press("Tab");
       if (!(await page.evaluate(() => {
         const dialog = document.querySelector('[role="dialog"]');
         return dialog?.contains(document.activeElement) ?? false;
       }))) errors.push("grade-paid: modal did not retain keyboard focus");
       await page.keyboard.press("Escape");
-      await page.getByRole("dialog",{name:/Solicitar reapreciação/}).waitFor({state:"hidden"});
-      if (!(await page.getByRole("button",{name:"Pedir reapreciação"}).evaluate(el => el === document.activeElement))) {
+      await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor({ state: "hidden" });
+      if (!(await grid.getByRole("button", { name: "Pedir reapreciação" }).evaluate(el => el === document.activeElement))) {
         errors.push("grade-paid: focus not restored after Escape");
       }
-      await page.getByRole("button",{name:"Solicitar melhoria"}).click();
-      await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor();
-      await page.getByRole("button",{name:"Cancelar"}).click();
-      await page.getByRole("dialog",{name:/Solicitar melhoria/}).waitFor({state:"hidden"});
+      await grid.getByRole("button", { name: "Solicitar melhoria" }).click();
+      await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor();
+      await page.getByRole("button", { name: "Cancelar" }).click();
+      await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor({ state: "hidden" });
+    }
+    if (name === "grade-unpaid") {
+      await page.goto(`${baseUrl}/?story=grade-unpaid`, { waitUntil: "domcontentloaded" });
+      const grid = page.getByTestId("aluno-boletim-grid");
+      await grid.waitFor({ timeout: 10000 });
+      await grid.getByText("Matemática", { exact: true }).first().waitFor({ timeout: 10000 });
+      if (!(await grid.getByRole("button", { name: /Exibir notas indisponível/ }).isDisabled())) {
+        errors.push("grade-unpaid: protected grade reveal unexpectedly enabled");
+      }
+      if (!(await grid.getByRole("button", { name: /Imprimir boletim indisponível/ }).isDisabled())) {
+        errors.push("grade-unpaid: protected PDF unexpectedly enabled");
+      }
     }
     if (["notice-info","notice-attention","notice-finance"].includes(name)) {
       await page.keyboard.press("Tab");
