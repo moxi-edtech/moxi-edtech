@@ -54,7 +54,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
       ] : [] },
       "/api/aluno/raa/melhoria": { ok: true, sessoes: [] },
       "/api/aluno/raa/dependencias": { ok: true, summary: { total: 0, abertas: 0, resolvidas: 0 }, items: [] },
-      "/api/aluno/disciplinas": { ok: true, disciplinas: [{ id: "disc-fictional", nome: "Disciplina de teste" }], context: { anoLetivoLabel: "2026" } },
+      "/api/aluno/disciplinas": { ok: true, disciplinas: [{ id: "disc-1", nome: "Matemática" }, { id: "disc-2", nome: "Língua Portuguesa" }, { id: "disc-3", nome: "Biologia" }], context: { anoLetivoLabel: "2026" } },
       "/api/professor/atribuicoes": { ok: true, items: [
         { turma: { id: "turma-fixture", nome: "7ª Classe A" }, disciplina: { id: "disc-mat", nome: "Matemática" } },
         { turma: { id: "turma-fixture", nome: "7ª Classe A" }, disciplina: { id: "disc-por", nome: "Língua Portuguesa" } },
