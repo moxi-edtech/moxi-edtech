@@ -51,7 +51,10 @@ try {
         const url = `${baseUrl}/?story=${name}`;
         await page.goto(url, { waitUntil: "domcontentloaded" });
         if (name.startsWith("dashboard-")) await page.getByTestId("aluno-dashboard-editorial").waitFor({timeout:10000});
-        else if (name.startsWith("grade-")) await page.getByTestId("aluno-pauta-editorial").waitFor({timeout:10000});
+        else if (name.startsWith("grade-")) {
+          await page.getByTestId("aluno-boletim-grid").waitFor({timeout:10000});
+          await page.getByTestId("aluno-boletim-grid").getByText("Matemática", {exact:true}).first().waitFor({timeout:10000});
+        }
         else await page.locator("#root > *").first().waitFor({timeout:12000}).catch(() => { throw new Error(`${name}: fixture root did not render; browser errors: ${errors.slice(-5).join(" | ") || "none"}`); });
         // Espera pelo estado facultativo relevante, sem tratar a primeira
         // renderização da dashboard como se os endpoints já tivessem concluído.
