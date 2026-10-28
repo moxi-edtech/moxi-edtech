@@ -169,8 +169,8 @@ async function requireBalcaoWindowRecovery(
 // remain recorded on the window even if this secondary write fails.
 async function journalBalcaoRecovery(
   access: { supabase: any; escolaId: string; userId: string },
-  item: Record<string, unknown>,
-  before: Record<string, unknown> | null,
+  item: unknown,
+  before: unknown,
   reason: string,
 ): Promise<boolean> {
   const { error } = await access.supabase.from("escola_auditoria").insert({
