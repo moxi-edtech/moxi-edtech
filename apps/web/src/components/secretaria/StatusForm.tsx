@@ -68,7 +68,7 @@ export default function StatusForm({ alunoId, currentStatus, onSuccess }: Status
         <Link href="/secretaria/fechamento-academico" className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground">
           Fechamento
         </Link>
-        <Link href={`/secretaria/alunos/${encodeURIComponent(alunoId)}`} className="rounded-xl bg-[#1F6B3B] px-4 py-2 text-sm font-semibold text-white">
+        <Link href={`/secretaria/alunos/${encodeURIComponent(alunoId)}`} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
           Abrir ficha do aluno
         </Link>
       </div>
