@@ -1009,7 +1009,7 @@ const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> =
   },
   WINDOW_CLOSED: {
     titulo: "O período de rematrícula está fechado",
-    descricao: "Abra uma janela de rematrícula para este ano letivo antes de iniciar novas operações.",
+    descricao: "O prazo deste ano letivo não está vigente. Resolva a janela aqui no atendimento, com autorização da direção.",
   },
   TARGET_YEAR_NOT_CONFIGURED: {
     titulo: "Ano letivo de destino ainda não configurado",
@@ -1667,8 +1667,8 @@ function Catalogo({
               <div className="mb-2 rounded-xl border border-slate-300 bg-slate-50 p-3.5 text-xs text-slate-700">
                 <strong className="block text-slate-900">Período de rematrícula fechado</strong>
                 <p className="mt-1">
-                  A escola ainda não tem uma janela de rematrícula aberta para{" "}
-                  {rematriculaAnoLabel ?? "este ano letivo"}. A administração deve configurar uma nova janela antes de iniciar novas operações.
+                  O período de rematrícula de{" "}
+                  {rematriculaAnoLabel ?? "este ano letivo"} não está vigente. A direção pode reabri-lo neste atendimento, sem mudar de aluno ou perder o trabalho em curso.
                 </p>
                 {rematriculaWindow?.data_fim ? (
                   <p className="mt-1">
