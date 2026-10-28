@@ -140,3 +140,27 @@ test("same UI supports full profile and Command Center, using guarded reprint ro
   assert.match(component, /rel="noopener noreferrer"/);
   assert.doesNotMatch(component, /emitir_recibo|recuperar|pagamentos\/processar/);
 });
+
+test("settled payment receipt lookup is persistent after page refresh, paginated and tenant scoped", () => {
+  const route = readFileSync(
+    new URL("../../src/app/api/secretaria/alunos/[id]/recibos/route.ts", import.meta.url), "utf8",
+  );
+  const component = readFileSync(
+    new URL("../../src/components/aluno/StudentReceiptHistory.tsx", import.meta.url), "utf8",
+  );
+  assert.match(route, /\.from\("pagamentos"\)/);
+  assert.match(route, /\.eq\("escola_id", escolaId\)/);
+  assert.match(route, /\.eq\("aluno_id", studentId\)/);
+  assert.match(route, /\.eq\("status", "settled"\)/);
+  assert.match(route, /\.range\(paymentsOffset, paymentsOffset \+ PAGE_SIZE\)/);
+  assert.match(route, /nextPaymentOffset: hasMorePayments/);
+  assert.match(route, /pagamentos: payments\.slice/);
+  assert.doesNotMatch(route, /\.insert\(|\.upsert\(|\.update\(|\.delete\(|\.rpc\(/);
+  assert.match(component, /pagamentos_offset: String\(paymentOffset\)/);
+  assert.match(component, /\/secretaria\/recibos\/acompanhar\?pagamento_id=/);
+  assert.match(component, /encodeURIComponent\(pagamento\.id\)/);
+  assert.match(component, /Consultar recibo/);
+  assert.match(component, /Mostrar mais pagamentos/);
+  assert.match(component, /Atualizar histórico/);
+  assert.doesNotMatch(component, /sessionStorage|localStorage|\/api\/secretaria\/pagamentos\/processar/);
+});
