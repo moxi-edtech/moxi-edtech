@@ -163,7 +163,7 @@ export function CurrentYearEnrollmentPanel({
             Rever fechamento e resultados académicos
           </Link>
         </div>
-      )
+      )}
 
       {!loading && state?.estado === "ativa" && state.matricula && (
         <div className="space-y-3">
