@@ -6,6 +6,7 @@ import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { loadAlunoDossierData } from "@/lib/aluno/load-dossier-data";
+import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -72,8 +73,9 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ ok: false, error: "Ficha integral indisponível." }, { status: 404 });
     }
+    const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, alunoId);
     return NextResponse.json(
-      { ok: true, ...result },
+      { ok: true, ...result, cicloVida },
       { headers: { "Cache-Control": "private, no-store, max-age=0" } },
     );
   } catch {
