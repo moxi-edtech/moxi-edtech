@@ -42,10 +42,13 @@ Esta contribuição acrescenta um inventário global por **escola + aluno + matr
 | Curtume | `HISTORICO_ABERTO_APOS_ANO` | **13** | Revisão de fecho legal |
 | Curtume | `CONCLUSAO_SEM_HISTORICO_VINCULADO` | **1** | Rever vínculo e snapshot |
 | Escola KLASSE | `CONCLUSAO_SEM_HISTORICO_VINCULADO` | **1** | Rever vínculo e snapshot |
+| Curtume | `HISTORICO_SEM_MATRICULA_VINCULADA` | **1** | Identificar ligação histórica inequívoca |
 
 Na execução deste inventário, não surgiram ocorrências das regras classificadas como `CRITICO`. **Isso não constitui homologação exaustiva de RLS, transações ou decisões académicas.** Pode haver mais do que uma anomalia por matrícula; os totais das regras não são necessariamente um total único de alunos.
 
 Também foram consultadas `fechamento_academico_jobs` e `historico_snapshot_locks`: ambas tinham **zero registos**, pelo que não há evidência no remoto de fecho orquestrado e bloqueio legal para os casos históricos verificados.
+
+Dos 14 históricos de 2025 do Curtume com snapshot `aberto`, 13 têm `matricula_id` e um não tem vínculo por matrícula; a auditoria reporta este último separadamente. Não associar históricos por homonímia.
 
 Os 300 casos com destino ativo têm motivo e `status_fecho_origem = 'manual'`, mas a origem permanece `pendente`, sem `data_fecho` e sem `historico_anos` ligado. **Não interpretar a existência do destino como prova de aprovação.** Pode representar migração histórica assistida, não conclusão homologada.
 
