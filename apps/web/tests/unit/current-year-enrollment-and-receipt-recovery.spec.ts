@@ -111,8 +111,9 @@ test("receipt recovery finds a consolidated service-terminated batch without exp
   assert.match(route, /\.is\("revoked_at", null\)/);
   assert.match(route, /throw new Error\("AMBIGUOUS_BATCH"\)/);
   assert.doesNotMatch(route, /\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/);
-  assert.match(admission, /<AdmissionReceiptRecovery pagamentoId=\{result\.pagamento_id\} \/>/);
+  assert.match(admission, /<AdmissionReceiptRecovery pagamentoId=\{result\.pagamento_id\} escolaId=\{escolaId\} \/>/);
   assert.match(recovery, /findIssuedOperationalReceiptByPayment\(pagamentoId/);
+  assert.match(page, /escola_id\?: string/);
   assert.match(recovery, /Imprimir recibo/);
   assert.doesNotMatch(recovery, /fetch\(.+method: "POST"/);
 });
@@ -151,7 +152,7 @@ test("receipt handoff page survives closing the modal and polls only the persist
   const recovery = source("components/secretaria/AdmissionReceiptRecovery.tsx");
   assert.match(page, /searchParams: Promise<\{ pagamento_id\?: string \}>/);
   assert.match(page, /UUID\.test\(pagamentoId\)/);
-  assert.match(page, /<AdmissionReceiptRecovery pagamentoId=\{pagamentoId\} \/>/);
+  assert.match(page, /<AdmissionReceiptRecovery pagamentoId=\{pagamentoId\} escolaId=\{validEscolaId\} \/>/);
   assert.match(recovery, /findIssuedOperationalReceiptByPayment\(pagamentoId/);
   assert.match(recovery, /Imprimir recibo/);
   assert.doesNotMatch(page + recovery, /\/api\/secretaria\/pagamentos\/processar/);
