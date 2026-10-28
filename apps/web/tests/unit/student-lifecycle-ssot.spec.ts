@@ -159,7 +159,7 @@ test("all school lifecycle APIs consume the database security-invoker SSOT view"
   assert.match(loader, /normalizarEstadoMatricula/);
   assert.match(loader, /"historico_anos"/);
   const viewMigration = readFileSync(
-    new URL("../../../../supabase/migrations/20261028211533_lifecycle_history_ssot_view_20261028.sql", import.meta.url),
+    new URL("../../../../supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql", import.meta.url),
     "utf8",
   );
   assert.match(viewMigration, /security_invoker=true/);
