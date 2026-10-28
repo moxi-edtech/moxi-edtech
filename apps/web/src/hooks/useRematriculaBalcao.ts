@@ -1,6 +1,7 @@
 import { classifyRematriculaResponse } from "@/lib/secretaria/rematricula-result";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { useState, useCallback, useEffect, useRef } from "react";
+import type { StudentLifecycle } from "@/lib/matriculas/student-lifecycle";
 
 // ─── Exported Types ──────────────────────────────────────────────────────────
 
@@ -116,6 +117,7 @@ export type ResultadoDecisaoBalcao = "aprovado" | "reprovado" | "concluido";
 
 interface StatusResponse {
   ok: boolean;
+  cicloVida?: StudentLifecycle | null;
   status: RematriculaCardState;
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
   debt: { total: number; count: number } | null;
@@ -243,6 +245,7 @@ export function useRematriculaBalcao(opts: {
   const [service, setService] = useState<StatusResponse["service"]>(null);
   const [debt, setDebt] = useState<StatusResponse["debt"]>(null);
   const [academic, setAcademic] = useState<StatusResponse["academic"]>(null);
+  const [cicloVida, setCicloVida] = useState<StudentLifecycle | null>(null);
   const [pedido, setPedido] = useState<StatusResponse["pedido"]>(null);
   const [comprovante, setComprovante] =
     useState<StatusResponse["comprovante"]>(null);
@@ -330,6 +333,7 @@ export function useRematriculaBalcao(opts: {
         setService(data.service);
         setDebt(data.debt);
         setAcademic(data.academic ?? null);
+        setCicloVida(data.cicloVida ?? null);
         setPedido(data.pedido);
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
@@ -340,6 +344,7 @@ export function useRematriculaBalcao(opts: {
         setCohort(data.cohort ?? null);
       } else {
         setCardState("ERROR");
+        setCicloVida(null);
         setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
       }
     } catch (e) {
@@ -369,6 +374,7 @@ export function useRematriculaBalcao(opts: {
     setProgressao(null);
     setCohort(null);
     setAcademic(null);
+    setCicloVida(null);
     setTargetYearLabel(null);
     setRematriculaWindow(null);
     setDecisaoResultado("aprovado");
@@ -796,6 +802,7 @@ export function useRematriculaBalcao(opts: {
     service,
     debt,
     academic,
+    cicloVida,
     pedido,
     comprovante,
     anoLetivo,
