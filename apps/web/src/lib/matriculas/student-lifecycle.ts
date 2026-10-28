@@ -117,11 +117,15 @@ export function construirCicloVidaAluno(
     porMatricula.set(vinculo.id, [...(porMatricula.get(vinculo.id) ?? []), historico]);
   }
 
+  // Mesmo em futuras leituras em lote, uma matrícula de outra escola ou
+  // aluno nunca conta como duplicação da sessão corrente.
+  const chaveAno = (matricula: MatriculaLifecycleInput) =>
+    `${matricula.escola_id}:${matricula.aluno_id}:${matricula.ano_letivo ?? "sem_ano"}`;
   const matriculasAtivasPorAno = new Map<string, number>();
   for (const matricula of matriculas) {
     if (matricula.ativo === true) {
-      const ano = String(matricula.ano_letivo);
-      matriculasAtivasPorAno.set(ano, (matriculasAtivasPorAno.get(ano) ?? 0) + 1);
+      const chave = chaveAno(matricula);
+      matriculasAtivasPorAno.set(chave, (matriculasAtivasPorAno.get(chave) ?? 0) + 1);
     }
   }
 
@@ -143,7 +147,7 @@ export function construirCicloVidaAluno(
           : "Estado legado sem equivalência operacional inequívoca; é necessária revisão.",
       });
     }
-    if (matricula.ativo === true && (matriculasAtivasPorAno.get(String(matricula.ano_letivo)) ?? 0) > 1) {
+    if (matricula.ativo === true && (matriculasAtivasPorAno.get(chaveAno(matricula)) ?? 0) > 1) {
       pendencias.push({ codigo: "ATIVAS_DUPLICADAS_NO_ANO", mensagem: "Há mais de uma matrícula ativa no mesmo ano." });
     }
     if (matricula.ativo === true && !matricula.turma_id) {
