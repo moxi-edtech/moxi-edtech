@@ -15,6 +15,13 @@ type CurrentEnrollmentState = {
   canRectifyClass?: boolean;
   canConfirm?: boolean;
   pedidoId?: string | null;
+  cicloVida?: {
+    matriculas: Array<{
+      anoLetivo: number | null;
+      pendencias: Array<{ codigo: string; mensagem: string }>;
+    }>;
+    pendenciasGerais: Array<{ codigo: string; mensagem: string }>;
+  };
   matricula?: {
     id: string;
     status: string;
@@ -109,6 +116,17 @@ export function CurrentYearEnrollmentPanel({
     }
   }
 
+  // Histórico anterior nunca é corrigido silenciosamente para liberar o ano
+  // corrente. A secretaria recebe uma ação explícita sem perder o aluno.
+  const historicosARever = (state?.cicloVida?.matriculas ?? []).filter(
+    (matricula) => state?.anoLetivo && matricula.anoLetivo != null
+      && matricula.anoLetivo < state.anoLetivo.ano
+      && matricula.pendencias.some((p) =>
+        ["ORIGEM_PENDENTE_COM_DESTINO_ATIVO", "HISTORICO_EM_CONSTRUCAO", "RESULTADO_AINDA_NAO_OFICIAL"].includes(p.codigo),
+      ),
+  ).length;
+  const semVinculo = state?.cicloVida?.pendenciasGerais.length ?? 0;
+
   return (
     <section aria-label="Matrícula do ano letivo corrente" className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -130,6 +148,19 @@ export function CurrentYearEnrollmentPanel({
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> A confirmar matrícula…
       </p>}
       {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
+      {!loading && (historicosARever > 0 || semVinculo > 0) && (
+        <div role="status" className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <p className="text-sm font-semibold text-amber-900">Histórico académico a conciliar</p>
+          <p className="text-xs text-amber-900">
+            {historicosARever > 0 ? `${historicosARever} matrícula(s) de anos anteriores exigem revisão.` : ""}
+            {semVinculo > 0 ? " Há documentos históricos sem vínculo inequívoco." : ""}
+            {" "}A matrícula do ano atual não é alterada por esta revisão.
+          </p>
+          <Link href="/secretaria/fechamento-academico" className="inline-block text-xs font-bold text-amber-900 underline underline-offset-2">
+            Rever fechamento e resultados académicos
+          </Link>
+        </div>
+      )
 
       {!loading && state?.estado === "ativa" && state.matricula && (
         <div className="space-y-3">
