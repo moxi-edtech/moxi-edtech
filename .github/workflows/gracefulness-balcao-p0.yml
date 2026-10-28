@@ -39,6 +39,7 @@ on:
       - "apps/web/tests/unit/rematricula-classe-numero.spec.ts"
       - "apps/web/tests/unit/rematricula-balcao-destino.spec.ts"
       - "apps/web/tests/unit/rematricula-balcao-year-guard.spec.ts"
+      - "apps/web/tests/unit/balcao-rematricula-target-year.spec.ts"
       - "apps/web/src/lib/academico/raa-progression-server.ts"
       - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
       - "apps/web/tests/unit/rematricula-debt.spec.ts"
@@ -89,7 +90,8 @@ jobs:
             tests/unit/rematricula-debt.spec.ts \
             tests/unit/rematricula-classe-numero.spec.ts \
             tests/unit/rematricula-balcao-destino.spec.ts \
-            tests/unit/rematricula-balcao-year-guard.spec.ts
+            tests/unit/rematricula-balcao-year-guard.spec.ts \
+            tests/unit/balcao-rematricula-target-year.spec.ts
 
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
@@ -153,6 +155,7 @@ jobs:
             tests/unit/rematricula-classe-numero.spec.ts \
             tests/unit/rematricula-balcao-destino.spec.ts \
             tests/unit/rematricula-balcao-year-guard.spec.ts \
+            tests/unit/balcao-rematricula-target-year.spec.ts \
             --max-warnings 10000
 
 
