@@ -9,7 +9,7 @@ type Petition = {
   decision_reason: string | null; created_at: string;
 };
 type Absence = {
-  id: string; data: string; observacao?: string | null;
+  id: string; data: string; disciplina_nome?: string | null; observacao?: string | null;
   periodo_letivo_id: string | null; justificacao: Petition | null;
 };
 type ResponseData = {
@@ -139,6 +139,7 @@ export function TabFaltas() {
                   <div className="flex items-start gap-2">
                     <CalendarClock className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <div>
+                      {item.disciplina_nome && <p className="text-sm font-semibold text-foreground">{item.disciplina_nome}</p>}
                       <p className="font-semibold text-foreground">{displayDate(item.data)}</p>
                       <p className="text-xs text-muted-foreground">Falta registada pela escola</p>
                     </div>
