@@ -120,6 +120,6 @@ test("a dashboard usa só mensalidades vencidas na data de Angola; navegação c
   assert.match(api, /\.in\('status', \['pendente', 'atrasado'\]\)/);
   assert.match(ui, /params\.set\("aluno", studentId\)/);
   assert.match(ui, /params\.set\("ano_letivo_id", academicYearId\)/);
-  assert.match(ui, />A acompanhar<\/h2>/);
+  assert.match(ui, /<PortalSection id="attention-title" title="A acompanhar"/);
   assert.doesNotMatch(ui, /Precisa da tua atenção|border-\[#E5CF9F\]/);
 });
