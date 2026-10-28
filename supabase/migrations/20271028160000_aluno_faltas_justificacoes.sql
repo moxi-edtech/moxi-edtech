@@ -49,25 +49,25 @@ CREATE POLICY aluno_falta_justificacoes_submit ON public.aluno_falta_justificaco
     AND reviewed_by IS NULL AND reviewed_at IS NULL
     AND EXISTS (
       SELECT 1 FROM public.matriculas m
-      WHERE m.id = matricula_id AND m.aluno_id = aluno_id AND m.escola_id = escola_id
+      WHERE m.id = aluno_falta_justificacoes.matricula_id AND m.aluno_id = aluno_falta_justificacoes.aluno_id AND m.escola_id = aluno_falta_justificacoes.escola_id
         AND m.status IN ('ativo','ativa')
     )
     AND EXISTS (
       SELECT 1 FROM public.frequencias f
-      WHERE f.id = frequencia_id AND f.escola_id = escola_id
-        AND f.matricula_id = matricula_id AND f.data = data_falta AND f.status = 'falta'
+      WHERE f.id = aluno_falta_justificacoes.frequencia_id AND f.escola_id = aluno_falta_justificacoes.escola_id
+        AND f.matricula_id = aluno_falta_justificacoes.matricula_id AND f.data = aluno_falta_justificacoes.data_falta AND f.status = 'falta'
     )
     AND (
       EXISTS (
         SELECT 1 FROM public.alunos a
-        WHERE a.id = aluno_id AND a.escola_id = escola_id
+        WHERE a.id = aluno_falta_justificacoes.aluno_id AND a.escola_id = aluno_falta_justificacoes.escola_id
           AND a.profile_id = (SELECT auth.uid())
           AND a.data_nascimento <= (CURRENT_DATE - INTERVAL '18 years')::date
       )
       OR EXISTS (
         SELECT 1 FROM public.aluno_encarregados ae
         JOIN public.encarregados e ON e.id = ae.encarregado_id AND e.escola_id = ae.escola_id
-        WHERE ae.aluno_id = aluno_id AND ae.escola_id = escola_id
+        WHERE ae.aluno_id = aluno_falta_justificacoes.aluno_id AND ae.escola_id = aluno_falta_justificacoes.escola_id
           AND lower(btrim(e.email)) = lower(btrim((auth.jwt()->>'email')::text))
       )
     )
