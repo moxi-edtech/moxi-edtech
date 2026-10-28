@@ -249,6 +249,7 @@ export function useRematriculaBalcao(opts: {
   const [anoLetivo, setAnoLetivo] =
     useState<StatusResponse["ano_letivo"]>(null);
   const [targetYearLabel, setTargetYearLabel] = useState<string | null>(null);
+  const [rematriculaWindow, setRematriculaWindow] = useState<StatusResponse["window"]>(undefined);
   const [destinoTurmaId, setDestinoTurmaId] = useState<string | null>(null);
   const [destinoTurma, setDestinoTurma] = useState<StatusResponse["destino_turma"]>(null);
   const [reconciling, setReconciling] = useState(false);
@@ -333,6 +334,7 @@ export function useRematriculaBalcao(opts: {
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
         setTargetYearLabel(data.target_ano_label ?? data.ano_letivo?.label ?? null);
+        setRematriculaWindow(data.window ?? null);
         setDestinoTurmaId(data.destino_turma_id ?? null);
         setDestinoTurma(data.destino_turma ?? null);
         setCohort(data.cohort ?? null);
@@ -368,6 +370,7 @@ export function useRematriculaBalcao(opts: {
     setCohort(null);
     setAcademic(null);
     setTargetYearLabel(null);
+    setRematriculaWindow(null);
     setDecisaoResultado("aprovado");
     setDecisaoFonte("raa");
     setDecisaoMotivo("");
@@ -797,6 +800,7 @@ export function useRematriculaBalcao(opts: {
     comprovante,
     anoLetivo,
     targetYearLabel,
+    rematriculaWindow,
     destinoTurmaId,
     destinoTurma,
     cohort,
