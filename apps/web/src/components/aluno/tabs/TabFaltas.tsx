@@ -53,7 +53,7 @@ export function TabFaltas() {
   useEffect(() => {
     const controller = new AbortController();
     let mounted = true;
-    setLoading(true); setData(null); setScope(null); setError(null); setEditingId(null);
+    setLoading(true); setData(null); setScope(null); setError(null);
     void load(controller.signal).then((result) => {
       if (mounted) { setData(result); setScope(query); }
     }).catch((err: unknown) => {
@@ -64,7 +64,8 @@ export function TabFaltas() {
     return () => { mounted = false; controller.abort(); };
   }, [load, query, retry]);
 
-  useEffect(() => { setFeedback(null); }, [query]);
+  // A manual refresh never discards an unfinished justification draft.
+  useEffect(() => { setFeedback(null); setEditingId(null); setReason(""); }, [query]);
 
   const safeData = scope === query ? data : null;
   const submit = async (item: Absence) => {
