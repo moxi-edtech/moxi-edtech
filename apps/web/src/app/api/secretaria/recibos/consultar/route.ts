@@ -13,6 +13,7 @@ export const revalidate = 0;
 const paramsSchema = z.object({
   mensalidade_id: z.string().uuid().optional(),
   pagamento_id: z.string().uuid().optional(),
+  escola_id: z.string().uuid().optional(),
 });
 
 const noStore = { "Cache-Control": "private, no-store, max-age=0" };
@@ -93,6 +94,7 @@ export async function GET(request: Request) {
   const parsed = paramsSchema.safeParse({
     mensalidade_id: params.get("mensalidade_id") ?? undefined,
     pagamento_id: params.get("pagamento_id") ?? undefined,
+    escola_id: params.get("escola_id") ?? undefined,
   });
   if (!parsed.success || Boolean(parsed.data.mensalidade_id) === Boolean(parsed.data.pagamento_id)) {
     return NextResponse.json({ ok: false, error: "Informe uma mensalidade ou pagamento válido." }, { status: 400 });
@@ -101,8 +103,10 @@ export async function GET(request: Request) {
   const db = await supabaseServerTyped<any>();
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (!user || authError) return NextResponse.json({ ok: false, error: "Sessão expirada." }, { status: 401 });
-  const escolaId = await resolveEscolaIdForUser(db, user.id);
-  if (!escolaId) return NextResponse.json({ ok: false, error: "Sem permissão." }, { status: 403 });
+  const escolaId = await resolveEscolaIdForUser(db, user.id, parsed.data.escola_id);
+  if (!escolaId || (parsed.data.escola_id && parsed.data.escola_id !== escolaId)) {
+    return NextResponse.json({ ok: false, error: "Sem permissão." }, { status: 403 });
+  }
   const authorization = await requireRoleInSchool({
     supabase: db, escolaId, roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP, 'admin_secretaria', 'diretor'],
   });
