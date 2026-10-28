@@ -12,6 +12,7 @@ import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progression-server";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
+import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 import {
   resolveBalcaoRematriculaTargetYear,
   shouldBlockClosedRematriculaWindow,
@@ -478,9 +479,13 @@ export async function GET(request: Request) {
     const pedidoTurmaId =
       pedidoExistente?.contexto?.destino_turma_id ?? undefined;
 
+    // Estados do cartão descrevem condições operacionais, não substituem o
+    // vínculo da matrícula ou a decisão oficial do histórico académico.
+    const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, aluno_id).catch(() => null);
     return NextResponse.json({
       ok: true,
       status,
+      cicloVida,
       service: service
         ? {
             id: service.id,
