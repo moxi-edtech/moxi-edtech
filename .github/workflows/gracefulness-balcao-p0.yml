@@ -34,6 +34,11 @@ on:
       - "apps/web/src/lib/secretaria/rematricula-result.ts"
       - "apps/web/src/lib/rematricula/eligibility.ts"
       - "apps/web/src/lib/rematricula/debt.ts"
+      - "apps/web/src/lib/rematricula/classe-numero.ts"
+      - "apps/web/src/lib/rematricula/balcao-destino.ts"
+      - "apps/web/tests/unit/rematricula-classe-numero.spec.ts"
+      - "apps/web/tests/unit/rematricula-balcao-destino.spec.ts"
+      - "apps/web/tests/unit/rematricula-balcao-year-guard.spec.ts"
       - "apps/web/src/lib/academico/raa-progression-server.ts"
       - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
       - "apps/web/tests/unit/rematricula-debt.spec.ts"
@@ -81,7 +86,10 @@ jobs:
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
-            tests/unit/rematricula-debt.spec.ts
+            tests/unit/rematricula-debt.spec.ts \
+            tests/unit/rematricula-classe-numero.spec.ts \
+            tests/unit/rematricula-balcao-destino.spec.ts \
+            tests/unit/rematricula-balcao-year-guard.spec.ts
 
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
@@ -133,6 +141,8 @@ jobs:
             src/lib/secretaria/rematricula-result.ts \
             src/lib/rematricula/eligibility.ts \
             src/lib/rematricula/debt.ts \
+            src/lib/rematricula/classe-numero.ts \
+            src/lib/rematricula/balcao-destino.ts \
             src/lib/academico/raa-progression-server.ts \
             tests/unit/checkout-payment-state.spec.ts \
             tests/unit/command-center-registry.spec.ts \
@@ -140,6 +150,9 @@ jobs:
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
             tests/unit/rematricula-debt.spec.ts \
+            tests/unit/rematricula-classe-numero.spec.ts \
+            tests/unit/rematricula-balcao-destino.spec.ts \
+            tests/unit/rematricula-balcao-year-guard.spec.ts \
             --max-warnings 10000
 
 
