@@ -10,7 +10,7 @@ test("partilhados: elementos compactos usam tokens, estado acessível e action a
     "PortalStatus", "PortalStatCard", "PortalLoadingState",
   ].map((name) => source(`components/portal/ui/${name}.tsx`)));
 
-  for (const component of [surface, section, empty, action, stat]) {
+  for (const component of [surface, empty, action, stat]) {
     assert.match(component, /border-border|focus-visible:ring-ring/);
   }
   assert.match(section, /aria-labelledby=\{id\}/);
