@@ -31,7 +31,7 @@ test("notas protegidas nunca aparecem quando API nega is_liberado; modal preserv
  const grid=await fs.readFile(new URL("../../src/components/aluno/academico/BoletimGradeGrid.tsx",import.meta.url),"utf8");
  assert.match(ui,/json\.is_liberado \? json\.disciplinas \?\? \[\] : \[\]/);
  assert.match(ui,/!safeIsLiberado \?/);
- assert.match(ui,/safeIsLiberado \? safeDisciplinas : safeCurriculum/);
+ assert.match(ui,/const gridSubjects = safeIsLiberado/);
  assert.match(grid,/locked \? \[\] : subject\.avaliacoes/);
  assert.match(ui,/reapreciacao/);
  assert.match(ui,/melhoria/);
