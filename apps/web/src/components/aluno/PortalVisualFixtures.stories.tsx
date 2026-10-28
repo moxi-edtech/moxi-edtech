@@ -49,12 +49,16 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
 
       "/api/aluno/documentos/catalogo": { ok: true, documentos: documents, dados_pagamento: { banco: "Banco de Teste", iban: "AO00 0000 0000 0000 0000 0000 0" }, boletim_pago: ["paid", "grade-paid", "grade-empty"].includes(mode) },
       "/api/aluno/boletim": { ok: true, matricula_encontrada: true, is_liberado: ["paid", "grade-paid", "grade-empty"].includes(mode), nome_aluno: mode === "dashboard-empty" ? null : "Aluno de Teste", disciplinas: mode === "grade-empty" ? [] : ["paid", "grade-paid"].includes(mode) ? [
-        { id: "disc-1", nome: "Matemática", avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }, { nome: "Exame do período", tipo: "exame", trimestre: 2, nota: 15 }] },
-        { id: "disc-2", nome: "Língua Portuguesa", avaliacoes: [{ nome: "Trabalho prático", tipo: "trabalho", trimestre: 1, nota: 17 }] },
+        { id: "disc-1", nome: "Matemática",
+          classificacoes: [{ trimestre: 1, nota: 16, status: "disponivel" }, { trimestre: 2, nota: 15, status: "disponivel" }],
+          avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }, { nome: "Exame do período", tipo: "exame", trimestre: 2, nota: 15 }] },
+        { id: "disc-2", nome: "Língua Portuguesa",
+          classificacoes: [{ trimestre: 1, nota: 17, status: "disponivel" }],
+          avaliacoes: [{ nome: "Trabalho prático", tipo: "trabalho", trimestre: 1, nota: 17 }] },
       ] : [] },
       "/api/aluno/raa/melhoria": { ok: true, sessoes: [] },
       "/api/aluno/raa/dependencias": { ok: true, summary: { total: 0, abertas: 0, resolvidas: 0 }, items: [] },
-      "/api/aluno/disciplinas": { ok: true, disciplinas: [{ id: "disc-1", nome: "Matemática" }, { id: "disc-2", nome: "Língua Portuguesa" }, { id: "disc-3", nome: "Biologia" }], context: { anoLetivoLabel: "2026" } },
+      "/api/aluno/disciplinas": { ok: true, disciplinas: [{ id: "disc-1", nome: "Matemática", periodos_ativos: [1,2,3] }, { id: "disc-2", nome: "Língua Portuguesa", periodos_ativos: [1,2,3] }, { id: "disc-3", nome: "Biologia", periodos_ativos: [1] }, { id: "disc-4", nome: "História", periodos_ativos: [2,3] }], context: { anoLetivoLabel: "2026" } },
       "/api/professor/atribuicoes": { ok: true, items: [
         { turma: { id: "turma-fixture", nome: "7ª Classe A" }, disciplina: { id: "disc-mat", nome: "Matemática" } },
         { turma: { id: "turma-fixture", nome: "7ª Classe A" }, disciplina: { id: "disc-por", nome: "Língua Portuguesa" } },
