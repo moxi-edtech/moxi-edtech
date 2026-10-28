@@ -12,9 +12,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 export default async function ReceiptFollowupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pagamento_id?: string }>;
+  searchParams: Promise<{ pagamento_id?: string; escola_id?: string }>;
 }) {
-  const { pagamento_id: pagamentoId } = await searchParams;
+  const { pagamento_id: pagamentoId, escola_id: schoolId } = await searchParams;
+  const validEscolaId = schoolId && UUID.test(schoolId) ? schoolId : undefined;
 
   return (
     <main className="mx-auto max-w-lg space-y-4 px-4 py-10 text-foreground">
@@ -30,7 +31,7 @@ export default async function ReceiptFollowupPage({
             Pode fechar o Balcão; esta página permite consultar e imprimir o documento emitido,
             sem repetir a cobrança.
           </p>
-          <AdmissionReceiptRecovery pagamentoId={pagamentoId} />
+          <AdmissionReceiptRecovery pagamentoId={pagamentoId} escolaId={validEscolaId} />
         </>
       )}
     </main>
