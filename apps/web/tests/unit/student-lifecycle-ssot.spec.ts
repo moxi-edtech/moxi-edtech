@@ -60,7 +60,8 @@ test("transfer and reprobation are never synonymous with annual academic result"
   const moved = construirCicloVidaAluno([matricula({ status: "transferido", ativo: false })], []);
   assert.equal(moved.matriculaCorrente?.estadoOperacional, "encerrada");
   assert.equal(moved.matriculaCorrente?.academico.resultadoOficial, null);
-  assert.equal(normalizarEstadoMatricula("reprovado", false), "revisao");
+  assert.equal(normalizarEstadoMatricula("reprovado", false), "encerrada");
+  assert.equal(normalizarEstadoMatricula("reprovado_por_faltas", false), "encerrada");
 });
 
 test("activation flag and status must agree; never hide legacy divergence", () => {
@@ -135,4 +136,33 @@ test("legacy enrollment status cannot overwrite academic decisions by changing o
     "utf8",
   );
   assert.match(alias, /export \{ PUT \}/);
+});
+
+
+test("a closed snapshot without legal lock is not an official result", () => {
+  const base = [matricula({ status: "concluido", ativo: false })];
+  const registered = [historico({ snapshot_status: "fechado", resultado_final: "aprovado" })];
+  const withoutLock = construirCicloVidaAluno(base, registered, new Map([[origemId, null]]));
+  assert.equal(withoutLock.matriculaCorrente?.academico.resultadoRegistrado, "aprovado");
+  assert.equal(withoutLock.matriculaCorrente?.academico.resultadoOficial, null);
+  assert.equal(withoutLock.matriculaCorrente?.proximaAcao, "validar_resultado");
+  const withLock = construirCicloVidaAluno(base, registered, new Map([[origemId, "aprovado"]]));
+  assert.equal(withLock.matriculaCorrente?.academico.resultadoOficial, "aprovado");
+});
+
+test("all school lifecycle APIs consume the database security-invoker SSOT view", () => {
+  const loader = readFileSync(
+    new URL("../../src/lib/matriculas/load-student-lifecycle.ts", import.meta.url), "utf8",
+  );
+  assert.match(loader, /\.from\("v_student_lifecycle_ssot_v1"\)/);
+  assert.match(loader, /resultado_oficial/);
+  assert.match(loader, /normalizarEstadoMatricula/);
+  assert.match(loader, /"historico_anos"/);
+  const viewMigration = readFileSync(
+    new URL("../../../../supabase/migrations/20261028211533_lifecycle_history_ssot_view_20261028.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(viewMigration, /security_invoker=true/);
+  assert.match(viewMigration, /historico_snapshot_locks/);
+  assert.match(viewMigration, /status='fechado'/);
 });
