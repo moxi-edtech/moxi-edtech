@@ -38,7 +38,9 @@ export default function ConfirmarRematriculaPage() {
   const [summary, setSummary] = useState<{
     total_inserted: number;
     total_skipped: number;
+    total_finalizados: number;
     items: Array<{ origem: string; destino: string; inserted: number; skipped: number; blocked: BlockedItem[] }>;
+    conclusoes: Array<{ origem: string; finalizados: number; blocked: BlockedItem[] }>;
   } | null>(null);
   const [gerarMensalidades, setGerarMensalidades] = useState(false);
   const [gerarTodas, setGerarTodas] = useState(true);
@@ -90,7 +92,18 @@ export default function ConfirmarRematriculaPage() {
         skipped: r.skipped ?? 0,
         blocked: Array.isArray(r.blocked) ? r.blocked : [],
       }))
-      setSummary({ total_inserted: json.results?.total_inserted ?? 0, total_skipped: json.results?.total_skipped ?? 0, items })
+      const conclusoes = (json.results?.conclusoes || []).map((r: { origem_turma_id: string; finalizados?: number; blocked?: BlockedItem[] }) => ({
+        origem: sugestoes.find((s) => s.origem.id === r.origem_turma_id)?.origem?.nome || r.origem_turma_id,
+        finalizados: r.finalizados ?? 0,
+        blocked: Array.isArray(r.blocked) ? r.blocked : [],
+      }));
+      setSummary({
+        total_inserted: json.results?.total_inserted ?? 0,
+        total_skipped: json.results?.total_skipped ?? 0,
+        total_finalizados: json.results?.total_finalizados ?? 0,
+        items,
+        conclusoes,
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -135,7 +148,7 @@ export default function ConfirmarRematriculaPage() {
       {summary && (
         <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
           <div className="font-medium mb-2">Resultado</div>
-          <div>Total inseridos: {summary.total_inserted} • Ignorados: {summary.total_skipped}</div>
+          <div>Rematrículas efetivadas: {summary.total_inserted} • Fechamentos concluídos: {summary.total_finalizados} • Pendências: {summary.total_skipped}</div>
           {summary.items.length > 0 && (
             <ul className="mt-2 list-disc list-inside">
               {summary.items.map((it, idx) => (
@@ -178,6 +191,31 @@ export default function ConfirmarRematriculaPage() {
               ))}
             </ul>
           )}
+          {summary.conclusoes.map((c) => (
+            <div key={c.origem} className="mt-3 rounded-lg border border-border bg-card p-3 text-foreground">
+              <p className="text-sm font-semibold">Fechamento académico: {c.origem}</p>
+              <p className="text-xs text-muted-foreground">
+                {c.finalizados} matrícula(s) encerrada(s) pelo GradeEngine. {c.blocked.length} pendência(s) para revisão.
+              </p>
+              {c.blocked.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs">
+                  {c.blocked.slice(0, 10).map((item, idx) => (
+                    <li key={item.matricula_id ?? idx}>
+                      <span>{item.aluno_nome || item.aluno_id || "Aluno"}: {(item.motivos || []).join(", ")}</span>
+                      {item.aluno_id && (
+                        <Link
+                          href={buildPortalHref(escolaSlug, `/secretaria/balcao?alunoId=${encodeURIComponent(item.aluno_id)}&returnTo=${encodeURIComponent("/secretaria/rematricula/confirmar")}`)}
+                          className="ml-2 font-semibold underline underline-offset-2"
+                        >
+                          Rever no Balcão
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
         </div>
       )}
       
