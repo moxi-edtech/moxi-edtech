@@ -16,14 +16,27 @@ test("formatação pt-AO respeita dados sem escala ou arredondamento arbitrário
  assert.equal(formatPublishedGrade(17.25),new Intl.NumberFormat("pt-AO",{maximumFractionDigits:12,useGrouping:false}).format(17.25));
  assert.equal(formatPublishedGrade(0),new Intl.NumberFormat("pt-AO",{maximumFractionDigits:12,useGrouping:false}).format(0));
 });
-test("quatro estados e ação única de pagamento",()=>{
- assert.equal(accessPresentation("available").action,"Solicitar boletim");
- assert.equal(accessPresentation("pending_payment").action,"Continuar pagamento");
- assert.equal(accessPresentation("pending").action,"Acompanhar pedido");
- assert.match(accessPresentation("pending").message,/secretaria está a verificar/);
- assert.equal(accessPresentation("rejected","Ficheiro ilegível").action,"Corrigir comprovativo");
- assert.match(accessPresentation("rejected","Ficheiro ilegível").message,/Ficheiro ilegível/);
- assert.equal(accessPresentation("granted").action,"Ver pedido");
+test("estados do boletim mostram o próximo passo sem induzir pagamento duplicado",()=>{
+ const available=accessPresentation("available");
+ assert.equal(available.action,"Solicitar boletim");
+ const awaitingProof=accessPresentation("pending_payment");
+ assert.equal(awaitingProof.action,"Enviar comprovativo");
+ assert.match(awaitingProof.message,/pedido foi criado/i);
+ const checking=accessPresentation("pending");
+ assert.equal(checking.action,"Acompanhar solicitação");
+ assert.match(checking.message,/validação da secretaria/i);
+ assert.match(checking.message,/Não precisas de pagar novamente/i);
+ const rejected=accessPresentation("rejected","Ficheiro ilegível");
+ assert.equal(rejected.action,"Reenviar comprovativo");
+ assert.match(rejected.message,/Ficheiro ilegível/);
+ assert.match(rejected.message,/não precisas de pagar novamente/i);
+ const confirmed=accessPresentation("granted");
+ assert.equal(confirmed.action,"Consultar solicitação");
+ assert.match(confirmed.message,/pagamento foi validado/i);
+ assert.match(confirmed.message,/atualizar o acesso/i);
+ const unknown=accessPresentation("unknown");
+ assert.equal(unknown.action,"Consultar solicitação");
+ assert.match(unknown.message,/não realizes outro pagamento/i);
 });
 test("notas protegidas nunca aparecem quando API nega is_liberado; modal preserva contratos",async()=>{
  const fs=await import("node:fs/promises");
