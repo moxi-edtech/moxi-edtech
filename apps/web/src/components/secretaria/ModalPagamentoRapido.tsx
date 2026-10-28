@@ -749,11 +749,24 @@ function usePagamentoSubmit({
       }
 
       const pagamentos = Array.isArray(json.pagamentos) ? json.pagamentos : [];
-      const pagamentosConcluidos: PagamentoConcluido[] = mensalidadesSelecionadas.map((mensalidade, index) => ({
-        pagamento_id: typeof pagamentos[index]?.id === "string" ? pagamentos[index].id : `${json.recibo?.doc_id ?? "batch"}:${mensalidade.id}`,
-        referencia: mesAnoLabel(mensalidade.mes, mensalidade.ano),
-        valor: Number(itens[index]?.preco ?? mensalidade.valor),
-      }));
+      const terminalPaymentId = typeof json.data?.id === "string"
+        ? json.data.id
+        : (typeof pagamentos[pagamentos.length - 1]?.id === "string"
+            ? pagamentos[pagamentos.length - 1].id
+            : null);
+      // Single-item checkout delegates to the canonical endpoint, which
+      // returns data.id and no pagamentos[] array. Never synthesize a
+      // doc-id/monthly-id string as an actual payment reference.
+      const pagamentosConcluidos: PagamentoConcluido[] = mensalidadesSelecionadas.flatMap((mensalidade, index) => {
+        const id = typeof pagamentos[index]?.id === "string"
+          ? pagamentos[index].id
+          : (mensalidadesSelecionadas.length === 1 ? terminalPaymentId : null);
+        return id ? [{
+          pagamento_id: id,
+          referencia: mesAnoLabel(mensalidade.mes, mensalidade.ano),
+          valor: Number(itens[index]?.preco ?? mensalidade.valor),
+        }] : [];
+      });
       const referenciasDetalhadas = mensalidadesSelecionadas.map((item) => mesAnoLabel(item.mes, item.ano));
       const recibosGerados: ReciboBatchItem[] = json.recibo?.print_url
         ? [{
@@ -775,11 +788,6 @@ function usePagamentoSubmit({
       // The DB-authoritative terminal payment identifies the consolidated
       // receipt, even when the terminal item is a service (no mensalidade_id).
       // Never use the last selected mensalidade as a receipt locator.
-      const terminalPaymentId = typeof json.data?.id === "string"
-        ? json.data.id
-        : (typeof pagamentos[pagamentos.length - 1]?.id === "string"
-            ? pagamentos[pagamentos.length - 1].id
-            : null);
       paymentCommitted = true;
       pendingCheckout.current = null;
 
