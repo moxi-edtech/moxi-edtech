@@ -14,6 +14,7 @@ test("API resolve a janela da sessão seleccionada, sem inferir próxima matríc
   const route = readFileSync(new URL("../../src/app/api/secretaria/balcao/rematriculas/status/route.ts", import.meta.url), "utf8");
   assert.match(route, /selectedAcademicYear: Number\(academicContext\.anoLetivoLabel\.slice\(0, 4\)\)/);
   assert.match(route, /resolveRematriculaWindow\(supabase, escolaId, targetAnoLetivoAno\)/);
+  assert.match(route, /resolveAnoLetivoScope\(supabase, escolaId, \{ anoLetivoId: academicContext\.anoLetivoId \}\)/);
   assert.doesNotMatch(route, /openTargetWindow/);
   assert.doesNotMatch(route, /latestStudentAcademicYear|ultimaMatriculaDoAluno/);
 });
