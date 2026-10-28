@@ -405,6 +405,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           responsavelContato={rematricula.responsavelContato ?? ""}
           setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
+          cicloVida={rematricula.cicloVida}
           service={rematricula.service}
           itensPagamento={rematriculaTarget.itens_pagamento}
           paymentAlreadyValidated
