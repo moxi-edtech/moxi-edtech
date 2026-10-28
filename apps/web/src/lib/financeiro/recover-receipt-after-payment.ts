@@ -15,6 +15,7 @@ export type ReceiptLookupOptions = {
     pause?: (ms: number) => Promise<void>;
     signal?: AbortSignal;
     attempts?: number;
+    escolaId?: string;
 };
 
 async function findIssuedReceipt(
@@ -25,7 +26,8 @@ async function findIssuedReceipt(
   const fetcher = opts.fetcher ?? fetch;
   const pause = opts.pause ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const max = Math.min(Math.max(opts.attempts ?? 12, 1), 20);
-  const path = "/api/secretaria/recibos/consultar?" + idKind + "=" + encodeURIComponent(id);
+  const path = "/api/secretaria/recibos/consultar?" + idKind + "=" + encodeURIComponent(id)
+    + (opts.escolaId ? "&escola_id=" + encodeURIComponent(opts.escolaId) : "");
   for (let attempt = 0; attempt < max; attempt += 1) {
     if (opts.signal?.aborted) return null;
     const response = await fetcher(path, { method: "GET", cache: "no-store", signal: opts.signal });
