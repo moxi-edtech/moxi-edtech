@@ -10,7 +10,7 @@ type CurrentEnrollmentState = {
   ok: boolean;
   error?: string;
   anoLetivo?: { id: string; ano: number; label: string };
-  estado?: "ativa" | "pendente" | "sem_matricula" | "reconciliacao";
+  estado?: "ativa" | "pendente" | "encerrada" | "cancelada" | "sem_matricula" | "reconciliacao";
   reason?: string | null;
   canRectifyClass?: boolean;
   canConfirm?: boolean;
@@ -18,6 +18,8 @@ type CurrentEnrollmentState = {
   cicloVida?: {
     matriculas: Array<{
       anoLetivo: number | null;
+      estadoOperacional: string;
+      academico: { resultadoRegistrado: string; resultadoOficial: string | null };
       pendencias: Array<{ codigo: string; mensagem: string }>;
     }>;
     pendenciasGerais: Array<{ codigo: string; mensagem: string }>;
@@ -126,6 +128,7 @@ export function CurrentYearEnrollmentPanel({
       ),
   ).length;
   const semVinculo = state?.cicloVida?.pendenciasGerais.length ?? 0;
+  const registroAno = state?.cicloVida?.matriculas.find((item) => item.anoLetivo === state.anoLetivo?.ano);
 
   return (
     <section aria-label="Matrícula do ano letivo corrente" className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
@@ -223,13 +226,28 @@ export function CurrentYearEnrollmentPanel({
         </div>
       )}
 
+      {!loading && state && (state.estado === "encerrada" || state.estado === "cancelada") && (
+        <div role="status" className="space-y-1 rounded-lg border border-border bg-muted p-3">
+          <p className="text-sm font-semibold text-foreground">
+            {state.estado === "encerrada" ? "Matrícula encerrada neste ano" : "Matrícula cancelada neste ano"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {registroAno?.academico.resultadoOficial
+              ? `Resultado académico oficial: ${registroAno.academico.resultadoOficial}.`
+              : "Resultado académico ainda não oficializado no histórico; consulte o fechamento escolar."}
+          </p>
+          <Link href="/secretaria/fechamento-academico" className="text-xs font-bold text-foreground underline underline-offset-2">
+            Consultar fechamento académico
+          </Link>
+        </div>
+      )}
       {!loading && state && (state.estado === "reconciliacao" || state.estado === "sem_matricula") && (
         <p className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
           <ShieldAlert size={16} className="mt-0.5 shrink-0" aria-hidden />
           <span>{state.reason}</span>
         </p>
       )}
-      {!loading && state && state.estado !== "ativa" && (
+      {!loading && state && (state.estado === "pendente" || state.estado === "sem_matricula" || state.estado === "reconciliacao") && (
         <Link href={buildBalcaoActionHref({
           escolaParam: escolaId,
           actionId: state.estado === "sem_matricula" ? "enrollment" : "reenrollment",
