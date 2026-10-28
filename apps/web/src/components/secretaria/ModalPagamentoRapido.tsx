@@ -13,7 +13,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildContextualPortalHref } from "@/lib/navigation";
 import { ReceiptBlockReclassificacaoModal } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
-import { findIssuedOperationalReceipt, reserveReceiptWindow, showIssuedReceipt, showReceiptPending } from "@/lib/financeiro/recover-receipt-after-payment";
+import { reserveReceiptWindow, showIssuedReceipt, showReceiptPending } from "@/lib/financeiro/recover-receipt-after-payment";
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 // Fonte de verdade: nunca usar cores avulsas fora deste mapa.
@@ -675,7 +675,7 @@ function usePagamentoSubmit({
   trocoValido:    boolean;
   onConcluido:    () => void;
   onRecibos:      (r: ReciboBatchItem[]) => void;
-  onReceiptStatus: (value: { url: string | null; mensalidadeId: string | null; pending: boolean }) => void;
+  onReceiptStatus: (value: { url: string | null; pagamentoId: string | null; pending: boolean }) => void;
   onPagamentosConcluidos: (p: PagamentoConcluido[]) => void;
   safeClose:      () => void;
   onSuccess?:     () => void;
@@ -772,33 +772,39 @@ function usePagamentoSubmit({
       const immediateUrl = typeof json.recibo?.print_url === "string"
         && json.recibo.print_url.startsWith("/secretaria/documentos/")
         ? json.recibo.print_url : null;
-      const lastMonthlyId = itens[itens.length - 1]?.id ?? null;
-      onReceiptStatus({ url: immediateUrl, mensalidadeId: lastMonthlyId, pending: !immediateUrl });
-      if (immediateUrl) showIssuedReceipt(receiptWindow, immediateUrl);
-
+      // The DB-authoritative terminal payment identifies the consolidated
+      // receipt, even when the terminal item is a service (no mensalidade_id).
+      // Never use the last selected mensalidade as a receipt locator.
+      const terminalPaymentId = typeof json.data?.id === "string"
+        ? json.data.id
+        : (typeof pagamentos[pagamentos.length - 1]?.id === "string"
+            ? pagamentos[pagamentos.length - 1].id
+            : null);
       paymentCommitted = true;
+      pendingCheckout.current = null;
+
+      // Transfer the reserved window to a durable, authenticated GET-only page
+      // BEFORE lifecycle callbacks can close/unmount this modal. Receipt
+      // processing and manual retries continue even if the Balcão disappears.
+      if (immediateUrl) {
+        showIssuedReceipt(receiptWindow, immediateUrl);
+      } else if (terminalPaymentId) {
+        showIssuedReceipt(
+          receiptWindow,
+          "/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(terminalPaymentId),
+        );
+      } else {
+        showReceiptPending(receiptWindow);
+        console.warn("[BALCAO-RECEIPT-HANDOFF][MISSING_PAYMENT_ID]");
+      }
+
+      onReceiptStatus({ url: immediateUrl, pagamentoId: terminalPaymentId, pending: !immediateUrl });
       onRecibos(recibosGerados);
       onPagamentosConcluidos(pagamentosConcluidos);
+      // Success means settlement, NOT proof of an issued receipt. The
+      // follow-up tab/history handles receipt readiness independently.
       onConcluido();
       if (onSuccess) onSuccess();
-      // The payment is already committed. Poll READ-ONLY for the document;
-      // do not retry checkout or emit another receipt just to print.
-      if (!immediateUrl && lastMonthlyId) {
-        try {
-          const recoveredUrl = await findIssuedOperationalReceipt(lastMonthlyId, {
-            signal: abortRef.current?.signal, attempts: 12,
-          });
-          if (recoveredUrl) {
-            onReceiptStatus({ url: recoveredUrl, mensalidadeId: lastMonthlyId, pending: false });
-            showIssuedReceipt(receiptWindow, recoveredUrl);
-          } else {
-            showReceiptPending(receiptWindow);
-          }
-        } catch {
-          showReceiptPending(receiptWindow);
-        }
-      }
-      pendingCheckout.current = null;
 
     } catch (err: any) {
       // Never discard proof of a committed payment because a callback,
@@ -843,9 +849,8 @@ export function ModalPagamentoRapido({
   const [concluido, setConcluido] = useState(false);
   const [recibos,   setRecibos]   = useState<ReciboBatchItem[]>([]);
   const [receiptHandoff, setReceiptHandoff] = useState<{
-    url: string | null; mensalidadeId: string | null; pending: boolean;
+    url: string | null; pagamentoId: string | null; pending: boolean;
   } | null>(null);
-  const [checkingExistingReceipt, setCheckingExistingReceipt] = useState(false);
   const [pagamentosConcluidos, setPagamentosConcluidos] = useState<PagamentoConcluido[]>([]);
   const [pagamentosPagosAluno, setPagamentosPagosAluno] = useState<PagamentoConcluido[]>([]);
   const [loadingPagamentosPagos, setLoadingPagamentosPagos] = useState(false);
@@ -1194,24 +1199,20 @@ export function ModalPagamentoRapido({
                       Imprimir recibo
                     </a>
                   </>
-                ) : receiptHandoff?.pending && receiptHandoff.mensalidadeId ? (
+                ) : receiptHandoff?.pending && receiptHandoff.pagamentoId ? (
                   <>
                     <p className="font-semibold text-amber-900">Pagamento confirmado — recibo em preparação</p>
-                    <p className="mt-1 text-xs text-slate-600">O processamento ocorre separadamente. Não faça outro pagamento.</p>
-                    <button type="button" disabled={checkingExistingReceipt}
-                      onClick={() => {
-                        if (!receiptHandoff.mensalidadeId) return;
-                        setCheckingExistingReceipt(true);
-                        void findIssuedOperationalReceipt(receiptHandoff.mensalidadeId, { attempts: 1 })
-                          .then((url) => {
-                            if (url) setReceiptHandoff({ ...receiptHandoff, url, pending: false });
-                          })
-                          .catch(() => {})
-                          .finally(() => setCheckingExistingReceipt(false));
-                      }}
-                      className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50">
-                      {checkingExistingReceipt ? "A verificar…" : "Verificar recibo sem repetir pagamento"}
-                    </button>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      O documento é processado separadamente. Não repita o pagamento.
+                    </p>
+                    <a
+                      href={"/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(receiptHandoff.pagamentoId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground"
+                    >
+                      Consultar recibo
+                    </a>
                   </>
                 ) : (
                   <p className="text-xs text-slate-600">Pode consultar os recibos já emitidos no perfil financeiro do aluno.</p>
