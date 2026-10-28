@@ -652,6 +652,7 @@ function EstadoConcluido({
 // ─── Hook: lógica de submissão ────────────────────────────────────────────────
 
 function usePagamentoSubmit({
+  escolaId,
   aluno,
   mensalidadesSelecionadas,
   metodo,
@@ -667,6 +668,7 @@ function usePagamentoSubmit({
   posViradaContext,
   setReclassificacaoBlockOpen,
 }: {
+  escolaId?: string | null;
   aluno:          ModalPagamentoRapidoProps["aluno"];
   mensalidadesSelecionadas: MensalidadeOption[];
   metodo:         MetodoPagamento;
@@ -799,7 +801,9 @@ function usePagamentoSubmit({
       } else if (terminalPaymentId) {
         showIssuedReceipt(
           receiptWindow,
-          "/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(terminalPaymentId),
+          "/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(terminalPaymentId)
+            + (escolaId && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(escolaId)
+                ? "&escola_id=" + encodeURIComponent(escolaId) : ""),
         );
       } else {
         showReceiptPending(receiptWindow);
@@ -833,7 +837,7 @@ function usePagamentoSubmit({
     valorPagoNum, aluno.id,
     onConcluido, onRecibos, onReceiptStatus, onSuccess, error,
     onPagamentosConcluidos,
-    posViradaContext,
+    posViradaContext, escolaId,
   ]);
 
   return { processando, submit };
@@ -1088,7 +1092,7 @@ export function ModalPagamentoRapido({
 
   // ── Submissão ────────────────────────────────────────────────────────────
   const { processando, submit } = usePagamentoSubmit({
-    aluno, mensalidadesSelecionadas, metodo, detalhes, valorPagoNum: valorNum,
+    escolaId, aluno, mensalidadesSelecionadas, metodo, detalhes, valorPagoNum: valorNum,
     trocoValido,
     onConcluido: () => setConcluido(true),
     onRecibos:   (payload) => setRecibos(payload),
@@ -1218,7 +1222,9 @@ export function ModalPagamentoRapido({
                       O documento é processado separadamente. Não repita o pagamento.
                     </p>
                     <a
-                      href={"/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(receiptHandoff.pagamentoId)}
+                      href={"/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(receiptHandoff.pagamentoId)
+                        + (escolaId && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(escolaId)
+                            ? "&escola_id=" + encodeURIComponent(escolaId) : "")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground"
