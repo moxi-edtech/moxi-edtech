@@ -165,6 +165,27 @@ async function requireBalcaoWindowRecovery(
   }
 }
 
+// Best-effort independent journal; the canonical updated_by and observation
+// remain recorded on the window even if this secondary write fails.
+async function journalBalcaoRecovery(
+  access: { supabase: any; escolaId: string; userId: string },
+  item: Record<string, unknown>,
+  before: Record<string, unknown> | null,
+  reason: string,
+): Promise<boolean> {
+  const { error } = await access.supabase.from("escola_auditoria").insert({
+    escola_id: access.escolaId,
+    acao: "rematricula_janela_reaberta_balcao",
+    mensagem: "Janela de rematrícula alterada dentro do Balcão.",
+    dados: { actor_id: access.userId, motivo: reason, antes: before, depois: item },
+  });
+  if (error) {
+    console.error("[rematricula/janelas] audit journal failed", error);
+    return false;
+  }
+  return true;
+}
+
 export async function GET(req: Request) {
   try {
     const access = await requireAccess(req);
@@ -256,7 +277,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: message }, { status: error.code === "23505" ? 409 : 500 });
     }
 
-    return NextResponse.json({ ok: true, item: data });
+    const auditOk = !parsed.data.balcao_reopen || await journalBalcaoRecovery(
+      access, data, null, parsed.data.observacao ?? "",
+    );
+    return NextResponse.json({ ok: true, item: data, audit_warning: !auditOk });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
     return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError || err instanceof WindowPermissionError ? err.status : 500 });
@@ -277,11 +301,11 @@ export async function PATCH(req: Request) {
       assertWindowDates(parsed.data.data_inicio, parsed.data.data_fim);
     }
 
-    let existingWindow: { ano_letivo: number; ativa: boolean; data_inicio: string; updated_at: string } | null = null;
+    let existingWindow: { id: string; ano_letivo: number; ativa: boolean; data_inicio: string; data_fim: string; observacao: string | null; updated_at: string } | null = null;
     if (parsed.data.ano_letivo !== undefined || parsed.data.ativa === true || parsed.data.balcao_reopen) {
       const { data: currentWindow, error: currentWindowError } = await (access.supabase as any)
         .from("rematricula_janelas")
-        .select("ano_letivo, ativa, data_inicio, updated_at")
+        .select("id, ano_letivo, ativa, data_inicio, data_fim, observacao, updated_at")
         .eq("id", parsed.data.id)
         .eq("escola_id", access.escolaId)
         .maybeSingle();
@@ -350,7 +374,10 @@ export async function PATCH(req: Request) {
     }
     if (!data) return NextResponse.json({ ok: false, error: parsed.data.balcao_reopen ? "A janela foi alterada por outra pessoa. Atualize antes de reabrir." : "Janela não encontrada" }, { status: parsed.data.balcao_reopen ? 409 : 404 });
 
-    return NextResponse.json({ ok: true, item: data });
+    const auditOk = !parsed.data.balcao_reopen || await journalBalcaoRecovery(
+      access, data, existingWindow, parsed.data.observacao ?? "",
+    );
+    return NextResponse.json({ ok: true, item: data, audit_warning: !auditOk });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
     return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError || err instanceof WindowPermissionError ? err.status : 500 });
