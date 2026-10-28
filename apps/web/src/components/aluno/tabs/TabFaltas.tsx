@@ -53,7 +53,7 @@ export function TabFaltas() {
   useEffect(() => {
     const controller = new AbortController();
     let mounted = true;
-    setLoading(true); setData(null); setScope(null); setError(null); setEditingId(null); setFeedback(null);
+    setLoading(true); setData(null); setScope(null); setError(null); setEditingId(null);
     void load(controller.signal).then((result) => {
       if (mounted) { setData(result); setScope(query); }
     }).catch((err: unknown) => {
@@ -63,6 +63,8 @@ export function TabFaltas() {
     }).finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; controller.abort(); };
   }, [load, query, retry]);
+
+  useEffect(() => { setFeedback(null); }, [query]);
 
   const safeData = scope === query ? data : null;
   const submit = async (item: Absence) => {
