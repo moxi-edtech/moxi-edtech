@@ -297,7 +297,11 @@ export function useRematriculaBalcao(opts: {
   // ────────────────────────────────────────────────────────────────────────
   const fetchStatus = useCallback(async (destinationTurmaId?: string | null) => {
     if (!opts.alunoId || !opts.matriculaId) {
+      statusRequestGeneration.current += 1;
       setCardState(null);
+      setAnoLetivo(null);
+      setTargetYearLabel(null);
+      setLoading(false);
       return;
     }
 
@@ -363,6 +367,7 @@ export function useRematriculaBalcao(opts: {
     setProgressao(null);
     setCohort(null);
     setAcademic(null);
+    setTargetYearLabel(null);
     setDecisaoResultado("aprovado");
     setDecisaoFonte("raa");
     setDecisaoMotivo("");
