@@ -29,6 +29,13 @@ on:
       - "apps/web/src/components/secretaria/RematriculaBalcaoModal.tsx"
       - "apps/web/src/hooks/useRematriculaBalcao.ts"
       - "apps/web/src/app/api/secretaria/rematricula/janelas/route.ts"
+      - "apps/web/src/app/api/secretaria/rematricula/route.ts"
+      - "apps/web/src/app/api/secretaria/rematricula/confirmar/route.ts"
+      - "apps/web/src/app/secretaria/(portal-secretaria)/rematricula/confirmar/page.tsx"
+      - "apps/web/src/lib/matriculas/student-lifecycle.ts"
+      - "apps/web/src/lib/matriculas/load-student-lifecycle.ts"
+      - "apps/web/tests/unit/student-lifecycle-ssot.spec.ts"
+      - "supabase/ops/tests/regression_student_lifecycle_backend_ssot.sql"
       - "apps/web/src/lib/secretaria/rematricula-window.ts"
       - "apps/web/src/components/secretaria/RematriculaWindowRecovery.tsx"
       - "apps/web/tests/unit/rematricula-window-recovery.spec.ts"
@@ -96,7 +103,8 @@ jobs:
             tests/unit/rematricula-balcao-destino.spec.ts \
             tests/unit/rematricula-balcao-year-guard.spec.ts \
             tests/unit/balcao-rematricula-target-year.spec.ts \
-            tests/unit/rematricula-window-recovery.spec.ts
+            tests/unit/rematricula-window-recovery.spec.ts \
+            tests/unit/student-lifecycle-ssot.spec.ts
 
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
@@ -165,6 +173,12 @@ jobs:
             tests/unit/rematricula-balcao-year-guard.spec.ts \
             tests/unit/balcao-rematricula-target-year.spec.ts \
             tests/unit/rematricula-window-recovery.spec.ts \
+            tests/unit/student-lifecycle-ssot.spec.ts \
+            src/lib/matriculas/student-lifecycle.ts \
+            src/lib/matriculas/load-student-lifecycle.ts \
+            src/app/api/secretaria/rematricula/route.ts \
+            src/app/api/secretaria/rematricula/confirmar/route.ts \
+            "src/app/secretaria/(portal-secretaria)/rematricula/confirmar/page.tsx" \
             --max-warnings 10000
 
 
