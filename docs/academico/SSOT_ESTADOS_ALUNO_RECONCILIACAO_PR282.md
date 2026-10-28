@@ -2,7 +2,7 @@
 
 **Data da auditoria:** 2026-10-28  
 **Âmbito:** todas as escolas, todos os alunos e todos os anos (não apenas 2026/2027).  
-**Estado:** inventário de leitura verificado no banco remoto; **nenhuma alteração de dados autorizada ou executada**.  
+**Estado em 28/10/2026:** dez migrações do SSOT aplicadas no Supabase e espelhadas nesta PR; **um vínculo histórico inequívoco foi conciliado com auditoria**. Nenhuma nota, aprovação ou snapshot foi alterado. O inventário da secção 3 documenta o diagnóstico anterior às correções.  
 **Ferramenta:** [`supabase/ops/scripts/audit_student_lifecycle_statuses.sql`](../../supabase/ops/scripts/audit_student_lifecycle_statuses.sql).  
 **Contrato existente:** [`CONTRATO_ESTADOS_MATRICULA_REMATRICULA.md`](../CONTRATO_ESTADOS_MATRICULA_REMATRICULA.md).
 
@@ -100,3 +100,44 @@ Consumidores existentes já alinhados à mesma projeção (preservando payload/c
 Os novos testes `apps/web/tests/unit/student-lifecycle-ssot.spec.ts` cobrem pendência 2025 → 2026, snapshot aberto versus fechado, duplicidade, equivalência de legado, origens inconsistentes e consumo das rotas. Em réplica local isolada da branch, a execução de regressão de 28/10/2026 apresentou **500 testes aprovados, 4 ignorados, nenhuma falha**; validação de typecheck/CI é acompanhada separadamente, sem inferir homologação em produção.
 
 **Pendências de aceitação:** homologação autenticada dos perfis/portais, validação de RLS do histórico para aluno e Secretaria, fechamento com snapshot oficial no ambiente apropriado, revisão escolar dos 300+250 legados e verificação completa do CI. Não aplicar updates em massa de `matriculas.status` ou `historico_anos.resultado_final` com base neste inventário.
+
+
+## 7. Backend alinhado por migrações instaladas — 28/10/2026
+
+**Esta secção atualiza o diagnóstico inicial e a secção 6.** O backend deixou de ser apenas um inventário e uma projeção TypeScript. Foram aplicadas **dez migrações** ao projeto Supabase KLASSE e cada SQL foi versionado nesta PR:
+
+| Versão / migração aplicada | Finalidade |
+|---|---|
+| `20261028211345_lifecycle_p0_revoke_legacy_writers_20261028` | Revogar a `authenticated` e `anon` o EXECUTE de `confirmar_matricula`, `confirmar_matricula_core` e `finalizar_matricula_anual`. `service_role` permanece autorizado. |
+| `20261028211433_lifecycle_sync_status_ativo_20261028` | Trigger `status → ativo`, `ativo NOT NULL`, CHECK validada; não há mais dois indicadores contraditórios persistíveis. |
+| `20261028211533_lifecycle_history_ssot_view_20261028` | Compatibilidade de `resultado_final/status_final`, FK do histórico, origem obrigatória inicialmente `NOT VALID` e vista `security_invoker` com resultado oficial sujeito ao bloqueio legal. |
+| `20261028211752_lifecycle_fix_historico_session_and_final_gate_20261028` | Corrige gerador anual para `matriculas.session_id` e exige matrícula finalizada/inativa antes de gerar histórico. |
+| `20261028211809_lifecycle_finalizar_blindada_result_authority_20261028` | Encerramento `ativo=false` e escrita do resultado do GradeEngine no histórico quando há decisão calculada. |
+| `20261028212124_lifecycle_reconcile_unique_historical_link_20261028` | Vinculou **1** histórico órfão com correspondência exata de escola, aluno, ano e turma; auditado, sem alterar resultado/snapshot. Validou CHECK de `matricula_id` obrigatório. |
+| `20261028212242_lifecycle_matriculas_staff_write_rls_20261028` | Acrescentou políticas restritivas de INSERT/UPDATE/DELETE a operações autorizadas da secretaria/admin/polo, preservando isolamento de escola. |
+| `20261028212343_lifecycle_ssot_view_private_scope_20261028` | Vista SSOT limitada a pessoal autorizado e ao próprio aluno. |
+| `20261028212414_lifecycle_ssot_view_dba_scope_20261028` | Mantém a mesma proteção para utilizadores finais e permite a auditoria do PostgreSQL pelo DBA. |
+| `20261028212425_lifecycle_aluno_activation_canonical_trigger_20261028` | Corrige a ativação administrativa do aluno para reconhecer `matriculas.status='ativo'` e validar escola, `ativo` e número. |
+
+**Estado observado após aplicação:**
+- **1.113** matrículas: **zero** divergências `status/ativo`, `ativo` nulo ou matrícula sem ano/sessão; vista SSOT produz `pendente/ativa/encerrada` corretamente.
+- **14** históricos anuais: **zero** sem `matricula_id` (era 1), **zero** bloqueios legais, **zero** resultados oficialmente fechados. Os resultados registados **não** são promovidos silenciosamente a oficiais.
+- **550** matrículas 2025 ainda `pendente` no Curtume: **300** com destino ativo 2026, **1** com destino vinculado não ativo, **249** sem destino vinculado. **Não reconciliar resultados sem fundamento académico da escola.**
+- No ensaio sem sessão (`SET LOCAL ROLE authenticated`), a vista devolveu **zero matrículas**, como esperado.
+- `supabase/ops/tests/regression_student_lifecycle_backend_ssot.sql` executou com sucesso no remoto; verifica CHECKs, FK, vista `security_invoker`, guarda do bloqueio legal, revogação das RPCs legadas e contrato GradeEngine.
+
+**Integração HTTP com fonte de verdade única:**
+- `load-student-lifecycle.ts` lê agora `v_student_lifecycle_ssot_v1` e o histórico pelo par `(escola_id, aluno_id)`. A aplicação interpreta o `resultado_oficial` decidido **pelo banco**, não pela flag de snapshot isolada.
+- `POST /api/secretaria/rematricula/confirmar` fecha finalistas apenas por `finalizar_matricula_blindada` e devolve cada pendência, com recuperação no Balcão. Deixou de gravar `concluido` diretamente na turma inteira.
+- `POST /api/secretaria/rematricula` deixa de oferecer o fallback seletivo inseguro que criava matrículas sem transação RAA e marcava origem como transferência. Sem RPC seletiva canónica, responde `409 LIFECYCLE_CANONICAL_RAA_REQUIRED` com orientação de recuperação.
+- O portal de confirmação em massa mostra os finalistas efetivamente encerrados e bloqueios por turma, sem misturar com as promoções.
+
+**O que ainda não está homologado como produto final:**
+1. A máquina física `matriculas.status` ainda aceita códigos legados de resultado (`reprovado` etc.) para preservar RPCs antigas. A vista separa os significados, mas a migração final para quatro estados físicos e motivos de encerramento exige adaptação dos escritores RAA e testes de replay.
+2. A regularização académica das 550 origens históricas depende de documento/decisão escolar. `pendente` não é aprovação nem reprovação; o destino ativo também não prova aprovação.
+3. Fechamento e assinatura legal de históricos ainda não foram homologados de ponta a ponta (0 snapshots bloqueados). Testar num ambiente autorizado com turmas, notas, papel de operador e auditoria.
+4. **Homologação autenticada** para secretaria, professor, aluno, polos e super-admin, incluindo privacidade da `security_invoker` view, RLS, funções `SECURITY DEFINER`, portal e transições financeiras.
+5. Verificar o **replay completo** das migrações: as novas versões de 28/10 foram aplicadas em produção após migrações com identificadores cronologicamente posteriores no repositório. Uma recriação ordenada a partir do zero pode passar por escritores históricos antes de chegar ao estado atual; executar replay em réplica descartável e adicionar migração de estabilização final se necessário.
+6. CI de todos os workflows da PR #282 precisa estar verde; só então permitir merge. Nenhum deploy Next.js foi efetuado nesta frente.
+
+**Regra de proteção:** nunca fechar um histórico, conceder aprovação, alterar notas, emitir novo recibo ou criar obrigação financeira como efeito colateral de "conciliação de status".
