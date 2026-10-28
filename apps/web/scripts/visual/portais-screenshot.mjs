@@ -64,7 +64,7 @@ try {
           "dashboard-rematricula": "A tua rematrícula",
           "dashboard-overdue": "1 mensalidade vencida",
           "grade-unpaid": "Solicitar boletim",
-          "grade-pending": "Pagamento em análise",
+          "grade-pending": "Comprovativo recebido",
           "grade-rejected": "Reenviar comprovativo",
         }[name];
         if (expectedState) await page.getByText(expectedState, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {});
@@ -99,7 +99,7 @@ try {
         if (name.startsWith("grade-")) {
           if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name}: protected assessments leaked`);
           if (name === "grade-paid" && (!metrics.bodyText.includes("Matemática") || !metrics.bodyText.includes("16") || !metrics.bodyText.includes("17"))) errors.push(`${name}: paid grades missing from trimester grid`);
-          if (name === "grade-pending" && !metrics.bodyText.includes("Pagamento em análise")) errors.push(`${name}: pending state missing`);
+          if (name === "grade-pending" && !metrics.bodyText.includes("Comprovativo recebido")) errors.push(`${name}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
           if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar comprovativo")) errors.push(`${name}: resubmit action missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
