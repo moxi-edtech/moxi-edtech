@@ -3246,6 +3246,7 @@ export default function BalcaoAtendimento({
           responsavelContato={rematricula.responsavelContato}
           setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
+          cicloVida={rematricula.cicloVida}
           service={rematricula.service}
           itensPagamento={itensRematricula}
           itensDisponiveis={itensDisponiveisNaRematricula}
