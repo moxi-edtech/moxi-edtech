@@ -9,7 +9,7 @@ type Petition = {
   decision_reason: string | null; created_at: string;
 };
 type Absence = {
-  id: string; data: string; disciplina_nome?: string | null; observacao?: string | null;
+  id: string; data: string; disciplina_nome?: string | null;
   periodo_letivo_id: string | null; justificacao: Petition | null;
 };
 type ResponseData = {
@@ -147,7 +147,6 @@ export function TabFaltas() {
                   </div>
                   <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground">{statusLabel(status)}</span>
                 </div>
-                {item.observacao && <p className="text-sm text-muted-foreground">{item.observacao}</p>}
                 {status === "pending" && <p role="status" className="text-sm text-muted-foreground">
                   Solicitação realizada. Aguardando análise da secretaria.
                 </p>}
