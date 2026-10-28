@@ -4,7 +4,7 @@ run_timestamp: 2026-10-28T22:43:15.571266+00:00
 run_id: a1338163-1df9-4a14-9f79-ff677e5f3e84
 
 ## Status: FAIL
-Gate global não concluído: scanner legado não cobre o contrato integral e o build global está pendente. Isto não é um finding de falha de performance confirmado. Não emitir PASS com base num scan parcial.
+Gate global não concluído: scanner legado não cobre o contrato integral e o build global está pendente; a nova tentativa de typecheck, após recuperar dependências, foi inconclusiva. Isto não é um finding de falha de performance confirmado. Não emitir PASS com base num scan parcial.
 
 ## MVs
 | MV | INDEX | Refresh Fn | Cron | Wrapper | Status |

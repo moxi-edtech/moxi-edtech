@@ -10,7 +10,7 @@ Integração REF (pagamento por referência), API v2.0, produção. MCX/GPO não
 - `APPYPAY_ENABLED=false`. A variável privada contém o vínculo à escola; não existe fallback para credenciais de outra escola.
 - Provedor cadastrado no Supabase para Escola KLASSE, ambiente production, status inactive, config `{}`. Nenhuma cobrança emitida.
 - Webhook implementado, mas NÃO publicado ou cadastrado no portal. Nenhum webhook existente foi substituído.
-- A função proposta `appypay_confirm_payment` ainda NÃO foi aplicada em produção: depende da aprovação em `agents/outputs/PENDING_APPROVAL.md`.
+- `appypay_confirm_payment` aprovada pelo proprietário e aplicada no Supabase: migration `20261028224738_appypay_atomic_confirmation.sql`. Código do corpo idêntico ao aprovado; SECURITY INVOKER, search_path fixo, sem EXECUTE para anon, com EXECUTE para authenticated/service_role. Probe sem dados reais confirmou o erro esperado para intent inexistente. Histórico em `agents/outputs/PENDING_APPROVAL.md`.
 - Sem UI nova: são APIs de backend. O fluxo de emissão deve ser chamado por uma sessão autenticada com permissão financeira.
 
 ## APIs
@@ -39,7 +39,7 @@ Body: `{ "referenceId": "UUID local" }`. Mesmas permissões/escola; consulta nov
 - Timeout ou resultado incerto deixa a reserva pending. NÃO repetir POST financeiro automaticamente. Rever a transação no portal; comparar id/merchant/valor antes de associar a charge à reserva. Não apagar a reserva para tentar novamente sem conferir o provedor.
 - Uma referência active expirada ou com saldo alterado exige revisão. A integração não cancela cobranças automaticamente.
 - O índice de intents e ignoreDuplicates impedem reset de confirmed para pending. Retries após confirmação apenas completam os registros auxiliares.
-- A função SQL proposta bloqueia intent e mensalidade e revalida saldo antes de chamar a RPC financeira existente. Não altera RLS nem a RPC existente; exige tenant/permissão e vínculo à referência AppyPay. Saldo alterado vai para manual_review.
+- A função SQL aprovada bloqueia intent e mensalidade e revalida saldo antes de chamar a RPC financeira existente. Não altera RLS nem a RPC existente; exige tenant/permissão e vínculo à referência AppyPay. Saldo alterado vai para manual_review.
 - Workers ProxyPay agora selecionam somente eventos do provedor ProxyPay.
 
 ## Credenciais
@@ -51,10 +51,11 @@ O segredo foi fornecido pelo proprietário nesta conversa. A eventual substitui�
 ## Testes executados
 
 - 14 testes de código e HTTP: auth/permissões, escolas distintas, callbacks inválidos e grandes, OAuth, separação de ambientes, código 101, dados divergentes, emissões concorrentes, timeout sem repetição, duplicatas e falha após confirmação.
-- TypeScript strict dos módulos core/service passou; rotas foram compiladas no teste HTTP com dependências de fronteira simuladas.
+- TypeScript strict dos módulos core/service passou. Após recuperar as dependências fixadas, o typecheck direcionado de todos os módulos e das três rotas AppyPay passou com imports/tipos reais do projeto. No teste HTTP, as dependências de fronteira são simuladas.
 - PostgreSQL 14.17 local, descartável: SQL da proposta executado literalmente. Bloqueio de outra escola/anon, saldo alterado por transação concorrente e confirmações duplicadas simultâneas passaram. A RPC financeira existente foi representada por fixture; isto NÃO prova o fluxo completo com triggers/RLS do PostgreSQL 17 de produção.
-- Typecheck global não passou: dependências do checkout original apontam para diretório temporário ausente; 1865 diagnósticos globais, sem diagnósticos AppyPay no momento da execução. Não houve build completo validado.
+- Verificação inicial: typecheck global limitado pelas dependências do checkout original, com 1865 diagnósticos. Após aprovação SQL, as dependências foram reinstaladas com frozen-lockfile e sem alteração do lockfile; os 14 testes passaram nesse ambiente. A nova tentativa global de typecheck foi interrompida após mais de seis minutos sem retornar diagnósticos; é inconclusiva. Não houve build completo validado.
 - Scanners legados do repositório executados; não cobrem todas as regras do contrato 2.0.0. Seus resultados não autorizam PASS global.
+- Verificação no Supabase após aplicação SQL: hash do corpo idêntico ao aprovado, privilégios e SECURITY INVOKER conferidos; probe com intent inexistente passou sem alterações de dados. Advisors consultados sem aviso específico AppyPay; isto não comprova ausência de avisos globais.
 - Não houve teste de cobrança ou pagamento real/sandbox no provedor.
 
 Execução em ambiente com dependências instaladas:
@@ -68,7 +69,7 @@ Para SQL, usar somente um PostgreSQL descartável com os parâmetros de seguran�
 
 ## Ativação pendente
 
-1. Aprovar o diff SQL atômico; gerar migration com `supabase migration new`, aplicar a proposta após verificar schema e advisors, e verificar a função no PostgreSQL real.
+1. SQL atômico: concluído. Aprovação registada no commit 42c9855c8, migration aplicada, permissões/código/probe verificados no PostgreSQL real. O ficheiro `appypay-confirm-payment.proposed.sql` preserva o snapshot aprovado e é idêntico à migration; não executar novamente como uma segunda migration.
 2. Instalar dependências, concluir build/typecheck e revisão. Publicar o commit aprovado mantendo emissão desativada. Não publicar por inferência desta documentação.
 3. Ativar o provedor exclusivamente na Escola KLASSE e habilitar APPYPAY_ENABLED em Production no release aprovado. Variáveis só chegam a um novo deployment.
 4. No portal AppyPay, Integração → Webhooks, cadastrar POST `https://app.klasse.ao/api/webhooks/appypay`, associado à aplicação REF. Confirmar o estado ativo e a entrega no portal; resolver o comportamento de validação observado antes de habilitar emissão aos operadores.

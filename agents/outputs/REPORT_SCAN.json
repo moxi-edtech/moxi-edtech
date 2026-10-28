@@ -1,8 +1,8 @@
 {
   "contrato_versao": "2.0.0",
   "run_id": "a1338163-1df9-4a14-9f79-ff677e5f3e84",
-  "run_timestamp": "2026-10-28T22:43:15.571266+00:00",
-  "commit": "b425b0bd663959385a4b6ed202666d08e87f7a9c",
+  "run_timestamp": "2026-10-28T22:49:11.850144+00:00",
+  "commit": "42c9855c8",
   "veredito": "WARN",
   "can_merge": false,
   "summary": {
@@ -22,14 +22,20 @@
     "unit_http_tests": 14,
     "local_postgresql_scenarios": 3,
     "module_strict_types": "passed",
-    "global_typecheck": "blocked by unavailable project dependencies",
-    "provider_authentication": "passed; no charges created"
+    "global_typecheck": "inconclusive: after frozen-lockfile reinstall, interrupted after more than six minutes without diagnostics",
+    "provider_authentication": "passed; no charges created",
+    "supabase_atomic_rpc": "installed; body hash and permissions verified; nonexistent-intent probe passed without data mutation",
+    "production_migration": "20261028224738_appypay_atomic_confirmation",
+    "unit_http_environment": "retested successfully with restored locked project dependencies",
+    "targeted_route_types": "passed for all AppyPay modules and three routes, using real locked project dependencies and imports"
   },
   "warnings": [
-    "APY-001",
     "APY-002",
     "APY-003"
   ],
   "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem regressões a reportar",
-  "legacy_scan": "Executado e arquivado com prefixo LEGACY_; formato/cobertura incompatíveis com contrato 2.0.0; não usado como prova de PASS."
+  "legacy_scan": "Executado e arquivado com prefixo LEGACY_; formato/cobertura incompatíveis com contrato 2.0.0; não usado como prova de PASS.",
+  "resolved_warnings": [
+    "APY-001"
+  ]
 }
