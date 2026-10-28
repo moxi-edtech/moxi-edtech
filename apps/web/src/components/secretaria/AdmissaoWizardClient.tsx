@@ -2182,7 +2182,7 @@ function Step3Pagamento(props: {
             {result.recibo?.status === 'pending' && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Pagamento registado. O recibo financeiro será disponibilizado após a liquidação.</p>}
             {result.recibo?.status === 'error' && (
               <>
-                <p className="mt-3 text-xs text-slate-700">O pagamento foi registado. O recibo pode estar em processamento.</p>
+                <p className="mt-3 text-xs text-muted-foreground">O pagamento foi registado. O recibo pode estar em processamento.</p>
                 {result.pagamento_id && <AdmissionReceiptRecovery pagamentoId={result.pagamento_id} />}
               </>
             )}
