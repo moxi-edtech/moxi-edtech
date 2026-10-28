@@ -73,3 +73,30 @@ Os 300 casos com destino ativo têm motivo e `status_fecho_origem = 'manual'`, m
 - Read model consistente para *todos os alunos*, sem leituras cruzadas entre escolas e sem adicionar um segundo campo de status global.
 
 **Ponto de integração:** a PR #282 pode manter-se draft enquanto se executa esta auditoria. A normalização física de dados legados e qualquer migração de enum/coluna devem ficar em alteração separada, após decisão escolar e homologação autenticada.
+
+## 6. Implementação de leitura e consumidores — 28/10/2026
+
+Foi entregue uma **projeção SSOT em TypeScript** sem migração de dados ou alteração de regras RAA:
+
+- `apps/web/src/lib/matriculas/student-lifecycle.ts`: `construirCicloVidaAluno` separa estado operacional, resultado registado, resultado **oficial** (apenas com snapshot `fechado`), motivos de fecho e pendências auditáveis.
+- `apps/web/src/lib/matriculas/load-student-lifecycle.ts`: leituras limitadas à **mesma escola e aluno** de `matriculas` e `historico_anos`; erro não vira resultado académico fictício.
+- `GET /api/secretaria/alunos/[id]/lifecycle`: novo endpoint autenticado, `requireRoleInSchool` e `no-store` para consulta da Secretaria; não escreve dados.
+
+Consumidores existentes já alinhados à mesma projeção (preservando payload/contratos legados):
+
+| Consumidor | Rota ou componente | Comportamento |
+|---|---|---|
+| Dossiê da Secretaria / Command Center | `GET /api/secretaria/alunos/[id]/dossier` | Retorna `cicloVida` e indicador `cicloVidaIndisponivel` sem bloquear o dossiê. |
+| Linha temporal do aluno | `GET /api/secretaria/alunos/[id]/timeline-360` | Acrescenta `cicloVida`; histórico financeiro e académico existente continua preservado. |
+| Matrícula do ano corrente | `GET /api/secretaria/alunos/[id]/matricula-corrente`, `CurrentYearEnrollmentPanel` | Distingue matrícula encerrada/cancelada de matrícula ausente; mantém confirmação transacional via RPC. |
+| Portal do Aluno | `GET /api/aluno/home/status` | Não confunde matrícula mais recentemente criada com ano mais atual; mostra resultado como oficial apenas com snapshot fechado; mantém fallback quando o read model está indisponível. |
+| Pedido do aluno | `GET /api/aluno/rematricula/status` | Acrescenta projeção contextual nos caminhos conhecidos; RAA e gates financeiros continuam governando elegibilidade. |
+| Balcão | `GET /api/secretaria/balcao/rematriculas/status`, `useRematriculaBalcao`, `RematriculaBalcaoModal` | Avisa sobre históricos anteriores por conciliar; mantém sessão MED, turma destino, RAA, idempotência e pagamento canónicos. |
+| Histórico do Balcão de pagamentos | `PagamentosPendentesWindow` | Usa o mesmo `cicloVida` no modal de rematrícula. |
+| Alteração manual legada | `PUT /api/secretaria/matriculas/[matriculaId]/status`, `StatusForm`, `MatriculasListClient` | Impede escrita direta que mudaria apenas `status` sem RAA, `ativo`, fecho e auditoria. A operação idempotente mantém compatibilidade. Interface encaminha às operações oficiais. |
+
+**Não foi criada uma nova autoridade de escrita.** `alunos.status` não deve ser preenchido com uma conclusão académica. As RPCs oficiais ainda detêm a autoridade para matrícula, progressão, fechamento e documentos.
+
+Os novos testes `apps/web/tests/unit/student-lifecycle-ssot.spec.ts` cobrem pendência 2025 → 2026, snapshot aberto versus fechado, duplicidade, equivalência de legado, origens inconsistentes e consumo das rotas. Em réplica local isolada da branch, a execução de regressão de 28/10/2026 apresentou **500 testes aprovados, 4 ignorados, nenhuma falha**; validação de typecheck/CI é acompanhada separadamente, sem inferir homologação em produção.
+
+**Pendências de aceitação:** homologação autenticada dos perfis/portais, validação de RLS do histórico para aluno e Secretaria, fechamento com snapshot oficial no ambiente apropriado, revisão escolar dos 300+250 legados e verificação completa do CI. Não aplicar updates em massa de `matriculas.status` ou `historico_anos.resultado_final` com base neste inventário.
