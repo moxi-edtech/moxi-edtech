@@ -3,12 +3,15 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 const StaffPermissions = ["criar_matricula", "gerenciar_turmas", "configurar_escola"];
 
 const CreateSchema = z.object({
+  balcao_reopen: z.literal(true).optional(),
+  ano_letivo_id: z.string().uuid().optional(),
   ano_letivo: z.coerce.number().int().min(2000).max(2100),
   data_inicio: z.string().datetime(),
   data_fim: z.string().datetime(),
@@ -17,6 +20,9 @@ const CreateSchema = z.object({
 });
 
 const PatchSchema = z.object({
+  balcao_reopen: z.literal(true).optional(),
+  ano_letivo_id: z.string().uuid().optional(),
+  expected_updated_at: z.string().datetime().optional(),
   id: z.string().uuid(),
   ano_letivo: z.coerce.number().int().min(2000).max(2100).optional(),
   data_inicio: z.string().datetime().optional(),
@@ -114,6 +120,45 @@ async function assertCoupledFutureIntake(access: { supabase: any; escolaId: stri
   }
 }
 
+/**
+ * Exceção controlada para recuperar a janela do ano ATIVO no próprio balcão.
+ * A abertura nunca ignora os requisitos RAA, financeiros ou a sessão MED.
+ */
+async function requireBalcaoWindowRecovery(
+  access: { supabase: any; escolaId: string },
+  anoLetivoId: string | undefined,
+  anoLetivo: number,
+  observacao: string | null | undefined,
+  dataInicio: string | undefined,
+  dataFim: string | undefined,
+) {
+  if (!anoLetivoId || !observacao?.trim() || observacao.trim().length < 10) {
+    throw new IntakePolicyError("Informe a sessão selecionada e uma justificação com pelo menos 10 caracteres.");
+  }
+  if (!dataInicio || !dataFim) throw new IntakePolicyError("Indique as datas de abertura e encerramento.");
+  assertWindowDates(dataInicio, dataFim);
+  const now = Date.now();
+  if (new Date(dataInicio).getTime() > now || new Date(dataFim).getTime() <= now) {
+    throw new IntakePolicyError("A abertura deve começar agora ou antes e terminar numa data futura.");
+  }
+  const authz = await requireRoleInSchool({
+    supabase: access.supabase,
+    escolaId: access.escolaId,
+    roles: ["admin", "admin_escola", "staff_admin", "admin_secretaria", "diretor"],
+  });
+  if (authz.error) throw new IntakePolicyError("Só a direção ou um administrador autorizado pode reabrir a janela.");
+  const { data: ano, error } = await access.supabase
+    .from("anos_letivos")
+    .select("id, ano, ativo")
+    .eq("id", anoLetivoId)
+    .eq("escola_id", access.escolaId)
+    .eq("ano", anoLetivo)
+    .eq("ativo", true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!ano) throw new IntakePolicyError("O ano selecionado não é a sessão ativa desta escola.");
+}
+
 export async function GET(req: Request) {
   try {
     const access = await requireAccess(req);
@@ -137,7 +182,12 @@ export async function GET(req: Request) {
     if (janelasError) throw janelasError;
     if (anosError) throw anosError;
 
-    return NextResponse.json({ ok: true, items: janelas ?? [], anos: anos ?? [] });
+    const canRecover = !(await requireRoleInSchool({
+      supabase: access.supabase,
+      escolaId: access.escolaId,
+      roles: ["admin", "admin_escola", "staff_admin", "admin_secretaria", "diretor"],
+    })).error;
+    return NextResponse.json({ ok: true, items: janelas ?? [], anos: anos ?? [], can_reopen: canRecover });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
     return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError ? err.status : 500 });
@@ -168,7 +218,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Ano letivo não existe para esta escola" }, { status: 400 });
     }
 
-    if (parsed.data.ativa) {
+    if (parsed.data.balcao_reopen) {
+      if (!parsed.data.ativa) throw new IntakePolicyError("A recuperação deve deixar a janela aberta.");
+      await requireBalcaoWindowRecovery(
+        access, parsed.data.ano_letivo_id, parsed.data.ano_letivo,
+        parsed.data.observacao, parsed.data.data_inicio, parsed.data.data_fim,
+      );
+    } else if (parsed.data.ativa) {
       await assertCoupledFutureIntake({ supabase: access.supabase as any, escolaId: access.escolaId }, parsed.data.ano_letivo);
     }
 
@@ -215,11 +271,11 @@ export async function PATCH(req: Request) {
       assertWindowDates(parsed.data.data_inicio, parsed.data.data_fim);
     }
 
-    let existingWindow: { ano_letivo: number; ativa: boolean } | null = null;
-    if (parsed.data.ano_letivo !== undefined || parsed.data.ativa === true) {
+    let existingWindow: { ano_letivo: number; ativa: boolean; data_inicio: string; updated_at: string } | null = null;
+    if (parsed.data.ano_letivo !== undefined || parsed.data.ativa === true || parsed.data.balcao_reopen) {
       const { data: currentWindow, error: currentWindowError } = await (access.supabase as any)
         .from("rematricula_janelas")
-        .select("ano_letivo, ativa")
+        .select("ano_letivo, ativa, data_inicio, updated_at")
         .eq("id", parsed.data.id)
         .eq("escola_id", access.escolaId)
         .maybeSingle();
@@ -244,7 +300,18 @@ export async function PATCH(req: Request) {
 
     const effectiveYear = parsed.data.ano_letivo ?? existingWindow?.ano_letivo;
     const effectiveActive = parsed.data.ativa ?? existingWindow?.ativa;
-    if (effectiveYear !== undefined && effectiveActive) {
+    if (parsed.data.balcao_reopen) {
+      if (!existingWindow || parsed.data.ano_letivo !== undefined || !parsed.data.expected_updated_at || parsed.data.ativa !== true) {
+        throw new IntakePolicyError("A reabertura exige a versão consultada da janela, sem alterar o ano.");
+      }
+      if (!parsed.data.data_fim) throw new IntakePolicyError("Escolha uma data final futura.");
+      await requireBalcaoWindowRecovery(
+        access, parsed.data.ano_letivo_id, existingWindow.ano_letivo,
+        parsed.data.observacao,
+        parsed.data.data_inicio ?? existingWindow.data_inicio,
+        parsed.data.data_fim,
+      );
+    } else if (effectiveYear !== undefined && effectiveActive) {
       await assertCoupledFutureIntake({ supabase: access.supabase as any, escolaId: access.escolaId }, effectiveYear);
     }
 
@@ -256,11 +323,16 @@ export async function PATCH(req: Request) {
       if (parsed.data[key] !== undefined) patch[key] = parsed.data[key] || null;
     }
 
-    const { data, error } = await (access.supabase as any)
+    let update = (access.supabase as any)
       .from("rematricula_janelas")
       .update(patch)
       .eq("id", parsed.data.id)
-      .eq("escola_id", access.escolaId)
+      .eq("escola_id", access.escolaId);
+    if (parsed.data.balcao_reopen) {
+      // Optimistic lock: duas secretarias não podem sobrescrever datas concorrentes.
+      update = update.eq("updated_at", parsed.data.expected_updated_at);
+    }
+    const { data, error } = await update
       .select("id, escola_id, ano_letivo, data_inicio, data_fim, ativa, observacao, created_at, updated_at")
       .maybeSingle();
 
@@ -270,7 +342,7 @@ export async function PATCH(req: Request) {
         : error.message;
       return NextResponse.json({ ok: false, error: message }, { status: error.code === "23505" ? 409 : 500 });
     }
-    if (!data) return NextResponse.json({ ok: false, error: "Janela não encontrada" }, { status: 404 });
+    if (!data) return NextResponse.json({ ok: false, error: parsed.data.balcao_reopen ? "A janela foi alterada por outra pessoa. Atualize antes de reabrir." : "Janela não encontrada" }, { status: parsed.data.balcao_reopen ? 409 : 404 });
 
     return NextResponse.json({ ok: true, item: data });
   } catch (err) {
