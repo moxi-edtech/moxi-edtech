@@ -71,6 +71,7 @@ test("UI permite resolver sem sair e retorna ao mesmo atendimento", () => {
   assert.match(balcao, /<RematriculaWindowRecovery/);
   assert.match(ui, /onRecheck\(\)/);
   assert.match(ui, /can_reopen/);
-  assert.match(ui, /window\.confirm\(/);
+  assert.doesNotMatch(ui, /window\.confirm\(/);
+  assert.match(ui, /Confirmar reabertura para toda a escola/);
   assert.doesNotMatch(ui, /window\.location\.|router\.push\(/);
 });
