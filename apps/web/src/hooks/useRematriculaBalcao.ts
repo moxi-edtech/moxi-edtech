@@ -249,7 +249,7 @@ export function useRematriculaBalcao(opts: {
   const [anoLetivo, setAnoLetivo] =
     useState<StatusResponse["ano_letivo"]>(null);
   const [targetYearLabel, setTargetYearLabel] = useState<string | null>(null);
-  const [rematriculaWindow, setRematriculaWindow] = useState<StatusResponse["window"]>(undefined);
+  const [rematriculaWindow, setRematriculaWindow] = useState<StatusResponse["window"] | null>(null);
   const [destinoTurmaId, setDestinoTurmaId] = useState<string | null>(null);
   const [destinoTurma, setDestinoTurma] = useState<StatusResponse["destino_turma"]>(null);
   const [reconciling, setReconciling] = useState(false);
