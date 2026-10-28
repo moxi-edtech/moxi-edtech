@@ -41,6 +41,31 @@ const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_CERTIFICADO_HABILITACOES',
 ]);
 
+
+/** O estado do pedido não garante que o ficheiro tenha sido emitido. */
+function documentNotice(doc: DocumentoCatalogo) {
+  switch (doc.status) {
+    case "available":
+      return { title: "Disponível para solicitar", message: doc.valor > 0
+        ? "Solicita o documento e envia o comprovativo para continuar."
+        : "Podes solicitar este documento gratuitamente." };
+    case "pending_payment":
+      return { title: "Solicitação realizada", message: "O teu pedido foi criado. Envia o comprovativo para a secretaria validar." };
+    case "pending":
+      return { title: "Comprovativo recebido", message: "Aguardando validação pela secretaria. Não precisas de pagar novamente." };
+    case "blocked":
+      return { title: "Solicitação recebida", message: "Aguardando análise pela secretaria. Consulta aqui as atualizações." };
+    case "rejected":
+      return { title: "Correção necessária", message: doc.reject_reason?.trim()
+        ? `A secretaria solicitou uma correção: ${doc.reject_reason.trim()}.`
+        : "O comprovativo não foi aceite. Consulta o pedido e envia um novo comprovativo." };
+    case "granted":
+      return { title: "Solicitação aprovada", message: "O pedido foi aprovado. Consulta a opção de visualizar ou descarregar quando o documento estiver disponível." };
+    case "canceled":
+      return { title: "Solicitação cancelada", message: "Este pedido foi cancelado. Contacta a secretaria se precisares de ajuda." };
+  }
+}
+
 export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpenNotas }: { embedded?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -191,9 +216,9 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
       } else if (json.status === 'granted') {
         success("Documento gratuito disponível", "O documento foi emitido e já pode ser descarregado.");
       } else if (json.status === 'blocked') {
-        success("Pedido gratuito enviado", "A secretaria precisa aprovar este documento antes da emissão.");
+        success("Solicitação realizada", "Aguardando aprovação pela secretaria.");
       } else {
-        success("Solicitação enviada", json.message || "Seu pedido foi registrado com sucesso.");
+        success("Solicitação realizada", "O pedido foi recebido. Acompanha o estado nesta página.");
       }
       
       void fetchCatalogo(true);
@@ -323,7 +348,11 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                  )}
                </div>
 
-              {/* Motivo de Rejeição (se houver) */}
+              <div role="status" className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+                 <p className="text-sm font-semibold text-foreground">{documentNotice(doc).title}</p>
+                 <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{documentNotice(doc).message}</p>
+               </div>
+               {/* Motivo de Rejeição (se houver) */}
               {doc.status === 'rejected' && doc.reject_reason && (
                 <div className="mt-1 flex items-start gap-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">
                   <AlertCircle size={15} className="shrink-0 mt-0.5" />
@@ -339,7 +368,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
         onSuccess={() => {
-          success("Comprovativo enviado", "A secretaria vai verificar o teu comprovativo.");
+          success("Comprovativo recebido", "Aguardando validação pela secretaria. Não precisas de pagar novamente.");
           void fetchCatalogo(true);
         }}
         studentId={studentId}
