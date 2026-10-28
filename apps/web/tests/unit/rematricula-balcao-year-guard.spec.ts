@@ -4,28 +4,18 @@ import { readFileSync } from "node:fs";
 
 import { resolveBalcaoRematriculaTargetYear } from "../../src/lib/rematricula/balcao-target-year";
 
-test("destino usa matrícula mais recente e não o ano ativo da escola", () => {
-  assert.equal(resolveBalcaoRematriculaTargetYear({
-    sourceAcademicYear: 2026,
-    latestStudentAcademicYear: 2025,
-    hasCurrentAcademicYearOperation: false,
-    openWindowAcademicYear: null,
-  }), 2026);
-  assert.equal(resolveBalcaoRematriculaTargetYear({
-    sourceAcademicYear: 2026,
-    latestStudentAcademicYear: 2026,
-    hasCurrentAcademicYearOperation: false,
-    openWindowAcademicYear: null,
-  }), 2027);
+test("sessão de destino é a escolhida pelo operador, nunca calculada pela última matrícula", () => {
+  assert.equal(resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: 2026 }), 2026);
+  assert.equal(resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: 2025 }), 2025);
+  assert.equal(resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: 2027 }), 2027);
 });
 
-test("pedido existente continua no ano que originou a operação", () => {
-  assert.equal(resolveBalcaoRematriculaTargetYear({
-    sourceAcademicYear: 2026,
-    latestStudentAcademicYear: 2026,
-    hasCurrentAcademicYearOperation: true,
-    openWindowAcademicYear: null,
-  }), 2026);
+test("API resolve a janela da sessão seleccionada, sem inferir próxima matrícula", () => {
+  const route = readFileSync(new URL("../../src/app/api/secretaria/balcao/rematriculas/status/route.ts", import.meta.url), "utf8");
+  assert.match(route, /selectedAcademicYear: Number\(academicContext\.anoLetivoLabel\.slice\(0, 4\)\)/);
+  assert.match(route, /resolveRematriculaWindow\(supabase, escolaId, targetAnoLetivoAno\)/);
+  assert.doesNotMatch(route, /openTargetWindow/);
+  assert.doesNotMatch(route, /latestStudentAcademicYear|ultimaMatriculaDoAluno/);
 });
 
 test("API nunca inventa sessão do ano destino nem omite o estado de bloqueio", () => {
