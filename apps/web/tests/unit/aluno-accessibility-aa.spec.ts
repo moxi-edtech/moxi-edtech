@@ -51,7 +51,7 @@ test("mobile interactive targets have at least 44px, theme-aware foregrounds and
     source("components/aluno/disciplinas/DisciplinasList.tsx"),
   ]);
   assert.match(notes, /inline-flex min-h-11 items-center gap-1\.5 px-1 text-sm/);
-  assert.match(dash, /inline-flex min-h-11 items-center gap-1\.5/);
+  assert.match(dash, /<PortalAction href=\{go\(item.href\)\}/);
   const portalAction = await source("components/portal/ui/PortalAction.tsx");
   assert.match(docs, /<PortalAction onClick=\{\(\) => void handleAction\(doc\)\}/);
   assert.match(portalAction, /inline-flex min-h-11/);
