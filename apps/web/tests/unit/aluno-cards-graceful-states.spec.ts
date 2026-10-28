@@ -19,7 +19,7 @@ test("cartões do aluno são curtos, exibem motivo só quando rejeitado e preser
   assert.match(docs, /line-clamp-2 break-words/);
   assert.match(docs, /onClick=\{\(\) => void handleAction\(doc\)\}/);
   assert.doesNotMatch(docs, /TrackAndTraceStepper|Autenticidade & Segurança|Próximo passo:/);
-  assert.match(dashboard, /data-testid="attention"/);
+  assert.match(dashboard, /testId="attention"/);
   assert.match(dashboard, /divide-y divide-border/);
   assert.doesNotMatch(dashboard, /Precisa da tua atenção/);
 });
