@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       base().eq("status", "falta"),
       base().eq("status", "presente"),
       base().eq("status", "atraso"),
-      supabase.from("frequencias").select("id,data,status,observacao,periodo_letivo_id,aula_id")
+      supabase.from("frequencias").select("id,data,status,periodo_letivo_id,aula_id")
         .eq("escola_id", scope.escolaId).eq("matricula_id", scope.matriculaId)
         .eq("status", "falta").order("data", { ascending: false }).limit(100),
       // Types will be regenerated when the migration is applied.
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
       if (!byFrequency.has(item.frequencia_id)) byFrequency.set(item.frequencia_id, item);
     }
     const items = (attendance.data ?? []).map((item) => ({
-      id: item.id, data: item.data, observacao: item.observacao,
+      id: item.id, data: item.data,
       disciplina_nome: item.aula_id ? subjectByAula.get(item.aula_id) ?? null : null,
       periodo_letivo_id: item.periodo_letivo_id,
       justificacao: byFrequency.get(item.id) ?? null,
