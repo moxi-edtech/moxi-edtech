@@ -36,7 +36,7 @@ export function AdmissionReceiptRecovery({ pagamentoId }: { pagamentoId: string 
   }
 
   return (
-    <div aria-live="polite" className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-700">
+    <div aria-live="polite" className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
       {printUrl ? (
         <a
           href={printUrl} target="_blank" rel="noopener noreferrer"
@@ -53,7 +53,7 @@ export function AdmissionReceiptRecovery({ pagamentoId }: { pagamentoId: string 
           </span>
           <button
             type="button" onClick={() => void recheck()} disabled={status === "checking"}
-            className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 px-4 py-2 font-semibold disabled:opacity-50"
+            className="inline-flex min-h-10 items-center rounded-lg border border-border px-4 py-2 font-semibold disabled:opacity-50"
           >
             Verificar recibo
           </button>
