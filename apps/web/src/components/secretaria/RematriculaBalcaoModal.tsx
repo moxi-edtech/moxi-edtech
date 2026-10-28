@@ -750,7 +750,7 @@ function StepAcademico({
               <button
                 type="button"
                 onClick={onRetryTurmas}
-                className="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 font-bold text-amber-900 hover:bg-amber-100"
+                className="mt-3 rounded-xl border border-amber-300 bg-card px-3 py-2 font-bold text-amber-900 hover:bg-amber-100"
               >
                 Verificar turmas novamente
               </button>
