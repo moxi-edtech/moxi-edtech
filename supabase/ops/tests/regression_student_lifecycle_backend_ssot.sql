@@ -50,6 +50,37 @@ BEGIN
     'public.finalizar_matricula_anual(uuid,uuid,text,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'LIFECYCLE_REGRESSION: legacy writer accessible to JWT';
   END IF;
+  -- O filtro de polos por si só NÃO autoriza escrita: em escolas sem polos
+  -- cc_security.allowed_turma devolve true para utilizadores autenticados.
+  -- É obrigatório exigir um papel operacional também.
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies p
+    WHERE p.schemaname='public' AND p.tablename='matriculas'
+      AND p.policyname IN (
+        'lifecycle_matriculas_insert_staff',
+        'lifecycle_matriculas_update_staff',
+        'lifecycle_matriculas_delete_staff'
+      )
+      AND (
+        NOT EXISTS (
+          SELECT 1
+          WHERE coalesce(p.qual,p.with_check,'') LIKE '%user_has_role_in_school%'
+        )
+        OR coalesce(p.qual,p.with_check,'') LIKE '%OR cc_security.allowed_turma%'
+      )
+  ) THEN
+    RAISE EXCEPTION 'LIFECYCLE_REGRESSION: polo is being used in place of staff authorization';
+  END IF;
+  IF (SELECT count(*) FROM pg_policies p
+      WHERE p.schemaname='public' AND p.tablename='matriculas'
+      AND p.policyname IN (
+        'lifecycle_matriculas_insert_staff',
+        'lifecycle_matriculas_update_staff',
+        'lifecycle_matriculas_delete_staff'
+      )) <> 3 THEN
+    RAISE EXCEPTION 'LIFECYCLE_REGRESSION: required staff write policies absent';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc
     WHERE oid='public.finalizar_matricula_blindada(uuid,uuid,text,boolean,text)'::regprocedure
