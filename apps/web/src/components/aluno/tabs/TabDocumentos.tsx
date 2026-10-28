@@ -2,8 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { FileText, Download, Loader2, CheckCircle2, Wallet, Clock, AlertCircle, Upload, XCircle, ChevronRight, } from "lucide-react";
-import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { usePathname, useSearchParams } from "next/navigation";
+import { PortalSurface } from "@/components/portal/ui/PortalSurface";
+import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
+import { PortalLoadingState } from "@/components/portal/ui/PortalLoadingState";
+import { PortalStatus } from "@/components/portal/ui/PortalStatus";
+import { PortalAction } from "@/components/portal/ui/PortalAction";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { BOLETIM_SERVICE_CODE, BOLETIM_LEGACY_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
@@ -40,6 +44,7 @@ const DIGITAL_DOCUMENT_CODES = new Set([
 export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpenNotas }: { embedded?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const router = useRouter();
   const escolaSlug = getEscolaParamFromPath(pathname);
   const { error, success } = useToast();
   const studentId = searchParams?.get("aluno") ?? null;
@@ -140,7 +145,12 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
     }
     if (doc.status === 'granted') {
       if (DIGITAL_DOCUMENT_CODES.has(doc.codigo)) handleDownload(doc);
-      else window.location.assign('/aluno/avisos');
+      else {
+         const nav = new URLSearchParams();
+         if (studentId) nav.set("aluno", studentId);
+         if (academicYearId) nav.set("ano_letivo_id", academicYearId);
+         router.push(buildPortalHref(escolaSlug, `/aluno/avisos${nav.size ? `?${nav.toString()}` : ""}`));
+       }
     } else if (doc.status === 'rejected' && isBoletimServiceCode(doc.codigo)) {
       if (!doc.pagamento_intent_id) {
         error("Comprovativo não localizado", "Contacte a secretaria. Não solicite outro boletim nem pague novamente.");
@@ -231,14 +241,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
     }
   };
 
-  if (fetching) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-        <Loader2 className="animate-spin mb-3 h-7 w-7 text-emerald" />
-        <p className="text-xs font-medium">A carregar os serviços da secretaria...</p>
-      </div>
-    );
-  }
+  if (fetching) return <PortalLoadingState label="A carregar documentos" rows={3} className="pb-4" />;
 
   return (
     <div className="min-w-0 space-y-4 pb-8">
@@ -255,17 +258,16 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900" role="alert">
           <p className="font-black">Não foi possível carregar os serviços.</p>
           <p className="mt-1 text-xs">{catalogError} Os seus pedidos anteriores não foram alterados.</p>
-          <button type="button" onClick={() => void fetchCatalogo()} className="mt-3 min-h-11 rounded-xl bg-rose-700 px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-ring">Tentar novamente</button>
+          <PortalAction onClick={() => void fetchCatalogo()} variant="outline" className="mt-2">Tentar novamente</PortalAction>
         </div>
       ) : null}
 
       {visibleDocs.length === 0 ? (
-        <div className="p-10 text-center bg-white rounded-3xl border border-slate-100/80 shadow-sm space-y-3">
-          <AlertCircle className="mx-auto h-9 w-9 text-slate-300" />
-          <p className="text-sm font-bold text-slate-700">
-            {serviceCode ? "Este serviço já não está disponível na Secretaria Digital." : "Nenhum serviço de documentação disponível."}
-          </p>
-        </div>
+        <PortalEmptyState
+           icon={<FileText className="h-5 w-5" />}
+           title={serviceCode ? "Serviço indisponível" : "Sem documentos disponíveis"}
+           description={serviceCode ? "Consulta outros serviços ou contacta a secretaria." : "A secretaria ainda não publicou serviços de documentação."}
+         />
       ) : (
         <div className="space-y-2">
           {visibleDocs.map((doc) => (
