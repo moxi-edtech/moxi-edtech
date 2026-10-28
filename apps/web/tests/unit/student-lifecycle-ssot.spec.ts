@@ -166,3 +166,32 @@ test("all school lifecycle APIs consume the database security-invoker SSOT view"
   assert.match(viewMigration, /historico_snapshot_locks/);
   assert.match(viewMigration, /status='fechado'/);
 });
+
+
+test("legacy selective rematriculation cannot bypass canonical RAA or move an unselected student", () => {
+  const route = readFileSync(
+    new URL("../../src/app/api/secretaria/rematricula/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(route, /LIFECYCLE_CANONICAL_RAA_REQUIRED/);
+  assert.match(route, /status: 409/);
+  assert.doesNotMatch(route, /\.insert\(newMatriculas\)|\.update\(\{ status: 'transferido' \}\)/);
+  assert.doesNotMatch(route, /rpc\('rematricula_em_massa'/);
+});
+
+test("bulk terminal-class closing invokes GradeEngine writer per enrollment", () => {
+  const route = readFileSync(
+    new URL("../../src/app/api/secretaria/rematricula/confirmar/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(route, /rpc\('finalizar_matricula_blindada'/);
+  assert.match(route, /conclusoes: resultsConclusoes/);
+  assert.match(route, /p_is_override_manual: false/);
+  assert.doesNotMatch(route, /\.update\(\{ status: 'concluido' \}\)/);
+  const page = readFileSync(
+    new URL("../../src/app/secretaria/(portal-secretaria)/rematricula/confirmar/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(page, /summary\.conclusoes/);
+  assert.match(page, /Rever no Balcão/);
+});
