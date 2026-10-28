@@ -14,6 +14,7 @@ type Janela = {
 };
 
 type Props = {
+  escolaId: string;
   anoLetivo: { id: string; ano: number; label: string };
   onRecheck: () => Promise<unknown>;
 };
@@ -46,7 +47,7 @@ function formatLuanda(value: string) {
  * Small, in-place, permission-gated operational recovery. Does not touch the
  * selected student, the cart, the rematricula modal, notes, or any payment.
  */
-export function RematriculaWindowRecovery({ anoLetivo, onRecheck }: Props) {
+export function RematriculaWindowRecovery({ escolaId, anoLetivo, onRecheck }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -61,7 +62,7 @@ export function RematriculaWindowRecovery({ anoLetivo, onRecheck }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/secretaria/rematricula/janelas", { cache: "no-store" });
+      const response = await fetch(`/api/secretaria/rematricula/janelas?escolaId=${encodeURIComponent(escolaId)}`, { cache: "no-store" });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error ?? "Não foi possível consultar a janela.");
       const rows = (Array.isArray(data.items) ? data.items : []) as Janela[];
@@ -77,7 +78,7 @@ export function RematriculaWindowRecovery({ anoLetivo, onRecheck }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [anoLetivo.ano]);
+  }, [anoLetivo.ano, escolaId]);
 
   const save = async () => {
     if (!canReopen || saving || motivo.trim().length < 10) return;
@@ -112,7 +113,7 @@ export function RematriculaWindowRecovery({ anoLetivo, onRecheck }: Props) {
         ativa: true,
         observacao: observation,
       };
-      const response = await fetch("/api/secretaria/rematricula/janelas", {
+      const response = await fetch(`/api/secretaria/rematricula/janelas?escolaId=${encodeURIComponent(escolaId)}`, {
         method: janela ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
