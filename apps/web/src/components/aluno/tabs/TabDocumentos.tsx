@@ -247,22 +247,22 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
     <div className="min-w-0 space-y-4 pb-8">
       {/* Cabeçalho */}
       {!embedded && <header className="px-1 space-y-1">
-        <h2 className="text-xl font-black text-slate-900 tracking-tight">Secretaria Digital</h2>
-        <p className="text-xs font-medium text-slate-500 leading-relaxed">
-          Escolha o documento, envie o comprovativo de pagamento e acompanhe a validação da secretaria.
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">Secretaria Digital</h2>
+        <p className="text-sm leading-5 text-muted-foreground">
+          Solicita documentos e acompanha os teus pedidos.
         </p>
       </header>}
       {embedded && <p className="text-sm leading-6 text-muted-foreground">Solicita documentos e acompanha o estado dos teus pedidos.</p>}
 
       {catalogError ? (
-        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-900" role="alert">
-          <p className="font-black">Não foi possível carregar os serviços.</p>
-          <p className="mt-1 text-xs">{catalogError} Os seus pedidos anteriores não foram alterados.</p>
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-foreground" role="alert">
+          <p className="font-semibold">Não foi possível carregar os documentos.</p>
+          <p className="mt-1 text-xs">{catalogError}</p>
           <PortalAction onClick={() => void fetchCatalogo()} variant="outline" className="mt-2">Tentar novamente</PortalAction>
         </div>
       ) : null}
 
-      {visibleDocs.length === 0 ? (
+      {!catalogError && (visibleDocs.length === 0 ? (
         <PortalEmptyState
            icon={<FileText className="h-5 w-5" />}
            title={serviceCode ? "Serviço indisponível" : "Sem documentos disponíveis"}
@@ -333,7 +333,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
             </PortalSurface>
           ))}
         </div>
-      )}
+      ))}
 
       <ServicePaymentDrawer 
         open={showDrawer}
