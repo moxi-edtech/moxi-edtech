@@ -38,6 +38,9 @@ const DeleteSchema = z.object({
 class IntakePolicyError extends Error {
   readonly status = 409;
 }
+class WindowPermissionError extends Error {
+  readonly status = 403;
+}
 
 async function requireAccess(req: Request) {
   const supabase = await supabaseServerTyped();
@@ -146,10 +149,10 @@ async function requireBalcaoWindowRecovery(
     escolaId: access.escolaId,
     roles: ["admin", "admin_escola", "staff_admin", "admin_secretaria", "diretor"],
   });
-  if (authz.error) throw new IntakePolicyError("Só a direção ou um administrador autorizado pode reabrir a janela.");
+  if (authz.error) throw new WindowPermissionError("Só a direção ou um administrador autorizado pode reabrir a janela.");
   const { data: ano, error } = await access.supabase
     .from("anos_letivos")
-    .select("id, ano, ativo")
+    .select("id, ano, ativo, data_inicio, data_fim")
     .eq("id", anoLetivoId)
     .eq("escola_id", access.escolaId)
     .eq("ano", anoLetivo)
@@ -157,6 +160,9 @@ async function requireBalcaoWindowRecovery(
     .maybeSingle();
   if (error) throw error;
   if (!ano) throw new IntakePolicyError("O ano selecionado não é a sessão ativa desta escola.");
+  if (ano.data_fim && new Date(dataFim).getTime() > new Date(`${ano.data_fim}T23:59:59+01:00`).getTime()) {
+    throw new IntakePolicyError("O encerramento da janela não pode ultrapassar o final da sessão letiva selecionada.");
+  }
 }
 
 export async function GET(req: Request) {
@@ -190,7 +196,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, items: janelas ?? [], anos: anos ?? [], can_reopen: canRecover });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
-    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError ? err.status : 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError || err instanceof WindowPermissionError ? err.status : 500 });
   }
 }
 
@@ -253,7 +259,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, item: data });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
-    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError ? err.status : 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError || err instanceof WindowPermissionError ? err.status : 500 });
   }
 }
 
@@ -347,7 +353,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true, item: data });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
-    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError ? err.status : 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError || err instanceof WindowPermissionError ? err.status : 500 });
   }
 }
 
