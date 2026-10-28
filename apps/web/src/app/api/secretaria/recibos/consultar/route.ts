@@ -104,7 +104,7 @@ export async function GET(request: Request) {
   const escolaId = await resolveEscolaIdForUser(db, user.id);
   if (!escolaId) return NextResponse.json({ ok: false, error: "Sem permissão." }, { status: 403 });
   const authorization = await requireRoleInSchool({
-    supabase: db, escolaId, roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP],
+    supabase: db, escolaId, roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP, 'diretor'],
   });
   if (authorization.error) return authorization.error;
 
