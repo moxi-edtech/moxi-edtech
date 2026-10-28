@@ -123,14 +123,22 @@ export async function GET(request: Request) {
       if (!payment) return NextResponse.json({ ok: false, error: "Pagamento não encontrado nesta escola." }, { status: 404 });
       if (payment.status !== "settled") return pendingReceipt();
 
+      // An intermediate payment explicitly suppressed its own receipt.
+      // Resolve its actual issuer FIRST: a direct document on the same
+      // mensalidade could belong to an earlier, different payment.
+      const batches = candidateReceiptBatchIds([payment]);
+      if (payment.meta?.emitir_recibo === false) {
+        if (!batches.length) return pendingReceipt(); // No reliable association.
+        const consolidated = await findConsolidatedReceipt(db, escolaId, payment.aluno_id, batches);
+        return consolidated ? readyReceipt(consolidated, "consolidated") : pendingReceipt();
+      }
+
+      // An independent payment has its own document, indexed by the
+      // mensualidade or the service payment ID.
       const document = payment.mensalidade_id
         ? await findIssuedDocument(db, escolaId, payment.aluno_id, { mensalidadeId: payment.mensalidade_id })
         : await findIssuedDocument(db, escolaId, payment.aluno_id, { paymentId: payment.id });
-      if (document) return readyReceipt(document, "payment");
-
-      const batches = candidateReceiptBatchIds([payment]);
-      const consolidated = await findConsolidatedReceipt(db, escolaId, payment.aluno_id, batches);
-      return consolidated ? readyReceipt(consolidated, "consolidated") : pendingReceipt();
+      return document ? readyReceipt(document, "payment") : pendingReceipt();
     }
 
     const { data: monthly, error: monthlyError } = await db.from("mensalidades")
