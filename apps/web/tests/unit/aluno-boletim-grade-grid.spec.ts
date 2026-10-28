@@ -15,7 +15,8 @@ test("a grelha mostra disciplinas autorizadas mesmo quando o boletim está bloqu
   assert.match(ui, /fetch\(`\/api\/aluno\/disciplinas\$\{bulletinQuery\}`/);
   assert.match(ui, /setCurriculumScope\(bulletinQuery\)/);
   assert.match(ui, /curriculumScope === bulletinQuery \? curriculum : \[\]/);
-  assert.match(ui, /const gridSubjects = safeIsLiberado \? safeDisciplinas : safeCurriculum/);
+  assert.match(ui, /const gridSubjects = safeIsLiberado/);
+  assert.match(ui, /byId\.get\(disc\.id\) \?\? disc/);
   assert.match(ui, /\.map\(\(d\) => \(\{ id: d\.id, nome: d\.nome, avaliacoes: \[\] \}\)\)/);
   assert.match(grid, /avaliacoes: locked \? \[\] : subject\.avaliacoes/);
   assert.match(grid, /locked \? \(/);
