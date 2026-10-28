@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { findIssuedOperationalReceiptByPayment } from "@/lib/financeiro/recover-receipt-after-payment";
 
 /** Only reads the operational document of the already-settled payment. */
-export function AdmissionReceiptRecovery({ pagamentoId }: { pagamentoId: string }) {
+export function AdmissionReceiptRecovery({ pagamentoId, escolaId }: { pagamentoId: string; escolaId?: string }) {
   const [printUrl, setPrintUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"checking" | "pending" | "error">("checking");
 
@@ -13,7 +13,7 @@ export function AdmissionReceiptRecovery({ pagamentoId }: { pagamentoId: string 
     setPrintUrl(null);
     setStatus("checking");
     void findIssuedOperationalReceiptByPayment(pagamentoId, {
-      signal: controller.signal, attempts: 12,
+      signal: controller.signal, attempts: 12, escolaId,
     }).then((url) => {
       if (controller.signal.aborted) return;
       if (url) setPrintUrl(url);
@@ -22,12 +22,12 @@ export function AdmissionReceiptRecovery({ pagamentoId }: { pagamentoId: string 
       if (!controller.signal.aborted) setStatus("error");
     });
     return () => controller.abort();
-  }, [pagamentoId]);
+  }, [pagamentoId, escolaId]);
 
   async function recheck() {
     setStatus("checking");
     try {
-      const url = await findIssuedOperationalReceiptByPayment(pagamentoId, { attempts: 1 });
+      const url = await findIssuedOperationalReceiptByPayment(pagamentoId, { attempts: 1, escolaId });
       if (url) setPrintUrl(url);
       else setStatus("pending");
     } catch {
