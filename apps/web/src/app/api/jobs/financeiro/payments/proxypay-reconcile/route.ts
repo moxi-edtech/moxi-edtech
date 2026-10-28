@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const token = request.headers.get("x-job-token") || request.headers.get("authorization")?.replace("Bearer ", "");
   if (!expectedToken || token !== expectedToken) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const db = admin();
-  const { data: event } = await db.from("payment_provider_events").select("id, provider_id, school_id, payload, status").eq("status", "pending").order("received_at", { ascending: true }).limit(1).maybeSingle();
+  const { data: event } = await db.from("payment_provider_events").select("id, provider_id, school_id, payload, status, provider:school_payment_providers!inner(provider_type)").eq("provider.provider_type", "proxypay").eq("status", "pending").order("received_at", { ascending: true }).order("id", { ascending: true }).limit(1).maybeSingle();
   if (!event) return NextResponse.json({ ok: true, processed: 0 });
   await db.from("payment_provider_events").update({ status: "processing" }).eq("id", event.id).eq("status", "pending");
   try {

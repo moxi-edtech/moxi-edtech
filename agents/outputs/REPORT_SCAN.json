@@ -1,0 +1,35 @@
+{
+  "contrato_versao": "2.0.0",
+  "run_id": "a1338163-1df9-4a14-9f79-ff677e5f3e84",
+  "run_timestamp": "2026-10-28T22:43:15.571266+00:00",
+  "commit": "b425b0bd663959385a4b6ed202666d08e87f7a9c",
+  "veredito": "WARN",
+  "can_merge": false,
+  "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "regressions": 0
+  },
+  "findings": [],
+  "exceptions_applied": [
+    "EXC-SEC-001-B:/api/webhooks/appypay",
+    "EXC-SEC-002-A:/api/webhooks/appypay"
+  ],
+  "scope": "AppyPay: rotas e módulos alterados; não é auditoria global integral",
+  "validation": {
+    "unit_http_tests": 14,
+    "local_postgresql_scenarios": 3,
+    "module_strict_types": "passed",
+    "global_typecheck": "blocked by unavailable project dependencies",
+    "provider_authentication": "passed; no charges created"
+  },
+  "warnings": [
+    "APY-001",
+    "APY-002",
+    "APY-003"
+  ],
+  "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem regressões a reportar",
+  "legacy_scan": "Executado e arquivado com prefixo LEGACY_; formato/cobertura incompatíveis com contrato 2.0.0; não usado como prova de PASS."
+}
