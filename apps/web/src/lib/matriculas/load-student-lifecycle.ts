@@ -29,6 +29,8 @@ type EstadoDb = {
  * transforme erro da view em resultado académico "aprovado".
  */
 export async function carregarCicloVidaAluno(
+  // O cliente fornecido pela rota pode ter esquemas tipados distintos; a view é validada abaixo.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   escolaId: string,
   alunoId: string,
