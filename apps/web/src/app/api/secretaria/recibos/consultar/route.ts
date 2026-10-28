@@ -121,7 +121,16 @@ export async function GET(request: Request) {
         .eq("escola_id", escolaId).eq("id", parsed.data.pagamento_id).maybeSingle();
       if (error) throw new Error("PAYMENT_LOOKUP_FAILED");
       if (!payment) return NextResponse.json({ ok: false, error: "Pagamento não encontrado nesta escola." }, { status: 404 });
-      if (payment.status !== "settled") return pendingReceipt();
+      if (payment.status !== "settled") {
+        // A non-settled payment is NOT a paid transaction awaiting its receipt.
+        // Return a distinct state so the operator never mistakes a voided or
+        // unconfirmed charge for a completed checkout.
+        return NextResponse.json({
+          ok: false,
+          status: "not_settled",
+          error: "Pagamento não liquidado. Verifique o estado antes de efetuar outra cobrança.",
+        }, { status: 409, headers: noStore });
+      }
 
       // An intermediate payment explicitly suppressed its own receipt.
       // Resolve its actual issuer FIRST: a direct document on the same
