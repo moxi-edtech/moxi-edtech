@@ -1376,6 +1376,7 @@ function Catalogo({
   rematriculaState,
   rematriculaPrice,
   rematriculaAnoLabel,
+  rematriculaWindow,
   rematriculaAcademic,
   reconcilingPedido,
   rematriculaError,
@@ -1402,6 +1403,7 @@ function Catalogo({
   rematriculaState: RematriculaCardState | "CHECKING" | null;
   rematriculaPrice: number | null;
   rematriculaAnoLabel: string | null;
+  rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: {
     reason?: string;
     disciplina_ids_pendentes?: string[];
@@ -1661,8 +1663,14 @@ function Catalogo({
                 <strong className="block text-slate-900">Período de rematrícula fechado</strong>
                 <p className="mt-1">
                   A escola ainda não tem uma janela de rematrícula aberta para{" "}
-                  {rematriculaAnoLabel ?? "este ano letivo"}. Abra-a antes de iniciar novas operações.
+                  {rematriculaAnoLabel ?? "este ano letivo"}. A administração deve configurar uma nova janela antes de iniciar novas operações.
                 </p>
+                {rematriculaWindow?.data_fim ? (
+                  <p className="mt-1">
+                    Última janela encerrada em{" "}
+                    <strong>{new Date(rematriculaWindow.data_fim).toLocaleDateString("pt-AO", { timeZone: "Africa/Luanda" })}</strong>.
+                  </p>
+                ) : null}
                 <CodigoEstado estado="WINDOW_CLOSED" />
               </div>
             ) : null}
@@ -3156,6 +3164,7 @@ export default function BalcaoAtendimento({
                   }
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
                   rematriculaAnoLabel={rematricula.targetYearLabel ?? rematricula.anoLetivo?.label ?? null}
+                  rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
                   reconcilingPedido={rematricula.reconciling}
                   rematriculaError={rematricula.apiError}
