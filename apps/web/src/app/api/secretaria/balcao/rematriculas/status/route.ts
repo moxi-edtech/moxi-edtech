@@ -105,7 +105,7 @@ export async function GET(request: Request) {
       .eq("servico_codigo", "SERV_REMATRICULA")
       .in("status", ["pending_payment", "granted"])
       .order("created_at", { ascending: false });
-    const targetScope = await resolveAnoLetivoScope(supabase, escolaId, { ano: targetAnoLetivoAno });
+    const targetScope = await resolveAnoLetivoScope(supabase, escolaId, { anoLetivoId: academicContext.anoLetivoId });
     // Nunca associar o ano destino ao ID do ano de origem. Isso criava um
     // contexto contraditório (ex.: etiqueta 2027/2028, sessão real 2026/2027).
     if (!targetScope) {
