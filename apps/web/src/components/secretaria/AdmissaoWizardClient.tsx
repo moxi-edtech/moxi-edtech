@@ -2047,11 +2047,13 @@ function Step3Pagamento(props: {
       }
       return setResult({ ok: false, error: convertResp.error });
     }
+    // Keep the success screen and its receipt actions visible until the user
+    // explicitly continues. The Balcão success callback switches to "desk"
+    // and would otherwise unmount the receipt before it could be printed.
     setResult({
       ...convertResp.data,
       message: convertResp.data.message ?? "Matrícula concluída pela secretaria.",
     });
-    onCompleted?.(convertResp.data.aluno_id);
   };
 
   const handleSaveForLater = async () => {
@@ -2171,8 +2173,12 @@ function Step3Pagamento(props: {
               <button
                 type="button"
                 onClick={() => {
-                  if (embedded && onActionChange) onActionChange("desk");
-                  else router.push(`${secretariaBase}/matriculas`);
+                  if (embedded) {
+                    if (onCompleted) onCompleted(result.aluno_id);
+                    else onActionChange?.("desk");
+                  } else {
+                    router.push(`${secretariaBase}/matriculas`);
+                  }
                 }}
                 className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-black text-slate-700"
               >
