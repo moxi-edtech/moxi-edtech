@@ -54,6 +54,8 @@ interface RematriculaBalcaoModalProps {
   // Turmas
   turmas: TurmaOption[];
   turmasLoading: boolean;
+  turmasError?: string | null;
+  onRetryTurmas?: () => void;
   progressao: ProgressaoBalcao | null;
   decisaoResultado: ResultadoDecisaoBalcao;
   setDecisaoResultado: (value: ResultadoDecisaoBalcao) => void;
@@ -171,6 +173,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     onRegularizeDebt,
     turmas,
     turmasLoading,
+    turmasError = null,
+    onRetryTurmas,
     progressao,
     decisaoResultado,
     setDecisaoResultado,
@@ -389,6 +393,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               anoLetivo={anoLetivo}
               turmas={turmas}
               turmasLoading={turmasLoading}
+              turmasError={turmasError}
+              onRetryTurmas={onRetryTurmas}
               progressao={progressao}
               cohort={cohort}
               reconciliationOnly={reconciliationOnly}
@@ -492,6 +498,8 @@ function StepAcademico({
   anoLetivo,
   turmas,
   turmasLoading,
+  turmasError,
+  onRetryTurmas,
   progressao,
   cohort,
   reconciliationOnly,
@@ -518,6 +526,8 @@ function StepAcademico({
   anoLetivo: { id: string; ano: number; label: string };
   turmas: TurmaOption[];
   turmasLoading: boolean;
+  turmasError?: string | null;
+  onRetryTurmas?: () => void;
   progressao: ProgressaoBalcao | null;
   cohort: { codigo: string; nome: string; modo: string } | null;
   reconciliationOnly: boolean;
@@ -692,7 +702,7 @@ function StepAcademico({
           ref={selectRef}
           value={selectedTurmaId || ""}
           onChange={(e) => setSelectedTurmaId(e.target.value || null)}
-          disabled={turmasLoading}
+          disabled={turmasLoading || Boolean(turmasError) || turmas.length === 0}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5
             text-sm font-medium text-slate-900 outline-none
             focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
@@ -718,10 +728,27 @@ function StepAcademico({
             );
           })}
         </select>
-        {!turmasLoading && turmas.length === 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            Não há turma elegível para a decisão devolvida pelo RAA no ano de destino.
-            Corrija a configuração da classe/turma ou resolva a situação académica indicada antes de continuar.
+        {!turmasLoading && (turmasError || turmas.length === 0) && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950" role="status">
+            <strong className="block">
+              {turmasError ? "Não foi possível carregar as turmas" : "Nenhuma turma de destino disponível"}
+            </strong>
+            <p className="mt-1">
+              {turmasError
+                ?? progressao?.orientacao?.proximo_passo
+                ?? (progressao?.modo === "retencao"
+                  ? "Confirme que existe uma turma da mesma classe no ano de destino."
+                  : "Verifique a decisão do RAA e a configuração académica do ano de destino.")}
+            </p>
+            {onRetryTurmas && (
+              <button
+                type="button"
+                onClick={onRetryTurmas}
+                className="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 font-bold text-amber-900 hover:bg-amber-100"
+              >
+                Verificar turmas novamente
+              </button>
+            )}
           </div>
         )}
         {selectedTurmaId && turmas.find((turma) => turma.id === selectedTurmaId) && (
