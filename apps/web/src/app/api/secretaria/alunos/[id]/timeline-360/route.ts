@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
+import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -45,8 +46,10 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
+    const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, params.data.id);
     return NextResponse.json({
       ok: true,
+      cicloVida,
       aluno_id: params.data.id,
       timeline: Array.isArray(data) ? data : [],
     });
