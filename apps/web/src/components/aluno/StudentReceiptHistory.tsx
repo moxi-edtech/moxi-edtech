@@ -5,11 +5,20 @@ import { FileText, Loader2, Printer, RefreshCw } from "lucide-react";
 import type { OperationalReceiptHistoryItem } from "@/lib/financeiro/operational-receipt-history";
 import { formatKwanza } from "@/lib/formatters";
 
+type SettledPaymentHistoryItem = {
+  id: string;
+  registeredAt: string;
+  amount: number;
+  kind: "mensalidade" | "servico";
+};
+
 type ReceiptHistoryResponse = {
   ok?: boolean;
   error?: string;
   recibos?: OperationalReceiptHistoryItem[];
   nextOffset?: number | null;
+  pagamentos?: SettledPaymentHistoryItem[];
+  nextPaymentOffset?: number | null;
 };
 
 function receiptDate(value: string): string {
@@ -35,6 +44,9 @@ export function StudentReceiptHistory({
   const [recibos, setRecibos] = useState<OperationalReceiptHistoryItem[]>([]);
   const [offset, setOffset] = useState(0);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
+  const [pagamentos, setPagamentos] = useState<SettledPaymentHistoryItem[]>([]);
+  const [paymentOffset, setPaymentOffset] = useState(0);
+  const [nextPaymentOffset, setNextPaymentOffset] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -47,6 +59,7 @@ export function StudentReceiptHistory({
     const params = new URLSearchParams({
       escola_id: escolaId,
       offset: String(offset),
+      pagamentos_offset: String(paymentOffset),
     });
     void fetch(
       "/api/secretaria/alunos/" + encodeURIComponent(alunoId) + "/recibos?" + params.toString(),
@@ -54,7 +67,7 @@ export function StudentReceiptHistory({
     )
       .then(async (response) => {
         const body = (await response.json().catch(() => ({}))) as ReceiptHistoryResponse;
-        if (!response.ok || !body.ok || !Array.isArray(body.recibos)) {
+        if (!response.ok || !body.ok || !Array.isArray(body.recibos) || !Array.isArray(body.pagamentos)) {
           throw new Error(body.error || "Não foi possível consultar os recibos.");
         }
         return body;
@@ -67,6 +80,12 @@ export function StudentReceiptHistory({
           return [...current, ...(body.recibos ?? []).filter((receipt) => !seen.has(receipt.id))];
         });
         setNextOffset(typeof body.nextOffset === "number" ? body.nextOffset : null);
+        setPagamentos((current) => {
+          if (paymentOffset === 0) return body.pagamentos ?? [];
+          const seen = new Set(current.map((payment) => payment.id));
+          return [...current, ...(body.pagamentos ?? []).filter((payment) => !seen.has(payment.id))];
+        });
+        setNextPaymentOffset(typeof body.nextPaymentOffset === "number" ? body.nextPaymentOffset : null);
       })
       .catch((cause: unknown) => {
         if (controller.signal.aborted) return;
@@ -77,7 +96,7 @@ export function StudentReceiptHistory({
       });
 
     return () => controller.abort();
-  }, [alunoId, escolaId, offset, reload]);
+  }, [alunoId, escolaId, offset, paymentOffset, reload]);
 
   return (
     <section aria-label="Histórico de recibos" className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -167,6 +186,67 @@ export function StudentReceiptHistory({
           Mostrar mais recibos
         </button>
       )}
+      <div className="mt-5 border-t border-border pt-4">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-semibold text-foreground">Pagamentos registados</h4>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Consulte o recibo de cada pagamento liquidado, mesmo que ainda esteja em processamento.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOffset(0);
+              setPaymentOffset(0);
+              setReload((previous) => previous + 1);
+            }}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium text-foreground disabled:opacity-50"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            Atualizar histórico
+          </button>
+        </div>
+        {pagamentos.length === 0 && !loading && !error && (
+          <p className="py-3 text-sm text-muted-foreground">Ainda não existem pagamentos liquidados para este aluno.</p>
+        )}
+        {pagamentos.length > 0 && (
+          <div className="divide-y divide-border">
+            {pagamentos.map((pagamento) => (
+              <div key={pagamento.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {pagamento.kind === "mensalidade" ? "Pagamento de mensalidade" : "Pagamento de serviço ou matrícula"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {receiptDate(pagamento.registeredAt)} · Liquidado · {formatKwanza(pagamento.amount)}
+                  </p>
+                </div>
+                <a
+                  href={"/secretaria/recibos/acompanhar?pagamento_id=" + encodeURIComponent(pagamento.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-10 items-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                  aria-label={"Consultar recibo do pagamento registado em " + receiptDate(pagamento.registeredAt)}
+                >
+                  Consultar recibo
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+        {nextPaymentOffset !== null && !error && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => setPaymentOffset(nextPaymentOffset)}
+            className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-50"
+          >
+            Mostrar mais pagamentos
+          </button>
+        )}
+      </div>
     </section>
   );
 }
