@@ -25,6 +25,7 @@ export type RematriculaCardState =
   | "PENDING_ORDER_REVIEW"
   | "RECONCILIATION_REQUIRED"
   | "WINDOW_CLOSED"
+  | "TARGET_YEAR_NOT_CONFIGURED"
   | "SOURCE_RECORD_REQUIRED"
   | "ERROR";
 
@@ -146,6 +147,7 @@ interface StatusResponse {
     printUrl: string;
   } | null;
   ano_letivo: { id: string; ano: number; label: string } | null;
+  target_ano_label?: string | null;
   destino_turma_id?: string | null;
   destino_turma?: TurmaOption | null;
   reclassificacao?: {
@@ -246,6 +248,7 @@ export function useRematriculaBalcao(opts: {
     useState<StatusResponse["comprovante"]>(null);
   const [anoLetivo, setAnoLetivo] =
     useState<StatusResponse["ano_letivo"]>(null);
+  const [targetYearLabel, setTargetYearLabel] = useState<string | null>(null);
   const [destinoTurmaId, setDestinoTurmaId] = useState<string | null>(null);
   const [destinoTurma, setDestinoTurma] = useState<StatusResponse["destino_turma"]>(null);
   const [reconciling, setReconciling] = useState(false);
@@ -320,6 +323,7 @@ export function useRematriculaBalcao(opts: {
         setPedido(data.pedido);
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
+        setTargetYearLabel(data.target_ano_label ?? data.ano_letivo?.label ?? null);
         setDestinoTurmaId(data.destino_turma_id ?? null);
         setDestinoTurma(data.destino_turma ?? null);
         setCohort(data.cohort ?? null);
@@ -763,6 +767,7 @@ export function useRematriculaBalcao(opts: {
     pedido,
     comprovante,
     anoLetivo,
+    targetYearLabel,
     destinoTurmaId,
     destinoTurma,
     cohort,
