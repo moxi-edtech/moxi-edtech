@@ -104,7 +104,7 @@ Os novos testes `apps/web/tests/unit/student-lifecycle-ssot.spec.ts` cobrem pend
 
 ## 7. Backend alinhado por migrações instaladas — 28/10/2026
 
-**Esta secção atualiza o diagnóstico inicial e a secção 6.** O backend deixou de ser apenas um inventário e uma projeção TypeScript. Foram aplicadas **dez migrações** ao projeto Supabase KLASSE e cada SQL foi versionado nesta PR:
+**Esta secção atualiza o diagnóstico inicial e a secção 6.** O backend deixou de ser apenas um inventário e uma projeção TypeScript. Foram aplicadas **onze migrações** ao projeto Supabase KLASSE e cada SQL foi versionado nesta PR:
 
 | Versão / migração aplicada | Finalidade |
 |---|---|
@@ -141,3 +141,10 @@ Os novos testes `apps/web/tests/unit/student-lifecycle-ssot.spec.ts` cobrem pend
 6. CI de todos os workflows da PR #282 precisa estar verde; só então permitir merge. Nenhum deploy Next.js foi efetuado nesta frente.
 
 **Regra de proteção:** nunca fechar um histórico, conceder aprovação, alterar notas, emitir novo recibo ou criar obrigação financeira como efeito colateral de "conciliação de status".
+
+
+## 8. Replay seguro e versão final de estabilização
+
+As onze migrações realmente aplicadas em 28/10/2026 foram arquivadas em `supabase/ops/applied_lifecycle_20261028/`. Em `supabase/migrations` permanecem ficheiros de versão equivalente, sem efeitos no replay, pois algumas dependências só surgem nas migrações posteriores `202612` a `202710`. A estabilização determinística de todos os objetos é feita em `supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql`, preservando a autoridade do GradeEngine, o SSOT com `security_invoker` e as restrições de escrita.
+
+O contrato `node scripts/ci/lifecycle-migration-order.mjs` impede que futuras migrações passem silenciosamente depois da estabilização. O SQL de estabilização foi validado numa transação revertida no banco instalado; ainda falta replay completo numa instância descartável. O histórico de produção **não foi reparado nem eliminado**: todas as versões continuam registadas. O fecho dos 550 legados permanece dependente de evidência escolar.

@@ -210,6 +210,9 @@ jobs:
       - name: Class rectification academic and financial linkage contract
         run: node scripts/ci/class-rectification-contract.mjs
 
+      - name: Lifecycle migration order and SSOT final replay contract
+        run: node scripts/ci/lifecycle-migration-order.mjs
+
       - name: Bootstrap minimal Balcao contract
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres

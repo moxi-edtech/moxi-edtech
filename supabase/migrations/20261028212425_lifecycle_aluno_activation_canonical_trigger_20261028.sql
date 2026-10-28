@@ -1,20 +1,6 @@
--- Applied to KLASSE Supabase as 20261028212425.
-CREATE OR REPLACE FUNCTION public.activate_aluno_after_matricula()
-RETURNS trigger
-LANGUAGE plpgsql SET search_path TO 'pg_catalog','public','extensions'
-AS $activate$
-BEGIN
-  -- Status é normalizado para 'ativo' pelo trigger canónico ANTES deste AFTER.
-  -- Não inferir aprovação; atualizar apenas o estado administrativo do aluno.
-  IF NEW.status='ativo' AND NEW.ativo IS TRUE
-     AND NEW.numero_matricula IS NOT NULL
-     AND btrim(NEW.numero_matricula) <> '' THEN
-    UPDATE public.alunos
-       SET status='ativo'
-     WHERE id=NEW.aluno_id
-       AND escola_id=NEW.escola_id
-       AND status IS DISTINCT FROM 'ativo';
-  END IF;
-  RETURN NEW;
-END;
-$activate$;
+-- KLASSE replay shim for an already-applied remote migration (20261028212425).
+-- Original immutable SQL: supabase/ops/applied_lifecycle_20261028/20261028212425_lifecycle_aluno_activation_canonical_trigger_20261028.sql
+-- Objects used here were installed in live DB after later-version dependencies.
+-- Fresh replays must defer these changes to supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql.
+-- Version retained to match the production Supabase migration history.
+SELECT 1 WHERE false;

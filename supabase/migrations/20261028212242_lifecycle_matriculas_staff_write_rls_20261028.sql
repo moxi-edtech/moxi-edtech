@@ -1,7 +1,6 @@
--- Applied to KLASSE Supabase as 20261028212242.
-CREATE POLICY lifecycle_matriculas_insert_staff ON public.matriculas
-AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (((escola_id=public.current_tenant_escola_id() AND (public.user_has_role_in_school(escola_id, ARRAY['secretaria','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin']::text[]) OR cc_security.allowed_turma(escola_id,turma_id,ano_letivo))) OR public.is_super_admin()));
-CREATE POLICY lifecycle_matriculas_update_staff ON public.matriculas
-AS RESTRICTIVE FOR UPDATE TO authenticated USING (((escola_id=public.current_tenant_escola_id() AND (public.user_has_role_in_school(escola_id, ARRAY['secretaria','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin']::text[]) OR cc_security.allowed_turma(escola_id,turma_id,ano_letivo))) OR public.is_super_admin())) WITH CHECK (((escola_id=public.current_tenant_escola_id() AND (public.user_has_role_in_school(escola_id, ARRAY['secretaria','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin']::text[]) OR cc_security.allowed_turma(escola_id,turma_id,ano_letivo))) OR public.is_super_admin()));
-CREATE POLICY lifecycle_matriculas_delete_staff ON public.matriculas
-AS RESTRICTIVE FOR DELETE TO authenticated USING (((escola_id=public.current_tenant_escola_id() AND (public.user_has_role_in_school(escola_id, ARRAY['secretaria','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin']::text[]) OR cc_security.allowed_turma(escola_id,turma_id,ano_letivo))) OR public.is_super_admin()));
+-- KLASSE replay shim for an already-applied remote migration (20261028212242).
+-- Original immutable SQL: supabase/ops/applied_lifecycle_20261028/20261028212242_lifecycle_matriculas_staff_write_rls_20261028.sql
+-- Objects used here were installed in live DB after later-version dependencies.
+-- Fresh replays must defer these changes to supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql.
+-- Version retained to match the production Supabase migration history.
+SELECT 1 WHERE false;
