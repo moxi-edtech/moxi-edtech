@@ -4,7 +4,7 @@ import test from "node:test";
 
 const src = new URL("../../src/", import.meta.url);
 const read = (name) => readFileSync(new URL(name, src), "utf8");
-const migration = readFileSync(new URL("../../../supabase/migrations/20271028160000_aluno_faltas_justificacoes.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../../../../supabase/migrations/20271028160000_aluno_faltas_justificacoes.sql", import.meta.url), "utf8");
 
 test("aba Faltas preserva contexto e fica separada dos documentos pagos", () => {
   const workspace = read("components/aluno/academico/AcademicoWorkspace.tsx");
