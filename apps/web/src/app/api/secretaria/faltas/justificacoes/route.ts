@@ -76,8 +76,10 @@ export async function POST(request: Request) {
       .eq("matricula_id", petition.matricula_id).eq("escola_id", escolaId)
       .eq("data", petition.data_falta).eq("status", "falta").limit(1).maybeSingle();
     if (freqError) throw freqError;
-    if (!freq) return NextResponse.json({
-      ok: false, error: "A falta original foi alterada. Reveja a frequência antes de decidir.",
+    // Uma falta alterada não pode ser aprovada retroativamente. A secretaria
+    // pode, porém, rejeitar o pedido com motivo e encerrar a pendência órfã.
+    if (!freq && parsed.data.decision === "approved") return NextResponse.json({
+      ok: false, error: "A falta original foi alterada. Reveja a frequência antes de aprovar.",
     }, { status: 409 });
 
     const { data: decided, error: updateError } = await supabase.from("aluno_falta_justificacoes")
