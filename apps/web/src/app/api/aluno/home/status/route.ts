@@ -23,9 +23,9 @@ export async function GET(request: Request) {
     // A projeção SSOT escolhe primeiro a sessão mais recente e o vínculo ativo.
     const [{ data: aluno }, cicloVida] = await Promise.all([
       supabase.from("alunos").select("id, nome, foto_url").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
-      carregarCicloVidaAluno(supabase, ctx.escolaId, alunoId),
+      carregarCicloVidaAluno(supabase, ctx.escolaId, alunoId).catch(() => null),
     ]);
-    const corrente = cicloVida.matriculaCorrente;
+    const corrente = cicloVida?.matriculaCorrente ?? null;
     const { data: matricula } = corrente
       ? await supabase.from("matriculas")
           .select("id, status, turma:turmas(nome, classe:classes(nome)), percentagem_presencas")
@@ -33,7 +33,11 @@ export async function GET(request: Request) {
           .eq("aluno_id", alunoId)
           .eq("escola_id", ctx.escolaId)
           .maybeSingle()
-      : { data: null };
+      : await supabase.from("matriculas")
+          .select("id, status, turma:turmas(nome, classe:classes(nome)), percentagem_presencas")
+          .eq("aluno_id", alunoId).eq("escola_id", ctx.escolaId)
+          .order("ano_letivo", { ascending: false }).order("created_at", { ascending: false })
+          .limit(1).maybeSingle();
 
     const turmaNome = (matricula as any)?.turma?.nome ?? null;
     const classeNome = (matricula as any)?.turma?.classe?.nome ?? null;
@@ -46,7 +50,8 @@ export async function GET(request: Request) {
         ? "Ano letivo concluído"
         : corrente?.estadoOperacional === "encerrada" ? "Resultado académico em validação"
           : corrente ? "Revisão necessária"
-            : "Sem matrícula ativa";
+            : matricula?.status && ["ativo", "ativa", "active"].includes(String(matricula.status).toLowerCase())
+              ? "Em curso" : matricula ? "Situação académica em verificação" : "Sem matrícula ativa";
 
     return NextResponse.json({ 
       ok: true, 
@@ -57,7 +62,8 @@ export async function GET(request: Request) {
         classe: classeNome, 
         estadoAcademico,
         assiduidade,
-        cicloVida 
+        cicloVida,
+        cicloVidaIndisponivel: cicloVida === null
       } 
     });
   } catch (error) {
