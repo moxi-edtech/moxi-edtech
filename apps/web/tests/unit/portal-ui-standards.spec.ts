@@ -10,16 +10,17 @@ test("partilhados: elementos compactos usam tokens, estado acessível e action a
     "PortalStatus", "PortalStatCard", "PortalLoadingState",
   ].map((name) => source(`components/portal/ui/${name}.tsx`)));
 
-  for (const component of [surface, empty, action, stat]) {
+  for (const component of [surface, action, stat]) {
     assert.match(component, /border-border|focus-visible:ring-ring/);
   }
   assert.match(section, /aria-labelledby=\{id\}/);
   assert.match(action, /<Link href=\{props.href\}/);
   assert.match(action, /<button type=\{props.type \?\? "button"\}/);
   assert.match(action, /min-h-11/);
-  assert.match(status, /tone: "neutral" \| "pending" \| "success" \| "danger"/);
+  assert.match(status, /type StatusTone = "neutral" \| "pending" \| "success" \| "danger"/);
   assert.match(stat, /value === null/);
   assert.match(stat, /Sem dados/);
+  assert.match(empty, /<PortalSurface/);
   assert.match(empty, /description &&/);
   assert.match(loading, /role="status" aria-live="polite"/);
   assert.match(loading, /aria-hidden="true"/);
