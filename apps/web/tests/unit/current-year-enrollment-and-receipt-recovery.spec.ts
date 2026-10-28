@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-import { findIssuedOperationalReceipt } from "../../src/lib/financeiro/recover-receipt-after-payment";
+import { findIssuedOperationalReceipt, findIssuedOperationalReceiptByPayment } from "../../src/lib/financeiro/recover-receipt-after-payment";
+import { candidateReceiptBatchIds } from "../../src/lib/financeiro/receipt-batch-lookup";
 
 const source = (path: string) =>
   readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
@@ -60,12 +61,60 @@ test("receipt lookup validates user, staff role, school, monthly and issued docu
   assert.match(route, /requireRoleInSchool/);
   assert.match(route, /resolveEscolaIdForUser/);
   assert.match(route, /\.eq\("escola_id", escolaId\)/);
-  assert.match(route, /\.eq\("aluno_id", monthly\.aluno_id\)/);
+  assert.match(route, /\.eq\("aluno_id", alunoId\)/);
   assert.match(route, /\.eq\("tipo", "recibo"\)/);
   assert.match(route, /\.is\("revoked_at", null\)/);
   assert.match(route, /status: "pending"/);
   assert.doesNotMatch(route, /\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/);
   assert.doesNotMatch(route, /fiscal_emitir_/);
+});
+
+test("consolidated receipt recovery only accepts explicitly suppressed batch members", () => {
+  const batches = candidateReceiptBatchIds([
+    { meta: { emitir_recibo: false, batch_idempotency_key: "admission-batch-123" } },
+    { meta: { emitir_recibo: false, batch_idempotency_key: "admission-batch-123" } },
+    { meta: { emitir_recibo: true, batch_idempotency_key: "other-batch-456" } },
+    { meta: { emitir_recibo: false, batch_idempotency_key: "admission-batch-789" } },
+    { meta: { emitir_recibo: "false", batch_idempotency_key: "wrong-type-456" } },
+    { meta: { emitir_recibo: false, batch_idempotency_key: "short" } },
+    { meta: null },
+  ]);
+  assert.deepEqual(batches, ["admission-batch-123", "admission-batch-789"]);
+  assert.deepEqual(candidateReceiptBatchIds([{ meta: { emitir_recibo: true, batch_idempotency_key: "batch-123456" } }]), []);
+  assert.deepEqual(candidateReceiptBatchIds([{ meta: { emitir_recibo: false } }]), []);
+});
+
+test("service or admission receipt lookup retrieves a settled payment using GET only", async () => {
+  const calls: string[] = [];
+  const fetcher: typeof fetch = async (url, options) => {
+    calls.push(options?.method ?? "GET");
+    assert.equal(String(url), "/api/secretaria/recibos/consultar?pagamento_id=paid-id");
+    return new Response(JSON.stringify({
+      ok: true, status: "ready", print_url: "/secretaria/documentos/consolidated-doc/recibo/print",
+    }), { status: 200 });
+  };
+  const url = await findIssuedOperationalReceiptByPayment("paid-id", { fetcher, attempts: 1 });
+  assert.equal(url, "/secretaria/documentos/consolidated-doc/recibo/print");
+  assert.deepEqual(calls, ["GET"]);
+});
+
+test("receipt recovery finds a consolidated service-terminated batch without exposing other tenants", () => {
+  const route = source("app/api/secretaria/recibos/consultar/route.ts");
+  const admission = source("components/secretaria/AdmissaoWizardClient.tsx");
+  const recovery = source("components/secretaria/AdmissionReceiptRecovery.tsx");
+  assert.match(route, /candidateReceiptBatchIds\(payments \?\? \[\]\)/);
+  assert.match(route, /candidateReceiptBatchIds\(\[payment\]\)/);
+  assert.match(route, /\.contains\("meta", \{ batch_idempotency_key: batchId, emitir_recibo: true \}\)/);
+  assert.match(route, /\.eq\("escola_id", escolaId\)\.eq\("aluno_id", alunoId\)/);
+  assert.match(route, /\.eq\("status", "settled"\)/);
+  assert.match(route, /\.filter\("dados_snapshot->>pagamento_id", "eq", reference\.paymentId\)/);
+  assert.match(route, /\.is\("revoked_at", null\)/);
+  assert.match(route, /throw new Error\("AMBIGUOUS_BATCH"\)/);
+  assert.doesNotMatch(route, /\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/);
+  assert.match(admission, /<AdmissionReceiptRecovery pagamentoId=\{result\.pagamento_id\} \/>/);
+  assert.match(recovery, /findIssuedOperationalReceiptByPayment\(pagamentoId/);
+  assert.match(recovery, /Imprimir recibo/);
+  assert.doesNotMatch(recovery, /fetch\(.+method: "POST"/);
 });
 
 test("rapid checkout reserves print tab before fetch and does not generate another payment on polling", () => {
