@@ -264,12 +264,18 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     0,
   );
 
+  // A selecção guardada num rascunho pode já não pertencer ao ano/curso atual
+  // ou ter ficado sem vagas. Nunca aceitar apenas um ID presente no estado.
+  const selectableDestinationId = turmas.some((turma) =>
+    turma.id === selectedTurmaId &&
+    (turma.capacidade_maxima === null || turma.ocupacao_atual < turma.capacidade_maxima)
+  ) ? selectedTurmaId : null;
   const academicReady = reconciliationOnly
-    ? (academicOnly || Boolean(selectedTurmaId))
+    ? (academicOnly || Boolean(selectableDestinationId))
       && !(decisaoFonte === "declaracao_administrativa_escola" && !decisaoMotivo.trim())
     : skipTurmaSelection
       ? true
-      : canSelectRematriculaDestination(progressao, selectedTurmaId);
+      : canSelectRematriculaDestination(progressao, selectableDestinationId);
 
   const canSubmit =
     !submitting &&
