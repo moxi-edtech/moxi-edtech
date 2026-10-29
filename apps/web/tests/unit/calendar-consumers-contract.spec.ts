@@ -106,3 +106,32 @@ test("All direct MED trimester endpoints use the same provenance guard and typed
     assert.match(route, /anoLetivoId: .*anoLetivoId/);
   }
 });
+
+test("Indirect calendar consumers use the scoped MED trimester reader", () => {
+  const consumers = [
+    "app/api/secretaria/turmas/[id]/mini-pauta/route.ts",
+    "app/api/secretaria/turmas/[id]/pauta-trimestral/route.ts",
+    "app/api/secretaria/turmas/[id]/pauta-geral/route.ts",
+    "app/api/secretaria/turmas/[id]/pauta-geral/oficial/route.ts",
+    "app/api/secretaria/turmas/[id]/disciplinas/route.ts",
+    "app/api/secretaria/relatorios/mapa-aproveitamento/route.ts",
+    "app/api/professor/presencas/route.ts",
+    "app/api/escola/[id]/admin/frequencias/fechar-periodo/route.ts",
+    "app/api/secretaria/operacoes-academicas/virada/gerar-pautas-lote/route.ts",
+    "app/api/secretaria/operacoes-academicas/virada/pautas-status/route.ts",
+    "app/api/secretaria/fechamento-academico/validacoes/engine.ts",
+  ];
+  for (const path of consumers) {
+    assert.match(read(path), /readVerifiedAcademicTrimesters/, path);
+  }
+  const attendance = read("app/api/professor/presencas/route.ts");
+  assert.match(attendance, /verifiedTrimesterForDate/);
+  assert.match(attendance, /idempotencyReserved/);
+  assert.match(read("app/api/secretaria/operacoes-academicas/virada/gerar-pautas-lote/route.ts"),
+    /requireVerifiedTrimester\(verifiedPeriods, \{ numero: 3 \}\)/);
+  const report = read("app/api/secretaria/relatorios/mapa-aproveitamento/route.ts");
+  assert.match(report, /session_id", academicContext\.anoLetivoId/);
+  assert.match(report, /requireVerifiedTrimester\(periodos, \{ id: periodoId \}\)/);
+  const annualClose = read("app/api/secretaria/fechamento-academico/validacoes/engine.ts");
+  assert.match(annualClose, /requireVerifiedTrimester\(verifiedPeriods/);
+});

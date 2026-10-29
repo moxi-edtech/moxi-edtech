@@ -6,6 +6,8 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { requireRoleInSchool } from "@/lib/authz";
 import { executarValidacoesFechamento } from "./validacoes/engine";
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
 import { inngest } from "@/inngest/client";
 
 export const dynamic = "force-dynamic";
@@ -403,6 +405,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, run_id: runId, estado: result.failed ? ESTADOS.FAILED : ESTADOS.DONE, errors: result.errors });
   } catch (err) {
+    if (err instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: err.code, error: err.message }, { status: err.status });
+    }
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
@@ -430,6 +435,9 @@ export async function GET(req: Request) {
       jobs: jobs?.map(j => ({ ...j, steps: steps?.filter(s => s.run_id === j.run_id) ?? [] }))
     });
   } catch (err) {
+    if (err instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: err.code, error: err.message }, { status: err.status });
+    }
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
@@ -445,8 +453,25 @@ export async function PATCH(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
-    const { data: job } = await supabase.from("fechamento_academico_jobs").select("*").eq("run_id", payload.data.run_id).single();
+    if (!escolaId) return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
+    const { error: roleError } = await requireRoleInSchool({
+      supabase, escolaId, roles: ["admin", "admin_escola", "staff_admin", "admin_financeiro"],
+    });
+    if (roleError) return roleError;
+    const { data: job } = await supabase.from("fechamento_academico_jobs")
+      .select("*").eq("escola_id", escolaId).eq("run_id", payload.data.run_id).maybeSingle();
     if (!job) return NextResponse.json({ ok: false, error: "Não encontrado" }, { status: 404 });
+    const { data: sourceYear, error: sourceError } = await supabase.from("anos_letivos")
+      .select("ano").eq("escola_id", escolaId).eq("id", job.ano_letivo_id).single();
+    if (sourceError || !sourceYear) {
+      throw new CanonicalPeriodReadError("O ano letivo do fecho não pertence à escola.");
+    }
+    const periods = await readVerifiedAcademicTrimesters(supabase, {
+      escolaId, anoLetivoId: job.ano_letivo_id, yearBase: Number(sourceYear.ano),
+    });
+    if (job.fechamento_tipo === "fechar_trimestre") {
+      requireVerifiedTrimester(periods, { id: job.periodo_letivo_id });
+    }
 
     await setJobState(supabase, job.run_id, ESTADOS.PENDING_VALIDATION, { started_at: new Date().toISOString(), finished_at: null });
 
@@ -476,6 +501,9 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json({ ok: true, run_id: job.run_id, estado: result.failed ? ESTADOS.FAILED : ESTADOS.DONE });
   } catch (err) {
+    if (err instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: err.code, error: err.message }, { status: err.status });
+    }
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

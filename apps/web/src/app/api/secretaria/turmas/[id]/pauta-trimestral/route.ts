@@ -12,6 +12,9 @@ import {
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
+
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
@@ -109,17 +112,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .maybeSingle()
     const professorId = (turmaProfessor as { professor_id?: string | null } | null)?.professor_id ?? null
 
-    const anoLetivo = { id: academicContext.anoLetivoId }
-
-    const { data: periodosRows } = anoLetivo?.id
-      ? await supabase
-          .from('periodos_letivos')
-          .select('id, numero')
-          .eq('escola_id', escolaId)
-          .eq('ano_letivo_id', anoLetivo.id)
-          .eq('tipo', 'TRIMESTRE')
-          .order('numero', { ascending: true })
-      : { data: [] as any[] }
+    const periodosRows = await readVerifiedAcademicTrimesters(supabase, {
+      escolaId, anoLetivoId: academicContext.anoLetivoId,
+      yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+    });
+    requireVerifiedTrimester(periodosRows, { numero: parsed.data.periodoNumero });
 
     const periodosAtivos = (turmaDisciplina.periodos_ativos || []).map((n: any) => Number(n))
     if (periodosAtivos.length > 0 && !periodosAtivos.includes(parsed.data.periodoNumero)) {
@@ -316,6 +313,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     return NextResponse.json({ ok: true, context: academicContext, payload })
   } catch (e) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status });
+    }
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
     }

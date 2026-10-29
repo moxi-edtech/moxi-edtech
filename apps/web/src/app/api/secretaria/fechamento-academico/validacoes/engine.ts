@@ -1,4 +1,7 @@
 import { randomUUID } from "crypto";
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
+
 import type { RelatorioSanidadeFechamento, PendenciaFechamento } from "./types";
 
 type SnapshotStatus = "aberto" | "fechado" | "reaberto";
@@ -22,7 +25,15 @@ export async function executarValidacoesFechamento(params: {
     .eq("id", anoLetivoId)
     .single();
 
-  const anoNumero = Number(anoRow?.ano ?? -1);
+  if (!anoRow) throw new CanonicalPeriodReadError("Ano letivo não encontrado para a escola.");
+  const anoNumero = Number(anoRow.ano);
+  const verifiedPeriods = await readVerifiedAcademicTrimesters(supabase, {
+    escolaId, anoLetivoId, yearBase: anoNumero,
+  });
+  // Explicit exceptions in closing cannot bypass MED provenance.
+  const chosenPeriod = acao === "fechar_trimestre"
+    ? requireVerifiedTrimester(verifiedPeriods, { id: periodoLetivoId })
+    : null;
   let turmaIds = params.turmaIds ?? [];
 
   if (turmaIds.length === 0) {
@@ -50,13 +61,7 @@ export async function executarValidacoesFechamento(params: {
 
   let periodoNumero: number | null = null;
   if (acao === "fechar_trimestre" && periodoLetivoId) {
-    const { data: periodo } = await supabase
-      .from("periodos_letivos")
-      .select("numero")
-      .eq("escola_id", escolaId)
-      .eq("id", periodoLetivoId)
-      .single();
-    periodoNumero = Number(periodo?.numero ?? 0) || null;
+    periodoNumero = chosenPeriod?.numero ?? null;
   }
 
   for (const turmaId of turmaIds) {
