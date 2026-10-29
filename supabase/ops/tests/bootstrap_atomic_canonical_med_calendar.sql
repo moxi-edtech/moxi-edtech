@@ -29,6 +29,12 @@ ALTER TABLE public.calendario_template_items ADD COLUMN IF NOT EXISTS education_
 ALTER TABLE public.calendario_template_items ADD COLUMN IF NOT EXISTS education_levels text[] NOT NULL DEFAULT '{}';
 ALTER TABLE public.calendario_template_items ADD COLUMN IF NOT EXISTS grade_codes text[] NOT NULL DEFAULT '{}';
 ALTER TABLE public.calendario_template_items ADD COLUMN IF NOT EXISTS course_types text[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.calendario_template_items ADD COLUMN IF NOT EXISTS cycles text[] NOT NULL DEFAULT '{}';
+
+ALTER TABLE public.school_education_offerings ADD COLUMN IF NOT EXISTS education_level text;
+ALTER TABLE public.school_education_offerings ADD COLUMN IF NOT EXISTS cycle text;
+ALTER TABLE public.school_education_offerings ADD COLUMN IF NOT EXISTS grades text[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.cursos ADD COLUMN IF NOT EXISTS tipo text;
 
 DO $type$
 BEGIN
