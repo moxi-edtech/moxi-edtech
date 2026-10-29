@@ -1043,7 +1043,7 @@ export default function AdmissoesInboxClient({
         `${promotedIds.length} pré-candidatura(s) promovida(s). ${failures.length} bloqueada(s).`
       )
       if (selectedId && promotedSet.has(selectedId)) {
-        await fetchDetail(selectedId)
+        await fetchDetail(selectedId, new AbortController().signal)
       }
     } catch (err: unknown) {
       toastError('Falha na promoção em lote', err instanceof Error ? err.message : 'Não foi possível promover o lote.')
