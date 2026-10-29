@@ -9,6 +9,11 @@ on:
       - "apps/web/tests/unit/lifecycle-evidence-reconciliation.spec.ts"
       - "apps/web/tests/unit/academic-transition-comparison.spec.ts"
       - "apps/web/tests/unit/academic-course-class-linkage.spec.ts"
+      - "apps/web/tests/unit/enrollment-create-confirm-close-atomic.spec.ts"
+      - "apps/web/src/app/api/escolas/**/matriculas/novo/route.ts"
+      - "apps/web/src/app/api/secretaria/matriculas/**/finalizar/route.ts"
+      - "apps/web/src/components/secretaria/alunos/FinalizarMatriculaButton.tsx"
+      - "supabase/migrations/*enrollment_context_atomic*.sql"
       - "apps/web/src/lib/academico/class-level.ts"
       - "apps/web/src/lib/academico/curriculum-apply.ts"
       - "apps/web/src/app/api/escolas/**/classes/route.ts"
@@ -51,6 +56,7 @@ jobs:
             tests/unit/lifecycle-evidence-reconciliation.spec.ts \
             tests/unit/academic-transition-comparison.spec.ts \
             tests/unit/academic-course-class-linkage.spec.ts \
+            tests/unit/enrollment-create-confirm-close-atomic.spec.ts \
             tests/unit/student-lifecycle-ssot.spec.ts \
             tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts
       - name: TypeScript
@@ -65,6 +71,10 @@ jobs:
             tests/unit/lifecycle-evidence-reconciliation.spec.ts \
             tests/unit/academic-transition-comparison.spec.ts \
             tests/unit/academic-course-class-linkage.spec.ts \
+            tests/unit/enrollment-create-confirm-close-atomic.spec.ts \
+            "src/app/api/escolas/[id]/matriculas/novo/route.ts" \
+            "src/app/api/secretaria/matriculas/[matriculaId]/finalizar/route.ts" \
+            src/components/secretaria/alunos/FinalizarMatriculaButton.tsx \
             src/lib/academico/class-level.ts \
             src/lib/academico/curriculum-apply.ts \
             "src/app/api/escolas/[id]/classes/route.ts" \
