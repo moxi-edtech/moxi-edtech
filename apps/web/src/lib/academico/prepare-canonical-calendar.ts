@@ -140,57 +140,29 @@ export async function prepareCanonicalMedCalendar(input: {
     }
   }
 
-  let targetId: string | null = existingYear?.id ?? null;
-  if (!targetId) {
-    const { data, error } = await db.rpc("setup_active_ano_letivo", {
-      p_escola_id: escolaId,
-      p_ano_data: {
-        ano: anoBase, data_inicio: calendar.data_inicio,
-        data_fim: calendar.data_fim, ativo: false,
-      },
-    });
-    if (error) throw error;
-    targetId = data?.id ?? null;
-    if (!targetId) {
-      const fetched = await db.from("anos_letivos").select("id")
-        .eq("escola_id", escolaId).eq("ano", anoBase).maybeSingle();
-      if (fetched.error) throw fetched.error;
-      targetId = fetched.data?.id ?? null;
-    }
-    if (!targetId) throw new Error("Não foi possível criar a sessão do calendário canónico.");
-  }
-
-  const periodPayload = plan.periods.map((item) => ({ ...item, ano_letivo_id: targetId }));
-  const { error: periodWriteError } = await db.rpc("upsert_bulk_periodos_letivos", {
-    p_escola_id: escolaId, p_periodos_data: periodPayload,
+  // Persist all year/term/event/offer changes in one PostgreSQL statement.
+  // If *any* item fails the MED provenance or role check, no partial school
+  // year, grade period or profile mapping survives the RPC transaction.
+  const { data: applied, error: applyError } = await db.rpc("aplicar_calendario_med_canonico_v1", {
+    p_escola_id: escolaId,
+    p_ano_base: anoBase,
+    p_periodos: plan.periods,
+    p_eventos: plan.events,
+    p_ofertas: plan.selections,
   });
-  if (periodWriteError) throw periodWriteError;
-
-  if (plan.events.length > 0) {
-    const { error: eventWriteError } = await db.from("calendario_eventos").upsert(
-      plan.events.map((event) => ({
-        ...event, escola_id: escolaId, ano_letivo_id: targetId,
-        applied_at: new Date().toISOString(), applied_by: userId,
-      })),
-      { onConflict: "escola_id,ano_letivo_id,offering_id,nome,data_inicio" },
-    );
-    if (eventWriteError) throw eventWriteError;
+  if (applyError) throw applyError;
+  if (applied?.ok !== true || !applied.target_id) {
+    throw new Error("A aplicação do calendário oficial não foi confirmada pelo banco.");
   }
-
-  // Mapping is committed only after the canonical year and events succeeded.
-  for (const mapping of plan.selections) {
-    const { error } = await db.from("school_education_offerings")
-      .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
-      .eq("id", mapping.offering_id).eq("escola_id", escolaId);
-    if (error) throw error;
-  }
-
   return NextResponse.json({
-    ok: true, reused: Boolean(existingYear),
-    target_session: { id: targetId, ano: anoBase, ativo: false, has_data: Boolean(existingYear) },
+    ok: true, reused: Boolean(applied.reused),
+    target_session: {
+      id: String(applied.target_id), ano: anoBase, ativo: false,
+      has_data: Boolean(applied.reused),
+    },
     calendario_oficial: calendar,
-    ofertas_atualizadas: plan.courseCount,
-    trimestres: plan.periods.length,
-    eventos: plan.events.length,
+    ofertas_atualizadas: Number(applied.ofertas_atualizadas ?? plan.courseCount),
+    trimestres: Number(applied.trimestres ?? plan.periods.length),
+    eventos: Number(applied.eventos ?? plan.events.length),
   });
 }
