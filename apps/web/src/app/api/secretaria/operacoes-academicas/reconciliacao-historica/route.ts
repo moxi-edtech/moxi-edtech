@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/lib/rematricula/compare-next-year-enrollment";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -71,6 +72,11 @@ export async function GET(request: Request) {
       .eq("ativo", true).order("ano", { ascending: false }).limit(1).maybeSingle();
     if (currentError) throw currentError;
     const ano = parsed.data.ano ?? (Number(current?.ano ?? new Date().getFullYear()) - 1);
+    const { data: schoolYear, error: yearError } = await supabase
+      .from("anos_letivos").select("id").eq("escola_id", escolaId)
+      .eq("ano", ano).maybeSingle();
+    if (yearError) throw yearError;
+    if (!schoolYear) return NextResponse.json({ ok: false, error: "Ano letivo não configurado nesta escola." }, { status: 404 });
     const pagina = parsed.data.pagina;
     const from = (pagina - 1) * 30;
     const to = from + 29;
@@ -90,13 +96,26 @@ export async function GET(request: Request) {
         ids.length ? supabase.from("academic_transition_cohort_members")
           .select("matricula_origem_id,status,cohort:academic_transition_cohorts!inner(ativo,codigo,modo,ano_origem,ano_destino)")
           .eq("escola_id", escolaId).in("matricula_origem_id", ids) : Promise.resolve({ data: [], error: null }),
-        students.length ? supabase.from("matriculas").select("id,aluno_id,origem_transicao_matricula_id,ano_letivo,status,ativo")
+        students.length ? supabase.from("matriculas").select("id,aluno_id,turma_id,origem_transicao_matricula_id,ano_letivo,status,ativo")
           .eq("escola_id", escolaId).in("aluno_id", students).gt("ano_letivo", ano)
           .order("ano_letivo", { ascending: false }).limit(300) : Promise.resolve({ data: [], error: null }),
         ids.length ? supabase.from("notas").select("matricula_id").eq("escola_id", escolaId)
           .in("matricula_id", ids).limit(500) : Promise.resolve({ data: [], error: null }),
       ]);
       if (cohorts.error || dests.error || grades.error) throw cohorts.error ?? dests.error ?? grades.error;
+      // Only classroom identity is required: no gradebook read or inferred academic result.
+      const turmaIds = [...new Set([
+        ...rows.map((m: any) => m.turma_id as string | null),
+        ...(dests.data ?? []).map((d: any) => d.turma_id as string | null),
+      ].filter((id): id is string => typeof id === "string" && id.length > 0))];
+      const { data: classRows, error: classError } = turmaIds.length
+        ? await supabase.from("turmas").select("id,classes:classe_id(nome,numero)")
+          .eq("escola_id", escolaId).in("id", turmaIds)
+        : { data: [], error: null };
+      if (classError) throw classError;
+      const classeByTurma = new Map<string, any>(
+        (classRows ?? []).map((t: any): [string, any] => [String(t.id), first(t.classes)]),
+      );
       const members = new Map<string, any>();
       for (const member of cohorts.data ?? []) members.set(member.matricula_origem_id, member);
       const destinations = new Map<string, any>();
@@ -113,6 +132,14 @@ export async function GET(request: Request) {
           const member = members.get(m.id);
           const cohort = first(member?.cohort);
           const next = destinations.get(m.aluno_id);
+          const comparison = compareNextYearEnrollment({
+            matriculaOrigemId: m.id,
+            classeOrigem: classeByTurma.get(m.turma_id) ?? null,
+            destino: next ? {
+              origem_transicao_matricula_id: next.origem_transicao_matricula_id,
+              classe: classeByTurma.get(next.turma_id) ?? null,
+            } : null,
+          });
           const eligible = member?.status === "elegivel" && cohort?.ativo === true
             && Number(cohort?.ano_origem) === ano && Number(cohort?.ano_destino) > ano;
           return {
@@ -126,7 +153,12 @@ export async function GET(request: Request) {
             destino_ativo: next?.ativo === true,
             destino_vinculado: next?.origem_transicao_matricula_id === m.id,
             destino_ano: next?.ano_letivo ?? null,
-            proximo_passo: eligible
+            alertas_transicao: comparison.alertas,
+            classe_origem_numero: comparison.classe_origem,
+            classe_destino_numero: comparison.classe_destino,
+            proximo_passo: comparison.alertas.length > 0
+              ? "Conferir a divergência entre anos e a documentação escolar. Não atribuir notas ou aprovação pela turma destino."
+              : eligible
               ? "Conferir a decisão da escola e registar a referência documental. A matrícula destino não prova aprovação."
               : "Regularizar a origem com a secretaria; não existe coorte assistida válida.",
           };
@@ -198,6 +230,42 @@ export async function POST(request: Request) {
     let data: any = null;
     let rpcError: any = null;
     if (body.acao === "registar_decisao") {
+      // Fail closed when an already-created next-year enrollment contradicts
+      // the documentary decision. No automatic changes to either enrollment.
+      const { data: origin, error: originError } = await supabase.from("matriculas")
+        .select("id,aluno_id,ano_letivo,turma_id")
+        .eq("escola_id", escolaId).eq("id", body.matricula_id).maybeSingle();
+      if (originError) throw originError;
+      if (!origin) return NextResponse.json({ ok: false, error: "Matrícula de origem inexistente nesta escola." }, { status: 404 });
+      const { data: destination, error: destinationError } = await supabase.from("matriculas")
+        .select("id,turma_id,origem_transicao_matricula_id,ano_letivo,ativo")
+        .eq("escola_id", escolaId).eq("aluno_id", origin.aluno_id)
+        .eq("ano_letivo", Number(origin.ano_letivo) + 1).maybeSingle();
+      if (destinationError) throw destinationError;
+      if (destination) {
+        const ids = [origin.turma_id, destination.turma_id].filter((id): id is string => typeof id === "string" && id.length > 0);
+        const { data: turmaRows, error: turmaError } = await supabase.from("turmas")
+          .select("id,classes:classe_id(nome,numero)").eq("escola_id", escolaId).in("id", ids);
+        if (turmaError) throw turmaError;
+        const byId = new Map<string, any>((turmaRows ?? []).map((t: any): [string, any] => [String(t.id), first(t.classes)]));
+        const comparison = compareNextYearEnrollment({
+          matriculaOrigemId: origin.id,
+          classeOrigem: byId.get(origin.turma_id) ?? null,
+          destino: {
+            origem_transicao_matricula_id: destination.origem_transicao_matricula_id,
+            classe: byId.get(destination.turma_id) ?? null,
+          },
+        });
+        if (comparison.alertas.includes("DESTINO_SEM_VINCULO") ||
+            comparison.alertas.includes("VINCULO_DIVERGENTE") ||
+            !confirmedOutcomeFitsDestination(body.resultado_confirmado, comparison, true)) {
+          return NextResponse.json({
+            ok: false, code: "TRANSICAO_ACADEMICA_DIVERGENTE",
+            error: "A classe destino ou o vínculo entre matrículas contradiz a decisão. A direção deve rever a transição no Balcão antes de finalizar o histórico.",
+            alertas: comparison.alertas,
+          }, { status: 409 });
+        }
+      }
       ({ data, error: rpcError } = await supabase.rpc("finalizar_origem_academica", {
         p_escola_id: escolaId, p_matricula_id: body.matricula_id,
         p_resultado_final: body.resultado_confirmado,
