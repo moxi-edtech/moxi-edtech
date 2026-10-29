@@ -317,3 +317,18 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_notas_writer_authz_scale.sql
+
+      - name: Bootstrap trimester context in isolated database
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_grade_period_guard.sql
+
+      - name: Apply trimester grade safety migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271029235921_guard_grade_period_source_and_window.sql
+
+      - name: Grade trimester boundary and formal reopening regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_grade_period_guard.sql
