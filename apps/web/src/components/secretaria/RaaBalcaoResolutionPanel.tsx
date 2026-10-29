@@ -120,6 +120,9 @@ export function RaaBalcaoResolutionPanel({
 
   function chooseCase(item: (typeof cases)[number]) {
     if (saving) return;
+    // Moving between cases must not silently discard an unfinished decision.
+    if (phase === "detail" && (motivo.trim() || disciplinaId || examNote.trim()) &&
+        !window.confirm("Existem alterações ainda não guardadas. Deseja mudar de pendência e descartá-las?")) return;
     setCaseId(item.id);
     setSelected("");
     setDecision("");
@@ -319,7 +322,7 @@ export function RaaBalcaoResolutionPanel({
   };
 
   return (
-    <section className="mb-4 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label="Resolução RAA no Balcão">
+    <section key={alunoId + ":" + matriculaId} className="mb-4 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label="Resolução RAA no Balcão">
       <header className="border-b border-border bg-muted/30 p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
@@ -376,9 +379,17 @@ export function RaaBalcaoResolutionPanel({
                     <span className="block truncate text-sm font-semibold text-foreground">{item.titulo}</span>
                     <span className="mt-1 block line-clamp-2 text-xs leading-5 text-muted-foreground">{item.resumo}</span>
                   </span>
-                  {item.estado === "registado"
-                    ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald" aria-label="Decisão registada" />
-                    : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" aria-hidden="true" />}
+                  <span className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span className={"rounded-md px-1.5 py-0.5 text-[10px] font-semibold " +
+                      (item.estado === "registado" ? "bg-emerald/10 text-emerald" :
+                        item.estado === "em_analise" ? "bg-sky-500/10 text-sky-700 dark:text-sky-300" :
+                          "bg-amber-500/10 text-amber-700 dark:text-amber-300")}>
+                      {item.estado === "registado" ? "Decidido" : item.estado === "em_analise" ? "Em análise" : "Pendente"}
+                    </span>
+                    {item.estado === "registado"
+                      ? <CheckCircle2 className="h-4 w-4 text-emerald" aria-label="Decisão registada" />
+                      : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden="true" />}
+                  </span>
                 </button>
               ))}
             </div>
@@ -430,7 +441,7 @@ export function RaaBalcaoResolutionPanel({
                 className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
                 Lançar nota nesta ficha
               </button>
-              <p className="mt-2 text-xs text-muted-foreground">O formulário só admite escritas autorizadas no ano letivo e período válidos.</p>
+              <p className="mt-2 text-xs text-muted-foreground">O lançamento segue as permissões do período. Anos encerrados exigem reabertura académica formal.</p>
             </div>
           )}
           {action === "rever_resultado" && (

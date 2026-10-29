@@ -150,6 +150,7 @@ jobs:
             src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
+            src/components/secretaria/RaaBalcaoResolutionPanel.tsx \
             src/components/secretaria/PagamentoDividaModal.tsx \
             src/components/secretaria/BalcaoWorkspace.tsx \
             src/components/secretaria/BalcaoActionBar.tsx \
