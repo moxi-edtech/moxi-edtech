@@ -27,6 +27,7 @@ DECLARE
   v_status text;
   v_old_result text;
   v_cohort_exists boolean;
+  v_motivo text;
 BEGIN
   IF v_actor_id IS NULL OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
     OR NOT public.user_has_role_in_school(p_escola_id, ARRAY['admin','admin_escola','staff_admin','secretaria']::text[]) THEN
@@ -45,6 +46,8 @@ BEGIN
     RAISE EXCEPTION 'ACADEMIC_SOURCE_REQUIRED: origem, turma e ano letivo são obrigatórios' USING ERRCODE='23514';
   END IF;
   v_ano_destino := v_matricula.ano_letivo+1;
+  v_motivo := coalesce(nullif(btrim(p_motivo),''),
+    CASE WHEN v_fonte='raa' THEN 'Progressão académica confirmada pela decisão oficial do RAA' END);
 
   -- The cohort is *eligibility*, not a decision. Evidence and authorization
   -- must be explicitly recorded by the responsible staff member.
@@ -104,7 +107,7 @@ BEGIN
 
   UPDATE public.matriculas SET
     status=v_status, ativo=false,
-    motivo_fecho=btrim(p_motivo),
+    motivo_fecho=v_motivo,
     status_fecho_origem=v_fonte,
     data_fecho=coalesce(data_fecho,now()),
     updated_at=now(),
@@ -132,7 +135,7 @@ BEGIN
   VALUES (p_escola_id,v_actor_id,'MATRICULA_ORIGEM_RESULTADO_ACADEMICO_REGISTADO',
     'matriculas',p_matricula_id::text,
     jsonb_build_object('resultado_final',v_resultado,'fonte',v_fonte,
-       'motivo',NULLIF(btrim(p_motivo),''),
+       'motivo',v_motivo,
        'observacao',NULLIF(btrim(p_observacao),''),
        'historico_ano_id',v_historico.id,'matricula_status',v_status,
        'snapshot_status','aberto','at',now()),
