@@ -20,6 +20,8 @@ A experiência de admissões era uma página isolada, com layout rígido e opera
 - Estados semânticos preservados (verde/sucesso, âmbar/atenção, vermelho/erro, azul/informação) com variantes para o tema escuro. Botões primários usam `bg-amber` e `text-amber-950`.
 - Diálogos auxiliares da fila são renderizados via portal com `z-[90]`, acima da janela modal do Workspace; a conversão mantém o Sheet existente elevado. Confirmações globais e exceção de capacidade usam overlays `z-[110]` para não desaparecer atrás do atendimento.
 - Testes de regressão verificam que a fila, o assistente em três passos e a folha de conversão não retomam superfícies ou tipografia neutra com cores fixas.
+- Notificações partilhadas de sucesso/erro/aviso foram alinhadas aos tokens de card e texto do tema; as confirmações globais recebem overlay acima do Workspace sem alterar a API de confirmação.
+
 
 
 ## Contratos a preservar
