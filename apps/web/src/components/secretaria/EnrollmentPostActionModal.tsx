@@ -13,12 +13,13 @@ type Props = {
   alunoId: string;
   alunoNome: string;
   turmaId?: string | null;
+  originAnoLetivoId?: string | null;
   onPayment: () => void;
   onAcademicSaved?: () => void;
 };
 
 export function EnrollmentPostActionModal({
-  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, onPayment, onAcademicSaved,
+  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, originAnoLetivoId, onPayment, onAcademicSaved,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
@@ -50,6 +51,12 @@ export function EnrollmentPostActionModal({
     setAcademicYearId(null);
     setAcademicYearError(null);
     if (!open || action !== "notas") return () => { active = false; };
+    // RAA edits belong to the enrolment of origin, not the currently selected
+    // destination academic year. The WRITE endpoint still checks formal locks.
+    if (originAnoLetivoId) {
+      setAcademicYearId(originAnoLetivoId);
+      return () => { active = false; };
+    }
 
     void fetch("/api/academic-context", { cache: "no-store" })
       .then((response) => response.json().then((payload) => ({ response, payload })))
@@ -70,7 +77,7 @@ export function EnrollmentPostActionModal({
         if (active) setAcademicYearError("Não foi possível identificar o ano letivo ativo.");
       });
     return () => { active = false; };
-  }, [action, escolaId, open]);
+  }, [action, escolaId, open, originAnoLetivoId]);
 
   useEffect(() => {
     if (!open || action !== "notas" || !turmaId) return;
@@ -206,7 +213,7 @@ export function EnrollmentPostActionModal({
 
         {action === "notas" && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">Lance a nota de {alunoNome} sem sair do atendimento.</p>
+            <p className="text-sm text-muted-foreground">Lançar nota na turma e no ano letivo da matrícula de origem de {alunoNome}.</p>
             {!turmaId && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">A turma desta matrícula não foi identificada.</p>}
             {academicYearError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{academicYearError}</p>}
             {notaContextError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{notaContextError}</p>}

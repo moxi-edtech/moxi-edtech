@@ -167,7 +167,7 @@ export async function GET(request: Request) {
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
     let { data: matriculaOrigem } = await supabase
       .from("matriculas")
-      .select("id, ano_letivo, status, turma_id")
+      .select("id, ano_letivo, status, turma_id, session_id")
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
@@ -187,7 +187,7 @@ export async function GET(request: Request) {
     if (Number(matriculaOrigem.ano_letivo ?? 0) >= targetAnoLetivoAno) {
       const { data: matriculaAnteriorPorAno } = await supabase
         .from("matriculas")
-        .select("id, ano_letivo, status, turma_id")
+        .select("id, ano_letivo, status, turma_id, session_id")
         .eq("escola_id", escolaId)
         .eq("aluno_id", aluno_id)
         .lt("ano_letivo", targetAnoLetivoAno)
@@ -214,7 +214,7 @@ export async function GET(request: Request) {
       const { data: matriculaAnteriorPorCohort } = cohortOrigin?.matricula_origem_id
         ? await supabase
             .from("matriculas")
-            .select("id, ano_letivo, status, turma_id")
+            .select("id, ano_letivo, status, turma_id, session_id")
             .eq("escola_id", escolaId)
             .eq("aluno_id", aluno_id)
             .eq("id", cohortOrigin.matricula_origem_id)
@@ -524,6 +524,12 @@ export async function GET(request: Request) {
         mode: academicEligibility.mode,
         reason: academicEligibility.reason,
         disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
+        source: {
+          matricula_id: matriculaOrigem.id,
+          turma_id: matriculaOrigem.turma_id ?? null,
+          ano_letivo_id: matriculaOrigem.session_id ?? null,
+          status: matriculaOrigem.status,
+        },
         regime: academicRegime,
         decreto: academicDecreto ? {
           decision: academicDecreto.decision,
