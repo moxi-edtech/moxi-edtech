@@ -4,8 +4,8 @@ import {
 } from "@/lib/matriculas/lifecycle-status-contract";
 
 export type RosterLifecycle = {
-  situacaoMatricula: SituacaoMatriculaContextual;
-  situacaoResultado: SituacaoResultadoContextual;
+  situacaoMatricula: SituacaoMatriculaContextual | null;
+  situacaoResultado: SituacaoResultadoContextual | null;
   resultadoOficial: string | null;
 };
 
@@ -45,12 +45,12 @@ export async function carregarSituacoesRoster(
       });
     }
   }
-  // A student in a roster but missing from the canonical view is a data
-  // divergence; don't misrepresent it as a confirmed enrollment.
+  // A student missing from the scoped canonical view may be outside the
+  // reader role; represent unavailable data rather than invent a defect.
   for (const id of ids) if (!result.has(id)) {
     result.set(id, {
-      situacaoMatricula: "revisao_integridade",
-      situacaoResultado: "sem_resultado_oficial", resultadoOficial: null,
+      situacaoMatricula: null,
+      situacaoResultado: null, resultadoOficial: null,
     });
   }
   return result;

@@ -103,8 +103,11 @@ async function readRosterExport(req: NextRequest, { params }: { params: Promise<
         const situacao = situacoes.get(record.aluno_id!)!;
         rows.push({
           nome: record.nome!, numero: record.numero_processo, turma: record.turma_nome!,
-          situacaoMatricula: rotuloSituacaoMatricula(situacao.situacaoMatricula),
-          resultadoAcademico: textoResultadoAcademico(situacao.situacaoResultado, situacao.resultadoOficial),
+          situacaoMatricula: situacao.situacaoMatricula
+            ? rotuloSituacaoMatricula(situacao.situacaoMatricula) : "Não disponível neste perfil",
+          resultadoAcademico: situacao.situacaoResultado
+            ? textoResultadoAcademico(situacao.situacaoResultado, situacao.resultadoOficial)
+            : "Não disponível neste perfil",
         });
       }
       if (rows.length > policy.maxRows) {

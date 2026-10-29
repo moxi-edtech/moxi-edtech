@@ -75,7 +75,8 @@ test("student and secretaria lifecycle portals never publish unclosed results", 
   const student = read("src/app/api/aluno/home/status/route.ts");
   const school = read("src/app/api/secretaria/alunos/[id]/dossier/route.ts");
   assert.match(lifecycle, /resultadoOficialDb/);
-  assert.match(loader, /v_student_lifecycle_ssot_v1/);
+  assert.match(loader, /v_student_lifecycle_status_v2/);
+  assert.match(read("../../supabase/migrations/20271029235900_lifecycle_contextual_status_ssot_v2.sql"), /v_student_lifecycle_ssot_v1/);
   assert.match(student, /cicloVida/);
   assert.match(school, /cicloVida/);
 });

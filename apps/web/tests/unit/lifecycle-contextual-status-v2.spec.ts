@@ -18,7 +18,7 @@ test("contextual statuses never infer student approval from enrollment", () => {
 });
 
 test("read-only projection is invoker scoped, disambiguates historical pending, gates official result", () => {
-  const sql = read("supabase/migrations/20271029110000_lifecycle_contextual_status_ssot_v2.sql");
+  const sql = read("supabase/migrations/20271029235900_lifecycle_contextual_status_ssot_v2.sql");
   assert.match(sql, /security_invoker = true/);
   assert.match(sql, /v_student_lifecycle_ssot_v1/);
   assert.match(sql, /ano_superado_pelo_ativo OR possui_matricula_posterior/);
