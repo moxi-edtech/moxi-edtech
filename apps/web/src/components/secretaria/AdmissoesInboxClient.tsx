@@ -591,7 +591,13 @@ export default function AdmissoesInboxClient({
   }, [selectedId, fetchDetail, embedded])
 
   const handleApprove = async () => {
-    if (!selectedId) return
+    if (!selectedId || !selectedData || !canApproveAdmission(selectedData.status)) return
+    const approved = await confirm({
+      title: 'Aprovar candidatura',
+      message: `Confirma a aprovação da candidatura de ${selectedData.nome_candidato}? O processo avançará para a etapa de matrícula ou reserva, conforme a configuração da escola.`,
+      confirmLabel: 'Aprovar candidatura',
+    })
+    if (!approved) return
     setLoadingAction('approving')
     try {
       const res = await fetch('/api/secretaria/admissoes/approve', {
@@ -1535,9 +1541,27 @@ export default function AdmissoesInboxClient({
                   </div>
 
                   {/* Conteúdo Raio-X */}
-                  <div className="space-y-6 p-4 pb-28 sm:p-6 sm:pb-28">
+                  <div className="space-y-4 p-3 pb-28 sm:p-5 sm:pb-28">
+                    <div role="tablist" aria-label="Detalhes da candidatura" className="flex gap-1 overflow-x-auto border-b border-border pb-2">
+                      {([
+                        { id: 'resumo', label: 'Resumo' },
+                        { id: 'documentos', label: 'Documentos' },
+                        { id: 'historico', label: 'Histórico' },
+                      ] as const).map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={detailTab === tab.id}
+                          onClick={() => setDetailTab(tab.id)}
+                          className={`min-h-10 shrink-0 rounded-lg px-4 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber ${detailTab === tab.id ? 'bg-muted text-foreground ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
                     {/* Alerta de Conciliação Financeira */}
-                    {(selectedData.status === 'aguardando_compensacao' || selectedData.status === 'aguardando_pagamento') && (
+                    {detailTab === 'resumo' && (selectedData.status === 'aguardando_compensacao' || selectedData.status === 'aguardando_pagamento') && (
                       <section className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest flex items-center gap-2">
@@ -1599,7 +1623,8 @@ export default function AdmissoesInboxClient({
                     )}
 
                     {/* Grid de Dados */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className={detailTab === 'resumo' ? 'grid grid-cols-1 gap-4 lg:grid-cols-2' : 'grid grid-cols-1 gap-4'}>
+                      {detailTab === 'resumo' && (<>
                       {/* Dados Pessoais */}
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -1666,6 +1691,9 @@ export default function AdmissoesInboxClient({
                         </div>
                       </section>
 
+                      </>)}
+                      {detailTab === 'documentos' && (
+                      <>
                       {/* Documentos */}
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -1723,6 +1751,10 @@ export default function AdmissoesInboxClient({
                         </div>
                       </section>
 
+                      </>
+                      )}
+                      {detailTab === 'historico' && (
+                      <>
                       {/* Histórico de Pendências */}
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:col-span-2">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -1760,6 +1792,8 @@ export default function AdmissoesInboxClient({
                           </div>
                         )}
                       </section>
+                      </>
+                      )}
                     </div>
                   </div>
 
