@@ -238,3 +238,24 @@ test("quarterly report cannot expose a period not present in its official academ
   assert.match(source, /ACADEMIC_PERIOD_NOT_CONFIGURED/);
   assert.match(source, /periodosRows \?\? \[\]/);
 });
+
+test("attendance, RAA, academic closure and official report consumers retain year/period scope", () => {
+  const routes: Array<[string, RegExp[]]> = [
+    ["src/app/api/professor/presencas/route.ts",
+      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /from\('periodos_letivos'\)/, /ano_letivo_id/]],
+    ["src/app/api/escola/[id]/admin/frequencias/fechar-periodo/route.ts",
+      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /from\('periodos_letivos'\)/, /ano_letivo_id/]],
+    ["src/app/api/academico/raa/reapreciacao/route.ts",
+      [/resolveAcademicYearContext/, /from\("periodos_letivos"\)/, /ano_letivo_id/]],
+    ["src/app/api/secretaria/fechamento-academico/route.ts",
+      [/ano_letivo_id/, /periodo_letivo_id/, /from\("periodos_letivos"\)/]],
+    ["src/app/api/secretaria/turmas/[id]/pauta-geral/oficial/route.ts",
+      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /periodos_letivos/]],
+    ["src/app/api/secretaria/relatorios/mapa-aproveitamento/route.ts",
+      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /periodos_letivos/]],
+  ];
+  for (const [path, contracts] of routes) {
+    const source = readFileSync(path, "utf8");
+    for (const contract of contracts) assert.match(source, contract, path);
+  }
+});
