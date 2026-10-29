@@ -350,7 +350,12 @@ export function AdmissaoConversionSheet({
       }
 
       success('Alterações guardadas', 'A candidatura foi atualizada. Pode continuar a revisão neste atendimento.')
-      await onSaved?.()
+      try {
+        await onSaved?.()
+      } catch {
+        // A gravação foi concluída no servidor; a falha de revalidação não a anula.
+        toastError('Fila desatualizada', 'As alterações foram guardadas. Use «Atualizar» na fila para ver os dados mais recentes.')
+      }
     } catch (err: unknown) {
       toastError('Erro ao Salvar', getErrorMessage(err, 'Erro ao salvar alterações'))
     } finally {
