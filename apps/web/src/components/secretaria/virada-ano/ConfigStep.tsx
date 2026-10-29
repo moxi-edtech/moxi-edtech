@@ -291,7 +291,7 @@ export function ConfigStep({
     };
   }, [currentSession, selectedTarget, reajuste, targets]);
 
-  if (loading) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-slate-300" /></div>;
+  if (loading) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-muted-foreground" /></div>;
 
   if (result) {
     const createdAnything = result.created
@@ -310,29 +310,29 @@ export function ConfigStep({
             
             <div className="mt-8 grid grid-cols-2 gap-3 max-w-sm mx-auto">
                 <div className="bg-background p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Turmas no destino</p>
-                    <p className="text-xl font-black text-slate-800">{result.totals?.turmas ?? result.turmas}</p>
-                    <p className="text-[10px] text-slate-400">+{result.turmas ?? 0} nesta execução</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Turmas no destino</p>
+                    <p className="text-xl font-black text-foreground">{result.totals?.turmas ?? result.turmas}</p>
+                    <p className="text-[10px] text-muted-foreground">+{result.turmas ?? 0} nesta execução</p>
                 </div>
                 <div className="bg-background p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Preços no destino</p>
-                    <p className="text-xl font-black text-slate-800">{result.totals?.precos ?? result.precos}</p>
-                    <p className="text-[10px] text-slate-400">+{result.precos ?? 0} nesta execução</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Preços no destino</p>
+                    <p className="text-xl font-black text-foreground">{result.totals?.precos ?? result.precos}</p>
+                    <p className="text-[10px] text-muted-foreground">+{result.precos ?? 0} nesta execução</p>
                 </div>
                 <div className="bg-background p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Períodos no destino</p>
-                    <p className="text-xl font-black text-slate-800">{result.totals?.periodos ?? result.periodos}</p>
-                    <p className="text-[10px] text-slate-400">+{result.periodos ?? 0} nesta execução</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Períodos no destino</p>
+                    <p className="text-xl font-black text-foreground">{result.totals?.periodos ?? result.periodos}</p>
+                    <p className="text-[10px] text-muted-foreground">+{result.periodos ?? 0} nesta execução</p>
                 </div>
                 <div className="bg-background p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Disciplinas no destino</p>
-                    <p className="text-xl font-black text-slate-800">{result.totals?.disciplinas ?? result.disciplinas}</p>
-                    <p className="text-[10px] text-slate-400">+{result.disciplinas ?? 0} nesta execução</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Disciplinas no destino</p>
+                    <p className="text-xl font-black text-foreground">{result.totals?.disciplinas ?? result.disciplinas}</p>
+                    <p className="text-[10px] text-muted-foreground">+{result.disciplinas ?? 0} nesta execução</p>
                 </div>
             </div>
             {result.created && result.reused && (
               <div className="mx-auto mt-5 max-w-md rounded-xl border border-emerald-100 bg-background p-4 text-left">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resultado desta execução</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resultado desta execução</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                   <span className="font-semibold text-emerald-700">Novos registos: {Object.values(result.created).reduce((total, count) => total + count, 0)}</span>
                   <span className="font-semibold text-muted-foreground">Já existentes: {Object.values(result.reused).reduce((total, count) => total + count, 0)}</span>
@@ -362,11 +362,11 @@ export function ConfigStep({
         {/* Lado Esquerdo: Configuração */}
         <section className="space-y-4">
           <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Sessão de Destino</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Sessão de Destino</label>
             <select 
               value={selectedTarget}
               onChange={(e) => setSelectedTarget(e.target.value)}
-              className="w-full h-12 rounded-xl border border-slate-200 bg-background px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
+              className="w-full h-12 rounded-xl border border-border bg-background px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
             >
               {targets.map(s => (
                 <option key={s.id} value={s.id}>
@@ -464,18 +464,18 @@ export function ConfigStep({
           </div>
 
           <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Reajuste de Mensalidades (%)</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Reajuste de Mensalidades (%)</label>
             <div className="relative">
-              <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input 
                 type="number"
                 value={reajuste}
                 onChange={(e) => setReajuste(Number(e.target.value))}
-                className="w-full h-12 rounded-xl border border-slate-200 bg-background pl-12 pr-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
+                className="w-full h-12 rounded-xl border border-border bg-background pl-12 pr-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
                 placeholder="Ex: 10"
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">O valor será aplicado sobre a tabela de preços do ano atual.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">O valor será aplicado sobre a tabela de preços do ano atual.</p>
             <div className="mt-3 flex items-center gap-3" aria-live="polite">
               {previewingPricing && (
                 <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
@@ -493,25 +493,25 @@ export function ConfigStep({
         </section>
 
         {/* Lado Direito: Resumo do Espelhamento */}
-        <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+        <section className="rounded-2xl border border-border bg-muted/50 p-5 space-y-4">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Copy className="h-4 w-4 text-amber" /> O que será transportado:
           </h3>
           <ul className="space-y-3">
             <li className="flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-slate-100 text-purple-500"><Calendar className="h-3.5 w-3.5" /></div>
+                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-border text-purple-500"><Calendar className="h-3.5 w-3.5" /></div>
                 <span>Estrutura de <strong>Períodos Letivos</strong> (Trimestres/Datas)</span>
             </li>
             <li className="flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-slate-100 text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
+                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-border text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
                 <span><strong>Currículos, matrizes e disciplinas</strong> preparados para o novo ano</span>
             </li>
             <li className="flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-slate-100 text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
+                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-border text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
                 <span>Catálogo de <strong>Turmas sem alunos</strong>, com capacidade, turnos e estrutura académica</span>
             </li>
             <li className="flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-slate-100 text-emerald-500"><Database className="h-3.5 w-3.5" /></div>
+                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-border text-emerald-500"><Database className="h-3.5 w-3.5" /></div>
                 <span>Tabela de <strong>Preços</strong> com o reajuste configurado</span>
             </li>
           </ul>

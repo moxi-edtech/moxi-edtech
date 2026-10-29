@@ -153,48 +153,48 @@ export default function CalendarioPage() {
           <h2 className="text-md font-semibold mb-4">Novo Evento Geral</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="titulo" className="block text-sm font-medium text-gray-700">Título</label>
+              <label htmlFor="titulo" className="block text-sm font-medium text-foreground">Título</label>
               <input
                 type="text" id="titulo" value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-border shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
                 required
               />
             </div>
             <div>
-              <label htmlFor="descricao" className="block text-sm font-medium text-gray-700">Descrição</label>
+              <label htmlFor="descricao" className="block text-sm font-medium text-foreground">Descrição</label>
               <textarea
                 id="descricao" value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-border shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="inicioAt" className="block text-sm font-medium text-gray-700">Início</label>
+                <label htmlFor="inicioAt" className="block text-sm font-medium text-foreground">Início</label>
                 <input
                   type="datetime-local" id="inicioAt" value={inicioAt}
                   onChange={(e) => setInicioAt(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-border shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
                   required
                 />
               </div>
               <div>
-                <label htmlFor="fimAt" className="block text-sm font-medium text-gray-700">Fim</label>
+                <label htmlFor="fimAt" className="block text-sm font-medium text-foreground">Fim</label>
                 <input
                   type="datetime-local" id="fimAt" value={fimAt}
                   onChange={(e) => setFimAt(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-border shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
                 />
               </div>
             </div>
             <div>
-              <label htmlFor="publicoAlvo" className="block text-sm font-medium text-gray-700">Público Alvo</label>
+              <label htmlFor="publicoAlvo" className="block text-sm font-medium text-foreground">Público Alvo</label>
               <select
                 id="publicoAlvo" value={publicoAlvo}
                 onChange={(e) => setPublicoAlvo(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-border shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
               >
                 <option value="">Todos</option>
                 <option value="alunos">Alunos</option>
@@ -216,11 +216,11 @@ export default function CalendarioPage() {
 
         <div>
           <h2 className="text-md font-semibold mb-4">Eventos e Datas Importantes</h2>
-          {loading && <p className="text-sm text-slate-400">Carregando...</p>}
-          {!loading && events.length === 0 && <p className="text-sm text-slate-400">Nenhum evento agendado.</p>}
+          {loading && <p className="text-sm text-muted-foreground">Carregando...</p>}
+          {!loading && events.length === 0 && <p className="text-sm text-muted-foreground">Nenhum evento agendado.</p>}
           <ul className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
             {events.map((event) => (
-              <li key={event.id} className="p-4 border rounded-xl bg-slate-50/50 hover:bg-background transition-colors relative overflow-hidden">
+              <li key={event.id} className="p-4 border rounded-xl bg-muted/50 hover:bg-background transition-colors relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: event.cor_hex || '#64748b' }} />
                 <div className="flex justify-between items-start">
                   <div>
@@ -232,11 +232,11 @@ export default function CalendarioPage() {
                       </p>
                     )}
                   </div>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${event.tipo === 'EVENTO_GERAL' ? 'bg-slate-100 text-muted-foreground' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${event.tipo === 'EVENTO_GERAL' ? 'bg-muted text-muted-foreground' : 'bg-amber-100 text-amber-700'}`}>
                     {event.tipo.replace('_', ' ')}
                   </span>
                 </div>
-                <div className="mt-3 flex items-center gap-4 text-[10px] font-medium text-slate-400">
+                <div className="mt-3 flex items-center gap-4 text-[10px] font-medium text-muted-foreground">
                   <span className="flex items-center gap-1">📅 {new Date(event.data_inicio).toLocaleDateString('pt-PT')}</span>
                   {event.data_fim && event.data_fim !== event.data_inicio && (
                     <span className="flex items-center gap-1">🏁 Até {new Date(event.data_fim).toLocaleDateString('pt-PT')}</span>
