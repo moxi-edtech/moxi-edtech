@@ -35,6 +35,7 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271029120000_curtume_legal_history_destination_guard.sql",
   "20271029130000_curtume_turma_classe_number_consistency.sql",
   "20271029140000_global_academic_class_metadata_contract.sql",
+  "20261029110413_global_academic_class_metadata_contract_20261029.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
