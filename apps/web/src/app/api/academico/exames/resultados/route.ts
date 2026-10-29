@@ -61,7 +61,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "A nota excede o máximo do componente.", code: "EXAM_NOTE_EXCEEDS_MAX" }, { status: 422 });
   }
 
-  const { data, error } = await supabase.from("exame_resultados").upsert({ ...body, escola_id: escolaId, estado: "submetido", lancado_por: auth.user.id, lancado_em: new Date().toISOString() }, { onConflict: "exame_sessao_id,exame_componente_id,matricula_id,turma_disciplina_id" }).select().single();
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 409 });
+  // An exam result is a legal record: no silent upsert of submitted/validated
+  // grades. Duplicate retries return the same record without new writes.
+  const { data: existing, error: existingError } = await supabase.from("exame_resultados")
+    .select("id,estado,nota")
+    .eq("escola_id", escolaId)
+    .eq("exame_sessao_id", body.exame_sessao_id)
+    .eq("exame_componente_id", body.exame_componente_id)
+    .eq("matricula_id", body.matricula_id)
+    .eq("turma_disciplina_id", body.turma_disciplina_id)
+    .maybeSingle();
+  if (existingError) return NextResponse.json({ ok: false, error: "Não foi possível confirmar o resultado existente." }, { status: 503 });
+  if (existing) {
+    if (existing.estado === "submetido" && Number(existing.nota) === body.nota) {
+      return NextResponse.json({ ok: true, data: existing, idempotent: true });
+    }
+    return NextResponse.json({ ok: false,
+      error: "Já existe nota para esta sessão e disciplina. A alteração exige retificação académica formal.",
+      code: "EXAM_RESULT_ALREADY_RECORDED",
+    }, { status: 409 });
+  }
+  const { data, error } = await supabase.from("exame_resultados")
+    .insert({ ...body, escola_id: escolaId, estado: "submetido", lancado_por: auth.user.id, lancado_em: new Date().toISOString() })
+    .select().single();
+  if (error) return NextResponse.json({ ok: false,
+    error: error.code === "23505" ? "Resultado já lançado por outro operador. Atualize a análise." : "Não foi possível guardar o resultado.",
+    code: error.code === "23505" ? "EXAM_RESULT_CONFLICT" : "EXAM_RESULT_WRITE_FAILED",
+  }, { status: error.code === "23505" ? 409 : 503 });
   return NextResponse.json({ ok: true, data });
 }
