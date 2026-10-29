@@ -90,3 +90,31 @@ test("health endpoint has auth, school authorization and is read-only", () => {
   assert.match(source, /auditDecreeSync/);
   assert.doesNotMatch(source, /\.(insert|upsert|update|delete|rpc)\(/);
 });
+
+test("official year preparation persists template/item/version, and refuses editing active sessions", () => {
+  const route = readFileSync("src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts", "utf8");
+  assert.match(route, /source_template_id: periodTemplate\.id/);
+  assert.match(route, /source_item_id: item\.id/);
+  assert.match(route, /source_version: periodTemplate\.versao_documento/);
+  assert.match(route, /CALENDAR_PROVENANCE_NOT_PERSISTED/);
+  assert.match(route, /ACTIVE_YEAR_RECONCILIATION_REQUIRED/);
+  assert.match(route, /CALENDAR_PROFILES_CONFLICT/);
+});
+
+test("legacy template application cannot overwrite active multi-offering schools silently", () => {
+  const route = readFileSync("src/app/api/escola/[id]/admin/calendario/aplicar-template/route.ts", "utf8");
+  assert.match(route, /CALENDAR_MULTI_OFFERING_REQUIRED/);
+  assert.match(route, /ACTIVE_YEAR_RECONCILIATION_REQUIRED/);
+  assert.match(route, /\.eq\('is_oficial', true\)/);
+  assert.match(route, /\.eq\('estado', 'PUBLICADO'\)/);
+  assert.match(route, /source_item_id: i\.id/);
+});
+
+test("calendar provenance RPC accepts legacy 2025 only in the absence of period items", () => {
+  const sql = readFileSync("../../supabase/migrations/20261029181554_preserve_legacy_2025_calendar_provenance_compatibility.sql", "utf8");
+  assert.match(sql, /t\.ano_base < 2026/);
+  assert.match(sql, /NOT EXISTS/);
+  assert.match(sql, /i\.tipo::text = 'PERIODO_LETIVO'/);
+  assert.match(sql, /v_has_permission/);
+  assert.match(sql, /current_tenant_escola_id/);
+});
