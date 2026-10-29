@@ -343,15 +343,26 @@ export async function POST(request: Request) {
   // Receipt RPCs are themselves idempotent: on retry they return the existing
   // receipt instead of creating a duplicate. This closes the small gap between
   // the committed financial batch and HTTP response delivery.
-  const recibo = await emitBatchReceipt({
-    supabase,
-    escolaId,
-    items: itensPagamento,
-    metodo,
-    origin: parsed.data.origem,
-    lastPayment: ultimoPagamento,
-    alunoId: parsed.data.aluno_id,
-  });
+  // Settlement is already committed. Receipt generation is a separate
+  // outcome: even an unexpected RPC/network exception must not turn a
+  // settled checkout into HTTP 500 and tempt the staff to pay again.
+  let recibo: BatchReceiptResult;
+  try {
+    recibo = await emitBatchReceipt({
+      supabase,
+      escolaId,
+      items: itensPagamento,
+      metodo,
+      origin: parsed.data.origem,
+      lastPayment: ultimoPagamento,
+      alunoId: parsed.data.aluno_id,
+    });
+  } catch (receiptError) {
+    console.warn("[SECRETARIA-PAGAMENTOS-BATCH][RECEIPT_DEFERRED]", {
+      code: receiptError instanceof Error ? receiptError.name : "UNKNOWN",
+    });
+    recibo = { ok: false, error: "Pagamento confirmado; recibo em processamento." };
+  }
 
   if (!idempotent) {
     pagamentos.forEach((row, index) => {
