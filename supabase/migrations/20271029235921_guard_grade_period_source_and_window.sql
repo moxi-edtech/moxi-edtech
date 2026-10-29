@@ -423,6 +423,11 @@ BEGIN
          pl.id AS period_id, pl.numero AS period_num, pl.ano_letivo_id AS period_year_id,
          pl.data_inicio AS begins, pl.data_fim AS ends, pl.trava_notas_em AS lock_at,
          pl.source_template_id AS source_template_id,
+         pl.source_item_id AS source_item_id,
+         ct.is_oficial AS template_official, ct.estado::text AS template_status,
+         ct.ano_base AS template_year,
+         ci.numero AS item_number, ci.tipo::text AS item_type,
+         ci.data_inicio AS item_start, ci.data_fim AS item_end,
          td.turma_id, t.session_id AS turma_year_id, t.ano_letivo AS turma_year,
          m.turma_id AS matricula_turma_id, m.session_id AS matricula_year_id, m.ano_letivo AS matricula_year,
          m.ativo AS matricula_active
@@ -431,6 +436,9 @@ BEGIN
     JOIN public.turma_disciplinas td ON td.id = a.turma_disciplina_id
     JOIN public.turmas t ON t.id = td.turma_id
     JOIN public.periodos_letivos pl ON pl.id = a.periodo_letivo_id
+    LEFT JOIN public.calendario_templates ct ON ct.id = pl.source_template_id
+    LEFT JOIN public.calendario_template_items ci ON ci.id = pl.source_item_id
+         AND ci.template_id = ct.id
     JOIN public.matriculas m ON m.id = NEW.matricula_id
    WHERE a.id = NEW.avaliacao_id
      AND a.escola_id = NEW.escola_id
@@ -450,8 +458,17 @@ BEGIN
      OR v.matricula_active IS DISTINCT FROM TRUE THEN
     RAISE EXCEPTION 'DATA: Avaliação, matrícula, turma, ano ou trimestre incompatíveis.';
   END IF;
-  IF v.turma_year = 2026 AND v.source_template_id IS NULL THEN
-    RAISE EXCEPTION 'OFFICIAL_CALENDAR_NOT_RECONCILED: O calendário de 2026/2027 não está conciliado.';
+  IF v.turma_year = 2026 AND (
+       v.source_template_id IS NULL OR v.source_item_id IS NULL
+       OR v.template_official IS DISTINCT FROM TRUE
+       OR v.template_status IS DISTINCT FROM 'PUBLICADO'
+       OR v.template_year IS DISTINCT FROM v.turma_year
+       OR v.item_type IS DISTINCT FROM 'PERIODO_LETIVO'
+       OR v.item_number IS DISTINCT FROM v.trimestre
+       OR v.item_start IS DISTINCT FROM v.begins
+       OR v.item_end IS DISTINCT FROM v.ends
+     ) THEN
+    RAISE EXCEPTION 'OFFICIAL_CALENDAR_NOT_RECONCILED: O trimestre não corresponde ao calendário oficial publicado.';
   END IF;
   IF v.begins IS NULL OR v.ends IS NULL OR v.begins > v.ends THEN
     RAISE EXCEPTION 'DATA: Datas do trimestre não configuradas.';
