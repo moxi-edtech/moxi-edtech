@@ -330,7 +330,8 @@ export default function AdmissoesInboxClient({
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const [search, setSearch] = useState(initialSearch || '')
-  const [statusFilter, setStatusFilter] = useState<'novas' | 'rascunhos' | 'pre_candidaturas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('novas')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'novas' | 'rascunhos' | 'pre_candidaturas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('all')
+  const [detailTab, setDetailTab] = useState<'resumo' | 'documentos' | 'historico'>('resumo')
   const debouncedSearch = useDebouncedValue(search.trim(), 300)
   const supabase = useMemo(() => createClient(), [])
 
@@ -431,7 +432,9 @@ export default function AdmissoesInboxClient({
       const matchesSearch = matchesName || matchesProtocol
 
       let matchesStatus = false
-      if (statusFilter === 'novas') {
+      if (statusFilter === 'all') {
+        matchesStatus = true
+      } else if (statusFilter === 'novas') {
         matchesStatus = item.status === 'submetida' || item.status === 'documentos_reenviados'
       } else if (statusFilter === 'rascunhos') {
         matchesStatus = item.status === 'rascunho'
@@ -568,6 +571,8 @@ export default function AdmissoesInboxClient({
       if (!signal.aborted) setLoadingDetail(false)
     }
   }, [])
+
+  useEffect(() => { setDetailTab("resumo") }, [selectedId])
 
   useEffect(() => {
     if (!selectedId) {
@@ -1173,7 +1178,7 @@ export default function AdmissoesInboxClient({
   };
 
   return (
-    <div className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row ${embedded ? "h-[min(76dvh,920px)] min-h-[540px]" : "h-[calc(100dvh-160px)] min-h-[560px]"}`} aria-label="Gestão de admissões">
+    <div className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row ${embedded ? "h-[min(69dvh,760px)] min-h-[420px]" : "h-[calc(100dvh-160px)] min-h-[560px]"}`} aria-label="Gestão de admissões">
       {/* Coluna Esquerda: Fila de Espera (30%) */}
       <div className={`min-h-0 w-full shrink-0 flex-col border-b border-border bg-card lg:w-[min(38%,400px)] lg:border-b-0 lg:border-r ${selectedId ? "hidden lg:flex" : "flex"}`}>
         <div className="border-b border-border bg-card p-3 sm:p-4">
@@ -1217,8 +1222,10 @@ export default function AdmissoesInboxClient({
             </div>
           </div>
 
-          <div className="mb-4 rounded-xl border border-border bg-muted/40 p-3">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+          <details open={!embedded} className="mb-3 rounded-xl border border-border bg-muted/40 text-foreground">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground">Partilhar link de inscrição</summary>
+            <div className="border-t border-border p-3">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1">
               <Share2 className="h-3 w-3" />
               Link de Inscrição Pública
             </p>
@@ -1243,9 +1250,10 @@ export default function AdmissoesInboxClient({
                 <span>WhatsApp</span>
               </button>
             </div>
-          </div>
+            </div>
+          </details>
 
-          <div className="relative mb-4">
+          <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
@@ -1256,8 +1264,9 @@ export default function AdmissoesInboxClient({
             />
           </div>
 
-          <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
+          <div className="mb-3 flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
             {([
+              { id: 'all', label: 'Todas' },
               { id: 'novas', label: 'Novas' },
               { id: 'rascunhos', label: 'Rascunhos' },
               { id: 'pre_candidaturas', label: 'Pré' },
@@ -1308,8 +1317,10 @@ export default function AdmissoesInboxClient({
             </div>
           )}
 
-          {/* Gargalos de Conversão */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Indicadores secundários disponíveis sem sobrecarregar a fila */}
+          <details open={!embedded} className="mt-1 rounded-xl border border-border bg-card">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground">Indicadores e oportunidades</summary>
+          <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
             <button
               onClick={() => setStatusFilter('expirando')}
               className={`p-3 rounded-xl border text-left transition-all ${
@@ -1361,6 +1372,7 @@ export default function AdmissoesInboxClient({
               </p>
             </button>
           </div>
+          </details>
         </div>
 
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-muted/30 p-3">
@@ -1388,8 +1400,7 @@ export default function AdmissoesInboxClient({
               return (
                 <motion.div
                   key={item.id}
-                  layoutId={item.id}
-                  role="button"
+                                    role="button"
                   tabIndex={0}
                   aria-pressed={isActive}
                   aria-label={`Abrir candidatura de ${item.nome_candidato}`}
