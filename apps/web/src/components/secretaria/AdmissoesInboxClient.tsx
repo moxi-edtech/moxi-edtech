@@ -1208,7 +1208,7 @@ export default function AdmissoesInboxClient({
               </Button>
               <Button
                 size="sm"
-                className="h-8 gap-1 bg-amber text-slate-950 hover:brightness-95"
+                className="h-8 gap-1 bg-amber text-amber-950 hover:brightness-95"
                 onClick={() => onNewAdmission ? onNewAdmission() : router.push(withSlug(`/secretaria/admissoes/nova`))}
               >
                 <Plus className="h-4 w-4" />
