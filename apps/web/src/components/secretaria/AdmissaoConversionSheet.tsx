@@ -656,7 +656,7 @@ export function AdmissaoConversionSheet({
                 {enrollmentResult.comprovante?.error && <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">Motivo técnico: {enrollmentResult.comprovante.error}</p>}
                 <p className="mt-4 text-xs font-black uppercase tracking-widest text-muted-foreground">Recibo financeiro</p>
                 {enrollmentResult.recibo?.ok && enrollmentResult.recibo.print_url ? (
-                  <a href={enrollmentResult.recibo.print_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-foreground px-4 py-2 text-xs font-black text-white">Abrir recibo</a>
+                  <a href={enrollmentResult.recibo.print_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-foreground px-4 py-2 text-xs font-bold text-background">Abrir recibo</a>
                 ) : enrollmentResult.recibo?.status === 'pending' ? (
                   <p className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">Pagamento registado. O recibo será disponibilizado após a liquidação.</p>
                 ) : (
@@ -707,7 +707,7 @@ export function AdmissaoConversionSheet({
                 {/* Ação Principal: Notificar */}
                 <Button
                   onClick={handleNotifyWhatsApp}
-                  className="w-full h-16 rounded-2xl bg-[#25D366] hover:bg-[#25D366]/90 text-white font-black text-lg shadow-xl shadow-green-500/20"
+                  className="min-h-12 w-full rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-black transition hover:brightness-95"
                 >
                   <Send className="w-5 h-5 mr-3" />
                   {notificationSent ? 'Abrir WhatsApp novamente' : 'Notificar via WhatsApp'}
@@ -777,7 +777,7 @@ export function AdmissaoConversionSheet({
                   <User className="w-3.5 h-3.5" />
                   Dados Pessoais
                 </div>
-                <div className="grid gap-4 p-6 bg-card rounded-2xl border border-border shadow-sm">
+                <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-foreground">Nome Completo</label>
                     <Input 
@@ -862,7 +862,7 @@ export function AdmissaoConversionSheet({
                   <User className="w-3.5 h-3.5" />
                   Responsável / Encarregado
                 </div>
-                <div className="grid gap-4 p-6 bg-card rounded-2xl border border-border shadow-sm">
+                <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-foreground">Nome do Encarregado</label>
                     <Input 
@@ -1008,7 +1008,7 @@ export function AdmissaoConversionSheet({
                   Ajuste Académico
                 </div>
                 
-                <div className="grid gap-4 p-6 bg-card rounded-2xl border border-border shadow-sm">
+                <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
                   <Select 
                     label="Curso Pretendido"
                     value={academic.cursoId} 
@@ -1045,7 +1045,7 @@ export function AdmissaoConversionSheet({
                   Pagamento de Matrícula
                 </div>
 
-                <div className="grid gap-6 p-6 bg-card rounded-2xl border border-border shadow-sm">
+                <div className="grid gap-5 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
                   <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-100 dark:border-amber-500/25">
                     <div className="flex items-center gap-2">
                       <Banknote className="w-4 h-4 text-amber-700 dark:text-amber-300" />
@@ -1172,7 +1172,7 @@ export function AdmissaoConversionSheet({
       </SheetContent>
       {capacityOverrideOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 text-foreground shadow-2xl">
             <div className="mb-4 flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300">
                 <AlertCircle className="h-5 w-5" />
@@ -1219,7 +1219,7 @@ export function AdmissaoConversionSheet({
                 onClick={() => void handleEfetivar({ capacidade: true, motivo: capacityOverrideMotivo })}
                 disabled={submitting || capacityOverrideMotivo.trim().length < 10}
                 loading={submitting}
-                className="flex-[2] bg-amber text-amber-950"
+                className="flex-[2] bg-amber text-amber-950 hover:brightness-95"
               >
                 Confirmar override
               </Button>
