@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 22);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 23);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -28,6 +28,14 @@ test("allows precisely the six audited Curtume academic migrations", () => {
   assert.match(checkFiscalAndSchemaScope([
     "supabase/migrations/20271029130001_curtume_unreviewed.sql",
   ])[0] ?? "", /Unapproved database migration/);
+});
+
+test("global academic class metadata guard is allowlisted without fiscal exceptions", () => {
+  const path = "supabase/migrations/20271029140000_global_academic_class_metadata_contract.sql";
+  assert.deepEqual(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TRIGGER trg_class_guard BEFORE INSERT ON classes EXECUTE FUNCTION class_guard();"), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "ALTER TABLE public.fiscal_config ADD COLUMN enabled boolean;")[0] ?? "", /Fiscal\/AGT activation/);
 });
 
 test("preserves the fiscal and AGT module freeze", () => {
