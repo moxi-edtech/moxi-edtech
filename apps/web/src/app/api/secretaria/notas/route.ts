@@ -65,6 +65,29 @@ export async function POST(req: Request) {
       anoLetivoId: academicContext.anoLetivoId,
     })
 
+    const { data: turmaDisciplina, error: turmaDisciplinaError } = await supabase
+      .from('turma_disciplinas')
+      .select('id,periodos_ativos')
+      .eq('id', body.turma_disciplina_id)
+      .eq('escola_id', escolaId)
+      .eq('turma_id', body.turma_id)
+      .maybeSingle()
+    if (turmaDisciplinaError) throw turmaDisciplinaError
+    if (!turmaDisciplina) {
+      return NextResponse.json({
+        ok: false, code: 'GRADE_DISCIPLINE_MISMATCH',
+        error: 'Esta disciplina não pertence à turma selecionada.',
+      }, { status: 409 })
+    }
+    if (Array.isArray(turmaDisciplina.periodos_ativos) &&
+        turmaDisciplina.periodos_ativos.length > 0 &&
+        !turmaDisciplina.periodos_ativos.includes(body.trimestre)) {
+      return NextResponse.json({
+        ok: false, code: 'GRADE_DISCIPLINE_INACTIVE_TRIMESTER',
+        error: 'A disciplina não está prevista neste trimestre.',
+      }, { status: 409 })
+    }
+
     const { data: candidatePeriods, error: periodsError } = await supabase
       .from('periodos_letivos')
       .select('id,numero,data_inicio,data_fim,trava_notas_em,offering_id,source_template_id')
