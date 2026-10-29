@@ -22,6 +22,9 @@ on:
       - "apps/web/tests/unit/grade-period-context.spec.ts"
       - "apps/web/src/lib/academico/official-calendar-write-guard.ts"
       - "apps/web/tests/unit/official-calendar-write-guard.spec.ts"
+      - "apps/web/src/lib/academico/calendar-events-read.ts"
+      - "apps/web/src/app/api/aluno/home/academic-events/route.ts"
+      - "apps/web/tests/unit/calendar-events-read.spec.ts"
       - "apps/web/src/lib/academico/canonical-med-calendar.ts"
       - "apps/web/src/lib/academico/prepare-canonical-calendar.ts"
       - "apps/web/tests/unit/canonical-med-calendar.spec.ts"
@@ -139,6 +142,7 @@ jobs:
             tests/unit/grade-period-context.spec.ts \
             tests/unit/official-calendar-write-guard.spec.ts \
             tests/unit/canonical-med-calendar.spec.ts \
+            tests/unit/calendar-events-read.spec.ts \
             tests/unit/raa-decreto-eligibility.spec.ts \
             tests/unit/raa-exam-result-guard.spec.ts \
             tests/unit/raa-attendance-justification.spec.ts \
