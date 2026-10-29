@@ -21,6 +21,19 @@ CREATE TABLE IF NOT EXISTS public.calendario_template_items (
   data_fim date NOT NULL
 );
 
+ALTER TABLE public.calendario_template_items ADD COLUMN IF NOT EXISTS nome text;
+CREATE TABLE IF NOT EXISTS public.calendario_eventos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  escola_id uuid NOT NULL,
+  ano_letivo_id uuid NOT NULL,
+  tipo text NOT NULL,
+  nome text NOT NULL,
+  data_inicio date NOT NULL,
+  data_fim date NOT NULL,
+  source_template_id uuid,
+  source_item_id uuid
+);
+
 ALTER TABLE public.turma_disciplinas ADD COLUMN IF NOT EXISTS periodos_ativos integer[];
 
 CREATE SCHEMA IF NOT EXISTS auth;
