@@ -79,3 +79,32 @@ test("student and secretaria lifecycle portals never publish unclosed results", 
   assert.match(student, /cicloVida/);
   assert.match(school, /cicloVida/);
 });
+
+test("Curtume numeric class metadata and future turma creation remain consistent", () => {
+  const classes = read("../../supabase/migrations/20271029110000_curtume_class_metadata_and_transition_lineage.sql");
+  const turmas = read("../../supabase/migrations/20271029130000_curtume_turma_classe_number_consistency.sql");
+  assert.match(classes, /UPDATE public\.classes/);
+  assert.match(classes, /trg_guard_matricula_transition_lineage/);
+  assert.match(classes, /INVALID_TRANSITION_LINEAGE/);
+  assert.match(turmas, /UPDATE public\.turmas/);
+  assert.match(turmas, /trg_curtume_normalize_turma_classe_num/);
+  assert.match(turmas, /TURMA_CLASS_NUMBER_CONFLICT/);
+  assert.match(turmas, /1\[0-3\]/);
+});
+test("legal publication does not accept a destination inconsistent with ratified outcome", () => {
+  const lock = read("../../supabase/migrations/20271029120000_curtume_legal_history_destination_guard.sql");
+  assert.match(lock, /trg_curtume_guard_legal_history_destination/);
+  assert.match(lock, /ACADEMIC_TRANSITION_LINK_REQUIRED/);
+  assert.match(lock, /ACADEMIC_DESTINATION_CONFLICT/);
+  assert.match(lock, /v_result='aprovado'/);
+  assert.match(lock, /v_result='reprovado'/);
+});
+test("secretaria flags placement anomalies and never defaults to approving", () => {
+  assert.match(api, /compareNextYearEnrollment/);
+  assert.match(api, /confirmedOutcomeFitsDestination/);
+  assert.match(api, /TRANSICAO_ACADEMICA_DIVERGENTE/);
+  assert.match(page, /Selec(?:cione|ione) o resultado documentado/);
+  assert.match(page, /useState<Resultado \| "">\(""/);
+  assert.match(page, /Rever vínculo e turma no Balcão/);
+  assert.match(page, /requestSeq/);
+});
