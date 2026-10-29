@@ -40,10 +40,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .from('calendario_templates')
       .select('*, items:calendario_template_items(*)')
       .eq('id', templateId)
+      .eq('is_oficial', true)
+      .eq('estado', 'PUBLICADO')
       .single();
 
     if (tError || !template) {
       return NextResponse.json({ ok: false, error: 'Template não encontrado.' }, { status: 404 });
+    }
+
+    // A rota legada aplica apenas um modelo. Escolas com ofertas de
+    // subsistemas diferentes usam o contrato de virada multi-oferta.
+    const { data: activeOfferings, error: offeringsError } = await (supabase as any)
+      .from('school_education_offerings')
+      .select('id,education_subsystem,calendar_profile_id')
+      .eq('escola_id', userEscolaId)
+      .eq('status', 'active');
+    if (offeringsError) throw offeringsError;
+    if ((activeOfferings ?? []).some((offering: { education_subsystem: string }) =>
+      offering.education_subsystem !== template.subsistema)) {
+      return NextResponse.json({
+        ok: false, code: 'CALENDAR_MULTI_OFFERING_REQUIRED',
+        error: 'Esta escola usa vários subsistemas. Sincronize pelo fluxo oficial de perfis educativos.',
+      }, { status: 409 });
     }
 
     const items = (template as any).items || [];
@@ -55,6 +73,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .eq('escola_id', userEscolaId)
       .eq('ano', template.ano_base)
       .maybeSingle();
+
+    // Não reescrever os períodos de uma sessão activa com datas divergentes:
+    // pode alterar condições de matrícula e competência financeira.
+    if (anoLetivo?.ativo && (anoLetivo.data_inicio !== template.data_inicio || anoLetivo.data_fim !== template.data_fim)) {
+      return NextResponse.json({
+        ok: false, code: 'ACTIVE_YEAR_RECONCILIATION_REQUIRED',
+        error: 'As datas do ano activo divergem do decreto. Revise as operações financeiras antes de reconciliar.',
+      }, { status: 409 });
+    }
 
     let anoLetivoId = anoLetivo?.id;
 
@@ -87,7 +114,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         numero: i.numero,
         data_inicio: i.data_inicio,
         data_fim: i.data_fim,
-        peso: i.peso
+        peso: i.peso,
+        source_template_id: template.id,
+        source_item_id: i.id,
+        source_version: template.versao_documento,
       }));
 
     const eventosData = items
@@ -98,7 +128,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         tipo: i.tipo,
         nome: i.nome,
         data_inicio: i.data_inicio,
-        data_fim: i.data_fim
+        data_fim: i.data_fim,
+        source_template_id: template.id,
+        source_item_id: i.id,
+        source_version: template.versao_documento,
+        applied_at: new Date().toISOString(),
+        applied_by: user.id,
       }));
 
     // 4. Executar Inserções
