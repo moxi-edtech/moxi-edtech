@@ -256,10 +256,10 @@ não outro modelo escolhido implicitamente pela escola.
 
 ### Testes e segurança
 
-- Typecheck do web aprovado e **170 testes unitários** adjacentes
-  passaram na bateria ampla executada em 29/10. Depois foram
-  acrescentadas verificações para pesos, data final de exames e tipo
-  de curso; 56 testes específicos passaram novamente.
+- Typecheck do web aprovado e **173/173 testes unitários** da bateria
+  abrangente em 29/10. Inclui verificações de pesos, data final de
+  exames, tipo de curso, proteção de scripts de reconciliação e contratos
+  dos portais e do Balcão.
 - Em PostgreSQL **17 descartável**, foram aplicadas em sequência
   as migrations 21, 22 e 23 e os respetivos testes. Verificou-se
   idempotência, preservação de UUID dos períodos, isolamento por oferta,
