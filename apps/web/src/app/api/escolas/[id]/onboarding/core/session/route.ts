@@ -85,6 +85,43 @@ export async function POST(
 
     const { anoLetivo, data_inicio, data_fim, esquemaPeriodos, templateId, periodosConfig } = parseResult.data;
 
+    if (anoLetivo >= 2026) {
+      if (!templateId || (periodosConfig?.length ?? 0) > 0 || esquemaPeriodos !== "trimestral") {
+        return NextResponse.json({
+          ok: false, code: "OFFICIAL_CALENDAR_REQUIRED",
+          error: "A partir de 2026/2027, os trimestres devem vir do calendário oficial publicado.",
+        }, { status: 409 });
+      }
+      const { data: official, error: officialError } = await supabase
+        .from("calendario_templates")
+        .select("id,ano_base,estado,is_oficial,subsistema,data_inicio,data_fim,items:calendario_template_items(id,numero,tipo,data_inicio,data_fim)")
+        .eq("id", templateId).maybeSingle();
+      if (officialError) throw officialError;
+      const officialTerms = official?.items?.filter((item) => item.tipo === "PERIODO_LETIVO") ?? [];
+      if (!official || !official.is_oficial || official.estado !== "PUBLICADO" ||
+          official.ano_base !== anoLetivo ||
+          official.data_inicio !== data_inicio || official.data_fim !== data_fim ||
+          officialTerms.length !== 3 ||
+          new Set(officialTerms.map((item) => item.numero)).size !== 3 ||
+          officialTerms.some((item) => ![1, 2, 3].includes(Number(item.numero)))) {
+        return NextResponse.json({
+          ok: false, code: "ACADEMIC_CALENDAR_TEMPLATE_MISMATCH",
+          error: "As datas ou os trimestres não correspondem ao decreto publicado.",
+        }, { status: 409 });
+      }
+      const { data: offerings, error: offeringsError } = await supabase
+        .from("school_education_offerings")
+        .select("education_subsystem")
+        .eq("escola_id", userEscolaId).eq("status", "active");
+      if (offeringsError) throw offeringsError;
+      if ((offerings ?? []).some((item) => item.education_subsystem !== official.subsistema)) {
+        return NextResponse.json({
+          ok: false, code: "MULTI_OFFERING_CALENDAR_REQUIRES_SCOPED_IMPORT",
+          error: "A escola possui ofertas com calendários diferentes. Configure cada oferta no fluxo académico.",
+        }, { status: 409 });
+      }
+    }
+
     // 1. Create/Activate the Academic Year
     const { data: anoLetivoResult, error: anoError } = await supabase.rpc('setup_active_ano_letivo', {
       p_escola_id: userEscolaId,
@@ -145,7 +182,12 @@ export async function POST(
           data_inicio: i.data_inicio,
           data_fim: i.data_fim,
           trava_notas_em: null,
-          peso: i.peso
+          peso: i.peso,
+          ...(anoLetivo >= 2026 ? {
+            source_template_id: templateId,
+            source_item_id: i.id,
+            source_version: null,
+          } : {}),
         }));
 
       const eventosPayload: Database['public']['Tables']['calendario_eventos']['Insert'][] = items
@@ -156,11 +198,19 @@ export async function POST(
           tipo: i.tipo,
           nome: i.nome,
           data_inicio: i.data_inicio,
-          data_fim: i.data_fim
+          data_fim: i.data_fim,
+          ...(anoLetivo >= 2026 ? {
+            source_template_id: templateId,
+            source_item_id: i.id,
+            applied_at: new Date().toISOString(),
+            applied_by: user.id,
+          } : {}),
         }));
 
       if (eventosPayload.length > 0) {
-        await supabase.from('calendario_eventos').upsert(eventosPayload, { onConflict: 'escola_id,ano_letivo_id,nome,data_inicio' });
+        const { error: eventsError } = await supabase.from('calendario_eventos')
+          .upsert(eventosPayload, { onConflict: 'escola_id,ano_letivo_id,nome,data_inicio' });
+        if (eventsError) throw eventsError;
       }
     } else {
       const tipoUpper = (esquemaPeriodos === 'semestral' ? 'SEMESTRE' : esquemaPeriodos === 'bimestral' ? 'BIMESTRE' : 'TRIMESTRE') as Database['public']['Enums']['periodo_tipo'];
