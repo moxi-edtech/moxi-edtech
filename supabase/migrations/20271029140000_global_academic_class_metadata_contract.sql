@@ -98,10 +98,8 @@ BEGIN
       RAISE EXCEPTION 'CLASS_NUMBER_CONFLICT: class name contradicts numero'
         USING ERRCODE='23514';
     END IF;
-    IF NEW.ordem IS NOT NULL AND NEW.ordem NOT IN (0,v_grade) THEN
-      RAISE EXCEPTION 'CLASS_ORDER_CONFLICT: numbered class order must match its level'
-        USING ERRCODE='23514';
-    END IF;
+    -- Legacy admin forms may send a menu position instead of a grade level.
+    -- Normalize it rather than breaking course installation before the new UI deploy.
     NEW.numero:=v_grade;
     NEW.ordem:=v_grade;
   ELSIF NEW.nome ~* '^pré[-[:space:]]*escolar$' THEN
@@ -171,6 +169,12 @@ CREATE TRIGGER trg_klasse_guard_turma_class_binding
 BEFORE INSERT OR UPDATE OF classe_id,classe_num,curso_id,escola_id
 ON public.turmas FOR EACH ROW
 EXECUTE FUNCTION public.klasse_guard_turma_class_binding_v1();
+
+-- The old per-school numeric guards are now superseded by equivalent global
+-- normalization; keeping both would reject legacy admin requests before the
+-- canonical trigger can replace an arbitrary menu order.
+DROP TRIGGER IF EXISTS trg_curtume_normalize_class_metadata ON public.classes;
+DROP TRIGGER IF EXISTS trg_curtume_normalize_turma_classe_num ON public.turmas;
 
 -- Enforce the same tenant/course/class reference in both curriculum layouts.
 -- Null classe_id is permitted on legacy course-wide curriculum drafts.
