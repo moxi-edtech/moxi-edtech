@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
     const { data: matricula, error: matriculaError } = await supabase
       .from("matriculas")
-      .select("id,turma:turmas!inner(id,curso_id,classe_num)")
+      .select("id,turma:turmas!inner(id,curso_id,classe_num,is_classe_exame)")
       .eq("escola_id", ctx.escolaId)
       .eq("aluno_id", alunoId)
       .eq("ano_letivo", activeYear.ano)
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
     if (matriculaError) throw matriculaError;
     if (!matricula) return NextResponse.json({ ok: true, items: [] });
 
-    const turma = (matricula as any).turma as { id: string; curso_id: string | null; classe_num: number | null } | null;
+    const turma = (matricula as any).turma as { id: string; curso_id: string | null; classe_num: number | null; is_classe_exame: boolean | null } | null;
     if (!turma?.curso_id) return NextResponse.json({ ok: true, items: [] });
 
     const { data: offerings, error: offeringError } = await (supabase as any)
@@ -106,6 +106,7 @@ export async function GET(req: Request) {
       officialItems ?? [],
       offeringIds,
       turma.classe_num == null ? null : String(turma.classe_num),
+      turma.is_classe_exame === true,
     );
 
     return NextResponse.json({
