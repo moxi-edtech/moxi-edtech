@@ -14,6 +14,8 @@ on:
       - "apps/web/src/app/api/secretaria/matriculas/**/finalizar/route.ts"
       - "apps/web/src/components/secretaria/alunos/FinalizarMatriculaButton.tsx"
       - "supabase/migrations/*enrollment_context_atomic*.sql"
+      - "supabase/migrations/*enrollment_view_academic_year*.sql"
+      - "apps/web/src/app/api/escolas/**/matriculas/route.ts"
       - "apps/web/src/lib/academico/class-level.ts"
       - "apps/web/src/lib/academico/curriculum-apply.ts"
       - "apps/web/src/app/api/escolas/**/classes/route.ts"
