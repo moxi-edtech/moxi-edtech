@@ -45,3 +45,42 @@ test("Old academic decisions cannot be overwritten by a client-only remission", 
   assert.match(panel, /await onRecheck\(\)/);
   assert.match(status, /academicEligibility = classifyRematriculaAcademicEligibility/);
 });
+
+test("Grade entry does not carry a trimester, grade or discipline across student contexts", () => {
+  const modal = source("components/secretaria/EnrollmentPostActionModal.tsx");
+  const periods = source("app/api/secretaria/notas/periodos/route.ts");
+  assert.match(modal, /useState\("?"\)/);
+  assert.doesNotMatch(modal, /useState\("1"\)/);
+  assert.match(modal, /setPeriodo\("?"\)/);
+  assert.match(modal, /setNota\("?"\)/);
+  assert.match(modal, /\[action, alunoId, escolaId, turmaId, originAnoLetivoId, open\]/);
+  assert.match(modal, /\/api\/secretaria\/notas\/periodos\?/);
+  assert.match(modal, /item\.numero === payload\.current_trimestre/);
+  assert.match(periods, /await assertAcademicYearEntity/);
+  assert.match(periods, /new Set\(periods\.map/);
+  assert.match(periods, /read_only: context\.mode !== "CURRENT"/);
+});
+
+test("Trimesters are validated in API and SQL, not only by the Balcao UI", () => {
+  const api = source("app/api/secretaria/notas/route.ts");
+  const sql = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271029235921_guard_grade_period_source_and_window.sql"), "utf8");
+  assert.match(api, /gradePeriodState\(candidatePeriods\[0\]\)/);
+  assert.match(api, /GRADE_PERIOD_NOT_AVAILABLE/);
+  assert.match(sql, /AND al\.id = v_turma\.session_id/);
+  assert.doesNotMatch(sql, /AND al\.ativo = true/);
+  assert.match(sql, /m\.session_id = v_ano_letivo_id/);
+  assert.match(sql, /m\.ativo IS TRUE/);
+  assert.match(sql, /v_today > v\.ends/);
+  assert.match(sql, /can_bypass_pauta_lock/);
+  assert.match(sql, /matricula_year_id IS DISTINCT FROM v\.turma_year_id/);
+});
+
+test("The official template must be propagated with source provenance and pilot reconciliation stays explicit", () => {
+  const importer = source("app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts");
+  const sql = readFileSync(resolve(process.cwd(), "../../supabase/ops/reconcile_klasse_school_2026_2027_calendar.sql"), "utf8");
+  assert.match(importer, /source_template_id: periodTemplate\.id/);
+  assert.match(importer, /source_item_id: item\.id/);
+  assert.match(sql, /current_setting\('klasse\.approve_calendar_2026_2027', true\)/);
+  assert.match(sql, /WHERE id=v_year_id AND escola_id=v_school_id/);
+  assert.match(sql, /source_item_id=i\.id/);
+});
