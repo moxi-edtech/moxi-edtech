@@ -7,6 +7,7 @@ import {
   isCalendarEventVisibleToOfferings,
   readScopedAcademicCalendarEvents,
   resolveCalendarOfferingForCourse,
+  resolveCalendarOfferingIdsForCourses,
   validateCalendarEventScope,
 } from "../../src/lib/academico/calendar-events-read";
 
@@ -19,7 +20,7 @@ const tecnicoId = "40000000-0000-0000-0000-000000000006";
 function createSupabaseMock(rows: unknown[] = []) {
   const calls: Array<[string, unknown]> = [];
   const chain: any = {};
-  for (const name of ["select", "eq", "is", "or", "gte", "lte", "order"]) {
+  for (const name of ["select", "eq", "is", "or", "gte", "lte", "order", "in"]) {
     chain[name] = (...args: unknown[]) => {
       calls.push([name, args]);
       return chain;
@@ -129,4 +130,62 @@ test("Student route enforces authorized child, year and turma before querying ev
   assert.match(route, /readScopedAcademicCalendarEvents/);
   assert.match(route, /schoolCalendarDate\(new Date\(\), context\.timezone\)/);
   assert.doesNotMatch(route, /\.limit\(3\)/);
+});
+
+test("A teacher assigned to two courses resolves both offerings and no unrelated courses", async () => {
+  const { db, calls } = createSupabaseMock([
+    { id: regularId, course_id: cursoId },
+    { id: tecnicoId, course_id: "40000000-0000-0000-0000-000000000004" },
+  ]);
+  const result = await resolveCalendarOfferingIdsForCourses(db, {
+    escolaId, cursoIds: [cursoId, "40000000-0000-0000-0000-000000000004"],
+  });
+  assert.deepEqual(result, [regularId, tecnicoId]);
+  assert.deepEqual(calls.filter(([name]) => name === "in"),
+    [["in", ["course_id", [cursoId, "40000000-0000-0000-0000-000000000004"]]]]);
+});
+test("Teachers with no assigned courses see global events only", async () => {
+  const { db, calls } = createSupabaseMock([]);
+  assert.deepEqual(await resolveCalendarOfferingIdsForCourses(db, {
+    escolaId, cursoIds: [],
+  }), []);
+  assert.equal(calls.length, 0);
+});
+test("Teacher course mapping rejects missing/duplicated offering", async () => {
+  for (const rows of [
+    [{ id: regularId, course_id: cursoId }, { id: tecnicoId, course_id: cursoId }],
+    [],
+  ]) {
+    const { db } = createSupabaseMock(rows);
+    await assert.rejects(() => resolveCalendarOfferingIdsForCourses(db, {
+      escolaId, cursoIds: [cursoId],
+    }), (e: unknown) => e instanceof CalendarEventScopeError);
+  }
+});
+test("Staff overview is explicit, whereas unprivileged empty scope remains global-only", async () => {
+  const { db, calls } = createSupabaseMock([]);
+  await readScopedAcademicCalendarEvents(db, {
+    escolaId, anoLetivoId, offeringIds: [], staffOverview: true,
+  });
+  assert.equal(calls.some(([name]) => name === "is" || name === "or"), false);
+});
+test("Professor and secretaria routes use central resolver and do not read the unscoped event view", () => {
+  const professor = readFileSync(resolve(process.cwd(),
+    "src/app/api/professor/calendario/route.ts"), "utf8");
+  const secretaria = readFileSync(resolve(process.cwd(),
+    "src/app/api/secretaria/calendario/route.ts"), "utf8");
+  const ui = readFileSync(resolve(process.cwd(),
+    "src/app/secretaria/(portal-secretaria)/calendario/page.tsx"), "utf8");
+  assert.match(professor, /from\("turma_disciplinas_professores"\)/);
+  assert.match(professor, /from\("turma_disciplinas"\)/);
+  assert.match(professor, /ano_letivo_id", academicContext.anoLetivoId/);
+  assert.match(professor, /resolveCalendarOfferingIdsForCourses/);
+  assert.match(professor, /readScopedAcademicCalendarEvents/);
+  assert.doesNotMatch(professor, /vw_eventos_escola_unificados/);
+  assert.match(secretaria, /requireRoleInSchool/);
+  assert.match(secretaria, /staffOverview: !selectedCourseId/);
+  assert.match(secretaria, /resolveCalendarOfferingForCourse/);
+  assert.match(secretaria, /curso_nome:/);
+  assert.match(ui, /selectedCourseId/);
+  assert.match(ui, /Aplicável ao curso:/);
 });
