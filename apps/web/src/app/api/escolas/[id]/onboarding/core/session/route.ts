@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { assertEscolaAccessAndPermissions } from "@/lib/api/assertEscolaAccessAndPermissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database } from "~types/supabase";
+import { prepareCanonicalMedCalendar } from '@/lib/academico/prepare-canonical-calendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,6 +123,69 @@ export async function POST(
           error: "A escola possui ofertas com calendários diferentes. Configure cada oferta no fluxo académico.",
         }, { status: 409 });
       }
+    }
+
+    if (anoLetivo >= 2026) {
+      const [{ data: canonical, error: canonicalError }, { data: reference, error: referenceError }] =
+        await Promise.all([
+          (supabase as any).from("calendarios_oficiais_anos")
+            .select("ano_base,data_inicio,data_fim")
+            .eq("ano_base", anoLetivo).maybeSingle(),
+          (supabase as any).from("calendario_templates")
+            .select("id,items:calendario_template_items(numero,tipo,data_inicio,data_fim)")
+            .eq("calendario_canonico_ano", anoLetivo).eq("estado", "PUBLICADO")
+            .eq("is_oficial", true).order("id", { ascending: true }).limit(1).maybeSingle(),
+        ]);
+      if (canonicalError || referenceError) throw canonicalError ?? referenceError;
+      const officialTerms = (reference?.items ?? [])
+        .filter((item: { tipo: string }) => item.tipo === "PERIODO_LETIVO");
+      if (!canonical || !reference || canonical.data_inicio !== data_inicio ||
+          canonical.data_fim !== data_fim || officialTerms.length !== 3 ||
+          (periodosConfig ?? []).some((periodo) => !officialTerms.some((item: {
+            numero: number; data_inicio: string; data_fim: string;
+          }) => item.numero === periodo.numero &&
+               item.data_inicio === periodo.data_inicio && item.data_fim === periodo.data_fim))) {
+        return NextResponse.json({
+          ok: false, code: "ACADEMIC_CALENDAR_TEMPLATE_MISMATCH",
+          error: "As datas ou os trimestres não correspondem ao calendário oficial publicado.",
+        }, { status: 409 });
+      }
+      if (templateId) {
+        const { data: chosen, error } = await (supabase as any)
+          .from("calendario_templates").select("calendario_canonico_ano")
+          .eq("id", templateId).maybeSingle();
+        if (error) throw error;
+        if (chosen?.calendario_canonico_ano !== anoLetivo) {
+          return NextResponse.json({
+            ok: false, code: "COURSE_CALENDAR_PROFILE_MISMATCH",
+            error: "Este perfil não pertence ao calendário oficial selecionado.",
+          }, { status: 409 });
+        }
+      }
+      const result = await prepareCanonicalMedCalendar({
+        db: supabase as any, escolaId: userEscolaId, userId: user.id, anoBase: anoLetivo,
+      });
+      const prepared = await result.json();
+      if (!result.ok || !prepared.ok || !prepared.target_session?.id) {
+        return NextResponse.json(prepared, { status: result.status });
+      }
+      const { error: activationError } = await supabase.rpc("setup_active_ano_letivo", {
+        p_escola_id: userEscolaId,
+        p_ano_data: { id: prepared.target_session.id, ano: anoLetivo, data_inicio, data_fim, ativo: true },
+      });
+      if (activationError) throw activationError;
+      const { error: configError } = await supabase.from("configuracoes_escola").upsert({
+        escola_id: userEscolaId, periodo_tipo: "trimestral",
+        autogerar_periodos: true, estrutura: "cursos", tipo_presenca: "curso",
+      }, { onConflict: "escola_id" });
+      if (configError) throw configError;
+      return NextResponse.json({
+        ok: true, data: {
+          id: prepared.target_session.id, nome: `${anoLetivo}/${anoLetivo + 1}`,
+          data_inicio, data_fim, status: "ativa", ano_letivo: String(anoLetivo),
+        },
+        periodos: { source: "CALENDARIO_CANONICO_MED", count: prepared.trimestres },
+      });
     }
 
     // 1. Create/Activate the Academic Year
