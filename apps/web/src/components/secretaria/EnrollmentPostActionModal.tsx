@@ -260,13 +260,13 @@ export function EnrollmentPostActionModal({
     <Dialog open={open} onOpenChange={(next) => { if (!loading) onOpenChange(next); }}>
       <DialogContent className="max-w-xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-slate-900"><Icon className="h-5 w-5 text-primary" />{title}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-foreground"><Icon className="h-5 w-5 text-primary" />{title}</DialogTitle>
           <DialogDescription>{alunoNome} · atendimento continua nesta ficha.</DialogDescription>
         </DialogHeader>
 
         {action === "portal" && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">Gere as credenciais agora e entregue-as ao encarregado.</p>
+            <p className="text-sm text-muted-foreground">Gere as credenciais agora e entregue-as ao encarregado.</p>
             {result?.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{result.error}</p>}
             {result?.login ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
@@ -291,7 +291,7 @@ export function EnrollmentPostActionModal({
             {!turmaId && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">A turma desta matrícula não foi identificada.</p>}
             {academicYearError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{academicYearError}</p>}
             {notaContextError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{notaContextError}</p>}
-            {!academicYearId && !academicYearError && <p className="text-xs text-slate-500">A confirmar o ano letivo ativo...</p>}
+            {!academicYearId && !academicYearError && <p className="text-xs text-muted-foreground">A confirmar o ano letivo ativo...</p>}
             <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={!turmaId || loading}>
               <option value="">Selecionar disciplina</option>
               {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
@@ -324,7 +324,7 @@ export function EnrollmentPostActionModal({
 
         {action === "mensalidade" && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">O pagamento será aberto mantendo o aluno e o atendimento em contexto.</p>
+            <p className="text-sm text-muted-foreground">O pagamento será aberto mantendo o aluno e o atendimento em contexto.</p>
             <button type="button" onClick={onPayment} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-3 text-sm font-bold text-slate-950">Adicionar ao pagamento do balcão</button>
           </div>
         )}

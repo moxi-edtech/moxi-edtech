@@ -108,7 +108,7 @@ export default function CalendarioPage() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow border p-5 space-y-6">
+    <div className="bg-background rounded-xl shadow border p-5 space-y-6">
       <DashboardHeader
         title="Calendário Unificado da Escola"
         description="Visualização de eventos genéricos e calendário académico (MED)."
@@ -122,7 +122,7 @@ export default function CalendarioPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Contexto académico</p>
-          <p className="text-xs font-semibold text-slate-700">
+          <p className="text-xs font-semibold text-foreground">
             Um calendário oficial por ano. Eventos específicos identificados pelo curso.
           </p>
         </div>
@@ -131,7 +131,7 @@ export default function CalendarioPage() {
             value={selectedCourseId}
             onChange={(event) => setSelectedCourseId(event.target.value)}
             aria-label="Filtrar calendário por curso"
-            className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+            className="rounded-lg border border-blue-200 bg-background px-3 py-2 text-xs font-bold text-foreground"
           >
             <option value="">Todos os cursos (visão administrativa)</option>
             {[...new Map(courseOfferings.map((item) => [item.course_id, item])).values()]
@@ -141,7 +141,7 @@ export default function CalendarioPage() {
         <select
           value={selectedYearId ?? ""}
           onChange={(event) => setSelectedYearId(event.target.value || null)}
-          className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+          className="rounded-lg border border-blue-200 bg-background px-3 py-2 text-xs font-bold text-foreground"
         >
           {years.map((year) => <option key={year.id} value={year.id}>{year.ano}/{year.ano + 1}{year.ativo ? " · ativo" : ""}</option>)}
         </select>
@@ -220,19 +220,19 @@ export default function CalendarioPage() {
           {!loading && events.length === 0 && <p className="text-sm text-slate-400">Nenhum evento agendado.</p>}
           <ul className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
             {events.map((event) => (
-              <li key={event.id} className="p-4 border rounded-xl bg-slate-50/50 hover:bg-white transition-colors relative overflow-hidden">
+              <li key={event.id} className="p-4 border rounded-xl bg-slate-50/50 hover:bg-background transition-colors relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: event.cor_hex || '#64748b' }} />
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-bold text-slate-900">{event.nome}</p>
-                    <p className="text-xs text-slate-500 mt-1">{event.descricao}</p>
+                    <p className="font-bold text-foreground">{event.nome}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{event.descricao}</p>
                     {event.offering_id && (
                       <p className="mt-1 text-xs font-semibold text-amber-700">
                         Aplicável ao curso: {event.curso_nome || "Curso"}
                       </p>
                     )}
                   </div>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${event.tipo === 'EVENTO_GERAL' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${event.tipo === 'EVENTO_GERAL' ? 'bg-slate-100 text-muted-foreground' : 'bg-amber-100 text-amber-700'}`}>
                     {event.tipo.replace('_', ' ')}
                   </span>
                 </div>
