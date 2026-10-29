@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
+import { buildRaaBalcaoCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
+import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardList, LockKeyhole, FileText, GraduationCap, CalendarDays, Scale, CircleAlert, ShieldCheck } from "lucide-react";
 import type { RematriculaCardState } from "@/hooks/useRematriculaBalcao";
 import { raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
 
@@ -50,6 +52,9 @@ export function RaaBalcaoResolutionPanel({
   const plan = raaBalcaoPlan(status);
   const action = plan?.acao;
   const [open, setOpen] = useState(false);
+  const [phase, setPhase] = useState<"summary" | "detail" | "confirm" | "feedback">("summary");
+  const [caseId, setCaseId] = useState<string | null>(null);
+  const [confirmKind, setConfirmKind] = useState<"decisao" | "pedido" | "exame" | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +102,78 @@ export function RaaBalcaoResolutionPanel({
   }, [action, matriculaId, open]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const cases = buildRaaBalcaoCases({
+    action: action ?? "rever_resultado",
+    title: plan?.titulo ?? "Revisão académica",
+    disciplinaIds: academic?.disciplina_ids_pendentes,
+    faltas, pedidos, eventos, sessoes: examContext?.sessoes,
+  });
+  const progress = raaBalcaoProgress(cases);
+  const activeCase = cases.find((item) => item.id === caseId) ?? null;
+  const hasEvidence = cases.some((item) => item.kind !== "orientacao");
+  const canDecide = Boolean(selected) && !saving;
+  useBalcaoDraftForm("raa-resolucao:" + matriculaId, {
+    motivo, disciplinaId, examSessionId, examComponentId, examTurmaDisciplinaId, examNote,
+  }, {
+    motivo: "", disciplinaId: "", examSessionId: "", examComponentId: "", examTurmaDisciplinaId: "", examNote: "",
+  }, { submitting: saving, enabled: phase === "detail" || phase === "confirm" });
+
+  function chooseCase(item: (typeof cases)[number]) {
+    if (saving) return;
+    setOpen(true);
+    setCaseId(item.id);
+    setSelected("");
+    setDecision("");
+    setMotivo("");
+    setDisciplinaId("");
+    setError(null);
+    setNotice(null);
+    if (["justificacao", "pedido", "disciplina"].includes(item.kind) && item.estado !== "registado") {
+      setSelected(item.referenceId ?? "");
+      setDecision(item.kind === "justificacao" ? "approved"
+        : item.kind === "pedido" ? (item.estado === "em_analise" ? "deferido" : "em_analise")
+        : item.estado === "em_analise" ? "resolvido" : "em_analise");
+    }
+    if (item.kind === "exame") {
+      setExamSessionId(item.referenceId ?? "");
+      setExamComponentId("");
+      setExamNote("");
+    }
+    setPhase("detail");
+  }
+
+  function prepareConfirmation(kind: "decisao" | "pedido" | "exame") {
+    setError(null);
+    if (kind === "decisao") {
+      const minLength = action === "disciplina" ? 15
+        : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0;
+      if (!canDecide || motivo.trim().length < minLength) {
+        setError("Selecione o registo e introduza a fundamentação exigida."); return;
+      }
+    }
+    if (kind === "pedido" && (!disciplinaId || motivo.trim().length < 10)) {
+      setError("Selecione uma disciplina e descreva a reapreciação com pelo menos 10 caracteres."); return;
+    }
+    if (kind === "exame") {
+      const session = examContext?.sessoes.find((item) => item.id === examSessionId);
+      const component = session?.exame_componentes?.find((item) => item.id === examComponentId);
+      const note = Number(examNote.replace(",", "."));
+      if (examContext?.source.locked || !session || !component || !examTurmaDisciplinaId ||
+          !examNote.trim() || !Number.isFinite(note) || note < 0 || note > Number(component.nota_max)) {
+        setError("Confirme a sessão, disciplina, componente e nota dentro da escala autorizada."); return;
+      }
+    }
+    setConfirmKind(kind);
+    setPhase("confirm");
+  }
+
+  async function confirmOperation() {
+    if (saving) return;
+    if (confirmKind === "decisao") await submit();
+    else if (confirmKind === "pedido") await submitPedido();
+    else if (confirmKind === "exame") await submitExam();
+  }
 
   if (!plan || !matriculaId) return null;
 
@@ -151,8 +228,10 @@ export function RaaBalcaoResolutionPanel({
       setDecision("");
       setMotivo("");
       await load();
+      setPhase("feedback");
       await onRecheck();
     } catch (cause) {
+      setPhase("detail");
       setError(cause instanceof Error ? cause.message : "A decisão não foi confirmada.");
     } finally {
       setSaving(false);
@@ -183,8 +262,10 @@ export function RaaBalcaoResolutionPanel({
       setDisciplinaId("");
       setMotivo("");
       await load();
+      setPhase("feedback");
       await onRecheck();
     } catch (cause) {
+      setPhase("detail");
       setError(cause instanceof Error ? cause.message : "Não foi possível enviar o pedido.");
     } finally {
       setSaving(false);
@@ -219,8 +300,10 @@ export function RaaBalcaoResolutionPanel({
       });
       setExamNote("");
       setNotice("Nota do exame guardada. A efetivação só será permitida após a decisão e o resultado oficial do RAA.");
+      setPhase("feedback");
       await onRecheck();
     } catch (cause) {
+      setPhase("detail");
       setError(cause instanceof Error ? cause.message : "Não foi possível guardar a nota do exame.");
     } finally {
       setSaving(false);
