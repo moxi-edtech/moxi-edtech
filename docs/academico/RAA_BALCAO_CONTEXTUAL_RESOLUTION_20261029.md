@@ -168,3 +168,33 @@ consultas e chamadas de escrita separadas no servidor; antes do
 deploy final deverá ser homologada a recuperação em caso de falha
 intermédia e a consistência de todas as ofertas. O merge deve
 permanecer bloqueado até CI completo e homologação autenticada.
+
+## Etapa 1 — Resolução de eventos por curso (29/10/2026)
+
+- **Módulo central de leitura:** `apps/web/src/lib/academico/calendar-events-read.ts`.
+  Um mesmo contrato filtra `calendario_eventos` por `escola_id`,
+  `ano_letivo_id` e ofertas educativas autorizadas. `offering_id IS NULL`
+  significa evento de toda a escola naquele ano; `offering_id` definido só
+  é visível a quem pertence ao curso/oferta. A ausência de oferta autorizada
+  **não** significa mostrar todos os cursos.
+- **Portal do aluno:** `GET /api/aluno/home/academic-events` usa
+  `getAlunoContext`, `resolveSelectedStudentId` e
+  `resolveBoletimMatricula` para validar primeiro o educando autorizado e
+  a sua matrícula no ano solicitado. Depois obtém o `curso_id` da turma
+  dessa matrícula e resolve a oferta ativa da escola. Evita usar a turma de
+  outro educando de um encarregado ou de outro ano letivo.
+- **Falhas explícitas:** curso sem oferta ou oferta ambígua resulta em 409;
+  `studentId` de aluno não autorizado resulta em 403; identificadores
+  inválidos e duplicados não chegam ao PostgREST. A resposta mantém o
+  contrato `{ok, items}` do widget e limita a 3 eventos no banco.
+- **Histórico:** a leitura preserva o `ano_letivo_id` solicitado; não
+  recupera automaticamente eventos de outro ano quando não há matrícula.
+- **Validação:** typecheck aprovado e **148 testes unitários** aprovados,
+  incluindo a regressão académica existente. Testes específicos protegem
+  o isolamento por curso, filtro de ano, autorização do aluno, e falhas
+  de mapeamento. Auditoria Supabase somente leitura: não foram detetadas
+  ofertas ativas duplicadas para o mesmo curso na mesma escola.
+- **Próximas etapas, ainda não executadas:** adaptar calendário do
+  professor, calendário da secretaria e `dry-run` da virada do ano;
+  homologar portais autenticados e aguardar GitHub Actions. Sem merge nem
+  execução de migration no Supabase de produção.
