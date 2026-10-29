@@ -541,4 +541,69 @@ CREATE TRIGGER trg_guard_official_grade_period_write
 BEFORE INSERT OR UPDATE ON public.periodos_letivos
 FOR EACH ROW EXECUTE FUNCTION public.guard_official_grade_period_write();
 
+-- The MED template owns official exams, holidays, pauses and published
+-- calendar events. Custom school events remain possible without a source.
+CREATE OR REPLACE FUNCTION public.guard_official_calendar_event_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path TO 'pg_catalog', 'public'
+AS $official_event$
+DECLARE
+  v_year integer;
+  v_event record;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.source_template_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.anos_letivos a
+      WHERE a.id = OLD.ano_letivo_id AND a.escola_id = OLD.escola_id AND a.ano >= 2026
+    ) THEN
+      RAISE EXCEPTION 'OFFICIAL_CALENDAR_EVENT_LOCKED: Eventos oficiais não podem ser removidos.';
+    END IF;
+    RETURN OLD;
+  END IF;
+
+  SELECT a.ano INTO v_year
+  FROM public.anos_letivos a
+  WHERE a.id = NEW.ano_letivo_id AND a.escola_id = NEW.escola_id;
+  IF v_year IS NULL THEN
+    RAISE EXCEPTION 'DATA: Evento fora do ano letivo da escola.';
+  END IF;
+  IF v_year < 2026 THEN RETURN NEW; END IF;
+
+  IF NEW.source_template_id IS NULL OR NEW.source_item_id IS NULL THEN
+    IF TG_OP = 'UPDATE' AND OLD.source_template_id IS NOT NULL THEN
+      RAISE EXCEPTION 'OFFICIAL_CALENDAR_EVENT_LOCKED: A origem oficial não pode ser removida.';
+    END IF;
+    IF NEW.tipo::text IN ('PERIODO_LETIVO','PROVA_TRIMESTRAL',
+        'PAUSA_PEDAGOGICA','EXAME_NACIONAL','EXAME_ORAL') THEN
+      RAISE EXCEPTION 'OFFICIAL_CALENDAR_EVENT_LOCKED: Use o calendário oficial para provas, exames e pausas.';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  SELECT i.tipo::text AS event_type, i.nome, i.data_inicio,
+         i.data_fim, t.ano_base, t.estado::text AS estado, t.is_oficial
+  INTO v_event
+  FROM public.calendario_template_items i
+  JOIN public.calendario_templates t ON t.id = i.template_id
+  WHERE i.id = NEW.source_item_id AND t.id = NEW.source_template_id;
+  IF NOT FOUND OR v_event.ano_base IS DISTINCT FROM v_year
+     OR v_event.estado IS DISTINCT FROM 'PUBLICADO'
+     OR v_event.is_oficial IS DISTINCT FROM TRUE
+     OR v_event.event_type IS DISTINCT FROM NEW.tipo::text
+     OR v_event.nome IS DISTINCT FROM NEW.nome
+     OR v_event.data_inicio IS DISTINCT FROM NEW.data_inicio
+     OR v_event.data_fim IS DISTINCT FROM NEW.data_fim THEN
+    RAISE EXCEPTION 'OFFICIAL_CALENDAR_EVENT_LOCKED: Evento não corresponde ao documento oficial.';
+  END IF;
+  RETURN NEW;
+END;
+$official_event$;
+
+DROP TRIGGER IF EXISTS trg_guard_official_calendar_event_write ON public.calendario_eventos;
+CREATE TRIGGER trg_guard_official_calendar_event_write
+BEFORE INSERT OR UPDATE OR DELETE ON public.calendario_eventos
+FOR EACH ROW EXECUTE FUNCTION public.guard_official_calendar_event_write();
+
 COMMIT;
