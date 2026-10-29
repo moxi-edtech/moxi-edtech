@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { createPortal } from 'react-dom'
 import useSWR from 'swr'
 import {
   Search,
@@ -1333,7 +1334,7 @@ export default function AdmissoesInboxClient({
               className={`p-3 rounded-xl border text-left transition-all ${
                 statusFilter === 'expirando'
                   ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 ring-2 ring-amber-100 dark:ring-amber-500/20'
-                  : 'bg-card border-border hover:border-slate-200'
+                  : 'bg-card border-border hover:border-border'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
@@ -1348,8 +1349,8 @@ export default function AdmissoesInboxClient({
               onClick={() => setStatusFilter('reenviados')}
               className={`p-3 rounded-xl border text-left transition-all ${
                 statusFilter === 'reenviados'
-                  ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 ring-2 ring-blue-100'
-                  : 'bg-card border-border hover:border-slate-200'
+                  ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 ring-2 ring-blue-100 dark:ring-blue-500/20'
+                  : 'bg-card border-border hover:border-border'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
@@ -1365,7 +1366,7 @@ export default function AdmissoesInboxClient({
               className={`p-3 rounded-xl border text-left transition-all col-span-2 ${
                 statusFilter === 'lista_espera'
                   ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 ring-2 ring-emerald-100'
-                  : counts.oportunidades_espera > 0 ? 'bg-emerald-50/50 border-emerald-100 dark:border-emerald-500/25 hover:border-emerald-200' : 'bg-card border-border hover:border-slate-200'
+                  : counts.oportunidades_espera > 0 ? 'bg-emerald-50/50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/25 hover:border-emerald-200 dark:hover:border-emerald-500/40' : 'bg-card border-border hover:border-border'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
@@ -1589,14 +1590,14 @@ export default function AdmissoesInboxClient({
                             {(() => {
                               const compPath = selectedData.dados_candidato?.pagamento?.comprovativo_path || selectedData.dados_candidato?.pagamento?.comprovativo_url;
                               if (!compPath) return (
-                                <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 border-2 border-dashed border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-500 text-xs italic">
+                                <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 dark:bg-amber-500/15 border-2 border-dashed border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-500 text-xs italic">
                                   Nenhum talão anexado pelo aluno
                                 </div>
                               );
                               return (
                                 <button
                                   onClick={() => handleViewDoc('Comprovativo', compPath)}
-                                  className="flex items-center justify-center gap-2 w-full py-4 bg-card border-2 border-dashed border-amber-300 dark:border-amber-500/40 rounded-xl text-amber-700 dark:text-amber-300 font-bold hover:bg-amber-100 transition-all group"
+                                  className="flex items-center justify-center gap-2 w-full py-4 bg-card border-2 border-dashed border-amber-300 dark:border-amber-500/40 rounded-xl text-amber-700 dark:text-amber-300 font-bold hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-all group"
                                 >
                                   <FileText className="h-5 w-5 group-hover:scale-110 transition-transform" />
                                   Visualizar Talão Agora
@@ -1737,7 +1738,7 @@ export default function AdmissoesInboxClient({
                               type="button"
                               onClick={openPendenciasModal}
                               disabled={!!loadingAction}
-                              className="inline-flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 disabled:opacity-50"
+                              className="inline-flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 disabled:opacity-50"
                             >
                               <AlertCircle className="h-4 w-4" />
                               Solicitar correção
@@ -1875,6 +1876,9 @@ export default function AdmissoesInboxClient({
         </AnimatePresence>
       </div>
 
+      {/* Portais de diálogo acima do modal do Workspace, sem herdar o seu empilhamento */}
+      {typeof document !== 'undefined' && createPortal(
+        <>
       {/* Modal de Promoção em Lote */}
       <AnimatePresence>
         {isBulkPromoteOpen && (
@@ -1882,7 +1886,7 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             onClick={() => setIsBulkPromoteOpen(false)}
           >
             <motion.div
@@ -2083,7 +2087,7 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             onClick={() => setIsPromoteOpen(false)}
           >
             <motion.div
@@ -2222,7 +2226,7 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
             onClick={() => setViewingDoc(null)}
           >
             <motion.div
@@ -2300,7 +2304,7 @@ export default function AdmissoesInboxClient({
       <AnimatePresence>
         {isPendenciasOpen && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2395,6 +2399,9 @@ export default function AdmissoesInboxClient({
           </motion.div>
         )}
       </AnimatePresence>
+        </>,
+        document.body
+      )}
 
       {isConversionOpen && <AdmissaoConversionSheet
         isOpen={isConversionOpen}
