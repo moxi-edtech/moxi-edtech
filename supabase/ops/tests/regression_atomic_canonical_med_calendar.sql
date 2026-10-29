@@ -16,6 +16,7 @@ DECLARE
   v_off_fail uuid := '30000000-0000-0000-0000-000000000009';
   v_item_a uuid := '30000000-0000-0000-0000-000000000010';
   v_item_b uuid := '30000000-0000-0000-0000-000000000011';
+  v_item_grade uuid := '30000000-0000-0000-0000-000000000012';
   v_periods jsonb;
   v_events jsonb;
   v_offerings jsonb;
@@ -64,6 +65,16 @@ BEGIN
       'source_item_id',v_item_b
     )
   );
+  -- A grade-9-only exam must not be accepted for a course that has not
+  -- configured the ninth grade. SQL validates applicability independently
+  -- of the planning library.
+  INSERT INTO public.calendario_template_items(
+    id,template_id,tipo,numero,nome,data_inicio,data_fim,peso,
+    applies_to_all_offerings,grade_codes
+  ) VALUES (
+    v_item_grade,v_regular,'EXAME_ORAL',99,'Prova da 9.ª classe',
+    '2027-06-25','2027-06-26',NULL,false,ARRAY['9']::text[]
+  );
   v_offerings := jsonb_build_array(
     jsonb_build_object('offering_id',v_off_a,'template_id',v_regular),
     jsonb_build_object('offering_id',v_off_b,'template_id',v_technical)
@@ -106,6 +117,40 @@ BEGIN
     RAISE EXCEPTION 'TEST: replay changed academic identities or duplicated events';
   END IF;
 
+  BEGIN
+    PERFORM public.aplicar_calendario_med_canonico_v1(
+      v_school,2026,v_periods,
+      v_events || jsonb_build_array(jsonb_build_object(
+        'offering_id',v_off_a,'tipo','EXAME_ORAL',
+        'nome','Prova da 9.ª classe','data_inicio','2027-06-25',
+        'data_fim','2027-06-26','source_template_id',v_regular,
+        'source_item_id',v_item_grade
+      )),
+      v_offerings
+    );
+    RAISE EXCEPTION 'TEST: restricted grade-9 event was published to a course without that grade';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'CALENDAR_COURSE_PROFILE_MISMATCH:%' THEN
+      RAISE;
+    END IF;
+  END;
+  BEGIN
+    PERFORM public.aplicar_calendario_med_canonico_v1(
+      v_school,2026,v_periods,
+      v_events || jsonb_build_array(jsonb_build_object(
+        'offering_id',NULL,'tipo','EXAME_ESCRITO',
+        'nome','Exames regulares','data_inicio','2027-06-20',
+        'data_fim','2027-06-23','source_template_id',v_regular,
+        'source_item_id',v_item_a
+      )),
+      v_offerings
+    );
+    RAISE EXCEPTION 'TEST: event exclusive to regular students became schoolwide';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'CALENDAR_EVENT_SCOPE_MISMATCH:%' THEN
+      RAISE;
+    END IF;
+  END;
   BEGIN
     PERFORM public.aplicar_calendario_med_canonico_v1(
       v_school,2026,v_periods,v_events,
