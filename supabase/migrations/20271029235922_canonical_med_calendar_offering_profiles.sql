@@ -149,6 +149,14 @@ CREATE TRIGGER trg_guard_published_med_template_item
 BEFORE UPDATE OR DELETE ON public.calendario_template_items
 FOR EACH ROW EXECUTE FUNCTION public.guard_published_med_template_item();
 
+-- One official event may legitimately occur in different courses, so the
+-- old global unique constraint must not collapse scoped events across offers.
+-- PostgreSQL 15+ NULLS NOT DISTINCT preserves idempotence for global rows.
+ALTER TABLE public.calendario_eventos DROP CONSTRAINT IF EXISTS uq_calendario_eventos;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_calendario_eventos_por_oferta
+  ON public.calendario_eventos
+  (escola_id, ano_letivo_id, offering_id, nome, data_inicio) NULLS NOT DISTINCT;
+
 -- Already-bound profile IDs continue to identify the regulatory variation.
 -- A course cannot point to a profile from a different education subsystem.
 CREATE OR REPLACE FUNCTION public.guard_course_calendar_profile()
