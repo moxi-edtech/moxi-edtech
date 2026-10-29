@@ -109,17 +109,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .maybeSingle()
     const professorId = (turmaProfessor as { professor_id?: string | null } | null)?.professor_id ?? null
 
-    const anoLetivo = { id: academicContext.anoLetivoId }
-
-    const { data: periodosRows } = anoLetivo?.id
-      ? await supabase
-          .from('periodos_letivos')
-          .select('id, numero')
-          .eq('escola_id', escolaId)
-          .eq('ano_letivo_id', anoLetivo.id)
-          .eq('tipo', 'TRIMESTRE')
-          .order('numero', { ascending: true })
-      : { data: [] as any[] }
+    const { data: periodosRows, error: periodosError } = await supabase
+      .from('periodos_letivos')
+      .select('id, numero')
+      .eq('escola_id', escolaId)
+      .eq('ano_letivo_id', academicContext.anoLetivoId)
+      .eq('tipo', 'TRIMESTRE')
+      .order('numero', { ascending: true })
+    if (periodosError) throw periodosError
+    if (!(periodosRows ?? []).some((row: { numero: number }) =>
+      row.numero === parsed.data.periodoNumero
+    )) {
+      return NextResponse.json({
+        ok: false,
+        code: 'ACADEMIC_PERIOD_NOT_CONFIGURED',
+        error: 'O trimestre selecionado não existe no calendário deste ano letivo.',
+      }, { status: 409 })
+    }
 
     const periodosAtivos = (turmaDisciplina.periodos_ativos || []).map((n: any) => Number(n))
     if (periodosAtivos.length > 0 && !periodosAtivos.includes(parsed.data.periodoNumero)) {
