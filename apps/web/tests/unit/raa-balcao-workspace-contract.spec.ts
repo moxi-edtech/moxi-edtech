@@ -95,8 +95,11 @@ test("Official 2026 calendar cannot be replaced via legacy or unaudited routes",
   assert.match(template, /source_template_id: template\.id/);
   assert.match(template, /ACADEMIC_YEAR_CALENDAR_MISMATCH/);
   assert.match(template, /ACADEMIC_PERIOD_LOCK_REVIEW_REQUIRED/);
-  assert.match(ajustes, /OFFICIAL_CALENDAR_CHANGE_REQUIRES_RECONCILIATION/);
-  assert.match(ajustes, /CALENDAR_LOCK_CHANGE_REASON_REQUIRED/);
+  assert.match(ajustes, /validateOfficialCalendarAdjustment/);
+  const guard = source("lib/academico/official-calendar-write-guard.ts");
+  assert.match(guard, /OFFICIAL_CALENDAR_CHANGE_REQUIRES_RECONCILIATION/);
+  assert.match(guard, /CALENDAR_LOCK_CHANGE_REASON_REQUIRED/);
+  assert.match(ajustes, /roles: \["admin", "admin_escola", "diretor"\]/);
   assert.match(legacy, /OFFICIAL_CALENDAR_CONTROLLED_WRITE_REQUIRED/);
   assert.doesNotMatch(legacy, /stack: e instanceof Error/);
 });
