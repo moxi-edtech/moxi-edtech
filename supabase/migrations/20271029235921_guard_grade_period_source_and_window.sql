@@ -156,7 +156,8 @@ BEGIN
   SELECT
     td.id,
     td.professor_id,
-    td.curso_matriz_id
+    td.curso_matriz_id,
+    td.periodos_ativos
   INTO v_turma_disciplina
   FROM public.turma_disciplinas td
   WHERE td.id = p_turma_disciplina_id
@@ -165,6 +166,10 @@ BEGIN
 
   IF v_turma_disciplina.id IS NULL THEN
     RAISE EXCEPTION 'DATA: Disciplina não atribuída a esta turma.';
+  END IF;
+  IF COALESCE(cardinality(v_turma_disciplina.periodos_ativos),0) > 0
+     AND NOT p_trimestre = ANY(v_turma_disciplina.periodos_ativos) THEN
+    RAISE EXCEPTION 'DATA: Disciplina não lecionada neste trimestre.';
   END IF;
 
   SELECT cm.disciplina_id
