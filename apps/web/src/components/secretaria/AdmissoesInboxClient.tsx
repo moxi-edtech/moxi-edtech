@@ -290,11 +290,13 @@ export default function AdmissoesInboxClient({
   escolaId,
   initialItems = [],
   embedded = false,
+  inModal = false,
   onNewAdmission,
 }: {
   escolaId: string;
   initialItems?: CandidaturaListItem[];
   embedded?: boolean;
+  inModal?: boolean;
   onNewAdmission?: () => void;
 }) {
   const router = useRouter()
@@ -2364,6 +2366,7 @@ export default function AdmissoesInboxClient({
 
       {isConversionOpen && <AdmissaoConversionSheet
         isOpen={isConversionOpen}
+        elevated={inModal}
         onClose={handleCloseConversion}
         candidaturaId={selectedId}
         escolaId={escolaId}
