@@ -154,7 +154,7 @@ test("all school lifecycle APIs consume the database security-invoker SSOT view"
   const loader = readFileSync(
     new URL("../../src/lib/matriculas/load-student-lifecycle.ts", import.meta.url), "utf8",
   );
-  assert.match(loader, /\.from\("v_student_lifecycle_ssot_v1"\)/);
+  assert.match(loader, /\.from\("v_student_lifecycle_status_v2"\)/);
   assert.match(loader, /resultado_oficial/);
   assert.match(loader, /normalizarEstadoMatricula/);
   assert.match(loader, /"historico_anos"/);
