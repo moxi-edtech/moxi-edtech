@@ -178,12 +178,6 @@ export async function POST(request: Request) {
       }
     }
 
-    await Promise.all(scopedMappings.map((mapping) => db
-      .from("school_education_offerings")
-      .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
-      .eq("id", mapping.offering_id)
-      .eq("escola_id", escolaId)));
-
     const primaryTemplate = templateList[0];
     const { data: existingTarget } = await supabase
       .from("anos_letivos")
@@ -281,6 +275,32 @@ export async function POST(request: Request) {
         candidate.offering_id === null
       ) === index
     );
+
+    // The existing period RPC treats omitted lock deadlines as NULL.
+    // Reapplying a template must never silently remove a closure already
+    // established by the academic direction.
+    if (periods.length > 0) {
+      const { data: existingLocks, error: lockError } = await supabase
+        .from("periodos_letivos")
+        .select("id,numero,trava_notas_em")
+        .eq("escola_id", escolaId)
+        .eq("ano_letivo_id", targetId)
+        .eq("tipo", "TRIMESTRE")
+        .not("trava_notas_em", "is", null);
+      if (lockError) throw lockError;
+      if ((existingLocks ?? []).length > 0) {
+        return NextResponse.json({
+          ok: false, code: "ACADEMIC_PERIOD_LOCK_REVIEW_REQUIRED",
+          error: "Existem trimestres com fecho de notas definido. Revise os prazos antes de reaplicar o calendário.",
+        }, { status: 409 });
+      }
+    }
+
+    await Promise.all(scopedMappings.map((mapping) => db
+      .from("school_education_offerings")
+      .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
+      .eq("id", mapping.offering_id)
+      .eq("escola_id", escolaId)));
 
     if (periods.length > 0) {
       const { error } = await supabase.rpc("upsert_bulk_periodos_letivos", {
