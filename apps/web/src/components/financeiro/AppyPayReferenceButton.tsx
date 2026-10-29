@@ -22,7 +22,7 @@ function api(props: Props) {
 }
 const deadline = (value: string) => `${new Date(value).toLocaleString('pt-AO', { timeZone: 'Africa/Luanda' })} (hora de Angola)`;
 const money = (amount: number) => new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(amount);
-const button = 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50';
+const button = 'inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50';
 async function requestJson(url: string, escolaId: string, init?: RequestInit) {
   const response = await fetch(url, { ...init, credentials: 'same-origin', cache: 'no-store', signal: init?.signal ?? AbortSignal.timeout(30_000),
     headers: { 'Content-Type': 'application/json', 'x-escola-id': escolaId, ...init?.headers } });
@@ -89,36 +89,36 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
     } catch { setError('Não foi possível copiar. Selecione os dados da referência para os copiar.'); }
   }
   return <Dialog open onOpenChange={open => { if (!open && busy !== 'create') onClose(); }}>
-    <DialogContent onCloseAutoFocus={event => { event.preventDefault(); restoreFocus(); }} className="max-h-[90vh] overflow-y-auto bg-white text-slate-900" closeButton={busy !== 'create'}>
+    <DialogContent onCloseAutoFocus={event => { event.preventDefault(); restoreFocus(); }} className="max-h-[90vh] overflow-y-auto bg-card text-foreground" closeButton={busy !== 'create'}>
       <DialogHeader>
         <DialogTitle>Pagamento por referência</DialogTitle>
         <DialogDescription>{alunoNome} · {descricao}</DialogDescription>
       </DialogHeader>
       <div aria-busy={Boolean(busy)}>
-        {busy === 'load' ? <p role="status" className="flex items-center gap-2 text-slate-600"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />A consultar a mensalidade…</p> : null}
+        {busy === 'load' ? <p role="status" className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />A consultar a mensalidade…</p> : null}
         {preview && !issued ? <div className="space-y-3">
-          <p className="text-sm text-slate-600">Saldo a pagar</p><p className="text-2xl font-bold">{money(preview.amount)}</p>
+          <p className="text-sm text-muted-foreground">Saldo a pagar</p><p className="text-2xl font-bold">{money(preview.amount)}</p>
           {preview.canIssue && !uncertain ? <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{preview.environment === 'production' ? 'Esta ação cria uma cobrança real. O pagamento só será registado após confirmação.' : 'Ambiente de testes: esta referência simula uma cobrança.'}</p>
-            : <p className="text-sm text-slate-600">{uncertain ? 'O resultado da emissão ainda não foi confirmado. Consulte o estado antes de tentar novamente.' : preview.message || (reference?.status === 'pending' ? 'A emissão está em processamento. Consulte novamente; não crie outra cobrança.' : reference ? 'Esta referência precisa de revisão pela tesouraria antes de nova emissão.' : 'Esta mensalidade não está disponível para emissão.')}</p>}
+            : <p className="text-sm text-muted-foreground">{uncertain ? 'O resultado da emissão ainda não foi confirmado. Consulte o estado antes de tentar novamente.' : preview.message || (reference?.status === 'pending' ? 'A emissão está em processamento. Consulte novamente; não crie outra cobrança.' : reference ? 'Esta referência precisa de revisão pela tesouraria antes de nova emissão.' : 'Esta mensalidade não está disponível para emissão.')}</p>}
         </div> : null}
         {issued ? <div className="space-y-4">
           <p className={`rounded-lg p-3 text-sm font-semibold ${reference.status === 'paid' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>{reference.status === 'paid' ? 'Pagamento confirmado' : expired ? 'Referência vencida — verificar com a tesouraria' : 'Referência emitida — a aguardar pagamento'}</p>
-          <dl className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-4">
-            <div><dt className="text-sm text-slate-500">Entidade</dt><dd className="select-all font-mono text-lg font-semibold">{reference.entity}</dd></div>
-            <div><dt className="text-sm text-slate-500">Referência</dt><dd className="select-all font-mono text-lg font-semibold">{reference.reference}</dd></div>
-            <div><dt className="text-sm text-slate-500">Valor</dt><dd className="font-semibold">{money(reference.amount)}</dd></div>
-            <div><dt className="text-sm text-slate-500">Vencimento</dt><dd className="text-sm">{deadline(reference.expires_at)}</dd></div>
+          <dl className="grid grid-cols-2 gap-4 rounded-xl border border-border p-4">
+            <div><dt className="text-sm text-muted-foreground">Entidade</dt><dd className="select-all font-mono text-lg font-semibold">{reference.entity}</dd></div>
+            <div><dt className="text-sm text-muted-foreground">Referência</dt><dd className="select-all font-mono text-lg font-semibold">{reference.reference}</dd></div>
+            <div><dt className="text-sm text-muted-foreground">Valor</dt><dd className="font-semibold">{money(reference.amount)}</dd></div>
+            <div><dt className="text-sm text-muted-foreground">Vencimento</dt><dd className="text-sm">{deadline(reference.expires_at)}</dd></div>
           </dl>
         </div> : null}
         {error ? <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-        <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-600">{notice}</p>
+        <p role="status" aria-live="polite" className="mt-3 text-sm text-muted-foreground">{notice}</p>
       </div>
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" className={button} onClick={onClose} disabled={busy === 'create'}>Fechar</button>
         {issued ? <>
           <button type="button" className={button} onClick={copy} disabled={Boolean(busy)}><Copy className="h-4 w-4" aria-hidden="true" />Copiar dados</button>
           {reference.status !== 'paid' ? <button type="button" className={button} onClick={check} disabled={Boolean(busy)}><RefreshCw className={`h-4 w-4 ${busy === 'check' ? 'animate-spin' : ''}`} aria-hidden="true" />Verificar pagamento</button> : null}
-        </> : preview?.canIssue && !uncertain ? <button type="button" className={`${button} border-amber-500 bg-amber-500 text-slate-950 hover:bg-amber-400`} onClick={create} disabled={Boolean(busy)}>{busy === 'create' ? 'A emitir…' : `Gerar referência de ${money(preview.amount)}`}</button>
+        </> : preview?.canIssue && !uncertain ? <button type="button" className={`${button} border-amber-500 bg-amber-500 text-amber-950 hover:bg-amber-400`} onClick={create} disabled={Boolean(busy)}>{busy === 'create' ? 'A emitir…' : `Gerar referência de ${money(preview.amount)}`}</button>
           : <button type="button" className={button} onClick={() => load()} disabled={Boolean(busy)}>Consultar estado</button>}
       </div>
     </DialogContent>

@@ -4,10 +4,12 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { build } = createRequire(require.resolve('tsx'))('esbuild');
+const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+const appSourceRoot = resolve(repoRoot, 'apps/web/src');
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
 test('HTTP authentication, financial permission, tenant scope, input boundary and callback limits', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'appypay-http-'));
@@ -17,7 +19,7 @@ test('HTTP authentication, financial permission, tenant scope, input boundary an
   (globalThis as any).__appyHttp = state;
   const bundle = async (file: string, name: string) => {
     const outfile = join(folder, name + '.mjs');
-    await build({ entryPoints: [resolve(file)], outfile, bundle: true, platform: 'node', format: 'esm', logLevel: 'silent', plugins: [{ name: 'http-boundaries', setup(b) {
+    await build({ entryPoints: [resolve(repoRoot, file)], outfile, bundle: true, platform: 'node', format: 'esm', logLevel: 'silent', plugins: [{ name: 'http-boundaries', setup(b) {
       b.onResolve({ filter: /^(next\/server|@\/lib\/alunoContext|@\/lib\/supabase\/server|@\/lib\/tenant\/resolveEscolaIdForUser|@supabase\/supabase-js)$/ }, args => ({ path: args.path, namespace: 'mock' }));
       b.onLoad({ filter: /.*/, namespace: 'mock' }, args => ({ contents: args.path === 'next/server'
         ? 'export const NextResponse = { json: (body, init) => Response.json(body, init) };'
@@ -26,7 +28,7 @@ test('HTTP authentication, financial permission, tenant scope, input boundary an
         : args.path.includes('resolveEscola')
         ? 'export async function resolveEscolaIdForUser(db, uid, requested) { const s=globalThis.__appyHttp; s.requested=requested; return requested && requested !== s.school ? null : s.school; }'
         : `export function createClient() { const s = globalThis.__appyHttp; return { auth: { getUser: async () => ({ data: { user: s.user } }) }, rpc: async () => ({ data: s.allowed }), from: table => { s.dbCalls++; const filters=[]; const q={select:()=>q,eq:(k,v)=>{filters.push(r=>r[k]===v);return q;},in:(k,v)=>{filters.push(r=>v.includes(r[k]));return q;},order:()=>q,limit:()=>q,then:(yes,no)=>Promise.resolve({data:(s.tables[table]||[]).filter(r=>filters.every(f=>f(r))),error:null}).then(yes,no),maybeSingle:async()=>({data:(s.tables[table]||[]).find(r=>filters.every(f=>f(r)))??null,error:null})};return q;} }; }` }));
-      b.onResolve({ filter: /^@\// }, args => ({ path: resolve('apps/web/src', args.path.slice(2) + '.ts') }));
+      b.onResolve({ filter: /^@\// }, args => ({ path: resolve(appSourceRoot, args.path.slice(2) + '.ts') }));
     } }] });
     return import(pathToFileURL(outfile).href);
   };
