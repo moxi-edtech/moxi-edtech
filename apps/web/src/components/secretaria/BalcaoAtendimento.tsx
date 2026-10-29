@@ -1387,6 +1387,8 @@ function Catalogo({
   raaAlunoId,
   onLancarNota,
   onDocumentos,
+  raaDocumentsOpen,
+  onCloseRaaDocuments,
   reconcilingPedido,
   rematriculaError,
   onResolverPedido,
@@ -1420,6 +1422,8 @@ function Catalogo({
   raaAlunoId: string | null;
   onLancarNota: () => void;
   onDocumentos: () => void;
+  raaDocumentsOpen: boolean;
+  onCloseRaaDocuments: () => void;
   reconcilingPedido: boolean;
   rematriculaError: string | null;
   onResolverPedido: () => Promise<void>;
@@ -1831,6 +1835,48 @@ function Catalogo({
               })}
             </div>
           </div>
+        )}
+
+        {view === "reenrollment" && raaDocumentsOpen && (
+          <section data-balcao-raa-documents className="mt-5 space-y-3 rounded-xl border border-border bg-card p-3 sm:p-4"
+            aria-label="Documentos do aluno na rematrícula">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Documentos do aluno</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Emita aqui ou adicione à cobrança.</p>
+              </div>
+              <button type="button" onClick={onCloseRaaDocuments}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground">
+                Fechar
+              </button>
+            </div>
+            {documentos.length === 0 ? (
+              <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">Nenhum documento disponível para esta escola.</p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {documentos.map((servico) => {
+                  const busy = emittingDocId === servico.id;
+                  const selected = selectedItemKeys.has("servico:" + servico.id);
+                  const paid = servico.preco > 0;
+                  return (
+                    <div key={servico.id} className="flex min-w-0 flex-col justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground" title={servico.nome}>{servico.nome}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{paid ? kwanza.format(servico.preco) : "Gratuito"}</p>
+                      </div>
+                      <button type="button" disabled={busy || (paid && selected)}
+                        onClick={() => { if (paid) void onAdicionarServico(servico); else void onEmitirDocumento(servico); }}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-60">
+                        {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> A emitir...</> :
+                          paid ? selected ? "Adicionado à cobrança" : "Adicionar à cobrança" :
+                          <><Printer className="h-4 w-4" /> Emitir agora</>}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
 
         {(view === "all" || view === "document") && documentos.length > 0 && (
@@ -2698,6 +2744,7 @@ export default function BalcaoAtendimento({
   const audit = useAuditTrail();
 
   const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null } | null>(null);
+  const [raaDocumentsOpen, setRaaDocumentsOpen] = useState(false);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
   const hasOverdueDebt = useMemo(
     () => dossier.mensalidades.some((item) => item.preco > 0 && item.atrasada),
@@ -2851,6 +2898,19 @@ export default function BalcaoAtendimento({
     search.clear();
     void dossier.load(selectedAlunoId);
   }, [selectedAlunoId, effectiveAcademicYearId]);
+
+  // The document sub-flow remains inside Rematrícula. Switching students
+  // closes it without clearing the shared checkout or rematrícula draft.
+  useEffect(() => { setRaaDocumentsOpen(false); }, [selectedAlunoId]);
+  useEffect(() => {
+    if (view !== "reenrollment" || !raaDocumentsOpen) return;
+    const frame = window.requestAnimationFrame(() =>
+      workspaceRootRef.current?.querySelector<HTMLElement>('[data-balcao-raa-documents]')?.scrollIntoView({
+        behavior: "smooth", block: "nearest",
+      })
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [raaDocumentsOpen, view]);
 
   useEffect(() => {
     if (dossier.aluno?.id) void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
@@ -3056,7 +3116,7 @@ export default function BalcaoAtendimento({
               className={
                 view === "payment"
                   ? "lg:col-span-7"
-                  : view === "document" || view === "all"
+                  : view === "document" || view === "all" || (view === "reenrollment" && raaDocumentsOpen && selectedItemKeys.size > 0)
                     ? "lg:col-span-8"
                     : "lg:col-span-12"
               }
@@ -3106,10 +3166,9 @@ export default function BalcaoAtendimento({
                       originAnoLetivoId: source.ano_letivo_id,
                     });
                   }}
-                  onDocumentos={() => {
-                    if (onNavigateAction) onNavigateAction("document");
-                    else workspaceRootRef.current?.querySelector<HTMLElement>('[data-balcao-action="document"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
+                  onDocumentos={() => setRaaDocumentsOpen(true)}
+                  raaDocumentsOpen={raaDocumentsOpen}
+                  onCloseRaaDocuments={() => setRaaDocumentsOpen(false)}
                   reconcilingPedido={rematricula.reconciling}
                   rematriculaError={rematricula.apiError}
                   onResolverPedido={rematricula.resolveLegacyPedido}
@@ -3122,7 +3181,7 @@ export default function BalcaoAtendimento({
               </div>
             </div>
 
-            {(view === "payment" || view === "document" || view === "all") && (
+            {(view === "payment" || view === "document" || view === "all" || (view === "reenrollment" && raaDocumentsOpen && selectedItemKeys.size > 0)) && (
               <div className={view === "payment" ? "lg:col-span-5" : "lg:col-span-4"}>
                 <CarrinhoPanel
                   carrinho={carrinho}
@@ -3130,7 +3189,7 @@ export default function BalcaoAtendimento({
                   audit={audit}
                   aluno={dossier.aluno}
                   embedded={embedded}
-                  mode={view === "payment" ? "payment" : view === "document" ? "document" : "all"}
+                  mode={view === "payment" ? "payment" : view === "document" || view === "reenrollment" ? "document" : "all"}
                   atalhoActivo={
                     !rematricula.modalOpen &&
                     !debtModalOpen &&
