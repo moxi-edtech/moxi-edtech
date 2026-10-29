@@ -116,3 +116,35 @@ test("Disciplinas com trimestres específicos não aceitam lançamento fora da o
   assert.match(sql, /cardinality\(v_turma_disciplina\.periodos_ativos\)/);
   assert.match(sql, /p_trimestre = ANY\(v_turma_disciplina\.periodos_ativos\)/);
 });
+
+test("Legacy onboarding and calendar copy cannot override official 2026/27 timelines", () => {
+  const onboarding = source("app/api/escolas/[id]/onboarding/core/session/route.ts");
+  const rotate = source("app/api/escolas/[id]/onboarding/session/rotate/route.ts");
+  const copy = source("app/api/escola/[id]/admin/calendario/copiar-eventos/route.ts");
+  const template = source("app/api/escola/[id]/admin/calendario/aplicar-template/route.ts");
+  const legacy = source("app/api/escola/[id]/admin/periodos-letivos/upsert-bulk/route.ts");
+  assert.match(onboarding, /ACADEMIC_CALENDAR_TEMPLATE_MISMATCH/);
+  assert.match(onboarding, /MULTI_OFFERING_CALENDAR_REQUIRES_SCOPED_IMPORT/);
+  assert.match(onboarding, /source_item_id: i.id/);
+  assert.match(onboarding, /source_version: officialVersion/);
+  assert.match(rotate, /requestedYear >= 2026/);
+  assert.match(rotate, /OFFICIAL_CALENDAR_CONTROLLED_WRITE_REQUIRED/);
+  assert.match(copy, /OFFICIAL_CALENDAR_COPY_NOT_ALLOWED/);
+  assert.match(copy, /\.eq\('escola_id', userEscolaId\)/);
+  assert.match(template, /OFFICIAL_CALENDAR_PERIODS_INCOMPLETE/);
+  assert.match(template, /MULTI_OFFERING_CALENDAR_REQUIRES_SCOPED_IMPORT/);
+  assert.match(legacy, /\.min\(1\)\.max\(20\)/);
+});
+
+test("The database protects official periods and published MED events from direct writes", () => {
+  const migration = readFileSync(resolve(process.cwd(),
+    "../../supabase/migrations/20271029235921_guard_grade_period_source_and_window.sql"), "utf8");
+  const regression = readFileSync(resolve(process.cwd(),
+    "../../supabase/ops/tests/regression_grade_period_guard.sql"), "utf8");
+  assert.match(migration, /CREATE TRIGGER trg_guard_official_grade_period_write/);
+  assert.match(migration, /OFFICIAL_CALENDAR_SOURCE_MISMATCH/);
+  assert.match(migration, /CREATE TRIGGER trg_guard_official_calendar_event_write/);
+  assert.match(migration, /OFFICIAL_CALENDAR_EVENT_LOCKED/);
+  assert.match(regression, /TEST: published exam was deleted/);
+  assert.match(regression, /TEST: a divergent academic period was accepted/);
+});
