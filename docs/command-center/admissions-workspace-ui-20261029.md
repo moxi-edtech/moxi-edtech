@@ -32,6 +32,7 @@ A experiência de admissões era uma página isolada, com layout rígido e opera
 - Incompatibilidades financeiras orientam a revisão da turma/pagamento no mesmo fluxo; não alteram o ledger nem regras de competência.
 - Na nova matrícula embutida, falha na emissão de comprovativo apresenta recuperação local em vez de navegar para Documentos. Recibos em estado `pending` ou `error` expõem «Verificar recibo» pelo ID persistido do pagamento; nunca repetem o pagamento.
 - O arquivamento de uma admissão duplicada pode regressar explicitamente à Inbox no mesmo Workspace.
+- Os diálogos de duplicidade, lançamento pós-matrícula e pagamento foram elevados acima do Workspace; os avisos de recibo em preparação também oferecem consulta local pelo pagamento original.
 
 **Limite de permissões e dados:** nenhum fluxo consegue corrigir silenciosamente uma turma vinculada ao ano errado, criar um ano letivo sem fonte ou autorizar uma configuração para a qual o utilizador não tenha permissão. O bloqueio permanece visível e o atendimento é preservado, em vez de forçar navegação externa.
 
@@ -64,6 +65,7 @@ A experiência de admissões era uma página isolada, com layout rígido e opera
 - [ ] Simular turma com ano incompatível e rever a turma sem alterar os vínculos históricos no banco.
 - [ ] Simular erro de competência financeira e retomar após rever selecção local, sem alteração ao ledger.
 - [ ] Simular recibo pendente/erro com `pagamento_id`; verificar consulta e retry sem repetir cobrança.
+- [ ] Abrir a confirmação de duplicidade e uma ação pós-matrícula dentro do modal do Balcão; verificar foco, contraste, sobreposição e fecho sem perda do contexto.
 - [ ] Typecheck, testes unitários de integração e workflow `Balcao Performance Budgets` verdes.
 
 ## Limites desta entrega
