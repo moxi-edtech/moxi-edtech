@@ -37,7 +37,7 @@ BEGIN
     RAISE EXCEPTION 'CALENDAR_RECONCILIATION_REQUIRED: expected 4 published MED profiles for 2026/27, found %', v_count;
   END IF;
   IF (
-    SELECT count(DISTINCT (data_inicio,data_fim,versao_documento,fonte_nome,fonte_referencia))
+    SELECT count(DISTINCT (data_inicio,data_fim,versao_documento,fonte_nome))
     FROM public.calendario_templates
     WHERE ano_base=v_ano AND is_oficial IS TRUE AND estado='PUBLICADO'
   ) <> 1 THEN
@@ -68,7 +68,7 @@ BEGIN
     (ano_base,data_inicio,data_fim,versao_documento,fonte_nome,fonte_referencia,fonte_documento_url)
   VALUES
     (v_model.ano_base,v_model.data_inicio,v_model.data_fim,v_model.versao_documento,
-     v_model.fonte_nome,v_model.fonte_referencia,v_model.fonte_documento_url)
+     v_model.fonte_nome,'Calendário Escolar Nacional 2026/2027 - MED (perfis por subsistema)',NULL)
   ON CONFLICT (ano_base) DO NOTHING;
   IF NOT EXISTS (
     SELECT 1 FROM public.calendarios_oficiais_anos c
