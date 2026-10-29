@@ -17,6 +17,7 @@ export type RecordedPeriod = {
   tipo: string;
   data_inicio: string;
   data_fim: string;
+  peso: number | null;
   source_template_id: string | null;
   source_item_id: string | null;
   offering_id: string | null;
@@ -25,6 +26,7 @@ export type RecordedEvent = {
   offering_id: string | null;
   nome: string;
   data_inicio: string;
+  data_fim: string;
   tipo: string;
   source_template_id: string | null;
   source_item_id: string | null;
@@ -87,22 +89,25 @@ export function reviewCanonicalCutoverTarget(input: {
     .map((item) => ({
       template: profile.id, item: item.id, numero: item.numero,
       data_inicio: item.data_inicio, data_fim: item.data_fim,
+      peso: item.peso,
     })));
   if (recordedPeriods.length !== 3 || new Set(recordedPeriods.map((row) => row.numero)).size !== 3 ||
       recordedPeriods.some((period) => period.tipo !== "TRIMESTRE" || period.offering_id !== null ||
         !expected.some((item) => item.numero === period.numero &&
-          item.data_inicio === period.data_inicio && item.data_fim === period.data_fim) ||
+          item.data_inicio === period.data_inicio && item.data_fim === period.data_fim &&
+          item.peso === period.peso) ||
         !validPeriodSources.some((source) => source.template === period.source_template_id &&
           source.item === period.source_item_id && source.numero === period.numero &&
-          source.data_inicio === period.data_inicio && source.data_fim === period.data_fim))) {
+          source.data_inicio === period.data_inicio && source.data_fim === period.data_fim &&
+          source.peso === period.peso))) {
     blockers.push("Os três trimestres de destino não estão reconciliados com a fonte oficial.");
   }
 
   const eventKey = (item: {
-    offering_id: string | null; nome: string; data_inicio: string;
+    offering_id: string | null; nome: string; data_inicio: string; data_fim: string;
     tipo: string; source_template_id: string | null; source_item_id: string | null;
   }) => JSON.stringify([
-    item.offering_id, item.nome, item.data_inicio,
+    item.offering_id, item.nome, item.data_inicio, item.data_fim,
     item.tipo, item.source_template_id, item.source_item_id,
   ]);
   const found = new Set(recordedEvents.map(eventKey));
@@ -153,14 +158,18 @@ export async function readCanonicalCutoverTargetReview(
       .select("id,course_id,education_subsystem,education_level,cycle,grades,calendar_profile_id")
       .eq("escola_id", escolaId).eq("status", "active").limit(500),
     db.from("periodos_letivos")
-      .select("numero,tipo,data_inicio,data_fim,source_template_id,source_item_id,offering_id")
+      .select("numero,tipo,data_inicio,data_fim,peso,source_template_id,source_item_id,offering_id")
       .eq("escola_id", escolaId).eq("ano_letivo_id", targetYearId).limit(30),
     db.from("calendario_eventos")
-      .select("offering_id,nome,data_inicio,tipo,source_template_id,source_item_id")
+      .select("offering_id,nome,data_inicio,data_fim,tipo,source_template_id,source_item_id")
       .eq("escola_id", escolaId).eq("ano_letivo_id", targetYearId).limit(500),
   ]);
   const firstError = [calendarError,profilesError,offeringsError,periodsError,eventsError].find(Boolean);
   if (firstError) throw firstError;
+  if ((profiles ?? []).length >= 50 || (offerings ?? []).length >= 500 ||
+      (recordedPeriods ?? []).length >= 30 || (recordedEvents ?? []).length >= 500) {
+    throw new Error("O catálogo ou calendário excede os limites da verificação. Reveja os dados antes de avançar.");
+  }
   const schoolOfferings = (offerings ?? []) as Array<
     MedCourseOffering & { calendar_profile_id: string | null }
   >;
