@@ -122,12 +122,12 @@ test("calendar provenance RPC accepts legacy 2025 only in the absence of period 
 
 test("admission conversion rejects misaligned 2026/27 decree before financial writes", () => {
   const source = readFileSync("src/app/api/secretaria/admissoes/convert/route.ts", "utf8");
-  assert.match(source, /inspectDecreeSync\\(supabase as any, escolaId, targetYear\\)/);
+  assert.ok(source.includes("inspectDecreeSync(supabase as any, escolaId, targetYear)"));
   assert.match(source, /targetYear >= 2026/);
-  assert.match(source, /targetTurma\\.ano_letivo_id/);
-  assert.match(source, /const targetYear = destinationYear\\?\\.ano \\?\\? targetTurma\\.ano_letivo/);
+  assert.ok(source.includes("targetTurma.ano_letivo_id"));
+  assert.ok(source.includes("const targetYear = destinationYear?.ano ?? targetTurma.ano_letivo"));
   assert.match(source, /targetYear == null/);
-  assert.match(source, /targetTurma\\.ano_letivo !== destinationYear\\.ano/);
+  assert.ok(source.includes("targetTurma.ano_letivo !== destinationYear.ano"));
   assert.match(source, /ACADEMIC_CALENDAR_YEAR_MISMATCH/);
   assert.match(source, /ACADEMIC_CALENDAR_NOT_CONFIGURED/);
   const preflight = source.indexOf("const decreeHealth = await inspectDecreeSync");
