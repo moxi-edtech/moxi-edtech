@@ -8,4 +8,4 @@ export const isActiveMatriculaStatus = (status?: string | null) => {
 }
 
 // Canonical contract: use `matriculas.ativo = true` as source of truth.
-// The status list exists for backward compatibility in read paths.
+// Legacy aliases are read-only compatibility; database writes persist 'ativo'.

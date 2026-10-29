@@ -11,7 +11,7 @@ const BodySchema = z.object({
   motivo: z.string().max(500).optional(),
   is_override_manual: z.boolean().default(false),
   status_override: z
-    .enum(["TRANSFERIDO", "ANULADO", "REPROVADO_POR_FALTAS"])
+    .enum(["TRANSFERIDO", "ANULADO"])
     .optional(),
 });
 

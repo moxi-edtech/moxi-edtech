@@ -45,6 +45,7 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // Live-applied, no-op migration ledger shims; full late replay remains gated.
   "20261029132302_lifecycle_contextual_status_ssot_v2.sql",
   "20261029132512_lifecycle_contextual_status_v2_select_only.sql",
+  "20271029235910_lifecycle_persisted_status_contract_v3.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
