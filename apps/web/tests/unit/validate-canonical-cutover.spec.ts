@@ -49,13 +49,14 @@ const selections = [
 ];
 const recordedPeriods: RecordedPeriod[] = dates.map(([start,end],i) => ({
   numero: i+1, tipo: "TRIMESTRE", data_inicio: start, data_fim: end,
-  source_template_id: "regular", source_item_id: `regular-period-${i+1}`, offering_id: null,
+  source_template_id: "regular", source_item_id: `regular-period-${i+1}`,
+  offering_id: null, peso: i===2 ? 40 : 30,
 }));
 const recordedEvents: RecordedEvent[] = [
   { offering_id: "regular-course", nome: "Exame REGULAR_ADULTOS", data_inicio: "2027-06-20",
-    tipo: "EXAME_ESCRITO", source_template_id: "regular", source_item_id: "regular-exam" },
+    data_fim: "2027-06-24", tipo: "EXAME_ESCRITO", source_template_id: "regular", source_item_id: "regular-exam" },
   { offering_id: "technical-course", nome: "Exame TECNICO_PROFISSIONAL", data_inicio: "2027-06-20",
-    tipo: "EXAME_ESCRITO", source_template_id: "technical", source_item_id: "technical-exam" },
+    data_fim: "2027-06-24", tipo: "EXAME_ESCRITO", source_template_id: "technical", source_item_id: "technical-exam" },
 ];
 function review(overrides: Partial<Parameters<typeof reviewCanonicalCutoverTarget>[0]> = {}) {
   return reviewCanonicalCutoverTarget({
@@ -112,4 +113,22 @@ test("The dry-run route uses one year source and checks actual target sessions",
   assert.match(route, /target_calendar_checks/);
   assert.match(route, /readyCount === 0/);
   assert.doesNotMatch(route, /\.from\("calendario_templates"\)\s*\.select\("id,nome,ano_base,subsistema,versao_documento"\)/);
+});
+
+test("The dry-run rejects tampered trimester weights and examination end dates", () => {
+  assert.equal(review({ recordedPeriods: recordedPeriods.map((p, i) =>
+    i === 0 ? { ...p, peso: 40 } : p) }).ready, false);
+  assert.equal(review({ recordedEvents: recordedEvents.map((e, i) =>
+    i === 0 ? { ...e, data_fim: "2027-06-25" } : e) }).ready, false);
+});
+test("Course-type-specific MED events appear only for the correct curricular type", () => {
+  const p = profile("regular", "REGULAR_ADULTOS");
+  p.items.push({
+    id: "night-course", tipo: "EXAME_ORAL", numero: null, nome: "Prova noturna",
+    data_inicio: "2027-06-25", data_fim: "2027-06-25", peso: null,
+    applies_to_all_offerings: false, course_types: ["NOCTURNO"],
+  });
+  const mapped = offerings.map((o, i) => i===0 ? { ...o, course_type: "NOCTURNO" } : o);
+  assert.equal(review({ profiles: [p, profiles[1]], offerings: mapped }).ready, false);
+  assert.equal(review({ profiles: [p, profiles[1]], offerings }).ready, true);
 });
