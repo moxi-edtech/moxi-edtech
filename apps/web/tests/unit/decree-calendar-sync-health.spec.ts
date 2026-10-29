@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { auditDecreeSync, type DecreeSyncSnapshot } from "../../src/lib/academic-calendar/decree-sync-health";
+import { selectApplicableOfficialEvents } from "../../src/lib/academic-calendar/visible-official-events";
 
 function fixture(): DecreeSyncSnapshot {
   const templateId = "model-regular-2026";
@@ -150,7 +151,9 @@ test("student calendar is scoped by authorized pupil, active enrollment year and
   assert.match(source, /\.eq\("ano_letivo", activeYear\.ano\)/);
   assert.match(source, /\.in\("status", ACTIVE_MATRICULA_STATUSES\)/);
   assert.match(source, /\.eq\("course_id", turma\.curso_id\)/);
-  assert.match(source, /\.in\("source_template_id", templateIds\)/);
+  assert.match(source, /selectApplicableOfficialEvents/);
+  assert.match(source, /from\("calendario_template_items"\)/);
+  assert.match(source, /\.in\("template_id", templateIds\)/);
   assert.match(source, /\.eq\("ano_letivo_id", activeYear\.id\)/);
   assert.match(source, /timeZone: "Africa\/Luanda"/);
 });
@@ -179,4 +182,31 @@ test("other period and calendar readers use the same academic year and turma con
     assert.match(source, /resolveAcademicYearContext/, path);
     assert.match(source, /ano_letivo_id/, path);
   }
+});
+
+test("shared MED events are visible across subsystems even when stored under one source profile", () => {
+  const items = [
+    { tipo: "FERIADO", nome: "Dia nacional", data_inicio: "2026-11-11", data_fim: "2026-11-11", applies_to_all_offerings: true },
+    { tipo: "PROVA_TRIMESTRAL", nome: "Prova do primeiro trimestre", data_inicio: "2026-12-09", data_fim: "2026-12-18", applies_to_all_offerings: true },
+  ];
+  const events = [
+    { id: "shared-preschool", tipo: "FERIADO", nome: "Dia nacional", data_inicio: "2026-11-11", data_fim: "2026-11-11", offering_id: null, source_template_id: "preschool" },
+    { id: "regular-prova", tipo: "PROVA_TRIMESTRAL", nome: "Prova do primeiro trimestre", data_inicio: "2026-12-09", data_fim: "2026-12-18", offering_id: null, source_template_id: "regular" },
+    { id: "other", tipo: "EXAME_ESCRITO", nome: "Exame especial", data_inicio: "2027-06-21", data_fim: "2027-07-02", offering_id: null, source_template_id: "regular" },
+  ];
+  const selected = selectApplicableOfficialEvents(events, items, ["primary"]);
+  assert.deepEqual(selected.map((event) => event.id), ["shared-preschool", "regular-prova"]);
+});
+
+test("grade-restricted and offering-specific events are not leaked to unrelated pupils", () => {
+  const items = [
+    { tipo: "EXAME_ESCRITO", nome: "Prova final", data_inicio: "2027-06-21", data_fim: "2027-07-02", grade_codes: ["9"] },
+    { tipo: "EVENTO_ESCOLA", nome: "Atividade de curso", data_inicio: "2027-01-05", data_fim: "2027-01-05", applies_to_all_offerings: false },
+  ];
+  const events = [
+    { id: "exam", nome: "Prova final", tipo: "EXAME_ESCRITO", data_inicio: "2027-06-21", data_fim: "2027-07-02", offering_id: null },
+    { id: "course", nome: "Atividade de curso", tipo: "EVENTO_ESCOLA", data_inicio: "2027-01-05", data_fim: "2027-01-05", offering_id: "offer-a" },
+  ];
+  assert.deepEqual(selectApplicableOfficialEvents(events, items, ["offer-b"], "8"), []);
+  assert.deepEqual(selectApplicableOfficialEvents(events, items, ["offer-a"], "9").map((item) => item.id), ["exam", "course"]);
 });
