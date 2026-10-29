@@ -14,6 +14,11 @@ import {
 
 // Only the frequent reception/payment workspace is included in the initial
 // route. Large matrícula, profile and grade modules load on first use.
+const AdmissoesInboxClient = dynamic(() => import("@/components/secretaria/AdmissoesInboxClient"), {
+  ssr: false,
+  loading: () => <div role="status" className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">A carregar candidaturas...</div>,
+});
+
 const AdmissaoWizardClient = dynamic(() => import("@/components/secretaria/AdmissaoWizardClient"), {
   ssr: false,
   loading: () => <p role="status" className="p-5 text-sm text-muted-foreground">A abrir nova matrícula...</p>,
@@ -64,6 +69,16 @@ export function CommandCenterPanel({
     setProfileRefreshKey((value) => value + 1);
     onSuccess?.();
   };
+
+  if (action.panel === "admissions") {
+    return (
+      <AdmissoesInboxClient
+        escolaId={escolaId}
+        embedded
+        onNewAdmission={() => onActionChange("enrollment")}
+      />
+    );
+  }
 
   if (action.panel === "enrollment") {
     return (
