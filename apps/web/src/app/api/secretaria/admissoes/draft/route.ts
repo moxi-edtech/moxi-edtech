@@ -210,21 +210,21 @@ export async function POST(request: Request) {
       p_source: source,
     };
 
-    let { data, error } = await supabase.rpc("admissao_upsert_draft", rpcArgs);
+    const { data, error } = await supabase.rpc("admissao_upsert_draft", rpcArgs);
 
-    if (error) {
-      const message = String(error.message ?? "");
-      if (message.includes("Candidatura não encontrada")) {
-        const { p_candidatura_id: _ignored, ...retryArgs } = rpcArgs;
-        const retry = await supabase.rpc("admissao_upsert_draft", retryArgs);
-        data = retry.data;
-        error = retry.error;
-      }
-    }
-
+    // Se a candidatura existente desapareceu ou está inacessível, nunca criar
+    // silenciosamente uma candidatura diferente. O Balcão deve manter a seleção
+    // e permitir ao atendente rever o problema no mesmo contexto.
     if (error) throw error;
 
     const candidatura_id = rpcReturnSchema.parse(data);
+    if (candidaturaId && candidatura_id !== candidaturaId) {
+      return NextResponse.json({
+        ok: false,
+        code: "ADMISSION_DRAFT_ID_MISMATCH",
+        error: "Não foi possível guardar a candidatura selecionada. Atualize os dados e tente novamente.",
+      }, { status: 409 });
+    }
 
     // Audit (evitar PII completa; guarda só chaves e metadados)
     await recordAuditServer({
