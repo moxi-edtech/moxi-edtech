@@ -164,6 +164,7 @@ export async function POST(
       }
       const result = await prepareCanonicalMedCalendar({
         db: supabase as any, escolaId: userEscolaId, userId: user.id, anoBase: anoLetivo,
+        allowEmptyOfferings: true,
       });
       const prepared = await result.json();
       if (!result.ok || !prepared.ok || !prepared.target_session?.id) {
