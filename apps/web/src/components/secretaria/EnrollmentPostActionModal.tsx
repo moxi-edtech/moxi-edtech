@@ -314,8 +314,6 @@ export function EnrollmentPostActionModal({
             </div>
             {selectedPeriod && ["past", "locked"].includes(selectedPeriod.estado) &&
               <p role="status" className="text-xs text-muted-foreground">Este período exige autorização de reabertura para correções.</p>}
-            {selectedPeriod && !selectedPeriod.calendar_verified &&
-              <p role="status" className="text-xs text-muted-foreground">Calendário ainda não conciliado com a fonte oficial.</p>}
             {result?.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{result.error}</p>}
             {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || periodUnavailable || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
           </div>
