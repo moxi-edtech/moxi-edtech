@@ -165,19 +165,28 @@ export async function POST(request: Request) {
     // Todos os perfis seleccionados devem representar o mesmo ano e os
     // mesmos limites de trimestres. O subsistema pode diferir nas provas.
     const referenceYear = templateList[0]?.ano_base;
-    const referencePeriods = JSON.stringify(
-      (templateList[0]?.items ?? [])
-        .filter((item: { tipo: string }) => item.tipo === "PERIODO_LETIVO")
-        .map((item: { numero: number; data_inicio: string; data_fim: string }) =>
-          [item.numero, item.data_inicio, item.data_fim]).sort((x: unknown[], y: unknown[]) => Number(x[0]) - Number(y[0]))
-    );
-    if (templateList.some((template) => template.ano_base !== referenceYear ||
-      JSON.stringify(
-        (template.items ?? [])
-          .filter((item: { tipo: string }) => item.tipo === "PERIODO_LETIVO")
-          .map((item: { numero: number; data_inicio: string; data_fim: string }) =>
-            [item.numero, item.data_inicio, item.data_fim]).sort((x: unknown[], y: unknown[]) => Number(x[0]) - Number(y[0]))
-      ) !== referencePeriods)) {
+    // Preserve the inferred generated Supabase item type. Explicit callback
+    // annotations narrower than its nullable fields caused TS2345 and
+    // prevented all MED consumer checks from reaching their tests.
+    const officialTerms = (items: Array<{
+      tipo: string;
+      numero: number | null;
+      data_inicio: string;
+      data_fim: string;
+      peso: number | null;
+    }> | null | undefined) =>
+      (items ?? [])
+        .filter((item) => item.tipo === "PERIODO_LETIVO")
+        .map((item) => [item.numero, item.data_inicio, item.data_fim, item.peso] as const)
+        .sort((x, y) => Number(x[0]) - Number(y[0]));
+    const referenceTerms = officialTerms(templateList[0]?.items);
+    const referencePeriods = JSON.stringify(referenceTerms);
+    if (referenceTerms.length !== 3 ||
+        new Set(referenceTerms.map((item) => item[0])).size !== 3 ||
+        templateList.some((template) =>
+          template.ano_base !== referenceYear ||
+          JSON.stringify(officialTerms(template.items)) !== referencePeriods
+        )) {
       return NextResponse.json({
         ok: false, code: "CALENDAR_PROFILES_CONFLICT",
         error: "Os perfis oficiais seleccionados não partilham o mesmo ano e trimestres.",
