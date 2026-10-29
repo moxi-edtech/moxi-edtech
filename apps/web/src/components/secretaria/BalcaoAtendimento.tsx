@@ -3097,7 +3097,10 @@ export default function BalcaoAtendimento({
                   raaMatriculaId={dossier.aluno.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
                   onLancarNota={() => setPostAction({ action: "notas", turmaId: dossier.aluno?.turma_id ?? null })}
-                  onDocumentos={() => onNavigateAction?.("document")}
+                  onDocumentos={() => {
+                    if (onNavigateAction) onNavigateAction("document");
+                    else workspaceRootRef.current?.querySelector<HTMLElement>('[data-balcao-action="document"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
                   reconcilingPedido={rematricula.reconciling}
                   rematriculaError={rematricula.apiError}
                   onResolverPedido={rematricula.resolveLegacyPedido}
@@ -3224,6 +3227,7 @@ export default function BalcaoAtendimento({
           alunoId={dossier.aluno.id}
           alunoNome={dossier.aluno.nome}
           turmaId={postAction?.turmaId ?? null}
+          onAcademicSaved={() => void rematricula.refreshStatus()}
           onPayment={() => {
             setPostAction(null);
             const next = dossier.mensalidades[0];

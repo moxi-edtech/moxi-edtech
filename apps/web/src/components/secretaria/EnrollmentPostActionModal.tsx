@@ -14,10 +14,11 @@ type Props = {
   alunoNome: string;
   turmaId?: string | null;
   onPayment: () => void;
+  onAcademicSaved?: () => void;
 };
 
 export function EnrollmentPostActionModal({
-  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, onPayment,
+  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, onPayment, onAcademicSaved,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
@@ -146,6 +147,7 @@ export function EnrollmentPostActionModal({
       const json = await response.json().catch(() => ({}));
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível lançar a nota.");
       setResult({ login: "Nota lançada", senha: null });
+      onAcademicSaved?.();
     } catch (error) {
       setResult({ error: error instanceof Error ? error.message : "Não foi possível lançar a nota." });
     } finally {

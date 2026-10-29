@@ -175,7 +175,7 @@ export function RaaBalcaoResolutionPanel({
   };
 
   return (
-    <section className="mb-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4" aria-label="Resolução RAA no Balcão">
+    <section key={alunoId + ":" + matriculaId} className="mb-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4" aria-label="Resolução RAA no Balcão">
       <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800">RAA · Análise contextual</p>
       <h3 className="mt-1 text-sm font-black text-foreground">{plan.titulo}</h3>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{academic?.reason || plan.detalhe}</p>
