@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import useSWR from 'swr'
 import {
   Search,
@@ -36,7 +37,10 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { toContextualPortalPath } from '@/lib/navigation'
-import { AdmissaoConversionSheet } from './AdmissaoConversionSheet'
+const AdmissaoConversionSheet = dynamic(
+  () => import('./AdmissaoConversionSheet').then((module) => module.AdmissaoConversionSheet),
+  { ssr: false, loading: () => <p role="status" className="p-4 text-sm text-muted-foreground">A preparar confirmação de matrícula...</p> }
+)
 import { createClient } from '@/lib/supabase/client'
 import { formatTurnoDisplay } from '@/utils/formatters'
 
@@ -2358,13 +2362,13 @@ export default function AdmissoesInboxClient({
         )}
       </AnimatePresence>
 
-      <AdmissaoConversionSheet
+      {isConversionOpen && <AdmissaoConversionSheet
         isOpen={isConversionOpen}
         onClose={handleCloseConversion}
         candidaturaId={selectedId}
         escolaId={escolaId}
         onSuccess={handleConversionSuccess}
-      />
+      />}
     </div>
   )
 }
