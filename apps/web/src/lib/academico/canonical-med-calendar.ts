@@ -75,12 +75,11 @@ function termKey(items: readonly MedProfileItem[]): string {
 }
 
 function itemMatchesCourse(item: MedProfileItem, offering: MedCourseOffering): boolean {
-  if (item.applies_to_all_offerings !== false) return true;
   const hasFilter = Boolean(
     item.education_subsystems?.length || item.education_levels?.length ||
     item.cycles?.length || item.grade_codes?.length || item.course_types?.length
   );
-  if (!hasFilter) return false;
+  if (!hasFilter) return item.applies_to_all_offerings !== false;
   if (item.education_subsystems?.length &&
       !item.education_subsystems.includes(offering.education_subsystem)) return false;
   if (item.education_levels?.length &&
@@ -170,7 +169,10 @@ export function buildCanonicalMedCalendarPlan(input: {
       source_template_id: profile.id, source_item_id: item.id,
       source_version: calendar.versao_documento,
       // Explicit filters never turn an event into a shared school event.
-      globallyApplicable: item.applies_to_all_offerings !== false,
+      globallyApplicable: item.applies_to_all_offerings !== false &&
+        !item.education_subsystems?.length && !item.education_levels?.length &&
+        !item.cycles?.length && !item.grade_codes?.length &&
+        !item.course_types?.length,
     })));
 
   const keyOf = (item: Pick<PlannedEvent, "tipo" | "nome" | "data_inicio" | "data_fim">) =>
