@@ -81,6 +81,25 @@ export async function POST() {
   const offerings = (offeringsResult.data ?? []) as Array<
     MedCourseOffering & { calendar_profile_id: string | null }
   >;
+  // Match the write planner: type-specific official events must be
+  // evaluated using the real course classification.
+  const courseIds = [...new Set(offerings.map((item) => item.course_id).filter(Boolean))];
+  const { data: courses, error: coursesError } = courseIds.length > 0
+    ? await db.from("cursos").select("id,tipo")
+        .eq("escola_id", escolaId).in("id", courseIds)
+    : { data: [], error: null };
+  if (coursesError) {
+    readinessErrors.push(coursesError.message || "Não foi possível identificar os cursos.");
+    blockers.push("Não foi possível verificar a aplicabilidade do calendário aos cursos.");
+  }
+  const courseTypes = new Map<string, string | null>(
+    (courses ?? []).map((course: { id: string; tipo: string | null }) =>
+      [course.id, course.tipo] as const),
+  );
+  const enrichedOfferings = offerings.map((offering) => ({
+    ...offering,
+    course_type: offering.course_id ? courseTypes.get(offering.course_id) ?? null : null,
+  }));
   const calendarByYear = new Map(calendars.map((item) => [item.ano_base, item] as const));
   const targetChecks = await Promise.all(targets.map(async (target) => {
     const [{ data: recordedPeriods, error: periodsError },
@@ -109,7 +128,7 @@ export async function POST() {
       target,
       calendar: calendarByYear.get(target.ano) ?? null,
       profiles: candidates,
-      offerings,
+      offerings: enrichedOfferings,
       selections,
       recordedPeriods: recordedPeriods ?? [],
       recordedEvents: recordedEvents ?? [],
