@@ -20,6 +20,7 @@ DECLARE
   v_other_aluno uuid := '30000000-0000-0000-0000-000000000011';
   v_matricula uuid := '30000000-0000-0000-0000-000000000012';
   v_other_matricula uuid := '30000000-0000-0000-0000-000000000013';
+  v_template uuid := '30000000-0000-0000-0000-000000000099';
   v_p1 uuid := '30000000-0000-0000-0000-000000000014';
   v_p2 uuid := '30000000-0000-0000-0000-000000000015';
   v_p3 uuid := '30000000-0000-0000-0000-000000000016';
@@ -31,11 +32,11 @@ BEGIN
   INSERT INTO public.escola_users(escola_id,user_id,papel) VALUES(v_school,v_user,'secretaria');
   INSERT INTO public.anos_letivos(id,escola_id,ano,ativo) VALUES
     (v_year,v_school,2026,true),(v_wrong_year,v_school,2025,true);
-  INSERT INTO public.periodos_letivos(id,escola_id,ano_letivo_id,tipo,numero,data_inicio,data_fim)
+  INSERT INTO public.periodos_letivos(id,escola_id,ano_letivo_id,tipo,numero,data_inicio,data_fim,source_template_id)
   VALUES
-    (v_p1,v_school,v_year,'TRIMESTRE',1,v_today-5,v_today+5),
-    (v_p2,v_school,v_year,'TRIMESTRE',2,v_today+10,v_today+20),
-    (v_p3,v_school,v_year,'TRIMESTRE',3,v_today-20,v_today-10);
+    (v_p1,v_school,v_year,'TRIMESTRE',1,v_today-5,v_today+5,v_template),
+    (v_p2,v_school,v_year,'TRIMESTRE',2,v_today+10,v_today+20,v_template),
+    (v_p3,v_school,v_year,'TRIMESTRE',3,v_today-20,v_today-10,v_template);
   INSERT INTO public.turmas(id,escola_id,session_id,ano_letivo,status_fecho,nivel_ensino)
   VALUES
     (v_turma,v_school,v_year,2026,'ABERTO','primario'),
@@ -64,6 +65,17 @@ BEGIN
   END IF;
   SELECT id INTO STRICT v_e1 FROM public.avaliacoes
    WHERE turma_disciplina_id=v_td AND trimestre=1;
+
+  -- In 2026/27, the client or RPC cannot bypass a missing official source.
+  UPDATE public.periodos_letivos SET source_template_id=NULL WHERE id=v_p1;
+  BEGIN
+    PERFORM public.lancar_notas_batch(v_school,v_turma,v_disc,v_td,1,'MAC',
+      jsonb_build_array(jsonb_build_object('aluno_id',v_aluno,'valor',9)),false);
+    RAISE EXCEPTION 'TEST: unlinked 2026/27 calendar was accepted';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_NOT_RECONCILED:%' THEN RAISE; END IF;
+  END;
+  UPDATE public.periodos_letivos SET source_template_id=v_template WHERE id=v_p1;
 
   -- Future periods must fail even when the caller selects them manually.
   BEGIN
