@@ -10,6 +10,10 @@ A experiência de admissões era uma página isolada, com layout rígido e opera
 - Conversão em matrícula é carregada somente quando solicitada; configurações de documentos só são consultadas após abrir candidatura.
 - Uma lista SWR por filtro/pesquisa, debounce de pesquisa, deduplicação de 15 s e revalidação manual. A troca rápida de candidatura cancela a chamada anterior.
 - UI responsiva: lista/detalhe por navegação em mobile e painel lado a lado em desktop; superfícies primárias com tokens do Workspace (`bg-card`, `bg-muted`, `border-border`, `text-foreground`). Seletor de filtros com overflow horizontal.
+- Fila abre em «Todas» (`status=all` já suportado pelo radar existente). Partilha do link e indicadores secundários ficam recolhidos no Workspace; continuam acessíveis sem nova rota.
+- Detalhe do candidato organizado em três perspetivas locais — Resumo, Documentos e Histórico — sem requisições extra ao mudar de separador; a decisão acompanha o candidato.
+- «Pedir ajustes» e a ação principal aplicável aparecem na barra contextual. Rejeitar, arquivar ou reabrir ficam em «Mais ações» e mantêm os fluxos oficiais; aprovação ganha confirmação explícita antes do pedido à API.
+- Removida animação de rearranjo por `layoutId` de cada cartão da fila para evitar custo de layout com dezenas de registos.
 - Sheets de conversão usam overlay elevado quando abertas sobre o Workspace modal.
 
 ## Contratos a preservar
@@ -23,7 +27,9 @@ A experiência de admissões era uma página isolada, com layout rígido e opera
 - [ ] Entrar em `/secretaria/balcao?action=admissions` sem aluno pré-selecionado; fila abre sem skeleton infinito.
 - [ ] Abrir no modal do Balcão com aluno A; consultar candidatura B; sair e verificar que A continua selecionado.
 - [ ] Usar «Novo»: abre Matrícula vazia, sem misturar dados de A ou B; voltar à aba Admissões.
-- [ ] Pesquisar, filtrar, aprovar, pedir documentos, reabrir, converter e validar relatórios de erro, em desktop e mobile.
+- [ ] Validar abertura em «Todas», pesquisa e filtros; expandir indicadores e link de inscrição na fila.
+- [ ] Alternar Resumo, Documentos e Histórico sem consultas adicionais, aprovar com confirmação, pedir documentos, reabrir e converter em desktop e mobile.
+- [ ] Confirmar que decisões secundárias permanecem acessíveis em «Mais ações» e que as permissões do servidor continuam a ser respeitadas.
 - [ ] Verificar Sheet de conversão em cima do modal, incluindo teclado, fechamento e foco.
 - [ ] Abrir aba, trocar de candidatura rapidamente e voltar: sem vazamento de dados ou repetição de requests após desmontagem.
 - [ ] Medir requests e bytes do bundle do Balcão antes/depois: o carregamento inicial não deve incluir `AdmissoesInboxClient` nem `AdmissaoConversionSheet`.
