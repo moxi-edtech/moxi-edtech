@@ -317,7 +317,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
       {!hideTrigger && (
         <button type="button" onClick={() => setOpen(true)} className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm transition-all hover:border-border hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/10">
           <Search className="h-4 w-4 text-muted-foreground group-hover:text-muted-foreground" aria-hidden />
-          <span className="flex-1 text-left">Pesquisar ou digitar acção...</span>
+          <span className="flex-1 text-left">Pesquisar alunos, turmas ou acções…</span>
           <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex"><span className="text-xs">⌘</span>K</kbd>
         </button>
       )}
@@ -352,7 +352,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
             {!entityContext && (
               <div className="flex items-center border-b border-border px-4 py-3">
                 <Search className="mr-3 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-                <Command.Input value={query} onValueChange={setQuery} placeholder="O que precisa hoje?" className="flex-1 bg-transparent text-lg text-foreground placeholder:text-muted-foreground outline-none" />
+                <Command.Input value={query} onValueChange={setQuery} placeholder="Quem ou o que procura?" className="flex-1 bg-transparent text-lg text-foreground placeholder:text-muted-foreground outline-none" />
                 {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin text-emerald" aria-hidden /> : <kbd className="mr-1 hidden h-6 select-none items-center gap-1 rounded border border-border bg-muted px-2 font-mono text-[10px] font-medium text-muted-foreground sm:flex">ESC</kbd>}
                 <button type="button" onClick={() => handleOpenChange(false)} className="ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted" aria-label="Fechar pesquisa"><X className="h-4 w-4" aria-hidden /></button>
               </div>
@@ -364,7 +364,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                     {detectedIntent && (
                       <div className="mb-2 flex items-center gap-2 rounded-xl border border-emerald/10 bg-emerald/5 px-3 py-2">
                         <Zap className="h-3 w-3 text-emerald" aria-hidden />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald">Modo: {detectedIntent === "financeiro" ? "Financeiro" : detectedIntent === "academico" ? "Académico" : detectedIntent === "documentos" ? "Documentos" : "Acção rápida"}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald">Sugestões: {detectedIntent === "financeiro" ? "Financeiro" : detectedIntent === "academico" ? "Académico" : detectedIntent === "documentos" ? "Documentos" : "Acção rápida"}</span>
                       </div>
                     )}
                     {searchError && query.trim().length >= 2 && (
@@ -443,7 +443,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                 <span className="flex items-center gap-1"><kbd className="rounded border border-border bg-card px-1 shadow-sm">Esc</kbd> Fechar</span>
                 <span className="flex items-center gap-1"><kbd className="rounded border border-border bg-card px-1 shadow-sm">⌘K</kbd> Abrir</span>
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">KLASSE Command Center</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">KLASSE · Pesquisa</div>
             </div>
           </motion.div>
         </Command.Dialog>

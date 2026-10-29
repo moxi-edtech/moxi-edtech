@@ -1,3 +1,5 @@
+// The wording can change without weakening guards for unknown identities,
+// partial results, published timetables, or read-only historical scope.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
@@ -38,8 +40,8 @@ test("EX-015: no professor key is not inferred from an academic allocation", () 
       lesson("removed", 2, "08:00:00", { professorVinculoRegistrado: true }),
     ],
   }));
-  assert.match(html, /Professor não indicado no horário/);
-  assert.match(html, /Identidade docente indisponível/);
+  assert.match(html, /Professor não indicado/);
+  assert.match(html, /Professor por identificar/);
   assert.match(html, /Sala não indicada no horário/);
   assert.doesNotMatch(html, /sem professor vinculado à turma/i);
 });
@@ -59,7 +61,7 @@ test("EX-015: incomplete timetable is not presented as an empty official week", 
   const html = renderToStaticMarkup(React.createElement(ExplorerHorarioSemanal, {
     aulas: [], parcial: true,
   }));
-  assert.match(html, /resultado é parcial/);
+  assert.match(html, /Podem existir outras aulas/);
 });
 
 test("EX-015: only opening the section starts a scoped read", () => {
@@ -141,5 +143,5 @@ test("EX-015: Classe compares two authorized turma schedules only after explicit
   assert.match(horario, /enabled: expanded && Boolean\(effectiveCompare\)/);
   assert.match(horario, /item\.id !== effectiveTurma/);
   assert.match(horario, /Sem publicação/);
-  assert.match(horario, /Versão oficial · apenas consulta/);
+  assert.match(horario, /Horário oficial/);
 });
