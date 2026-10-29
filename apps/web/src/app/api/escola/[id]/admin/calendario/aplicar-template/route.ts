@@ -46,6 +46,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Template não encontrado.' }, { status: 404 });
     }
 
+    // From 2026 onward only the published MED template may establish the
+    // official calendar used to write grades.
+    if (Number(template.ano_base) >= 2026 &&
+        (template.is_oficial !== true || template.estado !== 'PUBLICADO')) {
+      return NextResponse.json({
+        ok: false, code: 'OFFICIAL_CALENDAR_REQUIRED',
+        error: 'Selecione o calendário oficial publicado para este ano letivo.',
+      }, { status: 409 });
+    }
     const items = (template as any).items || [];
 
     // 2. Obter ou Criar o Ano Letivo Base do Template
@@ -56,6 +65,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .eq('ano', template.ano_base)
       .maybeSingle();
 
+    if (anoLetivo && Number(template.ano_base) === 2026 &&
+        (anoLetivo.data_inicio !== template.data_inicio || anoLetivo.data_fim !== template.data_fim)) {
+      return NextResponse.json({
+        ok: false, code: 'ACADEMIC_YEAR_CALENDAR_MISMATCH',
+        error: 'As datas do ano letivo divergem do decreto. Concilie primeiro o ano letivo.',
+      }, { status: 409 });
+    }
     let anoLetivoId = anoLetivo?.id;
 
     if (!anoLetivo) {
@@ -87,7 +103,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         numero: i.numero,
         data_inicio: i.data_inicio,
         data_fim: i.data_fim,
-        peso: i.peso
+        peso: i.peso,
+        ...(template.is_oficial === true && template.estado === 'PUBLICADO' ? {
+          source_template_id: template.id, source_item_id: i.id,
+          source_version: template.versao_documento,
+        } : {}),
       }));
 
     const eventosData = items
@@ -98,8 +118,29 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         tipo: i.tipo,
         nome: i.nome,
         data_inicio: i.data_inicio,
-        data_fim: i.data_fim
+        data_fim: i.data_fim,
+        ...(template.is_oficial === true && template.estado === 'PUBLICADO' ? {
+          source_template_id: template.id, source_item_id: i.id,
+          source_version: template.versao_documento,
+          applied_at: new Date().toISOString(), applied_by: user.id,
+        } : {}),
       }));
+
+    // A template import must not erase a deadline established by the school.
+    // A formal lock review is needed before an import can proceed.
+    if (periodosData.length > 0 && anoLetivoId) {
+      const { data: locked, error: locksError } = await supabase
+        .from('periodos_letivos').select('id')
+        .eq('escola_id', userEscolaId)
+        .eq('ano_letivo_id', anoLetivoId)
+        .eq('tipo', 'TRIMESTRE')
+        .not('trava_notas_em', 'is', null);
+      if (locksError) throw locksError;
+      if ((locked ?? []).length) return NextResponse.json({
+        ok: false, code: 'ACADEMIC_PERIOD_LOCK_REVIEW_REQUIRED',
+        error: 'Existem prazos de notas definidos. Revise os fechos antes de reaplicar o calendário.',
+      }, { status: 409 });
+    }
 
     // 4. Executar Inserções
     if (periodosData.length > 0) {
