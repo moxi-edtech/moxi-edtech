@@ -434,21 +434,16 @@ export function RaaBalcaoResolutionPanel({
             </div>
           )}
           {action === "rever_resultado" && (
-            <p className="rounded-lg border border-border bg-card p-3 text-xs text-foreground">
+            <p className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
               Resultado oficial não autoriza progressão. Peça a revisão de evidências pela autoridade académica;
               não há botão para substituir a decisão. Consulte novamente após a publicação ou retificação formal.
             </p>
           )}
           {action === "justificacao" && (
-            <div className="space-y-2">
-              {!loading && faltas.length === 0 && <p className="text-xs text-muted-foreground">Não há pedidos de justificação pendentes para esta matrícula. Uma falta não é alterada por este painel.</p>}
-              {faltas.map((item) => (
-                <button key={item.id} type="button" onClick={() => { setSelected(item.id); setDecision("approved"); setMotivo(""); }}
-                  className="block w-full rounded-lg border border-border bg-card p-3 text-left text-xs text-foreground">
-                  <strong>Falta de {item.data_falta}</strong><span className="mt-1 block">{item.motivo}</span>
-                </button>
-              ))}
-            </div>
+            <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+              {selected ? "Confirme a decisão sobre esta justificação. O registo original da falta permanecerá auditável." :
+                "Não há pedido pendente de decisão neste processo. O RAA mantém a retenção até à revisão oficial."}
+            </p>
           )}
           {action === "reapreciacao" && examContext && activeCase?.kind !== "pedido" && (
             <div className="space-y-3 rounded-xl border border-border bg-card p-3" aria-label="Resultado do exame no Balcão">
@@ -491,7 +486,7 @@ export function RaaBalcaoResolutionPanel({
                     className="rounded-lg border border-border bg-background p-2 text-sm" />
                   <button type="button" disabled={saving || !examSessionId || !examComponentId || !examTurmaDisciplinaId || !examNote.trim()}
                     onClick={() => prepareConfirmation("exame")} className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
-                    {saving ? "A guardar..." : "Guardar resultado de exame"}
+                    {saving ? "A guardar..." : "Rever resultado do exame"}
                   </button>
                 </div>
               )}
@@ -499,17 +494,8 @@ export function RaaBalcaoResolutionPanel({
           )}
           {action === "reapreciacao" && activeCase?.kind !== "exame" && (
             <div className="space-y-2">
-              {!loading && pedidos.length === 0 && <p className="text-xs text-muted-foreground">Não existem pedidos nesta matrícula. O exame de recurso continua sujeito à publicação oficial.</p>}
-              {pedidos.map((item) => (
-                <button key={item.id} type="button" onClick={() => {
-                  setSelected(item.id); setDecision(item.estado === "pendente" ? "em_analise" : "deferido"); setMotivo("");
-                }} disabled={!["pendente", "em_analise"].includes(item.estado)}
-                  className="block w-full rounded-lg border border-border bg-card p-3 text-left text-xs text-foreground disabled:opacity-60">
-                  <strong>{item.protocolo_publico || item.id.slice(0, 8)}</strong>
-                  <span className="ml-2">{item.estado}</span><span className="mt-1 block">{item.motivo}</span>
-                </button>
-              ))}
-              {(!selected && (academic?.disciplina_ids_pendentes?.length || 0) > 0) && (
+              {activeCase?.kind === "pedido" && <p className="text-sm text-muted-foreground">Decisão sobre o pedido selecionado. O deferimento não publica automaticamente um resultado de exame.</p>}
+              {(!selected && activeCase?.estado !== "registado" && (academic?.disciplina_ids_pendentes?.length || 0) > 0) && (
                 <div className="rounded-lg border border-border bg-card p-3">
                   <label className="block text-xs font-bold text-foreground" htmlFor="raa-balcao-disciplina">Disciplina para reapreciação</label>
                   <select id="raa-balcao-disciplina" className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
@@ -521,24 +507,17 @@ export function RaaBalcaoResolutionPanel({
                   <textarea id="raa-balcao-pedido-motivo" rows={2} className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
                     value={motivo} onChange={(event) => setMotivo(event.target.value)} />
                   <button type="button" disabled={saving} onClick={() => prepareConfirmation("pedido")} className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
-                    Solicitar reapreciação
+                    Rever pedido de reapreciação
                   </button>
                 </div>
               )}
             </div>
           )}
           {action === "disciplina" && (
-            <div className="space-y-2">
-              {!loading && eventos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum evento disciplinar localizado nesta matrícula. Solicite revisão à direção; não é possível levantar o bloqueio por declaração do Balcão.</p>}
-              {eventos.map((item) => (
-                <button key={item.id} type="button" disabled={!["registado", "em_analise"].includes(item.estado)}
-                  onClick={() => { setSelected(item.id); setDecision("em_analise"); setMotivo(""); }}
-                  className="block w-full rounded-lg border border-border bg-card p-3 text-left text-xs text-foreground disabled:opacity-60">
-                  <strong>{item.categoria}</strong><span className="ml-2">{item.estado}</span>
-                  <span className="mt-1 block">{item.descricao}</span>
-                </button>
-              ))}
-            </div>
+            <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+              {selected ? "A revisão ficará vinculada ao evento original e exige permissão da direção." :
+                "Nenhum evento ativo foi selecionado. Só a direção pode encerrar ou cancelar uma ocorrência."}
+            </p>
           )}
           {!!selected && activeCase?.estado !== "registado" && (action === "justificacao" || action === "reapreciacao" || action === "disciplina") && (
             <div className="space-y-2 rounded-lg border border-amber-200 bg-card p-3">
@@ -561,9 +540,9 @@ export function RaaBalcaoResolutionPanel({
                 <button type="button" disabled={saving || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)}
                   onClick={() => prepareConfirmation("decisao")}
                   className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
-                  {saving ? "A guardar..." : "Guardar decisão"}
+                  {saving ? "A guardar..." : "Rever e confirmar decisão"}
                 </button>
-                <button type="button" onClick={() => { setSelected(""); setDecision(""); setMotivo(""); }} className="rounded-lg border border-border px-3 py-2 text-xs font-bold">Cancelar</button>
+                <button type="button" onClick={() => setPhase("summary")} className="rounded-lg border border-border px-3 py-2 text-xs font-bold">Voltar</button>
               </div>
             </div>
           )}
