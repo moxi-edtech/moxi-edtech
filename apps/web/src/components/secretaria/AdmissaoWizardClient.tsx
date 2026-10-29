@@ -1521,6 +1521,7 @@ function AdmissionDuplicateDialog({
   onArchiveDuplicate,
   archiveLoading,
   actionError,
+  elevated = false,
 }: {
   open: boolean;
   conflict: AdmissionDuplicateConflict | null;
@@ -1530,6 +1531,7 @@ function AdmissionDuplicateDialog({
   onArchiveDuplicate: () => void;
   archiveLoading: boolean;
   actionError: string | null;
+  elevated?: boolean;
 }) {
   const existing = conflict?.existing_matricula ?? null;
   const current = conflict?.current_candidatura ?? null;
@@ -1539,7 +1541,7 @@ function AdmissionDuplicateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto border-none p-0 shadow-2xl sm:rounded-2xl">
+      <DialogContent overlayClassName={elevated ? "z-[110]" : undefined} className={`max-h-[90vh] max-w-3xl overflow-y-auto border-none bg-card p-0 text-foreground shadow-2xl sm:rounded-2xl ${elevated ? "z-[110]" : ""}`}>
         <DialogHeader className="border-b border-border bg-muted/50 px-6 py-5">
           <DialogTitle className="text-xl font-bold text-foreground">
             {isDraftConflict
@@ -2224,7 +2226,7 @@ function Step3Pagamento(props: {
           </div>
 
           <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
+            <DialogContent overlayClassName={embedded ? "z-[110]" : undefined} className={`max-w-4xl max-h-[90vh] overflow-y-auto border-none bg-card p-0 text-foreground shadow-2xl rounded-2xl ${embedded ? "z-[110]" : ""}`}>
               <DialogHeader className="p-6 bg-muted/50 border-b border-border">
                 <DialogTitle className="text-xl font-bold text-foreground">Registar Pagamento de Matrícula</DialogTitle>
               </DialogHeader>
@@ -2243,6 +2245,7 @@ function Step3Pagamento(props: {
 
           {result.aluno_id && (
             <EnrollmentPostActionModal
+              elevated={embedded}
               open={Boolean(postAction)}
               onOpenChange={(open) => { if (!open) setPostAction(null); }}
               action={postAction}
@@ -2352,6 +2355,7 @@ function Step3Pagamento(props: {
         onArchiveDuplicate={archiveDuplicateAdmission}
         archiveLoading={archiveLoading}
         actionError={duplicateActionError}
+        elevated={embedded}
       />
 
       {resumeMode && (
