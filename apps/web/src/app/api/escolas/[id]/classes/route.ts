@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { type CurriculumKey } from "@/lib/academico/curriculum-presets";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { classIdentityFromName, parseAcademicClassNumber } from "@/lib/academico/class-level";
 
 const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number }> = {
   pre_escolar: { min: 0, max: 0 },
@@ -41,11 +42,6 @@ const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number 
   tec_producao_metalomecanica: { min: 10, max: 13 },
   tec_informatica: { min: 10, max: 13 },
   tec_gestao_sistemas: { min: 10, max: 13 },
-};
-
-const parseClasseNumero = (nome: string) => {
-  const match = nome.trim().match(/^([1-9]|1[0-3])[ªº]?\s*(?:classe|ano)$/i);
-  return match ? Number(match[0]) : null;
 };
 
 const normalizeClasseLabel = (value: string) =>
@@ -224,9 +220,9 @@ export async function POST(
 
     // A classe numerada tem a sua ordem académica canónica, não uma posição
     // arbitrária no menu. Pré-Escolar não recebe numero=0 (DB aceita 1..13).
-    const classNum = parseClasseNumero(parsed.data.nome);
-    const isPreschool = /^pré[\s-]*escolar$/i.test(parsed.data.nome);
-    let ordem = classNum ?? (isPreschool ? 0 : parsed.data.ordem);
+    const classIdentity = classIdentityFromName(parsed.data.nome);
+    const classNum = parseAcademicClassNumber(parsed.data.nome);
+    let ordem = classIdentity.ordem ?? parsed.data.ordem;
     if (ordem === undefined) {
       ordem = 1;
       try {
@@ -245,7 +241,7 @@ export async function POST(
       escola_id: userEscolaId,
       nome: parsed.data.nome,
       ordem,
-      numero: classNum ?? null,
+      numero: classIdentity.numero,
       curso_id: parsed.data.curso_id,
     };
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
