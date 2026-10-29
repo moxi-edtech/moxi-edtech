@@ -1,4 +1,6 @@
 import test from "node:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import {
   buildCanonicalMedCalendarPlan,
@@ -186,8 +188,6 @@ test("Academic period source and UUID provenance stay stable when school courses
   );
 });
 test("The setup endpoint uses one atomic database RPC rather than separate writes", () => {
-  const { readFileSync } = require("node:fs") as typeof import("node:fs");
-  const { resolve } = require("node:path") as typeof import("node:path");
   const source = readFileSync(resolve(process.cwd(), "src/lib/academico/prepare-canonical-calendar.ts"), "utf8");
   assert.match(source, /aplicar_calendario_med_canonico_v1/);
   assert.match(source, /allowEmptyOfferings/);
