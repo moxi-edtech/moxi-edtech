@@ -15,6 +15,7 @@ const querySchema = z.object({
   alunoId: z.string().uuid(),
   escolaId: z.string().uuid(),
   offset: z.coerce.number().int().min(0).max(50000),
+  paymentsOffset: z.coerce.number().int().min(0).max(50000),
 });
 
 /**
@@ -35,6 +36,7 @@ export async function GET(
     alunoId,
     escolaId: search.get("escola_id"),
     offset: search.get("offset") ?? "0",
+    paymentsOffset: search.get("pagamentos_offset") ?? "0",
   });
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: "Parâmetros inválidos." }, { status: 400 });
@@ -46,7 +48,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Não autenticado." }, { status: 401 });
   }
 
-  const { alunoId: studentId, escolaId: requestedSchoolId, offset } = parsed.data;
+  const { alunoId: studentId, escolaId: requestedSchoolId, offset, paymentsOffset } = parsed.data;
   const escolaId = await resolveEscolaIdForUser(supabase, user.id, requestedSchoolId);
   if (!escolaId || escolaId !== requestedSchoolId) {
     return NextResponse.json({ ok: false, error: "Sem permissão." }, { status: 403 });
@@ -93,12 +95,41 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Falha ao consultar os recibos." }, { status: 500 });
   }
 
+  // Separate, persistent settlement history. A receipt may not exist yet
+  // (or may belong to the terminal payment of a consolidated batch), so
+  // listing only documentos_emitidos hides those legitimate transactions.
+  // Never expose payment metadata, fiscal records or identifiers from another
+  // school/student; the lookup link re-checks all permissions.
+  const { data: paymentRows, error: paymentsError } = await supabase
+    .from("pagamentos")
+    .select("id, created_at, valor_pago, mensalidade_id")
+    .eq("escola_id", escolaId)
+    .eq("aluno_id", studentId)
+    .eq("status", "settled")
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(paymentsOffset, paymentsOffset + PAGE_SIZE);
+
+  if (paymentsError) {
+    console.warn("[RECIBOS-HISTORICO][PAYMENTS_READ_FAILED]", { code: paymentsError.code ?? null });
+    return NextResponse.json({ ok: false, error: "Falha ao consultar os pagamentos." }, { status: 500 });
+  }
+
   const rows = data ?? [];
+  const payments = paymentRows ?? [];
   const hasMore = rows.length > PAGE_SIZE;
+  const hasMorePayments = payments.length > PAGE_SIZE;
   return NextResponse.json({
     ok: true,
     recibos: rows.slice(0, PAGE_SIZE).map(toOperationalReceiptHistoryItem),
     nextOffset: hasMore ? offset + PAGE_SIZE : null,
+    pagamentos: payments.slice(0, PAGE_SIZE).map((payment) => ({
+      id: payment.id,
+      registeredAt: payment.created_at,
+      amount: Number(payment.valor_pago ?? 0),
+      kind: payment.mensalidade_id ? "mensalidade" : "servico",
+    })),
+    nextPaymentOffset: hasMorePayments ? paymentsOffset + PAGE_SIZE : null,
   }, {
     headers: { "Cache-Control": "private, no-store, max-age=0" },
   });

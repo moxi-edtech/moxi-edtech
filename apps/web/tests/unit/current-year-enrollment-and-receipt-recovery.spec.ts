@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-import { findIssuedOperationalReceipt } from "../../src/lib/financeiro/recover-receipt-after-payment";
+import { findIssuedOperationalReceipt, findIssuedOperationalReceiptByPayment } from "../../src/lib/financeiro/recover-receipt-after-payment";
+import { candidateReceiptBatchIds } from "../../src/lib/financeiro/receipt-batch-lookup";
 
 const source = (path: string) =>
   readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
@@ -60,7 +61,7 @@ test("receipt lookup validates user, staff role, school, monthly and issued docu
   assert.match(route, /requireRoleInSchool/);
   assert.match(route, /resolveEscolaIdForUser/);
   assert.match(route, /\.eq\("escola_id", escolaId\)/);
-  assert.match(route, /\.eq\("aluno_id", monthly\.aluno_id\)/);
+  assert.match(route, /\.eq\("aluno_id", alunoId\)/);
   assert.match(route, /\.eq\("tipo", "recibo"\)/);
   assert.match(route, /\.is\("revoked_at", null\)/);
   assert.match(route, /status: "pending"/);
@@ -68,17 +69,125 @@ test("receipt lookup validates user, staff role, school, monthly and issued docu
   assert.doesNotMatch(route, /fiscal_emitir_/);
 });
 
-test("rapid checkout reserves print tab before fetch and does not generate another payment on polling", () => {
+test("consolidated receipt recovery only accepts explicitly suppressed batch members", () => {
+  const batches = candidateReceiptBatchIds([
+    { meta: { emitir_recibo: false, batch_idempotency_key: "admission-batch-123" } },
+    { meta: { emitir_recibo: false, batch_idempotency_key: "admission-batch-123" } },
+    { meta: { emitir_recibo: true, batch_idempotency_key: "other-batch-456" } },
+    { meta: { emitir_recibo: false, batch_idempotency_key: "admission-batch-789" } },
+    { meta: { emitir_recibo: "false", batch_idempotency_key: "wrong-type-456" } },
+    { meta: { emitir_recibo: false, batch_idempotency_key: "short" } },
+    { meta: null },
+  ]);
+  assert.deepEqual(batches, ["admission-batch-123", "admission-batch-789"]);
+  assert.deepEqual(candidateReceiptBatchIds([{ meta: { emitir_recibo: true, batch_idempotency_key: "batch-123456" } }]), []);
+  assert.deepEqual(candidateReceiptBatchIds([{ meta: { emitir_recibo: false } }]), []);
+});
+
+test("service or admission receipt lookup retrieves a settled payment using GET only", async () => {
+  const calls: string[] = [];
+  const fetcher: typeof fetch = async (url, options) => {
+    calls.push(options?.method ?? "GET");
+    assert.equal(String(url), "/api/secretaria/recibos/consultar?pagamento_id=paid-id");
+    return new Response(JSON.stringify({
+      ok: true, status: "ready", print_url: "/secretaria/documentos/consolidated-doc/recibo/print",
+    }), { status: 200 });
+  };
+  const url = await findIssuedOperationalReceiptByPayment("paid-id", { fetcher, attempts: 1 });
+  assert.equal(url, "/secretaria/documentos/consolidated-doc/recibo/print");
+  assert.deepEqual(calls, ["GET"]);
+});
+
+test("receipt recovery finds a consolidated service-terminated batch without exposing other tenants", () => {
+  const route = source("app/api/secretaria/recibos/consultar/route.ts");
+  const admission = source("components/secretaria/AdmissaoWizardClient.tsx");
+  const recovery = source("components/secretaria/AdmissionReceiptRecovery.tsx");
+  assert.match(route, /candidateReceiptBatchIds\(payments \?\? \[\]\)/);
+  assert.match(route, /candidateReceiptBatchIds\(\[payment\]\)/);
+  assert.match(route, /\.contains\("meta", \{ batch_idempotency_key: batchId, emitir_recibo: true \}\)/);
+  assert.match(route, /\.eq\("escola_id", escolaId\)\.eq\("aluno_id", alunoId\)/);
+  assert.match(route, /\.eq\("status", "settled"\)/);
+  assert.match(route, /\.filter\("dados_snapshot->>pagamento_id", "eq", reference\.paymentId\)/);
+  assert.match(route, /\.is\("revoked_at", null\)/);
+  assert.match(route, /throw new Error\("AMBIGUOUS_BATCH"\)/);
+  assert.doesNotMatch(route, /\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/);
+  assert.match(admission, /<AdmissionReceiptRecovery pagamentoId=\{result\.pagamento_id\} escolaId=\{escolaId\} \/>/);
+  assert.match(recovery, /findIssuedOperationalReceiptByPayment\(pagamentoId/);
+  assert.match(route, /escola_id/);
+  assert.match(recovery, /Imprimir recibo/);
+  assert.doesNotMatch(recovery, /fetch\(.+method: "POST"/);
+});
+
+test("admission preserves its success receipt actions until explicit continue", () => {
+  const wizard = source("components/secretaria/AdmissaoWizardClient.tsx");
+  const before = wizard.slice(wizard.indexOf("const handleFinalizarMatricula ="), wizard.indexOf("const handleSaveForLater ="));
+  assert.match(before, /setResult\(\{[\s\S]*?convertResp\.data/);
+  assert.doesNotMatch(before, /onCompleted\?\.\(convertResp\.data\.aluno_id\)/);
+  assert.match(wizard, /if \(onCompleted\) onCompleted\(result\.aluno_id\)/);
+  assert.match(wizard, /onActionChange\?\.\("desk"\)/);
+  assert.match(wizard, /AdmissionReceiptRecovery/);
+});
+
+test("intermediate batch payment never returns an unrelated receipt for the same mensalidade", () => {
+  const route = source("app/api/secretaria/recibos/consultar/route.ts");
+  const start = route.indexOf("if (parsed.data.pagamento_id) {");
+  const suppressed = route.indexOf("if (payment.meta?.emitir_recibo === false)", start);
+  const direct = route.indexOf("const document = payment.mensalidade_id", start);
+  assert.ok(start >= 0 && suppressed > start && direct > suppressed);
+  assert.match(route.slice(suppressed, direct), /findConsolidatedReceipt\(db, escolaId, payment\.aluno_id, batches\)/);
+  assert.match(route.slice(suppressed, direct), /return pendingReceipt\(\)/);
+});
+
+test("rapid checkout hands the receipt to an independent payment-scoped page BEFORE parent callbacks", () => {
   const code = source("components/secretaria/ModalPagamentoRapido.tsx");
   const submit = code.slice(code.indexOf("const submit = useCallback(async () =>"));
   assert.ok(submit.indexOf("reserveReceiptWindow()") >= 0);
   assert.ok(submit.indexOf("reserveReceiptWindow()") < submit.indexOf('await fetch("/api/secretaria/pagamentos/processar"'));
   assert.match(submit, /pendingCheckout\.current\.key/);
-  assert.match(submit, /findIssuedOperationalReceipt\(lastMonthlyId/);
-  assert.match(submit, /showIssuedReceipt\(receiptWindow, recoveredUrl\)/);
+  assert.match(submit, /terminalPaymentId = typeof json\.data\?\.id/);
+  assert.match(submit, /"\/secretaria\/recibos\/acompanhar\?pagamento_id="/);
+  assert.match(submit, /onReceiptStatus\(\{ url: immediateUrl, pagamentoId: terminalPaymentId, pending: !immediateUrl \}\)/);
+  assert.ok(submit.indexOf("showIssuedReceipt(\n          receiptWindow,") < submit.indexOf("onConcluido();"));
+  assert.ok(submit.indexOf("onConcluido();") < submit.indexOf("if (onSuccess) onSuccess();"));
+  assert.doesNotMatch(submit, /findIssuedOperationalReceipt\(lastMonthlyId/);
+  assert.doesNotMatch(submit, /await findIssuedOperationalReceipt/);
   assert.match(code, /Pagamento confirmado — recibo em preparação/);
-  assert.match(code, /Verificar recibo sem repetir pagamento/);
+  assert.match(code, /Consultar recibo/);
+  assert.match(code, /Pagamento confirmado\. Consulte o recibo no histórico financeiro do aluno\./);
   assert.doesNotMatch(code, /setTimeout\(\(\) => window\.print\(\)/);
+});
+
+test("receipt handoff page survives closing the modal and polls only the persisted payment", () => {
+  const page = source("app/secretaria/recibos/acompanhar/page.tsx");
+  const recovery = source("components/secretaria/AdmissionReceiptRecovery.tsx");
+  assert.match(page, /searchParams: Promise<\{ pagamento_id\?: string; escola_id\?: string \}>/);
+  assert.match(page, /UUID\.test\(pagamentoId\)/);
+  assert.match(page, /<AdmissionReceiptRecovery pagamentoId=\{pagamentoId\} escolaId=\{validEscolaId\} \/>/);
+  assert.match(recovery, /findIssuedOperationalReceiptByPayment\(pagamentoId/);
+  assert.match(recovery, /Imprimir recibo/);
+  assert.doesNotMatch(page + recovery, /\/api\/secretaria\/pagamentos\/processar/);
+});
+
+test("batch settlement is never converted to HTTP failure by a thrown receipt RPC", () => {
+  const route = source("app/api/secretaria/pagamentos/processar/route.ts");
+  const commit = route.indexOf("const batch = asRecord(batchData);");
+  const deferred = route.indexOf("let recibo: BatchReceiptResult;", commit);
+  const result = route.indexOf("return NextResponse.json({\n    ok: true,", deferred);
+  assert.ok(commit >= 0 && deferred > commit && result > deferred);
+  assert.match(route.slice(deferred, result), /try \{\s*recibo = await emitBatchReceipt\(/);
+  assert.match(route.slice(deferred, result), /catch \(receiptError\)/);
+  assert.match(route.slice(deferred, result), /recibo = \{ ok: false, error: "Pagamento confirmado; recibo em processamento\." \}/);
+  assert.match(route.slice(result), /data: ultimoPagamento/);
+});
+
+test("single-item checkout retains canonical data.id for reversal and follow-up", () => {
+  const code = source("components/secretaria/ModalPagamentoRapido.tsx");
+  const submit = code.slice(code.indexOf("const submit = useCallback(async () =>"));
+  assert.match(submit, /terminalPaymentId = typeof json\.data\?\.id === "string"/);
+  assert.match(submit, /mensalidadesSelecionadas\.length === 1 \? terminalPaymentId : null/);
+  assert.doesNotMatch(submit, /pagamento_id:.*json\.recibo\?\.doc_id/);
+  assert.match(submit, /pendingCheckout\.current = null;/);
+  assert.match(submit, /paymentCommitted = true;/);
 });
 
 test("issued receipt print page offers a manual fallback if automatic printing is blocked", () => {
@@ -172,4 +281,15 @@ test("class correction stays an audited transactional move, never deletes linked
   assert.match(migration, /v_historico_apos IS DISTINCT FROM v_historico/);
   assert.match(migration, /MATRICULA_CLASSE_RETIFICADA/);
   assert.doesNotMatch(migration, /DELETE FROM public\.(?:notas|pagamentos|mensalidades|documentos_emitidos)/i);
+});
+
+test("non-settled payment never masquerades as a deferred operational receipt", () => {
+  const route = source("app/api/secretaria/recibos/consultar/route.ts");
+  const start = route.indexOf('if (payment.status !== "settled") {');
+  const end = route.indexOf("const batches = candidateReceiptBatchIds", start);
+  assert.ok(start >= 0 && end > start);
+  const guard = route.slice(start, end);
+  assert.match(guard, /status: "not_settled"/);
+  assert.match(guard, /status: 409/);
+  assert.doesNotMatch(guard, /return pendingReceipt\(\)/);
 });

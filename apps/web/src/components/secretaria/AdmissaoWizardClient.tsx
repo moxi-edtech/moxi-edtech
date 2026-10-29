@@ -14,6 +14,7 @@ import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmon
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
 import { EnrollmentPostActionModal } from "./EnrollmentPostActionModal";
+import { AdmissionReceiptRecovery } from "./AdmissionReceiptRecovery";
 import type { EnrollmentPostAction } from "./EnrollmentPostActions";
 import { emitirDocumento } from "@/lib/documentos/emissaoClient";
 
@@ -166,6 +167,7 @@ type SimpleResult = {
   aluno_id?: string;
   matricula_id?: string;
   numero_matricula?: string;
+  pagamento_id?: string | null;
   comprovante?: { ok: boolean; printUrl?: string; error?: string };
   recibo?: { ok: boolean; status?: 'available' | 'pending' | 'error'; print_url?: string; error?: string } | null;
   itens_pagamento?: Array<{ nome?: string; descricao?: string; preco?: number; valor?: number; quantidade?: number }>;
@@ -2045,11 +2047,13 @@ function Step3Pagamento(props: {
       }
       return setResult({ ok: false, error: convertResp.error });
     }
+    // Keep the success screen and its receipt actions visible until the user
+    // explicitly continues. The Balcão success callback switches to "desk"
+    // and would otherwise unmount the receipt before it could be printed.
     setResult({
       ...convertResp.data,
       message: convertResp.data.message ?? "Matrícula concluída pela secretaria.",
     });
-    onCompleted?.(convertResp.data.aluno_id);
   };
 
   const handleSaveForLater = async () => {
@@ -2169,8 +2173,12 @@ function Step3Pagamento(props: {
               <button
                 type="button"
                 onClick={() => {
-                  if (embedded && onActionChange) onActionChange("desk");
-                  else router.push(`${secretariaBase}/matriculas`);
+                  if (embedded) {
+                    if (onCompleted) onCompleted(result.aluno_id);
+                    else onActionChange?.("desk");
+                  } else {
+                    router.push(`${secretariaBase}/matriculas`);
+                  }
                 }}
                 className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-black text-slate-700"
               >
@@ -2178,7 +2186,12 @@ function Step3Pagamento(props: {
               </button>
             </div>
             {result.recibo?.status === 'pending' && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Pagamento registado. O recibo financeiro será disponibilizado após a liquidação.</p>}
-            {result.recibo?.status === 'error' && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">Não foi possível emitir o recibo financeiro. Tente novamente pela área de documentos.</p>}
+            {result.recibo?.status === 'error' && (
+              <>
+                <p className="mt-3 text-xs text-muted-foreground">O pagamento foi registado. O recibo pode estar em processamento.</p>
+                {result.pagamento_id && <AdmissionReceiptRecovery pagamentoId={result.pagamento_id} escolaId={escolaId} />}
+              </>
+            )}
           </div>
 
           <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
