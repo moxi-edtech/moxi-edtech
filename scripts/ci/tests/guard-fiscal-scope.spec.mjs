@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 26);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 28);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -48,6 +48,19 @@ test("new atomic enrollment and live ledger markers stay within audited scope", 
       "CREATE TRIGGER enrollment_guard BEFORE INSERT ON matriculas EXECUTE FUNCTION check_year();"), []);
     assert.match(checkFiscalAndSchemaScope([name], () =>
       "CREATE TABLE public.agt_integrations (id uuid);")[0] ?? "", /Fiscal\/AGT activation/);
+  }
+});
+
+test("read-only enrollment view migration is allowlisted without changing fiscal contracts", () => {
+  for (const name of [
+    "20261029113302_enrollment_view_academic_year_ssot_20261029.sql",
+    "20271029151000_enrollment_view_academic_year_ssot.sql",
+  ]) {
+    const path = "supabase/migrations/" + name;
+    assert.deepEqual(checkFiscalAndSchemaScope([path], () =>
+      "CREATE OR REPLACE VIEW vw_matriculas_validas AS SELECT session_id AS ano_letivo_id FROM matriculas;"), []);
+    assert.match(checkFiscalAndSchemaScope([path], () =>
+      "CREATE TABLE public.saft_export (id uuid);")[0] ?? "", /Fiscal\/AGT activation/);
   }
 });
 
