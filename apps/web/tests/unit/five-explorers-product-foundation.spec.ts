@@ -1,3 +1,5 @@
+// The wording can change without weakening guards for unknown identities,
+// partial results, published timetables, or read-only historical scope.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
@@ -80,8 +82,8 @@ test("EX-002: metric semantics distinguish undefined capacity, totals and partia
 test("EX-003: historic notice explains actual read-only capability, never promising unavailable search", () => {
   const html = renderToStaticMarkup(createElement(ExplorerHistoricalScopeNotice, { roster: true }));
   assert.match(html, /Histórico/);
-  assert.match(html, /pesquisa operacional/);
-  assert.match(html, /listagem histórica por páginas/);
+  assert.match(html, /Pesquisa e exportação não estão disponíveis neste ano/);
+  assert.match(html, /navegue pelas páginas da lista/);
 });
 
 test("EX-003: both rosters await known non-historic year before calling operational search", () => {
@@ -147,7 +149,7 @@ test("EX-006: incomplete explorer lists never claim verified absence of links", 
   assert.match(disciplina, /item\.curriculoVersao/);
   assert.match(professor, /semVinculos && !limited/);
   assert.match(professor, /data\.atribuicoes\.map/);
-  assert.match(classe, /limitado \? "Nenhuma disciplina encontrada na lista parcial/);
+  assert.match(classe, /limitado \? "Não aparecem disciplinas nesta lista\. Podem existir outras\."/);
   // EX-007: Course must use the bounded server page, not the legacy 100-item overview.
   assert.match(curso, /useCourseTurmasPage\(/);
   assert.match(curso, /window\.error/);
