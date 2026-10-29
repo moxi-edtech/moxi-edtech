@@ -1313,7 +1313,7 @@ export default function AdmissoesInboxClient({
                   type="button"
                   onClick={openBulkPromoteModal}
                   disabled={bulkSelectedIds.size === 0 || !!loadingAction}
-                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="bg-amber text-amber-950 hover:brightness-95"
                 >
                   <School className="h-4 w-4" />
                   Promover ({bulkSelectedIds.size})
@@ -1609,7 +1609,7 @@ export default function AdmissoesInboxClient({
 
                         <div className="mt-6 flex gap-3">
                           <Button
-                            className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-11 font-bold"
+                            className="h-11 w-full rounded-xl bg-amber font-bold text-amber-950 transition hover:brightness-95"
                             onClick={() => setIsConversionOpen(true)}
                           >
                             {selectedData.status === 'aguardando_compensacao' ? 'Validar Pagamento e Matricular' : 'Registar Pagamento e Matricular'}
@@ -2069,7 +2069,7 @@ export default function AdmissoesInboxClient({
                       return Boolean(turma && turma.capacidade_maxima > 0 && turma.vagas_disponiveis < bulkSelectedItems.length)
                     })()
                   }
-                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="bg-amber text-amber-950 hover:brightness-95"
                 >
                   {loadingAction === 'bulk_promoting' ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <School className="mr-2 h-4 w-4" />}
                   Promover lote
@@ -2208,7 +2208,7 @@ export default function AdmissoesInboxClient({
                   type="button"
                   onClick={handlePromotePreCandidatura}
                   disabled={!promoteTurmaId || loadingPromoteTurmas || loadingAction === 'promoting'}
-                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="bg-amber text-amber-950 hover:brightness-95"
                 >
                   {loadingAction === 'promoting' ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <School className="mr-2 h-4 w-4" />}
                   Promover
