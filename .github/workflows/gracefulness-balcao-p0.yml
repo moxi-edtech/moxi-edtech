@@ -20,6 +20,11 @@ on:
       - "apps/web/src/app/api/secretaria/notas/periodos/route.ts"
       - "apps/web/src/lib/academico/grade-period-context.ts"
       - "apps/web/tests/unit/grade-period-context.spec.ts"
+      - "apps/web/src/lib/academico/official-calendar-write-guard.ts"
+      - "apps/web/tests/unit/official-calendar-write-guard.spec.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/calendario/ajustes/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/calendario/aplicar-template/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/periodos-letivos/upsert-bulk/route.ts"
       - "apps/web/src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts"
       - "apps/web/src/app/api/escola/*/admin/calendario/aplicar-template/route.ts"
       - "apps/web/src/app/api/escola/*/admin/calendario/ajustes/route.ts"
@@ -124,6 +129,7 @@ jobs:
             tests/unit/raa-balcao-regime-guidance.spec.ts \
             tests/unit/raa-balcao-workspace-contract.spec.ts \
             tests/unit/grade-period-context.spec.ts \
+            tests/unit/official-calendar-write-guard.spec.ts \
             tests/unit/raa-decreto-eligibility.spec.ts \
             tests/unit/raa-exam-result-guard.spec.ts \
             tests/unit/raa-attendance-justification.spec.ts \
