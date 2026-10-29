@@ -100,3 +100,16 @@ test("Official 2026 calendar cannot be replaced via legacy or unaudited routes",
   assert.match(legacy, /OFFICIAL_CALENDAR_CONTROLLED_WRITE_REQUIRED/);
   assert.doesNotMatch(legacy, /stack: e instanceof Error/);
 });
+
+test("Disciplinas com trimestres específicos não aceitam lançamento fora da oferta", () => {
+  const periodos = source("app/api/secretaria/notas/periodos/route.ts");
+  const notas = source("app/api/secretaria/notas/route.ts");
+  const modal = source("components/secretaria/EnrollmentPostActionModal.tsx");
+  const sql = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271029235921_guard_grade_period_source_and_window.sql"), "utf8");
+  assert.match(periodos, /turma_disciplina_id: z\.string\(\)\.uuid\(\)\.optional\(\)/);
+  assert.match(periodos, /disciplina_ativa: activePeriods === null/);
+  assert.match(notas, /GRADE_DISCIPLINE_INACTIVE_TRIMESTER/);
+  assert.match(modal, /!item\.disciplina_ativa/);
+  assert.match(sql, /cardinality\(v_turma_disciplina\.periodos_ativos\)/);
+  assert.match(sql, /p_trimestre = ANY\(v_turma_disciplina\.periodos_ativos\)/);
+});
