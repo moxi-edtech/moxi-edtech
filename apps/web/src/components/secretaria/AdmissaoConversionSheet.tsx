@@ -37,6 +37,7 @@ type Props = {
   candidaturaId: string | null
   escolaId: string
   onSuccess: (matriculaId: string) => void
+  onSaved?: () => void | Promise<void>
   elevated?: boolean
 }
 
@@ -121,6 +122,7 @@ export function AdmissaoConversionSheet({
   candidaturaId, 
   escolaId,
   onSuccess,
+  onSaved,
   elevated = false,
 }: Props) {
   const { success, error: toastError } = useToast()
@@ -332,11 +334,8 @@ export function AdmissaoConversionSheet({
         throw new Error(syncJson.error || 'Erro ao salvar alterações')
       }
 
-      success('Alterações Salvas', 'Os dados da candidatura foram atualizados com sucesso.')
-      onSuccess(candidaturaId) // Triggers refresh but doesn't close if we don't want to?
-      // For high performance, maybe we close it too? 
-      // Actually, if they clicked "Save Only", they probably want to stay or just finish this part.
-      onClose()
+      success('Alterações guardadas', 'A candidatura foi atualizada. Pode continuar a revisão neste atendimento.')
+      await onSaved?.()
     } catch (err: unknown) {
       toastError('Erro ao Salvar', getErrorMessage(err, 'Erro ao salvar alterações'))
     } finally {
