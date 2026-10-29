@@ -87,3 +87,16 @@ test("The official template must be propagated with source provenance and pilot 
   assert.match(sql, /WHERE id=v_year_id AND escola_id=v_school_id/);
   assert.match(sql, /source_item_id=i\.id/);
 });
+
+test("Official 2026 calendar cannot be replaced via legacy or unaudited routes", () => {
+  const template = source("app/api/escola/[id]/admin/calendario/aplicar-template/route.ts");
+  const ajustes = source("app/api/escola/[id]/admin/calendario/ajustes/route.ts");
+  const legacy = source("app/api/escola/[id]/admin/periodos-letivos/upsert-bulk/route.ts");
+  assert.match(template, /source_template_id: template\.id/);
+  assert.match(template, /ACADEMIC_YEAR_CALENDAR_MISMATCH/);
+  assert.match(template, /ACADEMIC_PERIOD_LOCK_REVIEW_REQUIRED/);
+  assert.match(ajustes, /OFFICIAL_CALENDAR_CHANGE_REQUIRES_RECONCILIATION/);
+  assert.match(ajustes, /CALENDAR_LOCK_CHANGE_REASON_REQUIRED/);
+  assert.match(legacy, /OFFICIAL_CALENDAR_CONTROLLED_WRITE_REQUIRED/);
+  assert.doesNotMatch(legacy, /stack: e instanceof Error/);
+});
