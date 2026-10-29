@@ -176,7 +176,7 @@ export function ProfessorContextView({
               </button>
             ))}
             {!data.turmas.length && (
-              <p className="px-3 py-5 text-slate-500">{limited ? "Não aparecem turmas nesta lista. Podem existir outras." : "Nenhuma turma atribuída neste ano letivo."}</p>
+              <p className="px-3 py-5 text-muted-foreground">{limited ? "Não aparecem turmas nesta lista. Podem existir outras." : "Nenhuma turma atribuída neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -200,7 +200,7 @@ export function ProfessorContextView({
               </button>
             ))}
             {!data.disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">{limited ? "Não aparecem disciplinas nesta lista. Podem existir outras." : "Nenhuma disciplina atribuída neste ano letivo."}</p>
+              <p className="px-3 py-5 text-muted-foreground">{limited ? "Não aparecem disciplinas nesta lista. Podem existir outras." : "Nenhuma disciplina atribuída neste ano letivo."}</p>
             )}
           </div>
         </section>

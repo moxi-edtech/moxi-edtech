@@ -362,7 +362,7 @@ export function TurmaContextView({
               </div>
             ))}
             {!disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">{data.disciplinasLimitadas ? "Não aparecem todas as disciplinas nesta lista." : "Nenhuma disciplina vinculada."}</p>
+              <p className="px-3 py-5 text-muted-foreground">{data.disciplinasLimitadas ? "Não aparecem todas as disciplinas nesta lista." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
           {data.disciplinasLimitadas && (

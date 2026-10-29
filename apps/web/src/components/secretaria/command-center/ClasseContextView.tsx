@@ -235,7 +235,7 @@ export function ClasseContextView({
           <span><strong className="tabular-nums text-emerald-800">{turmasComVagas}</strong> turmas com vagas conhecidas</span>
           <span><strong className="tabular-nums text-slate-800">{turmasLotadas}</strong> lotadas ou acima da capacidade</span>
           <span><strong className="tabular-nums text-slate-800">{turmasSemAlunos}</strong> sem alunos do ano</span>
-          <span className="text-slate-500">{limitado ? "Dados incompletos" : "Turmas sem capacidade definida ficam fora da lotação"}</span>
+          <span className="text-muted-foreground">{limitado ? "Dados incompletos" : "Turmas sem capacidade definida ficam fora da lotação"}</span>
         </div>
       )}
 
@@ -244,7 +244,7 @@ export function ClasseContextView({
           <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-800">Atendimento</p>
           <p className="text-sm text-slate-600">Localizar o aluno e continuar no Balcão, sem perder o contexto.</p>
         </div>
-        <span className="text-xs text-slate-500">Ano {anoLetivo.ano}</span>
+        <span className="text-xs text-muted-foreground">Ano {anoLetivo.ano}</span>
       </div>
       <section className="min-w-0" aria-labelledby="classe-alunos-heading">
         {!anoLetivo.historico && (
@@ -375,7 +375,7 @@ export function ClasseContextView({
               </button>
             ))}
             {!turmas.length && (
-              <p className="px-3 py-5 text-slate-500">{limitado ? "Não aparecem turmas nesta lista. Podem existir outras." : "Nenhuma turma vinculada à classe neste ano letivo."}</p>
+              <p className="px-3 py-5 text-muted-foreground">{limitado ? "Não aparecem turmas nesta lista. Podem existir outras." : "Nenhuma turma vinculada à classe neste ano letivo."}</p>
             )}
           </div>
         </section>
@@ -402,7 +402,7 @@ export function ClasseContextView({
               </button>
             ))}
             {!disciplinas.length && (
-              <p className="px-3 py-5 text-slate-500">{limitado ? "Não aparecem disciplinas nesta lista. Podem existir outras." : "Nenhuma disciplina vinculada."}</p>
+              <p className="px-3 py-5 text-muted-foreground">{limitado ? "Não aparecem disciplinas nesta lista. Podem existir outras." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
           <p className="mt-2 text-xs text-slate-500">
@@ -428,7 +428,7 @@ export function ClasseContextView({
             </button>
           ))}
           {!professores.length && (
-            <p className="px-3 py-5 text-slate-500">{limitado ? "Não aparecem professores nesta lista. Podem existir outros." : "Nenhum professor atribuído às turmas deste ano."}</p>
+            <p className="px-3 py-5 text-muted-foreground">{limitado ? "Não aparecem professores nesta lista. Podem existir outros." : "Nenhum professor atribuído às turmas deste ano."}</p>
           )}
         </div>
       </section>

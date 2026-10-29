@@ -274,7 +274,7 @@ export function ExplorerHorarioTurma({
             </p>
           )}
           {!effectiveTurma && (
-            <p className="text-xs text-slate-600">Escolha uma turma para ver o horário publicado.</p>
+            <p className="text-xs text-muted-foreground">Escolha uma turma para ver o horário publicado.</p>
           )}
           {effectiveTurma && (
             <div className={effectiveCompare ? "grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2" : "min-w-0"}>

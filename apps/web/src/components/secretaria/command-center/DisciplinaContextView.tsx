@@ -172,7 +172,7 @@ export function DisciplinaContextView({
               </button>
             ))}
             {!turmas.length && (
-              <p className="px-3 py-5 text-slate-500">{limitado ? "Não aparecem turmas nesta lista. Podem existir outras." : "Sem turmas vinculadas neste ano."}</p>
+              <p className="px-3 py-5 text-muted-foreground">{limitado ? "Não aparecem turmas nesta lista. Podem existir outras." : "Sem turmas vinculadas neste ano."}</p>
             )}
           </div>
         </section>
@@ -229,7 +229,7 @@ export function DisciplinaContextView({
             </div>
           ))}
           {!curriculo.length && (
-            <p className="px-3 py-5 text-slate-500">{limitado ? "Não foi possível mostrar todo o currículo deste ano." : "Esta disciplina não consta do currículo publicado deste ano."}</p>
+            <p className="px-3 py-5 text-muted-foreground">{limitado ? "Não foi possível mostrar todo o currículo deste ano." : "Esta disciplina não consta do currículo publicado deste ano."}</p>
           )}
         </div>
       </section>

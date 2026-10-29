@@ -267,7 +267,7 @@ export function CourseContextView({
               </button>
             ))}
             {!window.busy && !window.error && !visibleTurmas.length && (
-              <p className="p-3 text-xs text-slate-500">Nenhuma turma encontrada com estes filtros.</p>
+              <p className="p-3 text-xs text-muted-foreground">Nenhuma turma encontrada com estes filtros.</p>
             )}
           </div>
           {!window.error && !window.busy && (
