@@ -164,11 +164,26 @@ export async function readCanonicalCutoverTargetReview(
   const schoolOfferings = (offerings ?? []) as Array<
     MedCourseOffering & { calendar_profile_id: string | null }
   >;
+  const courseIds = [...new Set(schoolOfferings.map((item) => item.course_id).filter(Boolean))];
+  const { data: courses, error: coursesError } = courseIds.length > 0
+    ? await db.from("cursos").select("id,tipo")
+        .eq("escola_id", escolaId).in("id", courseIds)
+    : { data: [], error: null };
+  if (coursesError) throw coursesError;
+  const courseTypeById = new Map<string, string | null>(
+    (courses ?? []).map((course: { id: string; tipo: string | null }) =>
+      [course.id, course.tipo] as const),
+  );
+  const enrichedOfferings = schoolOfferings.map((offering) => ({
+    ...offering,
+    course_type: offering.course_id
+      ? courseTypeById.get(offering.course_id) ?? null : null,
+  }));
   return reviewCanonicalCutoverTarget({
     target,
     calendar: calendar as CanonicalMedCalendar | null,
     profiles: (profiles ?? []) as MedCourseProfile[],
-    offerings: schoolOfferings,
+    offerings: enrichedOfferings,
     selections: schoolOfferings.map((item) => ({
       offering_id: item.id, template_id: item.calendar_profile_id ?? "",
     })),
