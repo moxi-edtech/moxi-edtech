@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     }
 
     const { data, error } = await supabase.from("periodos_letivos")
-      .select("id,numero,data_inicio,data_fim,trava_notas_em,source_template_id,offering_id")
+      .select("id,numero,data_inicio,data_fim,trava_notas_em,source_template_id,source_item_id,offering_id")
       .eq("escola_id", context.escolaId)
       .eq("ano_letivo_id", context.anoLetivoId)
       .eq("tipo", "TRIMESTRE")
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
     const periods = (data ?? []).map((row) => ({
       id: row.id, numero: Number(row.numero), data_inicio: row.data_inicio,
       data_fim: row.data_fim, trava_notas_em: row.trava_notas_em,
-      source_template_id: row.source_template_id, offering_id: row.offering_id,
+      source_template_id: row.source_template_id, source_item_id: row.source_item_id, offering_id: row.offering_id,
     }));
 
     // A single generic trimester per year is supported; offering-specific
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
 
     // The 2026/27 MED cycle cannot use legacy, unlinked dates as authority.
     if (context.anoLetivoLabel.startsWith("2026/") &&
-        periods.some((row) => !row.source_template_id)) {
+        periods.some((row) => !row.source_template_id || !row.source_item_id)) {
       return NextResponse.json({
         ok: false, code: "OFFICIAL_CALENDAR_NOT_RECONCILED",
         error: "O calendário deste ano letivo precisa de ser sincronizado antes de lançar notas.",
@@ -83,7 +83,7 @@ export async function GET(req: Request) {
       data_inicio: row.data_inicio,
       data_fim: row.data_fim,
       estado: gradePeriodState(row, now, context.timezone),
-      calendar_verified: Boolean(row.source_template_id),
+      calendar_verified: Boolean(row.source_template_id && row.source_item_id),
       disciplina_ativa: activePeriods === null || activePeriods.includes(row.numero),
     }));
     return NextResponse.json({
