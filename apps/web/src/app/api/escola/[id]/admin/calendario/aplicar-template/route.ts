@@ -57,6 +57,35 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
     const items = (template as any).items || [];
 
+    if (Number(template.ano_base) >= 2026) {
+      const officialPeriods = items.filter((item: any) => item.tipo === 'PERIODO_LETIVO');
+      if (officialPeriods.length !== 3 ||
+          new Set(officialPeriods.map((item: any) => item.numero)).size !== 3 ||
+          officialPeriods.some((item: any) => ![1, 2, 3].includes(item.numero) ||
+            !item.id || item.data_inicio > item.data_fim ||
+            item.data_inicio < template.data_inicio || item.data_fim > template.data_fim)) {
+        return NextResponse.json({
+          ok: false, code: 'OFFICIAL_CALENDAR_PERIODS_INCOMPLETE',
+          error: 'O calendário oficial precisa dos três trimestres publicados antes de ser aplicado.',
+        }, { status: 409 });
+      }
+
+      // The generic import cannot mix different legal subsystems into one
+      // school's timetable. The academic-year flow supports scoped offerings.
+      const { data: offerings, error: offeringsError } = await supabase
+        .from('school_education_offerings')
+        .select('education_subsystem')
+        .eq('escola_id', userEscolaId)
+        .eq('status', 'active');
+      if (offeringsError) throw offeringsError;
+      if ((offerings ?? []).some((offer) => offer.education_subsystem !== template.subsistema)) {
+        return NextResponse.json({
+          ok: false, code: 'MULTI_OFFERING_CALENDAR_REQUIRES_SCOPED_IMPORT',
+          error: 'A escola possui subsistemas diferentes. Aplique o calendário por oferta educativa.',
+        }, { status: 409 });
+      }
+    }
+
     // 2. Obter ou Criar o Ano Letivo Base do Template
     const { data: anoLetivo } = await supabase
       .from('anos_letivos')
@@ -88,6 +117,22 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       
       if (createError) throw createError;
       anoLetivoId = (rpcResult as any)?.id;
+      if (!anoLetivoId) {
+        const { data: resolvedYear, error: resolvedError } = await supabase
+          .from('anos_letivos')
+          .select('id')
+          .eq('escola_id', userEscolaId)
+          .eq('ano', template.ano_base)
+          .maybeSingle();
+        if (resolvedError) throw resolvedError;
+        anoLetivoId = resolvedYear?.id;
+      }
+      if (!anoLetivoId) {
+        return NextResponse.json({
+          ok: false, code: 'ACADEMIC_YEAR_NOT_CREATED',
+          error: 'Não foi possível confirmar o ano letivo criado.',
+        }, { status: 409 });
+      }
     }
 
     // 3. Separar Trimestres e Eventos
