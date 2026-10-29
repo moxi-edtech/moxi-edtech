@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { buildRaaBalcaoCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
 import { buildRaaBalcaoRegimeGuidance, type RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
-import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardList, LockKeyhole, FileText, GraduationCap, CalendarDays, Scale, CircleAlert, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardList, FileText, GraduationCap, CalendarDays, Scale, CircleAlert, ShieldCheck } from "lucide-react";
 import type { RematriculaCardState } from "@/hooks/useRematriculaBalcao";
 import { raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
 
@@ -205,12 +205,12 @@ export function RaaBalcaoResolutionPanel({
       <section aria-label="Inscrição condicional autorizada" className="mb-4 rounded-2xl border border-emerald/30 bg-emerald/5 p-4">
         <p className="text-xs font-semibold text-emerald">{regimeGuidance.regime}</p>
         <h3 className="mt-1 text-sm font-semibold text-foreground">{regimeGuidance.titulo}</h3>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{regimeGuidance.descricao}</p>
-        <p className="mt-2 text-sm font-medium text-foreground">{regimeGuidance.instrucao}</p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          A rematrícula segue o wizard normal. As disciplinas pendentes não são apagadas.
-          {regimeGuidance.baseLegal ? " Fundamentação: " + regimeGuidance.baseLegal : ""}
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Pode continuar a rematrícula. As disciplinas pendentes ficam registadas.</p>
+        <details className="mt-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium">Ver detalhes</summary>
+          <p className="mt-2">{regimeGuidance.descricao}</p>
+          {regimeGuidance.baseLegal && <p className="mt-1">Referência: {regimeGuidance.baseLegal}</p>}
+        </details>
       </section>
     );
   }
@@ -338,7 +338,7 @@ export function RaaBalcaoResolutionPanel({
         }),
       });
       setExamNote("");
-      setNotice("Nota do exame guardada. A efetivação só será permitida após a decisão e o resultado oficial do RAA.");
+      setNotice("Nota do exame guardada. Verifique o resultado antes de avançar.");
       setPhase("feedback");
       await onRecheck();
     } catch (cause) {
@@ -364,7 +364,7 @@ export function RaaBalcaoResolutionPanel({
       <header className="border-b border-border bg-muted/30 p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-            <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" /> Ação académica necessária
+            <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" /> Pendência académica
           </span>
           <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
             <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Decisão oficial RAA
@@ -386,15 +386,14 @@ export function RaaBalcaoResolutionPanel({
       </header>
       <div className="space-y-4 p-4 sm:p-5" aria-live="polite">
         {regimeGuidance && (
-          <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3 sm:p-4" aria-label="Regra RAA da classe">
-            <p className="text-sm leading-6 text-foreground">{regimeGuidance.descricao}</p>
-            <p className="text-sm leading-6 text-muted-foreground"><strong className="font-semibold text-foreground">Próximo passo:</strong> {regimeGuidance.instrucao}</p>
-            {regimeGuidance.baseLegal && <p className="text-xs text-muted-foreground">Base legal: {regimeGuidance.baseLegal}</p>}
-            {regimeGuidance.origem === "sem_apuramento" && (
-              <p role="status" className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                Sem resultado do decreto para este aluno. A decisão não pode ser presumida pela classe.
-              </p>
-            )}
+          <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4" aria-label="Orientação da classe">
+            <p className="text-sm font-medium text-foreground">{regimeGuidance.instrucao}</p>
+            <details className="mt-2 text-xs text-muted-foreground">
+              <summary className="cursor-pointer font-medium">Ver detalhes</summary>
+              <p className="mt-2 leading-5">{regimeGuidance.descricao}</p>
+              {regimeGuidance.baseLegal && <p className="mt-1">Referência: {regimeGuidance.baseLegal}</p>}
+              {regimeGuidance.origem === "sem_apuramento" && <p className="mt-1">Aguardando confirmação da regra desta classe.</p>}
+            </details>
           </div>
         )}
         {phase === "summary" && (
@@ -405,7 +404,7 @@ export function RaaBalcaoResolutionPanel({
                 <p className="mt-1 text-xs text-muted-foreground">
                   {loading ? "A consultar evidências oficiais..." : hasEvidence
                     ? "Registos existentes para a decisão RAA atual."
-                    : "A decisão RAA precisa de tratamento antes da rematrícula."}
+                    : "Há uma pendência antes da rematrícula."}
                 </p>
               </div>
               {hasEvidence && !loading && (
@@ -490,8 +489,7 @@ export function RaaBalcaoResolutionPanel({
               </p>
               {academic?.regime?.escala === "qualitativa" ? (
                 <p role="status" className="mt-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-                  Este regime usa avaliação qualitativa. Não lançar uma nota numérica para substituir Suficiente/Não suficiente.
-                  Solicite a conclusão da pauta qualitativa no fluxo académico autorizado.
+                  Esta turma usa Suficiente/Não suficiente. Complete a pauta qualitativa.
                 </p>
               ) : (
                 <button type="button" onClick={onLancarNota}
@@ -499,31 +497,31 @@ export function RaaBalcaoResolutionPanel({
                   Lançar nota nesta ficha
                 </button>
               )}
-              <p className="mt-2 text-xs text-muted-foreground">O lançamento segue as permissões do período. Anos encerrados exigem reabertura académica formal.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Período encerrado? Solicite a reabertura à direção.</p>
             </div>
           )}
           {action === "rever_resultado" && (
             <p className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-              Resultado oficial não autoriza progressão. Peça a revisão de evidências pela autoridade académica;
+              O resultado precisa de revisão pela direção;
               não há botão para substituir a decisão. Consulte novamente após a publicação ou retificação formal.
             </p>
           )}
           {action === "justificacao" && (
             <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-              {selected ? "Confirme a decisão sobre esta justificação. O registo original da falta permanecerá auditável." :
-                "Não há pedido pendente de decisão neste processo. O RAA mantém a retenção até à revisão oficial."}
+              {selected ? "Confirme a decisão sobre a justificação." :
+                "Nenhuma justificação por decidir."}
             </p>
           )}
           {action === "reapreciacao" && examContext && activeCase?.kind !== "pedido" && (
             <div className="space-y-3 rounded-xl border border-border bg-card p-3" aria-label="Resultado do exame no Balcão">
               <h4 className="text-sm font-bold text-foreground">Exames de recurso e extraordinários</h4>
               <p className="text-xs text-muted-foreground">
-                As notas pertencem à matrícula do ano de origem. Guardar um componente não publica o resultado nem autoriza rematrícula.
+                Guardar a nota não conclui o exame.
               </p>
               {examContext.source.locked ? (
                 <p role="status" className="text-xs font-bold text-rose-700">Matrícula encerrada: só uma reabertura académica formal permite corrigir resultados.</p>
               ) : examContext.sessoes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma sessão oficial aberta para esta turma e ano letivo. A direção deve configurar e publicar a sessão pelo fluxo académico autorizado.</p>
+                <p className="text-xs text-muted-foreground">Sem sessão de exame disponível. Solicite a abertura à direção.</p>
               ) : (
                 <div className="grid gap-2">
                   <label htmlFor="raa-exam-session" className="text-xs font-bold text-foreground">Sessão oficial</label>
@@ -584,7 +582,7 @@ export function RaaBalcaoResolutionPanel({
           )}
           {action === "disciplina" && (
             <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-              {selected ? "A revisão ficará vinculada ao evento original e exige permissão da direção." :
+              {selected ? "A direção deve confirmar esta revisão." :
                 "Nenhum evento ativo foi selecionado. Só a direção pode encerrar ou cancelar uma ocorrência."}
             </p>
           )}
@@ -620,7 +618,7 @@ export function RaaBalcaoResolutionPanel({
             <div className="flex flex-wrap gap-2 border-t border-border pt-3">
               <button type="button" onClick={() => void onRecheck()} disabled={saving}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground disabled:opacity-50 sm:w-auto">
-                <RefreshCw className="h-4 w-4" aria-hidden="true" /> Verificar RAA
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> Verificar situação
               </button>
               <button type="button" onClick={goToSummary} disabled={saving}
                 className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 sm:w-auto">
@@ -641,7 +639,7 @@ export function RaaBalcaoResolutionPanel({
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {confirmKind === "exame" ? "Guardar a nota do componente do exame oficial" :
                   confirmKind === "pedido" ? "Enviar o pedido de reapreciação" : "Registar decisão administrativa"}.
-                Esta ação será registada no processo do aluno. Não equivale a autorização de rematrícula.
+                Confirme os dados antes de guardar.
               </p>
               {confirmKind === "exame" && <p className="mt-2 text-sm font-medium text-foreground">Nota: {examNote} · sessão {examSessionId.slice(0, 8)}</p>}
               {confirmKind === "decisao" && <p className="mt-2 text-sm font-medium text-foreground">Decisão: {decision}</p>}
@@ -666,11 +664,11 @@ export function RaaBalcaoResolutionPanel({
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald" aria-hidden="true" />
               <div>
                 <h4 className="text-sm font-semibold text-foreground">Operação registada</h4>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">{notice || "O registo foi guardado. A rematrícula depende da decisão oficial do RAA."}</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{notice || "Registo guardado. Verifique se já pode avançar."}</p>
               </div>
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
-              A análise pode continuar neste Balcão. O estado académico só muda quando o resolvedor oficial confirmar a nova elegibilidade.
+              Pode continuar neste atendimento.
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               <button type="button" onClick={() => { setCaseId(null); setPhase("summary"); void load(); }}
@@ -679,16 +677,13 @@ export function RaaBalcaoResolutionPanel({
               </button>
               <button type="button" onClick={() => void onRecheck()}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white">
-                <RefreshCw className="h-4 w-4" aria-hidden="true" /> Revalidar RAA
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> Verificar situação
               </button>
             </div>
           </div>
         )}
 
-        <div className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
-          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <p>A rematrícula permanece bloqueada até a API académica autorizar o destino. O aluno selecionado e o rascunho financeiro são preservados.</p>
-        </div>
+        <p className="text-xs text-muted-foreground">A rematrícula fica disponível quando a pendência for resolvida.</p>
       </div>
     </section>
   );
