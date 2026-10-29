@@ -31,7 +31,7 @@ test("selecionar candidato não altera o URL do atendimento e cancela leituras o
   assert.match(inbox, /new AbortController\(\)/);
   assert.match(inbox, /return \(\) => controller\.abort\(\)/);
   assert.match(inbox, /toastErrorRef\.current/);
-  assert.match(inbox, /inModal=\{inModal\}/, ""); 
+  assert.match(panel, /inModal=\{inModal\}/);
 });
 
 test("admissões preserva o aluno anterior, enquanto nova matrícula começa sem aluno", () => {
