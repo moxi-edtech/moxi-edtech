@@ -27,6 +27,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
+import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
 import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
@@ -1381,6 +1382,10 @@ function Catalogo({
   rematriculaSchoolId,
   rematriculaWindow,
   rematriculaAcademic,
+  raaMatriculaId,
+  raaAlunoId,
+  onLancarNota,
+  onDocumentos,
   reconcilingPedido,
   rematriculaError,
   onResolverPedido,
@@ -1413,6 +1418,10 @@ function Catalogo({
     reason?: string;
     disciplina_ids_pendentes?: string[];
   } | null | undefined;
+  raaMatriculaId: string | null;
+  raaAlunoId: string | null;
+  onLancarNota: () => void;
+  onDocumentos: () => void;
   reconcilingPedido: boolean;
   rematriculaError: string | null;
   onResolverPedido: () => Promise<void>;
@@ -1687,114 +1696,18 @@ function Catalogo({
                 )}
               </div>
             ) : null}
-            {rematriculaState === "ACADEMIC_PENDING" ? (
-              <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
-                <strong className="block">Rematrícula bloqueada: faltam notas ou dados académicos</strong>
-                <p className="mt-1 text-amber-900/80">
-                  Não existe bypass por “lançar depois”. Conclua os dados exigidos pelo RAA e verifique novamente.
-                </p>
-                <CodigoEstado estado="ACADEMIC_PENDING" />
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Link href="/secretaria/notas" className="rounded-xl bg-amber-700 px-3 py-2 text-center font-bold text-white hover:bg-amber-800">
-                    Abrir notas
-                  </Link>
-                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-amber-300 bg-white px-3 py-2 font-bold text-amber-900 hover:bg-amber-100">
-                    Verificar novamente
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_REVIEW_REQUIRED" ? (
-              <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 p-3.5 text-xs text-sky-950">
-                <strong className="block">Recurso académico em aberto</strong>
-                <p className="mt-1 text-sky-900/80">
-                  {rematriculaAcademic?.reason ?? "O RAA ainda não autorizou a efetivação da rematrícula."}
-                </p>
-                {(rematriculaAcademic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
-                  <p className="mt-2 font-semibold">
-                    Disciplinas pendentes: {rematriculaAcademic?.disciplina_ids_pendentes?.length}
-                  </p>
-                ) : null}
-                <CodigoEstado estado="ACADEMIC_REVIEW_REQUIRED" />
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Link href="/secretaria/raa/reapreciacoes" className="rounded-xl bg-sky-700 px-3 py-2 text-center font-bold text-white hover:bg-sky-800">
-                    Abrir recursos
-                  </Link>
-                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-sky-200 bg-white px-3 py-2 font-bold text-sky-900 hover:bg-sky-100">
-                    Verificar novamente
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_CONDITIONAL_BLOCKED" ? (
-              <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-3.5 text-xs text-violet-950">
-                <strong className="block">Inscrição condicional reconhecida, mas ainda não efetivável</strong>
-                <p className="mt-1 text-violet-900/80">
-                  {rematriculaAcademic?.reason ?? "O RAA exige resolver a pendência académica antes da ativação da matrícula."}
-                </p>
-                {(rematriculaAcademic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
-                  <p className="mt-2 font-semibold">
-                    Disciplinas pendentes: {rematriculaAcademic?.disciplina_ids_pendentes?.length}
-                  </p>
-                ) : null}
-                <CodigoEstado estado="ACADEMIC_CONDITIONAL_BLOCKED" />
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Link href="/secretaria/raa/reapreciacoes" className="rounded-xl bg-violet-700 px-3 py-2 text-center font-bold text-white hover:bg-violet-800">
-                    Resolver pendência
-                  </Link>
-                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-violet-200 bg-white px-3 py-2 font-bold text-violet-900 hover:bg-violet-100">
-                    Verificar novamente
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED" ? (
-              <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-950">
-                <strong className="block">Retenção por faltas — validar regra escolar</strong>
-                <p className="mt-1 text-amber-900/80">
-                  O aluno não pode ser rematriculado automaticamente. Confirme frequência e a regra aplicável antes de autorizar a repetição.
-                </p>
-                <CodigoEstado estado="ACADEMIC_ATTENDANCE_REVIEW_REQUIRED" />
-                <Link href="/secretaria/operacoes-academicas/fechamento-academico" className="mt-3 block rounded-xl bg-amber-700 px-3 py-2 text-center font-bold text-white hover:bg-amber-800">
-                  Rever frequência e decisão
-                </Link>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED" ? (
-              <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-950">
-                <strong className="block">Retenção por indisciplina — decisão administrativa</strong>
-                <p className="mt-1 text-rose-900/80">
-                  O Balcão não deve criar automaticamente uma nova matrícula enquanto a decisão disciplinar aplicável não estiver concluída.
-                </p>
-                <CodigoEstado estado="ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED" />
-                <Link href="/secretaria/raa/indisciplina" className="mt-3 block rounded-xl bg-rose-700 px-3 py-2 text-center font-bold text-white hover:bg-rose-800">
-                  Abrir decisão disciplinar
-                </Link>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_NOT_APPROVED" ? (
-              <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-900">
-                <strong className="block">Resultado académico não autoriza rematrícula</strong>
-                <p className="mt-1 text-rose-800/80">
-                  O Balcão não altera a decisão académica. Reveja o resultado no RAA e corrija somente dados comprovadamente incorretos.
-                </p>
-                <CodigoEstado estado="ACADEMIC_NOT_APPROVED" />
-                <Link href="/secretaria/fechamento-academico" className="mt-3 block rounded-xl bg-rose-700 px-3 py-2 text-center font-bold text-white hover:bg-rose-800">
-                  Abrir fechamento académico
-                </Link>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_CYCLE_COMPLETED" ? (
-              <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-3.5 text-xs text-violet-950">
-                <strong className="block">Ciclo concluído — não há rematrícula seguinte</strong>
-                <p className="mt-1 text-violet-900/80">
-                  O aluno terminou a etapa académica. O próximo passo é o fecho documental, não uma nova rematrícula.
-                </p>
-                <CodigoEstado estado="ACADEMIC_CYCLE_COMPLETED" />
-                <Link href="/secretaria/documentos-oficiais" className="mt-3 block rounded-xl bg-violet-700 px-3 py-2 text-center font-bold text-white hover:bg-violet-800">
-                  Abrir documentos oficiais
-                </Link>
-              </div>
+            {/* All seven non-standard academic cases are resolved in-place. */}
+            {raaMatriculaId && raaAlunoId ? (
+              <RaaBalcaoResolutionPanel
+                key={raaMatriculaId}
+                status={rematriculaState}
+                matriculaId={raaMatriculaId}
+                alunoId={raaAlunoId}
+                academic={rematriculaAcademic ?? null}
+                onLancarNota={onLancarNota}
+                onDocumentos={onDocumentos}
+                onRecheck={onRefreshRematricula}
+              />
             ) : null}
             {rematriculaError ? (
               <p role="alert" className="mb-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-800">
@@ -3181,6 +3094,10 @@ export default function BalcaoAtendimento({
                   rematriculaSchoolId={escolaId}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
+                  raaMatriculaId={dossier.aluno.matricula_id ?? null}
+                  raaAlunoId={dossier.aluno.id}
+                  onLancarNota={() => setPostAction({ action: "notas", turmaId: dossier.aluno?.turma_id ?? null })}
+                  onDocumentos={() => onNavigateAction?.("document")}
                   reconcilingPedido={rematricula.reconciling}
                   rematriculaError={rematricula.apiError}
                   onResolverPedido={rematricula.resolveLegacyPedido}
