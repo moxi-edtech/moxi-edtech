@@ -417,6 +417,7 @@ BEGIN
   SELECT a.escola_id, a.ano_letivo, a.trimestre,
          pl.id AS period_id, pl.numero AS period_num, pl.ano_letivo_id AS period_year_id,
          pl.data_inicio AS begins, pl.data_fim AS ends, pl.trava_notas_em AS lock_at,
+         pl.source_template_id AS source_template_id,
          td.turma_id, t.session_id AS turma_year_id, t.ano_letivo AS turma_year,
          m.turma_id AS matricula_turma_id, m.session_id AS matricula_year_id, m.ano_letivo AS matricula_year,
          m.ativo AS matricula_active
@@ -443,6 +444,9 @@ BEGIN
      OR v.trimestre IS DISTINCT FROM v.period_num
      OR v.matricula_active IS DISTINCT FROM TRUE THEN
     RAISE EXCEPTION 'DATA: Avaliação, matrícula, turma, ano ou trimestre incompatíveis.';
+  END IF;
+  IF v.turma_year = 2026 AND v.source_template_id IS NULL THEN
+    RAISE EXCEPTION 'OFFICIAL_CALENDAR_NOT_RECONCILED: O calendário de 2026/2027 não está conciliado.';
   END IF;
   IF v.begins IS NULL OR v.ends IS NULL OR v.begins > v.ends THEN
     RAISE EXCEPTION 'DATA: Datas do trimestre não configuradas.';
