@@ -130,3 +130,13 @@ test("admission conversion rejects misaligned 2026/27 decree before financial wr
   assert.ok(preflight > 0);
   assert.ok(canonicalRpc > preflight, "preflight must precede the enrollment/financial transaction");
 });
+
+test("tampered source references fail even when trimester/exam dates look correct", () => {
+  const data = fixture();
+  data.periods[0].source_item_id = "unrelated-item";
+  data.events[0].source_version = "OLDER-VERSION";
+  const report = auditDecreeSync(data);
+  assert.equal(report.ok, false);
+  assert.ok(report.issues.some((issue) => issue.code === "TRIMESTER_SOURCE_MISMATCH"));
+  assert.ok(report.issues.some((issue) => issue.code === "OFFICIAL_EVENT_SOURCE_MISMATCH"));
+});
