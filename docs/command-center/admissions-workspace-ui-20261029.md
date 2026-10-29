@@ -39,6 +39,33 @@ A experiência de admissões era uma página isolada, com layout rígido e opera
 
 
 
+
+## Inbox — próxima ação por estado (29/10/2026)
+
+Cada linha da fila indica **A seguir:** sem expor códigos ou estados internos. Ao abrir o candidato, uma orientação curta explica o passo e o **único botão principal** no rodapé executa a ação aplicável ao estado e separador atual. O atendente continua na mesma candidatura e no mesmo Balcão; decisões secundárias continuam em «Pedir ajustes» e «Mais ações».
+
+| Estado da candidatura | Orientação principal | Ação no Inbox |
+|---|---|---|
+| Rascunho | Aguardar envio | Copiar link de inscrição pública |
+| Pré-candidatura | Preparar candidatura oficial | Promover com turma e ano oficiais |
+| Submetida | Rever candidatura | Abrir Documentos; nesse separador, permitir aprovação com confirmação |
+| Documentos reenviados | Rever documentos atualizados | Abrir Documentos; nesse separador, permitir aceitar com confirmação |
+| Em análise | Concluir análise | Rever documentos; depois aprovar ou pedir ajustes |
+| Pendente | Aguardar correção | Ver documentos em falta; depois acompanhar histórico, sem reenvio automático |
+| Lista de espera | Rever disponibilidade de vaga | Rever e aprovar apenas sob validações existentes na API |
+| Aprovada | Concluir matrícula | Abrir conversão de matrícula |
+| Aguardando pagamento | Confirmar pagamento efetivamente recebido | Abrir conversão com registo de pagamento |
+| Aguardando compensação | Validar comprovativo | Abrir conversão com confirmação de pagamento |
+| Matriculada | Atendimento concluído | Atender próximo, exclusivamente por ação explícita |
+| Rejeitada | Processo encerrado | Atender próximo; reabertura continua em Mais ações |
+| Arquivada / Arquivado | Processo arquivado | Atender próximo; reabertura continua em Mais ações |
+
+O estado desconhecido não gera ação de escrita: o Inbox recomenda **Ver histórico**. «Guardar» mantém o candidato; «Concluir matrícula» não avança automaticamente. A folha de conversão deixou de chamar «Fechar e atender próximo» ao botão que apenas fecha a folha; agora informa **«Fechar e voltar à candidatura»**.
+
+**Fonte canónica de UI:** `apps/web/src/lib/admissoes/inbox-next-step.ts`; `AdmissoesInboxClient.tsx` e a fila consomem o mesmo contrato. **Testes:** `apps/web/tests/unit/admissions-next-step.spec.ts` (14 estados, revisão em duas etapas, estados terminais, pendências, pagamentos e fallback seguro) e `admissions-workspace-integration.spec.ts`. Integrados no workflow `Balcao Performance Budgets`.
+
+**Homologação pendente:** os testes de código e typecheck na PR #299 e sessões autenticadas mobile/desktop. Não equivale a UI aprovada em produção.
+
 ## Contratos a preservar
 1. O processo de candidatura continua a usar a API de admissões existente, com autorização e RLS do lado do servidor.
 2. Na aba Matrícula, o aluno anterior **nunca** preenche automaticamente a nova candidatura.
