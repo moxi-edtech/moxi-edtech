@@ -102,10 +102,14 @@ export function AdmissionCalendarResolution({
             .eq("ano", anoLetivo!)
             .maybeSingle(),
         ]);
-        if (templatesResult.error) throw templatesResult.error;
         if (yearResult.error) throw yearResult.error;
         if (!active) return;
-        setTemplates((templatesResult.data ?? []) as OfficialTemplate[]);
+        // Um catálogo indisponível não deve impedir o ajuste manual autorizado.
+        if (templatesResult.error) {
+          setError("Não foi possível consultar os modelos oficiais. Pode rever os períodos existentes.");
+        } else {
+          setTemplates((templatesResult.data ?? []) as OfficialTemplate[]);
+        }
         const loadedYear = yearResult.data as AcademicYear | null;
         setYear(loadedYear);
         if (loadedYear) {
