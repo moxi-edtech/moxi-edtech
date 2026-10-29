@@ -260,7 +260,7 @@ export async function GET(request: Request) {
     let academicGuidance: any = null;
     let academicRegime: {
       nivel_ensino: string; classe_num: number | null; ano_numero: number | null;
-      modulo_numero: number | null; eh_classe_exame: boolean;
+      modulo_numero: number | null; eh_classe_exame: boolean; escala: "quantitativa_primario" | "quantitativa_secundario" | "qualitativa";
     } | null = null;
     let academicDecreto: import("@/lib/academico/raa-decreto-eligibility").RaaDecretoResult | null = null;
     let academicEligibility = classifyRematriculaAcademicEligibility(null);
@@ -282,6 +282,7 @@ export async function GET(request: Request) {
           ano_numero: academic.regime.ano_numero,
           modulo_numero: academic.regime.modulo_numero,
           eh_classe_exame: academic.regime.eh_classe_exame,
+          escala: academic.regime.escala,
         };
         academicDecreto = academic.decreto;
         academicEligibility = classifyRematriculaAcademicEligibility({

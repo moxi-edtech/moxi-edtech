@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { buildRaaBalcaoCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
+import { buildRaaBalcaoRegimeGuidance, type RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardList, LockKeyhole, FileText, GraduationCap, CalendarDays, Scale, CircleAlert, ShieldCheck } from "lucide-react";
 import type { RematriculaCardState } from "@/hooks/useRematriculaBalcao";
 import { raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
@@ -22,7 +23,7 @@ type ExamContext = {
   sessoes: Array<{ id: string; tipo: "recurso" | "extraordinario"; estado: string; data_inicio: string; exame_componentes: Array<{ id: string; codigo: string; nota_max: number }> }>;
 };
 
-type Academic = { reason?: string; disciplina_ids_pendentes?: string[] } | null;
+type Academic = RaaBalcaoAcademic | null;
 
 type Props = {
   status: RematriculaCardState | "CHECKING" | null;
@@ -51,6 +52,9 @@ export function RaaBalcaoResolutionPanel({
 }: Props) {
   const plan = raaBalcaoPlan(status);
   const action = plan?.acao;
+  const regimeGuidance = buildRaaBalcaoRegimeGuidance(academic);
+  const conditionalReady = status === "READY" && academic?.eligible === true &&
+    regimeGuidance?.estado === "condicional_autorizada" && regimeGuidance.podeEfetivar;
   const [phase, setPhase] = useState<"summary" | "detail" | "confirm" | "feedback">("summary");
   const [caseId, setCaseId] = useState<string | null>(null);
   const [confirmKind, setConfirmKind] = useState<"decisao" | "pedido" | "exame" | null>(null);
@@ -193,6 +197,23 @@ export function RaaBalcaoResolutionPanel({
     else if (confirmKind === "exame") await submitExam();
   }
 
+  // For the 7th and 10th grades the canonical RAA may authorize conditional
+  // progression immediately. Do not display the blocked-case wizard or create
+  // a new CTA; the existing rematrícula action remains the sole entry point.
+  if (!plan && conditionalReady && matriculaId && regimeGuidance) {
+    return (
+      <section aria-label="Inscrição condicional autorizada" className="mb-4 rounded-2xl border border-emerald/30 bg-emerald/5 p-4">
+        <p className="text-xs font-semibold text-emerald">{regimeGuidance.regime}</p>
+        <h3 className="mt-1 text-sm font-semibold text-foreground">{regimeGuidance.titulo}</h3>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{regimeGuidance.descricao}</p>
+        <p className="mt-2 text-sm font-medium text-foreground">{regimeGuidance.instrucao}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          A rematrícula segue o wizard normal. As disciplinas pendentes não são apagadas.
+          {regimeGuidance.baseLegal ? " Fundamentação: " + regimeGuidance.baseLegal : ""}
+        </p>
+      </section>
+    );
+  }
   if (!plan || !matriculaId) return null;
 
   const submit = async () => {
@@ -349,7 +370,8 @@ export function RaaBalcaoResolutionPanel({
             <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Decisão oficial RAA
           </span>
         </div>
-        <h3 className="mt-3 text-base font-semibold tracking-tight text-foreground sm:text-lg">{plan.titulo}</h3>
+        {regimeGuidance && <p className="mt-3 text-xs font-semibold text-foreground">{regimeGuidance.regime}</p>}
+        <h3 className="mt-1 text-base font-semibold tracking-tight text-foreground sm:text-lg">{regimeGuidance?.titulo ?? plan.titulo}</h3>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">{academic?.reason || plan.detalhe}</p>
         <div className="mt-4 grid grid-cols-3 gap-1.5" aria-label="Etapas do tratamento RAA">
           {(["Identificar", "Resolver", "Revalidar"] as const).map((name, index) => (
@@ -363,6 +385,18 @@ export function RaaBalcaoResolutionPanel({
         </div>
       </header>
       <div className="space-y-4 p-4 sm:p-5" aria-live="polite">
+        {regimeGuidance && (
+          <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3 sm:p-4" aria-label="Regra RAA da classe">
+            <p className="text-sm leading-6 text-foreground">{regimeGuidance.descricao}</p>
+            <p className="text-sm leading-6 text-muted-foreground"><strong className="font-semibold text-foreground">Próximo passo:</strong> {regimeGuidance.instrucao}</p>
+            {regimeGuidance.baseLegal && <p className="text-xs text-muted-foreground">Base legal: {regimeGuidance.baseLegal}</p>}
+            {regimeGuidance.origem === "sem_apuramento" && (
+              <p role="status" className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                Sem resultado do decreto para este aluno. A decisão não pode ser presumida pela classe.
+              </p>
+            )}
+          </div>
+        )}
         {phase === "summary" && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-2">
@@ -454,10 +488,17 @@ export function RaaBalcaoResolutionPanel({
                   ? String(academic.disciplina_ids_pendentes.length) + " disciplinas com elementos pendentes."
                   : "Conclua notas, fórmula e frequência no período académico autorizado."}
               </p>
-              <button type="button" onClick={onLancarNota}
-                className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
-                Lançar nota nesta ficha
-              </button>
+              {academic?.regime?.escala === "qualitativa" ? (
+                <p role="status" className="mt-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+                  Este regime usa avaliação qualitativa. Não lançar uma nota numérica para substituir Suficiente/Não suficiente.
+                  Solicite a conclusão da pauta qualitativa no fluxo académico autorizado.
+                </p>
+              ) : (
+                <button type="button" onClick={onLancarNota}
+                  className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
+                  Lançar nota nesta ficha
+                </button>
+              )}
               <p className="mt-2 text-xs text-muted-foreground">O lançamento segue as permissões do período. Anos encerrados exigem reabertura académica formal.</p>
             </div>
           )}

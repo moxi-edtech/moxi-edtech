@@ -6,6 +6,7 @@ export type RaaBalcaoRegime = {
   modulo_numero?: number | null;
   ano_numero?: number | null;
   eh_classe_exame?: boolean | null;
+  escala?: "quantitativa_primario" | "quantitativa_secundario" | "qualitativa" | null;
 };
 export type RaaBalcaoAcademic = {
   reason?: string;

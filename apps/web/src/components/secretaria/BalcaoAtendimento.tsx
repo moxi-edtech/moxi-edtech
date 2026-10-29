@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
+import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
@@ -1414,10 +1415,7 @@ function Catalogo({
   rematriculaContextYear: { id: string; ano: number; label: string } | null;
   rematriculaSchoolId: string;
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
-  rematriculaAcademic: {
-    reason?: string;
-    disciplina_ids_pendentes?: string[];
-  } | null | undefined;
+  rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
   onLancarNota: () => void;
