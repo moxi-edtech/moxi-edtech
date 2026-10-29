@@ -4,6 +4,23 @@ ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS data_inicio date;
 ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS data_fim date;
 ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS offering_id uuid;
 ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS source_template_id uuid;
+ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS source_item_id uuid;
+
+CREATE TABLE IF NOT EXISTS public.calendario_templates (
+  id uuid PRIMARY KEY,
+  ano_base integer NOT NULL,
+  estado text NOT NULL,
+  is_oficial boolean NOT NULL
+);
+CREATE TABLE IF NOT EXISTS public.calendario_template_items (
+  id uuid PRIMARY KEY,
+  template_id uuid NOT NULL REFERENCES public.calendario_templates(id),
+  numero integer NOT NULL,
+  tipo text NOT NULL,
+  data_inicio date NOT NULL,
+  data_fim date NOT NULL
+);
+
 ALTER TABLE public.turma_disciplinas ADD COLUMN IF NOT EXISTS periodos_ativos integer[];
 
 CREATE SCHEMA IF NOT EXISTS auth;
