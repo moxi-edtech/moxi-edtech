@@ -15,6 +15,7 @@ test("GradeEngine finalization always stores concluido and independent academic 
   assert.match(migration, /SET resultado_final = CASE WHEN v_grade->>'situacao_final'='reprovado_por_faltas'/);
   assert.match(migration, /THEN 'reprovado' ELSE v_grade->>'situacao_final' END/);
   assert.match(migration, /'motivos_academicos'/);
+  assert.match(migration, /WHEN boletim_row.nota_final IS NULL THEN NULL/);
   assert.match(migration, /ACADEMIC_RESULT_CONFLICT/);
   assert.match(migration, /resultado_academico/);
 });

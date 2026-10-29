@@ -426,6 +426,7 @@ BEGIN
       boletim_row.disciplina_nome,
       boletim_row.nota_final,
       CASE
+        WHEN boletim_row.nota_final IS NULL THEN NULL -- ausência de nota não equivale a reprovação na disciplina
         WHEN boletim_row.nota_final >= 9.5 THEN 'aprovado'
         ELSE 'reprovado'
       END,
