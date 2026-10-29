@@ -147,9 +147,9 @@ test("guardar não conclui matrícula nem fecha o atendimento", () => {
 test("conclusão e arquivo preservam candidato até ação explícita", () => {
   assert.match(inbox, /setCompletedCandidateId\(selectedId\)/);
   assert.match(inbox, /const handleNextCandidate = useCallback/);
-  assert.match(inbox, /case 'next_candidate':\\s*handleNextCandidate\\(\\)/);
-  assert.match(inbox, /onClick=\\{handleNextAction\\}/);
-  assert.match(inbox, /completedCandidateId === selectedId \\? 'matriculado'/);
+  assert.match(inbox, /case 'next_candidate':\s*handleNextCandidate\(\)/);
+  assert.match(inbox, /onClick=\{handleNextAction\}/);
+  assert.match(inbox, /completedCandidateId === selectedId \? 'matriculado'/);
   assert.match(inbox, /detailRevision/);
   assert.doesNotMatch(inbox, /setSelectedId\(filteredItems\[currentIndex \+ 1\]\.id\)/);
   const archiveStart = inbox.indexOf("const handleArchive = async");
