@@ -14,10 +14,11 @@ type Props = {
   alunoNome: string;
   turmaId?: string | null;
   onPayment: () => void;
+  elevated?: boolean;
 };
 
 export function EnrollmentPostActionModal({
-  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, onPayment,
+  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, onPayment, elevated = false,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
@@ -175,27 +176,27 @@ export function EnrollmentPostActionModal({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!loading) onOpenChange(next); }}>
-      <DialogContent className="max-w-xl rounded-2xl">
+      <DialogContent overlayClassName={elevated ? "z-[110]" : undefined} className={`max-w-xl rounded-xl border-border bg-card text-foreground ${elevated ? "z-[110]" : ""}`}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-slate-900"><Icon className="h-5 w-5 text-[#1F6B3B]" />{title}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-foreground"><Icon className="h-5 w-5 text-emerald" />{title}</DialogTitle>
           <DialogDescription>{alunoNome} · atendimento continua nesta ficha.</DialogDescription>
         </DialogHeader>
 
         {action === "portal" && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">Gere as credenciais agora e entregue-as ao encarregado.</p>
-            {result?.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{result.error}</p>}
+            <p className="text-sm text-muted-foreground">Gere as credenciais agora e entregue-as ao encarregado.</p>
+            {result?.error && <p className="rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">{result.error}</p>}
             {result?.login ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Portal liberado</div>
+              <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-emerald-800 dark:text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Portal liberado</div>
                 <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                   <div><span className="block text-xs text-emerald-700/70">Login</span><strong>{result.login}</strong></div>
                   <div><span className="block text-xs text-emerald-700/70">Senha temporária</span><strong>{result.senha ? (showPassword ? result.senha : "••••••••") : "Enviada por canal configurado"}</strong></div>
                 </div>
-                {result.senha && <div className="mt-3 flex gap-2"><button type="button" onClick={() => setShowPassword((value) => !value)} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800">{showPassword ? "Ocultar senha" : "Mostrar senha"}</button><button type="button" onClick={() => { void navigator.clipboard.writeText(`Login: ${result.login}\nSenha: ${result.senha}`); setCopied(true); setTimeout(() => setCopied(false), 1800); }} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800">{copied ? "Copiado" : "Copiar credenciais"}</button></div>}
+                {result.senha && <div className="mt-3 flex gap-2"><button type="button" onClick={() => setShowPassword((value) => !value)} className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">{showPassword ? "Ocultar senha" : "Mostrar senha"}</button><button type="button" onClick={() => { void navigator.clipboard.writeText(`Login: ${result.login}\nSenha: ${result.senha}`); setCopied(true); setTimeout(() => setCopied(false), 1800); }} className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">{copied ? "Copiado" : "Copiar credenciais"}</button></div>}
               </div>
             ) : (
-              <button type="button" onClick={() => void liberarPortal()} disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">
+              <button type="button" onClick={() => void liberarPortal()} disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-bold text-amber-950 disabled:opacity-60">
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />} {loading ? "A gerar credenciais…" : "Liberar portal agora"}
               </button>
             )}
@@ -204,28 +205,28 @@ export function EnrollmentPostActionModal({
 
         {action === "notas" && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">Lance a nota de {alunoNome} sem sair do atendimento.</p>
-            {!turmaId && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">A turma desta matrícula não foi identificada.</p>}
-            {academicYearError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{academicYearError}</p>}
-            {notaContextError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{notaContextError}</p>}
-            {!academicYearId && !academicYearError && <p className="text-xs text-slate-500">A confirmar o ano letivo ativo...</p>}
-            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={!turmaId || loading}>
+            <p className="text-sm text-muted-foreground">Lance a nota de {alunoNome} sem sair do atendimento.</p>
+            {!turmaId && <p className="rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">A turma desta matrícula não foi identificada.</p>}
+            {academicYearError && <p role="alert" className="rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">{academicYearError}</p>}
+            {notaContextError && <p role="alert" className="rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">{notaContextError}</p>}
+            {!academicYearId && !academicYearError && <p className="text-xs text-muted-foreground">A confirmar o ano letivo ativo...</p>}
+            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" disabled={!turmaId || loading}>
               <option value="">Selecionar disciplina</option>
               {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
             </select>
             <div className="grid grid-cols-2 gap-3">
-              <select value={periodo} onChange={(event) => { setPeriodo(event.target.value); setNota(""); setResult(null); }} className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading}><option value="1">1.º período</option><option value="2">2.º período</option><option value="3">3.º período</option></select>
-              <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading} />
+              <select value={periodo} onChange={(event) => { setPeriodo(event.target.value); setNota(""); setResult(null); }} className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" disabled={loading}><option value="1">1.º período</option><option value="2">2.º período</option><option value="3">3.º período</option></select>
+              <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" disabled={loading} />
             </div>
-            {result?.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{result.error}</p>}
-            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
+            {result?.error && <p className="rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">{result.error}</p>}
+            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 p-3 text-sm font-bold text-emerald-800 dark:text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-bold text-amber-950 disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
           </div>
         )}
 
         {action === "mensalidade" && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">O pagamento será aberto mantendo o aluno e o atendimento em contexto.</p>
-            <button type="button" onClick={onPayment} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-3 text-sm font-bold text-slate-950">Adicionar ao pagamento do balcão</button>
+            <p className="text-sm text-muted-foreground">O pagamento será aberto mantendo o aluno e o atendimento em contexto.</p>
+            <button type="button" onClick={onPayment} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-bold text-amber-950">Adicionar ao pagamento do balcão</button>
           </div>
         )}
       </DialogContent>
