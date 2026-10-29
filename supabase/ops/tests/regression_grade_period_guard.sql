@@ -96,6 +96,42 @@ BEGIN
     IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_SOURCE_MISMATCH:%' THEN RAISE; END IF;
   END;
 
+  -- A published event retains the authoritative MED dates and cannot be removed.
+  INSERT INTO public.calendario_template_items (
+    id,template_id,numero,tipo,nome,data_inicio,data_fim
+  ) VALUES (
+    '30000000-0000-0000-0000-000000000104'::uuid,
+    v_template,4,'PROVA_TRIMESTRAL','Provas de teste',v_today,v_today+2
+  );
+  INSERT INTO public.calendario_eventos (
+    escola_id,ano_letivo_id,tipo,nome,data_inicio,data_fim,
+    source_template_id,source_item_id
+  ) VALUES (
+    v_school,v_year,'PROVA_TRIMESTRAL','Provas de teste',v_today,v_today+2,
+    v_template,'30000000-0000-0000-0000-000000000104'::uuid
+  );
+  BEGIN
+    UPDATE public.calendario_eventos SET data_inicio=v_today+1
+    WHERE source_template_id=v_template;
+    RAISE EXCEPTION 'TEST: official exam dates were changed';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_EVENT_LOCKED:%' THEN RAISE; END IF;
+  END;
+  BEGIN
+    DELETE FROM public.calendario_eventos WHERE source_template_id=v_template;
+    RAISE EXCEPTION 'TEST: published exam was deleted';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_EVENT_LOCKED:%' THEN RAISE; END IF;
+  END;
+  BEGIN
+    INSERT INTO public.calendario_eventos (
+      escola_id,ano_letivo_id,tipo,nome,data_inicio,data_fim
+    ) VALUES (v_school,v_year,'EXAME_NACIONAL','Exame inventado',v_today,v_today+2);
+    RAISE EXCEPTION 'TEST: unofficial national exam was accepted';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_EVENT_LOCKED:%' THEN RAISE; END IF;
+  END;
+
   -- Future periods must fail even when the caller selects them manually.
   BEGIN
     PERFORM public.lancar_notas_batch(v_school,v_turma,v_disc,v_td,2,'MAC',
