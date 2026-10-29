@@ -25,3 +25,12 @@ motivo:      Callback público da ProxyPay; autenticação é feita por HMAC X-S
 aprovado_por: Codex
 data:        2026-08-26
 expira_em:   permanente
+
+## EXC-SEC-001-B — `/api/webhooks/appypay`
+
+regra:       SEC-001
+ficheiro:    apps/web/src/app/api/webhooks/appypay/route.ts
+motivo:      Callback de máquina autorizado pela solicitação de integração AppyPay; escola e provedor são determinados no servidor, a cobrança deve existir localmente e é consultada por GET autenticado na AppyPay antes de qualquer escrita; o payload não é prova de pagamento.
+aprovado_por: gundja (solicitação de integração e webhook nesta conversa)
+data:        2026-10-28
+expira_em:   permanente

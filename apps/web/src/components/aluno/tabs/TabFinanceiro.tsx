@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Info, Printer, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawer";
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
 import type { AlunoServicoFinanceiro } from "@/lib/financeiro/servicosPagamento";
@@ -281,10 +282,13 @@ export function TabFinanceiro() {
                       Em Verificação
                     </span>
                   ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                    <StudentAppyPayButton targetId={item.id} kind="monthly" studentId={studentId} descricao={`Propina ${item.competencia}`} onPaid={() => { setSelectedIds(prev => prev.filter(id => id !== item.id)); void refresh(); }} />
                     <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-amber-200 px-3 text-xs font-semibold text-amber-800">
                       <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(event) => setSelectedIds((prev) => event.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id))} />
                       <Wallet className="h-4 w-4" /> Seleccionar
                     </label>
+                    </div>
                   )}
                 </li>
               ))}
@@ -356,6 +360,7 @@ export function TabFinanceiro() {
                 <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600 sm:col-span-2">
                 <p>{servico.mensagem_estado}</p>
                 <p className="mt-1 font-medium text-slate-700">Próximo passo: {servico.proximo_passo}</p>
+                {servico.status === "pendente" && servico.appypay_intent_id ? <div className="mt-2"><StudentAppyPayButton targetId={servico.appypay_intent_id} kind="service" studentId={studentId} descricao={servico.nome} onPaid={() => { void refresh(); }} /></div> : null}
                 {servico.acao ? (
                   <Link
                     href={studentId ? `${servico.acao.href}&studentId=${encodeURIComponent(studentId)}` : servico.acao.href}

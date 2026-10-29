@@ -1,6 +1,8 @@
 export type AlunoServicoFinanceiro = {
   id: string;
   pagamento_id: string;
+  pedido_id?: string | null;
+  appypay_intent_id?: string | null;
   protocolo: string;
   nome: string;
   valor: number;
@@ -94,6 +96,7 @@ export function extractServicosFromPagamentos(
       return [{
         id: `${pagamento.id}-${index}`,
         pagamento_id: pagamento.id,
+        pedido_id: typeof meta.servico_pedido_id === 'string' ? meta.servico_pedido_id : null,
         protocolo: pagamento.id.slice(0, 8).toUpperCase(),
         nome: nome.trim(),
         valor,
@@ -110,7 +113,7 @@ export function extractServicosFromPagamentos(
 }
 
 export function extractServicosFromPedidos(
-  pedidos: Array<{ id: string; status?: string | null; servico_codigo?: string | null; servico_nome?: string | null; valor_cobrado?: number | null; created_at?: string | null }>,
+  pedidos: Array<{ id: string; status?: string | null; servico_codigo?: string | null; servico_nome?: string | null; valor_cobrado?: number | null; created_at?: string | null; pagamento_intents?: Array<{ id: string; status: string; created_at?: string | null }> | null }>,
 ): AlunoServicoFinanceiro[] {
   return pedidos.flatMap((pedido) => {
     const nome = pedido.servico_nome?.trim();
@@ -122,6 +125,8 @@ export function extractServicosFromPedidos(
     return [{
       id: `pedido-${pedido.id}`,
       pagamento_id: pedido.id,
+      pedido_id: pedido.id,
+      appypay_intent_id: [...(pedido.pagamento_intents ?? [])].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '') || b.id.localeCompare(a.id)).find(intent => intent.status === 'draft')?.id ?? null,
       protocolo: pedido.id.slice(0, 8).toUpperCase(),
       nome,
       valor: Number(pedido.valor_cobrado ?? 0),
