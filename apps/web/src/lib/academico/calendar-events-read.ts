@@ -91,16 +91,22 @@ export async function readScopedAcademicCalendarEvents<T = Record<string, unknow
     rangeEnd?: string;
     limit?: number;
     columns?: string;
+    /** Only pass true after an explicit school-administrator role check. */
+    staffOverview?: boolean;
   },
 ): Promise<T[]> {
   validateCalendarEventScope(input);
-  const maxRows = Math.min(200, Math.max(1, input.limit ?? 50));
+  const maxRows = Math.min(500, Math.max(1, input.limit ?? 50));
   let query = supabase
     .from("calendario_eventos")
     .select(input.columns ?? "*")
     .eq("escola_id", input.escolaId)
     .eq("ano_letivo_id", input.anoLetivoId);
-  if (input.offeringIds.length === 0) {
+  if (input.staffOverview) {
+    // School-wide review is an explicit, role-protected administrative view.
+    // Rows still carry offering_id so the caller must label course-specific
+    // events rather than incorrectly presenting them as school-wide.
+  } else if (input.offeringIds.length === 0) {
     query = query.is("offering_id", null);
   } else {
     query = query.or(
