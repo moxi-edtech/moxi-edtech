@@ -83,3 +83,11 @@ test('ações secundárias respeitam o conjunto de transições das RPCs', () =>
   assert.doesNotMatch(inbox, /const ARCHIVABLE_STATUSES:[^\n]*'rejeitada'/);
   assert.doesNotMatch(inbox, /const REOPENABLE_STATUSES:[^\n]*'arquivado'/);
 });
+
+test('replay de conversão não pode mudar turma nem usar matrícula desaparecida', () => {
+  const api = route('convert');
+  assert.match(api, /ADMISSION_ALREADY_MATRICULATED_OTHER_CLASS/);
+  assert.match(api, /ADMISSION_MATRICULA_NOT_FOUND/);
+  assert.match(api, /idempotencyResult\.turma_id/);
+  assert.match(api, /matricula\.turma_id !== turma_id/);
+});
