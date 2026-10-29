@@ -116,3 +116,45 @@ export async function readScopedAcademicCalendarEvents<T = Record<string, unknow
   if (error) throw error;
   return (data ?? []) as T[];
 }
+
+/**
+ * Resolve all linked course offerings in a single scoped request.
+ * A teacher may cover several courses; every selected course must resolve
+ * to exactly one active school offering. No fallback to a school-wide view.
+ */
+export async function resolveCalendarOfferingIdsForCourses(
+  supabase: any,
+  input: { escolaId: string; cursoIds: string[] },
+): Promise<string[]> {
+  if (!UUID.test(input.escolaId) || input.cursoIds.some((id) => !UUID.test(id))) {
+    throw new CalendarEventScopeError("CALENDAR_INVALID_SCOPE", "Cursos inválidos para o calendário.");
+  }
+  const courseIds = [...new Set(input.cursoIds)];
+  if (courseIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("school_education_offerings")
+    .select("id,course_id")
+    .eq("escola_id", input.escolaId)
+    .eq("status", "active")
+    .in("course_id", courseIds)
+    .limit(500);
+  if (error) throw error;
+  const mapped = new Map<string, string>();
+  for (const offering of data ?? []) {
+    if (!courseIds.includes(String(offering.course_id)) ||
+      mapped.has(String(offering.course_id))) {
+      throw new CalendarEventScopeError(
+        "CALENDAR_COURSE_AMBIGUOUS",
+        "As ofertas educativas dos cursos precisam de conciliação.",
+      );
+    }
+    mapped.set(String(offering.course_id), String(offering.id));
+  }
+  if (mapped.size !== courseIds.length) {
+    throw new CalendarEventScopeError(
+      "CALENDAR_COURSE_NOT_MAPPED",
+      "Um dos cursos não está associado ao calendário académico.",
+    );
+  }
+  return [...new Set(courseIds.map((id) => mapped.get(id)!))];
+}
