@@ -148,3 +148,22 @@ test("The database protects official periods and published MED events from direc
   assert.match(regression, /TEST: published exam was deleted/);
   assert.match(regression, /TEST: a divergent academic period was accepted/);
 });
+
+test("The year-turn API rejects contradictory official templates before creating sessions", () => {
+  const route = source("app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts");
+  assert.match(route, /ACADEMIC_MULTI_TEMPLATE_PERIOD_DIVERGENCE/);
+  assert.match(route, /canonicalPeriodKey/);
+  assert.match(route, /ACADEMIC_YEAR_CALENDAR_MISMATCH/);
+  assert.ok(route.indexOf("ACADEMIC_MULTI_TEMPLATE_PERIOD_DIVERGENCE") <
+    route.indexOf("setup_active_ano_letivo"));
+  assert.ok(route.indexOf('rpc("upsert_bulk_periodos_letivos"') <
+    route.indexOf("Publish the profile mapping only after"));
+});
+
+test("Administrative calendar UI avoids accidental edits to national events", () => {
+  const page = source("app/escola/[id]/(portal)/admin/configuracoes/calendario/page.tsx");
+  assert.match(page, /anoNum >= 2026/);
+  assert.match(page, /selected\\?\\.source_template_id/);
+  assert.match(page, /EVENTO_ESCOLA/);
+  assert.match(page, /Provas, exames e pausas oficiais/);
+});
