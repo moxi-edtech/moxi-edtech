@@ -105,3 +105,10 @@ Para as matrículas com `regime.escala = qualitativa`, o Balcão **não oferece 
 - Testes: `grade-period-context.spec.ts`, `raa-balcao-workspace-contract.spec.ts` e regressão PostgreSQL descartável `regression_grade_period_guard.sql`. Abrangem três trimestres, fronteiras UTC/Luanda, mudança de aluno, falta de proveniência, ano incompatível, matrícula de turma errada, trimestre futuro e reabertura formal.
 
 **Bloqueadores de merge/produção:** CI final verde; homologação da migration em PostgreSQL descartável; conciliação aprovada de dados 2026/2027 da Escola KLASSE (sem mexer diretamente em avaliações/notas); comparação com o template MED adotado e E2E autenticado para primeiro/segundo/terceiro trimestres, direcção, secretaria e professor. PR continua draft, sem deploy e sem mutações de dados de produção.
+
+### Proteções adicionais de 2026/2027
+
+- `turma_disciplinas.periodos_ativos` é respeitado em três camadas: GET de períodos, POST de notas e RPC PostgreSQL. `NULL` continua sem restrição trimestral explícita para preservar currículos legados; uma lista explícita restringe os trimestres.
+- Para uma nota de 2026/2027, o trigger exige template MED oficial e publicado, item `PERIODO_LETIVO`, número, datas e ano coincidentes; apenas apresentar `source_template_id` não basta.
+- A rota de importação e as rotas administrativas de calendário são consideradas parte do contrato: `aplicar-template` guarda proveniência e protege travas; `ajustes` conserva datas oficiais e requer motivo para alterar fecho; `periodos-letivos/upsert-bulk` recusa uma escrita genérica 2026/2027 sem proveniência.
+- O teste SQL em PostgreSQL 17 descartável abrange também disciplina com trimestres limitados e item oficial inconsistente. Isto não substitui CI verde nem homologação com utilizadores reais.
