@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw } from "lucide-react";
@@ -22,6 +22,9 @@ type Item = {
   destino_ativo?: boolean;
   destino_vinculado?: boolean;
   destino_ano?: number | null;
+  classe_origem_numero?: number | null;
+  classe_destino_numero?: number | null;
+  alertas_transicao?: string[];
   proximo_passo: string;
 };
 type Tipo = "pendentes" | "historicos";
@@ -34,6 +37,15 @@ type Queue = {
   permite_escrita: boolean;
   items: Item[];
   error?: string;
+};
+
+const transitionLabels: Record<string, string> = {
+  DESTINO_SEM_VINCULO: "Matrícula no ano seguinte sem vínculo oficial",
+  VINCULO_DIVERGENTE: "Vínculo de origem contraditório",
+  CLASSE_NAO_IDENTIFICADA: "Classe sem identificação canónica",
+  SALTO_DE_CLASSE: "Salto de mais de uma classe",
+  REGRESSAO_DE_CLASSE: "Regressão de classe a confirmar",
+  REPETICAO_A_CONFIRMAR: "Permanência na classe — decisão por confirmar",
 };
 
 const resultadoLabel: Record<Resultado, string> = {
@@ -58,14 +70,16 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<Resultado>("aprovado");
+  const [resultado, setResultado] = useState<Resultado | "">("");
   const [referencia, setReferencia] = useState("");
   const [motivo, setMotivo] = useState("");
   const [confirmarFecho, setConfirmarFecho] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const requestSeq = useRef(0);
 
   const load = useCallback(async () => {
     if (!escolaId) return;
+    const requestId = ++requestSeq.current;
     setLoading(true);
     setError(null);
     try {
@@ -75,15 +89,18 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
       });
       const result = await response.json() as Queue;
       if (!response.ok || !result.ok) throw new Error(result.error ?? "Não foi possível consultar as decisões.");
-      setData(result);
+      if (requestId === requestSeq.current) setData(result);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Não foi possível carregar a reconciliação.");
+      if (requestId === requestSeq.current) {
+        setError(cause instanceof Error ? cause.message : "Não foi possível carregar a reconciliação.");
+        setData(null);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestSeq.current) setLoading(false);
     }
   }, [escolaId, tipo, ano, pagina]);
 
-  useEffect(() => { void load(); }, [load, reload]);
+  useEffect(() => { void load(); return () => { requestSeq.current += 1; }; }, [load, reload]);
 
   const selected = useMemo(() => data?.items.find((item) => item.matricula_id === selectedId) ?? null, [data, selectedId]);
   const pending = tipo === "pendentes";
@@ -91,7 +108,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
 
   function selectItem(item: Item) {
     setSelectedId(item.matricula_id);
-    setResultado(item.resultado_registado ?? "aprovado");
+    setResultado(item.resultado_registado ?? "");
     setReferencia("");
     setMotivo("");
     setConfirmarFecho(false);
@@ -210,6 +227,12 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                     : (item.ratificado ? "Ratificado" : "Ratificação pendente")}
                 </span>
               </div>
+              {!!item.alertas_transicao?.length && (
+                <div className="mt-2 flex items-start gap-2 text-xs text-amber-700" role="status">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>{item.alertas_transicao.map((code) => transitionLabels[code] ?? code).join(" · ")}</span>
+                </div>
+              )}
               <p className="mt-2 text-xs text-muted-foreground">
                 {item.resultado_registado
                   ? `Resultado registado: ${resultadoLabel[item.resultado_registado] ?? item.resultado_registado}. `
@@ -240,6 +263,15 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                 <h2 className="text-lg font-bold">{selected.aluno_nome}</h2>
                 <p className="mt-1 text-xs text-muted-foreground">{selected.proximo_passo}</p>
               </div>
+              {!!selected.alertas_transicao?.length && (
+                <div role="alert" className="rounded-xl border border-amber-300 p-3 text-sm text-amber-700">
+                  <p className="font-semibold">Verificação necessária antes da decisão</p>
+                  <p className="mt-1">
+                    {selected.alertas_transicao.map((code) => transitionLabels[code] ?? code).join(" · ")}.
+                    A matrícula de destino não demonstra aprovação ou reprovação.
+                  </p>
+                </div>
+              )}
               {pending && !selected.coorte_autorizada && (
                 <div role="alert" className="rounded-lg border border-amber-300 p-3 text-sm text-amber-700">
                   Esta origem não possui coorte assistida válida. Deve ser tratada pelo RAA ou pela secretaria académica.
@@ -250,6 +282,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                   Resultado académico confirmado pela escola
                   <select value={resultado} onChange={(event) => setResultado(event.target.value as Resultado)}
                     className="block w-full rounded-lg border border-border bg-background p-2">
+                    <option value="" disabled>Seleccione o resultado documentado</option>
                     {Object.entries(resultadoLabel).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
                   </select>
                 </label>
@@ -284,7 +317,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
               ) : (
                 <button type="button" disabled={submitting || motivo.trim().length < 12
                   || ((pending || !selected.ratificado) && referencia.trim().length < 8)
-                  || (pending && !selected.coorte_autorizada)
+                  || (pending && (!selected.coorte_autorizada || resultado === ""))
                   || (!pending && selected.ratificado && !confirmarFecho)}
                   onClick={() => void submit(pending ? "registar_decisao" : selected.ratificado ? "fechar_historico" : "ratificar")}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
