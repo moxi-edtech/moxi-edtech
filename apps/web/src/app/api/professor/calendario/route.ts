@@ -130,7 +130,9 @@ export async function GET(req: Request) {
             .from("calendario_eventos")
             .select("id,escola_id,nome,data_inicio,data_fim,tipo,cor_hex")
             .eq("escola_id", escolaId)
-            .eq("ano_letivo_id", anoLetivo.id),
+            .eq("ano_letivo_id", anoLetivo.id)
+            .gte("data_fim", rangeStart)
+            .lte("data_inicio", rangeEnd),
           {
             defaultLimit: 250,
             order: [{ column: "data_inicio", ascending: true }],
