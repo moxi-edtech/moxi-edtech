@@ -450,7 +450,7 @@ export function RaaBalcaoResolutionPanel({
               ))}
             </div>
           )}
-          {action === "reapreciacao" && examContext && (
+          {action === "reapreciacao" && examContext && activeCase?.kind !== "pedido" && (
             <div className="space-y-3 rounded-xl border border-border bg-card p-3" aria-label="Resultado do exame no Balcão">
               <h4 className="text-sm font-bold text-foreground">Exames de recurso e extraordinários</h4>
               <p className="text-xs text-muted-foreground">
@@ -490,14 +490,14 @@ export function RaaBalcaoResolutionPanel({
                   <input id="raa-exam-note" type="number" min="0" step="0.1" value={examNote} onChange={(event) => setExamNote(event.target.value)}
                     className="rounded-lg border border-border bg-background p-2 text-sm" />
                   <button type="button" disabled={saving || !examSessionId || !examComponentId || !examTurmaDisciplinaId || !examNote.trim()}
-                    onClick={() => void submitExam()} className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
+                    onClick={() => prepareConfirmation("exame")} className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
                     {saving ? "A guardar..." : "Guardar resultado de exame"}
                   </button>
                 </div>
               )}
             </div>
           )}
-          {action === "reapreciacao" && (
+          {action === "reapreciacao" && activeCase?.kind !== "exame" && (
             <div className="space-y-2">
               {!loading && pedidos.length === 0 && <p className="text-xs text-muted-foreground">Não existem pedidos nesta matrícula. O exame de recurso continua sujeito à publicação oficial.</p>}
               {pedidos.map((item) => (
@@ -520,7 +520,7 @@ export function RaaBalcaoResolutionPanel({
                   <label className="mt-2 block text-xs font-bold text-foreground" htmlFor="raa-balcao-pedido-motivo">Fundamento do pedido</label>
                   <textarea id="raa-balcao-pedido-motivo" rows={2} className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
                     value={motivo} onChange={(event) => setMotivo(event.target.value)} />
-                  <button type="button" disabled={saving} onClick={() => void submitPedido()} className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
+                  <button type="button" disabled={saving} onClick={() => prepareConfirmation("pedido")} className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
                     Solicitar reapreciação
                   </button>
                 </div>
@@ -540,7 +540,7 @@ export function RaaBalcaoResolutionPanel({
               ))}
             </div>
           )}
-          {!!selected && (action === "justificacao" || action === "reapreciacao" || action === "disciplina") && (
+          {!!selected && activeCase?.estado !== "registado" && (action === "justificacao" || action === "reapreciacao" || action === "disciplina") && (
             <div className="space-y-2 rounded-lg border border-amber-200 bg-card p-3">
               <label htmlFor="raa-balcao-decisao" className="block text-xs font-bold text-foreground">Decisão autorizada</label>
               <select id="raa-balcao-decisao" value={decision} onChange={(event) => setDecision(event.target.value)}
@@ -559,7 +559,7 @@ export function RaaBalcaoResolutionPanel({
                 className="w-full rounded-lg border border-border bg-background p-2 text-sm" />
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={saving || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)}
-                  onClick={() => void submit()}
+                  onClick={() => prepareConfirmation("decisao")}
                   className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
                   {saving ? "A guardar..." : "Guardar decisão"}
                 </button>
@@ -567,13 +567,81 @@ export function RaaBalcaoResolutionPanel({
               </div>
             </div>
           )}
-          {notice && <p role="status" className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800"><CheckCircle2 className="h-4 w-4" />{notice}</p>}
-          {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
-          <p className="text-xs text-muted-foreground">
-            Aluno selecionado preservado. Nenhuma decisão deste painel dispensa a elegibilidade oficial do RAA para rematrícula.
-          </p>
+            </div>
+            {error && <p role="alert" className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">{error}</p>}
+            <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+              <button type="button" onClick={() => void onRecheck()} disabled={saving}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground disabled:opacity-50 sm:w-auto">
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> Verificar RAA
+              </button>
+              <button type="button" onClick={() => setPhase("summary")} disabled={saving}
+                className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 sm:w-auto">
+                Voltar às pendências
+              </button>
+            </div>
+          </div>
+        )}
+
+        {phase === "confirm" && (
+          <div className="space-y-4" role="group" aria-label="Confirmar decisão RAA">
+            <button type="button" onClick={() => setPhase("detail")} disabled={saving}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground">
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Rever formulário
+            </button>
+            <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-4">
+              <h4 className="text-sm font-semibold text-foreground">Confirmar a operação</h4>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {confirmKind === "exame" ? "Guardar a nota do componente do exame oficial" :
+                  confirmKind === "pedido" ? "Enviar o pedido de reapreciação" : "Registar decisão administrativa"}.
+                Esta ação será registada no processo do aluno. Não equivale a autorização de rematrícula.
+              </p>
+              {confirmKind === "exame" && <p className="mt-2 text-sm font-medium text-foreground">Nota: {examNote} · sessão {examSessionId.slice(0, 8)}</p>}
+              {confirmKind === "decisao" && <p className="mt-2 text-sm font-medium text-foreground">Decisão: {decision}</p>}
+              {motivo.trim() && <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">Fundamentação: {motivo.trim()}</p>}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" disabled={saving} onClick={() => setPhase("detail")}
+                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50">Voltar e corrigir</button>
+              <button type="button" disabled={saving} onClick={() => void confirmOperation()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
+                {saving ? "A guardar..." : "Confirmar e guardar"}
+              </button>
+            </div>
+            {error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
+          </div>
+        )}
+
+        {phase === "feedback" && (
+          <div className="space-y-4" role="status">
+            <div className="flex items-start gap-3 rounded-xl border border-emerald/30 bg-emerald/5 p-4">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald" aria-hidden="true" />
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Operação registada</h4>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{notice || "O registo foi guardado. A rematrícula depende da decisão oficial do RAA."}</p>
+              </div>
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              A análise pode continuar neste Balcão. O estado académico só muda quando o resolvedor oficial confirmar a nova elegibilidade.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={() => { setCaseId(null); setPhase("summary"); void load(); }}
+                className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-foreground">
+                Próxima pendência
+              </button>
+              <button type="button" onClick={() => void onRecheck()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white">
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> Revalidar RAA
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
+          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p>A rematrícula permanece bloqueada até a API académica autorizar o destino. O aluno selecionado e o rascunho financeiro são preservados.</p>
         </div>
-      )}
+      </div>
     </section>
   );
 }
