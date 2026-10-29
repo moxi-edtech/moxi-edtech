@@ -6,6 +6,7 @@ import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { readCanonicalCutoverTargetReview } from "@/lib/academico/validate-canonical-cutover";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,27 @@ export async function POST(request: Request) {
       .eq("id", parsed.data.from_session_id)
       .eq("escola_id", escolaId)
       .maybeSingle();
+    const { data: targetSession, error: targetError } = await db.from("anos_letivos")
+      .select("id,ano").eq("id", parsed.data.to_session_id)
+      .eq("escola_id", escolaId).maybeSingle();
+    if (targetError) throw targetError;
+    if (!targetSession) {
+      return NextResponse.json({ ok: false, code: "ACADEMIC_TARGET_NOT_FOUND",
+        error: "O ano letivo de destino não pertence à escola." }, { status: 409 });
+    }
+    if (targetSession.ano >= 2026) {
+      const check = await readCanonicalCutoverTargetReview(db, {
+        escolaId, targetYearId: targetSession.id,
+      });
+      if (!check.ready) {
+        return NextResponse.json({
+          ok: false, code: "ACADEMIC_CALENDAR_CUTOVER_NOT_READY",
+          error: "Concilie o calendário oficial e os perfis dos cursos antes de preparar as turmas.",
+          blockers: check.blockers,
+        }, { status: 409 });
+      }
+    }
+
     const before = await countSessionRecords(parsed.data.to_session_id, null);
     const expected = await countSessionRecords(parsed.data.from_session_id, sourceSession?.ano ?? null);
 
