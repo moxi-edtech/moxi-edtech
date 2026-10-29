@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,27 +19,39 @@ export async function GET(request: Request) {
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: true, status: null });
 
-    const [{ data: aluno }, { data: matricula }] = await Promise.all([
+    // A matrícula mais recentemente criada pode pertencer a um ano antigo.
+    // A projeção SSOT escolhe primeiro a sessão mais recente e o vínculo ativo.
+    const [{ data: aluno }, cicloVida] = await Promise.all([
       supabase.from("alunos").select("id, nome, foto_url").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
-      supabase
-        .from("matriculas")
-        .select("id, status, turma:turmas(nome, classe:classes(nome)), percentagem_presencas")
-        .eq("aluno_id", alunoId)
-        .eq("escola_id", ctx.escolaId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+      carregarCicloVidaAluno(supabase, ctx.escolaId, alunoId).catch(() => null),
     ]);
+    const corrente = cicloVida?.matriculaCorrente ?? null;
+    const { data: matricula } = corrente
+      ? await supabase.from("matriculas")
+          .select("id, status, turma:turmas(nome, classe:classes(nome)), percentagem_presencas")
+          .eq("id", corrente.matriculaId)
+          .eq("aluno_id", alunoId)
+          .eq("escola_id", ctx.escolaId)
+          .maybeSingle()
+      : await supabase.from("matriculas")
+          .select("id, status, turma:turmas(nome, classe:classes(nome)), percentagem_presencas")
+          .eq("aluno_id", alunoId).eq("escola_id", ctx.escolaId)
+          .order("ano_letivo", { ascending: false }).order("created_at", { ascending: false })
+          .limit(1).maybeSingle();
 
     const turmaNome = (matricula as any)?.turma?.nome ?? null;
     const classeNome = (matricula as any)?.turma?.classe?.nome ?? null;
     const assiduidade = (matricula as any)?.percentagem_presencas ?? null;
 
-    const estadoAcademico = ["ativo", "ativa", "active"].includes(matricula?.status ?? "")
-      ? "Em curso"
-      : matricula?.status
-        ? "Com pendências"
-        : "Sem matrícula ativa";
+    const estadoAcademico =
+      corrente?.estadoOperacional === "ativa" ? "Em curso"
+      : corrente?.estadoOperacional === "pendente" ? "Matrícula pendente de confirmação"
+      : corrente?.estadoOperacional === "encerrada" && corrente.academico.resultadoOficial
+        ? "Ano letivo concluído"
+        : corrente?.estadoOperacional === "encerrada" ? "Resultado académico em validação"
+          : corrente ? "Revisão necessária"
+            : matricula?.status && ["ativo", "ativa", "active"].includes(String(matricula.status).toLowerCase())
+              ? "Em curso" : matricula ? "Situação académica em verificação" : "Sem matrícula ativa";
 
     return NextResponse.json({ 
       ok: true, 
@@ -48,7 +61,9 @@ export async function GET(request: Request) {
         turma: turmaNome, 
         classe: classeNome, 
         estadoAcademico,
-        assiduidade 
+        assiduidade,
+        cicloVida,
+        cicloVidaIndisponivel: cicloVida === null
       } 
     });
   } catch (error) {

@@ -845,7 +845,7 @@ export default function MatriculasListClient() {
                         <div className="flex justify-end gap-1 opacity-60 transition-opacity group-hover:opacity-100">
                           <button
                             onClick={() => handleOpenStatusForm(m)}
-                            title="Alterar Status"
+                            title="Consultar operações oficiais"
                             className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-amber/20"
                           >
                             <RefreshCw className="h-4 w-4" />
@@ -915,7 +915,7 @@ export default function MatriculasListClient() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-lg rounded-2xl bg-card p-8 shadow-2xl animate-in zoom-in-95">
             <div className="mb-6 flex items-center justify-between gap-4">
-              <h2 className="text-xl font-bold text-foreground">Alterar Status</h2>
+              <h2 className="text-xl font-bold text-foreground">Operações de matrícula</h2>
               <button
                 onClick={() => setShowStatusForm(false)}
                 className="rounded-full p-2 hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/20"
@@ -925,7 +925,7 @@ export default function MatriculasListClient() {
             </div>
 
             <StatusForm
-              matriculaId={selectedMatricula.id}
+              alunoId={selectedMatricula.aluno_id}
               currentStatus={selectedMatricula.status}
               onSuccess={() => {
                 setShowStatusForm(false);

@@ -27,6 +27,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
+import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
@@ -1008,7 +1009,11 @@ const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> =
   },
   WINDOW_CLOSED: {
     titulo: "O período de rematrícula está fechado",
-    descricao: "Abra uma janela de rematrícula para este ano letivo antes de iniciar novas operações.",
+    descricao: "O prazo deste ano letivo não está vigente. Resolva a janela aqui no atendimento, com autorização da direção.",
+  },
+  TARGET_YEAR_NOT_CONFIGURED: {
+    titulo: "Ano letivo de destino ainda não configurado",
+    descricao: "A escola precisa de criar o ano letivo seguinte antes de abrir a rematrícula. Os registos atuais serão preservados.",
   },
   PAYMENT_IN_PROGRESS: {
     titulo: "Pagamento de rematrícula já iniciado",
@@ -1372,6 +1377,9 @@ function Catalogo({
   rematriculaState,
   rematriculaPrice,
   rematriculaAnoLabel,
+  rematriculaContextYear,
+  rematriculaSchoolId,
+  rematriculaWindow,
   rematriculaAcademic,
   reconcilingPedido,
   rematriculaError,
@@ -1398,6 +1406,9 @@ function Catalogo({
   rematriculaState: RematriculaCardState | "CHECKING" | null;
   rematriculaPrice: number | null;
   rematriculaAnoLabel: string | null;
+  rematriculaContextYear: { id: string; ano: number; label: string } | null;
+  rematriculaSchoolId: string;
+  rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: {
     reason?: string;
     disciplina_ids_pendentes?: string[];
@@ -1641,14 +1652,39 @@ function Catalogo({
                 </button>
               </div>
             ) : null}
+            {rematriculaState === "TARGET_YEAR_NOT_CONFIGURED" ? (
+              <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
+                <strong className="block">Ano letivo de destino não configurado</strong>
+                <p className="mt-1">
+                  O ano {rematriculaAnoLabel ?? "seguinte"} ainda não existe na configuração da escola.
+                  Solicite à administração que configure o ano e as turmas destino antes de iniciar a operação.
+                  Nenhuma matrícula nem cobrança foi criada.
+                </p>
+                <CodigoEstado estado="TARGET_YEAR_NOT_CONFIGURED" />
+              </div>
+            ) : null}
             {rematriculaState === "WINDOW_CLOSED" ? (
               <div className="mb-2 rounded-xl border border-slate-300 bg-slate-50 p-3.5 text-xs text-slate-700">
                 <strong className="block text-slate-900">Período de rematrícula fechado</strong>
                 <p className="mt-1">
-                  A escola ainda não tem uma janela de rematrícula aberta para{" "}
-                  {rematriculaAnoLabel ?? "este ano letivo"}. Abra-a antes de iniciar novas operações.
+                  O período de rematrícula de{" "}
+                  {rematriculaAnoLabel ?? "este ano letivo"} não está vigente. A direção pode reabri-lo neste atendimento, sem mudar de aluno ou perder o trabalho em curso.
                 </p>
+                {rematriculaWindow?.data_fim ? (
+                  <p className="mt-1">
+                    Última janela encerrada em{" "}
+                    <strong>{new Date(rematriculaWindow.data_fim).toLocaleDateString("pt-AO", { timeZone: "Africa/Luanda" })}</strong>.
+                  </p>
+                ) : null}
                 <CodigoEstado estado="WINDOW_CLOSED" />
+                {rematriculaContextYear && (
+                  <RematriculaWindowRecovery
+                    key={rematriculaContextYear.id}
+                    anoLetivo={rematriculaContextYear}
+                    escolaId={rematriculaSchoolId}
+                    onRecheck={onRefreshRematricula}
+                  />
+                )}
               </div>
             ) : null}
             {rematriculaState === "ACADEMIC_PENDING" ? (
@@ -3140,7 +3176,10 @@ export default function BalcaoAtendimento({
                       : null
                   }
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
-                  rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
+                  rematriculaAnoLabel={rematricula.targetYearLabel ?? rematricula.anoLetivo?.label ?? null}
+                  rematriculaContextYear={rematricula.anoLetivo}
+                  rematriculaSchoolId={escolaId}
+                  rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
                   reconcilingPedido={rematricula.reconciling}
                   rematriculaError={rematricula.apiError}
@@ -3207,6 +3246,7 @@ export default function BalcaoAtendimento({
           responsavelContato={rematricula.responsavelContato}
           setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
+          cicloVida={rematricula.cicloVida}
           service={rematricula.service}
           itensPagamento={itensRematricula}
           itensDisponiveis={itensDisponiveisNaRematricula}
@@ -3230,6 +3270,8 @@ export default function BalcaoAtendimento({
           }
           turmas={rematricula.turmas}
           turmasLoading={rematricula.turmasLoading}
+          turmasError={rematricula.turmasError}
+          onRetryTurmas={rematricula.retryTurmas}
           progressao={rematricula.progressao}
           decisaoResultado={rematricula.decisaoResultado}
           setDecisaoResultado={rematricula.setDecisaoResultado}

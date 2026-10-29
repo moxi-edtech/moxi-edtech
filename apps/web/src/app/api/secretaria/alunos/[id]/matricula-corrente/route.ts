@@ -8,6 +8,8 @@ import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { recordAuditServer } from "@/lib/audit";
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
+import { normalizarEstadoMatricula } from "@/lib/matriculas/student-lifecycle";
+import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,9 +45,9 @@ type OrderRow = {
 
 function canonicalEnrollmentStatus(value: string): "ativa" | "pendente" | "outro" {
   const text = value.toLowerCase().trim();
-  if (["ativo", "ativa", "active"].includes(text)) return "ativa";
-  if (text === "pendente") return "pendente";
-  return "outro";
+  const active = ["ativo", "ativa", "active"].includes(text);
+  const estado = normalizarEstadoMatricula(value, active);
+  return estado === "ativa" || estado === "pendente" ? estado : "outro";
 }
 
 function orderForEnrollment(order: OrderRow, row: CurrentEnrollment, yearId: string): boolean {
@@ -161,6 +163,23 @@ export async function GET(
       }
     }
 
+    const cicloVida = await carregarCicloVidaAluno(db, escolaId, studentId).catch(() => null);
+    result.cicloVida = cicloVida;
+    result.cicloVidaIndisponivel = cicloVida === null;
+    // A ausência de matrícula ativa não significa que a matrícula não exista.
+    // Fecho, cancelamento e estado legado do ano selecionado mantêm a identidade.
+    const registroAno = cicloVida?.matriculas.find((item) => item.anoLetivo === activeYear!.ano);
+    if (!current && !inconsistent && registroAno) {
+      if (registroAno.estadoOperacional === "encerrada" || registroAno.estadoOperacional === "cancelada") {
+        result.estado = registroAno.estadoOperacional;
+        result.reason = registroAno.estadoOperacional === "encerrada"
+          ? "A matrícula deste ano já está encerrada. Consulte o histórico oficial."
+          : "A matrícula deste ano foi cancelada. Consulte o motivo e a auditoria.";
+      } else if (registroAno.estadoOperacional === "revisao") {
+        result.estado = "reconciliacao";
+        result.reason = "O estado histórico desta matrícula exige revisão administrativa.";
+      }
+    }
     return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
     console.error("[CURRENT-ENROLLMENT][GET]", { message: error instanceof Error ? error.message : "UNEXPECTED" });

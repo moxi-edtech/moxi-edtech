@@ -1,196 +1,156 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
-import { recordAuditServer } from '@/lib/audit'
-import { hasPermission, type Papel } from '@/lib/permissions'
-import { normalizeAnoLetivo } from '@/lib/financeiro/tabela-preco'
-import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearScope } from "@/lib/academic-year/context";
+import { recordAuditServer } from "@/lib/audit";
+import type { Database } from "~types/supabase";
 
-import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
+export const dynamic = "force-dynamic";
 
-// Schema validation
+const uuid = z.string().uuid();
 const BodySchema = z.object({
-  aluno_id: z.string().uuid('aluno_id inválido'),
-  ano_letivo_id: z.string().min(1, 'ano_letivo_id é obrigatório'), // This might be a UUID or a Year string depending on your DB. The RPC expects INT Year.
-  classe_id: z.string().min(1, 'classe_id é obrigatório'),
-  course_id: z.string().min(1).optional(),
-  turma_id: z.string().uuid('turma_id inválido').optional().nullable(),
-  status: z.string().trim().default('ativa'),
+  aluno_id: uuid,
+  ano_letivo_id: z.union([uuid, z.string().regex(/^\d{4}$/)]),
+  classe_id: uuid,
+  course_id: uuid.optional(),
+  turma_id: uuid,
+  status: z.string().trim().toLowerCase().default("ativa"),
   permitir_sem_curso: z.boolean().optional(),
-})
+});
 
-// Helper for Legacy Logic (PUNIV/Tecnico validation)
-const isUpperCycleGrade = (nome?: string | null) => {
-  if (!nome) return false
-  const digits = nome.replace(/\D/g, '')
-  return ["10", "11", "12", "13"].some((g) => digits === g || digits.startsWith(g))
+function rpcErrorCode(message: string, code?: string | null) {
+  if (code === "42501" || message.includes("ENROLLMENT_AUTH_")) return 403;
+  if (code === "23514" || code === "23505" || message.includes("ENROLLMENT_")) return 409;
+  return 500;
 }
 
+/**
+ * New enrollment only. Existing pending reservations and all academic-year
+ * transitions must use the canonical admission/rematriculation flows.
+ *
+ * Atomic DB RPC creates the official matrícula, number, session and
+ * student login. This endpoint must never follow it with an UPDATE.
+ */
 export async function POST(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id: escolaId } = await context.params
-  
   try {
-    const supabase = await supabaseServerTyped<Database>()
-    
-    // 1. Authentication
-    const { data: userRes } = await supabase.auth.getUser()
-    const userId = userRes?.user?.id
-    if (!userId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, userId, escolaId)
-    if (!resolvedEscolaId) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
-
-    // 2. Parse Body
-    const json = await req.json()
-    const parse = BodySchema.safeParse(json)
-    if (!parse.success) {
-      const msg = parse.error.issues?.[0]?.message || 'Dados inválidos'
-      return NextResponse.json({ ok: false, error: msg }, { status: 400 })
+    const { id: requestedSchool } = await params;
+    const db = await supabaseServerTyped<Database>();
+    const { data: auth, error: authError } = await db.auth.getUser();
+    if (authError || !auth.user) {
+      return NextResponse.json({ ok: false, error: "Não autenticado." }, { status: 401 });
     }
-    const body = parse.data
+    const escolaId = await resolveEscolaIdForUser(db as any, auth.user.id, requestedSchool);
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão nesta escola." }, { status: 403 });
+    }
+    const { error: forbidden } = await requireRoleInSchool({
+      supabase: db as any,
+      escolaId,
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
+    });
+    if (forbidden) return forbidden;
 
-    // 2.1 Validate Academic Year Context (WRITE Protection)
-    try {
-      const academicContext = await resolveAcademicYearContext(supabase as any, {
-        userId,
-        requestedAcademicYearId: body.ano_letivo_id,
-        operation: 'WRITE',
-      })
+    const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({
+        ok: false, error: "Verifique aluno, turma, classe e ano letivo.",
+        issues: parsed.error.issues,
+      }, { status: 400 });
+    }
+    const input = parsed.data;
+    if (!["ativa", "ativo", "active"].includes(input.status) || input.permitir_sem_curso) {
+      return NextResponse.json({
+        ok: false, code: "ENROLLMENT_OFFICIAL_FLOW_REQUIRED",
+        error: "Reservas, rematrículas e exceções académicas exigem o fluxo oficial do Balcão.",
+      }, { status: 409 });
+    }
 
-      if (body.turma_id) {
-        await assertAcademicYearEntity(supabase as any, {
-          table: 'turmas',
-          entityId: body.turma_id,
-          escolaId: resolvedEscolaId,
-          anoLetivoId: academicContext.anoLetivoId,
-        })
+    // Support legacy YYYY values only after resolving the school's actual
+    // academic year. Never use the server's calendar year as a fallback.
+    let yearId = input.ano_letivo_id;
+    if (/^\d{4}$/.test(yearId)) {
+      const { data: row, error } = await db.from("anos_letivos")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("ano", Number(yearId))
+        .maybeSingle();
+      if (error) throw error;
+      if (!row?.id) {
+        return NextResponse.json({
+          ok: false, code: "ACADEMIC_YEAR_NOT_FOUND",
+          error: "Ano letivo não encontrado na escola.",
+        }, { status: 404 });
       }
-    } catch (err: any) {
-      if (err instanceof AcademicYearContextError) {
-        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status })
-      }
-      return NextResponse.json({ ok: false, error: 'Erro ao validar contexto do ano letivo' }, { status: 500 })
+      yearId = row.id;
     }
-    
-    // 3. Authorization (Permissions)
-    const { data: vinc } = await supabase.from('escola_usuarios').select('papel').eq('user_id', userId).eq('escola_id', resolvedEscolaId).limit(1)
-    const papel = vinc?.[0]?.papel as Papel | undefined
-    if (!hasPermission(papel, 'criar_matricula')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    const year = await resolveAcademicYearScope(db as any, {
+      escolaId,
+      requestedAcademicYearId: yearId,
+      operation: "WRITE",
+    });
+    await assertAcademicYearEntity(db as any, {
+      table: "turmas",
+      entityId: input.turma_id,
+      escolaId,
+      anoLetivoId: year.id,
+    });
 
-    // 4. Validate School Status
-    const { data: profCheck } = await supabase.from('profiles').select('escola_id').eq('user_id', userId).maybeSingle()
-    if (!profCheck || String(profCheck.escola_id) !== String(resolvedEscolaId)) {
-        // Allow admin if current_escola_id matches? For safety, we keep strict check.
-        // Or check current_escola_id if your system allows switching context.
-    }
-    
-    const { data: esc } = await supabase.from('escolas').select('status').eq('id', resolvedEscolaId).limit(1).maybeSingle()
-    if (esc?.status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite criar matrículas.' }, { status: 400 })
-    if (esc?.status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa. Regularize pagamentos.' }, { status: 400 })
-
-    // 5. Business Logic: Validate Course/Grade Requirements
-    const { data: grade, error: gradeError } = await supabase.from('classes').select('id, nome').eq('id', body.classe_id).maybeSingle();
-    if (gradeError || !grade) return NextResponse.json({ ok: false, error: 'Classe não encontrada' }, { status: 400 });
-
-    let course: any = null
-    if (body.course_id) {
-      const { data: courseRow, error: courseError } = await supabase.from('cursos').select('id, nome, tipo').eq('id', body.course_id).maybeSingle();
-      if (courseError || !courseRow) return NextResponse.json({ ok: false, error: 'Curso inválido' }, { status: 400 });
-      course = courseRow
+    const { data, error } = await (db as any).rpc("matricula_criar_confirmar_por_turma_v1", {
+      p_escola_id: escolaId,
+      p_aluno_id: input.aluno_id,
+      p_turma_id: input.turma_id,
+      p_ano_letivo_id: year.id,
+      p_expected_classe_id: input.classe_id,
+      p_expected_curso_id: input.course_id ?? null,
+    });
+    if (error || data?.ok !== true || !data?.matricula?.id) {
+      const message = String(error?.message ?? data?.error ?? "Falha ao criar matrícula.");
+      return NextResponse.json({
+        ok: false, code: message.split(":")[0], error: message,
+      }, { status: rpcErrorCode(message, error?.code) });
     }
 
-    const gradeNome = (grade as any)?.nome
-    const requiresCourse = isUpperCycleGrade(gradeNome) || ['puniv', 'tecnico'].includes(((course as any)?.tipo || '').toLowerCase())
-    if (requiresCourse && !course && !body.permitir_sem_curso) {
-      return NextResponse.json({ ok: false, error: 'Curso obrigatório para PUNIV/Técnico' }, { status: 400 })
-    }
-
-    // 6. PREPARE FOR DB CALL
-    // We need to resolve 'ano_letivo_id' to an Integer Year because our RPC expects an Integer.
-    // If 'ano_letivo_id' is a UUID in your DB, you need to fetch the year.
-    // Assuming here it might be a UUID pointing to 'anos_letivos' table or just a string "2024".
-    
-    let anoLetivoInt: number = new Date().getFullYear();
-    
-    // Try to parse as number first
-    if (!isNaN(Number(body.ano_letivo_id)) && Number(body.ano_letivo_id) > 1900) {
-        anoLetivoInt = Number(body.ano_letivo_id);
-    } else {
-        // If it's a UUID, fetch the year
-        try {
-             const { data: anoRow } = await supabase.from('anos_letivos').select('ano').eq('id', body.ano_letivo_id).maybeSingle();
-             if (anoRow && (anoRow as any).ano) {
-                 anoLetivoInt = Number((anoRow as any).ano);
-             }
-        } catch {}
-    }
-
-    // 7. EXECUTE RPC (The Magic Step)
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Server Config Error' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-    const rpcParams: any = {
-      p_aluno_id: body.aluno_id,
-      p_ano_letivo: anoLetivoInt,
-    }
-    if (body.turma_id) rpcParams.p_turma_id = body.turma_id
-
-    const { data: numeroGerado, error: rpcError } = await admin.rpc('create_or_confirm_matricula', rpcParams)
-
-    if (rpcError) {
-        return NextResponse.json({ ok: false, error: rpcError.message || 'Erro ao processar matrícula' }, { status: 400 })
-    }
-
-    // 8. UPDATE ADDITIONAL FIELDS
-    // Our RPC creates the matricula with essentials (aluno, turma, ano, numero).
-    // But this endpoint receives extra fields like 'classe_id', 'course_id', 'ano_letivo_id' (UUID).
-    // We need to update the record with these specific FKs.
-    
-    // Retrieve the ID of the matricula we just touched
-    const { data: matUpdated, error: updateError } = await admin
-        .from('matriculas')
-        .update({
-            // session_id is our canonical reference to the academic year session (anos_letivos.id)
-            session_id: body.ano_letivo_id, 
-            status: body.status || 'ativo'
-        })
-        .eq('escola_id', resolvedEscolaId)
-        .eq('aluno_id', body.aluno_id)
-        .eq('ano_letivo', anoLetivoInt)
-        .eq('session_id', body.ano_letivo_id)
-        .select()
-        .single();
-
-    if (updateError || !matUpdated) {
-         // This is rare. The matricula exists (RPC succeeded), but update failed.
-         return NextResponse.json({ ok: false, error: 'Matrícula criada, mas falha ao atualizar detalhes (curso/classe).' }, { status: 500 })
-    }
-
-    // 9. AUDIT
-    recordAuditServer({
-      escolaId: resolvedEscolaId,
-      portal: 'secretaria',
-      acao: 'MATRICULA_CRIADA',
-      entity: 'matricula',
-      entityId: String(matUpdated.id),
-      details: { 
-          aluno_id: matUpdated.aluno_id, 
-          numero: numeroGerado, 
-          status: matUpdated.status,
-          ano_letivo_id: body.ano_letivo_id,
+    // Best-effort audit, not a second enrollment mutation.
+    if (!data.idempotent) {
+      recordAuditServer({
+        escolaId,
+        portal: "secretaria",
+        acao: "MATRICULA_CRIADA",
+        entity: "matricula",
+        entityId: String(data.matricula.id),
+        details: {
+          aluno_id: input.aluno_id,
+          turma_id: input.turma_id,
+          curso_id: input.course_id ?? null,
+          classe_id: input.classe_id,
+          ano_letivo_id: year.id,
+          numero: data.matricula.numero_matricula,
+          origem: "matricula_criar_confirmar_por_turma_v1",
         },
-    }).catch(() => null)
+      }).catch(() => null);
+    }
 
-    return NextResponse.json({ ok: true, matricula: matUpdated })
-
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ ok: false, error: message }, { status: 500 })
+    return NextResponse.json({
+      ok: true,
+      idempotent: Boolean(data.idempotent),
+      matricula: data.matricula,
+      numero: data.matricula.numero_matricula,
+    });
+  } catch (cause) {
+    if (cause instanceof AcademicYearContextError) {
+      return NextResponse.json({
+        ok: false, code: cause.code, error: cause.message,
+      }, { status: cause.status });
+    }
+    console.error("[matriculas/novo] enrollment context failure", cause);
+    return NextResponse.json({
+      ok: false, error: "Não foi possível concluir a matrícula. Atualize os dados e tente novamente.",
+    }, { status: 500 });
   }
 }

@@ -3,8 +3,6 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { dispatchProfessorNotificacao } from "@/lib/notificacoes/dispatchProfessorNotificacao";
-import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +20,7 @@ const OVERRIDE_ROLES = ["admin", "admin_escola", "staff_admin", "admin_financeir
 
 export async function POST(
   request: Request,
-  { params }: { params: { matriculaId: string } }
+  { params }: { params: Promise<{ matriculaId: string }> }
 ) {
   try {
     const parsed = BodySchema.safeParse(await request.json().catch(() => null));
@@ -42,7 +40,10 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const matriculaId = params.matriculaId;
+    const { matriculaId } = await params;
+    if (!z.string().uuid().safeParse(matriculaId).success) {
+      return NextResponse.json({ ok: false, error: "Matrícula inválida." }, { status: 400 });
+    }
     const { data: matriculaData, error: matriculaError } = await supabase
       .from("matriculas")
       .select("escola_id")
@@ -108,85 +109,17 @@ export async function POST(
       return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
     }
 
-    if (!result?.ok && result?.status === "incompleto") {
-      return NextResponse.json({ ok: false, error: result.message, motivos: result.motivos }, { status: 422 });
+    if (result?.ok !== true) {
+      return NextResponse.json({
+        ok: false,
+        error: result?.message || "A decisão académica não permite a finalização.",
+        motivos: Array.isArray(result?.motivos) ? result.motivos : [],
+        code: result?.status === "incompleto" ? "ACADEMIC_GRADES_INCOMPLETE" : "ENROLLMENT_CLOSE_BLOCKED",
+      }, { status: result?.status === "incompleto" ? 422 : 409 });
     }
 
-    if (result?.status === "ativo") {
-      const { data: actorProfile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const actorRole = (actorProfile as { role?: string | null } | null)?.role ?? null;
-
-      const { data: matriculaDetalhe } = await supabase
-        .from("matriculas")
-        .select("id, turma_id, aluno_id, alunos(nome), turmas(nome)")
-        .eq("id", matriculaId)
-        .maybeSingle();
-
-      const turmaId = (matriculaDetalhe as any)?.turma_id as string | null;
-      const alunoId = (matriculaDetalhe as any)?.aluno_id as string | null;
-      const alunoNome = (matriculaDetalhe as any)?.alunos?.nome ?? null;
-      const turmaNome = (matriculaDetalhe as any)?.turmas?.nome ?? null;
-
-      if (turmaId) {
-        const { data: professoresTurma } = await supabase
-          .from("turma_disciplinas_professores")
-          .select("professor_id")
-          .eq("escola_id", escolaId)
-          .eq("turma_id", turmaId);
-
-        const professorIds = Array.from(
-          new Set((professoresTurma ?? []).map((row: any) => row.professor_id).filter(Boolean))
-        );
-
-        if (professorIds.length > 0) {
-          const { data: professorProfiles } = await supabase
-            .from("professores")
-            .select("profile_id")
-            .in("id", professorIds)
-            .eq("escola_id", escolaId);
-
-          const recipientIds = Array.from(
-            new Set(
-              (professorProfiles ?? [])
-                .map((row: any) => row.profile_id)
-                .filter(Boolean)
-            )
-          ) as string[];
-
-          if (recipientIds.length > 0) {
-            await dispatchProfessorNotificacao({
-              escolaId,
-              key: "ALUNO_MATRICULADO",
-              params: { alunoNome, turmaNome },
-              recipientIds,
-              actorId: user.id,
-              actorRole: actorRole ?? "secretaria",
-              agrupamentoTTLHoras: 6,
-            });
-          }
-        }
-      }
-
-      if (alunoId) {
-        await dispatchAlunoNotificacao({
-          escolaId,
-          key: "MATRICULA_CONFIRMADA",
-          alunoIds: [alunoId],
-          params: { alunoNome, actionUrl: "/aluno" },
-          actorId: user.id,
-          actorRole: actorRole ?? "secretaria",
-          agrupamentoTTLHoras: 12,
-        });
-      }
-    }
-
-    return NextResponse.json({ ok: true, status: result?.status, origem: result?.status_fecho_origem });
+    return NextResponse.json({ ok: true, status: result.status, origem: result.status_fecho_origem,
+      message: "Finalização académica registada.", });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

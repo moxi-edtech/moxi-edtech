@@ -112,23 +112,66 @@ export async function POST(req: Request) {
       }
     }
 
-    // Process conclusions for 12ª
-    if (body.concluir_turmas && body.concluir_turmas.length) {
-      for (const c of body.concluir_turmas) {
-        await supabase
-          .from('matriculas')
-          .update({ status: 'concluido' })
-          .eq('escola_id', escolaId)
-          .eq('turma_id', c.origem_turma_id)
-                .in('status', ACTIVE_MATRICULA_STATUSES)
+    // Fechamento de classes finalistas: a Secretaria não pode transformar
+    // todas as matrículas em 'concluido' sem notas nem decisão do GradeEngine.
+    // Esta rota legada delega ao MESMO RPC usado pelo fechamento oficial.
+    const resultsConclusoes: Array<{
+      origem_turma_id: string;
+      finalizados: number;
+      blocked: BlockedItem[];
+    }> = [];
+    for (const c of body.concluir_turmas ?? []) {
+      const { data: matriculasFinalistas, error: listError } = await supabase
+        .from('matriculas')
+        .select('id, aluno_id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', c.origem_turma_id)
+        .eq('ativo', true)
+        .in('status', ACTIVE_MATRICULA_STATUSES);
+      if (listError) {
+        return NextResponse.json({ ok: false, error: 'Não foi possível validar os finalistas da turma.' }, { status: 503 });
       }
+
+      let finalizados = 0;
+      const blocked: BlockedItem[] = [];
+      for (const matricula of matriculasFinalistas ?? []) {
+        const { data: finalizacao, error: finalizacaoError } = await supabase.rpc('finalizar_matricula_blindada', {
+          p_escola_id: escolaId,
+          p_matricula_id: matricula.id,
+          p_motivo: 'Fechamento académico de turma finalista',
+          p_is_override_manual: false,
+          p_status_override: null,
+        });
+        if (finalizacaoError || finalizacao?.ok === false) {
+          blocked.push({
+            aluno_id: matricula.aluno_id,
+            matricula_id: matricula.id,
+            motivos: [
+              String(finalizacao?.message ?? finalizacaoError?.message ?? 'Fechamento académico não autorizado'),
+              ...((Array.isArray(finalizacao?.motivos) ? finalizacao.motivos : []) as unknown[]).map(String),
+            ],
+          });
+          continue;
+        }
+        finalizados++;
+      }
+      resultsConclusoes.push({ origem_turma_id: c.origem_turma_id, finalizados, blocked });
     }
 
     const totalInserted = resultsPromocoes.reduce((acc, r) => acc + (r.inserted || 0), 0)
     const totalSkipped = resultsPromocoes.reduce((acc, r) => acc + (r.skipped || 0), 0)
 
     recordAuditServer({ escolaId, portal: 'secretaria', acao: 'REMATRICULA_CONFIRMAR', entity: 'matriculas', details: { promocoes: body.promocoes?.length ?? 0, concluir_turmas: body.concluir_turmas?.length ?? 0, total_inserted: totalInserted, total_skipped: totalSkipped } }).catch(()=>null)
-    return NextResponse.json({ ok: true, results: { promocoes: resultsPromocoes, total_inserted: totalInserted, total_skipped: totalSkipped } })
+    return NextResponse.json({
+      ok: true,
+      results: {
+        promocoes: resultsPromocoes,
+        conclusoes: resultsConclusoes,
+        total_inserted: totalInserted,
+        total_skipped: totalSkipped + resultsConclusoes.reduce((sum, row) => sum + row.blocked.length, 0),
+        total_finalizados: resultsConclusoes.reduce((sum, row) => sum + row.finalizados, 0),
+      },
+    })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
@@ -231,11 +274,11 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
     const anoLetivoNum = normalizeAnoLetivo(anoLetivoNome ?? dataInicioSess.getFullYear());
     const anoLetivo = String(anoLetivoNum);
 
-    const [{ data: matriculas }, { data: turma }] = await Promise.all([
+    const [{ data: matriculas }] = await Promise.all([
       client.from('matriculas').select('id, aluno_id, data_inicio_financeiro, data_matricula, created_at')
         .eq('escola_id', escolaId).eq('turma_id', turmaId).eq('ano_letivo', anoLetivoNum)
         .in('aluno_id', alunoIds).in('status', ['ativo', 'ativa', 'active']),
-      client.from('turmas').select('is_classe_exame, classe_num, nome').eq('id', turmaId).maybeSingle(),
+
     ]);
     if (!matriculas || matriculas.length === 0) return;
     const regime = await resolveRegimeAcademico(client, turmaId);

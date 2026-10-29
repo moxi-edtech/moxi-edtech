@@ -1,19 +1,13 @@
 "use client";
 
-import { useState } from 'react';
-import { ACADEMIC_YEAR_PARAM } from '@/lib/academic-year/context';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
 interface FinalizarMatriculaButtonProps {
@@ -22,124 +16,89 @@ interface FinalizarMatriculaButtonProps {
   escolaId: string;
 }
 
-export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: FinalizarMatriculaButtonProps) {
+/**
+ * The school may confirm that GradeEngine should close the academic year.
+ * The user cannot select pass/fail: official grades and RAA determine it.
+ */
+export function FinalizarMatriculaButton({ matriculaId, alunoNome }: FinalizarMatriculaButtonProps) {
   const router = useRouter();
   const { success, error } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [statusFinal, setStatusFinal] = useState<'concluido' | 'reprovado' | ''>('');
-  const [motivo, setMotivo] = useState('');
+  const [motivo, setMotivo] = useState("");
 
   const handleSubmit = async () => {
-    if (!statusFinal) {
-      error('Selecione um status final.');
-      return;
-    }
-
+    if (loading) return;
     setLoading(true);
     try {
       const response = await fetch(`/api/secretaria/matriculas/${matriculaId}/finalizar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          novo_status: statusFinal,
-          motivo: motivo || undefined,
+          motivo: motivo.trim() || undefined,
+          is_override_manual: false,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao finalizar matrícula.');
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.ok !== true) {
+        const reasons = Array.isArray(result?.motivos) ? result.motivos.map(String).join(" · ") : "";
+        throw new Error(
+          [result?.error || "Não foi possível finalizar a matrícula.", reasons]
+            .filter(Boolean)
+            .join(" "),
+        );
       }
 
-      success(`Matrícula de ${alunoNome} finalizada como ${statusFinal}.`);
-
-      const comprovanteRes = await fetch('/api/secretaria/documentos/comprovante-matricula', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          escolaId,
-          matriculaId,
-          dataHoraEfetivacao: new Date().toISOString(),
-          observacao: `Emissão imediata após finalização (${statusFinal}).`,
-          ano_letivo_id: new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM),
-        }),
-      });
-
-      const comprovanteJson = await comprovanteRes.json().catch(() => ({}));
-      if (comprovanteRes.ok && comprovanteJson?.ok && comprovanteJson?.docId) {
-        const printUrl = `/secretaria/documentos/${comprovanteJson.docId}/comprovante-matricula/print`;
-        const popup = window.open(printUrl, '_blank', 'noopener,noreferrer');
-        if (!popup) {
-          success('Comprovante emitido. Permita pop-up para abrir impressão automática.');
-        }
-      }
-
+      const state = result.status === "concluido" ? "concluída"
+        : result.status === "reprovado" ? "reprovada"
+        : "finalizada";
+      success(`Matrícula de ${alunoNome} ${state} conforme os resultados académicos oficiais.`);
       setOpen(false);
-      router.refresh(); // Recarregar a página para mostrar o status atualizado
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Falha ao finalizar matrícula.";
-      error(message);
+      setMotivo("");
+      router.refresh();
+    } catch (cause: unknown) {
+      error(cause instanceof Error ? cause.message : "Não foi possível finalizar o ano letivo.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => { if (!loading) setOpen(next); }}>
       <DialogTrigger asChild>
-        <Button className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500 text-white hover:bg-orange-600 text-sm font-medium">
-          Finalizar Ano
-        </Button>
+        <Button className="flex-1 md:flex-none">Finalizar ano letivo</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Finalizar Ano Letivo de {alunoNome}</DialogTitle>
+          <DialogTitle>Finalizar o ano letivo de {alunoNome}</DialogTitle>
           <DialogDescription>
-            Selecione o status final da matrícula e, opcionalmente, um motivo.
+            O resultado será calculado pelas notas e pautas oficiais. Não é possível escolher
+            aprovação ou reprovação manualmente. Se houver dados por lançar ou decisões por
+            validar, a finalização será bloqueada sem alterar a matrícula.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="flex flex-col gap-2">
-            <label htmlFor="status" className="text-sm font-medium">
-              Status Final
-            </label>
-            <select
-              id="status"
-              value={statusFinal}
-              onChange={(e) => setStatusFinal(e.target.value as 'concluido' | 'reprovado' | '')}
-              className="col-span-3 px-3 py-2 border rounded-md focus:ring-slate-500 focus:border-slate-500"
-              disabled={loading}
-            >
-              <option value="">Selecione...</option>
-              <option value="concluido">Concluído</option>
-              <option value="reprovado">Reprovado</option>
-              {/* Opção para "transferido" pode ser adicionada aqui, mas é um fluxo diferente */}
-            </select>
-          </div>
-          <div className="flex flex-col gap-2">
-            <label htmlFor="motivo" className="text-sm font-medium">
-              Motivo (opcional)
-            </label>
-            <textarea
-              id="motivo"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              className="col-span-3 px-3 py-2 border rounded-md focus:ring-slate-500 focus:border-slate-500"
-              disabled={loading}
-              rows={3}
-            />
-          </div>
+        <div className="grid gap-3 py-4">
+          <label htmlFor="motivo-fim-ano" className="text-sm font-medium">
+            Observação (opcional)
+          </label>
+          <textarea
+            id="motivo-fim-ano"
+            value={motivo}
+            maxLength={500}
+            onChange={(event) => setMotivo(event.target.value)}
+            className="w-full rounded-md border border-border bg-background p-3 text-foreground"
+            disabled={loading}
+            rows={3}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || !statusFinal}>
+          <Button onClick={handleSubmit} disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirmar Finalização
+            Confirmar finalização
           </Button>
         </DialogFooter>
       </DialogContent>

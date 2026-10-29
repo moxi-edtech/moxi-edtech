@@ -1,30 +1,25 @@
 export type BalcaoRematriculaTargetYearInput = {
-  sourceAcademicYear: number;
-  latestStudentAcademicYear: number;
-  openWindowAcademicYear?: number | null;
-  hasCurrentAcademicYearOperation: boolean;
+  /** Ano canónico da sessão seleccionada no Balcão (2026 = 2026/2027). */
+  selectedAcademicYear: number;
 };
 
+/**
+ * A sessão académica seleccionada é o destino do atendimento.
+ *
+ * Nunca inferir destino com ultimaMatricula.ano_letivo + 1: um aluno já
+ * matriculado em 2026/2027 continua a poder consultar/regularizar a sua
+ * operação de 2026/2027, sem saltar indevidamente para 2027/2028.
+ *
+ * Para operar noutro ano, o operador deve escolher explicitamente a respectiva
+ * sessão em anos_letivos, cuja configuração segue o calendário oficial MED.
+ */
 export function resolveBalcaoRematriculaTargetYear({
-  sourceAcademicYear,
-  latestStudentAcademicYear,
-  openWindowAcademicYear,
-  hasCurrentAcademicYearOperation,
+  selectedAcademicYear,
 }: BalcaoRematriculaTargetYearInput): number {
-  if (openWindowAcademicYear != null && Number.isFinite(openWindowAcademicYear)) {
-    return Number(openWindowAcademicYear);
+  if (!Number.isInteger(selectedAcademicYear) || selectedAcademicYear < 1900 || selectedAcademicYear > 3000) {
+    throw new Error("Ano letivo do contexto académico inválido.");
   }
-
-  // Uma operação já existente do ano académico seleccionado deve ser resolvida
-  // antes de avançar o Balcão para o ano seguinte. Isto evita apresentar
-  // 2027/2028 enquanto ainda existe uma rematrícula 2026 paga/pendente.
-  if (hasCurrentAcademicYearOperation) {
-    return sourceAcademicYear;
-  }
-
-  return latestStudentAcademicYear > 0
-    ? latestStudentAcademicYear + 1
-    : sourceAcademicYear + 1;
+  return selectedAcademicYear;
 }
 
 export function shouldBlockClosedRematriculaWindow(input: {

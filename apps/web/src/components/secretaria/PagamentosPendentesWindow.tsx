@@ -405,6 +405,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           responsavelContato={rematricula.responsavelContato ?? ""}
           setResponsavelContato={rematricula.setResponsavelContato}
           anoLetivo={rematricula.anoLetivo}
+          cicloVida={rematricula.cicloVida}
           service={rematricula.service}
           itensPagamento={rematriculaTarget.itens_pagamento}
           paymentAlreadyValidated
@@ -412,6 +413,8 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
           debt={rematricula.debt}
           turmas={rematricula.turmas}
           turmasLoading={rematricula.turmasLoading}
+          turmasError={rematricula.turmasError}
+          onRetryTurmas={rematricula.retryTurmas}
           progressao={rematricula.progressao}
           decisaoResultado={rematricula.decisaoResultado}
           setDecisaoResultado={rematricula.setDecisaoResultado}

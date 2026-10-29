@@ -163,14 +163,23 @@ export async function runFechamentoOrchestration(params: {
 
   const finalizeErrors: Array<{ stage: string; turma_id?: string; matricula_id?: string; error: string }> = [];
   for (const matriculaId of matriculaIds) {
-    const { error } = await supabase.rpc("finalizar_matricula_blindada", {
+    const { data, error } = await supabase.rpc("finalizar_matricula_blindada", {
       p_escola_id: escolaId,
       p_matricula_id: matriculaId,
-      p_motivo: params.motivo ?? "Fechamento acadêmico automático.",
+      p_motivo: params.motivo ?? "Fechamento académico pelo GradeEngine.",
       p_is_override_manual: false,
       p_status_override: null,
     });
-    if (error) finalizeErrors.push({ stage: ESTADOS_FECHAMENTO.FINALIZING_ENROLLMENTS, matricula_id: matriculaId, error: error.message });
+    // RPCs return { ok:false, status:"incompleto" } for missing evidence:
+    // an HTTP 200 without a PostgREST error is not a successful close.
+    if (error || data?.ok !== true || data?.status === "incompleto") {
+      const motivos = Array.isArray(data?.motivos) ? data.motivos.join("; ") : null;
+      finalizeErrors.push({
+        stage: ESTADOS_FECHAMENTO.FINALIZING_ENROLLMENTS,
+        matricula_id: matriculaId,
+        error: error?.message ?? motivos ?? data?.message ?? "Resultado académico incompleto; conferir pautas e disciplinas.",
+      });
+    }
   }
 
   await insertStep(supabase, {
@@ -182,6 +191,24 @@ export async function runFechamentoOrchestration(params: {
     contexto: { failed_matriculas: finalizeErrors.length, total_matriculas: matriculaIds.length },
     error_message: finalizeErrors.length > 0 ? "Falha ao finalizar uma ou mais matrículas." : null,
   });
+
+  // A single unverified result blocks the legal freeze and year rollover.
+  // Preserve valid previous progress in the job, but never report a partial
+  // batch as DONE or mutate the active academic-year pointer.
+  if (fechamentoErrors.length > 0 || finalizeErrors.length > 0) {
+    const errors = [...fechamentoErrors, ...finalizeErrors];
+    await setJobState(supabase, runId, ESTADOS_FECHAMENTO.FAILED, {
+      finished_at: new Date().toISOString(),
+      errors,
+      counters: {
+        total_matriculas: matriculaIds.length,
+        matriculas_finalizadas: matriculaIds.length - finalizeErrors.length,
+        historicos_gerados: 0,
+        motivo: "Academic evidence verification failed; year rollover and legal snapshot are blocked",
+      },
+    });
+    return { failed: true, errors, matriculaIds };
+  }
 
   await setJobState(supabase, runId, ESTADOS_FECHAMENTO.GENERATING_HISTORY);
   await insertStep(supabase, {
@@ -221,6 +248,21 @@ export async function runFechamentoOrchestration(params: {
     contexto: { failed_matriculas: historyErrors.length },
     error_message: historyErrors.length > 0 ? "Falha ao gerar histórico anual de uma ou mais matrículas." : null,
   });
+
+  if (historyErrors.length > 0) {
+    const errors = [...fechamentoErrors, ...finalizeErrors, ...historyErrors];
+    await setJobState(supabase, runId, ESTADOS_FECHAMENTO.FAILED, {
+      finished_at: new Date().toISOString(),
+      errors,
+      counters: {
+        total_matriculas: matriculaIds.length,
+        matriculas_finalizadas: matriculaIds.length,
+        historicos_gerados: Math.max(0, matriculaIds.length - historyErrors.length),
+        motivo: "Legal history snapshot incomplete; year rollover blocked",
+      },
+    });
+    return { failed: true, errors, matriculaIds };
+  }
 
   await setJobState(supabase, runId, ESTADOS_FECHAMENTO.OPENING_NEXT_PERIOD);
   await insertStep(supabase, {

@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { resolveClasseNumero } from "@/lib/rematricula/classe-numero";
 
 export const dynamic = 'force-dynamic';
 
@@ -159,7 +160,9 @@ export async function GET(req: Request) {
       } | null;
     } | null = null;
 
-    if (matriculaId && alunoId && sessionId && anoLetivo && items.length > 0) {
+    // Mesmo quando a view não traz turmas, devolvemos o diagnóstico do RAA
+    // em vez de ocultar a causa com progressao=null e dropdown vazio.
+    if (matriculaId && alunoId && sessionId && anoLetivo) {
       const { data: origem } = await supabase
         .from('matriculas')
         .select('id, aluno_id, status, ano_letivo, turma_id, turmas:turma_id(classe_id, curso_id)')
@@ -181,14 +184,7 @@ export async function GET(req: Request) {
         ? await supabase.from('classes').select('id, nome, numero').eq('escola_id', escolaId).in('id', classeIds)
         : { data: [] };
       const classeById = new Map((classesProgressao || []).map((classe: any) => [classe.id, classe]));
-      const numeroClasse = (classe: any) => {
-        const numero = Number(classe?.numero);
-        if (Number.isFinite(numero) && numero >= 0) return numero;
-        const nome = String(classe?.nome || '');
-        if (/pré[\s-]*escolar/i.test(nome)) return 0;
-        const match = nome.match(/(\d{1,2})\s*(?:ª|a)?/i);
-        return match ? Number(match[1]) : null;
-      };
+      const numeroClasse = resolveClasseNumero;
       const origemClasseNumero = numeroClasse(classeById.get(classeOrigemId));
       let progressionResult: Awaited<ReturnType<typeof resolveRaaProgressionForMatricula>> | null = null;
       let progressionError: string | null = null;

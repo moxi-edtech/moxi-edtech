@@ -1,6 +1,7 @@
 import { classifyRematriculaResponse } from "@/lib/secretaria/rematricula-result";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import type { StudentLifecycle } from "@/lib/matriculas/student-lifecycle";
 
 // ─── Exported Types ──────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ export type RematriculaCardState =
   | "PENDING_ORDER_REVIEW"
   | "RECONCILIATION_REQUIRED"
   | "WINDOW_CLOSED"
+  | "TARGET_YEAR_NOT_CONFIGURED"
   | "SOURCE_RECORD_REQUIRED"
   | "ERROR";
 
@@ -115,6 +117,7 @@ export type ResultadoDecisaoBalcao = "aprovado" | "reprovado" | "concluido";
 
 interface StatusResponse {
   ok: boolean;
+  cicloVida?: StudentLifecycle | null;
   status: RematriculaCardState;
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
   debt: { total: number; count: number } | null;
@@ -146,6 +149,7 @@ interface StatusResponse {
     printUrl: string;
   } | null;
   ano_letivo: { id: string; ano: number; label: string } | null;
+  target_ano_label?: string | null;
   destino_turma_id?: string | null;
   destino_turma?: TurmaOption | null;
   reclassificacao?: {
@@ -241,11 +245,14 @@ export function useRematriculaBalcao(opts: {
   const [service, setService] = useState<StatusResponse["service"]>(null);
   const [debt, setDebt] = useState<StatusResponse["debt"]>(null);
   const [academic, setAcademic] = useState<StatusResponse["academic"]>(null);
+  const [cicloVida, setCicloVida] = useState<StudentLifecycle | null>(null);
   const [pedido, setPedido] = useState<StatusResponse["pedido"]>(null);
   const [comprovante, setComprovante] =
     useState<StatusResponse["comprovante"]>(null);
   const [anoLetivo, setAnoLetivo] =
     useState<StatusResponse["ano_letivo"]>(null);
+  const [targetYearLabel, setTargetYearLabel] = useState<string | null>(null);
+  const [rematriculaWindow, setRematriculaWindow] = useState<StatusResponse["window"] | null>(null);
   const [destinoTurmaId, setDestinoTurmaId] = useState<string | null>(null);
   const [destinoTurma, setDestinoTurma] = useState<StatusResponse["destino_turma"]>(null);
   const [reconciling, setReconciling] = useState(false);
@@ -260,6 +267,9 @@ export function useRematriculaBalcao(opts: {
   const [decisaoObservacao, setDecisaoObservacao] = useState("");
   const [turmasLoading, setTurmasLoading] = useState(false);
   const [turmasFetchedFor, setTurmasFetchedFor] = useState<ResultadoDecisaoBalcao | null>(null);
+  const [turmasError, setTurmasError] = useState<string | null>(null);
+  const turmasRequestGeneration = useRef(0);
+  const statusRequestGeneration = useRef(0);
 
   // ── Modal wizard ────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
@@ -291,10 +301,15 @@ export function useRematriculaBalcao(opts: {
   // ────────────────────────────────────────────────────────────────────────
   const fetchStatus = useCallback(async (destinationTurmaId?: string | null) => {
     if (!opts.alunoId || !opts.matriculaId) {
+      statusRequestGeneration.current += 1;
       setCardState(null);
+      setAnoLetivo(null);
+      setTargetYearLabel(null);
+      setLoading(false);
       return;
     }
 
+    const requestGeneration = ++statusRequestGeneration.current;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -310,6 +325,7 @@ export function useRematriculaBalcao(opts: {
         `/api/secretaria/balcao/rematriculas/status?${params.toString()}`,
       );
       const data: StatusResponse = await res.json();
+      if (requestGeneration !== statusRequestGeneration.current) return;
 
       if (res.ok && data.ok) {
         setApiError(null);
@@ -317,21 +333,27 @@ export function useRematriculaBalcao(opts: {
         setService(data.service);
         setDebt(data.debt);
         setAcademic(data.academic ?? null);
+        setCicloVida(data.cicloVida ?? null);
         setPedido(data.pedido);
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
+        setTargetYearLabel(data.target_ano_label ?? data.ano_letivo?.label ?? null);
+        setRematriculaWindow(data.window ?? null);
         setDestinoTurmaId(data.destino_turma_id ?? null);
         setDestinoTurma(data.destino_turma ?? null);
         setCohort(data.cohort ?? null);
       } else {
         setCardState("ERROR");
+        setCicloVida(null);
         setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
       }
     } catch (e) {
+      if (requestGeneration !== statusRequestGeneration.current) return;
       console.error("[useRematriculaBalcao] Error fetching status:", e);
+      setCardState("ERROR");
       setApiError("Não foi possível atualizar o estado da rematrícula. Verifique a ligação e tente novamente.");
     } finally {
-      setLoading(false);
+      if (requestGeneration === statusRequestGeneration.current) setLoading(false);
     }
   }, [opts.alunoId, opts.matriculaId, opts.academicYearId]);
 
@@ -345,11 +367,16 @@ export function useRematriculaBalcao(opts: {
     setSelectedTurmaId(null);
     setResult(null);
     setApiError(null);
+    turmasRequestGeneration.current += 1;
     setTurmasFetchedFor(null);
     setTurmas([]);
+    setTurmasError(null);
     setProgressao(null);
     setCohort(null);
     setAcademic(null);
+    setCicloVida(null);
+    setTargetYearLabel(null);
+    setRematriculaWindow(null);
     setDecisaoResultado("aprovado");
     setDecisaoFonte("raa");
     setDecisaoMotivo("");
@@ -424,11 +451,14 @@ export function useRematriculaBalcao(opts: {
   const fetchTurmas = useCallback(async (
     decision: ResultadoDecisaoBalcao = decisaoResultado,
     allowManualDecision = false,
+    force = false,
   ) => {
     if (!anoLetivo?.id || !opts.alunoId) return;
-    if (turmasFetchedFor === decision && !allowManualDecision) return;
+    if (turmasFetchedFor === decision && !allowManualDecision && !force) return;
 
+    const requestGeneration = ++turmasRequestGeneration.current;
     setTurmasLoading(true);
+    setTurmasError(null);
     try {
       const params = new URLSearchParams({
         session_id: anoLetivo.id,
@@ -439,9 +469,17 @@ export function useRematriculaBalcao(opts: {
       const res = await fetch(
         `/api/secretaria/turmas-simples?${params.toString()}`,
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (requestGeneration !== turmasRequestGeneration.current) return;
+      if (!res.ok || data.ok !== true || !Array.isArray(data.items)) {
+        setTurmas([]);
+        setProgressao(null);
+        setTurmasFetchedFor(null);
+        setTurmasError(data.error || "Não foi possível carregar as turmas de destino.");
+        return;
+      }
       setProgressao(data.progressao ?? null);
-      if (data.items && Array.isArray(data.items)) {
+      if (Array.isArray(data.items)) {
         setTurmas(
           data.items.map((t: TurmaPayload) => ({
             id: t.id,
@@ -458,9 +496,13 @@ export function useRematriculaBalcao(opts: {
         setTurmasFetchedFor(decision);
       }
     } catch (e) {
+      if (requestGeneration !== turmasRequestGeneration.current) return;
       console.error("[useRematriculaBalcao] Error fetching turmas:", e);
+      setTurmas([]);
+      setTurmasFetchedFor(null);
+      setTurmasError("Falha de comunicação ao consultar as turmas. Tente novamente.");
     } finally {
-      setTurmasLoading(false);
+      if (requestGeneration === turmasRequestGeneration.current) setTurmasLoading(false);
     }
   }, [anoLetivo?.id, decisaoResultado, opts.alunoId, opts.matriculaId, turmasFetchedFor]);
 
@@ -760,9 +802,12 @@ export function useRematriculaBalcao(opts: {
     service,
     debt,
     academic,
+    cicloVida,
     pedido,
     comprovante,
     anoLetivo,
+    targetYearLabel,
+    rematriculaWindow,
     destinoTurmaId,
     destinoTurma,
     cohort,
@@ -775,6 +820,8 @@ export function useRematriculaBalcao(opts: {
     // Turmas
     turmas,
     turmasLoading,
+    turmasError,
+    retryTurmas: () => fetchTurmas(decisaoResultado, reconciliationMode, true),
     progressao,
     decisaoResultado,
     setDecisaoResultado,

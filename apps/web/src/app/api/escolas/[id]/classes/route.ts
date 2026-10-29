@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { type CurriculumKey } from "@/lib/academico/curriculum-presets";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { classIdentityFromName, parseAcademicClassNumber } from "@/lib/academico/class-level";
 
 const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number }> = {
   pre_escolar: { min: 0, max: 0 },
@@ -41,11 +42,6 @@ const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number 
   tec_producao_metalomecanica: { min: 10, max: 13 },
   tec_informatica: { min: 10, max: 13 },
   tec_gestao_sistemas: { min: 10, max: 13 },
-};
-
-const parseClasseNumero = (nome: string) => {
-  const match = nome.match(/\d{1,2}/);
-  return match ? Number(match[0]) : null;
 };
 
 const normalizeClasseLabel = (value: string) =>
@@ -85,7 +81,7 @@ export async function GET(
     {
       let query = (supabase as any)
         .from('classes')
-        .select('id, nome, descricao, ordem, nivel, curso_id, ano_letivo_id, turno, carga_horaria_semanal, min_disciplinas_core')
+        .select('id, nome, numero, descricao, ordem, nivel, curso_id, ano_letivo_id, turno, carga_horaria_semanal, min_disciplinas_core')
         .eq('escola_id', userEscolaId);
 
       if (cursoId) query = query.eq('curso_id', cursoId);
@@ -113,7 +109,7 @@ export async function GET(
         // Retry simples (opcional)
         let retry = (supabase as any)
           .from('classes')
-          .select('id, nome, ordem')
+          .select('id, nome, numero, ordem, curso_id')
           .eq('escola_id', userEscolaId);
 
         if (cursor) {
@@ -140,6 +136,7 @@ export async function GET(
       const payload = rows.map((r: any) => ({
       id: r.id,
       nome: r.nome,
+      numero: r.numero ?? null,
       descricao: r.descricao ?? undefined,
       ordem: r.ordem ?? 0,
       nivel: r.nivel ?? undefined,
@@ -221,8 +218,11 @@ export async function POST(
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
 
-    // Calcula ordem apenas se não foi fornecida
-    let ordem = parsed.data.ordem;
+    // A classe numerada tem a sua ordem académica canónica, não uma posição
+    // arbitrária no menu. Pré-Escolar não recebe numero=0 (DB aceita 1..13).
+    const classIdentity = classIdentityFromName(parsed.data.nome);
+    const classNum = parseAcademicClassNumber(parsed.data.nome);
+    let ordem = classIdentity.ordem ?? parsed.data.ordem;
     if (ordem === undefined) {
       ordem = 1;
       try {
@@ -241,6 +241,7 @@ export async function POST(
       escola_id: userEscolaId,
       nome: parsed.data.nome,
       ordem,
+      numero: classIdentity.numero,
       curso_id: parsed.data.curso_id,
     };
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
@@ -266,7 +267,6 @@ export async function POST(
     }
 
     if (cursoInfo.curriculum_key) {
-      const classNum = parseClasseNumero(parsed.data.nome);
       if (!classNum) {
         const { data: presetSubjects, error: presetSubjectsErr } = await (supabase as any)
           .from("curriculum_preset_subjects")
@@ -315,7 +315,7 @@ export async function POST(
     const { data: ins, error } = await (supabase as any)
       .from('classes')
       .insert(payload)
-      .select('id, nome, nivel, descricao, ordem')
+      .select('id, nome, numero, nivel, descricao, ordem, curso_id')
       .single();
 
     if (error) {

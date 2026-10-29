@@ -1,0 +1,90 @@
+name: Academic Lifecycle Evidence and Legal Close
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/**"
+      - "apps/web/src/app/secretaria/**/operacoes-academicas/**"
+      - "apps/web/src/lib/secretaria/fechamentoAcademicoOrchestrator.ts"
+      - "apps/web/tests/unit/lifecycle-evidence-reconciliation.spec.ts"
+      - "apps/web/tests/unit/academic-transition-comparison.spec.ts"
+      - "apps/web/tests/unit/academic-course-class-linkage.spec.ts"
+      - "apps/web/tests/unit/enrollment-create-confirm-close-atomic.spec.ts"
+      - "apps/web/src/app/api/escolas/**/matriculas/novo/route.ts"
+      - "apps/web/src/app/api/secretaria/matriculas/**/finalizar/route.ts"
+      - "apps/web/src/components/secretaria/alunos/FinalizarMatriculaButton.tsx"
+      - "supabase/migrations/*enrollment_context_atomic*.sql"
+      - "supabase/migrations/*enrollment_view_academic_year*.sql"
+      - "apps/web/src/app/api/escolas/**/matriculas/route.ts"
+      - "apps/web/src/lib/academico/class-level.ts"
+      - "apps/web/src/lib/academico/curriculum-apply.ts"
+      - "apps/web/src/app/api/escolas/**/classes/route.ts"
+      - "supabase/migrations/*global_academic_class*.sql"
+      - "apps/web/src/lib/rematricula/compare-next-year-enrollment.ts"
+      - "supabase/migrations/*curtume_class_metadata*.sql"
+      - "supabase/migrations/*curtume_legal_history*.sql"
+      - "supabase/migrations/*lifecycle*.sql"
+      - "supabase/ops/applied_lifecycle_20261029/**"
+      - "supabase/ops/tests/regression_student_lifecycle_evidence_20261029.sql"
+      - "scripts/ci/lifecycle-migration-order.mjs"
+      - "scripts/ci/guard-fiscal-scope.mjs"
+      - "scripts/ci/tests/guard-fiscal-scope.spec.mjs"
+      - ".github/workflows/lifecycle-evidence-reconciliation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Cross-portal evidence, history and legal lock unit regressions
+        run: |
+          cd apps/web
+          node --test --import tsx \
+            tests/unit/lifecycle-evidence-reconciliation.spec.ts \
+            tests/unit/academic-transition-comparison.spec.ts \
+            tests/unit/academic-course-class-linkage.spec.ts \
+            tests/unit/enrollment-create-confirm-close-atomic.spec.ts \
+            tests/unit/student-lifecycle-ssot.spec.ts \
+            tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts
+      - name: TypeScript
+        run: pnpm -C apps/web typecheck
+      - name: ESLint on academic reconciliation and orchestrator
+        run: |
+          pnpm -C apps/web exec eslint \
+            'src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/route.ts' \
+            'src/app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx' \
+            'src/app/secretaria/(portal-secretaria)/operacoes-academicas/page.tsx' \
+            src/lib/secretaria/fechamentoAcademicoOrchestrator.ts \
+            tests/unit/lifecycle-evidence-reconciliation.spec.ts \
+            tests/unit/academic-transition-comparison.spec.ts \
+            tests/unit/academic-course-class-linkage.spec.ts \
+            tests/unit/enrollment-create-confirm-close-atomic.spec.ts \
+            "src/app/api/escolas/[id]/matriculas/novo/route.ts" \
+            "src/app/api/secretaria/matriculas/[matriculaId]/finalizar/route.ts" \
+            src/components/secretaria/alunos/FinalizarMatriculaButton.tsx \
+            src/lib/academico/class-level.ts \
+            src/lib/academico/curriculum-apply.ts \
+            "src/app/api/escolas/[id]/classes/route.ts" \
+            src/lib/rematricula/compare-next-year-enrollment.ts \
+            --max-warnings 10000
+      - name: Never activate the fiscal engine
+        run: |
+          git diff --check
+          node --test scripts/ci/tests/guard-fiscal-scope.spec.mjs
+          node scripts/ci/guard-fiscal-scope.mjs "origin/${{ github.base_ref }}"
+          node scripts/ci/lifecycle-migration-order.mjs

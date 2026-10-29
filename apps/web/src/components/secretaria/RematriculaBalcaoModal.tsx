@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { canSelectRematriculaDestination } from "@/lib/rematricula/balcao-destino";
+import type { StudentLifecycle } from "@/lib/matriculas/student-lifecycle";
 import {
   Banknote,
   Check,
@@ -38,6 +40,7 @@ interface RematriculaBalcaoModalProps {
   setResponsavelContato: (value: string) => void;
   // Academic
   anoLetivo: { id: string; ano: number; label: string };
+  cicloVida?: StudentLifecycle | null;
   // Financial
   service: { id: string; nome: string; valor_base: number };
   itensPagamento?: RematriculaPaymentItem[];
@@ -53,6 +56,8 @@ interface RematriculaBalcaoModalProps {
   // Turmas
   turmas: TurmaOption[];
   turmasLoading: boolean;
+  turmasError?: string | null;
+  onRetryTurmas?: () => void;
   progressao: ProgressaoBalcao | null;
   decisaoResultado: ResultadoDecisaoBalcao;
   setDecisaoResultado: (value: ResultadoDecisaoBalcao) => void;
@@ -157,6 +162,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     responsavelContato,
     setResponsavelContato,
     anoLetivo,
+    cicloVida = null,
     service,
     itensPagamento = [],
     itensDisponiveis = [],
@@ -170,6 +176,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     onRegularizeDebt,
     turmas,
     turmasLoading,
+    turmasError = null,
+    onRetryTurmas,
     progressao,
     decisaoResultado,
     setDecisaoResultado,
@@ -259,12 +267,18 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     0,
   );
 
+  // A selecção guardada num rascunho pode já não pertencer ao ano/curso atual
+  // ou ter ficado sem vagas. Nunca aceitar apenas um ID presente no estado.
+  const selectableDestinationId = turmas.some((turma) =>
+    turma.id === selectedTurmaId &&
+    (turma.capacidade_maxima === null || turma.ocupacao_atual < turma.capacidade_maxima)
+  ) ? selectedTurmaId : null;
   const academicReady = reconciliationOnly
-    ? (academicOnly || Boolean(selectedTurmaId))
+    ? (academicOnly || Boolean(selectableDestinationId))
       && !(decisaoFonte === "declaracao_administrativa_escola" && !decisaoMotivo.trim())
     : skipTurmaSelection
       ? true
-      : ["aprovado", "condicional"].includes(progressao?.estado ?? "") && Boolean(selectedTurmaId);
+      : canSelectRematriculaDestination(progressao, selectableDestinationId);
 
   const canSubmit =
     !submitting &&
@@ -296,6 +310,13 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       : step === 2
         ? "Rever cobrança"
         : "Confirmar rematrícula";
+
+  // Revisão histórica é informativa: a elegibilidade continua decidida pelo RAA.
+  const divergenciasHistoricas = cicloVida?.matriculas.filter((row) =>
+    row.anoLetivo != null && row.anoLetivo < anoLetivo.ano && row.pendencias.some((issue) =>
+      issue.codigo === "ORIGEM_PENDENTE_COM_DESTINO_ATIVO" || issue.codigo === "HISTORICO_EM_CONSTRUCAO",
+    ),
+  ).length ?? 0;
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -378,7 +399,14 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
             />
           ) : step === 1 ? (
             /* ── Step 1: Academic summary ───────────────────────── */
-            <StepAcademico
+            <div className="space-y-3">
+              {divergenciasHistoricas > 0 && (
+                <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+                  <strong>Histórico académico a conciliar</strong>
+                  <p className="mt-1">Existe uma matrícula anterior com fecho ou histórico pendente de validação. A decisão desta rematrícula continua sujeita ao RAA; nenhum resultado é presumido.</p>
+                </div>
+              )}
+              <StepAcademico
               alunoNome={alunoNome}
               alunoProcesso={alunoProcesso}
               turmaAtual={turmaAtual}
@@ -388,6 +416,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               anoLetivo={anoLetivo}
               turmas={turmas}
               turmasLoading={turmasLoading}
+              turmasError={turmasError}
+              onRetryTurmas={onRetryTurmas}
               progressao={progressao}
               cohort={cohort}
               reconciliationOnly={reconciliationOnly}
@@ -404,7 +434,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               setSelectedTurmaId={setSelectedTurmaId}
               selectRef={firstFocusRef as React.RefObject<HTMLSelectElement>}
               compact={embedded}
-            />
+              />
+            </div>
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
             <StepFinanceiro
@@ -491,6 +522,8 @@ function StepAcademico({
   anoLetivo,
   turmas,
   turmasLoading,
+  turmasError,
+  onRetryTurmas,
   progressao,
   cohort,
   reconciliationOnly,
@@ -517,6 +550,8 @@ function StepAcademico({
   anoLetivo: { id: string; ano: number; label: string };
   turmas: TurmaOption[];
   turmasLoading: boolean;
+  turmasError?: string | null;
+  onRetryTurmas?: () => void;
   progressao: ProgressaoBalcao | null;
   cohort: { codigo: string; nome: string; modo: string } | null;
   reconciliationOnly: boolean;
@@ -691,7 +726,7 @@ function StepAcademico({
           ref={selectRef}
           value={selectedTurmaId || ""}
           onChange={(e) => setSelectedTurmaId(e.target.value || null)}
-          disabled={turmasLoading}
+          disabled={turmasLoading || Boolean(turmasError) || turmas.length === 0}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5
             text-sm font-medium text-slate-900 outline-none
             focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20
@@ -717,10 +752,27 @@ function StepAcademico({
             );
           })}
         </select>
-        {!turmasLoading && turmas.length === 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            Não há turma elegível para a decisão devolvida pelo RAA no ano de destino.
-            Corrija a configuração da classe/turma ou resolva a situação académica indicada antes de continuar.
+        {!turmasLoading && (turmasError || turmas.length === 0) && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950" role="status">
+            <strong className="block">
+              {turmasError ? "Não foi possível carregar as turmas" : "Nenhuma turma de destino disponível"}
+            </strong>
+            <p className="mt-1">
+              {turmasError
+                ?? progressao?.orientacao?.proximo_passo
+                ?? (progressao?.modo === "retencao"
+                  ? "Confirme que existe uma turma da mesma classe no ano de destino."
+                  : "Verifique a decisão do RAA e a configuração académica do ano de destino.")}
+            </p>
+            {onRetryTurmas && (
+              <button
+                type="button"
+                onClick={onRetryTurmas}
+                className="mt-3 rounded-xl border border-amber-300 bg-card px-3 py-2 font-bold text-amber-900 hover:bg-amber-100"
+              >
+                Verificar turmas novamente
+              </button>
+            )}
           </div>
         )}
         {selectedTurmaId && turmas.find((turma) => turma.id === selectedTurmaId) && (

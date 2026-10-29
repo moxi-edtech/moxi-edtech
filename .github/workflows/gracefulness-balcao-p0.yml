@@ -28,12 +28,29 @@ on:
       - "apps/web/src/app/api/secretaria/matriculas/**/declaracao/route.ts"
       - "apps/web/src/components/secretaria/RematriculaBalcaoModal.tsx"
       - "apps/web/src/hooks/useRematriculaBalcao.ts"
+      - "apps/web/src/app/api/secretaria/rematricula/janelas/route.ts"
+      - "apps/web/src/app/api/secretaria/rematricula/route.ts"
+      - "apps/web/src/app/api/secretaria/rematricula/confirmar/route.ts"
+      - "apps/web/src/app/secretaria/(portal-secretaria)/rematricula/confirmar/page.tsx"
+      - "apps/web/src/lib/matriculas/student-lifecycle.ts"
+      - "apps/web/src/lib/matriculas/load-student-lifecycle.ts"
+      - "apps/web/tests/unit/student-lifecycle-ssot.spec.ts"
+      - "supabase/ops/tests/regression_student_lifecycle_backend_ssot.sql"
+      - "apps/web/src/lib/secretaria/rematricula-window.ts"
+      - "apps/web/src/components/secretaria/RematriculaWindowRecovery.tsx"
+      - "apps/web/tests/unit/rematricula-window-recovery.spec.ts"
       - "apps/web/src/lib/documentos/emissaoClient.ts"
       - "apps/web/src/lib/financeiro/checkout-payment-state.ts"
       - "apps/web/src/lib/financeiro/mensalidades-preview.ts"
       - "apps/web/src/lib/secretaria/rematricula-result.ts"
       - "apps/web/src/lib/rematricula/eligibility.ts"
       - "apps/web/src/lib/rematricula/debt.ts"
+      - "apps/web/src/lib/rematricula/classe-numero.ts"
+      - "apps/web/src/lib/rematricula/balcao-destino.ts"
+      - "apps/web/tests/unit/rematricula-classe-numero.spec.ts"
+      - "apps/web/tests/unit/rematricula-balcao-destino.spec.ts"
+      - "apps/web/tests/unit/rematricula-balcao-year-guard.spec.ts"
+      - "apps/web/tests/unit/balcao-rematricula-target-year.spec.ts"
       - "apps/web/src/lib/academico/raa-progression-server.ts"
       - "apps/web/tests/unit/rematricula-eligibility.spec.ts"
       - "apps/web/tests/unit/rematricula-debt.spec.ts"
@@ -81,7 +98,13 @@ jobs:
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
-            tests/unit/rematricula-debt.spec.ts
+            tests/unit/rematricula-debt.spec.ts \
+            tests/unit/rematricula-classe-numero.spec.ts \
+            tests/unit/rematricula-balcao-destino.spec.ts \
+            tests/unit/rematricula-balcao-year-guard.spec.ts \
+            tests/unit/balcao-rematricula-target-year.spec.ts \
+            tests/unit/rematricula-window-recovery.spec.ts \
+            tests/unit/student-lifecycle-ssot.spec.ts
 
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
@@ -104,6 +127,9 @@ jobs:
             src/app/api/financeiro/orcamento/matricula/route.ts \
             src/app/api/secretaria/balcao/rematriculas/status/route.ts \
             src/app/api/secretaria/turmas-simples/route.ts \
+            src/app/api/secretaria/rematricula/janelas/route.ts \
+            src/lib/secretaria/rematricula-window.ts \
+            src/components/secretaria/RematriculaWindowRecovery.tsx \
             src/app/api/aluno/rematricula/status/route.ts \
             src/app/api/aluno/rematricula/iniciar/route.ts \
             src/app/api/aluno/rematricula/confirmar/route.ts \
@@ -133,6 +159,8 @@ jobs:
             src/lib/secretaria/rematricula-result.ts \
             src/lib/rematricula/eligibility.ts \
             src/lib/rematricula/debt.ts \
+            src/lib/rematricula/classe-numero.ts \
+            src/lib/rematricula/balcao-destino.ts \
             src/lib/academico/raa-progression-server.ts \
             tests/unit/checkout-payment-state.spec.ts \
             tests/unit/command-center-registry.spec.ts \
@@ -140,6 +168,17 @@ jobs:
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
             tests/unit/rematricula-debt.spec.ts \
+            tests/unit/rematricula-classe-numero.spec.ts \
+            tests/unit/rematricula-balcao-destino.spec.ts \
+            tests/unit/rematricula-balcao-year-guard.spec.ts \
+            tests/unit/balcao-rematricula-target-year.spec.ts \
+            tests/unit/rematricula-window-recovery.spec.ts \
+            tests/unit/student-lifecycle-ssot.spec.ts \
+            src/lib/matriculas/student-lifecycle.ts \
+            src/lib/matriculas/load-student-lifecycle.ts \
+            src/app/api/secretaria/rematricula/route.ts \
+            src/app/api/secretaria/rematricula/confirmar/route.ts \
+            "src/app/secretaria/(portal-secretaria)/rematricula/confirmar/page.tsx" \
             --max-warnings 10000
 
 
@@ -170,6 +209,9 @@ jobs:
 
       - name: Class rectification academic and financial linkage contract
         run: node scripts/ci/class-rectification-contract.mjs
+
+      - name: Lifecycle migration order and SSOT final replay contract
+        run: node scripts/ci/lifecycle-migration-order.mjs
 
       - name: Bootstrap minimal Balcao contract
         env:
