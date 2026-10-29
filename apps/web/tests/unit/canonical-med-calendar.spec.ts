@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildCanonicalMedCalendarPlan,
+  buildCanonicalMedCalendarSkeleton,
   CanonicalCalendarError,
   type MedCourseProfile,
   type MedCourseOffering,
@@ -163,4 +164,33 @@ test("A contradictory global flag cannot bypass explicit grade restrictions", ()
   const matched = plan.events.filter((e) => e.source_item_id === "ninth-only");
   assert.equal(matched.length, 1);
   assert.equal(matched[0].offering_id, "regular-9");
+});
+
+test("The official year can be initialized before any school course is installed", () => {
+  const plan = buildCanonicalMedCalendarSkeleton({ calendar, profiles });
+  assert.equal(plan.periods.length, 3);
+  assert.deepEqual(plan.events, []);
+  assert.deepEqual(plan.selections, []);
+  assert.equal(plan.courseCount, 0);
+});
+test("Academic period source and UUID provenance stay stable when school courses are added", () => {
+  const skeleton = buildCanonicalMedCalendarSkeleton({ calendar, profiles });
+  const afterCourses = buildCanonicalMedCalendarPlan({
+    calendar, profiles,
+    offerings: [offerings[1]],
+    selections: [selections[1]],
+  });
+  assert.deepEqual(
+    afterCourses.periods.map((p) => [p.source_template_id, p.source_item_id]),
+    skeleton.periods.map((p) => [p.source_template_id, p.source_item_id]),
+  );
+});
+test("The setup endpoint uses one atomic database RPC rather than separate writes", () => {
+  const { readFileSync } = require("node:fs") as typeof import("node:fs");
+  const { resolve } = require("node:path") as typeof import("node:path");
+  const source = readFileSync(resolve(process.cwd(), "src/lib/academico/prepare-canonical-calendar.ts"), "utf8");
+  assert.match(source, /aplicar_calendario_med_canonico_v1/);
+  assert.match(source, /allowEmptyOfferings/);
+  assert.doesNotMatch(source, /upsert_bulk_periodos_letivos/);
+  assert.doesNotMatch(source, /setup_active_ano_letivo/);
 });
