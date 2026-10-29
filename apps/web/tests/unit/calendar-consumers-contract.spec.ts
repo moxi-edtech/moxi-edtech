@@ -75,3 +75,16 @@ test("Atomicity is enforced by PostgreSQL with rollback and source tests in CI",
   assert.match(regression, /TEST_ATOMIC_INJECTED_FAILURE/);
   assert.match(regression, /failed event write left a partial year/);
 });
+
+test("Legacy mixed-subsystem reconciliation cannot replace per-course official events", () => {
+  const old = readFileSync(resolve(process.cwd(),
+    "../../supabase/ops/reconcile_klasse_school_2026_2027_calendar.sql"), "utf8");
+  const audit = readFileSync(resolve(process.cwd(),
+    "../../supabase/ops/audit_klasse_2026_2027_course_calendars.sql"), "utf8");
+  assert.match(old, /COURSE_CALENDAR_RECONCILIATION_REQUIRED/);
+  assert.match(old, /o.education_subsystem <> 'REGULAR_ADULTOS'/);
+  assert.match(audit, /periodo_sincronizado_med/);
+  assert.match(audit, /PERFIL_COMPATIVEL/);
+  assert.match(audit, /ev.offering_id/);
+  assert.doesNotMatch(audit, /\b(UPDATE|DELETE|INSERT)\s+(?:INTO|FROM|public\.)/i);
+});
