@@ -175,7 +175,7 @@ CREATE POLICY exame_componentes_insert_v2 ON public.exame_componentes
   FOR INSERT TO authenticated WITH CHECK (public.user_can_access_raa_school(escola_id)
   AND public.user_has_role_in_school(escola_id, ARRAY['professor','secretaria','admin','admin_escola','staff_admin','diretor']::text[])
   AND EXISTS (SELECT 1 FROM public.exame_sessoes s
-      WHERE s.id=exame_sessao_id AND s.escola_id=escola_id));
+      WHERE s.id=exame_componentes.exame_sessao_id AND s.escola_id=exame_componentes.escola_id));
 REVOKE ALL ON TABLE public.exame_componentes FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT ON TABLE public.exame_componentes TO authenticated;
 
