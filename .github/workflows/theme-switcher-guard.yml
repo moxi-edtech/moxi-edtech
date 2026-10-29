@@ -46,6 +46,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web test:unit:theme
+      - run: node --test apps/web/tests/unit/theme-portal-isolation.spec.mjs
       - run: node --test apps/web/tests/unit/visual-contrast.spec.mjs
       - run: node --test apps/web/tests/unit/module-switcher-removal.spec.mjs
       - run: node --test apps/web/tests/unit/admin-theme-coverage.spec.mjs

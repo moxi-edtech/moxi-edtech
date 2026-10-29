@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { parseThemePreference, resolveDarkTheme, type ThemePreference } from "@/lib/theme-preference";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { isLightOnlyPortalPath, parseThemePreference, resolveDarkTheme, type ThemePreference } from "@/lib/theme-preference";
+import { usePathname } from "next/navigation";
 
 const STORAGE_KEY = "klasse-theme";
 type ThemeContextValue = {
@@ -20,14 +21,16 @@ function readPreference(): ThemePreference {
   }
 }
 
-function applyTheme(preference: ThemePreference): boolean {
-  const dark = resolveDarkTheme(preference, window.matchMedia("(prefers-color-scheme: dark)").matches);
+function applyTheme(preference: ThemePreference, lightOnlyPortal: boolean): boolean {
+  const dark = !lightOnlyPortal && resolveDarkTheme(preference, window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.classList.toggle("dark", dark);
   document.documentElement.style.colorScheme = dark ? "dark" : "light";
   return dark;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const lightOnlyPortal = isLightOnlyPortalPath(pathname);
   const [preference, setPreference] = useState<ThemePreference>("system");
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -44,14 +47,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  useEffect(() => {
+  // On client-side navigation, switch themes before the new portal paints.
+  useLayoutEffect(() => {
     if (!mounted) return;
-    const sync = () => setIsDark(applyTheme(preference));
+    const sync = () => setIsDark(applyTheme(preference, lightOnlyPortal));
     sync();
     const query = window.matchMedia("(prefers-color-scheme: dark)");
     query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
-  }, [mounted, preference]);
+  }, [mounted, preference, lightOnlyPortal]);
 
   const setTheme = useCallback((next: ThemePreference) => {
     const value = parseThemePreference(next);
@@ -61,8 +65,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // Continuar sem persistência se localStorage estiver indisponível.
     }
     setPreference(value);
-    setIsDark(applyTheme(value));
-  }, []);
+    setIsDark(applyTheme(value, lightOnlyPortal));
+  }, [lightOnlyPortal]);
 
   return (
     <ThemeContext.Provider value={{ preference, isDark, mounted, setTheme }}>

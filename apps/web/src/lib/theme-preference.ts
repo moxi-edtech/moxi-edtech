@@ -7,3 +7,10 @@ export function parseThemePreference(value: unknown): ThemePreference {
 export function resolveDarkTheme(value: ThemePreference, systemDark: boolean): boolean {
   return value === "dark" || (value === "system" && systemDark);
 }
+
+/** The student/teacher portals remain light-only until their theme UI is supported. */
+export const LIGHT_ONLY_PORTAL_PATH_PATTERN = /^(?:\/(?:aluno|professor)|\/escola\/[^/]+\/(?:aluno|professor))(?:\/|$)/;
+
+export function isLightOnlyPortalPath(pathname: string | null | undefined): boolean {
+  return LIGHT_ONLY_PORTAL_PATH_PATTERN.test(pathname ?? "");
+}

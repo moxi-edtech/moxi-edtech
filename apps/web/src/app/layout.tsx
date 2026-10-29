@@ -8,12 +8,14 @@ import SessionLockProvider from "@/components/session/SessionLockProvider";
 import { UserRoleProvider } from "@/components/auth/UserRoleProvider";
 import SWRProvider from "@/components/providers/SWRProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { LIGHT_ONLY_PORTAL_PATH_PATTERN } from "@/lib/theme-preference";
 
 // Aplicar o tema antes do primeiro paint, sem hidratação dependente do browser.
 const themeInitScript = `(() => {
   try {
     const saved = localStorage.getItem("klasse-theme") ?? localStorage.getItem("theme");
-    const dark = saved === "dark" || (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+    const lightOnlyPortal = new RegExp(${JSON.stringify(LIGHT_ONLY_PORTAL_PATH_PATTERN.source)}).test(location.pathname);
+    const dark = !lightOnlyPortal && (saved === "dark" || (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches));
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.colorScheme = dark ? "dark" : "light";
   } catch {}
