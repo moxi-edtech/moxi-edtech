@@ -1,5 +1,9 @@
 # Command Center / Balcão — estado verificado e backlog de homologação
 
+> **Reconciliação em 29/10/2026:** este documento regista decisões e evidências históricas do período indicado no título. Números de produção e afirmações de deployment são fotografias da data de corte, **não** medições atuais. A disponibilidade de APIs, migrations, estado da `main` e homologação deve ser revalidada antes de executar qualquer ação. Não criar uma fonte de horários paralela nem ativar RLS por inferência.
+
+> **ARQUIVO HISTÓRICO (22/10):** os estados «não integrado», «não publicado» e «PR draft» abaixo deixaram de representar o produto após os merges [#252](https://github.com/moxi-edtech/moxi-edtech/pull/252) e [#253](https://github.com/moxi-edtech/moxi-edtech/pull/253). Para estado atual, migrations, polos e gates de homologação, consulte [23/10/2026](estado-atual-20261023.md).
+
 **Data de corte:** 22/10/2026 · **Estado:** implementação em revisão; **não homologado**, **não integrado**, **não publicado**.  
 **Repositório:** `moxi-edtech/moxi-edtech` · **Fonte desta actualização:** código e GitHub Actions nos HEADs abaixo.  
 **Padrão normativo:** [Graciosidade no KLASSE](../product/graciosidade.md): contexto → estado → acção segura → resultado comprovado → próximo passo → recuperação.
