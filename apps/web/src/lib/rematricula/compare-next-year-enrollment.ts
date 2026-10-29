@@ -1,4 +1,4 @@
-import { resolveClasseNumero } from "@/lib/rematricula/classe-numero";
+import { resolveClasseNumero } from "./classe-numero";
 
 /**
  * Administrative comparison only. A next-year enrollment is NOT evidence
