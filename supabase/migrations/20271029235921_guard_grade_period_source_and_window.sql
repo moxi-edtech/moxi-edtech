@@ -489,4 +489,56 @@ CREATE TRIGGER trg_guard_grade_period_source_and_window
 BEFORE INSERT OR UPDATE ON public.notas
 FOR EACH ROW EXECUTE FUNCTION public.guard_grade_period_source_and_window();
 
+-- Protect the source of truth even when an authorized client invokes the
+-- existing SECURITY DEFINER upsert_bulk_periodos_letivos RPC directly.
+-- A date edit is allowed only when it matches a published official MED item.
+-- Existing unlinked 2026 records must be reconciled; never silently relinked.
+CREATE OR REPLACE FUNCTION public.guard_official_grade_period_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path TO 'pg_catalog', 'public'
+AS $official_period$
+DECLARE
+  v_year integer;
+BEGIN
+  SELECT a.ano INTO v_year
+  FROM public.anos_letivos a
+  WHERE a.id = NEW.ano_letivo_id AND a.escola_id = NEW.escola_id;
+  IF v_year IS NULL THEN
+    RAISE EXCEPTION 'DATA: O período não pertence ao ano letivo desta escola.';
+  END IF;
+
+  IF v_year < 2026 OR NEW.tipo::text <> 'TRIMESTRE' THEN
+    RETURN NEW;
+  END IF;
+  IF NEW.source_template_id IS NULL OR NEW.source_item_id IS NULL
+     OR NEW.offering_id IS NOT NULL THEN
+    RAISE EXCEPTION 'OFFICIAL_CALENDAR_SOURCE_MISMATCH: A origem oficial do trimestre é obrigatória.';
+  END IF;
+
+  PERFORM 1
+  FROM public.calendario_template_items i
+  JOIN public.calendario_templates t ON t.id = i.template_id
+  WHERE t.id = NEW.source_template_id
+    AND i.id = NEW.source_item_id
+    AND t.ano_base = v_year
+    AND t.is_oficial IS TRUE
+    AND t.estado = 'PUBLICADO'
+    AND i.tipo::text = 'PERIODO_LETIVO'
+    AND i.numero = NEW.numero
+    AND i.data_inicio = NEW.data_inicio
+    AND i.data_fim = NEW.data_fim;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'OFFICIAL_CALENDAR_SOURCE_MISMATCH: As datas do trimestre não correspondem ao decreto publicado.';
+  END IF;
+  RETURN NEW;
+END;
+$official_period$;
+
+DROP TRIGGER IF EXISTS trg_guard_official_grade_period_write ON public.periodos_letivos;
+CREATE TRIGGER trg_guard_official_grade_period_write
+BEFORE INSERT OR UPDATE ON public.periodos_letivos
+FOR EACH ROW EXECUTE FUNCTION public.guard_official_grade_period_write();
+
 COMMIT;
