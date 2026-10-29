@@ -81,6 +81,51 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: "O ano letivo encerrado não pode ser alterado.", code: "ACADEMIC_YEAR_CLOSED" }, { status: 409 });
     }
 
+    let periodsForWrite = body.periodos;
+    if (context.anoLetivoLabel.startsWith("2026/")) {
+      const [{ data: currentYear, error: yearReadError }, { data: configured, error: periodReadError }] = await Promise.all([
+        supabase.from("anos_letivos").select("data_inicio,data_fim")
+          .eq("id", body.ano_letivo_id).eq("escola_id", escolaId).maybeSingle(),
+        supabase.from("periodos_letivos")
+          .select("id,numero,tipo,data_inicio,data_fim,trava_notas_em,source_template_id")
+          .eq("ano_letivo_id", body.ano_letivo_id).eq("escola_id", escolaId)
+          .eq("tipo", "TRIMESTRE"),
+      ]);
+      if (yearReadError || periodReadError) throw yearReadError ?? periodReadError;
+      const actual = configured ?? [];
+      const byNumber = new Map(actual.map((periodo) => [Number(periodo.numero), periodo]));
+      if (!currentYear || currentYear.data_inicio !== body.data_inicio ||
+          currentYear.data_fim !== body.data_fim ||
+          actual.length !== 3 || body.periodos.length !== 3 ||
+          body.periodos.some((periodo) => {
+            const original = byNumber.get(periodo.numero);
+            return !original || original.source_template_id === null ||
+              periodo.tipo !== "TRIMESTRE" ||
+              (periodo.id && periodo.id !== original.id) ||
+              periodo.data_inicio !== original.data_inicio || periodo.data_fim !== original.data_fim;
+          })) {
+        return NextResponse.json({
+          ok: false, code: "OFFICIAL_CALENDAR_CHANGE_REQUIRES_RECONCILIATION",
+          error: "Para este ano, as datas oficiais não podem ser substituídas por um ajuste manual.",
+        }, { status: 409 });
+      }
+      periodsForWrite = body.periodos.map((periodo) => ({
+        ...periodo,
+        // Omission means retain the existing deadline, not implicitly reopen.
+        trava_notas_em: periodo.trava_notas_em === undefined
+          ? byNumber.get(periodo.numero)?.trava_notas_em ?? null
+          : periodo.trava_notas_em,
+      }));
+      if (periodsForWrite.some((periodo) =>
+        periodo.trava_notas_em !== byNumber.get(periodo.numero)?.trava_notas_em) &&
+          !body.motivo) {
+        return NextResponse.json({
+          ok: false, code: "CALENDAR_LOCK_CHANGE_REASON_REQUIRED",
+          error: "Indique o motivo antes de alterar os prazos das notas.",
+        }, { status: 400 });
+      }
+    }
+
     const { data: year, error: yearError } = await supabase
       .from("anos_letivos")
       .update({ data_inicio: body.data_inicio, data_fim: body.data_fim })
@@ -93,7 +138,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const { error: periodsError } = await supabase.rpc("upsert_bulk_periodos_letivos", {
       p_escola_id: escolaId,
-      p_periodos_data: body.periodos,
+      p_periodos_data: periodsForWrite,
     });
     if (periodsError) throw periodsError;
 
