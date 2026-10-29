@@ -2,11 +2,14 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { isRematriculaSourceStatus } from "../../src/lib/alunoRematriculaSource"
 
-test("matrícula histórica concluída ou reprovada pode ser origem", () => {
+test("matrícula de origem usa estados administrativos, não aprovação ou reprovação", () => {
   assert.equal(isRematriculaSourceStatus("concluido"), true)
-  assert.equal(isRematriculaSourceStatus("concluida"), true)
-  assert.equal(isRematriculaSourceStatus("reprovado"), true)
-  assert.equal(isRematriculaSourceStatus("reprovada"), true)
+  assert.equal(isRematriculaSourceStatus("ativo"), true)
+  assert.equal(isRematriculaSourceStatus("transferido"), true)
+  assert.equal(isRematriculaSourceStatus("concluida"), false)
+  assert.equal(isRematriculaSourceStatus("reprovado"), false)
+  assert.equal(isRematriculaSourceStatus("reprovada"), false)
+  assert.equal(isRematriculaSourceStatus("aprovado"), false)
 })
 
 test("pendente não é tratado como resultado académico fechado", () => {
