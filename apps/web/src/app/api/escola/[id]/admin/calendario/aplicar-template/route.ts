@@ -56,7 +56,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .eq('escola_id', userEscolaId)
       .eq('status', 'active');
     if (offeringsError) throw offeringsError;
-    if ((activeOfferings ?? []).some((offering: { education_subsystem: string }) =>
+    if (template.ano_base >= 2026 && (activeOfferings ?? []).some((offering: { education_subsystem: string }) =>
       offering.education_subsystem !== template.subsistema)) {
       return NextResponse.json({
         ok: false, code: 'CALENDAR_MULTI_OFFERING_REQUIRED',
