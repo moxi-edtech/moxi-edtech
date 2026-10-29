@@ -14,6 +14,12 @@ export type RaaBalcaoAcademic = {
   eligible?: boolean;
   mode?: "regular" | "conditional" | "repeat" | null;
   disciplina_ids_pendentes?: string[];
+  source?: {
+    matricula_id: string;
+    turma_id: string | null;
+    ano_letivo_id: string | null;
+    status: string;
+  } | null;
   regime?: RaaBalcaoRegime | null;
   decreto?: Pick<RaaDecretoResult,
     "decision" | "motivo" | "baseLegal" | "elegivelRecurso" | "exameExtraordinario" |
