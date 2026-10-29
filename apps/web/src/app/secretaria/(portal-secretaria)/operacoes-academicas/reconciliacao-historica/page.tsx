@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw } from "lucide-react";
+import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 
 type Resultado = "aprovado" | "reprovado" | "concluido";
 type Item = {
@@ -324,6 +325,13 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                   {!pending && selected.ratificado ? <LockKeyhole className="h-4 w-4" /> : <FileCheck2 className="h-4 w-4" />}
                   {submitting ? "A registar…" : pending ? "Registar decisão documentada" : selected.ratificado ? "Fechar histórico oficialmente" : "Ratificar decisão escolar"}
                 </button>
+              )}
+              {!!selected.alertas_transicao?.length && (
+                <Link href={buildBalcaoActionHref({
+                  escolaParam: escolaId, actionId: "reenrollment", alunoId: selected.aluno_id,
+                })} className="block rounded-xl border border-border px-4 py-3 text-center text-sm font-semibold text-foreground hover:bg-muted/30">
+                  Rever vínculo e turma no Balcão
+                </Link>
               )}
               <Link href={`/escola/${encodeURIComponent(escolaId)}/secretaria/alunos/${encodeURIComponent(selected.aluno_id)}`}
                 className="block text-center text-sm font-medium text-emerald hover:underline">Abrir dossiê do aluno</Link>
