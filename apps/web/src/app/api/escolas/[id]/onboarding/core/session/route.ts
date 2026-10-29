@@ -239,7 +239,7 @@ export async function POST(
 
     if (eventosPayload.length > 0) {
       const { error: eventsError } = await supabase.from('calendario_eventos')
-        .upsert(eventosPayload, { onConflict: 'escola_id,ano_letivo_id,nome,data_inicio' });
+        .upsert(eventosPayload, { onConflict: 'escola_id,ano_letivo_id,offering_id,nome,data_inicio' });
       if (eventsError) throw new Error(`Erro ao salvar eventos do calendário: ${eventsError.message}`);
     }
 
