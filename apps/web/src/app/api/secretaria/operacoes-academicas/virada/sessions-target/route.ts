@@ -230,6 +230,7 @@ export async function POST(request: Request) {
     const periods = periodItems
       .filter((item: { tipo: string }) => item.tipo === periodType)
       .map((item: {
+        id: string;
         numero: number | null;
         data_inicio: string;
         data_fim: string;
@@ -241,6 +242,11 @@ export async function POST(request: Request) {
         data_inicio: item.data_inicio,
         data_fim: item.data_fim,
         peso: item.peso,
+        // The official-calendar RPC validates item ID, dates and template
+        // before persisting provenance on periodos_letivos.
+        source_template_id: periodTemplate.id,
+        source_item_id: item.id,
+        source_version: periodTemplate.versao_documento,
       }));
     const events = requestedMappings.flatMap((mapping) => {
       const template = templateList.find((candidate) => candidate.id === mapping.template_id);
