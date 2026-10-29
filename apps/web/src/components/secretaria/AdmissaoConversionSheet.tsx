@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Badge } from '@/components/ui/Badge'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { useTurmas } from '@/hooks/useTurmas'
 import { useToast } from '@/components/feedback/FeedbackSystem'
 import { 
@@ -1171,17 +1172,28 @@ export function AdmissaoConversionSheet({
         )}
       </SheetContent>
       {capacityOverrideOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 text-foreground shadow-2xl">
+        <Dialog
+          open={capacityOverrideOpen}
+          onOpenChange={(open) => {
+            if (open || submitting) return
+            setCapacityOverrideOpen(false)
+            setCapacityOverrideError(null)
+          }}
+        >
+          <DialogContent
+            closeButton={false}
+            overlayClassName="z-[110]"
+            className="z-[110] w-full max-w-md rounded-xl border border-border bg-card p-5 text-foreground shadow-2xl"
+          >
             <div className="mb-4 flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300">
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-black text-foreground">Turma acima da capacidade</h3>
-                <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
+                <DialogTitle className="text-base font-bold text-foreground">Turma acima da capacidade</DialogTitle>
+                <DialogDescription className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
                   Para continuar, informe o motivo da exceção. A autorização e a auditoria serão validadas no banco.
-                </p>
+                </DialogDescription>
               </div>
             </div>
 
@@ -1224,8 +1236,8 @@ export function AdmissaoConversionSheet({
                 Confirmar override
               </Button>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </Sheet>
   )
