@@ -253,10 +253,25 @@ async function runOrchestration(params: {
   // 4. Abrir Próximo Período
   await setJobState(supabase, runId, ESTADOS.OPENING_NEXT_PERIOD);
   if (acao === "fechar_trimestre" && periodoLetivoId) {
-    const { data: curr } = await supabase.from("periodos_letivos").select("numero,tipo").eq("id", periodoLetivoId).single();
-    if (curr) {
-      await supabase.from("periodos_letivos").update({ trava_notas_em: null })
-        .eq("escola_id", escolaId).eq("ano_letivo_id", anoLetivoId).eq("tipo", curr.tipo).eq("numero", (curr.numero || 0) + 1);
+    const [{ data: curr, error: currentError },
+      { data: ano, error: yearError }] = await Promise.all([
+      supabase.from("periodos_letivos")
+        .select("numero,tipo").eq("escola_id", escolaId)
+        .eq("ano_letivo_id", anoLetivoId).eq("id", periodoLetivoId).single(),
+      supabase.from("anos_letivos")
+        .select("ano").eq("escola_id", escolaId).eq("id", anoLetivoId).single(),
+    ]);
+    if (currentError || yearError || !curr || !ano) {
+      throw currentError ?? yearError ?? new Error("Período ou ano académico não encontrado.");
+    }
+    // MED terms have independent, auditable grade deadlines. Closing one
+    // term must not silently clear the lock on the following term.
+    if (ano.ano < 2026) {
+      const { error: nextLockError } = await supabase.from("periodos_letivos")
+        .update({ trava_notas_em: null })
+        .eq("escola_id", escolaId).eq("ano_letivo_id", anoLetivoId)
+        .eq("tipo", curr.tipo).eq("numero", (curr.numero || 0) + 1);
+      if (nextLockError) throw nextLockError;
     }
   }
 
