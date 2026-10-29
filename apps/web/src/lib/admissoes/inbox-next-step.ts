@@ -135,10 +135,10 @@ const STEPS: Record<AdmissionInboxStatus, AdmissionInboxNextStep> = {
     listLabel: 'Aguardar correção',
   },
   lista_espera: {
-    title: 'Rever disponibilidade de vaga',
-    description: 'Confirme se há vaga antes de aprovar. Se a turma continuar lotada, mantenha o candidato em espera.',
-    action: 'approve',
-    actionLabel: 'Rever e aprovar',
+    title: 'Rever vaga e matrícula',
+    description: 'Escolha uma turma com vaga. A confirmação da matrícula verifica capacidade, autorização e pagamento.',
+    action: 'convert',
+    actionLabel: 'Rever turma e matricular',
     listLabel: 'Verificar vaga',
   },
 };
