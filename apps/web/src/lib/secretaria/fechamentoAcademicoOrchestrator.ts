@@ -274,21 +274,31 @@ export async function runFechamentoOrchestration(params: {
   });
 
   if (acao === "fechar_trimestre" && periodoLetivoId) {
-    const { data: currentPeriod } = await supabase
-      .from("periodos_letivos")
-      .select("numero,tipo")
-      .eq("escola_id", escolaId)
-      .eq("id", periodoLetivoId)
-      .single();
-
-    if (currentPeriod?.numero) {
-      await supabase
-        .from("periodos_letivos")
+    const [{ data: currentPeriod, error: periodError },
+      { data: academicYear, error: yearError }] = await Promise.all([
+      supabase.from("periodos_letivos")
+        .select("numero,tipo")
+        .eq("escola_id", escolaId)
+        .eq("ano_letivo_id", anoLetivoId)
+        .eq("id", periodoLetivoId)
+        .single(),
+      supabase.from("anos_letivos")
+        .select("ano").eq("escola_id", escolaId).eq("id", anoLetivoId).single(),
+    ]);
+    if (periodError || yearError || !currentPeriod || !academicYear) {
+      throw periodError ?? yearError ?? new Error("Período letivo incompatível com a sessão.");
+    }
+    // From 2026 onward the next trimester inherits its lock from MED and
+    // from the academic direction. Closing the previous term must not clear
+    // that lock or bypass a formal pauta reopening.
+    if (academicYear.ano < 2026 && currentPeriod.numero) {
+      const { error: nextLockError } = await supabase.from("periodos_letivos")
         .update({ trava_notas_em: null })
         .eq("escola_id", escolaId)
         .eq("ano_letivo_id", anoLetivoId)
         .eq("tipo", currentPeriod.tipo)
         .eq("numero", Number(currentPeriod.numero) + 1);
+      if (nextLockError) throw nextLockError;
     }
   } else {
     const { data: currentYear } = await supabase.from("anos_letivos").select("ano").eq("escola_id", escolaId).eq("id", anoLetivoId).single();
