@@ -1,0 +1,61 @@
+name: Academic Lifecycle Evidence and Legal Close
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/**"
+      - "apps/web/src/app/secretaria/**/operacoes-academicas/**"
+      - "apps/web/src/lib/secretaria/fechamentoAcademicoOrchestrator.ts"
+      - "apps/web/tests/unit/lifecycle-evidence-reconciliation.spec.ts"
+      - "supabase/migrations/*lifecycle*.sql"
+      - "supabase/ops/applied_lifecycle_20261029/**"
+      - "supabase/ops/tests/regression_student_lifecycle_evidence_20261029.sql"
+      - "scripts/ci/lifecycle-migration-order.mjs"
+      - "scripts/ci/guard-fiscal-scope.mjs"
+      - "scripts/ci/tests/guard-fiscal-scope.spec.mjs"
+      - ".github/workflows/lifecycle-evidence-reconciliation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Cross-portal evidence, history and legal lock unit regressions
+        run: |
+          cd apps/web
+          node --test --import tsx \
+            tests/unit/lifecycle-evidence-reconciliation.spec.ts \
+            tests/unit/student-lifecycle-ssot.spec.ts \
+            tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts
+      - name: TypeScript
+        run: pnpm -C apps/web typecheck
+      - name: ESLint on academic reconciliation and orchestrator
+        run: |
+          pnpm -C apps/web exec eslint \
+            'src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/route.ts' \
+            'src/app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx' \
+            'src/app/secretaria/(portal-secretaria)/operacoes-academicas/page.tsx' \
+            src/lib/secretaria/fechamentoAcademicoOrchestrator.ts \
+            tests/unit/lifecycle-evidence-reconciliation.spec.ts \
+            --max-warnings 10000
+      - name: Never activate the fiscal engine
+        run: |
+          git diff --check
+          node --test scripts/ci/tests/guard-fiscal-scope.spec.mjs
+          node scripts/ci/guard-fiscal-scope.mjs "origin/${{ github.base_ref }}"
+          node scripts/ci/lifecycle-migration-order.mjs
