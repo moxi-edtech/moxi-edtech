@@ -79,6 +79,14 @@ export async function DELETE(
     // Guard: block deletion if there are dependent records (unless force=1)
     const url = new URL(_req.url);
     const force = ['1','true','yes'].includes(String(url.searchParams.get('force') || '').toLowerCase());
+    // Forced cascades delete matrículas and referenced official periods.
+    // Never allow this old destructive path in a decree-backed school year.
+    if (found.ano >= 2026 && force) {
+      return NextResponse.json({
+        ok: false, code: 'OFFICIAL_CALENDAR_DESTRUCTIVE_DELETE_BLOCKED',
+        error: 'A exclusão forçada não é permitida para um ano com calendário oficial. Resolva os vínculos pelo fluxo próprio.',
+      }, { status: 409 });
+    }
     const turmaSourceFilter = `session_id.eq.${sessionId},ano_letivo_id.eq.${sessionId},ano_letivo.eq.${found.ano}`;
     const matriculaSourceFilter = `session_id.eq.${sessionId},ano_letivo.eq.${found.ano}`;
     try {
@@ -110,7 +118,7 @@ export async function DELETE(
         if (turmasCount > 0) parts.push(`${turmasCount} turma(s)`);
         if (matriculasCount > 0) parts.push(`${matriculasCount} matrícula(s)`);
         const detalhes = parts.join(', ');
-        return NextResponse.json({ ok: false, error: `Não é possível deletar este ano letivo pois existem registros vinculados: ${detalhes}. Exclua/mova-os ou use ?force=1 para forçar a exclusão (cascata).` }, { status: 400 });
+        return NextResponse.json({ ok: false, error: `Não é possível deletar este ano letivo pois existem registros vinculados: ${detalhes}. ${found.ano >= 2026 ? 'Concilie os vínculos antes de remover a sessão.' : 'Exclua/mova-os ou use ?force=1 para forçar a exclusão (cascata).'}` }, { status: 400 });
       }
 
       if (force) {
