@@ -122,7 +122,7 @@ export function AdmissionCalendarResolution({
     };
     void load();
     return () => { active = false; };
-  }, [anoLetivo, canSelectOfficialTemplate, supabase]);
+  }, [anoLetivo, canSelectOfficialTemplate, escolaId, supabase]);
 
   const selected = templates.find((item) => item.id === templateId) ?? null;
 
@@ -132,7 +132,7 @@ export function AdmissionCalendarResolution({
 
   const saveManualCalendar = async () => {
     if (!year || savingManual || periodos.length === 0) return;
-    const validRange = (inicio: string, fim: string) => /^\\d{4}-\\d{2}-\\d{2}$/.test(inicio) && /^\\d{4}-\\d{2}-\\d{2}$/.test(fim) && inicio <= fim;
+    const validRange = (inicio: string, fim: string) => /^\d{4}-\d{2}-\d{2}$/.test(inicio) && /^\d{4}-\d{2}-\d{2}$/.test(fim) && inicio <= fim;
     if (!validRange(year.data_inicio, year.data_fim) ||
         periodos.some((periodo) => !validRange(periodo.data_inicio, periodo.data_fim) ||
           periodo.data_inicio < year.data_inicio || periodo.data_fim > year.data_fim)) {
