@@ -7,7 +7,6 @@ import useSWR from 'swr'
 import {
   Search,
   MessageCircle,
-  Pencil,
   Check,
   ChevronRight,
   Clock,
@@ -1220,10 +1219,11 @@ export default function AdmissoesInboxClient({
               <Button
                 size="sm"
                 className="h-8 gap-1 bg-amber text-amber-950 hover:brightness-95"
+                aria-label="Iniciar nova candidatura"
                 onClick={() => onNewAdmission ? onNewAdmission() : router.push(withSlug(`/secretaria/admissoes/nova`))}
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Novo</span>
+                <span>Nova</span>
               </Button>
             </div>
           </div>
@@ -1543,6 +1543,8 @@ export default function AdmissoesInboxClient({
                           key={tab.id}
                           type="button"
                           role="tab"
+                          id={`admission-tab-${tab.id}`}
+                          aria-controls={`admission-panel-${tab.id}`}
                           aria-selected={detailTab === tab.id}
                           onClick={() => setDetailTab(tab.id)}
                           className={`min-h-10 shrink-0 rounded-lg px-4 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber ${detailTab === tab.id ? 'bg-muted text-foreground ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'}`}
@@ -1551,6 +1553,7 @@ export default function AdmissoesInboxClient({
                         </button>
                       ))}
                     </div>
+                    <div role="tabpanel" id={`admission-panel-${detailTab}`} aria-labelledby={`admission-tab-${detailTab}`} className="space-y-4">
                     {/* Alerta de Conciliação Financeira */}
                     {detailTab === 'resumo' && (selectedData.status === 'aguardando_compensacao' || selectedData.status === 'aguardando_pagamento') && (
                       <section className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
@@ -1785,6 +1788,7 @@ export default function AdmissoesInboxClient({
                       </section>
                       </>
                       )}
+                    </div>
                     </div>
                   </div>
 
