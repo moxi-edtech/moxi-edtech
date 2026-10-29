@@ -36,6 +36,9 @@ Estado em 29/10/2026. Consulta real do projecto Supabase KLASSE, limitada a meta
 3. Uma migração complementar preserva a compatibilidade do modelo legada 2025/2026, que usa `PROVA_TRIMESTRAL` como origem de períodos, apenas quando não há itens `PERIODO_LETIVO`.
 4. O POST de preparação de ano agora transporta e verifica a proveniência no banco e não altera um ano já ativo nem mistura anos/trimestres de perfis divergentes.
 5. A rota legada de aplicação de um único modelo recusa aplicar sobre uma escola de múltiplos subsistemas e não reescreve automaticamente um ano ativo divergente.
+6. A API canónica de conversão de admissões `/api/secretaria/admissoes/convert` faz verificação de leitura do decreto/ano/turma antes da transação financeira quando o ano base é 2026 ou posterior. Se houver divergência operacional, devolve `ACADEMIC_CALENDAR_NOT_CONFIGURED` ou `ACADEMIC_CALENDAR_YEAR_MISMATCH`, preservando a candidatura; não executa a RPC de matrícula nem cria a cobrança. Respostas idempotentes para matrículas já finalizadas continuam acessíveis.
+7. O modelo legado 2025/2026 mantém o contrato anterior; as verificações de múltiplos subsistemas aplicam-se apenas aos modelos novos (ano base 2026+).
+
 
 ## Verificação contínua
 
@@ -50,7 +53,7 @@ A resposta separa `operationally_aligned` (sem divergência de datas ou eventos)
 
 ## Bloqueios que permanecem
 
-**Escola KLASSE:** é necessária conciliação do início financeiro de 17 matrículas antes de mudar o início do ano. Em seguida, aplicar os perfis oficiais às ofertas, reconciliar trimestres e sincronizar 35 eventos sem duplicações nem sobrescrever históricos. Homologar com perfis de direção/secretaria e verificar 2026/2027 em todas as turmas.
+**Escola KLASSE:** a conversão de novas candidaturas para 2026/2027 deverá ficar bloqueada pelo preflight de sincronização até a divergência ser resolvida e o novo código estar em produção. É necessária conciliação do início financeiro de 17 matrículas antes de mudar o início do ano. Em seguida, aplicar os perfis oficiais às ofertas, reconciliar trimestres e sincronizar 35 eventos sem duplicações nem sobrescrever históricos. Homologar com perfis de direção/secretaria e verificar 2026/2027 em todas as turmas.
 
 **Fonte oficial:** importar URL/referência do decreto de 2026/2027 e data real de publicação para cada um dos quatro perfis após confirmação jurídica. `FINAL-ACTUALIZADO` não substitui uma referência verificável ao diploma.
 
