@@ -226,6 +226,26 @@ export async function POST(request: Request) {
     }
 
     escolaIdContext = candidatura.escola_id as string;
+
+    // Autorizar antes de devolver qualquer dado de matrícula já concluída.
+  // 2. Authorize
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
+  const escolaId = await resolveEscolaIdForUser(supabase, user.id, candidatura.escola_id);
+  if (!escolaId || escolaId !== candidatura.escola_id) {
+    return NextResponse.json({ error: 'Sem vínculo com a escola' }, { status: 403 });
+  }
+
+    const { error: authError } = await requireRoleInSchool({
+    supabase,
+    escolaId: candidatura.escola_id,
+    roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP, 'diretor'],
+  });
+    if (authError) return authError;
+
+
     const statusAtual = String(candidatura.status ?? "").toLowerCase();
     if (statusAtual === "pre_candidatura") {
       return NextResponse.json(
@@ -258,23 +278,6 @@ export async function POST(request: Request) {
       });
     }
 
-  // 2. Authorize
-  const { data: userRes } = await supabase.auth.getUser();
-  const user = userRes?.user;
-  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
-
-  const escolaId = await resolveEscolaIdForUser(supabase, user.id, candidatura.escola_id);
-  if (!escolaId || escolaId !== candidatura.escola_id) {
-    return NextResponse.json({ error: 'Sem vínculo com a escola' }, { status: 403 });
-  }
-
-    const { error: authError } = await requireRoleInSchool({
-    supabase,
-    escolaId: candidatura.escola_id,
-    roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP, 'diretor'],
-  });
-    if (authError) return authError;
-
     // Idempotência canônica: se já temos resultado persistido para esta chave/scope, devolvemos.
     if (idempotencyKey) {
       const { data: existingIdempotency } = await supabase
@@ -286,6 +289,16 @@ export async function POST(request: Request) {
         .maybeSingle();
       const idempotencyResult = existingIdempotency?.result ?? null;
       if (isJsonObject(idempotencyResult)) {
+        if (
+          typeof idempotencyResult.candidatura_id === 'string' &&
+          idempotencyResult.candidatura_id !== candidatura_id
+        ) {
+          return NextResponse.json({
+            ok: false,
+            code: "ADMISSION_IDEMPOTENCY_SCOPE_MISMATCH",
+            error: "A chave de operação já está vinculada a outra candidatura.",
+          }, { status: 409 });
+        }
         return NextResponse.json(idempotencyResult);
       }
     }
