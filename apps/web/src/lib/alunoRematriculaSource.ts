@@ -2,17 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const REMATRICULA_SOURCE_STATUSES = [
   "ativo",
-  "ativa",
-  "active",
-  "em_andamento",
-  "matriculado",
-  "transferido",
   "concluido",
-  "concluida",
-  "aprovado",
-  "aprovada",
-  "reprovado",
-  "reprovada",
+  "transferido",
 ] as const;
 
 export type RematriculaSource = {
