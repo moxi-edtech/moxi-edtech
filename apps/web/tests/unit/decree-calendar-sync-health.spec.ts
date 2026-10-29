@@ -140,3 +140,43 @@ test("tampered source references fail even when trimester/exam dates look correc
   assert.ok(report.issues.some((issue) => issue.code === "TRIMESTER_SOURCE_MISMATCH"));
   assert.ok(report.issues.some((issue) => issue.code === "OFFICIAL_EVENT_SOURCE_MISMATCH"));
 });
+
+test("student calendar is scoped by authorized pupil, active enrollment year and school profile", () => {
+  const source = readFileSync("src/app/api/aluno/home/academic-events/route.ts", "utf8");
+  assert.match(source, /getAlunoContext\(\)/);
+  assert.match(source, /resolveSelectedStudentId/);
+  assert.match(source, /authorizedIds: ctx\.alunoIds/);
+  assert.match(source, /from\("matriculas"\)/);
+  assert.match(source, /\.eq\("ano_letivo", activeYear\.ano\)/);
+  assert.match(source, /\.in\("status", ACTIVE_MATRICULA_STATUSES\)/);
+  assert.match(source, /\.eq\("course_id", turma\.curso_id\)/);
+  assert.match(source, /\.in\("source_template_id", templateIds\)/);
+  assert.match(source, /\.eq\("ano_letivo_id", activeYear\.id\)/);
+  assert.match(source, /timeZone: "Africa\/Luanda"/);
+});
+
+test("teacher calendar isolates school events from the selected academic year", () => {
+  const source = readFileSync("src/app/api/professor/calendario/route.ts", "utf8");
+  assert.match(source, /resolveAcademicYearContext/);
+  assert.match(source, /from\("vw_eventos_escola_unificados"\)/);
+  assert.match(source, /\.eq\("tipo", "EVENTO_GERAL"\)/);
+  assert.match(source, /from\("calendario_eventos"\)/);
+  assert.match(source, /\.eq\("ano_letivo_id", anoLetivo\.id\)/);
+  assert.match(source, /\.eq\("escola_id", escolaId\)/);
+  assert.match(source, /items: calendarItems/);
+});
+
+test("other period and calendar readers use the same academic year and turma context", () => {
+  const sources = [
+    "src/app/api/secretaria/calendario/route.ts",
+    "src/app/api/escola/[id]/admin/periodos-por-turma/route.ts",
+    "src/app/api/professor/periodos/route.ts",
+    "src/app/api/escola/[id]/admin/periodos-letivos/route.ts",
+    "src/app/api/secretaria/turmas/[id]/pauta-trimestral/route.ts",
+  ];
+  for (const path of sources) {
+    const source = readFileSync(path, "utf8");
+    assert.match(source, /resolveAcademicYearContext/, path);
+    assert.match(source, /ano_letivo_id/, path);
+  }
+});
