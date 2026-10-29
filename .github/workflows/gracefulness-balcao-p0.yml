@@ -15,6 +15,7 @@ on:
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
       - "apps/web/src/components/secretaria/RaaBalcaoResolutionPanel.tsx"
+      - "apps/web/src/components/secretaria/EnrollmentPostActionModal.tsx"
       - "apps/web/src/lib/rematricula/raa-balcao-resolution.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-cases.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-regime-guidance.ts"
@@ -156,6 +157,7 @@ jobs:
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
             src/components/secretaria/RaaBalcaoResolutionPanel.tsx \
+            src/components/secretaria/EnrollmentPostActionModal.tsx \
             src/components/secretaria/PagamentoDividaModal.tsx \
             src/components/secretaria/BalcaoWorkspace.tsx \
             src/components/secretaria/BalcaoActionBar.tsx \
