@@ -38,6 +38,8 @@ on:
       - "supabase/ops/tests/regression_atomic_canonical_med_calendar.sql"
       - "apps/web/src/lib/academico/validate-canonical-cutover.ts"
       - "apps/web/tests/unit/validate-canonical-cutover.spec.ts"
+      - "apps/web/tests/unit/calendar-consumers-contract.spec.ts"
+      - "apps/web/src/lib/assistant/data-copilot/tools/academic-calendar-operations.ts"
       - "apps/web/src/app/api/professor/calendario/route.ts"
       - "apps/web/src/app/api/secretaria/calendario/route.ts"
       - "apps/web/src/app/secretaria/(portal-secretaria)/calendario/page.tsx"
@@ -158,6 +160,7 @@ jobs:
             tests/unit/canonical-med-calendar.spec.ts \
             tests/unit/calendar-events-read.spec.ts \
             tests/unit/validate-canonical-cutover.spec.ts \
+            tests/unit/calendar-consumers-contract.spec.ts \
             tests/unit/raa-decreto-eligibility.spec.ts \
             tests/unit/raa-exam-result-guard.spec.ts \
             tests/unit/raa-attendance-justification.spec.ts \
