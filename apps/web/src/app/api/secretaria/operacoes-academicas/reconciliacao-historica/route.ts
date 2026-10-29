@@ -61,6 +61,8 @@ export async function GET(request: Request) {
   try {
     const { supabase, escolaId, error } = await schoolSession();
     if (error || !escolaId) return error!;
+    const writeScope = await requireRoleInSchool({ supabase, escolaId, roles: [...WriteRoles] });
+    const permiteEscrita = !writeScope.error;
     const parsed = Params.safeParse(Object.fromEntries(new URL(request.url).searchParams));
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Filtro inválido" }, { status: 400 });
 
@@ -104,7 +106,7 @@ export async function GET(request: Request) {
       }
       const gradeIds = new Set((grades.data ?? []).map((n: any) => n.matricula_id as string));
       return NextResponse.json({
-        ok: true, tipo: "pendentes", ano, pagina, total: count ?? 0,
+        ok: true, tipo: "pendentes", ano, pagina, total: count ?? 0, permite_escrita: permiteEscrita,
         items: rows.map((m: any) => {
           const student = first(m.alunos);
           const turma = first(m.turmas);
@@ -156,7 +158,7 @@ export async function GET(request: Request) {
       .filter((a: any) => Boolean(a.actor_id) && Boolean(a.details?.motivo))
       .map((a: any) => String(a.entity_id)));
     return NextResponse.json({
-      ok: true, tipo: "historicos", ano, pagina, total: count ?? 0,
+      ok: true, tipo: "historicos", ano, pagina, total: count ?? 0, permite_escrita: permiteEscrita,
       items: rows.map((h: any) => {
         const student = first(h.alunos);
         const m: any = sourceById.get(h.matricula_id);
