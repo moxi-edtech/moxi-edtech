@@ -112,3 +112,59 @@ Para as matrículas com `regime.escala = qualitativa`, o Balcão **não oferece 
 - Para uma nota de 2026/2027, o trigger exige template MED oficial e publicado, item `PERIODO_LETIVO`, número, datas e ano coincidentes; apenas apresentar `source_template_id` não basta.
 - A rota de importação e as rotas administrativas de calendário são consideradas parte do contrato: `aplicar-template` guarda proveniência e protege travas; `ajustes` conserva datas oficiais e requer motivo para alterar fecho; `periodos-letivos/upsert-bulk` recusa uma escrita genérica 2026/2027 sem proveniência.
 - O teste SQL em PostgreSQL 17 descartável abrange também disciplina com trimestres limitados e item oficial inconsistente. Isto não substitui CI verde nem homologação com utilizadores reais.
+
+## Calendário MED canónico e variações por curso (29/10/2026)
+
+A fonte do ano letivo deixa de ser uma escolha arbitrária entre templates
+de subsistema. A migração
+`20271029235922_canonical_med_calendar_offering_profiles.sql` estabelece
+**uma linha por ano** em `calendarios_oficiais_anos` (ano-base é PK), com
+datas globais, versão e proveniência MED.
+
+Os quatro `calendario_templates` já existentes para 2026/2027 são
+**perfis regulatórios**, vinculados ao mesmo ano por
+`calendario_canonico_ano`. Não são apagados nem renomeados: os registos
+históricos continuam a apontar para os mesmos `source_template_id` e
+`source_item_id`.
+
+`school_education_offerings` faz a ligação direta entre **escola, curso,
+subsistema e perfil**, através de `course_id` e `calendar_profile_id`.
+Uma turma herda o perfil pela oferta do seu curso. A aplicação do calendário
+usa a data canónica do ano e valida que os perfis concordam nos três
+trimestres. Se houver divergência, não escolhe silenciosamente um deles.
+
+Eventos comuns ao conjunto de cursos são publicados globalmente
+(`offering_id = NULL`); exames, pausas ou datas não partilhadas são
+publicados por oferta. A unicidade dos eventos passa a incluir
+`offering_id`, com `NULLS NOT DISTINCT` para impedir duplicação dos
+eventos globais. Os filtros de nível, ciclo, classe e tipo de curso
+restringem os eventos de cada oferta.
+
+**Consumidores alterados:** virada do ano no Balcão, aplicação do calendário
+no portal administrativo, onboarding de sessão e respetivos seletores.
+Rotas antigas que tentam aplicar quatro perfis como quatro calendários
+de 2026/2027 ficam bloqueadas e indicam a aplicação canónica.
+
+**Invariantes no PostgreSQL:** ligação do perfil ao ano, compatibilidade
+oferta–subsistema–curso, imutabilidade dos itens MED publicados e fonte
+oficial dos períodos/eventos. O writer de notas continua a usar a sessão
+de origem, os vínculos RAA e as autorizações da pauta.
+
+**Compatibilidade/homologação:** a migração exige que os quatro perfis MED
+2026/2027 já publicados concordem em datas globais, versão e trimestres.
+O backfill liga somente os metadados dos perfis, sem alterar notas,
+matrículas, turmas ou os UUIDs históricos. A **Escola KLASSE** ainda
+possui períodos sem proveniência oficial; exige operação de conciliação
+manual, explicitamente autorizada, antes da aprovação para produção.
+
+**Validações adicionadas:** teste unitário do planeador canónico, contratos
+do Balcão e regressões SQL em PostgreSQL 17 descartável. Os testes de
+eventos verificam escopo por oferta, importação idempotente, bloqueio
+de troca de perfil e imutabilidade do período MED. Não há execução de
+migrations nem normalização automática de dados na produção nesta PR.
+
+**Limitação operacional conhecida:** a preparação do ano utiliza
+consultas e chamadas de escrita separadas no servidor; antes do
+deploy final deverá ser homologada a recuperação em caso de falha
+intermédia e a consistência de todas as ofertas. O merge deve
+permanecer bloqueado até CI completo e homologação autenticada.
