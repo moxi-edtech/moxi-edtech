@@ -53,3 +53,46 @@ Os 14 históricos têm `data_fechamento`, **mas nenhum está juridicamente bloqu
 **Critério de segurança:** nenhuma alteração nas tabelas `notas`, `historico_anos`, `matriculas`, nem nas RPCs de fecho foi realizada nesta auditoria. Os dados acima são contagens para a Curtume, não autorização para aprovação em massa.
 
 **Referência:** `docs/academico/RESULTADOS_PRELIMINARES_CURTUME_2025_20261029.md` e `docs/academico/RECONCILIACAO_HISTORICA_EVIDENCIA_20261029.md`.
+
+## Implementação de integridade — 29/10/2026
+
+### Aplicado e verificado no Supabase live
+
+- **9 registos de classe numerada** normalizados em `classes.numero` e `classes.ordem`; o Pré-Escolar permanece `numero=NULL`, `ordem=0`.
+- **42 turmas numeradas** (21 em 2025/2026 e 21 em 2026/2027) tiveram `turmas.classe_num` normalizado a partir da classe oficial; as 2 turmas de Pré-Escolar permanecem com `classe_num=NULL`.
+- **3 guards transacionais** instalados: normalização de classes/turmas por tenant Curtume, integridade do `origem_transicao_matricula_id` por escola/aluno/ano e validação de turma e vínculo antes do congelamento legal de históricos.
+- Os dados académicos não foram inventados nem alterados: 550 origens de 2025 continuam em revisão, 14 decisões anteriores aguardam ratificação, 13 notas reais continuam associadas a 5 alunos. O módulo fiscal continua intocado.
+
+As migrations remotas constam no ledger como
+`20261029102650_curtume_class_metadata_and_transition_lineage_20261029`,
+`20261029103216_curtume_legal_history_destination_guard_20261029` e
+`20261029103555_curtume_turma_classe_number_consistency_20261029`.
+O repositório mantém shims dessas versões e versões completas de replay em
+`20271029110000`, `20271029120000` e `20271029130000`.
+Não executar scripts de produção duas vezes manualmente sem validar o ledger.
+
+### Código preparado na branch
+
+O endpoint de reconciliação lista alertas para vínculo ausente/divergente, salto, regressão, classe desconhecida e repetição a confirmar. Registar um resultado com matrícula destino existente exige vínculo de origem válido e classe compatível com o resultado confirmado. A interface **não seleciona aprovado por padrão**, mostra os alertas e oferece acesso contextual ao Balcão. O fecho legal é protegido adicionalmente na base de dados, mesmo que o cliente contorne a UI.
+
+### Pendências que não podem ser inventadas
+
+O script repetível de diagnóstico `supabase/ops/scripts/audit_curtume_academic_year_transition.sql` retornou:
+
+| Categoria | Alunos |
+|---|---:|
+| Transições ordinárias para conferência da escola | 277 |
+| Matrícula destino sem vínculo explícito | **6** |
+| Salto de classe | **2** |
+| Regressão de classe | **1** |
+| Mesma classe sem decisão registada | **35** |
+| Sem matrícula no ano seguinte | **243** |
+| **Total de origens** | **564** |
+
+Essas categorias são **administrativas, não decisões do GradeEngine**. As 6 matrículas sem origem explícita foram criadas em lote com eventos `CREATE` e `MENSALIDADES_GERADAS`, sem assinatura pedagógica; a ligação formal não foi atribuída sem declaração verificável. As 3 transições atípicas e as 35 possíveis repetições precisam de confirmação escolar. Alunos sem matrícula no ano seguinte podem ter saído, concluído ou mudado de escola: não presumir estado.
+
+**Não foram corrigidos casos individuais dependentes de atas, pautas ou declaração da direção**, nem fechados snapshots; isso é uma barreira deliberada de integridade. O próximo responsável escolar deve usar `Secretaria → Operações Académicas → Reconciliação académica histórica` para documentar e ratificar cada resultado, e `Balcão → Rematrícula` para rever as matrículas destino divergentes.
+
+### Não afetado
+
+Nenhuma migration, trigger ou API desta correção modifica `notas`, `avaliacoes`, mensalidades, pagamentos, recibos, AGT ou SAF-T.
