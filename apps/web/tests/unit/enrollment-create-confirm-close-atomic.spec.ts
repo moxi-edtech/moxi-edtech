@@ -65,3 +65,15 @@ test("finalization uses authoritative GradeEngine; no arbitrary pass/fail or rec
   assert.match(confirmedCurrent, /finalizar_rematricula_balcao/);
   assert.match(confirmedCurrent, /ENROLLMENT_RECEIPT_PENDING/);
 });
+
+test("enrollment listing exposes the official year id and pending reservations", () => {
+  const list = readWeb("src/app/api/escolas/[id]/matriculas/route.ts");
+  const view = readSql("20271029151000_enrollment_view_academic_year_ssot.sql");
+  assert.match(view, /WITH \(security_invoker = true\)/);
+  assert.match(view, /m\.session_id AS ano_letivo_id/);
+  assert.doesNotMatch(view, /pl\.ano_letivo_id/);
+  assert.match(list, /ano_letivo_id,\s*session_id,/);
+  assert.match(list, /query = query\.eq\("status", "pendente"\)/);
+  assert.match(list, /ano_letivo_id: row\.ano_letivo_id \?\? row\.session_id/);
+  assert.doesNotMatch(list, /scope === "pending"\)[\s\S]{0,400}matriculas: \[\]/);
+});
