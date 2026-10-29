@@ -333,15 +333,36 @@ export async function POST(request: Request) {
         error: "A turma seleccionada não está disponível nesta escola.",
       }, { status: 409 });
     }
-    if (candidatura.ano_letivo != null && targetTurma.ano_letivo !== candidatura.ano_letivo) {
+    // The turma's legacy ano_letivo is nullable. Resolve the official year
+    // from ano_letivo_id before inspecting decree synchronization; never
+    // treat an absent year as zero or skip the academic calendar gate.
+    const { data: destinationYear, error: destinationYearError } = targetTurma.ano_letivo_id
+      ? await supabase.from("anos_letivos")
+          .select("ano")
+          .eq("id", targetTurma.ano_letivo_id)
+          .eq("escola_id", escolaId)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (destinationYearError) throw destinationYearError;
+    const targetYear = destinationYear?.ano ?? targetTurma.ano_letivo;
+    if (targetYear == null || !Number.isInteger(targetYear) ||
+        (targetTurma.ano_letivo != null && destinationYear?.ano != null &&
+          targetTurma.ano_letivo !== destinationYear.ano)) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CALENDAR_YEAR_MISMATCH",
+        error: "Não foi possível confirmar o ano letivo da turma selecionada.",
+        details: "Confirme o vínculo entre a turma e o ano letivo antes de finalizar a matrícula.",
+      }, { status: 409 });
+    }
+    if (candidatura.ano_letivo != null && targetYear !== candidatura.ano_letivo) {
       return NextResponse.json({
         ok: false, code: "ACADEMIC_CALENDAR_YEAR_MISMATCH",
         error: "A turma seleccionada pertence a outro ano letivo.",
         details: "Selecione uma turma do ano da candidatura no próprio Balcão.",
       }, { status: 409 });
     }
-    if (targetTurma.ano_letivo >= 2026) {
-      const decreeHealth = await inspectDecreeSync(supabase as any, escolaId, targetTurma.ano_letivo);
+    if (targetYear >= 2026) {
+      const decreeHealth = await inspectDecreeSync(supabase as any, escolaId, targetYear);
       if (!decreeHealth.ok) {
         return NextResponse.json({
           ok: false, code: "ACADEMIC_CALENDAR_NOT_CONFIGURED",
