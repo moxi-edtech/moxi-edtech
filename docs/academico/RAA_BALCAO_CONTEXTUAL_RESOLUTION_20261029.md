@@ -198,3 +198,84 @@ permanecer bloqueado até CI completo e homologação autenticada.
   professor, calendário da secretaria e `dry-run` da virada do ano;
   homologar portais autenticados e aguardar GitHub Actions. Sem merge nem
   execução de migration no Supabase de produção.
+
+## Integração final dos consumidores do calendário — PR #298 (29/10/2026)
+
+**Regra operacional:** a linha única em `calendarios_oficiais_anos`
+define o ano MED, as versões já publicadas de `calendario_templates`
+são perfis de subsistema, e `school_education_offerings` liga cada
+perfil ao curso. Calendários de anos anteriores permanecem acessíveis
+sem se misturarem com o ano ativo. A turma herda a oferta do seu curso,
+não outro modelo escolhido implicitamente pela escola.
+
+### Consumidores de leitura
+- Portal do aluno: a matrícula do ano selecionado e o educando
+  autorizado determinam a turma/curso e o `offering_id`; o aluno recebe
+  eventos comuns + eventos da sua oferta, sem vazar os irmãos/educandos
+  de um encarregado.
+- Portal do professor: `turma_disciplinas_professores`,
+  `turma_disciplinas` e direção de turma determinam cursos em que o
+  professor leciona ou dirige. Eventos MED são filtrados por essas
+  ofertas e por ano; eventos gerais continuam separados. A antiga view
+  unificada era inadequada, porque escondia `offering_id`.
+- Secretaria: a visão administrativa permite **Todos os cursos** ou
+  filtro explícito por curso; os eventos específicos mostram o curso,
+  sem a indicação enganosa de que se aplicam a todos os alunos.
+- KLASSE IA: sem contexto de curso autorizado só descreve os
+  **eventos gerais**; exames particulares não são apresentados como
+  prazos de toda a escola.
+- Os leitores de notas, avaliação, faltas, pautas, horários e RAA
+  mantêm o vínculo de `ano_letivo_id` / `periodos_letivos` do aluno
+  e das turmas. Trimestres são **únicos e genéricos por escola/ano**,
+  sem duplicação por subsistema. Cursos influenciam os eventos e regras
+  de aplicabilidade, não a referência histórica da nota.
+
+### Consumidores de escrita e virada
+- A criação/aplicação do ano MED usa
+  `aplicar_calendario_med_canonico_v1` em uma **única transação
+  PostgreSQL**. Valida identidade, papel, ano, origem dos três termos,
+  pesos, eventos oficiais e seus filtros de subsistema, nível, ciclo,
+  classe e tipo de curso. Uma falha reverte **ano, termos, eventos e
+  perfis**, sem deixar configuração parcial.
+- O setup inicial permite **instalar os três trimestres antes de os
+  cursos existirem** e só importa eventos específicos quando a
+  instalação dos cursos estiver finalizada. A mesma fonte de períodos
+  é preservada entre as duas etapas.
+- A finalização do onboarding não recalcula pesos MED nem apaga
+  períodos oficiais. Uma sessão 2026+ não pode ser eliminada à força
+  pelo caminho legado. A rotação por datas artificiais continua
+  bloqueada para anos sujeitos ao decreto.
+- O `dry-run` da virada verifica dados **efetivamente persistidos**:
+  ano e datas MED, três termos com pesos e proveniência, associação
+  dos cursos aos perfis corretos e eventos com intervalos oficiais
+  aplicáveis. O clone de estrutura e o fecho do ano usam o mesmo gate,
+  recusando prosseguir diante de divergências.
+- O fecho do trimestre deixa de **desbloquear automaticamente** o
+  próximo período MED; alterações às travas de notas continuam sujeitas
+  à operação académica autorizada.
+
+### Testes e segurança
+
+- Typecheck do web aprovado e **170 testes unitários** adjacentes
+  passaram na bateria ampla executada em 29/10. Depois foram
+  acrescentadas verificações para pesos, data final de exames e tipo
+  de curso; 56 testes específicos passaram novamente.
+- Em PostgreSQL **17 descartável**, foram aplicadas em sequência
+  as migrations 21, 22 e 23 e os respetivos testes. Verificou-se
+  idempotência, preservação de UUID dos períodos, isolamento por oferta,
+  rejeição de acesso indevido, recusa de exames não aplicáveis à classe,
+  recusa de eventos indevidamente globais e rollback integral perante
+  erro injetado durante a escrita.
+- O antigo script manual da Escola KLASSE, que aplicava 29 eventos
+  globais a partir de um perfil regular, agora **recusa execução**
+  quando existirem subsistemas mistos. Foi adicionado
+  `supabase/ops/audit_klasse_2026_2027_course_calendars.sql`, um
+  diagnóstico **somente leitura** para permitir a conciliação
+  explícita sem reescrever notas ou matrículas.
+
+**Pendências para declarar produção homologada:** os checks do GitHub
+Actions têm de ficar verdes, a migração precisa de ser aplicada em
+staging para testes autenticados nos portais, e os registos históricos
+de 2026/2027 da Escola KLASSE devem ser conciliados sob aprovação
+operacional. A PR mantém-se **draft**, sem merge ou deploy e sem escrita
+direta na base Supabase de produção.
