@@ -802,7 +802,7 @@ export function AdmissaoConversionSheet({
                     onClick={onClose}
                     className="text-muted-foreground hover:text-amber font-bold text-sm transition-colors"
                   >
-                    Fechar e atender próximo candidato
+                    Fechar e voltar à candidatura
                   </button>
                 </div>
               </div>
