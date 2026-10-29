@@ -43,6 +43,7 @@ export type MedCourseProfile = {
 export type MedCourseOffering = {
   id: string;
   course_id: string | null;
+  course_type?: string | null;
   education_subsystem: string;
   education_level: string;
   cycle: string | null;
@@ -87,6 +88,8 @@ function itemMatchesCourse(item: MedProfileItem, offering: MedCourseOffering): b
   if (item.cycles?.length && (!offering.cycle || !item.cycles.includes(offering.cycle))) return false;
   if (item.grade_codes?.length &&
       !(offering.grades ?? []).some((grade) => item.grade_codes?.includes(grade))) return false;
+  if (item.course_types?.length &&
+      (!offering.course_type || !item.course_types.includes(offering.course_type))) return false;
   return true;
 }
 
