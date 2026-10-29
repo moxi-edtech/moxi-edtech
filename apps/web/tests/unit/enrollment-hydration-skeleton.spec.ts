@@ -65,7 +65,8 @@ test("legacy and non-workspace entrypoints still honor provided candidate IDs", 
 });
 
 test("leaving enrollment unmounts its form without losing other student tabs", () => {
-  assert.match(retained, /mounted\.filter\(action => action !== "enrollment" \|\| activeAction === "enrollment"\)/);
+  assert.match(retained, /action !== "enrollment" \|\| activeAction === "enrollment"/);
+  assert.match(retained, /action !== "admissions" \|\| activeAction === "admissions"/);
   assert.match(retained, /delete next\.enrollment/);
   assert.match(workspace, /const \[selectedStudent, setSelectedStudent\] = useState<Student>\(aluno\)/);
   assert.match(workspace, /setActiveAction\(next\)/);
