@@ -20,6 +20,14 @@ type Session = {
   has_data: boolean;
 };
 
+type OfficialCalendar = {
+  ano_base: number;
+  data_inicio: string;
+  data_fim: string;
+  versao_documento: string;
+  estado: string;
+};
+
 type OfficialTemplate = {
   id: string;
   nome: string;
@@ -27,6 +35,7 @@ type OfficialTemplate = {
   data_inicio: string;
   data_fim: string;
   subsistema: string | null;
+  calendario_canonico_ano?: number | null;
   versao_documento: string | null;
 };
 
@@ -76,6 +85,7 @@ type SessionsTargetResponse = {
   ok?: boolean;
   current_session?: Session | null;
   target_sessions?: Session[];
+  official_calendars?: OfficialCalendar[];
   official_templates?: OfficialTemplate[];
   education_offerings?: EducationOffering[];
 };
@@ -110,6 +120,8 @@ export function ConfigStep({
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [targets, setTargets] = useState<Session[]>([]);
   const [templates, setTemplates] = useState<OfficialTemplate[]>([]);
+  const [officialCalendars, setOfficialCalendars] = useState<OfficialCalendar[]>([]);
+  const [selectedCalendarYear, setSelectedCalendarYear] = useState("");
   const [offerings, setOfferings] = useState<EducationOffering[]>([]);
   const [offeringTemplates, setOfferingTemplates] = useState<Record<string, string>>({});
   const [selectedTarget, setSelectedTarget] = useState<string>("");
@@ -132,6 +144,8 @@ export function ConfigStep({
           setCurrentSession(json.current_session ?? null);
           setTargets(json.target_sessions ?? []);
           setTemplates(json.official_templates ?? []);
+          setOfficialCalendars(json.official_calendars ?? []);
+          setSelectedCalendarYear((current) => current || String(json.official_calendars?.[0]?.ano_base ?? ""));
           const loadedOfferings = json.education_offerings ?? [];
           setOfferings(loadedOfferings);
           setOfferingTemplates(Object.fromEntries(
@@ -154,20 +168,46 @@ export function ConfigStep({
     void loadSessions();
   }, [loadSessions]);
 
+  const profilesForCalendar = templates.filter((profile) =>
+    profile.calendario_canonico_ano === Number(selectedCalendarYear));
+  const resolveProfile = (offering: EducationOffering) => {
+    const eligible = profilesForCalendar.filter((profile) =>
+      profile.subsistema === offering.education_subsystem);
+    const current = eligible.find((profile) => profile.id === offeringTemplates[offering.id]);
+    return current?.id ?? (eligible.length === 1 ? eligible[0].id : "");
+  };
+
   const handleCreateTarget = async () => {
+    const canonicalYear = Number(selectedCalendarYear);
+    const usingCanonical = canonicalYear >= 2026 &&
+      officialCalendars.some((calendar) => calendar.ano_base === canonicalYear);
     const mappings = offerings.length > 0
-      ? offerings
-        .map((offering) => ({ offering_id: offering.id, template_id: offeringTemplates[offering.id] }))
-        .filter((mapping): mapping is { offering_id: string; template_id: string } => Boolean(mapping.template_id))
-      : undefined;
-    if (offerings.length > 0 && mappings?.length !== offerings.length) return;
-    if (offerings.length === 0 && !selectedTemplate) return;
+      ? offerings.map((offering) => ({
+          offering_id: offering.id,
+          template_id: usingCanonical
+            ? resolveProfile(offering)
+            : offeringTemplates[offering.id],
+        }))
+      : [];
+    if (offerings.length > 0 && mappings.some((mapping) => !mapping.template_id)) {
+      error("Confirme o perfil de calendário de cada curso.");
+      return;
+    }
+    if (usingCanonical && offerings.length === 0) {
+      error("Configure as ofertas educativas dos cursos antes de preparar o ano.");
+      return;
+    }
+    if (!usingCanonical && !selectedTemplate) return;
+
     setCreatingTarget(true);
     try {
+      const body = usingCanonical
+        ? { ano_base: canonicalYear, offerings: mappings }
+        : offerings.length > 0 ? { offerings: mappings } : { template_id: selectedTemplate };
       const response = await fetch("/api/secretaria/operacoes-academicas/virada/sessions-target", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(offerings.length > 0 ? { offerings: mappings } : { template_id: selectedTemplate }),
+        body: JSON.stringify(body),
       });
       const json = (await response.json()) as CreateTargetResponse;
       if (!response.ok || !json.ok || !json.target_session) {
@@ -176,7 +216,9 @@ export function ConfigStep({
       }
       await loadSessions();
       setSelectedTarget(json.target_session.id);
-      success("Ano letivo de destino criado como inativo; a estrutura será preparada no próximo passo.");
+      success("Calendário oficial aplicado ao ano; os cursos mantêm os seus perfis.");
+    } catch {
+      error("Não foi possível preparar o ano letivo.");
     } finally {
       setCreatingTarget(false);
     }
@@ -336,63 +378,85 @@ export function ConfigStep({
             {targets.length === 0 && (
               <div className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-xs font-semibold text-amber-900">
-                  Escolha explicitamente o perfil regulatório aplicável à oferta educativa. Em escolas mistas, não assuma um único calendário para toda a instituição.
+                  Um calendário oficial para todo o ano letivo. As particularidades são aplicadas por curso.
                 </p>
-                {templates.length > 0 ? (
+                {officialCalendars.length > 0 ? (
                   <div className="space-y-3">
-                    {offerings.length > 0 ? offerings.map((offering) => (
-                      <div key={offering.id} className="grid gap-2 sm:grid-cols-[1fr_1.4fr] sm:items-center">
-                        <span className="text-xs font-semibold text-slate-700">
-                          <span className="block">{offering.course_name || "Oferta educativa"}</span>
-                          <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
-                            {OFFERING_SUBSYSTEM_LABELS[offering.education_subsystem] || "Perfil educativo"}
-                            {" · "}
-                            {OFFERING_LEVEL_LABELS[offering.education_level] || "Nível de ensino"}
-                          </span>
-                        </span>
-                        <select
-                          value={offeringTemplates[offering.id] ?? ""}
-                          onChange={(event) => setOfferingTemplates((current) => ({
-                            ...current,
-                            [offering.id]: event.target.value,
-                          }))}
-                          className="h-11 rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-slate-800"
-                          aria-label="Perfil regulatório da oferta"
-                        >
-                          <option value="" disabled>Selecionar perfil regulatório</option>
-                          {templates.map((template) => (
-                            <option key={template.id} value={template.id}>{template.nome}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )) : (
-                      <select
-                        value={selectedTemplate}
-                        onChange={(event) => setSelectedTemplate(event.target.value)}
-                        className="h-11 w-full rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-slate-800"
-                        aria-label="Calendário oficial do subsistema"
-                      >
-                        <option value="" disabled>Selecionar perfil regulatório</option>
-                        {templates.map((template) => (
-                          <option key={template.id} value={template.id}>{template.nome}</option>
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Calendário oficial do ano
+                      <select value={selectedCalendarYear}
+                        onChange={(event) => setSelectedCalendarYear(event.target.value)}
+                        className="mt-1 h-11 w-full rounded-lg border border-amber-200 bg-white px-3 text-sm font-semibold"
+                        aria-label="Calendário oficial do ano letivo">
+                        {officialCalendars.map((calendar) => (
+                          <option key={calendar.ano_base} value={String(calendar.ano_base)}>
+                            {calendar.ano_base}/{calendar.ano_base + 1} · MED · {calendar.versao_documento}
+                          </option>
                         ))}
                       </select>
-                    )}
-                    <Button
-                      tone="gold"
-                      size="sm"
-                      onClick={handleCreateTarget}
+                    </label>
+                    <p className="text-xs text-slate-600">
+                      {offerings.length} oferta(s) educativa(s) herdam este ano; os perfis abaixo
+                      aplicam apenas as particularidades do respetivo curso.
+                    </p>
+                    {offerings.map((offering) => {
+                      const eligible = profilesForCalendar.filter((profile) =>
+                        profile.subsistema === offering.education_subsystem);
+                      return (
+                        <div key={offering.id} className="grid gap-2 sm:grid-cols-[1fr_1.4fr] sm:items-center">
+                          <span className="text-xs font-semibold text-slate-700">
+                            <span className="block">{offering.course_name || "Oferta educativa"}</span>
+                            <span className="text-[10px] font-normal text-slate-500">
+                              {OFFERING_SUBSYSTEM_LABELS[offering.education_subsystem] || "Perfil educativo"}
+                              {" · "}
+                              {OFFERING_LEVEL_LABELS[offering.education_level] || "Nível de ensino"}
+                            </span>
+                          </span>
+                          {eligible.length === 1 ? (
+                            <span className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
+                              {eligible[0].nome}
+                            </span>
+                          ) : (
+                            <select value={resolveProfile(offering)}
+                              onChange={(event) => setOfferingTemplates((current) => ({
+                                ...current, [offering.id]: event.target.value,
+                              }))}
+                              className="h-11 rounded-lg border border-amber-200 bg-white px-3 text-xs"
+                              aria-label={`Perfil académico de ${offering.course_name || offering.id}`}>
+                              <option value="">Selecionar perfil do curso</option>
+                              {eligible.map((profile) => (
+                                <option key={profile.id} value={profile.id}>{profile.nome}</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <Button tone="gold" size="sm" onClick={handleCreateTarget}
                       loading={creatingTarget}
-                      disabled={offerings.length > 0
-                        ? offerings.some((offering) => !offeringTemplates[offering.id])
-                        : !selectedTemplate}
-                    >
-                      Criar próximo ano
+                      disabled={!selectedCalendarYear || offerings.length === 0 ||
+                        offerings.some((offering) => !resolveProfile(offering))}>
+                      Criar ano com calendário oficial
+                    </Button>
+                  </div>
+                ) : templates.length > 0 ? (
+                  <div className="space-y-3">
+                    <select value={selectedTemplate} onChange={(event) => setSelectedTemplate(event.target.value)}
+                      className="h-11 w-full rounded-lg border border-amber-200 bg-white px-3 text-xs"
+                      aria-label="Calendário histórico">
+                      <option value="">Selecione um calendário histórico</option>
+                      {templates.filter((template) => template.ano_base < 2026).map((template) => (
+                        <option key={template.id} value={template.id}>{template.nome}</option>
+                      ))}
+                    </select>
+                    <Button tone="gold" size="sm" onClick={handleCreateTarget}
+                      loading={creatingTarget} disabled={!selectedTemplate}>
+                      Criar ano histórico
                     </Button>
                   </div>
                 ) : (
                   <p className="text-xs font-semibold text-rose-700">
-                    Nenhum template oficial posterior foi publicado. Solicite a publicação ao Super Admin.
+                    Nenhum calendário oficial foi publicado. Solicite a publicação à administração.
                   </p>
                 )}
               </div>
