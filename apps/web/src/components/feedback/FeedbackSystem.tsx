@@ -186,7 +186,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         <ToastStack />
 
         <Dialog open={!!confirmState} onOpenChange={(open) => !open && handleCancel()}>
-          <DialogContent className="max-w-md">
+          <DialogContent overlayClassName="z-[110]" className="z-[110] max-w-md border-border bg-card text-foreground">
             <DialogHeader>
               <DialogTitle className={confirmState?.variant === "danger" ? "text-rose-600" : ""}>
                 {confirmState?.title}
