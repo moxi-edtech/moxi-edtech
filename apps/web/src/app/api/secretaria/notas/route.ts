@@ -90,7 +90,7 @@ export async function POST(req: Request) {
 
     const { data: candidatePeriods, error: periodsError } = await supabase
       .from('periodos_letivos')
-      .select('id,numero,data_inicio,data_fim,trava_notas_em,offering_id,source_template_id')
+      .select('id,numero,data_inicio,data_fim,trava_notas_em,offering_id,source_template_id,source_item_id')
       .eq('escola_id', escolaId)
       .eq('ano_letivo_id', academicContext.anoLetivoId)
       .eq('tipo', 'TRIMESTRE')
@@ -103,7 +103,8 @@ export async function POST(req: Request) {
         error: 'O trimestre desta turma não está configurado de forma inequívoca.',
       }, { status: 409 })
     }
-    if (academicContext.anoLetivoLabel.startsWith('2026/') && !candidatePeriods[0].source_template_id) {
+    if (academicContext.anoLetivoLabel.startsWith('2026/') &&
+        (!candidatePeriods[0].source_template_id || !candidatePeriods[0].source_item_id)) {
       return NextResponse.json({
         ok: false, code: 'OFFICIAL_CALENDAR_NOT_RECONCILED',
         error: 'O calendário oficial de 2026/2027 ainda não está sincronizado nesta escola.',
