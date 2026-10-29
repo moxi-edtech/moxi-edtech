@@ -208,8 +208,9 @@ BEGIN
   END IF;
   IF NEW.offering_id IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM public.school_education_offerings o
+    JOIN public.calendario_templates t ON t.id=NEW.source_template_id
     WHERE o.id=NEW.offering_id AND o.escola_id=NEW.escola_id
-      AND o.calendar_profile_id=NEW.source_template_id
+      AND o.education_subsystem=t.subsistema
   ) THEN
     RAISE EXCEPTION 'COURSE_CALENDAR_PROFILE_MISMATCH: Evento fora do perfil do curso.';
   END IF;
