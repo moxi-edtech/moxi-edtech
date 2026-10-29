@@ -38,7 +38,7 @@ BEGIN
   IF v_actor IS NULL
     OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
     OR NOT public.user_has_role_in_school(p_escola_id,
-       ARRAY['admin','admin_escola','staff_admin','diretor','admin_secretaria']) THEN
+       ARRAY['admin','admin_escola','staff_admin','diretor','admin_secretaria','secretaria','admin_financeiro']) THEN
     RAISE EXCEPTION 'AUTH: Configuração do calendário não autorizada.';
   END IF;
   IF p_ano_base < 2026 OR p_ano_base > 2100 OR
@@ -78,6 +78,10 @@ BEGIN
     v_seen_offerings := array_append(v_seen_offerings,v_offering_id);
   END LOOP;
 
+  IF (SELECT count(DISTINCT item->>'source_template_id')
+        FROM jsonb_array_elements(p_periodos) item) <> 1 THEN
+    RAISE EXCEPTION 'OFFICIAL_TRIMESTER_MISMATCH: Os três trimestres precisam da mesma fonte canónica.';
+  END IF;
   FOR v_period IN SELECT value FROM jsonb_array_elements(p_periodos) LOOP
     v_num := (v_period->>'numero')::integer;
     v_template_id := (v_period->>'source_template_id')::uuid;
