@@ -14,7 +14,7 @@ export async function prepareCanonicalMedCalendar(input: {
   escolaId: string;
   userId: string;
   anoBase: number;
-  selections: CourseCalendarSelection[] | undefined;
+  selections?: CourseCalendarSelection[];
 }) {
   const { db, escolaId, userId, anoBase } = input;
   const [calendarResult, profilesResult, offeringsResult, activeYearResult] = await Promise.all([
