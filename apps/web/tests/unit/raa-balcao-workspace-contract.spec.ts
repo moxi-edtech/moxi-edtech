@@ -163,7 +163,7 @@ test("The year-turn API rejects contradictory official templates before creating
 test("Administrative calendar UI avoids accidental edits to national events", () => {
   const page = source("app/escola/[id]/(portal)/admin/configuracoes/calendario/page.tsx");
   assert.match(page, /anoNum >= 2026/);
-  assert.match(page, /selected\\?\\.source_template_id/);
+  assert.ok(page.includes("selected?.source_template_id"));
   assert.match(page, /EVENTO_ESCOLA/);
   assert.match(page, /Provas, exames e pausas oficiais/);
 });
