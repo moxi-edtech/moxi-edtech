@@ -43,22 +43,9 @@ const AdmissaoConversionSheet = dynamic(
 )
 import { createClient } from '@/lib/supabase/client'
 import { formatTurnoDisplay } from '@/utils/formatters'
+import { getAdmissionInboxNextStep, type AdmissionInboxStatus } from '@/lib/admissoes/inbox-next-step'
 
-type AdmissaoStatus =
-  | 'rascunho'
-  | 'pre_candidatura'
-  | 'submetida'
-  | 'documentos_reenviados'
-  | 'em_analise'
-  | 'aprovada'
-  | 'aguardando_pagamento'
-  | 'aguardando_compensacao'
-  | 'rejeitada'
-  | 'arquivada'
-  | 'arquivado'
-  | 'matriculado'
-  | 'pendente'
-  | 'lista_espera'
+type AdmissaoStatus = AdmissionInboxStatus
 
 type AdmissoesRadarResponse = {
   ok: boolean;
@@ -160,7 +147,6 @@ const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: 
 
 const REJECTABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'pre_candidatura', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
 const APPROVABLE_STATUSES: AdmissaoStatus[] = ['submetida', 'em_analise', 'pendente', 'lista_espera']
-const CONVERTIBLE_STATUSES: AdmissaoStatus[] = ['aprovada', 'aguardando_pagamento', 'aguardando_compensacao']
 const REOPENABLE_STATUSES: AdmissaoStatus[] = ['rejeitada', 'arquivada', 'arquivado']
 const ARCHIVABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'pre_candidatura', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera', 'rejeitada']
 const DOCUMENT_CORRECTION_STATUSES: AdmissaoStatus[] = ['submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
@@ -175,22 +161,12 @@ function formatPaymentMethod(value?: unknown) {
   return PAYMENT_METHOD_LABELS[key] || 'Transferência'
 }
 
-function getConversionActionLabel(status: AdmissaoStatus) {
-  if (status === 'aguardando_compensacao') return 'Validar Pagamento e Matricular'
-  if (status === 'aguardando_pagamento') return 'Registar Pagamento e Matricular'
-  return 'Efetivar Matrícula'
-}
-
 function canRejectAdmission(status: AdmissaoStatus) {
   return REJECTABLE_STATUSES.includes(status)
 }
 
 function canApproveAdmission(status: AdmissaoStatus) {
   return APPROVABLE_STATUSES.includes(status)
-}
-
-function canConvertAdmission(status: AdmissaoStatus) {
-  return CONVERTIBLE_STATUSES.includes(status)
 }
 
 function canReopenAdmission(status: AdmissaoStatus) {
@@ -1191,6 +1167,43 @@ export default function AdmissoesInboxClient({
     }
   };
 
+  const selectedNextStep = selectedData
+    ? getAdmissionInboxNextStep(
+        completedCandidateId === selectedId ? 'matriculado' : selectedData.status,
+        detailTab,
+      )
+    : null
+
+  const handleNextAction = () => {
+    if (!selectedData || !selectedNextStep || loadingAction) return
+    switch (selectedNextStep.action) {
+      case 'share_link':
+        handleCopyLink()
+        break
+      case 'promote':
+        void openPromoteModal()
+        break
+      case 'review_documents':
+        setDetailTab('documentos')
+        break
+      case 'review_history':
+        setDetailTab('historico')
+        break
+      case 'approve':
+        void handleApprove()
+        break
+      case 'accept_documents':
+        void handleAcceptReuploadedDocuments()
+        break
+      case 'convert':
+        setIsConversionOpen(true)
+        break
+      case 'next_candidate':
+        handleNextCandidate()
+        break
+    }
+  }
+
   return (
     <div className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row ${embedded ? "h-[min(69dvh,760px)] min-h-[420px]" : "h-[calc(100dvh-160px)] min-h-[560px]"}`} aria-label="Gestão de admissões">
       {/* Coluna Esquerda: Fila de Espera (30%) */}
@@ -1409,6 +1422,7 @@ export default function AdmissoesInboxClient({
             filteredItems.map((item) => {
               const isActive = selectedId === item.id
               const status = STATUS_CONFIG[item.status] || STATUS_CONFIG.rascunho
+              const nextForList = getAdmissionInboxNextStep(item.status)
               const isBulkSelectable = statusFilter === 'pre_candidaturas' && item.status === 'pre_candidatura'
               const isBulkSelected = bulkSelectedIds.has(item.id)
 
@@ -1458,6 +1472,9 @@ export default function AdmissoesInboxClient({
                     </p>
                   </div>
 
+                  <p className="mt-2 text-[11px] font-medium text-muted-foreground">
+                    A seguir: <span className="text-foreground">{nextForList.listLabel}</span>
+                  </p>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -1539,6 +1556,15 @@ export default function AdmissoesInboxClient({
                       </div>
                     </div>
                   </div>
+
+                  {/* Orientação compacta, específica do estado, sem tirar o atendente do Balcão */}
+                  {selectedNextStep && (
+                    <section aria-label="Próxima ação da candidatura" className="mx-3 mt-3 rounded-xl border border-border bg-muted/40 p-3 sm:mx-5 sm:mt-4 sm:p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Próxima ação</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">{selectedNextStep.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{selectedNextStep.description}</p>
+                    </section>
+                  )}
 
                   {/* Conteúdo Raio-X */}
                   <div className="space-y-4 p-3 pb-28 sm:p-5 sm:pb-28">
@@ -1801,48 +1827,14 @@ export default function AdmissoesInboxClient({
                     </div>
                   </div>
 
-                  {/* Ações de decisão contextualizadas no mesmo atendimento */}
+                  {/* Uma única próxima ação principal; outras decisões continuam explícitas */}
                   <div className="absolute inset-x-0 bottom-0 z-10 border-t border-border bg-card/95 p-3 backdrop-blur">
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                      {completedCandidateId === selectedId && (
-                        <button type="button" onClick={handleNextCandidate}
-                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted">
-                          Atender próximo
-                        </button>
-                      )}
                       {canRequestDocumentCorrection(selectedData.status) && (
                         <button type="button" onClick={openPendenciasModal} disabled={!!loadingAction}
                           className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted disabled:opacity-50">
                           <FileText className="h-4 w-4" />
                           Pedir ajustes
-                        </button>
-                      )}
-                      {selectedData.status === 'pre_candidatura' && (
-                        <button type="button" onClick={openPromoteModal} disabled={!!loadingAction}
-                          className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 disabled:opacity-50">
-                          {loadingAction === 'promoting' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <School className="h-4 w-4" />}
-                          Promover candidatura
-                        </button>
-                      )}
-                      {selectedData.status === 'documentos_reenviados' && (
-                        <button type="button" onClick={handleAcceptReuploadedDocuments} disabled={!!loadingAction}
-                          className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 disabled:opacity-50">
-                          {loadingAction === 'accepting_documents' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                          Aceitar documentos
-                        </button>
-                      )}
-                      {canApproveAdmission(selectedData.status) && (
-                        <button type="button" onClick={handleApprove} disabled={!!loadingAction}
-                          className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 disabled:opacity-50">
-                          {loadingAction === 'approving' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                          Aprovar candidatura
-                        </button>
-                      )}
-                      {canConvertAdmission(selectedData.status) && (
-                        <button type="button" onClick={() => setIsConversionOpen(true)} disabled={!!loadingAction}
-                          className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 disabled:opacity-50">
-                          <Check className="h-4 w-4" />
-                          {getConversionActionLabel(selectedData.status)}
                         </button>
                       )}
                       {(canReopenAdmission(selectedData.status) || canArchiveAdmission(selectedData.status) || canRejectAdmission(selectedData.status)) && (
@@ -1871,6 +1863,14 @@ export default function AdmissoesInboxClient({
                             )}
                           </div>
                         </details>
+                      )}
+                      {selectedNextStep && (
+                        <button type="button" onClick={handleNextAction} disabled={!!loadingAction}
+                          aria-label={selectedNextStep.actionLabel}
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-amber px-4 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-50">
+                          {loadingAction ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+                          {selectedNextStep.actionLabel}
+                        </button>
                       )}
                     </div>
                   </div>
