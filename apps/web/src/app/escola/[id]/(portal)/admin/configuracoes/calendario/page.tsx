@@ -137,7 +137,7 @@ export default function CalendarioConfigPage({ params }: Props) {
   const handleApplyOfficialTemplate = async (template: CalendarioTemplate) => {
     const ok = await confirm({
       title: "Aplicar calendário oficial",
-      message: `Aplicar ${template.nome}? O calendário do decreto será usado como base para o ano ${template.ano_base}. Ajustes posteriores devem ser justificados pela escola.`,
+      message: `Aplicar o calendário oficial ${template.ano_base}/${template.ano_base + 1}? As regras serão associadas aos cursos da escola.`,
       confirmLabel: "Aplicar calendário",
     });
     if (!ok) return;
@@ -147,13 +147,18 @@ export default function CalendarioConfigPage({ params }: Props) {
       const response = await fetch(`/api/escola/${escolaParam}/admin/calendario/aplicar-template`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId: template.id }),
+        body: JSON.stringify(template.ano_base >= 2026
+          ? { anoBase: template.ano_base }
+          : { templateId: template.id }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível aplicar o calendário oficial.");
       success("Calendário oficial aplicado", `${template.nome} foi aplicado ao ano letivo.`);
-      setSelectedAnoId(payload.anoLetivoId);
-      await loadData(payload.anoLetivoId);
+      const appliedYearId = payload.target_session?.id ?? payload.anoLetivoId;
+      if (appliedYearId) {
+        setSelectedAnoId(appliedYearId);
+        await loadData(appliedYearId);
+      }
     } catch (cause) {
       error(cause instanceof Error ? cause.message : "Não foi possível aplicar o calendário oficial.");
     } finally {
@@ -502,7 +507,7 @@ export default function CalendarioConfigPage({ params }: Props) {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="flex items-center gap-2 text-sm font-black text-blue-950"><CheckCircle2 className="h-4 w-4" /> Fonte oficial: calendário do MED/decreto</p>
-                <p className="mt-1 text-xs text-blue-800">Aplique o modelo correspondente ao subsistema. Alterações manuais devem ser tratadas como exceção da escola.</p>
+                <p className="mt-1 text-xs text-blue-800">Um calendário por ano letivo. Os perfis de exames e outras particularidades são herdados pelos cursos.</p>
               </div>
               <select
                 className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-blue-900"
@@ -514,8 +519,11 @@ export default function CalendarioConfigPage({ params }: Props) {
                 }}
                 disabled={saving}
               >
-                <option value="">Aplicar modelo oficial...</option>
-                {templatesOficiais.map((template) => <option key={template.id} value={template.id}>{template.nome}</option>)}
+                <option value="">Aplicar calendário oficial do ano...</option>
+                {[...new Map(templatesOficiais.map((template) => [template.ano_base, template])).values()]
+                   .map((template) => <option key={template.ano_base} value={template.id}>
+                     Calendário MED {template.ano_base}/{template.ano_base + 1}
+                   </option>)}
               </select>
             </div>
           </section>
