@@ -612,94 +612,94 @@ export function AdmissaoConversionSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent overlayClassName={elevated ? "z-[90]" : undefined} className={`sm:max-w-[540px] p-0 flex flex-col h-full border-l-0 shadow-2xl overflow-hidden ${elevated ? "z-[90]" : ""}`}>
-        <SheetHeader className="p-8 bg-slate-900 text-white shrink-0">
+      <SheetContent overlayClassName={elevated ? "z-[90]" : undefined} className={`sm:max-w-[540px] p-0 flex flex-col h-full overflow-hidden border-l border-border bg-card text-foreground shadow-2xl ${elevated ? "z-[90]" : ""}`}>
+        <SheetHeader className="shrink-0 border-b border-border bg-card p-5 text-foreground sm:p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="bg-amber p-2 rounded-xl">
-              <Check className="w-5 h-5 text-white" />
+              <Check className="h-5 w-5 text-amber-950" />
             </div>
-            <Badge variant="outline" className="text-[10px] uppercase border-white/20 text-white/60">
+            <Badge variant="outline" className="border-border text-[10px] uppercase text-muted-foreground">
               Conversão de Admissão
             </Badge>
           </div>
-          <SheetTitle className="text-2xl font-black text-white">Efetivar Matrícula</SheetTitle>
-          <SheetDescription className="text-white/60">
-            Conclua o processo acadêmico e financeiro para este candidato sem sair do inbox.
+          <SheetTitle className="text-2xl font-bold text-foreground">Efetivar Matrícula</SheetTitle>
+          <SheetDescription className="text-muted-foreground">
+            Conclua o processo acadêmico e financeiro para este candidato sem sair do Balcão.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+        <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto bg-muted/30 p-4 sm:p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <Loader2 className="w-10 h-10 text-amber animate-spin" />
-              <p className="text-sm font-bold text-slate-400">Carregando dados do candidato...</p>
+              <p className="text-sm font-bold text-muted-foreground">Carregando dados do candidato...</p>
             </div>
           ) : enrollmentResult ? (
             <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in zoom-in-95 duration-500">
-              <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mb-6 shadow-sm">
+              <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-500/15 flex items-center justify-center mb-6 shadow-sm">
                 <Check className="h-10 w-10 text-green-600" />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-2">Matrícula Efetivada!</h3>
-              <p className="text-slate-500 mb-8 max-w-xs mx-auto">
-                A matrícula de <strong className="text-slate-900">{studentData.nome}</strong> foi concluída com sucesso.
+              <h3 className="text-2xl font-black text-foreground mb-2">Matrícula Efetivada!</h3>
+              <p className="text-muted-foreground mb-8 max-w-xs mx-auto">
+                A matrícula de <strong className="text-foreground">{studentData.nome}</strong> foi concluída com sucesso.
               </p>
 
-              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
-                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Número da matrícula</p>
-                <p className="mt-1 text-xl font-black text-slate-900">{enrollmentResult.numeroMatricula || 'Gerado no sistema'}</p>
-                <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-500">Comprovante de matrícula</p>
+              <div className="mb-6 w-full rounded-2xl border border-border bg-card p-4 text-left shadow-sm">
+                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Número da matrícula</p>
+                <p className="mt-1 text-xl font-black text-foreground">{enrollmentResult.numeroMatricula || 'Gerado no sistema'}</p>
+                <p className="mt-4 text-xs font-black uppercase tracking-widest text-muted-foreground">Comprovante de matrícula</p>
                 {enrollmentResult.comprovante?.ok && enrollmentResult.comprovante.printUrl ? (
                   <a href={enrollmentResult.comprovante.printUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovante</a>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-800">A matrícula está concluída, mas o comprovante ainda não foi emitido. Emita-o pela área de documentos.</p>
+                  <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">A matrícula está concluída, mas o comprovante ainda não foi emitido. Emita-o pela área de documentos.</p>
                 )}
-                {enrollmentResult.comprovante?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.comprovante.error}</p>}
-                <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-500">Recibo financeiro</p>
+                {enrollmentResult.comprovante?.error && <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">Motivo técnico: {enrollmentResult.comprovante.error}</p>}
+                <p className="mt-4 text-xs font-black uppercase tracking-widest text-muted-foreground">Recibo financeiro</p>
                 {enrollmentResult.recibo?.ok && enrollmentResult.recibo.print_url ? (
-                  <a href={enrollmentResult.recibo.print_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo</a>
+                  <a href={enrollmentResult.recibo.print_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-foreground px-4 py-2 text-xs font-black text-white">Abrir recibo</a>
                 ) : enrollmentResult.recibo?.status === 'pending' ? (
-                  <p className="mt-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Pagamento registado. O recibo será disponibilizado após a liquidação.</p>
+                  <p className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">Pagamento registado. O recibo será disponibilizado após a liquidação.</p>
                 ) : (
-                  <p className="mt-2 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">Não foi possível emitir o recibo automaticamente. Tente novamente pela área de documentos.</p>
+                  <p className="mt-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3 text-xs text-rose-800 dark:text-rose-300">Não foi possível emitir o recibo automaticamente. Tente novamente pela área de documentos.</p>
                 )}
-                {enrollmentResult.recibo?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.recibo.error}</p>}
+                {enrollmentResult.recibo?.error && <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">Motivo técnico: {enrollmentResult.recibo.error}</p>}
               </div>
 
-              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+              <div className="mb-6 w-full rounded-2xl border border-border bg-muted/50 p-4 text-left">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">Itens pagos</p>
-                  <span className="text-xs font-black text-slate-700">{enrollmentResult.itensPagamento?.length ?? 0} item(ns) · {Math.max((enrollmentResult.itensPagamento?.length ?? 0) - 1, 0)} serviço(s) selecionado(s)</span>
+                  <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Itens pagos</p>
+                  <span className="text-xs font-black text-foreground">{enrollmentResult.itensPagamento?.length ?? 0} item(ns) · {Math.max((enrollmentResult.itensPagamento?.length ?? 0) - 1, 0)} serviço(s) selecionado(s)</span>
                 </div>
-                <div className="mt-3 divide-y divide-slate-200">
+                <div className="mt-3 divide-y divide-border">
                   {(enrollmentResult.itensPagamento ?? []).map((item, index) => (
                     <div key={`${item.nome ?? item.descricao ?? 'item'}-${index}`} className="flex items-center justify-between gap-4 py-2 text-sm">
-                      <span className="text-slate-600">{item.nome ?? item.descricao ?? 'Serviço escolar'}{Number(item.quantidade ?? 1) > 1 ? ` × ${item.quantidade}` : ''}</span>
-                      <strong className="text-slate-900">{formatAoa(Number(item.preco ?? item.valor ?? 0) * Number(item.quantidade ?? 1))}</strong>
+                      <span className="text-muted-foreground">{item.nome ?? item.descricao ?? 'Serviço escolar'}{Number(item.quantidade ?? 1) > 1 ? ` × ${item.quantidade}` : ''}</span>
+                      <strong className="text-foreground">{formatAoa(Number(item.preco ?? item.valor ?? 0) * Number(item.quantidade ?? 1))}</strong>
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 flex items-center justify-between border-t border-slate-300 pt-3 text-sm font-black">
+                <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm font-black">
                   <span>Total</span><span>{formatAoa(enrollmentResult.valorTotal)}</span>
                 </div>
               </div>
 
-              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
-                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Resumo académico e financeiro</p>
+              <div className="mb-6 w-full rounded-2xl border border-border bg-card p-4 text-left shadow-sm">
+                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumo académico e financeiro</p>
                 <div className="mt-3 grid gap-3 text-xs sm:grid-cols-2">
-                  <div><span className="block text-slate-400">Ano letivo</span><strong className="text-slate-900">{detail?.ano_letivo ?? "Não informado"}</strong></div>
-                  <div><span className="block text-slate-400">Turma</span><strong className="text-slate-900">{selectedTurma?.nome ?? selectedTurma?.turma_codigo ?? "Não informada"}</strong></div>
-                  <div className="sm:col-span-2"><span className="block text-slate-400">Pagamento informado</span><strong className="text-slate-900">{paymentSummary}</strong></div>
+                  <div><span className="block text-muted-foreground">Ano letivo</span><strong className="text-foreground">{detail?.ano_letivo ?? "Não informado"}</strong></div>
+                  <div><span className="block text-muted-foreground">Turma</span><strong className="text-foreground">{selectedTurma?.nome ?? selectedTurma?.turma_codigo ?? "Não informada"}</strong></div>
+                  <div className="sm:col-span-2"><span className="block text-muted-foreground">Pagamento informado</span><strong className="text-foreground">{paymentSummary}</strong></div>
                 </div>
               </div>
 
-              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
-                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Checklist do atendimento</p>
+              <div className="mb-6 w-full rounded-2xl border border-border bg-card p-4 text-left shadow-sm">
+                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Checklist do atendimento</p>
                 <div className="mt-3 space-y-2 text-xs">
-                  <div className="flex items-center justify-between gap-3"><span>Matrícula criada</span><span className="font-black text-emerald-700">Concluído</span></div>
-                  <div className="flex items-center justify-between gap-3"><span>Comprovante de matrícula</span><span className={enrollmentResult.comprovante?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.comprovante?.ok ? "Disponível" : "Pendente"}</span></div>
-                  <div className="flex items-center justify-between gap-3"><span>Recibo financeiro</span><span className={enrollmentResult.recibo?.ok ? "font-black text-emerald-700" : enrollmentResult.recibo?.status === 'error' ? "font-black text-rose-700" : "font-black text-amber-700"}>{enrollmentResult.recibo?.ok ? "Disponível" : enrollmentResult.recibo?.status === 'error' ? "Erro" : "Pendente"}</span></div>
-                  <div className="flex items-center justify-between gap-3"><span>Portal do aluno</span><span className={credentials ? "font-black text-emerald-700" : "font-black text-amber-700"}>{credentials ? "Liberado" : "Pendente"}</span></div>
-                  <div className="flex items-center justify-between gap-3"><span>WhatsApp preparado</span><span className={notificationSent ? "font-black text-emerald-700" : "font-black text-amber-700"}>{notificationSent ? "Concluído" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Matrícula criada</span><span className="font-black text-emerald-700 dark:text-emerald-300">Concluído</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Comprovante de matrícula</span><span className={enrollmentResult.comprovante?.ok ? "font-black text-emerald-700 dark:text-emerald-300" : "font-black text-amber-700 dark:text-amber-300"}>{enrollmentResult.comprovante?.ok ? "Disponível" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Recibo financeiro</span><span className={enrollmentResult.recibo?.ok ? "font-black text-emerald-700 dark:text-emerald-300" : enrollmentResult.recibo?.status === 'error' ? "font-black text-rose-700 dark:text-rose-300" : "font-black text-amber-700 dark:text-amber-300"}>{enrollmentResult.recibo?.ok ? "Disponível" : enrollmentResult.recibo?.status === 'error' ? "Erro" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Portal do aluno</span><span className={credentials ? "font-black text-emerald-700 dark:text-emerald-300" : "font-black text-amber-700 dark:text-amber-300"}>{credentials ? "Liberado" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>WhatsApp preparado</span><span className={notificationSent ? "font-black text-emerald-700 dark:text-emerald-300" : "font-black text-amber-700 dark:text-amber-300"}>{notificationSent ? "Concluído" : "Pendente"}</span></div>
                 </div>
               </div>
 
@@ -712,12 +712,12 @@ export function AdmissaoConversionSheet({
                   <Send className="w-5 h-5 mr-3" />
                   {notificationSent ? 'Abrir WhatsApp novamente' : 'Notificar via WhatsApp'}
                 </Button>
-                {notificationError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-left text-xs text-rose-700"><p>{notificationError}</p><button type="button" onClick={handleNotifyWhatsApp} className="mt-2 font-black underline">Tentar novamente</button></div>}
+                {notificationError && <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-3 text-left text-xs text-rose-700 dark:text-rose-300"><p>{notificationError}</p><button type="button" onClick={handleNotifyWhatsApp} className="mt-2 font-black underline">Tentar novamente</button></div>}
 
                 {!credentials ? (
-                  <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Onboarding Digital</p>
-                    <p className="text-xs text-slate-600 text-left">
+                  <div className="p-6 bg-muted/50 rounded-3xl border border-border space-y-3">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-left">Onboarding Digital</p>
+                    <p className="text-xs text-muted-foreground text-left">
                       {guardianData.email ? 'O e-mail será enviado automaticamente.' : 'Nenhum e-mail detectado. Use o WhatsApp para entregar os acessos.'}
                     </p>
                     <Button
@@ -730,12 +730,12 @@ export function AdmissaoConversionSheet({
                       <ShieldCheck className="w-4 h-4 mr-2" />
                       Gerar Acesso ao Portal
                     </Button>
-                    {portalError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700"><p>{portalError}</p><button type="button" onClick={() => void handleGerarAcesso()} className="mt-2 font-black underline">Tentar novamente</button></div>}
+                    {portalError && <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300"><p>{portalError}</p><button type="button" onClick={() => void handleGerarAcesso()} className="mt-2 font-black underline">Tentar novamente</button></div>}
                   </div>
                 ) : (
-                  <div className="p-6 bg-green-50 rounded-3xl border border-green-100 space-y-4">
+                  <div className="p-6 bg-green-50 dark:bg-green-500/10 rounded-3xl border border-green-100 dark:border-green-500/25 space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-green-700 font-bold">
+                      <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-bold">
                         <ShieldCheck className="w-5 h-5" />
                         Credenciais Geradas
                       </div>
@@ -747,13 +747,13 @@ export function AdmissaoConversionSheet({
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-left">
-                      <div className="bg-white p-3 rounded-xl border border-green-200/50">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Usuário</p>
-                        <p className="text-sm font-mono font-bold text-slate-900">{credentials.login}</p>
+                      <div className="bg-card p-3 rounded-xl border border-green-200/50">
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Usuário</p>
+                        <p className="text-sm font-mono font-bold text-foreground">{credentials.login}</p>
                       </div>
-                      <div className="bg-white p-3 rounded-xl border border-green-200/50">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Senha</p>
-                        <p className="text-sm font-mono font-bold text-slate-900">{credentials.senha || '********'}</p>
+                      <div className="bg-card p-3 rounded-xl border border-green-200/50">
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Senha</p>
+                        <p className="text-sm font-mono font-bold text-foreground">{credentials.senha || '********'}</p>
                       </div>
                     </div>
                   </div>
@@ -762,7 +762,7 @@ export function AdmissaoConversionSheet({
                 <div className="pt-4 flex flex-col gap-3">
                   <button
                     onClick={onClose}
-                    className="text-slate-400 hover:text-amber font-bold text-sm transition-colors"
+                    className="text-muted-foreground hover:text-amber font-bold text-sm transition-colors"
                   >
                     Fechar e atender próximo candidato
                   </button>
@@ -773,13 +773,13 @@ export function AdmissaoConversionSheet({
             <>
               {/* Seção 1: Dados Pessoais do Estudante */}
               <section className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
                   <User className="w-3.5 h-3.5" />
                   Dados Pessoais
                 </div>
-                <div className="grid gap-4 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <div className="grid gap-4 p-6 bg-card rounded-2xl border border-border shadow-sm">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Nome Completo</label>
+                    <label className="text-xs font-bold text-foreground">Nome Completo</label>
                     <Input 
                       value={studentData.nome}
                       onChange={(e) => setStudentData(prev => ({ ...prev, nome: e.target.value }))}
@@ -802,7 +802,7 @@ export function AdmissaoConversionSheet({
                       ]}
                     />
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Nº Documento</label>
+                      <label className="text-xs font-bold text-foreground">Nº Documento</label>
                       <Input 
                         value={studentData.numero_documento}
                         onChange={(e) => setStudentData(prev => ({ ...prev, numero_documento: e.target.value.toUpperCase() }))}
@@ -814,7 +814,7 @@ export function AdmissaoConversionSheet({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Data Nascimento</label>
+                      <label className="text-xs font-bold text-foreground">Data Nascimento</label>
                       <Input 
                         type="date"
                         value={studentData.data_nascimento}
@@ -823,7 +823,7 @@ export function AdmissaoConversionSheet({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Telefone</label>
+                      <label className="text-xs font-bold text-foreground">Telefone</label>
                       <Input 
                         value={studentData.telefone}
                         onChange={(e) => setStudentData(prev => ({ ...prev, telefone: e.target.value }))}
@@ -833,9 +833,9 @@ export function AdmissaoConversionSheet({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Nome do Pai</label>
+                      <label className="text-xs font-bold text-foreground">Nome do Pai</label>
                       <Input 
                         value={studentData.pai_nome}
                         onChange={(e) => setStudentData(prev => ({ ...prev, pai_nome: e.target.value }))}
@@ -844,7 +844,7 @@ export function AdmissaoConversionSheet({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Nome da Mãe</label>
+                      <label className="text-xs font-bold text-foreground">Nome da Mãe</label>
                       <Input 
                         value={studentData.mae_nome}
                         onChange={(e) => setStudentData(prev => ({ ...prev, mae_nome: e.target.value }))}
@@ -858,13 +858,13 @@ export function AdmissaoConversionSheet({
 
               {/* Seção 2: Dados do Responsável */}
               <section className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
                   <User className="w-3.5 h-3.5" />
                   Responsável / Encarregado
                 </div>
-                <div className="grid gap-4 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <div className="grid gap-4 p-6 bg-card rounded-2xl border border-border shadow-sm">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Nome do Encarregado</label>
+                    <label className="text-xs font-bold text-foreground">Nome do Encarregado</label>
                     <Input 
                       value={guardianData.nome}
                       onChange={(e) => setGuardianData(prev => ({ ...prev, nome: e.target.value }))}
@@ -875,7 +875,7 @@ export function AdmissaoConversionSheet({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Contato</label>
+                      <label className="text-xs font-bold text-foreground">Contato</label>
                       <Input 
                         value={guardianData.contato}
                         onChange={(e) => setGuardianData(prev => ({ ...prev, contato: e.target.value }))}
@@ -884,7 +884,7 @@ export function AdmissaoConversionSheet({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Relação</label>
+                      <label className="text-xs font-bold text-foreground">Relação</label>
                       <Select 
                         value={guardianData.relacao} 
                         onChange={(e) => setGuardianData(prev => ({ ...prev, relacao: e.target.value }))}
@@ -900,7 +900,7 @@ export function AdmissaoConversionSheet({
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Email do Encarregado</label>
+                    <label className="text-xs font-bold text-foreground">Email do Encarregado</label>
                     <Input 
                       value={guardianData.email}
                       onChange={(e) => setGuardianData(prev => ({ ...prev, email: e.target.value }))}
@@ -913,7 +913,7 @@ export function AdmissaoConversionSheet({
 
               {/* Seção 3: Documentação */}
               <section className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
                   <FileText className="w-3.5 h-3.5" />
                   Documentação Obrigatória
                 </div>
@@ -1003,12 +1003,12 @@ export function AdmissaoConversionSheet({
 
               {/* Seção 3: Fit Acadêmico */}
               <section className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
                   <GraduationCap className="w-3.5 h-3.5" />
                   Ajuste Académico
                 </div>
                 
-                <div className="grid gap-4 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <div className="grid gap-4 p-6 bg-card rounded-2xl border border-border shadow-sm">
                   <Select 
                     label="Curso Pretendido"
                     value={academic.cursoId} 
@@ -1040,28 +1040,28 @@ export function AdmissaoConversionSheet({
 
               {/* Seção 3: Financeiro */}
               <section className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
                   <CreditCard className="w-3.5 h-3.5" />
                   Pagamento de Matrícula
                 </div>
 
-                <div className="grid gap-6 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                  <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-100">
+                <div className="grid gap-6 p-6 bg-card rounded-2xl border border-border shadow-sm">
+                  <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-100 dark:border-amber-500/25">
                     <div className="flex items-center gap-2">
-                      <Banknote className="w-4 h-4 text-amber-600" />
-                      <span className="text-xs font-bold text-amber-900">Taxa de Matrícula</span>
+                      <Banknote className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      <span className="text-xs font-bold text-amber-900 dark:text-amber-200">Taxa de Matrícula</span>
                     </div>
                     {loadingPrice ? (
-                      <Loader2 className="w-3 h-3 animate-spin text-amber-600" />
+                      <Loader2 className="w-3 h-3 animate-spin text-amber-700 dark:text-amber-300" />
                     ) : (
-                      <span className="text-sm font-black text-amber-900">
+                      <span className="text-sm font-black text-amber-900 dark:text-amber-200">
                         {priceHint ? `${Number(priceHint).toLocaleString('pt-AO')} Kz` : '—'}
                       </span>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700">Método de Pagamento</label>
+                    <label className="text-xs font-bold text-foreground">Método de Pagamento</label>
                     <div className="grid grid-cols-3 gap-2">
                       {PAYMENT_METHOD_OPTIONS.map(option => (
                         <button
@@ -1070,13 +1070,13 @@ export function AdmissaoConversionSheet({
                           onClick={() => setPayment(p => ({ ...p, metodo: option.value }))}
                           className={`py-3 px-2 rounded-xl text-[10px] font-black border transition-all ${
                             payment.metodo === option.value
-                              ? 'bg-slate-900 text-white border-slate-900' 
-                              : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                              ? 'border-foreground bg-foreground text-background' 
+                              : 'bg-card text-muted-foreground border-border hover:bg-muted'
                           }`}
                         >
                           <span className="block">{option.label}</span>
                           <span className={`mt-1 block text-[9px] font-semibold normal-case ${
-                            payment.metodo === option.value ? 'text-white/70' : 'text-slate-400'
+                            payment.metodo === option.value ? 'text-background/70' : 'text-muted-foreground'
                           }`}>
                             {option.helper}
                           </span>
@@ -1087,7 +1087,7 @@ export function AdmissaoConversionSheet({
 
                   {payment.metodo !== 'CASH' && (
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Referência do Comprovativo</label>
+                      <label className="text-xs font-bold text-foreground">Referência do Comprovativo</label>
                       <Input 
                         value={payment.referencia}
                         onChange={(e) => setPayment(p => ({ ...p, referencia: e.target.value.toUpperCase() }))}
@@ -1099,11 +1099,11 @@ export function AdmissaoConversionSheet({
 
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700">Valor Pago</label>
+                      <label className="text-xs font-bold text-foreground">Valor Pago</label>
                       <button 
                         onClick={() => setPayment(p => ({ ...p, parcial: !p.parcial }))}
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-lg transition-colors ${
-                          payment.parcial ? 'bg-rose-100 text-rose-700' : 'text-slate-400 hover:text-slate-600'
+                          payment.parcial ? 'bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300' : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         {payment.parcial ? 'Pagamento Parcial ON' : 'Definir Parcial?'}
@@ -1120,7 +1120,7 @@ export function AdmissaoConversionSheet({
 
                   {payment.metodo !== 'CASH' && (
                     <div className="pt-2">
-                      <p className="text-xs font-bold text-slate-700 mb-2">Comprovativo de Pagamento</p>
+                      <p className="text-xs font-bold text-foreground mb-2">Comprovativo de Pagamento</p>
                       <DocumentUpload
                         label="Upload Comprovativo"
                         description="PDF ou Imagem do talão"
@@ -1138,9 +1138,9 @@ export function AdmissaoConversionSheet({
                 </div>
               </section>
 
-              <div className="rounded-xl bg-blue-50 p-4 flex gap-3 items-start border border-blue-100">
+              <div className="rounded-xl bg-blue-50 dark:bg-blue-500/10 p-4 flex gap-3 items-start border border-blue-100 dark:border-blue-500/25">
                 <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <p className="text-[10px] font-medium text-blue-700 leading-relaxed">
+                <p className="text-[10px] font-medium text-blue-700 dark:text-blue-300 leading-relaxed">
                   Ao efetivar, o sistema irá criar o perfil do aluno, alocá-lo na turma, 
                   gerar a fatura de matrícula e liquidar o pagamento automaticamente.
                 </p>
@@ -1150,19 +1150,19 @@ export function AdmissaoConversionSheet({
         </div>
 
         {!enrollmentResult && (
-          <SheetFooter className="p-8 bg-slate-50 border-t border-slate-100 shrink-0 gap-3">
+          <SheetFooter className="shrink-0 gap-3 border-t border-border bg-card p-4 sm:p-6">
             <Button
               variant="outline"
               onClick={handleSaveOnly}
               disabled={submitting}
-              className="flex-1 h-14 rounded-2xl border-slate-200 text-slate-600 font-bold"
+              className="flex-1 h-14 rounded-2xl border-border text-muted-foreground font-bold"
             >
               Salvar Apenas
             </Button>
             <Button
               onClick={() => void handleEfetivar()}
               disabled={submitting || !academic.turmaId || !payment.amount}
-              className="flex-[2] h-14 rounded-2xl bg-amber hover:brightness-95 text-white font-black text-base shadow-xl shadow-amber/20"
+              className="h-12 flex-[2] rounded-xl bg-amber text-amber-950 font-bold transition hover:brightness-95"
               loading={submitting}
             >
               {submitting ? 'Processando...' : 'Efetivar Matrícula Agora'}
@@ -1172,26 +1172,26 @@ export function AdmissaoConversionSheet({
       </SheetContent>
       {capacityOverrideOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl">
             <div className="mb-4 flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300">
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-black text-slate-900">Turma acima da capacidade</h3>
-                <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">
+                <h3 className="text-base font-black text-foreground">Turma acima da capacidade</h3>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
                   Para continuar, informe o motivo da exceção. A autorização e a auditoria serão validadas no banco.
                 </p>
               </div>
             </div>
 
             {capacityOverrideError && (
-              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+              <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-xs font-bold text-amber-800 dark:text-amber-300">
                 {capacityOverrideError}
               </div>
             )}
 
-            <label className="mb-1.5 block text-xs font-bold text-slate-700">Motivo do override</label>
+            <label className="mb-1.5 block text-xs font-bold text-foreground">Motivo do override</label>
             <Input
               value={capacityOverrideMotivo}
               onChange={(e) => {
@@ -1219,7 +1219,7 @@ export function AdmissaoConversionSheet({
                 onClick={() => void handleEfetivar({ capacidade: true, motivo: capacityOverrideMotivo })}
                 disabled={submitting || capacityOverrideMotivo.trim().length < 10}
                 loading={submitting}
-                className="flex-[2] bg-amber text-white"
+                className="flex-[2] bg-amber text-amber-950"
               >
                 Confirmar override
               </Button>
