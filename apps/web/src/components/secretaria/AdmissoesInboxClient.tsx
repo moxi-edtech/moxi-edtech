@@ -1590,7 +1590,7 @@ export default function AdmissoesInboxClient({
                     {/* Grid de Dados */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       {/* Dados Pessoais */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                           <User className="h-4 w-4" />
                           Dados do Aluno
@@ -1605,7 +1605,7 @@ export default function AdmissoesInboxClient({
                       </section>
 
                       {/* Encarregado */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                           <User className="h-4 w-4" />
                           Responsável / Encarregado
@@ -1619,7 +1619,7 @@ export default function AdmissoesInboxClient({
                       </section>
 
                       {/* Escolha Acadêmica */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                           <FileText className="h-4 w-4" />
                           Acadêmico
@@ -1656,7 +1656,7 @@ export default function AdmissoesInboxClient({
                       </section>
 
                       {/* Documentos */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                           <FileText className="h-4 w-4" />
                           Documentos Anexados
@@ -1675,7 +1675,7 @@ export default function AdmissoesInboxClient({
                                 >
                                   <FileText className="h-8 w-8 text-slate-300" />
                                 </button>
-                                <div className="absolute bottom-0 inset-x-0 p-2 bg-white/90 text-[8px] font-bold text-center truncate uppercase">
+                                <div className="absolute inset-x-0 bottom-0 truncate bg-card/90 p-2 text-center text-[8px] font-bold uppercase text-foreground">
                                   {name.replace('_', ' ')}
                                 </div>
                                 <button
@@ -1713,7 +1713,7 @@ export default function AdmissoesInboxClient({
                       </section>
 
                       {/* Histórico de Pendências */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:col-span-2">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           Histórico de Pendências
@@ -1723,9 +1723,9 @@ export default function AdmissoesInboxClient({
                             {selectedData.pendencias_historico.map((item) => {
                               const description = describeHistoryItem(item)
                               return (
-                                <div key={item.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                                <div key={item.id} className="rounded-xl border border-border bg-muted/40 p-4">
                                   <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <p className="text-sm font-bold text-slate-900">{description.title}</p>
+                                    <p className="text-sm font-bold text-foreground">{description.title}</p>
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                                       {formatLogDate(item.created_at)}
                                     </span>
@@ -1813,7 +1813,7 @@ export default function AdmissoesInboxClient({
                       <button
                         onClick={handleApprove}
                         disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-amber/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-bold text-amber-950 transition hover:brightness-95"
                       >
                         {loadingAction === 'approving' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
                         Aprovar Candidatura
@@ -1824,7 +1824,7 @@ export default function AdmissoesInboxClient({
                       <button
                         onClick={() => setIsConversionOpen(true)}
                         disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-amber/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-bold text-amber-950 transition hover:brightness-95"
                       >
                         <Check className="h-5 w-5" />
                         {getConversionActionLabel(selectedData.status)}
@@ -1860,7 +1860,7 @@ export default function AdmissoesInboxClient({
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
-              className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+              className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="border-b border-slate-200 p-6">
@@ -1889,7 +1889,7 @@ export default function AdmissoesInboxClient({
               <div className="max-h-[62vh] space-y-5 overflow-y-auto p-6">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-bold text-slate-900">
+                    <p className="text-sm font-bold text-foreground">
                       {bulkSelectedItems.length} pré-candidatura(s) selecionada(s)
                     </p>
                     <button
@@ -2061,7 +2061,7 @@ export default function AdmissoesInboxClient({
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
-              className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl"
+              className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="border-b border-slate-200 p-6">
@@ -2200,10 +2200,10 @@ export default function AdmissoesInboxClient({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl overflow-hidden w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl"
+              className="flex h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+              <div className="flex items-center justify-between border-b border-border bg-card p-4">
                 <h3 className="font-bold text-slate-800 uppercase tracking-widest text-sm flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   {viewingDoc.name.replace('_', ' ')}
@@ -2280,11 +2280,11 @@ export default function AdmissoesInboxClient({
               initial={{ scale: 0.96, y: 16 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.96, y: 16 }}
-              className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl"
+              className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-2xl"
             >
               <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Documentação Pendente</h3>
+                  <h3 className="text-lg font-black text-foreground">Documentação Pendente</h3>
                   <p className="mt-1 text-sm text-slate-500">
                     Selecione documentos do catálogo oficial. Prazo padrão para correção: {pendenciaSlaHoras}h.
                   </p>
@@ -2300,7 +2300,7 @@ export default function AdmissoesInboxClient({
 
               <div className="max-h-[65vh] space-y-4 overflow-y-auto p-6">
                 {pendingDraft.map((item, index) => (
-                  <div key={`${item.id}-${index}`} className="rounded-2xl border border-slate-200 p-4">
+                  <div key={`${item.id}-${index}`} className="rounded-xl border border-border p-4">
                     <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
@@ -2382,8 +2382,8 @@ export default function AdmissoesInboxClient({
 function DataField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{label}</p>
-      <div className="flex items-center gap-2 text-slate-800 font-medium">
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2 font-medium text-foreground">
         {icon && <span className="text-slate-400">{icon}</span>}
         {value}
       </div>
