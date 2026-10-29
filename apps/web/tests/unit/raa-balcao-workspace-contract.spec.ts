@@ -66,11 +66,14 @@ test("Trimesters are validated in API and SQL, not only by the Balcao UI", () =>
   const sql = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271029235921_guard_grade_period_source_and_window.sql"), "utf8");
   assert.match(api, /gradePeriodState\(candidatePeriods\[0\]\)/);
   assert.match(api, /GRADE_PERIOD_NOT_AVAILABLE/);
-  assert.match(sql, /AND al\.id = v_turma\.session_id/);
+  assert.match(sql, /WHERE al\.id = v_turma\.session_id/);
   assert.doesNotMatch(sql, /AND al\.ativo = true/);
-  assert.match(sql, /m\.session_id = v_ano_letivo_id/);
-  assert.match(sql, /m\.ativo IS TRUE/);
+  assert.match(sql, /m\.session_id = v_turma\.session_id/);
+  assert.match(sql, /m\.ativo = true/);
   assert.match(sql, /v_today > v\.ends/);
+  assert.match(sql, /public\.current_tenant_escola_id\(\)/);
+  assert.match(sql, /v_nota_max := 10/);
+  assert.match(sql, /v_nota_max := 20/);
   assert.match(sql, /can_bypass_pauta_lock/);
   assert.match(sql, /matricula_year_id IS DISTINCT FROM v\.turma_year_id/);
 });
