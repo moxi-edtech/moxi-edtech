@@ -1485,7 +1485,7 @@ export default function AdmissoesInboxClient({
                 <>
                   {/* Cabeçalho Raio-X */}
                   <div className="border-b border-border bg-card p-4 sm:p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <Badge variant="outline" className="font-mono text-[10px] uppercase border-amber/30 text-amber-600">
@@ -1505,10 +1505,10 @@ export default function AdmissoesInboxClient({
                             Esta candidatura entrou em lista de espera porque a turma selecionada estava lotada no momento da submissão.
                           </p>
                         )}
-                        <h1 className="font-sans text-xl font-bold leading-tight text-emerald sm:text-2xl">
+                        <h1 className="font-sans text-xl font-bold leading-tight text-foreground">
                           {selectedData.nome_candidato}
                         </h1>
-                        <p className="text-slate-500 mt-1 flex items-center gap-2">
+                        <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                           <Calendar className="h-4 w-4" />
                           Submetido em {format(new Date(selectedData.created_at), "PPP", { locale: ptBR })}
                         </p>
@@ -1521,21 +1521,12 @@ export default function AdmissoesInboxClient({
                               const contato = selectedData.dados_candidato?.responsavel_contato;
                               if (contato) openWhatsApp(contato);
                             }}
-                            className="flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-2xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95"
+                            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
                           >
-                            <MessageCircle className="h-5 w-5 fill-white" />
+                            <MessageCircle className="h-4 w-4 text-green-600" />
                             WhatsApp
                           </button>
                         )}
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          className="rounded-2xl h-12"
-                          onClick={() => setIsConversionOpen(true)}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1629,7 +1620,7 @@ export default function AdmissoesInboxClient({
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                           <User className="h-4 w-4" />
-                          Dados do Aluno
+                          Dados do candidato
                         </h3>
                         <div className="space-y-4">
                           <DataField label="Documento" value={`${selectedData.dados_candidato?.tipo_documento || '—'}: ${selectedData.dados_candidato?.numero_documento || selectedData.dados_candidato?.bi_numero || '—'}`} />
@@ -1873,7 +1864,7 @@ export default function AdmissoesInboxClient({
                 <Mail className="h-10 w-10 text-slate-300" />
               </div>
               <h3 className="text-xl font-bold text-slate-600">Selecione uma candidatura</h3>
-              <p className="mt-2 max-w-xs">Escolha um item na fila de espera para ver o raio-x detalhado e processar a matrícula.</p>
+              <p className="mt-2 max-w-xs">Escolha uma candidatura na fila para consultar os dados, documentos, histórico e ações disponíveis.</p>
             </div>
           )}
         </AnimatePresence>
@@ -2416,8 +2407,8 @@ function DataField({ label, value, icon }: { label: string; value: string; icon?
   return (
     <div>
       <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-      <div className="flex items-center gap-2 font-medium text-foreground">
-        {icon && <span className="text-slate-400">{icon}</span>}
+      <div className="flex items-center gap-2 break-words text-sm font-medium text-foreground">
+        {icon && <span className="text-muted-foreground">{icon}</span>}
         {value}
       </div>
     </div>
