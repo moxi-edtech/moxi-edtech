@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import BalcaoAtendimento from "./BalcaoAtendimento";
 import { EnrollmentPostActionModal } from "./EnrollmentPostActionModal";
 import { AdmissionReceiptRecovery } from "./AdmissionReceiptRecovery";
+import { AdmissionCalendarResolution } from "./AdmissionCalendarResolution";
 import type { EnrollmentPostAction } from "./EnrollmentPostActions";
 import { emitirDocumento } from "@/lib/documentos/emissaoClient";
 
@@ -1695,6 +1696,7 @@ function Step3Pagamento(props: {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [postAction, setPostAction] = useState<EnrollmentPostAction | null>(null);
   const [result, setResult] = useState<SimpleResult | null>(null);
+  const [postActionDocumentError, setPostActionDocumentError] = useState<string | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<AdmissionDuplicateConflict | null>(null);
   const [duplicateActionError, setDuplicateActionError] = useState<string | null>(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
@@ -1943,7 +1945,12 @@ function Step3Pagamento(props: {
     }
 
     setDuplicateConflict(null);
-    router.push(`${secretariaBase}/admissoes`);
+    if (embedded) {
+      onReset();
+      onActionChange?.("admissions");
+    } else {
+      router.push(`${secretariaBase}/admissoes`);
+    }
   };
 
   const handleFinalizarMatricula = async () => {
@@ -2098,6 +2105,7 @@ function Step3Pagamento(props: {
               const targetEscolaId = escolaId;
 
               if (passo.id === "emitir_boletim") {
+                setPostActionDocumentError(null);
                 if (result.comprovante?.printUrl) {
                   window.open(result.comprovante.printUrl, "_blank");
                 } else if (targetEscolaId && targetAlunoId) {
@@ -2128,13 +2136,16 @@ function Step3Pagamento(props: {
                       console.error("Erro ao emitir documento:", emissao.error);
                       // Se falhar o atalho, vai para o hub como fallback seguro.
                       // A mesma chave fica retida para um retry desta intenção.
-                      router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                      if (embedded) setPostActionDocumentError("O comprovativo ainda não ficou disponível. Pode tentar novamente neste atendimento.");
+                      else router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                     }
                   } catch (err) {
-                    router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                    if (embedded) setPostActionDocumentError("O comprovativo ainda não ficou disponível. Pode tentar novamente neste atendimento.");
+                      else router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                   }
                 } else {
-                  router.push(`${secretariaBase}/documentos?tipo=comprovante_matricula`);
+                  if (embedded) setPostActionDocumentError("Não foi possível identificar o aluno para emitir o comprovativo.");
+                  else router.push(`${secretariaBase}/documentos?tipo=comprovante_matricula`);
                 }
               } else if (passo.id === "registar_propina") {
                 if (embedded && onActionChange) onActionChange("payment");
@@ -2154,6 +2165,11 @@ function Step3Pagamento(props: {
             }}
           />
 
+          {postActionDocumentError && (
+            <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+              {postActionDocumentError}
+            </div>
+          )}
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumo dos itens pagos</p>
             <div className="mt-3 divide-y divide-slate-200">
@@ -2234,9 +2250,30 @@ function Step3Pagamento(props: {
     return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-emerald">Resultado</h2>
-          <p className="text-sm font-semibold text-red-600">Erro: {result.error}</p>
+          <h2 className="text-lg font-semibold text-foreground">Não foi possível concluir</h2>
+          <p className="text-sm font-semibold text-red-700 dark:text-red-300">{result.error}</p>
         </div>
+        {embedded && result.action?.id === "open_academic_calendar" && (
+          <AdmissionCalendarResolution
+            escolaId={escolaId}
+            anoLetivo={anoLetivo ?? null}
+            issue={result.code === "ACADEMIC_CALENDAR_YEAR_MISMATCH"
+              ? "ACADEMIC_CALENDAR_YEAR_MISMATCH"
+              : "ACADEMIC_CALENDAR_NOT_CONFIGURED"}
+            message={result.details || result.error}
+            onReviewTurma={() => { setResult(null); onBack(); }}
+            onResume={() => setResult(null)}
+          />
+        )}
+        {embedded && (result.code === "FINANCIAL_ENTRY_DATE_CONFLICT" || result.code === "FINANCIAL_START_OUTSIDE_ACADEMIC_CALENDAR") && (
+          <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-foreground dark:border-amber-500/40 dark:bg-amber-500/10">
+            <p className="font-semibold">A candidatura continua guardada. Reveja a turma e as condições financeiras aqui no Balcão.</p>
+            <button type="button" onClick={() => { setResult(null); onBack(); }}
+              className="mt-3 rounded-lg border border-border bg-card px-3 py-2 font-semibold text-foreground hover:bg-muted">
+              Rever turma
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <button
@@ -2255,7 +2292,7 @@ function Step3Pagamento(props: {
               {result.action.label}
             </button>
           )}
-          {result.action?.id === "open_academic_calendar" && (
+          {result.action?.id === "open_academic_calendar" && !embedded && (
             <button
               type="button"
               onClick={() => window.open(`/escola/${escolaId}/admin/configuracoes/calendario`, "_blank", "noopener,noreferrer")}
