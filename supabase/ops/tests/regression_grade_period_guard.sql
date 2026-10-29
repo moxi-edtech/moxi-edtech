@@ -45,8 +45,8 @@ BEGIN
   VALUES(v_disc,v_school,'Matemática');
   INSERT INTO public.curso_matriz(id,escola_id,disciplina_id)
   VALUES(v_matriz,v_school,v_disc);
-  INSERT INTO public.turma_disciplinas(id,escola_id,turma_id,curso_matriz_id)
-  VALUES(v_td,v_school,v_turma,v_matriz);
+  INSERT INTO public.turma_disciplinas(id,escola_id,turma_id,curso_matriz_id,periodos_ativos)
+  VALUES(v_td,v_school,v_turma,v_matriz,ARRAY[1,2,3]);
   INSERT INTO public.alunos(id,escola_id,nome)
   VALUES(v_aluno,v_school,'Aluno'),(v_other_aluno,v_school,'Outro aluno');
   INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,session_id,ano_letivo,status,ativo)
@@ -106,6 +106,18 @@ BEGIN
   IF (v_result->>'inserted')::int <> 1 THEN
     RAISE EXCEPTION 'TEST: formally reopened period could not be corrected';
   END IF;
+
+  -- Subjects with explicitly active terms cannot be graded in other terms,
+  -- including when a formal reopening exists for the prior term.
+  UPDATE public.turma_disciplinas SET periodos_ativos=ARRAY[1] WHERE id=v_td;
+  BEGIN
+    PERFORM public.lancar_notas_batch(v_school,v_turma,v_disc,v_td,3,'MAC',
+      jsonb_build_array(jsonb_build_object('aluno_id',v_aluno,'valor',8)),false);
+    RAISE EXCEPTION 'TEST: trimestre não lecionado recebeu uma nota';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'DATA:%não lecionada neste trimestre%' THEN RAISE; END IF;
+  END;
+  UPDATE public.turma_disciplinas SET periodos_ativos=ARRAY[1,2,3] WHERE id=v_td;
 
   -- A missing or mismatched year must never fall back to an active year.
   UPDATE public.turmas SET session_id=v_wrong_year WHERE id=v_turma;
