@@ -131,3 +131,54 @@ test("avisos operacionais seguem o mesmo tema das candidaturas", () => {
   assert.match(toasts, /text-muted-foreground/);
   assert.match(feedback, /overlayClassName="z-\[110\]"/);
 });
+
+test("guardar não conclui matrícula nem fecha o atendimento", () => {
+  const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
+  const saveStart = conversion.indexOf("const handleSaveOnly = async");
+  const saveEnd = conversion.indexOf("const handleEfetivar = async", saveStart);
+  const saveOnly = conversion.slice(saveStart, saveEnd);
+  assert.ok(saveStart > 0 && saveEnd > saveStart);
+  assert.match(saveOnly, /await onSaved\?\.\(\)/);
+  assert.doesNotMatch(saveOnly, /onSuccess\(|onClose\(/);
+  assert.match(inbox, /onSaved=\{handleConversionSaved\}/);
+  assert.match(inbox, /const handleCloseConversion = useCallback\(\(\) => \{\s*setIsConversionOpen\(false\)/);
+});
+
+test("conclusão e arquivo preservam candidato até ação explícita", () => {
+  assert.match(inbox, /setCompletedCandidateId\(selectedId\)/);
+  assert.match(inbox, /const handleNextCandidate = useCallback/);
+  assert.match(inbox, /onClick=\{handleNextCandidate\}/);
+  assert.match(inbox, /detailRevision/);
+  assert.doesNotMatch(inbox, /setSelectedId\(filteredItems\[currentIndex \+ 1\]\.id\)/);
+  const archiveStart = inbox.indexOf("const handleArchive = async");
+  const archiveEnd = inbox.indexOf("const openPendenciasModal =", archiveStart);
+  const archive = inbox.slice(archiveStart, archiveEnd);
+  assert.ok(archiveStart > 0 && archiveEnd > archiveStart);
+  assert.doesNotMatch(archive, /setSelectedId\(null\)/);
+  assert.match(archive, /setSelectedData/);
+});
+
+test("calendário pode ser resolvido no Balcão pelas APIs oficiais sem alterar ano de turmas", () => {
+  const resolver = read("components/secretaria/AdmissionCalendarResolution.tsx");
+  const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
+  const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
+  assert.match(resolver, /\.eq\("is_oficial", true\)/);
+  assert.match(resolver, /\.eq\("ano_base", anoLetivo!\)/);
+  assert.match(resolver, /admin\/calendario\/aplicar-template/);
+  assert.match(resolver, /admin\/calendario\/ajustes/);
+  assert.match(resolver, /manualMotivo\.trim\(\)/);
+  assert.match(resolver, /onReviewTurma/);
+  assert.doesNotMatch(resolver, /\.from\("turmas"\)\.update/);
+  assert.match(conversion, /setCalendarIssue\(/);
+  assert.match(conversion, /<AdmissionCalendarResolution/);
+  assert.match(wizard, /<AdmissionCalendarResolution/);
+  assert.match(wizard, /result\.action\?\.id === "open_academic_calendar" && !embedded/);
+  assert.doesNotMatch(wizard, /Atualize a página e retome o rascunho/);
+});
+
+test("erros de recibo e duplicidade conservam o contexto da matrícula", () => {
+  const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
+  assert.match(wizard, /if \(embedded\) setPostActionDocumentError/);
+  assert.match(wizard, /postActionDocumentError &&/);
+  assert.match(wizard, /if \(embedded\) \{\s*onReset\(\);\s*onActionChange\?\.\("admissions"\);/);
+});
