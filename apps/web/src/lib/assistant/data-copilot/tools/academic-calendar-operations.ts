@@ -1,6 +1,7 @@
 import { instantiateAssistantActionV2, type AssistantActionV2 } from "../../actions-v2";
 import type { AiWidgetContext } from "../../screen-context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { readScopedAcademicCalendarEvents } from "@/lib/academico/calendar-events-read";
 import { createDataCopilotResponse } from "../answer-composer";
 import { matchesIntentTerms, normalizeAssistantText } from "../query-matcher";
 import type { DataCopilotTool } from "../types";
@@ -111,26 +112,24 @@ export async function runAcademicCalendarOperations({
       });
     }
 
-    const [{ data: periods, error: periodsError }, { data: events, error: eventsError }] = await Promise.all([
-      supabase
-        .from("periodos_letivos")
+    // Copilot has a school role but no authorized course context. It must
+    // not accidentally describe an exam for one course as an event for all.
+    // Show only school-wide events until an explicit offering is resolved.
+    const [periodResult, events] = await Promise.all([
+      supabase.from("periodos_letivos")
         .select("tipo, numero, data_inicio, data_fim")
         .eq("escola_id", schoolId)
         .eq("ano_letivo_id", year.id)
         .order("data_inicio", { ascending: true }),
-      supabase
-        .from("calendario_eventos")
-        .select("nome, tipo, data_inicio, data_fim")
-        .eq("escola_id", schoolId)
-        .eq("ano_letivo_id", year.id)
-        .gte("data_inicio", today)
-        .lte("data_inicio", horizon)
-        .order("data_inicio", { ascending: true })
-        .order("nome", { ascending: true })
-        .limit(20),
+      readScopedAcademicCalendarEvents(supabase, {
+        escolaId: schoolId, anoLetivoId: year.id,
+        offeringIds: [], rangeStart: today, rangeEnd: horizon,
+        columns: "nome,tipo,data_inicio,data_fim,offering_id",
+        limit: 20,
+      }),
     ]);
-    if (periodsError) throw periodsError;
-    if (eventsError) throw eventsError;
+    if (periodResult.error) throw periodResult.error;
+    const periods = periodResult.data;
 
     const periodRows = (periods ?? []) as PeriodRow[];
     const eventRows = (events ?? []) as CalendarEventRow[];
@@ -147,8 +146,8 @@ export async function runAcademicCalendarOperations({
     const actions = [calendarAction, gradesAction, councilAction].filter((action): action is AssistantActionV2 => Boolean(action));
 
     const nextEventText = nextEvent
-      ? `O próximo marco é **${nextEvent.nome ?? nextEvent.tipo ?? "evento académico"}**, em ${formatDate(nextEvent.data_inicio)}.`
-      : "Não há eventos do calendário nos próximos 45 dias.";
+      ? `O próximo marco geral da escola é **${nextEvent.nome ?? nextEvent.tipo ?? "evento académico"}**, em ${formatDate(nextEvent.data_inicio)}.`
+      : "Não há eventos gerais do calendário nos próximos 45 dias. Os eventos específicos dependem do curso.";
     const periodText = currentPeriod
       ? `${currentPeriod.tipo ?? "Período"} ${currentPeriod.numero ?? ""}`.trim()
       : "fora de um período letivo";
@@ -170,7 +169,7 @@ export async function runAcademicCalendarOperations({
           { label: "Intervalo oficial", value: `${formatDate(year.data_inicio)} — ${formatDate(year.data_fim)}` },
           { label: "Fase", value: phase },
           { label: "Período actual", value: periodText },
-          { label: "Próximo marco", value: nextEvent ? `${nextEvent.nome ?? nextEvent.tipo ?? "Evento"} · ${formatDate(nextEvent.data_inicio)}` : "Nenhum em 45 dias" },
+          { label: "Próximo marco", value: nextEvent ? `${nextEvent.nome ?? nextEvent.tipo ?? "Evento geral"} · ${formatDate(nextEvent.data_inicio)}` : "Nenhum evento geral em 45 dias" },
         ],
         actions,
       },
