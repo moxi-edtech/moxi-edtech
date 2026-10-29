@@ -167,3 +167,33 @@ test("Administrative calendar UI avoids accidental edits to national events", ()
   assert.match(page, /EVENTO_ESCOLA/);
   assert.match(page, /Provas, exames e pausas oficiais/);
 });
+
+test("The Balcão year turn shows one calendar year and resolves profiles per course", () => {
+  const route = source("app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts");
+  const form = source("components/secretaria/virada-ano/ConfigStep.tsx");
+  const plan = source("lib/academico/prepare-canonical-calendar.ts");
+  assert.match(route, /official_calendars: officialCalendars/);
+  assert.match(route, /prepareCanonicalMedCalendar/);
+  assert.match(route, /CANONICAL_CALENDAR_SELECTION_REQUIRED/);
+  assert.match(form, /selectedCalendarYear/);
+  assert.match(form, /resolveProfile\(offering\)/);
+  assert.match(form, /ano_base: canonicalYear, offerings: mappings/);
+  assert.match(plan, /buildCanonicalMedCalendarPlan/);
+  assert.match(plan, /ACADEMIC_PERIOD_RECONCILIATION_REQUIRED/);
+});
+
+test("The official-year migration preserves profiles and isolates events per course", () => {
+  const migration = readFileSync(resolve(process.cwd(),
+    "../../supabase/migrations/20271029235922_canonical_med_calendar_offering_profiles.sql"), "utf8");
+  const admin = source("app/api/escola/[id]/admin/calendario/aplicar-template/route.ts");
+  const onboarding = source("app/api/escolas/[id]/onboarding/core/session/route.ts");
+  const config = source("app/escola/[id]/(portal)/admin/configuracoes/calendario/page.tsx");
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.calendarios_oficiais_anos/);
+  assert.match(migration, /ano_base integer PRIMARY KEY/);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS calendario_canonico_ano integer/);
+  assert.match(migration, /CREATE TRIGGER trg_guard_course_calendar_profile/);
+  assert.match(migration, /NULLS NOT DISTINCT/);
+  assert.match(admin, /prepareCanonicalMedCalendar/);
+  assert.match(onboarding, /source: "CALENDARIO_CANONICO_MED"|calendar_source: "CALENDARIO_CANONICO_MED"/);
+  assert.match(config, /anoBase: template\.ano_base/);
+});
