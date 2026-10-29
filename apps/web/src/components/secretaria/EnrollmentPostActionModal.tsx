@@ -11,6 +11,7 @@ type GradePeriodOption = {
   data_fim: string | null;
   estado: "current" | "future" | "past" | "locked" | "unconfigured";
   calendar_verified: boolean;
+  disciplina_ativa: boolean;
 };
 
 type Props = {
@@ -118,6 +119,7 @@ export function EnrollmentPostActionModal({
     }
     setPeriodLoading(true);
     const query = new URLSearchParams({ ano_letivo_id: academicYearId, turma_id: turmaId });
+    if (turmaDisciplinaId) query.set("turma_disciplina_id", turmaDisciplinaId);
     void fetch("/api/secretaria/notas/periodos?" + query.toString(), { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json();
@@ -132,7 +134,7 @@ export function EnrollmentPostActionModal({
         setPeriodos(items);
         setPeriodReadOnly(payload.read_only === true);
         const current = items.find((item) =>
-          item.numero === payload.current_trimestre && item.estado === "current");
+          item.numero === payload.current_trimestre && item.estado === "current" && item.disciplina_ativa);
         setPeriodo(current ? String(current.numero) : "");
       })
       .catch((cause) => {
@@ -140,7 +142,7 @@ export function EnrollmentPostActionModal({
       })
       .finally(() => { if (active) setPeriodLoading(false); });
     return () => { active = false; };
-  }, [action, alunoId, academicYearId, open, turmaId]);
+  }, [action, alunoId, academicYearId, open, turmaId, turmaDisciplinaId]);
 
   useEffect(() => {
     if (!open || action !== "notas" || !turmaId) return;
@@ -195,7 +197,7 @@ export function EnrollmentPostActionModal({
     const selected = disciplinas.find((item) => item.disciplina?.id === disciplinaId);
     const selectedPeriod = periodos.find((item) => String(item.numero) === periodo);
     if (!turmaId || !selected?.disciplina?.id || !selected.id || !nota || !academicYearId || notaMaxima === null ||
-      !selectedPeriod || periodReadOnly || ["future", "unconfigured"].includes(selectedPeriod.estado)) {
+      !selectedPeriod || !selectedPeriod.disciplina_ativa || periodReadOnly || ["future", "unconfigured"].includes(selectedPeriod.estado)) {
       setResult({ error: "Selecione um trimestre válido para esta matrícula." });
       return;
     }
@@ -232,7 +234,7 @@ export function EnrollmentPostActionModal({
 
   const selectedPeriod = periodos.find((item) => String(item.numero) === periodo);
   const periodUnavailable = periodLoading || Boolean(periodError) || periodReadOnly ||
-    !selectedPeriod || ["future", "unconfigured"].includes(selectedPeriod.estado);
+    !selectedPeriod || !selectedPeriod.disciplina_ativa || ["future", "unconfigured"].includes(selectedPeriod.estado);
 
   const liberarPortal = async () => {
     setLoading(true);
@@ -304,10 +306,11 @@ export function EnrollmentPostActionModal({
                 disabled={loading || periodLoading || Boolean(periodError) || periodReadOnly}>
                 <option value="">Selecionar trimestre</option>
                 {periodos.map((item) => <option key={item.numero} value={String(item.numero)}
-                  disabled={item.estado === "future" || item.estado === "unconfigured"}>
+                  disabled={!item.disciplina_ativa || item.estado === "future" || item.estado === "unconfigured"}>
                   {item.numero}.º período{item.estado === "current" ? " · atual" :
                     item.estado === "future" ? " · ainda não iniciado" :
-                    item.estado === "locked" ? " · encerrado" : ""}
+                    item.estado === "locked" ? " · encerrado" :
+                    !item.disciplina_ativa ? " · não lecionada" : ""}
                 </option>)}
               </select>
               <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading} />
