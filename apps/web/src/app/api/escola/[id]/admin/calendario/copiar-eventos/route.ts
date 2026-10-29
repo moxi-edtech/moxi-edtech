@@ -95,7 +95,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     // 4. Inserir (Upsert por nome/data para evitar duplicados se rodar 2x)
     const { error: insertError } = await supabase
       .from('calendario_eventos')
-      .upsert(novosEventos, { onConflict: 'escola_id,ano_letivo_id,nome,data_inicio' });
+      .upsert(novosEventos, { onConflict: 'escola_id,ano_letivo_id,offering_id,nome,data_inicio' });
 
     if (insertError) throw insertError;
 
