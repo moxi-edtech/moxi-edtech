@@ -963,7 +963,7 @@ function Step1Identificacao(props: {
           type="button"
           onClick={handleNext}
           disabled={!isUuid(escolaId) || saving}
-          className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-amber-950 shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-amber-950 shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
           Continuar para turma
         </button>
@@ -1415,7 +1415,7 @@ function Step2FitAcademico(props: {
         </div>
       </div>
 
-      <div className="space-y-4 rounded-xl border border-border bg-slate-50/60 p-5">
+      <div className="space-y-4 rounded-xl border border-border bg-muted/60 p-5">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Opcional</p>
           <h3 className="mt-1 text-sm font-black text-foreground">Desconto da matrícula</h3>
@@ -1479,7 +1479,7 @@ function Step2FitAcademico(props: {
           type="button"
           onClick={onNext}
           disabled={!canAdvance}
-          className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-amber-950 shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-amber-950 shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
           Rever cobrança
         </button>
@@ -1626,7 +1626,7 @@ function AdmissionDuplicateDialog({
             <button
               type="button"
               onClick={onOpenExisting}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-amber-950 hover:brightness-95"
             >
               <ExternalLink className="h-4 w-4" />
               {isDraftConflict ? "Retomar rascunho existente" : "Abrir aluno existente"}
@@ -2242,7 +2242,7 @@ function Step3Pagamento(props: {
           <button
             type="button"
             onClick={() => setResult(null)}
-            className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+            className="rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-amber-950 hover:brightness-95"
           >
             Tentar novamente
           </button>
@@ -2478,7 +2478,7 @@ function Step3Pagamento(props: {
             />
           </div>
         ) : (
-          <div className="flex items-end justify-between gap-4 rounded-xl border border-border bg-slate-50/60 p-4">
+          <div className="flex items-end justify-between gap-4 rounded-xl border border-border bg-muted/60 p-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Total a pagar</p>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -2557,7 +2557,7 @@ function Step3Pagamento(props: {
               type="button"
               onClick={() => void handleFinalizarMatricula()}
               disabled={loading || Boolean(checkoutBlockedReason)}
-              className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-amber-950 shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+              className="rounded-xl bg-amber px-5 py-2.5 text-sm font-bold text-amber-950 shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             >
               {loading
                 ? "A processar…"
