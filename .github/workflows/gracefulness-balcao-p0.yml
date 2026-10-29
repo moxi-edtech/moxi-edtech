@@ -14,6 +14,10 @@ on:
       - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/RaaBalcaoResolutionPanel.tsx"
+      - "apps/web/src/lib/rematricula/raa-balcao-resolution.ts"
+      - "apps/web/src/app/api/academico/raa/indisciplina/route.ts"
+      - "apps/web/src/app/api/secretaria/faltas/justificacoes/route.ts"
       - "apps/web/src/components/secretaria/PagamentoDividaModal.tsx"
       - "apps/web/src/components/secretaria/BalcaoWorkspace.tsx"
       - "apps/web/src/components/secretaria/BalcaoActionBar.tsx"
@@ -98,6 +102,7 @@ jobs:
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
+            tests/unit/raa-balcao-resolution.spec.ts \
             tests/unit/rematricula-debt.spec.ts \
             tests/unit/rematricula-classe-numero.spec.ts \
             tests/unit/rematricula-balcao-destino.spec.ts \
