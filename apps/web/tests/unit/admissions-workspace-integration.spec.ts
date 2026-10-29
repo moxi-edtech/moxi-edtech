@@ -158,23 +158,6 @@ test("conclusão e arquivo preservam candidato até ação explícita", () => {
   assert.match(archive, /setSelectedData/);
 });
 
-test("calendário pode ser resolvido no Balcão pelas APIs oficiais sem alterar ano de turmas", () => {
-  const resolver = read("components/secretaria/AdmissionCalendarResolution.tsx");
-  const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
-  const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
-  assert.match(resolver, /\.eq\("is_oficial", true\)/);
-  assert.match(resolver, /\.eq\("ano_base", anoLetivo!\)/);
-  assert.match(resolver, /admin\/calendario\/aplicar-template/);
-  assert.match(resolver, /admin\/calendario\/ajustes/);
-  assert.match(resolver, /manualMotivo\.trim\(\)/);
-  assert.match(resolver, /onReviewTurma/);
-  assert.doesNotMatch(resolver, /\.from\("turmas"\)\.update/);
-  assert.match(conversion, /setCalendarIssue\(/);
-  assert.match(conversion, /<AdmissionCalendarResolution/);
-  assert.match(wizard, /<AdmissionCalendarResolution/);
-  assert.match(wizard, /result\.action\?\.id === "open_academic_calendar" && !embedded/);
-  assert.doesNotMatch(wizard, /Atualize a página e retome o rascunho/);
-});
 
 test("erros de recibo e duplicidade conservam o contexto da matrícula", () => {
   const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
@@ -183,18 +166,6 @@ test("erros de recibo e duplicidade conservam o contexto da matrícula", () => {
   assert.match(wizard, /if \(embedded\) \{\s*onReset\(\);\s*onActionChange\?\.\("admissions"\);/);
 });
 
-test("períodos manuais usam o contrato auditado da escola, sem alterar turmas", () => {
-  const resolver = read("components/secretaria/AdmissionCalendarResolution.tsx");
-  assert.match(resolver, /fetchPeriodosLetivos\(escolaId, loadedYear\.id\)/);
-  assert.match(resolver, /admin\/calendario\/ajustes/);
-  assert.match(resolver, /ano_letivo_id: year\.id/);
-  assert.match(resolver, /manualMotivo\.trim\(\)/);
-  assert.match(resolver, /periodo\.data_inicio < year\.data_inicio/);
-  assert.match(resolver, /periodos\.reduce\(/);
-  assert.match(resolver, /A soma dos pesos deve ser 100%/);
-  assert.match(resolver, /ano_base", anoLetivo!/);
-  assert.doesNotMatch(resolver, /setup_active_ano_letivo/);
-});
 
 test("recibo em preparação ou erro mantém consulta recuperável pelo pagamento", () => {
   const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
@@ -213,4 +184,19 @@ test("diálogos de duplicidade e ações pós-matrícula ficam acima do Balcão"
   assert.match(postAction, /overlayClassName=\{elevated \? "z-\[110\]" : undefined\}/);
   assert.match(postAction, /bg-card text-foreground/);
   assert.doesNotMatch(postAction, /#(?:1F6B3B|E3B23C)\b/i);
+});
+
+test("decreto permanece fonte única de calendário; Balcão não escreve trimestres ou datas", () => {
+  const resolver = read("components/secretaria/AdmissionCalendarResolution.tsx");
+  const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
+  const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
+  assert.match(resolver, /calendário é herdado da fonte oficial/);
+  assert.match(resolver, /sincronização do decreto/);
+  assert.match(resolver, /Rever turma/);
+  assert.doesNotMatch(resolver, /aplicar-template|admin\/calendario\/ajustes|upsert_bulk_periodos_letivos/);
+  assert.doesNotMatch(resolver, /fetch\(|\.from\(|\.rpc\(/);
+  assert.match(conversion, /<AdmissionCalendarResolution/);
+  assert.match(wizard, /<AdmissionCalendarResolution/);
+  assert.match(wizard, /result\.action\?\.id === "open_academic_calendar" && !embedded/);
+  assert.doesNotMatch(wizard, /Atualize a página e retome o rascunho/);
 });
