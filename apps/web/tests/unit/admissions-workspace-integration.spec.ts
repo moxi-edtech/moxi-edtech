@@ -71,3 +71,28 @@ test("o detalhe tem navegação contextual e protege ações de decisão", () =>
   assert.match(inbox, /onClick=\{handleReject\}/);
   assert.match(inbox, /onClick=\{openPendenciasModal\}/);
 });
+
+test("admissões usa as superfícies neutras do Workspace nos dois temas", () => {
+  const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
+  const fixedNeutral = /\b(?:bg|hover:bg|focus:bg)-(?:white|slate|gray|zinc)-(?:50|100|200|300|400|500|600|700|800|900|950)\b|\bbg-white\b|\b(?:text|border|ring|hover:text|hover:border)-(?:slate|gray|zinc)-(?:[1-9]00|950)\b/;
+  for (const [label, source] of [["Fila de admissões", inbox], ["Conversão em matrícula", conversion]] as const) {
+    assert.doesNotMatch(source, fixedNeutral, label);
+    assert.match(source, /bg-card/);
+    assert.match(source, /border-border/);
+    assert.match(source, /text-foreground/);
+    assert.match(source, /text-muted-foreground/);
+  }
+  assert.match(inbox, /dark:bg-amber-500\/15/);
+  assert.match(inbox, /dark:text-rose-300/);
+  assert.match(conversion, /dark:bg-blue-500\/10/);
+  assert.match(conversion, /bg-amber text-amber-950/);
+});
+
+test("modais de Admissões aparecem sobre o Workspace e mantêm o tema global", () => {
+  const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
+  assert.match(inbox, /createPortal\(/);
+  assert.match(inbox, /document\.body/);
+  assert.match(inbox, /z-\[90\]/);
+  assert.match(conversion, /overlayClassName=\{elevated \? "z-\[90\]" : undefined\}/);
+  assert.match(conversion, /bg-card text-foreground/);
+});
