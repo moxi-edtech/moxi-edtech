@@ -39,6 +39,8 @@ test("secretaria, student portal, command center, explorers and export share one
   assert.match(roster, /v_student_lifecycle_status_v2/);
   assert.match(command, /carregarSituacoesRoster/);
   assert.match(exportRoute, /carregarSituacoesRoster/);
+  assert.match(read("apps/web/src/app/api/escolas/[id]/command-center/turmas/[turmaId]/route.ts"), /carregarSituacoesRoster/);
+  assert.match(read("apps/web/src/app/api/escolas/[id]/command-center/classes/[classeId]/route.ts"), /carregarSituacoesRoster/);
   assert.match(student, /rotuloSituacaoMatricula/);
   assert.match(panel, /regularizacao_historica/);
   for (const name of ["ClasseContextView", "TurmaContextView"]) {

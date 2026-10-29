@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import type { RosterLifecycle } from "@/lib/command-center/roster-lifecycle";
 
 export type TurmaContextData = {
   turma: {
@@ -16,7 +17,7 @@ export type TurmaContextData = {
     anoLetivo: { id: string; ano: number; historico: boolean };
   };
   alunos: {
-    items: Array<{ id: string; nome: string; numeroChamada: number | null }>;
+    items: Array<{ id: string; nome: string; numeroChamada: number | null } & RosterLifecycle>;
     total: number;
     page: number;
     pageSize: number;

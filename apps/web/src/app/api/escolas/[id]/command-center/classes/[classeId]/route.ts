@@ -7,6 +7,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
+import { carregarSituacoesRoster } from "@/lib/command-center/roster-lifecycle";
 import {
   composeClasseOverview, isClasseTurmaInYear, isClasseAvailableInYear,
   type ClasseAssignment, type ClasseTurma,
@@ -158,6 +159,9 @@ async function readExplorer(
     const parsedRoster = classRosterSchema.safeParse(rosterJson);
     if (!parsedRoster.success) throw new Error("Invalid class roster summary shape");
     const roster = parsedRoster.data;
+    const situacoes = await carregarSituacoesRoster(
+      supabase, escolaId, year.ano, roster.items.map((row) => row.id),
+    );
 
     const matrixReply = await supabase.from("curso_matriz")
       .select("id,disciplina_id,carga_horaria_semanal,obrigatoria,ativo")
@@ -270,7 +274,13 @@ async function readExplorer(
       stats: { ...overview.stats, alunos: roster.total },
       turmas: overview.turmas.map((turma) => ({ ...turma, alunos: roster.counts[turma.id] ?? 0 })),
       alunos: {
-        items: roster.items, total: roster.total, page: parsed.data.page,
+        items: roster.items.map((row) => ({
+          ...row,
+          situacaoMatricula: situacoes.get(row.id)?.situacaoMatricula ?? null,
+          situacaoResultado: situacoes.get(row.id)?.situacaoResultado ?? null,
+          resultadoOficial: situacoes.get(row.id)?.resultadoOficial ?? null,
+        })),
+        total: roster.total, page: parsed.data.page,
         pageSize: CLASS_ROSTER_PAGE_SIZE,
         hasMore: parsed.data.page * CLASS_ROSTER_PAGE_SIZE < roster.total,
       },

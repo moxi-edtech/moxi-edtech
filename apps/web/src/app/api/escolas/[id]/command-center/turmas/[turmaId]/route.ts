@@ -9,6 +9,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
 import { TURMA_DISCIPLINAS_SELECT, turmaEnrollmentPolicy, turmaPageRange } from "@/lib/command-center/turma-explorer-policy";
 import { mergeCurriculumActivity } from "@/lib/command-center/academic-relations";
+import { carregarSituacoesRoster } from "@/lib/command-center/roster-lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -214,6 +215,15 @@ async function readExplorer(
         numeroChamada: row.numero_chamada,
       };
     });
+    const situacoes = await carregarSituacoesRoster(
+      supabase, escolaId, year.ano, students.map((student) => student.id),
+    );
+    const studentItems = students.map((student) => ({
+      ...student,
+      situacaoMatricula: situacoes.get(student.id)?.situacaoMatricula ?? null,
+      situacaoResultado: situacoes.get(student.id)?.situacaoResultado ?? null,
+      resultadoOficial: situacoes.get(student.id)?.resultadoOficial ?? null,
+    }));
     const total = enrollmentReply.count ?? 0;
     return NextResponse.json({
       ok: true,
@@ -223,7 +233,7 @@ async function readExplorer(
           classe: turma.classes, curso: turma.cursos, capacidade: turma.capacidade_maxima,
           anoLetivo: { id: year.id, ano: year.ano, historico: historic },
         },
-        alunos: { items: students, total, page: parsed.data.page, pageSize: PAGE_SIZE, hasMore: start + students.length < total },
+        alunos: { items: studentItems, total, page: parsed.data.page, pageSize: PAGE_SIZE, hasMore: start + students.length < total },
         disciplinas: [...subjectsById.values()].map((d) => ({
           id: d.id, nome: d.nome, curriculumActive: d.curriculumActive,
           professores: [...d.professores].sort(),

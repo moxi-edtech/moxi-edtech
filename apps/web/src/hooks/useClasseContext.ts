@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import type { EntityContext } from "@/lib/command-center/entity-context";
+import type { RosterLifecycle } from "@/lib/command-center/roster-lifecycle";
 
 export type ClasseOverview = {
   classe: {
@@ -28,7 +29,7 @@ export type ClasseOverview = {
     items: Array<{
       id: string; nome: string; turmaId: string; turmaNome: string;
       numeroChamada: number | null;
-    }>;
+    } & RosterLifecycle>;
     total: number; page: number; pageSize: number; hasMore: boolean;
   };
   limitado: boolean;

@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 28);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 29);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -62,6 +62,17 @@ test("read-only enrollment view migration is allowlisted without changing fiscal
     assert.match(checkFiscalAndSchemaScope([path], () =>
       "CREATE TABLE public.saft_export (id uuid);")[0] ?? "", /Fiscal\/AGT activation/);
   }
+});
+
+test("contextual lifecycle view is the only newly allowed read-only migration", () => {
+  const path = "supabase/migrations/20271029235900_lifecycle_contextual_status_ssot_v2.sql";
+  assert.deepEqual(checkFiscalAndSchemaScope([path], () =>
+    "CREATE VIEW public.v_student_lifecycle_status_v2 AS SELECT 1;"), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TABLE public.agt_configuration (id uuid);")[0] ?? "", /Fiscal\/AGT activation/);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271029235901_unreviewed_lifecycle.sql"
+  ])[0] ?? "", /Unapproved database migration/);
 });
 
 test("preserves the fiscal and AGT module freeze", () => {
