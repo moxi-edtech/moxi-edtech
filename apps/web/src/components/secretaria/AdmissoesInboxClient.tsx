@@ -482,27 +482,33 @@ export default function AdmissoesInboxClient({
     })
   }, [visiblePreCandidaturaIds])
 
-  const [wasSuccess, setWasSuccess] = useState(false)
+  // Guardar e concluir são eventos distintos: nenhum seleciona outro candidato.
+  const [detailRevision, setDetailRevision] = useState(0)
+  const [completedCandidateId, setCompletedCandidateId] = useState<string | null>(null)
+
+  const refreshCurrentCandidate = useCallback(async () => {
+    setDetailRevision((value) => value + 1)
+    await mutate()
+  }, [mutate])
+
+  const handleConversionSaved = useCallback(async () => {
+    await refreshCurrentCandidate()
+  }, [refreshCurrentCandidate])
 
   const handleConversionSuccess = useCallback(async () => {
-    await mutate()
-    setWasSuccess(true)
-  }, [mutate])
+    setCompletedCandidateId(selectedId)
+    await refreshCurrentCandidate()
+  }, [refreshCurrentCandidate, selectedId])
 
   const handleCloseConversion = useCallback(() => {
     setIsConversionOpen(false)
+  }, [])
 
-    if (wasSuccess) {
-      // Find current index and select next pending if available
-      const currentIndex = filteredItems.findIndex(item => item.id === selectedId)
-      if (currentIndex !== -1 && filteredItems[currentIndex + 1]) {
-        setSelectedId(filteredItems[currentIndex + 1].id)
-      } else {
-        setSelectedId(null)
-      }
-      setWasSuccess(false)
-    }
-  }, [wasSuccess, filteredItems, selectedId])
+  const handleNextCandidate = useCallback(() => {
+    const next = filteredItems.find((item) => item.id !== selectedId && item.status !== 'matriculado')
+    setCompletedCandidateId(null)
+    setSelectedId(next?.id ?? null)
+  }, [filteredItems, selectedId])
 
   const publicLink = typeof window !== 'undefined'
     ? `${window.location.origin}/admissoes/${escolaParam}`
@@ -589,7 +595,7 @@ export default function AdmissoesInboxClient({
       window.history.replaceState(window.history.state, '', url.toString())
     }
     return () => controller.abort()
-  }, [selectedId, fetchDetail, embedded])
+  }, [selectedId, fetchDetail, embedded, detailRevision])
 
   const handleApprove = async () => {
     if (!selectedId || !selectedData || !canApproveAdmission(selectedData.status)) return
@@ -751,12 +757,10 @@ export default function AdmissoesInboxClient({
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao arquivar')
 
-      // Remove from list or move to concluded depending on business logic
-      // In this UI, concluded means matriculado or rejeitada. Let's just refresh.
+      // Arquivar não perde o candidato nem termina o atendimento.
+      setSelectedData((current) => current?.id === selectedId ? { ...current, status: 'arquivada' } : current)
       await mutate()
-      setSelectedId(null)
-      setSelectedData(null)
-      success('Candidatura arquivada', 'A candidatura foi movida para o arquivo e já não aparece na fila de espera principal.')
+      success('Candidatura arquivada', 'O processo foi arquivado. Consulte o histórico ou escolha outro candidato.')
     } catch (err: unknown) {
       toastError('Falha ao arquivar', 'Houve um erro técnico ao tentar arquivar este registo. Por favor, tente novamente.')
     } finally {
@@ -1797,6 +1801,12 @@ export default function AdmissoesInboxClient({
                   {/* Ações de decisão contextualizadas no mesmo atendimento */}
                   <div className="absolute inset-x-0 bottom-0 z-10 border-t border-border bg-card/95 p-3 backdrop-blur">
                     <div className="flex flex-wrap items-center justify-end gap-2">
+                      {completedCandidateId === selectedId && (
+                        <button type="button" onClick={handleNextCandidate}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted">
+                          Atender próximo
+                        </button>
+                      )}
                       {canRequestDocumentCorrection(selectedData.status) && (
                         <button type="button" onClick={openPendenciasModal} disabled={!!loadingAction}
                           className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted disabled:opacity-50">
@@ -2409,6 +2419,7 @@ export default function AdmissoesInboxClient({
         onClose={handleCloseConversion}
         candidaturaId={selectedId}
         escolaId={escolaId}
+        onSaved={handleConversionSaved}
         onSuccess={handleConversionSuccess}
       />}
     </div>
