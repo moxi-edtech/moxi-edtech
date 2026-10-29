@@ -162,6 +162,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O template não pode ser anterior ao ano ativo" }, { status: 409 });
     }
 
+    // Todos os perfis seleccionados devem representar o mesmo ano e os
+    // mesmos limites de trimestres. O subsistema pode diferir nas provas.
+    const referenceYear = templateList[0]?.ano_base;
+    const referencePeriods = JSON.stringify(
+      (templateList[0]?.items ?? [])
+        .filter((item: { tipo: string }) => item.tipo === "PERIODO_LETIVO")
+        .map((item: { numero: number; data_inicio: string; data_fim: string }) =>
+          [item.numero, item.data_inicio, item.data_fim]).sort((x: unknown[], y: unknown[]) => Number(x[0]) - Number(y[0]))
+    );
+    if (templateList.some((template) => template.ano_base !== referenceYear ||
+      JSON.stringify(
+        (template.items ?? [])
+          .filter((item: { tipo: string }) => item.tipo === "PERIODO_LETIVO")
+          .map((item: { numero: number; data_inicio: string; data_fim: string }) =>
+            [item.numero, item.data_inicio, item.data_fim]).sort((x: unknown[], y: unknown[]) => Number(x[0]) - Number(y[0]))
+      ) !== referencePeriods)) {
+      return NextResponse.json({
+        ok: false, code: "CALENDAR_PROFILES_CONFLICT",
+        error: "Os perfis oficiais seleccionados não partilham o mesmo ano e trimestres.",
+      }, { status: 409 });
+    }
+
     const offeringById = new Map(
       ((educationOfferings ?? []) as Array<{ id: string; education_subsystem: string }>)
         .map((offering) => [offering.id, offering] as const)
@@ -178,12 +200,6 @@ export async function POST(request: Request) {
       }
     }
 
-    await Promise.all(scopedMappings.map((mapping) => db
-      .from("school_education_offerings")
-      .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
-      .eq("id", mapping.offering_id)
-      .eq("escola_id", escolaId)));
-
     const primaryTemplate = templateList[0];
     const { data: existingTarget } = await supabase
       .from("anos_letivos")
@@ -191,6 +207,16 @@ export async function POST(request: Request) {
       .eq("escola_id", escolaId)
       .eq("ano", primaryTemplate.ano_base)
       .maybeSingle();
+
+    // A preparação de destino não deve modificar um ano já activo.
+    // Nesse caso, uma reconciliação explícita deve ser tratada pelo
+    // responsável académico após auditar alunos, finanças e histórico.
+    if (existingTarget?.ativo) {
+      return NextResponse.json({
+        ok: false, code: "ACTIVE_YEAR_RECONCILIATION_REQUIRED",
+        error: "O ano letivo já está activo. Faça a auditoria do decreto antes de tentar sincronizar.",
+      }, { status: 409 });
+    }
 
     let targetId = existingTarget?.id ?? null;
     if (!targetId) {
@@ -220,6 +246,17 @@ export async function POST(request: Request) {
     }
     if (!targetId) throw new Error("Falha ao criar ano letivo de destino");
 
+    // Actualizar o perfil da oferta apenas depois das validações e do
+    // ano de destino estarem confirmados.
+    for (const mapping of scopedMappings) {
+      const { error: profileError } = await db
+        .from("school_education_offerings")
+        .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
+        .eq("id", mapping.offering_id)
+        .eq("escola_id", escolaId);
+      if (profileError) throw profileError;
+    }
+
     const periodTemplate = primaryTemplate;
     const periodItems = (periodTemplate.items ?? []).filter((item: { tipo: string }) =>
       item.tipo === "PERIODO_LETIVO" || item.tipo === "PROVA_TRIMESTRAL"
@@ -230,6 +267,7 @@ export async function POST(request: Request) {
     const periods = periodItems
       .filter((item: { tipo: string }) => item.tipo === periodType)
       .map((item: {
+        id: string;
         numero: number | null;
         data_inicio: string;
         data_fim: string;
@@ -241,6 +279,9 @@ export async function POST(request: Request) {
         data_inicio: item.data_inicio,
         data_fim: item.data_fim,
         peso: item.peso,
+        source_template_id: periodTemplate.id,
+        source_item_id: item.id,
+        source_version: periodTemplate.versao_documento,
       }));
     const events = requestedMappings.flatMap((mapping) => {
       const template = templateList.find((candidate) => candidate.id === mapping.template_id);
@@ -282,6 +323,32 @@ export async function POST(request: Request) {
         p_periodos_data: periods,
       });
       if (error) throw error;
+    }
+    // O contrato da RPC deve devolver a proveniência após a gravação.
+    if (periods.length > 0) {
+      const { data: persisted, error: persistedError } = await db
+        .from("periodos_letivos")
+        .select("numero,source_template_id,source_item_id,source_version")
+        .eq("escola_id", escolaId)
+        .eq("ano_letivo_id", targetId)
+        .eq("tipo", "TRIMESTRE");
+      if (persistedError) throw persistedError;
+      if (periods.some((period) => !(persisted ?? []).some((row: {
+        numero: number;
+        source_template_id: string | null;
+        source_item_id: string | null;
+        source_version: string | null;
+      }) =>
+        row.numero === period.numero &&
+        row.source_template_id === period.source_template_id &&
+        row.source_item_id === period.source_item_id &&
+        row.source_version === period.source_version
+      ))) {
+        return NextResponse.json({
+          ok: false, code: "CALENDAR_PROVENANCE_NOT_PERSISTED",
+          error: "Os trimestres foram preparados, mas falta a proveniência oficial no banco de dados.",
+        }, { status: 409 });
+      }
     }
     if (events.length > 0) {
       for (const event of events) {
