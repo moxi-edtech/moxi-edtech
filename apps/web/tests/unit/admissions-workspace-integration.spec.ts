@@ -204,3 +204,13 @@ test("recibo em preparação ou erro mantém consulta recuperável pelo pagament
   assert.match(wizard, /result\.pagamento_id && !result\.recibo\?\.ok/);
   assert.match(wizard, /<AdmissionReceiptRecovery pagamentoId=\{result\.pagamento_id\}/);
 });
+
+test("diálogos de duplicidade e ações pós-matrícula ficam acima do Balcão", () => {
+  const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
+  const postAction = read("components/secretaria/EnrollmentPostActionModal.tsx");
+  assert.match(wizard, /elevated=\{embedded\}/);
+  assert.match(wizard, /overlayClassName=\{elevated \? "z-\[110\]" : undefined\}/);
+  assert.match(postAction, /overlayClassName=\{elevated \? "z-\[110\]" : undefined\}/);
+  assert.match(postAction, /bg-card text-foreground/);
+  assert.doesNotMatch(postAction, /#(?:1F6B3B|E3B23C)\b/i);
+});
