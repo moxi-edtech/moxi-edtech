@@ -68,6 +68,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'O ano letivo encerrado não pode ter os períodos alterados.', code: 'ACADEMIC_YEAR_CLOSED' }, { status: 409 });
     }
 
+    // This legacy generic writer cannot carry MED source provenance or an
+    // audited justification. Use the official template/controlled-adjustment
+    // routes for the 2026/27 decree instead of silently detaching the calendar.
+    if (academicContext.anoLetivoLabel.startsWith('2026/')) {
+      return NextResponse.json({
+        ok: false, code: 'OFFICIAL_CALENDAR_CONTROLLED_WRITE_REQUIRED',
+        error: 'Utilize os ajustes do calendário oficial para este ano letivo.',
+      }, { status: 409 });
+    }
+
     const firstAnoLetivoId = parseResult.data[0]?.ano_letivo_id;
     const mixedAnoLetivoIds = parseResult.data.some((item) => item.ano_letivo_id !== firstAnoLetivoId);
     if (mixedAnoLetivoIds) {
@@ -93,8 +103,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     console.error('Error in periodos-letivos upsert-bulk API:', message);
     return NextResponse.json({ 
       ok: false, 
-      error: message,
-      stack: e instanceof Error ? e.stack : undefined 
+      error: 'Não foi possível atualizar os períodos letivos.'
     }, { status: 500 });
   }
 }
