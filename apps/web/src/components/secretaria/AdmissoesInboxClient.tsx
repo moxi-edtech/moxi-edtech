@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import useSWR from 'swr'
@@ -301,6 +301,9 @@ export default function AdmissoesInboxClient({
 }) {
   const router = useRouter()
   const { success, error: toastError } = useToast()
+  // useToast returns new wrapper functions on re-render; keep detail fetching stable.
+  const toastErrorRef = useRef(toastError)
+  toastErrorRef.current = toastError
   const confirm = useConfirm()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -559,12 +562,12 @@ export default function AdmissoesInboxClient({
     } catch (err: unknown) {
       if (!signal.aborted) {
         console.error(err)
-        toastError('Não foi possível abrir a candidatura', 'Tente novamente selecionando a candidatura na fila.')
+        toastErrorRef.current('Não foi possível abrir a candidatura', 'Tente novamente selecionando a candidatura na fila.')
       }
     } finally {
       if (!signal.aborted) setLoadingDetail(false)
     }
-  }, [toastError])
+  }, [])
 
   useEffect(() => {
     if (!selectedId) {
