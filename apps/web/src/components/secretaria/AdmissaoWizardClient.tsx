@@ -2208,12 +2208,18 @@ function Step3Pagamento(props: {
                 {embedded ? "Continuar atendimento" : "Fechar"}
               </button>
             </div>
-            {result.recibo?.status === 'pending' && <p className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 text-xs text-amber-800">Pagamento registado. O recibo financeiro será disponibilizado após a liquidação.</p>}
+            {result.recibo?.status === 'pending' && (
+              <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                Pagamento registado. O recibo está em preparação e pode ser consultado sem repetir o pagamento.
+              </p>
+            )}
             {result.recibo?.status === 'error' && (
-              <>
-                <p className="mt-3 text-xs text-muted-foreground">O pagamento foi registado. O recibo pode estar em processamento.</p>
-                {result.pagamento_id && <AdmissionReceiptRecovery pagamentoId={result.pagamento_id} escolaId={escolaId} />}
-              </>
+              <p className="mt-3 text-xs text-muted-foreground">
+                O pagamento foi registado. A emissão do recibo pode ser recuperada sem repetir a operação.
+              </p>
+            )}
+            {result.pagamento_id && !result.recibo?.ok && (
+              <AdmissionReceiptRecovery pagamentoId={result.pagamento_id} escolaId={escolaId} />
             )}
           </div>
 
