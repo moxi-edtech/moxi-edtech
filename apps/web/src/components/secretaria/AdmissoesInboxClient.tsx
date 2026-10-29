@@ -1852,7 +1852,7 @@ export default function AdmissoesInboxClient({
                             )}
                             {canRejectAdmission(selectedData.status) && (
                               <button type="button" onClick={handleReject} disabled={!!loadingAction}
-                                className="rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50">
+                                className="rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10">
                                 Rejeitar candidatura
                               </button>
                             )}
