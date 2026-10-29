@@ -98,3 +98,32 @@ Para SQL, usar somente um PostgreSQL descartável com os parâmetros de seguran�
 - Credenciais: https://suporte-appypay.freshdesk.com/support/solutions/articles/501000417474-como-obter-as-credenciais-de-integrac%C3%A3o-client-id-client-secret-api-keys-e-resource-id
 
 O guia OAuth diverge entre tabela e exemplo de produção. A URL da tabela (`login.microsoftonline.com/appypay.co.ao/oauth2/token`) foi validada por autenticação real nesta tarefa.
+
+## Portal do aluno — propinas, serviços e emolumentos (2026-10-29)
+
+O pedido atual autoriza colocar o fluxo em produção para a Escola KLASSE. Esta extensão ainda depende da aprovação financeira específica `cf8dc48d-6b39-47d3-af87-410afcf95ddb` em `agents/outputs/PENDING_APPROVAL.md`; o SQL proposto e testado está em `appypay-portal-services.proposed.sql` (SHA256 `989e97331e2ddcb0aaf89723af731d5cbbf6ffcb95362ac525e39ae948bbc60a`). Não foi aplicado no Supabase.
+
+- Financeiro do aluno: botão Pagar com AppyPay em cada propina pendente e pedido de serviço com intenção draft, incluindo serviços não documentais. Débitos com comprovativo pendente não geram outra cobrança.
+- Secretaria Digital e notas: o mesmo botão está no drawer de pagamento dos serviços. O retorno de confirmação atualiza o catálogo; não exibe a mensagem de envio de comprovativo.
+- `GET /api/aluno/financeiro/appypay?action=status|preview`: sessão, escola resolvida, studentId autorizado e RPC autenticada de propriedade. Preview exige kind=monthly|service e targetId; para serviços o targetId é o pagamento_intent_id.
+- `POST /api/aluno/financeiro/appypay`: action=issue exige a mesma seleção e expectedAmount; action=check exige referenceId. Outros campos são recusados. O servidor ignora qualquer seleção de escola enviada por cliente e deriva a escola da sessão.
+- O endpoint humano não usa service_role. Encaminha apenas um comando assinado HMAC ao worker `/api/jobs/appypay/portal`, com corpo, caminho e timestamp vinculados, expiração de 60 segundos e destino fixo https://app.klasse.ao. O segredo AppyPay permanece no servidor; ele não é transmitido ao worker nem ao browser, apenas a assinatura derivada.
+- O worker valida a assinatura antes de criar o cliente privilegiado, confere escola/aluno/provedor e volta a consultar os débitos por escola E aluno. Status fica indisponível se a nova tabela não existir. Assinaturas repetidas não repetem cobranças: as reservas exclusivas e o fluxo idempotente permanecem obrigatórios.
+- Propinas reaproveitam a tabela/baixa atômica já aprovadas. Serviços usam a nova tabela privada appypay_service_references vinculada a servico_pedidos/pagamento_intents; não são convertidos em mensalidades fictícias.
+- A resposta documentada de criação REF não inclui valor/merchant; valida-se sua referência/código/fonte. A confirmação exige o GET autenticado com valor, merchant, id, moeda e source REF compatíveis. Código 101 nunca baixa o débito.
+- A nova função appypay_confirm_service_payment bloqueia referência, intenção e pedido e exige evento de pagamento verificado. Revalida valores/vínculos/estado, usa draft → pending → settled para preservar o guard de boletim e deixa os gatilhos existentes criarem pagamentos. A mesma charge mantém a data original e não materializa dois pagamentos.
+- Intenções de serviço usam o método canônico existente mcx e metadata provider=appypay/charge id. Não muda enum ou contrato de método existente. Pedidos que exigem aprovação permanecem blocked após pagamento; a elegibilidade de rematrícula continua sendo verificada.
+- O histórico identifica cada pedido pelo UUID, evitando esconder um novo pedido porque o mesmo código de serviço já foi pago no passado.
+
+### Evidência desta extensão
+29 testes de código/HTTP passaram, incluindo rota real aluno → broker assinado → operação com fronteiras de sessão/DB/HTTP simuladas. Seis grupos SQL locais passaram usando literalmente a proposta e snapshots dos dois gatilhos existentes (boletim e materialização do pagamento): permissões negativas, callbacks simultâneos, aprovação de serviço, valor alterado, evento 101 e alteração concorrente com row lock. A fixture usa PostgreSQL 14 e esquema reduzido; não certifica todos os gatilhos/RLS de produção.
+
+Validação no navegador com dados fictícios: pagamento do serviço, confirmação após verificação, cópia com mensagem de sucesso, propina com emissão incerta sem segundo POST. Abrir o diálogo confirmou zero POST; recuperar a emissão incerta confirmou exatamente um POST. Captura: /private/tmp/klasse-appypay-evidence/student-service.png.
+
+Painel AppyPay de produção consultado: lista de webhooks vazia; adesões disponíveis GPO MS 1791542425 e REF MS 1791542538. Nenhum webhook foi criado ou alterado. A instalação deve usar somente a adesão REF e POST https://app.klasse.ao/api/webhooks/appypay depois da publicação.
+
+Executar os testes de código com os dois ficheiros anteriores e `apps/web/tests/unit/appypay-portal.spec.ts`. O novo ensaio SQL é `apps/web/tests/appypay-services-local.py`; aceita exclusivamente a base descartável appypay_services_test no socket local documentado. Não usar o script no Supabase.
+
+Build final desta extensão: Next.js completo com validação de tipos e 182 páginas aprovado, usando chaves fictícias e gateway desligado. Lint: zero erros, um aviso preexistente MAX_SPAN não usado na rota financeira do aluno (presente no commit base). Nenhuma dependência ou lockfile alterados. A interface foi validada com API fictícia; ainda não há sessão autenticada de aluno no fluxo publicado.
+
+Verificação HTTP sobre o servidor local da versão compilada: worker sem assinatura → 401; corpo do worker maior que 4 KiB → 413; webhook com id inválido → 400; rota do aluno sem sessão → 401. Chaves/configuração fictícias, sem chamada válida à AppyPay/Supabase. Isto verifica as fronteiras negativas em runtime, não o fluxo autenticado de produção.

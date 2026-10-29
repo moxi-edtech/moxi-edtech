@@ -9,7 +9,8 @@ const require = createRequire(join(root, 'apps/web/package.json'));
 const tools = createRequire(createRequire(join(root, 'package.json')).resolve('tsx'));
 const { build } = tools('esbuild');
 const dir = await mkdtemp(join(tmpdir(), 'appypay-preview-'));
-const entry = `import React from 'react'; import { createRoot } from 'react-dom/client'; import { AppyPayReferenceButton } from ${JSON.stringify(join(root,'apps/web/src/components/financeiro/AppyPayReferenceButton.tsx'))}; createRoot(document.getElementById('app')).render(<AppyPayReferenceButton escolaId="00000000-0000-4000-8000-000000000001" mensalidadeId="11111111-1111-4111-8111-111111111111" alunoNome="Aluno de demonstração" descricao="Propina 10/2026" />);`;
+const entry = `import React from 'react'; import { createRoot } from 'react-dom/client'; import { AppyPayReferenceButton, StudentAppyPayButton } from ${JSON.stringify(join(root,'apps/web/src/components/financeiro/AppyPayReferenceButton.tsx'))}; const mode=new URLSearchParams(location.search).get('mode'); createRoot(document.getElementById('app')).render(mode ? <StudentAppyPayButton targetId="11111111-1111-4111-8111-111111111111" studentId="44444444-4444-4444-8444-444444444444" kind={mode==='service'?'service':'monthly'} descricao={mode==='service'?'Certificado escolar':'Propina 10/2026'} /> : <AppyPayReferenceButton escolaId="00000000-0000-4000-8000-000000000001" mensalidadeId="11111111-1111-4111-8111-111111111111" alunoNome="Aluno de demonstração" descricao="Propina 10/2026" />);`;
+
 await build({ stdin: { contents: entry, loader: 'tsx', resolveDir: join(root,'apps/web') }, outfile:join(dir,'app.js'), bundle:true, format:'esm', platform:'browser', jsx:'automatic', logLevel:'silent', define:{'process.env.NODE_ENV':'"production"'}, plugins:[{name:'local-navigation',setup(b){b.onResolve({filter:/^next\/navigation$/},()=>({path:'navigation',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:'export const useRouter=()=>({refresh(){}});'}));}}] });
 const tailwind = require('@tailwindcss/postcss');
 const postcss = createRequire(require.resolve('@tailwindcss/postcss'))('postcss');
@@ -26,6 +27,16 @@ const server=createServer(async(req,res)=>{
  }
  if(url.pathname==='/app.js'||url.pathname==='/app.css'){res.writeHead(200,{'Content-Type':url.pathname.endsWith('js')?'text/javascript':'text/css'});res.end(await readFile(join(dir,url.pathname.slice(1))));return;}
  if(url.pathname==='/state'){json(res,200,state);return;}
+ if(url.pathname==='/api/aluno/financeiro/appypay'){
+  if(req.method==='GET'){
+   if(url.searchParams.get('action')==='status'){json(res,200,{ok:true,enabled:state.scenario!=='disabled',environment:'production'});return;}
+   json(res,200,{ok:true,amount:1500,currency:'AOA',environment:'production',canIssue:!state.issued,reference:state.issued?reference():null});return;
+  }
+  let raw='';for await(const part of req)raw+=part;let body;try{body=JSON.parse(raw);}catch{json(res,400,{error:'Payload inválido'});return;}
+  if(body.action==='check'){state.checks++;state.paid=state.scenario==='paid';json(res,200,{ok:true,status:state.paid?'reconciled':'pending'});return;}
+  if(body.action!=='issue'||body.expectedAmount!==1500||!['monthly','service'].includes(body.kind)||body.studentId!=='44444444-4444-4444-8444-444444444444'){json(res,400,{error:'Confirmação inválida'});return;}
+  state.posts++;state.issued=true;if(state.scenario==='uncertain'){json(res,503,{error:'Emissão em processamento.'});return;}json(res,200,{ok:true,reference:reference()});return;
+ }
  if(url.pathname==='/api/financeiro/appypay/status'){json(res,200,{enabled:state.scenario!=='disabled',environment:'production'});return;}
  if(url.pathname==='/api/financeiro/appypay/references'){
   if(req.method==='POST'){let raw='';for await(const part of req)raw+=part;let body;try{body=JSON.parse(raw);}catch{json(res,400,{error:'Payload inválido'});return;}if(body.expectedAmount!==1500){json(res,409,{error:'Saldo divergente na confirmação'});return;}state.posts++;state.issued=true;if(state.scenario==='uncertain'){json(res,503,{error:'Emissão em processamento.'});return;}json(res,200,{ok:true,reference:reference()});return;}

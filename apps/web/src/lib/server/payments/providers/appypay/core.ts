@@ -57,11 +57,11 @@ export class AppyPayClient {
     if (!data || typeof data.id !== 'string' || !data.responseStatus || typeof data.responseStatus.code !== 'number') throw new PaymentError(502, 'Resposta AppyPay inválida');
     return data;
   }
-  createReference(input: { amount: number; merchantId: string; reference: string; expiresAt: string }) {
+  createReference(input: { amount: number; merchantId: string; reference: string; expiresAt: string; description?: string }) {
     if (!Number.isFinite(input.amount) || input.amount <= 0 || !/^[a-z0-9]{1,15}$/i.test(input.merchantId) ||
         !/^\d{9}$/.test(input.reference) || Date.parse(input.expiresAt) <= Date.now()) throw new PaymentError(400, 'Cobrança inválida');
     return this.request('/charges', { method: 'POST', body: JSON.stringify({ amount: input.amount, currency: 'AOA',
-      description: 'Propina KLASSE', merchantTransactionId: input.merchantId, paymentMethod: this.config.paymentMethod,
+      description: input.description ?? 'Pagamento KLASSE', merchantTransactionId: input.merchantId, paymentMethod: this.config.paymentMethod,
       paymentInfo: { referenceNumber: input.reference, dueDate: input.expiresAt } }) });
   }
   getCharge(id: string) {
@@ -70,7 +70,7 @@ export class AppyPayClient {
   }
 }
 export type Reference = {
-  id: string; school_id: string; provider_id: string; obligation_id: string; provider_reference_id: string;
+  kind?: 'monthly' | 'service'; intent_id?: string; id: string; school_id: string; provider_id: string; obligation_id: string; provider_reference_id: string;
   reference: string; entity: string; amount: number; currency: string; expires_at: string; status: string;
   provider_payload: { merchant_id?: string };
 };

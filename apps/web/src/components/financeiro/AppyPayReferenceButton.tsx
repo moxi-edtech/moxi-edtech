@@ -8,7 +8,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 type Reference = { id: string; entity: string; reference: string; amount: number; currency: string; expires_at: string; status: string };
 type Preview = { amount: number; environment: 'production' | 'sandbox'; canIssue: boolean; reference: Reference | null; message?: string };
-type Props = { escolaId: string; mensalidadeId: string; alunoNome: string; descricao: string; onPaid?: (mensalidadeId: string) => void };
+type Props = { escolaId: string; mensalidadeId: string; alunoNome: string; descricao: string; onPaid?: (mensalidadeId: string) => void; student?: { id?: string | null; kind: 'monthly' | 'service' } };
+function api(props: Props) {
+  if (!props.student) return { status: '/api/financeiro/appypay/status',
+    preview: `/api/financeiro/appypay/references?obligationId=${encodeURIComponent(props.mensalidadeId)}`,
+    issue: '/api/financeiro/appypay/references', check: '/api/financeiro/appypay/reconcile',
+    issueBody: { obligationId: props.mensalidadeId }, checkBody: {} };
+  const base = '/api/aluno/financeiro/appypay';
+  const scope = { ...(props.student.id ? { studentId: props.student.id } : {}), kind: props.student.kind, targetId: props.mensalidadeId };
+  return { status: `${base}?${new URLSearchParams({ action: 'status', ...(props.student.id ? { studentId: props.student.id } : {}) })}`,
+    preview: `${base}?${new URLSearchParams({ action: 'preview', ...scope })}`, issue: base, check: base,
+    issueBody: { action: 'issue', ...scope }, checkBody: { action: 'check', ...scope } };
+}
 const deadline = (value: string) => `${new Date(value).toLocaleString('pt-AO', { timeZone: 'Africa/Luanda' })} (hora de Angola)`;
 const money = (amount: number) => new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(amount);
 const button = 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50';
@@ -19,8 +30,9 @@ async function requestJson(url: string, escolaId: string, init?: RequestInit) {
   if (!response.ok || !body) throw new Error(body?.error || 'Não foi possível consultar o pagamento. Tente consultar novamente.');
   return body;
 }
-function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid, onClose, restoreFocus }: Props & { onClose: () => void; restoreFocus: () => void }) {
+function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid, onClose, restoreFocus, student }: Props & { onClose: () => void; restoreFocus: () => void }) {
   const router = useRouter();
+  const paths = api({ escolaId, mensalidadeId, alunoNome, descricao, student });
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState<'load' | 'create' | 'check' | null>('load');
   const [error, setError] = useState('');
@@ -31,12 +43,12 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
   const load = useCallback(async (signal?: AbortSignal) => {
     setBusy('load'); setError('');
     try {
-      const body = await requestJson(`/api/financeiro/appypay/references?obligationId=${encodeURIComponent(mensalidadeId)}`, escolaId, { signal });
+      const body = await requestJson(paths.preview, escolaId, { signal });
       if (mounted.current && !signal?.aborted) { setPreview(body); setUncertain(false); }
     } catch (e) {
       if (mounted.current && !signal?.aborted) setError(e instanceof Error ? e.message : 'Consulta indisponível.');
     } finally { if (mounted.current && !signal?.aborted) setBusy(null); }
-  }, [escolaId, mensalidadeId]);
+  }, [escolaId, paths.preview]);
   useEffect(() => {
     mounted.current = true;
     const controller = new AbortController();
@@ -47,7 +59,7 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
     if (locked.current || !preview?.canIssue || uncertain) return;
     locked.current = true; setBusy('create'); setError(''); setNotice('');
     try {
-      const body = await requestJson('/api/financeiro/appypay/references', escolaId, { method: 'POST', body: JSON.stringify({ obligationId: mensalidadeId, expectedAmount: preview.amount }) });
+      const body = await requestJson(paths.issue, escolaId, { method: 'POST', body: JSON.stringify({ ...paths.issueBody, expectedAmount: preview.amount }) });
       if (mounted.current) setPreview({ ...preview, canIssue: false, reference: body.reference });
     } catch (e) {
       if (mounted.current) { setUncertain(true); setError(`${e instanceof Error ? e.message : 'Emissão indisponível.'} Consulte o estado antes de voltar a emitir.`); }
@@ -57,7 +69,7 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
     if (locked.current || !preview?.reference) return;
     locked.current = true; setBusy('check'); setError(''); setNotice('');
     try {
-      const body = await requestJson('/api/financeiro/appypay/reconcile', escolaId, { method: 'POST', body: JSON.stringify({ referenceId: preview.reference.id }) });
+      const body = await requestJson(paths.check, escolaId, { method: 'POST', body: JSON.stringify({ ...paths.checkBody, referenceId: preview.reference.id }) });
       if (!mounted.current) return;
       if (body.status === 'reconciled') {
         setPreview({ ...preview, reference: { ...preview.reference, status: 'paid' } });
@@ -115,11 +127,19 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
 export function AppyPayReferenceButton(props: Props) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
-  const { data } = useSWR(props.escolaId ? ['/api/financeiro/appypay/status', props.escolaId] : null,
+  const paths = api(props);
+  const { data } = useSWR(props.escolaId || props.student ? [paths.status, props.escolaId] : null,
     ([url, school]: [string, string]) => requestJson(url, school), { revalidateOnFocus: true, shouldRetryOnError: false });
   if (!data?.enabled) return null;
   return <>
-    <button ref={trigger} type="button" className={button} onClick={() => setOpen(true)}><ReceiptText className="h-4 w-4" aria-hidden="true" />Gerar referência</button>
+    <button ref={trigger} type="button" className={button} onClick={() => setOpen(true)}><ReceiptText className="h-4 w-4" aria-hidden="true" />{props.student ? 'Pagar com AppyPay' : 'Gerar referência'}</button>
     {open ? <ReferenceDialog key={`${props.escolaId}:${props.mensalidadeId}`} {...props} onClose={() => setOpen(false)} restoreFocus={() => trigger.current?.focus()} /> : null}
   </>;
+}
+
+export function StudentAppyPayButton({ targetId, kind, studentId, descricao, onPaid }: {
+  targetId: string; kind: 'monthly' | 'service'; studentId?: string | null; descricao: string; onPaid?: () => void;
+}) {
+  return <AppyPayReferenceButton escolaId="" mensalidadeId={targetId} alunoNome="Pagamento escolar" descricao={descricao}
+    student={{ id: studentId, kind }} onPaid={onPaid} />;
 }

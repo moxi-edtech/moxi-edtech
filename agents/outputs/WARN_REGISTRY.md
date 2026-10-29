@@ -6,6 +6,8 @@ Pendências de validação; não são findings de violação sem evidência de c
 |---|---|---|---|---|---|
 | APY-003 | Contrato de PASS: limites de prova | docs/financeiro/appypay.md | docs/financeiro/appypay.md#ativação-pendente | gundja | Antes da ativação |
 | APY-004 | Contrato de PASS: cobertura integral | agents/outputs/PERFORMANCE_GATE.md | agents/outputs/PERFORMANCE_GATE.md#veredito | Engenharia | Antes do merge |
+| APY-005 | Agent 3: estrutura financeira/RLS | docs/financeiro/appypay-portal-services.proposed.sql | agents/outputs/PENDING_APPROVAL.md | gundja | Antes da aplicação/publicação |
+| APY-007 | Qualidade: lint existente | apps/web/src/app/api/aluno/financeiro/route.ts | docs/financeiro/appypay.md#portal-do-aluno--propinas-serviços-e-emolumentos-2026-10-29 | Engenharia | Antes do gate global |
 
 ## Resolvidos
 

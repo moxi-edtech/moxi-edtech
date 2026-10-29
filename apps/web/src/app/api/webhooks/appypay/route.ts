@@ -50,7 +50,14 @@ export async function POST(request: Request) {
     const client = new AppyPayClient(config);
     // A merchant id selects a pending local reservation, but only an authenticated GET
     // matching school/provider/merchant/amount/reference can bind it to this charge.
-    const resolved = reference ?? await recoverPendingReference(db, client, config.schoolId, provider.id, payload.id, payload.merchantTransactionId);
+    let resolved: Reference | null = reference ?? await recoverPendingReference(db, client, config.schoolId, provider.id, payload.id, payload.merchantTransactionId);
+    if (!resolved) {
+      const { data: serviceReference, error: serviceError } = await db.from('appypay_service_references').select('*')
+        .eq('school_id', config.schoolId).eq('provider_id', provider.id).eq('provider_reference_id', payload.id).maybeSingle();
+      if (serviceError) throw new PaymentError(503, 'Serviço indisponível');
+      resolved = serviceReference ? { ...serviceReference, kind: 'service' } as Reference
+        : await recoverPendingReference(db, client, config.schoolId, provider.id, payload.id, payload.merchantTransactionId, 'service');
+    }
     if (!resolved) throw new PaymentError(503, 'Referência ainda não disponível');
     const result = await reconcileCharge(db, client, resolved as Reference);
     return NextResponse.json({ ok: true, ...result }, { headers });

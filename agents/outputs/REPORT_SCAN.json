@@ -1,8 +1,8 @@
 {
   "contrato_versao": "2.0.0",
-  "run_id": "cd3c7ab6-d94f-4dc4-af69-b5c76cc0f235",
-  "run_timestamp": "2026-10-29T11:23:49.674784+00:00",
-  "commit": "5c4964143a3e02ab88b7224ff61c2398bdb75fd5",
+  "run_id": "f4dfa5d5-f9f8-4e03-beaa-15f414f60da2",
+  "run_timestamp": "2026-10-29T12:08:25.233366+00:00",
+  "commit": "f9cbb42e413024b836e69c733357b7254fe1959e",
   "veredito": "WARN",
   "can_merge": false,
   "summary": {
@@ -17,24 +17,31 @@
     "EXC-SEC-001-B:/api/webhooks/appypay",
     "EXC-SEC-002-A:/api/webhooks/appypay"
   ],
-  "scope": "AppyPay: rotas e módulos alterados; não é auditoria global integral",
+  "scope": "AppyPay portal aluno + tesouraria; não é certificação global integral do repositório",
   "validation": {
-    "unit_http_tests": 19,
+    "unit_http_tests": 29,
     "local_postgresql_scenarios": 3,
     "module_strict_types": "passed",
-    "global_typecheck": "passed as part of complete local Next production build; types not bypassed",
+    "global_typecheck": "passed in complete build",
     "provider_authentication": "passed; no charges created",
     "supabase_atomic_rpc": "installed; body hash and permissions verified; nonexistent-intent probe passed without data mutation",
     "production_migration": "20261028224738_appypay_atomic_confirmation",
     "unit_http_environment": "retested successfully with restored locked project dependencies",
     "targeted_route_types": "passed for all AppyPay modules and three routes, using real locked project dependencies and imports",
-    "production_build": "passed; 182 pages; placeholder credentials; APPYPAY_ENABLED=false",
-    "scoped_lint": "passed",
-    "visual_component": "passed with synthetic API fixture; not live provider end-to-end"
+    "production_build": "passed; full local Next build including types and 182 pages; placeholder keys and APPYPAY_ENABLED=false",
+    "scoped_lint": "0 errors; 1 existing warning MAX_SPAN unused in student finance route",
+    "visual_component": "student service paid, monthly uncertain with one POST, server-confirmed zero POST on open; synthetic fixture only",
+    "local_service_sql_groups": 6,
+    "local_postgresql_scenarios_previous_monthly": 3,
+    "service_sql": "proposed only; exact proposal and existing boletim/materialization trigger snapshots executed on disposable PG14; not Supabase",
+    "production_state": "provider inactive; new service table and RPC absent; webhook list empty; no deploy or real charge",
+    "compiled_local_http": "passed: unsigned worker401, oversized worker413, invalid webhook400, unauthenticated student401; fixture config, no valid provider/db request"
   },
   "warnings": [
     "APY-003",
-    "APY-004"
+    "APY-004",
+    "APY-005",
+    "APY-007"
   ],
   "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem regressões a reportar",
   "legacy_scan": "Rerun 2026-10-29 in /private/tmp/appypay-scans-final; 0 critical/high/medium; 6 LOW VALIDATED markers, legacy perf gate PASS. Does not implement complete contract 2.0.0; not global PASS evidence.",
@@ -42,5 +49,23 @@
     "APY-001",
     "APY-002"
   ],
-  "tested_working_tree": true
+  "tested_working_tree": true,
+  "tested_source_hashes": {
+    "apps/web/src/lib/financeiro/servicosPagamento.ts": "b7674d046749d449e0663f2f65a6f53719e4a90d6522b105ae529df5c51037f7",
+    "apps/web/src/lib/server/payments/providers/appypay/portal-broker.ts": "22702a835500f5d43eef83612616dd1ed7ecb065c182824b0d7c76061e820892",
+    "apps/web/src/lib/server/payments/providers/appypay/portal-operations.ts": "ad9d1b613e0626c35169e69b3352691dc7cec39627a517ac9c3d9f5b10c9d926",
+    "apps/web/src/lib/server/payments/providers/appypay/core.ts": "d63eea061db09d7bc655916249f572c42d71eed8406b2a2953b3623cd58f7fcb",
+    "apps/web/src/lib/server/payments/providers/appypay/service.ts": "a55684744878d98b34b651f93002755407ba9c051d99d7fdd448334d2e430e60",
+    "apps/web/src/components/financeiro/AppyPayReferenceButton.tsx": "e5b41729975685b08858501da10221e20064a661ad0d4ffd8e58c0e6d5c6b6ed",
+    "apps/web/src/components/aluno/tabs/TabDocumentos.tsx": "cb0a47b645c9f007bc0fd9fdaed5033b4a79de78e32384b235d3cce9f442a9dd",
+    "apps/web/src/components/aluno/tabs/TabFinanceiro.tsx": "cc176dc325488a6de17daccbcb8e6c16a4f639901e0a27afe3ac052bea21eca4",
+    "apps/web/src/components/aluno/layout/ServicePaymentDrawer.tsx": "747de4c01a557003476e85c1c720d09851dcf890dd5cc4a4439f995670dd8144",
+    "apps/web/src/app/api/webhooks/appypay/route.ts": "df54a7764dde29291d9c63b830085718e7fe7589b9430ff77a3f180bfc9e2597",
+    "apps/web/src/app/api/jobs/appypay/portal/route.ts": "ea68c703ceec0d7af524e606dc6da8669c64ecf1fe7cf3b68797a43d468d56d6",
+    "apps/web/src/app/api/aluno/financeiro/route.ts": "6d2f3660bcd0bc2484fb35b89df45f17c9dfe7121efc89e1a15f0a42e31947f4",
+    "apps/web/src/app/api/aluno/financeiro/appypay/route.ts": "1e524e7f20a16c505da6ad5f12a8e14ecce7e036ea5bfb296d72d73514b72afd",
+    "apps/web/src/app/api/financeiro/appypay/reconcile/route.ts": "65190f05ff79813e210c2c922dde109ec96a28566f91c8140948b0400a719b5f",
+    "apps/web/src/app/api/financeiro/appypay/references/route.ts": "e0020a296cccf5965f12caa829c38903ec86358eb8e52bc6ea511f0e0f395c46",
+    "apps/web/src/app/api/financeiro/appypay/status/route.ts": "09423f2868adfa10d535c68fe3354b0cc8bf03875f36d2595ea4fce181a871a2"
+  }
 }

@@ -45,10 +45,13 @@ Artefactos encontrados por nome exato; não equivale a replay de todas as migrat
 - Wrapper: supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql
 
 ## Dashboards cobertos
-Mudança limitada ao controle de pagamento/extrato; nenhuma query de dashboard alterada nesta finalização. A cobertura global MV-001, MV-003 e CACHE-002 permanece sem certificação neste run. Rotas AppyPay novas têm force-dynamic, revalidate=0, force-no-store e cabeçalhos no-store; chamadas ao provedor também no-store.
+Mudança limitada aos controles de pagamento/extrato e endpoints AppyPay do aluno/worker; nenhuma query de dashboard alterada nesta finalização. A cobertura global MV-001, MV-003 e CACHE-002 permanece sem certificação neste run. Rotas AppyPay novas têm force-dynamic, revalidate=0, force-no-store e cabeçalhos no-store; chamadas ao provedor também no-store.
 
 ## Alertas de cálculo ao vivo
 Nenhum introduzido nas rotas AppyPay alteradas. Sem findings MV-001 fora do escopo por falta da evidência exigida.
 
 ## Veredito
 can_merge: false
+
+## Extensão portal aluno
+29 testes aprovados; seis grupos SQL locais aprovados. Build completo com tipos e 182 páginas aprovado; lint zero erros/um aviso preexistente. Novos endpoints e transporte interno usam no-store/force-dynamic. Broker usa destino fixo, assinatura com expiração e escopo derivado da sessão. Não altera consultas de dashboard. SQL de serviços proposto, ainda não aplicado; ver APY-005. Autorização de produção recebida; sem liberação enquanto a proposta financeira e o gate contratual não estiverem resolvidos.

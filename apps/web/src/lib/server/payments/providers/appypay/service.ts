@@ -40,20 +40,21 @@ export async function issueReference(db: SupabaseClient, client: AppyPayClient, 
 }
 
 
-export async function recoverPendingReference(db: SupabaseClient, client: AppyPayClient, schoolId: string, providerId: string, chargeId: string, merchantId: unknown): Promise<Reference | null> {
+export async function recoverPendingReference(db: SupabaseClient, client: AppyPayClient, schoolId: string, providerId: string, chargeId: string, merchantId: unknown, kind: 'monthly' | 'service' = 'monthly'): Promise<Reference | null> {
   if (typeof merchantId !== 'string' || !/^[a-z0-9]{15}$/i.test(merchantId)) return null;
-  const candidate = checked(await db.from('payment_references').select('*').eq('school_id', schoolId).eq('provider_id', providerId)
+  const candidate = checked(await db.from(kind === 'service' ? 'appypay_service_references' : 'payment_references').select('*').eq('school_id', schoolId).eq('provider_id', providerId)
     .eq('status', 'pending').eq('provider_payload->>merchant_id', merchantId).maybeSingle()) as Reference | null;
   if (!candidate) return null;
   const charge = await client.getCharge(chargeId);
   verifiedCharge(charge, { ...candidate, provider_reference_id: chargeId });
   const detail = charge.reference ?? charge.responseStatus.reference;
   if (!detail?.entity || detail.referenceNumber !== candidate.reference || !Number.isFinite(Date.parse(detail.dueDate))) throw new PaymentError(409, 'Referência do provedor incompatível');
-  const saved = checked(await db.from('payment_references').update({ provider_reference_id: chargeId, entity: detail.entity,
+  const saved = checked(await db.from(kind === 'service' ? 'appypay_service_references' : 'payment_references').update({ provider_reference_id: chargeId, entity: detail.entity,
     expires_at: detail.dueDate, status: 'active', updated_at: new Date().toISOString() })
     .eq('id', candidate.id).eq('school_id', schoolId).eq('provider_id', providerId).eq('status', 'pending').select('*').maybeSingle()) as Reference | null;
-  return saved ?? checked(await db.from('payment_references').select('*').eq('id', candidate.id)
+  const current = saved ?? checked(await db.from(kind === 'service' ? 'appypay_service_references' : 'payment_references').select('*').eq('id', candidate.id)
     .eq('school_id', schoolId).eq('provider_id', providerId).eq('provider_reference_id', chargeId).maybeSingle()) as Reference | null;
+  return current ? { ...current, kind } : null;
 }
 
 export async function reconcileCharge(db: SupabaseClient, client: AppyPayClient, reference: Reference) {
@@ -66,6 +67,10 @@ export async function reconcileCharge(db: SupabaseClient, client: AppyPayClient,
     provider_event_id: charge.id, event_type: 'payment', idempotency_key: dedupe, payload_hash: createHash('sha256').update(JSON.stringify(charge)).digest('hex'),
     payload: { id: charge.id, amount: charge.amount, merchantTransactionId: charge.merchantTransactionId, responseStatus: charge.responseStatus },
     status: 'pending' }, { onConflict: 'provider_id,idempotency_key', ignoreDuplicates: true }));
+  if (reference.kind === 'service') {
+    const result = checked(await db.rpc('appypay_confirm_service_payment', { p_reference_id: reference.id, p_charge_id: charge.id }));
+    return result as { status: string };
+  }
   const eventQuery = () => db.from('payment_provider_events').update({ status: 'processed', processed_at: new Date().toISOString(), error_message: null })
     .eq('provider_id', reference.provider_id).eq('school_id', reference.school_id).eq('idempotency_key', dedupe);
   // ignoreDuplicates is essential: upsert(update) could reset an already confirmed intent.

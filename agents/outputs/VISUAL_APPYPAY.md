@@ -17,3 +17,10 @@ Componente de produção renderizado pela fixture `apps/web/tests/fixtures/appyp
 Captura final: `/private/tmp/klasse-appypay-evidence/reference.jpg`.
 
 Limites: esta prova cobre o componente com API de fixture; não prova sessão autenticada no portal publicado, pagamento no provedor, entrega real de webhook ou RLS completo de produção. A integração com as páginas reais é coberta pela compilação e pelos tipos do projeto; o fluxo financeiro completo ainda precisa do ensaio autorizado após publicação.
+
+## Extensão do aluno — 2026-10-29
+Botão StudentAppyPayButton real, servido pela mesma fixture com mode=service ou mode=monthly; solicitações incluem studentId, kind, targetId e saldo esperado. Cenário serviço: consulta exibiu Certificado escolar/1 500 Kz, servidor confirmou posts=0 antes da emissão; emissão explícita exibiu entidade/referência; Copiar dados exibiu sucesso; Verificar pagamento exibiu Pagamento confirmado e registado após resposta reconciled. A API da clipboard do navegador não retornou o conteúdo copiado; não afirmar validação do clipboard do sistema.
+
+Cenário propina uncertain: um POST, retorno503, UI substituiu emissão por Consultar estado; a nova consulta exibiu reserva pendente. Contador do servidor confirmou posts=1, sem segunda emissão. Captura sintética /private/tmp/klasse-appypay-evidence/student-service.png.
+
+Painel AppyPay real: webhooks Sem resultados; aplicação REF identificada. Formulário apenas inspecionado e cancelado, sem salvar. Nenhuma cobrança/validação financeira real feita.
