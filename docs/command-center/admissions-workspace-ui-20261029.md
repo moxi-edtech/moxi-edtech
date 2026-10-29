@@ -22,6 +22,20 @@ A experiência de admissões era uma página isolada, com layout rígido e opera
 - Testes de regressão verificam que a fila, o assistente em três passos e a folha de conversão não retomam superfícies ou tipografia neutra com cores fixas.
 - Notificações partilhadas de sucesso/erro/aviso foram alinhadas aos tokens de card e texto do tema; as confirmações globais recebem overlay acima do Workspace sem alterar a API de confirmação.
 
+## Continuidade do atendimento — resolução contextual
+- Guardar alterações na folha de conversão não conclui a matrícula, não fecha o formulário e não muda o candidato.
+- Conclusão da matrícula actualiza a fila e o detalhe da candidatura no próprio atendimento; a acção «Atender próximo» é explícita e ignora registos concluídos/arquivados.
+- Arquivar candidatura não elimina o detalhe nem o contexto seleccionado; a secretaria pode consultar o histórico antes de abrir outro registo.
+- Erros `ACADEMIC_CALENDAR_NOT_CONFIGURED` apresentam o calendário dentro do Balcão. Modelo oficial é limitado ao ano da candidatura; a API existente exige papel autorizado.
+- Se o ano letivo existe e falta um modelo aplicável, o painel permite ajustar períodos manualmente, com motivo e confirmação, usando a rota auditada de ajustes. Não altera automaticamente o ano activo ou a associação de turmas com histórico.
+- Erro `ACADEMIC_CALENDAR_YEAR_MISMATCH` oferece «Rever turma» na própria matrícula, sem migrar a turma de ano por um atalho potencialmente perigoso.
+- Incompatibilidades financeiras orientam a revisão da turma/pagamento no mesmo fluxo; não alteram o ledger nem regras de competência.
+- Na nova matrícula embutida, falha na emissão de comprovativo apresenta recuperação local em vez de navegar para Documentos. Recibos em estado `pending` ou `error` expõem «Verificar recibo» pelo ID persistido do pagamento; nunca repetem o pagamento.
+- O arquivamento de uma admissão duplicada pode regressar explicitamente à Inbox no mesmo Workspace.
+
+**Limite de permissões e dados:** nenhum fluxo consegue corrigir silenciosamente uma turma vinculada ao ano errado, criar um ano letivo sem fonte ou autorizar uma configuração para a qual o utilizador não tenha permissão. O bloqueio permanece visível e o atendimento é preservado, em vez de forçar navegação externa.
+
+
 
 
 ## Contratos a preservar
@@ -45,6 +59,11 @@ A experiência de admissões era uma página isolada, com layout rígido e opera
 
 - [ ] Abrir aba, trocar de candidatura rapidamente e voltar: sem vazamento de dados ou repetição de requests após desmontagem.
 - [ ] Medir requests e bytes do bundle do Balcão antes/depois: o carregamento inicial não deve incluir `AdmissoesInboxClient` nem `AdmissaoConversionSheet`.
+- [ ] Guardar na conversão sem fechar, concluir e voltar ao mesmo candidato; avançar apenas quando premir «Atender próximo».
+- [ ] Simular calendário em falta com modelo oficial, sem modelo e edição manual; verificar papel permitido/proibido e revalidar matrícula no mesmo formulário.
+- [ ] Simular turma com ano incompatível e rever a turma sem alterar os vínculos históricos no banco.
+- [ ] Simular erro de competência financeira e retomar após rever selecção local, sem alteração ao ledger.
+- [ ] Simular recibo pendente/erro com `pagamento_id`; verificar consulta e retry sem repetir cobrança.
 - [ ] Typecheck, testes unitários de integração e workflow `Balcao Performance Budgets` verdes.
 
 ## Limites desta entrega
