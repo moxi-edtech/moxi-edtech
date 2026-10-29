@@ -12,7 +12,9 @@ test("persisted matrícula has exactly eight distinct administrative states", ()
 test("GradeEngine finalization always stores concluido and independent academic outcome", () => {
   assert.match(migration, /v_status_calculado := 'concluido'/);
   assert.match(migration, /v_status := 'concluido'/);
-  assert.match(migration, /resultado_final = v_grade->>'situacao_final'/);
+  assert.match(migration, /SET resultado_final = CASE WHEN v_grade->>'situacao_final'='reprovado_por_faltas'/);
+  assert.match(migration, /THEN 'reprovado' ELSE v_grade->>'situacao_final' END/);
+  assert.match(migration, /'motivos_academicos'/);
   assert.match(migration, /ACADEMIC_RESULT_CONFLICT/);
   assert.match(migration, /resultado_academico/);
 });
