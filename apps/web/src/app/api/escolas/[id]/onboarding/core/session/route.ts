@@ -179,12 +179,20 @@ export async function POST(
         autogerar_periodos: true, estrutura: "cursos", tipo_presenca: "curso",
       }, { onConflict: "escola_id" });
       if (configError) throw configError;
+      const { data: appliedPeriods, error: appliedPeriodsError } = await supabase
+        .from("periodos_letivos")
+        .select("id,tipo,numero,data_inicio,data_fim,trava_notas_em,peso")
+        .eq("ano_letivo_id", prepared.target_session.id)
+        .eq("escola_id", userEscolaId)
+        .order("numero", { ascending: true });
+      if (appliedPeriodsError) throw appliedPeriodsError;
       return NextResponse.json({
         ok: true, data: {
           id: prepared.target_session.id, nome: `${anoLetivo}/${anoLetivo + 1}`,
           data_inicio, data_fim, status: "ativa", ano_letivo: String(anoLetivo),
         },
-        periodos: { source: "CALENDARIO_CANONICO_MED", count: prepared.trimestres },
+        periodos: appliedPeriods ?? [],
+        calendar_source: "CALENDARIO_CANONICO_MED",
       });
     }
 
