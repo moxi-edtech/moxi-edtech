@@ -105,21 +105,40 @@ export async function GET(req: Request) {
     const rangeEnd =
       anoLetivo?.data_fim ?? toIsoDate(new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()));
 
-    let eventosQuery = supabase
-      .from("vw_eventos_escola_unificados")
-      .select("id, escola_id, nome, descricao, data_inicio, data_fim, tipo, publico_alvo, cor_hex")
-      .eq("escola_id", escolaId)
-      .or("publico_alvo.eq.todos,publico_alvo.eq.professores,publico_alvo.is.null")
-      .gte("data_fim", rangeStart)
-      .lte("data_inicio", rangeEnd);
+    // A vista unificada não contém ano_letivo_id: só a usamos para
+    // eventos gerais. Eventos oficiais vêm da tabela com vínculo expresso
+    // ao ano da sessão, evitando misturar provas de anos adjacentes.
+    const eventosGeraisPromise = applyKf2ListInvariants(
+      supabase
+        .from("vw_eventos_escola_unificados")
+        .select("id,escola_id,nome,descricao,data_inicio,data_fim,tipo,publico_alvo,cor_hex")
+        .eq("escola_id", escolaId)
+        .eq("tipo", "EVENTO_GERAL")
+        .or("publico_alvo.eq.todos,publico_alvo.eq.professores,publico_alvo.is.null")
+        .gte("data_fim", rangeStart)
+        .lte("data_inicio", rangeEnd),
+      {
+        defaultLimit: 200,
+        order: [{ column: "data_inicio", ascending: true }],
+        tieBreakerColumn: "id",
+      }
+    );
 
-    eventosQuery = applyKf2ListInvariants(eventosQuery, {
-      defaultLimit: 120,
-      order: [{ column: "data_inicio", ascending: true }],
-      tieBreakerColumn: "id",
-    });
+    const eventosMedPromise = anoLetivo?.id
+      ? applyKf2ListInvariants(
+          supabase
+            .from("calendario_eventos")
+            .select("id,escola_id,nome,data_inicio,data_fim,tipo,cor_hex")
+            .eq("escola_id", escolaId)
+            .eq("ano_letivo_id", anoLetivo.id),
+          {
+            defaultLimit: 250,
+            order: [{ column: "data_inicio", ascending: true }],
+            tieBreakerColumn: "id",
+          }
+        )
+      : Promise.resolve({ data: [], error: null });
 
-    const eventosPromise = eventosQuery;
     const periodosPromise = anoLetivo?.id
       ? applyKf2ListInvariants(
           supabase
@@ -135,25 +154,47 @@ export async function GET(req: Request) {
         )
       : Promise.resolve({ data: [] as PeriodoRow[], error: null });
 
-    const [{ data: items, error: eventosError }, { data: periodos, error: periodosError }] = await Promise.all([
-      eventosPromise,
+    const [
+      { data: generalItems, error: geraisError },
+      { data: officialItems, error: oficiaisError },
+      { data: periodos, error: periodosError },
+    ] = await Promise.all([
+      eventosGeraisPromise,
+      eventosMedPromise,
       periodosPromise,
     ]);
 
-    if (eventosError) {
-      return NextResponse.json({ ok: false, error: eventosError.message }, { status: 400 });
+    if (geraisError || oficiaisError) {
+      return NextResponse.json({
+        ok: false,
+        error: (geraisError || oficiaisError)?.message,
+      }, { status: 400 });
     }
 
     if (periodosError) {
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 });
     }
 
+    const calendarItems: EventoRow[] = [
+      ...(((generalItems as EventoRow[] | null) ?? [])),
+      ...(((officialItems as Array<{
+        id: string; escola_id: string; nome: string; data_inicio: string;
+        data_fim: string; tipo: string; cor_hex: string | null;
+      }> | null) ?? []).map((event) => ({
+        ...event,
+        descricao: "Evento do Calendário Académico",
+        publico_alvo: "todos",
+      }))),
+    ].sort((a, b) =>
+      a.data_inicio.localeCompare(b.data_inicio) || a.id.localeCompare(b.id)
+    );
+
     return NextResponse.json({
       ok: true,
       context: academicContext,
       ano_letivo: anoLetivo ?? null,
       periodos: ((periodos as PeriodoRow[] | null) ?? []).filter(Boolean),
-      items: ((items as EventoRow[] | null) ?? []).filter(Boolean),
+      items: calendarItems,
     });
   } catch (err) {
     if (err instanceof AcademicYearContextError) {
