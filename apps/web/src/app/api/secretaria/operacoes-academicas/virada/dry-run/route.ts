@@ -76,6 +76,12 @@ export async function POST() {
     blockers.push("Não foi possível concluir todas as verificações do dry-run.");
   }
 
+  if ((targetsResult.data ?? []).length >= 20 ||
+      (calendarResult.data ?? []).length >= 20 ||
+      (profilesResult.data ?? []).length >= 50 ||
+      (offeringsResult.data ?? []).length >= 500) {
+    blockers.push("O catálogo de anos ou perfis excede os limites da auditoria. Reveja a configuração.");
+  }
   const calendars = (calendarResult.data ?? []) as CanonicalMedCalendar[];
   const profiles = (profilesResult.data ?? []) as MedCourseProfile[];
   const offerings = (offeringsResult.data ?? []) as Array<
@@ -105,13 +111,14 @@ export async function POST() {
     const [{ data: recordedPeriods, error: periodsError },
       { data: recordedEvents, error: eventsError }] = await Promise.all([
       db.from("periodos_letivos")
-        .select("numero,tipo,data_inicio,data_fim,source_template_id,source_item_id,offering_id")
+        .select("numero,tipo,data_inicio,data_fim,peso,source_template_id,source_item_id,offering_id")
         .eq("escola_id", escolaId).eq("ano_letivo_id", target.id).limit(30),
       db.from("calendario_eventos")
-        .select("offering_id,nome,data_inicio,tipo,source_template_id,source_item_id")
+        .select("offering_id,nome,data_inicio,data_fim,tipo,source_template_id,source_item_id")
         .eq("escola_id", escolaId).eq("ano_letivo_id", target.id).limit(500),
     ]);
-    if (periodsError || eventsError) {
+    if (periodsError || eventsError ||
+        (recordedPeriods ?? []).length >= 30 || (recordedEvents ?? []).length >= 500) {
       return {
         ano: target.ano, ano_letivo_id: target.id,
         ready: false,
