@@ -158,6 +158,30 @@ export async function POST(request: Request) {
     if (templateError || templateList.length !== templateIds.length) {
       return NextResponse.json({ ok: false, error: "Um ou mais templates oficiais não foram encontrados" }, { status: 404 });
     }
+    const primaryOfficial = templateList[0];
+    if (primaryOfficial && primaryOfficial.ano_base >= 2026) {
+      const canonicalPeriodKey = (candidate: typeof primaryOfficial) => {
+        const items = (candidate.items ?? [])
+          .filter((item: { tipo: string }) => item.tipo === "PERIODO_LETIVO")
+          .map((item: { numero: number | null; data_inicio: string; data_fim: string }) =>
+            [item.numero, item.data_inicio, item.data_fim])
+          .sort((a: unknown[], b: unknown[]) => Number(a[0]) - Number(b[0]));
+        if (items.length !== 3 || new Set(items.map((row) => row[0])).size !== 3 ||
+            items.some((row) => ![1, 2, 3].includes(Number(row[0])))) return null;
+        return JSON.stringify(items);
+      };
+      const key = canonicalPeriodKey(primaryOfficial);
+      if (!key || templateList.some((candidate) =>
+        candidate.ano_base !== primaryOfficial.ano_base ||
+        candidate.data_inicio !== primaryOfficial.data_inicio ||
+        candidate.data_fim !== primaryOfficial.data_fim ||
+        canonicalPeriodKey(candidate) !== key)) {
+        return NextResponse.json({
+          ok: false, code: "ACADEMIC_MULTI_TEMPLATE_PERIOD_DIVERGENCE",
+          error: "Os calendários oficiais escolhidos têm períodos diferentes. É necessário conciliar as ofertas educativas.",
+        }, { status: 409 });
+      }
+    }
     if (activeYear && templateList.some((template) => template.ano_base < activeYear.ano)) {
       return NextResponse.json({ ok: false, error: "O template não pode ser anterior ao ano ativo" }, { status: 409 });
     }
@@ -181,10 +205,19 @@ export async function POST(request: Request) {
     const primaryTemplate = templateList[0];
     const { data: existingTarget } = await supabase
       .from("anos_letivos")
-      .select("id,ano,ativo")
+      .select("id,ano,ativo,data_inicio,data_fim")
       .eq("escola_id", escolaId)
       .eq("ano", primaryTemplate.ano_base)
       .maybeSingle();
+
+    if (primaryTemplate.ano_base >= 2026 && existingTarget &&
+        (existingTarget.data_inicio !== primaryTemplate.data_inicio ||
+         existingTarget.data_fim !== primaryTemplate.data_fim)) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_YEAR_CALENDAR_MISMATCH",
+        error: "As datas do ano letivo divergem do calendário publicado. Concilie antes de aplicar.",
+      }, { status: 409 });
+    }
 
     let targetId = existingTarget?.id ?? null;
     if (!targetId) {
@@ -296,12 +329,6 @@ export async function POST(request: Request) {
       }
     }
 
-    await Promise.all(scopedMappings.map((mapping) => db
-      .from("school_education_offerings")
-      .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
-      .eq("id", mapping.offering_id)
-      .eq("escola_id", escolaId)));
-
     if (periods.length > 0) {
       const { error } = await supabase.rpc("upsert_bulk_periodos_letivos", {
         p_escola_id: escolaId,
@@ -330,6 +357,17 @@ export async function POST(request: Request) {
         if (result.error) throw result.error;
       }
     }
+
+    // Publish the profile mapping only after the official dates and events
+    // have persisted, so an RPC rejection cannot switch profiles prematurely.
+    await Promise.all(scopedMappings.map(async (mapping) => {
+      const { error: updateError } = await db
+        .from("school_education_offerings")
+        .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
+        .eq("id", mapping.offering_id)
+        .eq("escola_id", escolaId);
+      if (updateError) throw updateError;
+    }));
 
     return NextResponse.json({
       ok: true,
