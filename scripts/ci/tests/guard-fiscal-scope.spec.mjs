@@ -6,8 +6,28 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 16);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 22);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
+});
+
+test("allows precisely the six audited Curtume academic migrations", () => {
+  const migrations = [
+    "20261029102650_curtume_class_metadata_and_transition_lineage_20261029.sql",
+    "20261029103216_curtume_legal_history_destination_guard_20261029.sql",
+    "20261029103555_curtume_turma_classe_number_consistency_20261029.sql",
+    "20271029110000_curtume_class_metadata_and_transition_lineage.sql",
+    "20271029120000_curtume_legal_history_destination_guard.sql",
+    "20271029130000_curtume_turma_classe_number_consistency.sql",
+  ].map((name) => "supabase/migrations/" + name);
+  for (const path of migrations) {
+    assert.deepEqual(checkFiscalAndSchemaScope([path], () =>
+      "CREATE TRIGGER academic_integrity BEFORE UPDATE ON matriculas EXECUTE FUNCTION guard_integrity();"), [], path);
+    assert.match(checkFiscalAndSchemaScope([path], () =>
+      "CREATE TABLE public.fiscal_integrations (id uuid);")[0] ?? "", /Fiscal\/AGT activation/);
+  }
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271029130001_curtume_unreviewed.sql",
+  ])[0] ?? "", /Unapproved database migration/);
 });
 
 test("preserves the fiscal and AGT module freeze", () => {
