@@ -118,3 +118,61 @@ export function reviewCanonicalCutoverTarget(input: {
   }
   return summary();
 }
+
+/**
+ * Shared read-only cutover gate for RPC-based cloning and year activation.
+ * The POST dry-run uses the pure reviewer above in a batched query.
+ */
+export async function readCanonicalCutoverTargetReview(
+  db: any,
+  input: { escolaId: string; targetYearId: string },
+): Promise<CutoverTargetReview> {
+  const { escolaId, targetYearId } = input;
+  const { data: target, error: targetError } = await db.from("anos_letivos")
+    .select("id,ano,data_inicio,data_fim")
+    .eq("escola_id", escolaId).eq("id", targetYearId).maybeSingle();
+  if (targetError) throw targetError;
+  if (!target) {
+    throw new Error("O ano de destino não pertence à escola.");
+  }
+  const [
+    { data: calendar, error: calendarError },
+    { data: profiles, error: profilesError },
+    { data: offerings, error: offeringsError },
+    { data: recordedPeriods, error: periodsError },
+    { data: recordedEvents, error: eventsError },
+  ] = await Promise.all([
+    db.from("calendarios_oficiais_anos")
+      .select("ano_base,data_inicio,data_fim,versao_documento,estado")
+      .eq("ano_base", target.ano).eq("estado", "PUBLICADO").maybeSingle(),
+    db.from("calendario_templates")
+      .select("id,ano_base,calendario_canonico_ano,data_inicio,data_fim,subsistema,is_oficial,estado,versao_documento,items:calendario_template_items(*)")
+      .eq("calendario_canonico_ano", target.ano)
+      .eq("is_oficial", true).eq("estado", "PUBLICADO").limit(50),
+    db.from("school_education_offerings")
+      .select("id,course_id,education_subsystem,education_level,cycle,grades,calendar_profile_id")
+      .eq("escola_id", escolaId).eq("status", "active").limit(500),
+    db.from("periodos_letivos")
+      .select("numero,tipo,data_inicio,data_fim,source_template_id,source_item_id,offering_id")
+      .eq("escola_id", escolaId).eq("ano_letivo_id", targetYearId).limit(30),
+    db.from("calendario_eventos")
+      .select("offering_id,nome,data_inicio,tipo,source_template_id,source_item_id")
+      .eq("escola_id", escolaId).eq("ano_letivo_id", targetYearId).limit(500),
+  ]);
+  const firstError = [calendarError,profilesError,offeringsError,periodsError,eventsError].find(Boolean);
+  if (firstError) throw firstError;
+  const schoolOfferings = (offerings ?? []) as Array<
+    MedCourseOffering & { calendar_profile_id: string | null }
+  >;
+  return reviewCanonicalCutoverTarget({
+    target,
+    calendar: calendar as CanonicalMedCalendar | null,
+    profiles: (profiles ?? []) as MedCourseProfile[],
+    offerings: schoolOfferings,
+    selections: schoolOfferings.map((item) => ({
+      offering_id: item.id, template_id: item.calendar_profile_id ?? "",
+    })),
+    recordedPeriods: (recordedPeriods ?? []) as RecordedPeriod[],
+    recordedEvents: (recordedEvents ?? []) as RecordedEvent[],
+  });
+}
