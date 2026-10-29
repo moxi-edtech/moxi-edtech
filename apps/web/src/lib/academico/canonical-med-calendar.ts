@@ -92,6 +92,55 @@ function itemMatchesCourse(item: MedProfileItem, offering: MedCourseOffering): b
   return true;
 }
 
+/**
+ * Academic sessions can be initialized before courses are installed.
+ * Terms are derived from the published year, but course-specific events
+ * must wait until the courses and offerings exist.
+ */
+export function buildCanonicalMedCalendarSkeleton(input: {
+  calendar: CanonicalMedCalendar;
+  profiles: readonly MedCourseProfile[];
+}) {
+  const { calendar, profiles } = input;
+  if (calendar.ano_base < 2026 || calendar.estado !== "PUBLICADO") {
+    invalid("OFFICIAL_CALENDAR_NOT_PUBLISHED", "O calendário académico oficial ainda não foi publicado.");
+  }
+  const published = profiles.filter((profile) =>
+    profile.ano_base === calendar.ano_base &&
+    profile.calendario_canonico_ano === calendar.ano_base &&
+    profile.data_inicio === calendar.data_inicio &&
+    profile.data_fim === calendar.data_fim &&
+    profile.versao_documento === calendar.versao_documento &&
+    profile.is_oficial === true && profile.estado === "PUBLICADO"
+  ).sort((a, b) => a.id.localeCompare(b.id));
+  if (published.length === 0) {
+    invalid("OFFICIAL_TRIMESTERS_INCOMPLETE", "Não existem perfis oficiais publicados para o calendário deste ano.");
+  }
+  const terms = termKey(published[0].items);
+  if (published.some((profile) => termKey(profile.items) !== terms)) {
+    invalid("ACADEMIC_MULTI_TEMPLATE_PERIOD_DIVERGENCE", "Os perfis não concordam nos trimestres oficiais.");
+  }
+  const source = published[0];
+  return {
+    calendar,
+    periods: source.items.filter((item) => item.tipo === "PERIODO_LETIVO")
+      .sort((a, b) => Number(a.numero) - Number(b.numero))
+      .map((item) => ({
+        numero: Number(item.numero), tipo: "TRIMESTRE" as const,
+        data_inicio: item.data_inicio, data_fim: item.data_fim,
+        peso: item.peso, source_template_id: source.id,
+        source_item_id: item.id, source_version: calendar.versao_documento,
+      })),
+    events: [] as Array<{
+      offering_id: string | null; tipo: string; nome: string;
+      data_inicio: string; data_fim: string;
+      source_template_id: string; source_item_id: string; source_version: string;
+    }>,
+    selections: [] as CourseCalendarSelection[],
+    courseCount: 0,
+  };
+}
+
 export function buildCanonicalMedCalendarPlan(input: {
   calendar: CanonicalMedCalendar;
   profiles: readonly MedCourseProfile[];
@@ -132,22 +181,9 @@ export function buildCanonicalMedCalendarPlan(input: {
     validated.push({ offering, profile });
   }
 
-  // All profiles share one term contract. A stable profile is used solely
-  // for the legacy source_item_id foreign keys, not as a separate year SSOT.
-  const source = [...validated].sort((a, b) => a.profile.id.localeCompare(b.profile.id))[0].profile;
-  const periods = source.items
-    .filter((item) => item.tipo === "PERIODO_LETIVO")
-    .sort((a, b) => Number(a.numero) - Number(b.numero))
-    .map((item) => ({
-      numero: Number(item.numero),
-      tipo: "TRIMESTRE" as const,
-      data_inicio: item.data_inicio,
-      data_fim: item.data_fim,
-      peso: item.peso,
-      source_template_id: source.id,
-      source_item_id: item.id,
-      source_version: calendar.versao_documento,
-    }));
+  // The same fixed source is used before and after curricular installation,
+  // preserving the period UUIDs and their published MED provenance.
+  const periods = buildCanonicalMedCalendarSkeleton({ calendar, profiles }).periods;
 
   type PlannedEvent = {
     offering_id: string | null;
