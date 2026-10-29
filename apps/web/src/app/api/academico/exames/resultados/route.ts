@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { validateRaaExamResult } from "@/lib/academico/raa-exam-result-guard";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "A matrícula não pertence ao aluno ou à turma da sessão." }, { status: 409 });
   }
 
-  if (matricula.status === "concluido") {
+  if (matricula.status !== "ativo") {
     return NextResponse.json({ ok: false, error: "A matrícula tem fecho legal. Faça uma reabertura académica formal.", code: "RAA_LEGAL_LOCK" }, { status: 409 });
   }
   if (matricula.session_id !== session.ano_letivo_id) {
@@ -60,6 +61,21 @@ export async function POST(request: Request) {
   if (body.nota !== null && body.nota > Number(componente.nota_max)) {
     return NextResponse.json({ ok: false, error: "A nota excede o máximo do componente.", code: "EXAM_NOTE_EXCEEDS_MAX" }, { status: 422 });
   }
+
+  // Additional single-source validation makes the legal guard testable and
+  // keeps the strict context enforced even if API call sites change.
+  const guard = validateRaaExamResult({
+    source: matricula,
+    session,
+    turmaDisciplina,
+    componente,
+    alunoId: body.aluno_id,
+    nota: body.nota,
+  });
+  if (guard) return NextResponse.json({
+    ok: false, code: guard,
+    error: "A sessão, a matrícula e o componente de exame não constituem um contexto autorizado.",
+  }, { status: 409 });
 
   // An exam result is a legal record: no silent upsert of submitted/validated
   // grades. Duplicate retries return the same record without new writes.
