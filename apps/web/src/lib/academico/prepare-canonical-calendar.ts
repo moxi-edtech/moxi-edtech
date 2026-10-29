@@ -18,7 +18,7 @@ export async function prepareCanonicalMedCalendar(input: {
   selections?: CourseCalendarSelection[];
   allowEmptyOfferings?: boolean;
 }) {
-  const { db, escolaId, userId, anoBase } = input;
+  const { db, escolaId, anoBase } = input;
   const [calendarResult, profilesResult, offeringsResult, activeYearResult] = await Promise.all([
     db.from("calendarios_oficiais_anos").select("ano_base,data_inicio,data_fim,versao_documento,estado")
       .eq("ano_base", anoBase).eq("estado", "PUBLICADO").maybeSingle(),
@@ -150,7 +150,17 @@ export async function prepareCanonicalMedCalendar(input: {
     p_eventos: plan.events,
     p_ofertas: plan.selections,
   });
-  if (applyError) throw applyError;
+  if (applyError) {
+    const message = String(applyError.message ?? "Falha ao aplicar o calendário.");
+    const status = /^AUTH:/i.test(message) ? 403
+      : /^DATA:/i.test(message) ? 400
+        : /CALENDAR|ACADEMIC|OFFICIAL|TRIMESTER/i.test(message) ? 409 : 500;
+    return NextResponse.json({
+      ok: false,
+      code: String(applyError.code ?? "MED_CALENDAR_APPLY_REJECTED"),
+      error: message.replace(/^[A-Z_]+:\s*/, ""),
+    }, { status });
+  }
   if (applied?.ok !== true || !applied.target_id) {
     throw new Error("A aplicação do calendário oficial não foi confirmada pelo banco.");
   }
