@@ -218,7 +218,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (eventosData.length > 0) {
       const { error: errorEventos } = await supabase
         .from('calendario_eventos')
-        .upsert(eventosData, { onConflict: 'escola_id,ano_letivo_id,nome,data_inicio' });
+        .upsert(eventosData, { onConflict: 'escola_id,ano_letivo_id,offering_id,nome,data_inicio' });
       if (errorEventos) throw errorEventos;
     }
 
