@@ -230,3 +230,11 @@ test("student endpoint checks turma exam-class source before publishing national
   assert.match(source, /turmas!inner\(id,curso_id,classe_num,is_classe_exame\)/);
   assert.match(source, /turma\.is_classe_exame === true/);
 });
+
+test("quarterly report cannot expose a period not present in its official academic year", () => {
+  const source = readFileSync("src/app/api/secretaria/turmas/[id]/pauta-trimestral/route.ts", "utf8");
+  assert.match(source, /assertAcademicYearEntity/);
+  assert.match(source, /\.eq\('ano_letivo_id', academicContext\.anoLetivoId\)/);
+  assert.match(source, /ACADEMIC_PERIOD_NOT_CONFIGURED/);
+  assert.match(source, /periodosRows \?\? \[\]/);
+});
