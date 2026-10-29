@@ -5,6 +5,7 @@ import {
   type CurriculumKey,
 } from "@/lib/academico/curriculum-presets";
 import { PRESET_TO_TYPE, type CourseType } from "@/lib/courseTypes";
+import { classIdentityFromName } from "@/lib/academico/class-level";
 
 type TableRow<Name extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][Name]["Row"];
@@ -158,7 +159,14 @@ async function findOrCreateClassesForCurso(
     const nome = (raw ?? "").trim();
     if (!nome) continue;
 
-    const insertPayload: TableInsert<"classes"> = { escola_id: escolaId, curso_id: cursoId, nome };
+    const identity = classIdentityFromName(nome);
+    const insertPayload: TableInsert<"classes"> = {
+      escola_id: escolaId,
+      curso_id: cursoId,
+      nome,
+      ...(identity.ordem !== null ? { ordem: identity.ordem } : {}),
+      ...(identity.numero !== null ? { numero: identity.numero } : {}),
+    };
 
     const { data: created, error } = await supabase
       .from("classes")
