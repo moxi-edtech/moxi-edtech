@@ -65,6 +65,7 @@ BEGIN
     v_template_id := (v_mapping->>'template_id')::uuid;
     IF v_offering_id = ANY(v_seen_offerings) OR NOT EXISTS (
       SELECT 1 FROM public.school_education_offerings o
+      JOIN public.cursos c ON c.id=o.course_id AND c.escola_id=o.escola_id
       JOIN public.calendario_templates t ON t.id=v_template_id
       WHERE o.id=v_offering_id AND o.escola_id=p_escola_id AND o.status='active'
         AND o.education_subsystem=t.subsistema
@@ -132,11 +133,32 @@ BEGIN
       RAISE EXCEPTION 'OFFICIAL_CALENDAR_EVENT_MISMATCH: Evento sem fonte MED válida.';
     END IF;
     IF v_offering_id IS NOT NULL AND NOT EXISTS (
-      SELECT 1 FROM jsonb_array_elements(p_ofertas) o
-       WHERE (o->>'offering_id')::uuid=v_offering_id
-         AND (o->>'template_id')::uuid=v_template_id
+      SELECT 1
+      FROM jsonb_array_elements(p_ofertas) chosen
+      JOIN public.school_education_offerings o
+        ON o.id=(chosen->>'offering_id')::uuid AND o.escola_id=p_escola_id
+      JOIN public.cursos c ON c.id=o.course_id AND c.escola_id=o.escola_id
+      JOIN public.calendario_template_items i ON i.id=v_item_id
+      WHERE (chosen->>'offering_id')::uuid=v_offering_id
+        AND (chosen->>'template_id')::uuid=v_template_id
+        AND (i.applies_to_all_offerings IS TRUE
+          OR coalesce(cardinality(i.education_subsystems),0)>0
+          OR coalesce(cardinality(i.education_levels),0)>0
+          OR coalesce(cardinality(i.cycles),0)>0
+          OR coalesce(cardinality(i.grade_codes),0)>0
+          OR coalesce(cardinality(i.course_types),0)>0)
+        AND (coalesce(cardinality(i.education_subsystems),0)=0
+          OR o.education_subsystem=ANY(i.education_subsystems))
+        AND (coalesce(cardinality(i.education_levels),0)=0
+          OR o.education_level=ANY(i.education_levels))
+        AND (coalesce(cardinality(i.cycles),0)=0
+          OR o.cycle=ANY(i.cycles))
+        AND (coalesce(cardinality(i.grade_codes),0)=0
+          OR coalesce(o.grades,ARRAY[]::text[]) && i.grade_codes)
+        AND (coalesce(cardinality(i.course_types),0)=0
+          OR c.tipo=ANY(i.course_types))
     ) THEN
-      RAISE EXCEPTION 'CALENDAR_COURSE_PROFILE_MISMATCH: Evento pertence a outro curso.';
+      RAISE EXCEPTION 'CALENDAR_COURSE_PROFILE_MISMATCH: Evento não se aplica ao curso ou à classe.';
     END IF;
     IF v_offering_id IS NULL AND NOT EXISTS (
       SELECT 1 FROM public.calendario_template_items i
@@ -144,10 +166,32 @@ BEGIN
          AND i.applies_to_all_offerings IS TRUE
          AND coalesce(cardinality(i.education_subsystems),0)=0
          AND coalesce(cardinality(i.education_levels),0)=0
+         AND coalesce(cardinality(i.cycles),0)=0
          AND coalesce(cardinality(i.grade_codes),0)=0
          AND coalesce(cardinality(i.course_types),0)=0
     ) THEN
       RAISE EXCEPTION 'CALENDAR_EVENT_SCOPE_MISMATCH: Evento de curso não pode ser global.';
+    END IF;
+    -- A shared event must actually exist with the same dates in every
+    -- currently selected course profile, otherwise it is not schoolwide.
+    IF v_offering_id IS NULL AND EXISTS (
+      SELECT 1 FROM jsonb_array_elements(p_ofertas) selected
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.calendario_template_items peer
+        WHERE peer.template_id=(selected->>'template_id')::uuid
+          AND peer.tipo::text=v_event->>'tipo'
+          AND peer.nome=v_event->>'nome'
+          AND peer.data_inicio=(v_event->>'data_inicio')::date
+          AND peer.data_fim=(v_event->>'data_fim')::date
+          AND peer.applies_to_all_offerings IS TRUE
+          AND coalesce(cardinality(peer.education_subsystems),0)=0
+          AND coalesce(cardinality(peer.education_levels),0)=0
+          AND coalesce(cardinality(peer.cycles),0)=0
+          AND coalesce(cardinality(peer.grade_codes),0)=0
+          AND coalesce(cardinality(peer.course_types),0)=0
+      )
+    ) THEN
+      RAISE EXCEPTION 'CALENDAR_EVENT_SCOPE_MISMATCH: O evento não é comum a todos os cursos.';
     END IF;
   END LOOP;
 
