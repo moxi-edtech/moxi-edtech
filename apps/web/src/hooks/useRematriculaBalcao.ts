@@ -128,6 +128,10 @@ interface StatusResponse {
     mode?: "regular" | "conditional" | "repeat" | null;
     reason: string;
     disciplina_ids_pendentes?: string[];
+    /** Official regime of the origin enrolment, never the destination. */
+    regime?: import("@/lib/rematricula/raa-balcao-regime-guidance").RaaBalcaoRegime | null;
+    /** Optional decree findings; null means no individual legal adjudication. */
+    decreto?: import("@/lib/rematricula/raa-balcao-regime-guidance").RaaBalcaoAcademic["decreto"];
     guidance?: {
       titulo?: string;
       mensagem?: string;

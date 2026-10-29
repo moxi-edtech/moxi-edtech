@@ -258,6 +258,11 @@ export async function GET(request: Request) {
     // explícitos e orientados pelo próprio RAA.
     let academicDecision: any = null;
     let academicGuidance: any = null;
+    let academicRegime: {
+      nivel_ensino: string; classe_num: number | null; ano_numero: number | null;
+      modulo_numero: number | null; eh_classe_exame: boolean;
+    } | null = null;
+    let academicDecreto: import("@/lib/academico/raa-decreto-eligibility").RaaDecretoResult | null = null;
     let academicEligibility = classifyRematriculaAcademicEligibility(null);
     if (matriculaOrigem.turma_id) {
       try {
@@ -268,6 +273,17 @@ export async function GET(request: Request) {
         });
         academicDecision = academic.progression.decision;
         academicGuidance = academic.orientacao;
+        // The source-enrolment's actual RAA regime and legal findings, not the
+        // destination class or any front-end guess. Never infer a decree when
+        // its evaluation was unavailable.
+        academicRegime = {
+          nivel_ensino: academic.regime.nivel_ensino,
+          classe_num: academic.regime.classe_num,
+          ano_numero: academic.regime.ano_numero,
+          modulo_numero: academic.regime.modulo_numero,
+          eh_classe_exame: academic.regime.eh_classe_exame,
+        };
+        academicDecreto = academic.decreto;
         academicEligibility = classifyRematriculaAcademicEligibility({
           decision: academic.progression.decision,
           destino: academic.progression.destino,
@@ -507,6 +523,17 @@ export async function GET(request: Request) {
         mode: academicEligibility.mode,
         reason: academicEligibility.reason,
         disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
+        regime: academicRegime,
+        decreto: academicDecreto ? {
+          decision: academicDecreto.decision,
+          motivo: academicDecreto.motivo,
+          baseLegal: academicDecreto.baseLegal,
+          elegivelRecurso: academicDecreto.elegivelRecurso,
+          exameExtraordinario: academicDecreto.exameExtraordinario,
+          efetivacaoMatriculaBloqueada: academicDecreto.efetivacaoMatriculaBloqueada,
+          disciplinasNegativas: academicDecreto.disciplinasNegativas,
+          disciplinasPendentes: academicDecreto.disciplinasPendentes,
+        } : null,
         guidance: academicGuidance,
       },
       pedido: pedidoExistente
