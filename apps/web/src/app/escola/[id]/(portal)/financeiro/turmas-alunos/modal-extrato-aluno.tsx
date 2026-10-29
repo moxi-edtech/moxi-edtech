@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import { X } from "lucide-react";
+import { AppyPayReferenceButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { ExtratoActions } from "@/components/financeiro/ExtratoActions";
 import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
 import { useParams } from "next/navigation";
@@ -22,6 +23,7 @@ interface ModalExtratoAlunoProps {
     diasAtraso?: number;
   }>;
   onClose: () => void;
+  onPaymentConfirmed?: (mensalidadeId: string) => void;
 }
 
 const statusLabel = (status: ModalExtratoAlunoProps["mensalidades"][number]["status"]) => {
@@ -51,7 +53,7 @@ const formatVencimento = (mensalidade: ModalExtratoAlunoProps["mensalidades"][nu
 const formatMoney = (valor: number) =>
   valor.toLocaleString("pt-AO", { style: "currency", currency: "AOA" });
 
-const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidades, onClose }) => {
+const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidades, onClose, onPaymentConfirmed }) => {
   const params = useParams();
   const escolaId = params?.id as string;
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
@@ -159,6 +161,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                     </td>
                     <td className="px-4 py-3 text-right">
                       {(mensalidade.status === "pendente" || mensalidade.status === "atrasada") && (
+                        <div className="flex flex-wrap justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => openSinglePayment(mensalidade.id)}
@@ -166,6 +169,8 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                         >
                           Receber
                         </button>
+                        <AppyPayReferenceButton onPaid={onPaymentConfirmed} escolaId={escolaId} mensalidadeId={mensalidade.id} alunoNome={aluno.nome} descricao={`Propina ${String(mensalidade.mesReferencia).padStart(2, "0")}/${mensalidade.anoReferencia}`} />
+                        </div>
                       )}
                     </td>
                   </tr>

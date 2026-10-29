@@ -352,7 +352,8 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
         </div>
       ))}
 
-      <ServicePaymentDrawer 
+      <ServicePaymentDrawer
+        onPaid={() => { success("Pagamento confirmado", "O pagamento foi registado. Vamos atualizar o estado do pedido."); void fetchCatalogo(true); }}
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
         onSuccess={() => {

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { Upload, Loader2 } from "lucide-react";
 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
@@ -36,6 +37,7 @@ export function ServicePaymentDrawer({
   dadosPagamento,
   onClose,
   onSuccess,
+  onPaid,
   studentId,
   academicYearId,
 }: {
@@ -49,6 +51,7 @@ export function ServicePaymentDrawer({
   } | null;
   onClose: () => void;
   onSuccess: () => void;
+  onPaid?: () => void;
   studentId?: string | null;
   academicYearId?: string | null;
 }) {
@@ -121,9 +124,9 @@ export function ServicePaymentDrawer({
   return (
     <Dialog open={open && Boolean(documento)} onOpenChange={(next) => { if (!next && !sending) onClose(); }}>
       <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-2xl bg-background p-5 text-foreground sm:p-6">
-        <DialogTitle>Pagamento do boletim</DialogTitle>
+        <DialogTitle>Pagamento do serviço</DialogTitle>
         <DialogDescription>
-          Confere o valor, realiza a transferência e envia o comprovativo. A secretaria irá validar antes de liberar as notas.
+          Confere o valor e escolhe o método de pagamento. A confirmação por AppyPay é automática; transferências exigem comprovativo e validação da secretaria.
         </DialogDescription>
         {documento && (
           <div className="space-y-4">
@@ -132,6 +135,7 @@ export function ServicePaymentDrawer({
               <p className="mt-1 font-semibold">{documento.nome}</p>
               <p className="mt-2 text-lg font-semibold">{money.format(documento.valor)}</p>
             </div>
+            {documento.intentId ? <StudentAppyPayButton targetId={documento.intentId} kind="service" studentId={studentId} descricao={documento.nome} onPaid={() => { (onPaid ?? onSuccess)(); onClose(); }} /> : null}
             {!dadosPagamento?.iban && !dadosPagamento?.kwik_chave ? (
               <p role="status" className="rounded-xl border border-amber-500/40 p-3 text-sm">
                 A escola ainda não disponibilizou IBAN ou chave KWIK. Confirma os dados com a secretaria antes de pagar.

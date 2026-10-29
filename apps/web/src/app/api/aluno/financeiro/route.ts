@@ -1,5 +1,6 @@
 // @kf2 allow-scan
 import { NextResponse } from "next/server";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import type { Database, Json } from "~types/supabase";
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx || !ctx.escolaId || !ctx.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
+    if (await resolveEscolaIdForUser(supabase, ctx.userId, ctx.escolaId) !== ctx.escolaId) return NextResponse.json({ ok: false, error: "Escola não autorizada" }, { status: 403 });
     const url = new URL(request.url);
     const fromAno = parseYear(url.searchParams.get("fromAno"));
     const toAno = parseYear(url.searchParams.get("toAno"));
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
     const authorizedIds = ctx.alunoIds;
 
     const selectedId = url.searchParams.get("studentId");
+    if (selectedId && !authorizedIds.includes(selectedId)) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: true, mensalidades: [], movimentos: [] });
 
@@ -49,7 +52,7 @@ export async function GET(request: Request) {
       .gte("ano_referencia", fromAno)
       .lte("ano_referencia", toAno)
       .order("ano_referencia", { ascending: false })
-      .order("mes_referencia", { ascending: false });
+      .order("mes_referencia", { ascending: false }).order("id", { ascending: false });
 
     if (mensError) throw mensError;
 
@@ -60,9 +63,9 @@ export async function GET(request: Request) {
       const { data: recibos } = await supabase
         .from("documentos_emitidos")
         .select("id, mensalidade_id, created_at")
-        .eq("tipo", "recibo")
+        .eq("tipo", "recibo").eq("escola_id", ctx.escolaId)
         .in("mensalidade_id", mensalidadeIds)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }).order("id", { ascending: false });
 
       for (const recibo of recibos ?? []) {
         const mensalidadeId = String(recibo.mensalidade_id ?? "");
@@ -78,7 +81,7 @@ export async function GET(request: Request) {
       .select("*")
       .eq("aluno_id", alunoId)
       .eq("escola_id", ctx.escolaId)
-      .order("data_movimento", { ascending: false });
+      .order("data_movimento", { ascending: false }).order("id", { ascending: false });
 
     if (ledgerError) throw ledgerError;
 
@@ -89,24 +92,24 @@ export async function GET(request: Request) {
       .eq("escola_id", ctx.escolaId)
       .gte("created_at", `${fromAno}-01-01T00:00:00.000Z`)
       .lte("created_at", `${toAno}-12-31T23:59:59.999Z`)
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .order("created_at", { ascending: false }).order("id", { ascending: false })
+      .limit(50);
     if (servicosError) throw servicosError;
     const { data: pedidosServicos, error: pedidosError } = await supabase
       .from("servico_pedidos")
-      .select("id, status, servico_codigo, servico_nome, valor_cobrado, created_at")
+      .select("id, status, servico_codigo, servico_nome, valor_cobrado, created_at, pagamento_intents(id,status,created_at)")
       .eq("aluno_id", alunoId)
       .eq("escola_id", ctx.escolaId)
       .gte("created_at", `${fromAno}-01-01T00:00:00.000Z`)
       .lte("created_at", `${toAno}-12-31T23:59:59.999Z`)
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .order("created_at", { ascending: false }).order("id", { ascending: false })
+      .limit(50);
     if (pedidosError) throw pedidosError;
     const servicosPagamentos = extractServicosFromPagamentos(pagamentosServicos ?? []);
-    const codigosRegistados = new Set(servicosPagamentos.map((servico) => servico.servico_codigo).filter(Boolean));
+    const pedidosRegistados = new Set(servicosPagamentos.map((servico) => servico.pedido_id).filter(Boolean));
     const servicos = [
       ...servicosPagamentos,
-      ...extractServicosFromPedidos(pedidosServicos ?? []).filter((servico) => !servico.servico_codigo || !codigosRegistados.has(servico.servico_codigo)),
+      ...extractServicosFromPedidos(pedidosServicos ?? []).filter((servico) => !servico.pedido_id || !pedidosRegistados.has(servico.pedido_id)),
     ];
 
     // 3. Dados de pagamento da escola
@@ -159,7 +162,7 @@ export async function GET(request: Request) {
       },
       dados_pagamento,
       fonte: "financeiro_ledger (SSOT)"
-    });
+    }, { headers: { "Cache-Control": "no-store" } });
 
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Erro inesperado";
