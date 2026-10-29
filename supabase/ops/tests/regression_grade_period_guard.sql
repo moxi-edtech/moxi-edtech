@@ -76,26 +76,25 @@ BEGIN
   SELECT id INTO STRICT v_e1 FROM public.avaliacoes
    WHERE turma_disciplina_id=v_td AND trimestre=1;
 
-  -- In 2026/27, the client or RPC cannot bypass a missing official source.
-  UPDATE public.periodos_letivos SET source_template_id=NULL WHERE id=v_p1;
+  -- The administrative RPC and direct SQL cannot detach the official decree.
   BEGIN
-    PERFORM public.lancar_notas_batch(v_school,v_turma,v_disc,v_td,1,'MAC',
-      jsonb_build_array(jsonb_build_object('aluno_id',v_aluno,'valor',9)),false);
-    RAISE EXCEPTION 'TEST: unlinked 2026/27 calendar was accepted';
+    UPDATE public.periodos_letivos SET source_template_id=NULL WHERE id=v_p1;
+    RAISE EXCEPTION 'TEST: official source was detached';
   EXCEPTION WHEN OTHERS THEN
-    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_NOT_RECONCILED:%' THEN RAISE; END IF;
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_SOURCE_MISMATCH:%' THEN RAISE; END IF;
   END;
-  UPDATE public.periodos_letivos SET source_template_id=v_template WHERE id=v_p1;
-  -- A mismatching official item (different term/date) is not acceptable.
-  UPDATE public.periodos_letivos SET source_item_id=v_item2 WHERE id=v_p1;
   BEGIN
-    PERFORM public.lancar_notas_batch(v_school,v_turma,v_disc,v_td,1,'MAC',
-      jsonb_build_array(jsonb_build_object('aluno_id',v_aluno,'valor',9)),false);
-    RAISE EXCEPTION 'TEST: incorrect official source item accepted';
+    UPDATE public.periodos_letivos SET source_item_id=v_item2 WHERE id=v_p1;
+    RAISE EXCEPTION 'TEST: incorrect official source item was accepted';
   EXCEPTION WHEN OTHERS THEN
-    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_NOT_RECONCILED:%' THEN RAISE; END IF;
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_SOURCE_MISMATCH:%' THEN RAISE; END IF;
   END;
-  UPDATE public.periodos_letivos SET source_item_id=v_item1 WHERE id=v_p1;
+  BEGIN
+    UPDATE public.periodos_letivos SET data_fim=data_fim+1 WHERE id=v_p1;
+    RAISE EXCEPTION 'TEST: a divergent academic period was accepted';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE 'TEST:%' OR SQLERRM NOT LIKE 'OFFICIAL_CALENDAR_SOURCE_MISMATCH:%' THEN RAISE; END IF;
+  END;
 
   -- Future periods must fail even when the caller selects them manually.
   BEGIN
