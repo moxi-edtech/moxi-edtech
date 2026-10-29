@@ -69,7 +69,7 @@ export function auditDecreeSync(input: DecreeSyncSnapshot) {
   const year = input.year;
   if (!year) {
     addIssue(issues, "YEAR_MISSING", "blocker", "Ano letivo não encontrado.");
-    return { ok: false, issues, expected_event_count: 0, actual_event_count: input.events.length, expected_trimesters: 0 };
+    return { ok: false, verified: false, issues, expected_event_count: 0, actual_event_count: input.events.length, expected_trimesters: 0 };
   }
   if (!input.offerings.length) {
     addIssue(issues, "OFFERINGS_MISSING", "blocker", "A escola não tem ofertas educativas classificadas.");
@@ -155,7 +155,10 @@ export function auditDecreeSync(input: DecreeSyncSnapshot) {
   }
 
   return {
+    // 'ok' significa compatibilidade operacional; 'verified' exige também
+    // proveniência do modelo, trimestres e referência documental completa.
     ok: !issues.some((issue) => issue.severity === "blocker"),
+    verified: issues.length === 0,
     issues,
     expected_event_count: expectedEvents.size,
     actual_event_count: input.events.length,
