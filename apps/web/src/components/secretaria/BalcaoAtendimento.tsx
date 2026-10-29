@@ -3166,7 +3166,12 @@ export default function BalcaoAtendimento({
                       originAnoLetivoId: source.ano_letivo_id,
                     });
                   }}
-                  onDocumentos={() => setRaaDocumentsOpen(true)}
+                  onDocumentos={() => {
+                    if (view === "reenrollment") setRaaDocumentsOpen(true);
+                    else workspaceRootRef.current?.querySelector<HTMLElement>('[data-balcao-action="document"]')?.scrollIntoView({
+                      behavior: "smooth", block: "center",
+                    });
+                  }}
                   raaDocumentsOpen={raaDocumentsOpen}
                   onCloseRaaDocuments={() => setRaaDocumentsOpen(false)}
                   reconcilingPedido={rematricula.reconciling}

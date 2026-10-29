@@ -19,7 +19,8 @@ test("Rematrícula uses the origin enrollment from the server, not the dossier's
 
 test("Documents are emitted/charged inside Rematrícula with the existing checkout", () => {
   const workspace = source("components/secretaria/BalcaoAtendimento.tsx");
-  assert.match(workspace, /onDocumentos=\{\(\) => setRaaDocumentsOpen\(true\)\}/);
+  assert.match(workspace, /if \(view === "reenrollment"\) setRaaDocumentsOpen\(true\)/);
+  assert.match(workspace, /data-balcao-action="document"/);
   assert.match(workspace, /data-balcao-raa-documents/);
   assert.match(workspace, /if \(paid\) void onAdicionarServico\(servico\); else void onEmitirDocumento\(servico\)/);
   assert.match(workspace, /view === "reenrollment" && raaDocumentsOpen && selectedItemKeys\.size > 0/);
