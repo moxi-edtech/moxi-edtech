@@ -22,6 +22,14 @@ on:
       - "apps/web/tests/unit/grade-period-context.spec.ts"
       - "apps/web/src/lib/academico/official-calendar-write-guard.ts"
       - "apps/web/tests/unit/official-calendar-write-guard.spec.ts"
+      - "apps/web/src/lib/academico/canonical-med-calendar.ts"
+      - "apps/web/src/lib/academico/prepare-canonical-calendar.ts"
+      - "apps/web/tests/unit/canonical-med-calendar.spec.ts"
+      - "apps/web/src/components/secretaria/virada-ano/ConfigStep.tsx"
+      - "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/calendario/page.tsx"
+      - "supabase/migrations/20271029235922_canonical_med_calendar_offering_profiles.sql"
+      - "supabase/ops/tests/bootstrap_canonical_med_calendar.sql"
+      - "supabase/ops/tests/regression_canonical_med_calendar.sql"
       - "apps/web/src/app/api/escola/[id]/admin/calendario/ajustes/route.ts"
       - "apps/web/src/app/api/escola/[id]/admin/calendario/aplicar-template/route.ts"
       - "apps/web/src/app/api/escola/[id]/admin/periodos-letivos/upsert-bulk/route.ts"
@@ -130,6 +138,7 @@ jobs:
             tests/unit/raa-balcao-workspace-contract.spec.ts \
             tests/unit/grade-period-context.spec.ts \
             tests/unit/official-calendar-write-guard.spec.ts \
+            tests/unit/canonical-med-calendar.spec.ts \
             tests/unit/raa-decreto-eligibility.spec.ts \
             tests/unit/raa-exam-result-guard.spec.ts \
             tests/unit/raa-attendance-justification.spec.ts \
@@ -341,3 +350,18 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_grade_period_guard.sql
+
+      - name: Bootstrap single MED year and course profiles
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_canonical_med_calendar.sql
+
+      - name: Apply canonical MED year migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271029235922_canonical_med_calendar_offering_profiles.sql
+
+      - name: Canonical year and course-scoped event regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_canonical_med_calendar.sql
