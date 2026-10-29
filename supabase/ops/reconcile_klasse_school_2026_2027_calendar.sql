@@ -1,5 +1,8 @@
 -- MANUAL OPERATIONS ONLY. Never import this file from a migration or CI.
 -- Target: existing Escola KLASSE 2026/2027 demo tenant, not all tenants.
+-- WARNING: This legacy operation is disabled for mixed-subsystem schools.
+-- Do not bypass its course reconciliation guard: per-course official events
+-- require explicit mapping and preserved historical academic identities.
 -- Prerequisites: compare the official MED template with the existing calendar;
 -- review academic records and obtain explicit operational approval.
 -- In the SAME privileged database transaction, before running this block:
@@ -26,6 +29,17 @@ BEGIN
     FROM public.escolas e
     JOIN public.anos_letivos a ON a.escola_id=e.id
    WHERE e.nome='Escola KLASSE' AND a.ano=2026 AND a.ativo IS TRUE;
+  -- Do not use this legacy single-profile recovery when the KLASSE school
+  -- has multiple educational subsystems. Its original 29 global events
+  -- would misrepresent course-specific exams and breaks.
+  IF EXISTS (
+    SELECT 1 FROM public.school_education_offerings o
+    WHERE o.escola_id=v_school_id AND o.status='active'
+      AND o.education_subsystem <> 'REGULAR_ADULTOS'
+  ) THEN
+    RAISE EXCEPTION
+      'COURSE_CALENDAR_RECONCILIATION_REQUIRED: The Escola KLASSE uses mixed educational subsystems. Do not run the legacy regular-only reconciliation. Use audit_klasse_2026_2027_course_calendars.sql and approve a scoped remediation.';
+  END IF;
   SELECT t.id,t.data_inicio,t.data_fim,t.versao_documento INTO STRICT v_template
     FROM public.calendario_templates t
    WHERE t.ano_base=2026 AND t.subsistema='REGULAR_ADULTOS'
