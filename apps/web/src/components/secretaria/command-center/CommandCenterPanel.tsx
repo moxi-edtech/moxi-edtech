@@ -75,6 +75,7 @@ export function CommandCenterPanel({
       <AdmissoesInboxClient
         escolaId={escolaId}
         embedded
+        inModal={inModal}
         onNewAdmission={() => onActionChange("enrollment")}
       />
     );
