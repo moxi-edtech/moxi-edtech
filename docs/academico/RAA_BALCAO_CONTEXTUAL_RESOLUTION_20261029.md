@@ -44,3 +44,35 @@ Branch: feat/balcao-raa-contextual-resolution-20261029 (empilhada sobre a PR #29
 
 ### Validação não substituída
 A UI pode mostrar apenas a situação prioritária que a API de rematrícula devolve nesse momento; não promete uma fila simultânea de todos os tipos de bloqueios sem evidências oficiais. A elegibilidade deve ser reconsultada após cada resolução antes de prosseguir. Homologação autenticada (mobile, roles, EJA, anos fechados) permanece obrigatória.
+
+## Contextualização jurídica por classe e regime (PR #298)
+
+**Fonte de verdade:** `resolveRaaProgressionForMatricula` retorna o regime académico da **matrícula de origem** e os factos de `resolveRaaDecretoEligibility`. A resposta `/api/secretaria/balcao/rematriculas/status` disponibiliza `academic.regime` e `academic.decreto` apenas como **informação de orientação**; o estado `status` e `academic.eligible` continuam exclusivos para autorização do wizard.
+
+| Regime | Orientação contextual | Permissão de efetivar |
+| --- | --- | --- |
+| 6.ª | Recurso de conclusão do ensino primário / emissão documental | Só após decisão oficial e elegibilidade |
+| 7.ª | Condicional com disciplinas por regularizar | Pode prosseguir se o decreto e serviço autorizam |
+| 8.ª | Condicional antes da 9.ª | Bloqueia enquanto o decreto exige exame/regularização |
+| 9.ª | Recurso e conclusão do I ciclo | Sem matrícula automática no próximo ciclo |
+| 10.ª | Condicional e disciplinas específicas | Pode prosseguir se o decreto e serviço autorizam |
+| 11.ª | Condicional antes da 12.ª | Bloqueia enquanto o decreto exige exame/regularização |
+| 12.ª | Recurso e conclusão do II ciclo | Apenas documentação após conclusão |
+| EJA módulos 1/2 | Classificação qualitativa e frequência anual | Depende de fonte oficial da avaliação |
+| EJA módulo 3 | Conclusão qualitativa ou recurso numérico | Depende de fonte oficial e decisão do motor |
+| EJA ano 1 | Condicional com exame extraordinário | Bloqueado quando o decreto exigir |
+| EJA ano 2 | Recurso e conclusão | Sem conclusão automática |
+
+A interface **não calcula notas, não avalia limites de disciplinas negativas e não interpreta combinações proibidas**. Exibe o `baseLegal`, a decisão do decreto e a orientação contextual; ausência de um resultado do decreto é representada como **não apurado**, nunca como autorização implícita. A 7.ª e 10.ª apresentam uma faixa informativa discreta na situação `READY` com condicional autorizado, sem novo CTA de cobrança/efetivação.
+
+Para as matrículas com `regime.escala = qualitativa`, o Balcão **não oferece o lançamento de notas numéricas** como substituto de Suficiente/Não suficiente. A pauta qualitativa exige o fluxo de avaliação oficial correspondente.
+
+### Lacunas levantadas com evidência
+
+- **#300 — EJA qualitativo e frequência anual:** o `vw_boletim_por_matricula` expõe `nota_final numeric` e status de configuração/isenção; o `resolveDecretoDecision` atual passa apenas `notaFinal`, sem `suficiente` nem `frequenciaAnual`. A função jurídica EJA admite esses campos, mas não existem provas suficientes de integração EJA end-to-end para declarar homologação. Proibida conversão arbitrária de nota em classificação qualitativa.
+- **#301 — 1.ª–5.ª classes:** o motor jurídico tipado abrange 6.ª–12.ª e EJA. O adaptador RAA devolve `null` fora desses regimes. Até definir o contrato legal, mostrar orientação conservadora e manter o bloqueio/regra oficial da API.
+- **Homologação:** executar fluxos com autenticação por papel (secretaria, direção, professor), turma, classe, ano letivo e escola, incluindo registos antigos e EJA antes de publicar.
+
+### Testes da matriz
+
+`apps/web/tests/unit/raa-balcao-regime-guidance.spec.ts` valida a identificação de **12 regimes legais**, condicional autorizada versus bloqueada (7.ª/8.ª/10.ª/11.ª/EJA 1.º), recurso (6.ª/9.ª/12.ª), conclusão, EJA qualitativo e numérico, frequência anual, faltas trimestrais, indisciplina, falta de dados e ausência de decreto. O CI da PR também executa `raa-decreto-eligibility.spec.ts` como regressão do motor jurídico. A execução destes testes **não substitui** homologação autenticada e integração de fontes qualitativas.
