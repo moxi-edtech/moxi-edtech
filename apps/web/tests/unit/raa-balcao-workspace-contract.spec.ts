@@ -49,10 +49,10 @@ test("Old academic decisions cannot be overwritten by a client-only remission", 
 test("Grade entry does not carry a trimester, grade or discipline across student contexts", () => {
   const modal = source("components/secretaria/EnrollmentPostActionModal.tsx");
   const periods = source("app/api/secretaria/notas/periodos/route.ts");
-  assert.match(modal, /useState\("?"\)/);
+  assert.match(modal, /useState\(""\)/);
   assert.doesNotMatch(modal, /useState\("1"\)/);
-  assert.match(modal, /setPeriodo\("?"\)/);
-  assert.match(modal, /setNota\("?"\)/);
+  assert.match(modal, /setPeriodo\(""\)/);
+  assert.match(modal, /setNota\(""\)/);
   assert.match(modal, /\[action, alunoId, escolaId, turmaId, originAnoLetivoId, open\]/);
   assert.match(modal, /\/api\/secretaria\/notas\/periodos\?/);
   assert.match(modal, /item\.numero === payload\.current_trimestre/);
