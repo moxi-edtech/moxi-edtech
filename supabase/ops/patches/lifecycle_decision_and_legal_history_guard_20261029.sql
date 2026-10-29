@@ -108,7 +108,7 @@ BEGIN
   UPDATE public.matriculas SET
     status=v_status, ativo=false,
     motivo_fecho=v_motivo,
-    status_fecho_origem=v_fonte,
+    status_fecho_origem=CASE WHEN v_fonte='declaracao_administrativa_escola' THEN 'override_admin' ELSE 'manual' END,
     data_fecho=coalesce(data_fecho,now()),
     updated_at=now(),
     updated_by=v_actor_id
