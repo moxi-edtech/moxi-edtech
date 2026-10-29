@@ -106,8 +106,11 @@ test("four PR #298 RAA/MED migrations are individually audited without unfreezin
       "CREATE OR REPLACE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1 $;",
       "CREATE TABLE public.saft_export (id uuid);",
     ]) {
-      assert.match(checkFiscalAndSchemaScope([path], () => statement)[0] ?? "",
-        /Fiscal\\/AGT activation/, `${name} must reject ${statement}`);
+      assert.ok(
+        checkFiscalAndSchemaScope([path], () => statement)
+          .some((violation) => violation.includes("Fiscal/AGT activation marker")),
+        `${name} must reject ${statement}`,
+      );
     }
   }
   assert.match(checkFiscalAndSchemaScope([
