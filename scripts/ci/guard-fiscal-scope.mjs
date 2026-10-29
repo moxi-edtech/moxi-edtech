@@ -24,10 +24,10 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271027120000_lifecycle_ssot_post_replay_guard.sql",
 ]);
 
-const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)\/|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
+const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
 // Prevent fiscal activation hidden inside an allowlisted academic migration.
 // Ordinary references to finance/payment are not fiscal engine activation.
-const FISCAL_SQL = /\b(?:AGT|SAF[-_]?T|SAFT|fiscal(?:iza(?:c|ç)[aã]o)?|fatur(?:a(?:ç|c)[aã]o|as?)|factur(?:a(?:ç|c)[aã]o|as?))\b/i;
+const FISCAL_SQL = /\b(?:AGT|SAF[-_]?T|SAFT|fiscal(?:iza(?:c|ç)[aã]o)?|fatur(?:a(?:ç|c)[aã]o|as?)|factur(?:a(?:ç|c)[aã]o|as?))(?=[^a-z0-9]|$)/i;
 
 export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readFileSync(path, "utf8")) {
   const violations = [];
