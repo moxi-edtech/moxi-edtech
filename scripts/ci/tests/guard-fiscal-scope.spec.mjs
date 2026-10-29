@@ -5,8 +5,8 @@ import { checkFiscalAndSchemaScope, LIFECYCLE_MIGRATION_ALLOWLIST } from "../gua
 const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status_ativo_20261028.sql";
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
-test("allows only the 12 reviewed enrollment/historical SQL migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 12);
+test("allows only audited enrollment and historical evidence migrations", () => {
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 16);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -44,4 +44,10 @@ test("does not conflate ordinary payment or RAA operations with fiscal activatio
     "apps/web/src/lib/financeiro/recover-receipt-after-payment.ts",
     firstLifecycle,
   ], () => "UPDATE matriculas SET ativo = true WHERE status = 'ativo';"), []);
+});
+
+test("allows documentary comments but blocks actual fiscal activation SQL", () => {
+  const migration = "supabase/migrations/20271029100000_lifecycle_reconciliation_evidence_guards.sql";
+  assert.deepEqual(checkFiscalAndSchemaScope([migration], () => "-- Fiscal functions unchanged\nCREATE VIEW academic_history AS SELECT 1;"), []);
+  assert.ok(checkFiscalAndSchemaScope([migration], () => "-- academic reconciliation\nCREATE TABLE public.fiscal_documentos (id uuid);").length > 0);
 });
