@@ -5,6 +5,14 @@ import { CheckCircle2, KeyRound, Loader2, GraduationCap, Wallet } from "lucide-r
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { EnrollmentPostAction } from "./EnrollmentPostActions";
 
+type GradePeriodOption = {
+  numero: number;
+  data_inicio: string | null;
+  data_fim: string | null;
+  estado: "current" | "future" | "past" | "locked" | "unconfigured";
+  calendar_verified: boolean;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,7 +38,11 @@ export function EnrollmentPostActionModal({
   const [notaMaxima, setNotaMaxima] = useState<number | null>(null);
   const [notaContextError, setNotaContextError] = useState<string | null>(null);
   const [turmaDisciplinaId, setTurmaDisciplinaId] = useState("");
-  const [periodo, setPeriodo] = useState("1");
+  const [periodo, setPeriodo] = useState("");
+  const [periodos, setPeriodos] = useState<GradePeriodOption[]>([]);
+  const [periodLoading, setPeriodLoading] = useState(false);
+  const [periodError, setPeriodError] = useState<string | null>(null);
+  const [periodReadOnly, setPeriodReadOnly] = useState(false);
   const [nota, setNota] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -42,6 +54,21 @@ export function EnrollmentPostActionModal({
       setCopied(false);
     }
   }, [open, action]);
+
+  // A ficha do aluno pode permanecer montada entre atendimentos. Nunca herdar
+  // disciplina, nota ou trimestre de outra matrícula no mesmo modal.
+  useEffect(() => {
+    setPeriodo("");
+    setPeriodos([]);
+    setPeriodError(null);
+    setPeriodReadOnly(false);
+    setNota("");
+    setDisciplinaId("");
+    setTurmaDisciplinaId("");
+    setNotaMaxima(null);
+    setNotaContextError(null);
+    setResult(null);
+  }, [action, alunoId, escolaId, turmaId, originAnoLetivoId, open]);
 
   const title = action === "portal" ? "Liberar portal" : action === "notas" ? "Lançar nota" : "Pagar mensalidade";
   const Icon = action === "portal" ? KeyRound : action === "notas" ? GraduationCap : Wallet;
@@ -80,6 +107,42 @@ export function EnrollmentPostActionModal({
   }, [action, escolaId, open, originAnoLetivoId]);
 
   useEffect(() => {
+    let active = true;
+    setPeriodo("");
+    setPeriodos([]);
+    setPeriodError(null);
+    setPeriodReadOnly(false);
+    setPeriodLoading(false);
+    if (!open || action !== "notas" || !academicYearId || !turmaId) {
+      return () => { active = false; };
+    }
+    setPeriodLoading(true);
+    const query = new URLSearchParams({ ano_letivo_id: academicYearId, turma_id: turmaId });
+    void fetch("/api/secretaria/notas/periodos?" + query.toString(), { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok || !payload.ok || !Array.isArray(payload.items)) {
+          throw new Error(payload.error || "Não foi possível identificar os trimestres deste ano.");
+        }
+        return payload;
+      })
+      .then((payload) => {
+        if (!active) return;
+        const items = payload.items as GradePeriodOption[];
+        setPeriodos(items);
+        setPeriodReadOnly(payload.read_only === true);
+        const current = items.find((item) =>
+          item.numero === payload.current_trimestre && item.estado === "current");
+        setPeriodo(current ? String(current.numero) : "");
+      })
+      .catch((cause) => {
+        if (active) setPeriodError(cause instanceof Error ? cause.message : "Não foi possível confirmar o período.");
+      })
+      .finally(() => { if (active) setPeriodLoading(false); });
+    return () => { active = false; };
+  }, [action, alunoId, academicYearId, open, turmaId]);
+
+  useEffect(() => {
     if (!open || action !== "notas" || !turmaId) return;
     setDisciplinas([]);
     setDisciplinaId("");
@@ -93,7 +156,7 @@ export function EnrollmentPostActionModal({
     let active = true;
     setNotaMaxima(null);
     setNotaContextError(null);
-    if (!open || action !== "notas" || !academicYearId || !turmaId || !disciplinaId || !turmaDisciplinaId) {
+    if (!open || action !== "notas" || !academicYearId || !turmaId || !disciplinaId || !turmaDisciplinaId || !periodo) {
       return () => { active = false; };
     }
 
@@ -130,7 +193,12 @@ export function EnrollmentPostActionModal({
 
   const lancarNota = async () => {
     const selected = disciplinas.find((item) => item.disciplina?.id === disciplinaId);
-    if (!turmaId || !selected?.disciplina?.id || !selected.id || !nota || !academicYearId || notaMaxima === null) return;
+    const selectedPeriod = periodos.find((item) => String(item.numero) === periodo);
+    if (!turmaId || !selected?.disciplina?.id || !selected.id || !nota || !academicYearId || notaMaxima === null ||
+      !selectedPeriod || periodReadOnly || ["future", "unconfigured"].includes(selectedPeriod.estado)) {
+      setResult({ error: "Selecione um trimestre válido para esta matrícula." });
+      return;
+    }
     const valor = Number(nota);
     if (!Number.isFinite(valor) || valor < 0 || valor > notaMaxima) {
       setResult({ error: "A nota deve estar dentro da escala da turma." });
@@ -161,6 +229,10 @@ export function EnrollmentPostActionModal({
       setLoading(false);
     }
   };
+
+  const selectedPeriod = periodos.find((item) => String(item.numero) === periodo);
+  const periodUnavailable = periodLoading || Boolean(periodError) || periodReadOnly ||
+    !selectedPeriod || ["future", "unconfigured"].includes(selectedPeriod.estado);
 
   const liberarPortal = async () => {
     setLoading(true);
@@ -222,12 +294,30 @@ export function EnrollmentPostActionModal({
               <option value="">Selecionar disciplina</option>
               {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
             </select>
+            {periodLoading && <p role="status" className="text-xs text-muted-foreground">A confirmar o trimestre da matrícula...</p>}
+            {periodError && <p role="alert" className="text-sm text-red-700">{periodError}</p>}
+            {periodReadOnly && <p role="status" className="text-xs text-muted-foreground">Este ano letivo está encerrado. Consulte a direção para reabertura.</p>}
             <div className="grid grid-cols-2 gap-3">
-              <select value={periodo} onChange={(event) => { setPeriodo(event.target.value); setNota(""); setResult(null); }} className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading}><option value="1">1.º período</option><option value="2">2.º período</option><option value="3">3.º período</option></select>
+              <select aria-label="Trimestre da matrícula de origem" value={periodo}
+                onChange={(event) => { setPeriodo(event.target.value); setNota(""); setResult(null); }}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                disabled={loading || periodLoading || Boolean(periodError) || periodReadOnly}>
+                <option value="">Selecionar trimestre</option>
+                {periodos.map((item) => <option key={item.numero} value={String(item.numero)}
+                  disabled={item.estado === "future" || item.estado === "unconfigured"}>
+                  {item.numero}.º período{item.estado === "current" ? " · atual" :
+                    item.estado === "future" ? " · ainda não iniciado" :
+                    item.estado === "locked" ? " · encerrado" : ""}
+                </option>)}
+              </select>
               <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading} />
             </div>
+            {selectedPeriod && ["past", "locked"].includes(selectedPeriod.estado) &&
+              <p role="status" className="text-xs text-muted-foreground">Este período exige autorização de reabertura para correções.</p>}
+            {selectedPeriod && !selectedPeriod.calendar_verified &&
+              <p role="status" className="text-xs text-muted-foreground">Calendário ainda não conciliado com a fonte oficial.</p>}
             {result?.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{result.error}</p>}
-            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
+            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || periodUnavailable || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
           </div>
         )}
 
