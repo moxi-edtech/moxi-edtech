@@ -508,6 +508,10 @@ export function RaaBalcaoResolutionPanel({
                 <p role="status" className="mt-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
                   Esta turma usa Suficiente/Não suficiente. Complete a pauta qualitativa.
                 </p>
+              ) : !academic?.source?.turma_id || !academic.source.ano_letivo_id ? (
+                <p role="status" className="mt-2 text-sm text-muted-foreground">A confirmar a turma e o ano letivo de origem.</p>
+              ) : !["ativo", "ativa", "active"].includes(academic.source.status.toLowerCase()) ? (
+                <p role="status" className="mt-2 text-sm text-muted-foreground">Matrícula de origem encerrada. Peça a reabertura académica à direção.</p>
               ) : (
                 <button type="button" onClick={onLancarNota}
                   className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
@@ -520,7 +524,7 @@ export function RaaBalcaoResolutionPanel({
           {action === "rever_resultado" && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
               <p className="text-sm text-muted-foreground">Este resultado precisa de revisão académica.</p>
-              {academic?.source?.status === "ativo" && academic?.regime?.escala !== "qualitativa" &&
+              {["ativo", "ativa", "active"].includes(academic?.source?.status?.toLowerCase() ?? "") && academic?.regime?.escala !== "qualitativa" &&
                 academic?.source?.ano_letivo_id && academic?.source?.turma_id ? (
                   <button type="button" onClick={onLancarNota}
                     className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground">
