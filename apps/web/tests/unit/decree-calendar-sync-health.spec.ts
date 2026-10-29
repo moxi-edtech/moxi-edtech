@@ -118,3 +118,15 @@ test("calendar provenance RPC accepts legacy 2025 only in the absence of period 
   assert.match(sql, /v_has_permission/);
   assert.match(sql, /current_tenant_escola_id/);
 });
+
+test("admission conversion rejects misaligned 2026/27 decree before financial writes", () => {
+  const source = readFileSync("src/app/api/secretaria/admissoes/convert/route.ts", "utf8");
+  assert.match(source, /inspectDecreeSync\(supabase as any, escolaId, targetTurma\.ano_letivo\)/);
+  assert.match(source, /targetTurma\.ano_letivo >= 2026/);
+  assert.match(source, /ACADEMIC_CALENDAR_YEAR_MISMATCH/);
+  assert.match(source, /ACADEMIC_CALENDAR_NOT_CONFIGURED/);
+  const preflight = source.indexOf("const decreeHealth = await inspectDecreeSync");
+  const canonicalRpc = source.indexOf("supabase.rpc('admissao_finalizar_matricula'");
+  assert.ok(preflight > 0);
+  assert.ok(canonicalRpc > preflight, "preflight must precede the enrollment/financial transaction");
+});
