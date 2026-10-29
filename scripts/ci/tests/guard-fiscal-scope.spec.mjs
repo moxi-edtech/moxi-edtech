@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 32);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 36);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -84,6 +84,35 @@ test("live-applied contextual status markers never permit fiscal activation", ()
     assert.match(checkFiscalAndSchemaScope([path], () =>
       "CREATE TABLE public.fiscal_activacao (id uuid);")[0] ?? "", /Fiscal\/AGT activation/);
   }
+});
+
+
+test("four PR #298 RAA/MED migrations are individually audited without unfreezing fiscal", () => {
+  const approved = [
+    "20271029235920_raa_balcao_authoritative_permissions.sql",
+    "20271029235921_guard_grade_period_source_and_window.sql",
+    "20271029235922_canonical_med_calendar_offering_profiles.sql",
+    "20271029235923_apply_canonical_med_calendar_atomic.sql",
+  ];
+  assert.equal(approved.length, 4);
+  for (const name of approved) {
+    const path = "supabase/migrations/" + name;
+    assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name), name);
+    // Read the actual SQL on disk, not a synthetic fixture. Every file must
+    // remain free of executable fiscal, AGT or SAF-T activation statements.
+    assert.deepEqual(checkFiscalAndSchemaScope([path]), [], name);
+    for (const statement of [
+      "CREATE TABLE public.fiscal_config (enabled boolean);",
+      "CREATE OR REPLACE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1 $;",
+      "CREATE TABLE public.saft_export (id uuid);",
+    ]) {
+      assert.match(checkFiscalAndSchemaScope([path], () => statement)[0] ?? "",
+        /Fiscal\\/AGT activation/, `${name} must reject ${statement}`);
+    }
+  }
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271029235924_unreviewed.sql",
+  ])[0] ?? "", /Unapproved database migration/);
 });
 
 test("preserves the fiscal and AGT module freeze", () => {

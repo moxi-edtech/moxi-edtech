@@ -1,7 +1,7 @@
 /**
  * Guard only the scope of receipt/enrollment PRs.
  *
- * Audited lifecycle migrations are allowed, but fiscal/AGT/SAF-T activation
+ * Audited lifecycle, RAA and MED migrations are allowed, but fiscal/AGT/SAF-T activation
  * remains prohibited. Do not turn this into a blanket migration exception.
  */
 import { execFileSync } from "node:child_process";
@@ -46,6 +46,13 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20261029132302_lifecycle_contextual_status_ssot_v2.sql",
   "20261029132512_lifecycle_contextual_status_v2_select_only.sql",
   "20271029235910_lifecycle_persisted_status_contract_v3.sql",
+  // PR #298: individually audited RAA permissions, grade-period protection
+  // and canonical MED school/calendar schemas. The fiscal/AGT/SAF-T scanner
+  // below still examines executable SQL in every allowlisted migration.
+  "20271029235920_raa_balcao_authoritative_permissions.sql",
+  "20271029235921_guard_grade_period_source_and_window.sql",
+  "20271029235922_canonical_med_calendar_offering_profiles.sql",
+  "20271029235923_apply_canonical_med_calendar_atomic.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
@@ -94,5 +101,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error(errors.join("\n"));
     process.exit(1);
   }
-  console.log("Fiscal/AGT/SAF-T unchanged; only approved lifecycle SSOT migrations allowed.");
+  console.log("Fiscal/AGT/SAF-T unchanged; only explicitly audited academic migrations allowed.");
 }
