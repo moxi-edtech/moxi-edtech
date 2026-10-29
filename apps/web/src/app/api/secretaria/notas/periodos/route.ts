@@ -8,6 +8,7 @@ import { currentGradePeriod, gradePeriodState } from "@/lib/academico/grade-peri
 const Params = z.object({
   ano_letivo_id: z.string().uuid(),
   turma_id: z.string().uuid(),
+  turma_disciplina_id: z.string().uuid().optional(),
 });
 
 export async function GET(req: Request) {
@@ -27,6 +28,23 @@ export async function GET(req: Request) {
       table: "turmas", entityId: parsed.data.turma_id,
       escolaId: context.escolaId, anoLetivoId: context.anoLetivoId,
     });
+    let activePeriods: number[] | null = null;
+    if (parsed.data.turma_disciplina_id) {
+      const { data: link, error: linkError } = await supabase
+        .from("turma_disciplinas").select("id,periodos_ativos")
+        .eq("id", parsed.data.turma_disciplina_id)
+        .eq("turma_id", parsed.data.turma_id)
+        .eq("escola_id", context.escolaId).maybeSingle();
+      if (linkError) throw linkError;
+      if (!link) return NextResponse.json({
+        ok: false, code: "GRADE_DISCIPLINE_MISMATCH",
+        error: "A disciplina não pertence à turma selecionada.",
+      }, { status: 409 });
+      if (Array.isArray(link.periodos_ativos) && link.periodos_ativos.length > 0) {
+        activePeriods = link.periodos_ativos.map(Number);
+      }
+    }
+
     const { data, error } = await supabase.from("periodos_letivos")
       .select("id,numero,data_inicio,data_fim,trava_notas_em,source_template_id,offering_id")
       .eq("escola_id", context.escolaId)
@@ -66,9 +84,12 @@ export async function GET(req: Request) {
       data_fim: row.data_fim,
       estado: gradePeriodState(row, now, context.timezone),
       calendar_verified: Boolean(row.source_template_id),
+      disciplina_ativa: activePeriods === null || activePeriods.includes(row.numero),
     }));
     return NextResponse.json({
-      ok: true, items, current_trimestre: currentGradePeriod(periods, now, context.timezone),
+      ok: true, items,
+      current_trimestre: activePeriods === null || activePeriods.includes(currentGradePeriod(periods, now, context.timezone) ?? -1)
+        ? currentGradePeriod(periods, now, context.timezone) : null,
       read_only: context.mode !== "CURRENT",
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
