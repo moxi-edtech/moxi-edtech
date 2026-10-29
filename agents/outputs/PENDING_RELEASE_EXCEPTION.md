@@ -1,5 +1,5 @@
 # Proposta de exceção de release — AppyPay
-status: PROPOSTA, não aprovada, não ativa
+status: RECUSADA pelo utilizador; não aprovada, não ativa
 id: EXC-RELEASE-APPYPAY-20261029
 regra: gate global de merge/release do contrato 2.0.0
 ficheiro: PR #285, integração AppyPay e integrações alteradas
@@ -19,3 +19,5 @@ Corrigir os blockers e concluir a auditoria integral antes de qualquer merge/pub
 
 ## Como decidir
 Aprovar explicitamente esta exceção temporária, ou instruir a correção/auditoria global antes da publicação. Nenhuma das duas decisões foi inferida da aprovação do SQL.
+
+Decisão explícita: “Corrigir o legado antes de publicar”. Nenhuma exceção foi aplicada por este agente. Release externo #295 observado posteriormente com processamento AppyPay desativado.

@@ -1,12 +1,12 @@
 {
   "contrato_versao": "2.0.0",
-  "run_id": "069d9a59-315d-4cb9-8a45-c28be752f334",
-  "run_timestamp": "2026-10-29T12:24:23.769686+00:00",
-  "commit": "5914e1c4665b0a88b64a0f93fa0f75f49fe41a81",
+  "run_id": "445389da-a77d-4bbc-a28d-a176e2735b35",
+  "run_timestamp": "2026-10-29T15:28:20.183280+00:00",
+  "commit": "d0b79c4a371b3856fbbd5bd02bbe613d25fae04b",
   "veredito": "FAIL",
   "can_merge": false,
   "summary": {
-    "critical": 3,
+    "critical": 1,
     "high": 0,
     "medium": 0,
     "low": 0,
@@ -14,41 +14,15 @@
   },
   "findings": [
     {
-      "id": "SEC-001-b2dab294",
-      "regra": "SEC-001",
-      "severidade": "CRITICAL",
-      "status": "FAIL",
-      "ficheiro": "apps/web/src/app/api/teste-rpc/route.ts",
-      "linha": "6-64",
-      "evidencia": "export async function GET(request: Request) {\n      const { data, error } = await supabase.rpc(\n        'secretaria_list_alunos_kf2',",
-      "impacto": "O endpoint executa uma RPC com escolaId recebido do pedido sem resolver a escola do utilizador; resolveEscolaIdForUser está ausente.",
-      "recomendacao": "Exigir sessão e resolver a escola com resolveEscolaIdForUser antes de qualquer RPC, removendo o fallback fixo.",
-      "bloqueante": true,
-      "excecao": null
-    },
-    {
-      "id": "SEC-002-ac701c12",
+      "id": "SEC-002-7e446b7f",
       "regra": "SEC-002",
       "severidade": "CRITICAL",
       "status": "FAIL",
-      "ficheiro": "apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/delete/route.ts",
-      "linha": "9-14",
-      "evidencia": "  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()\n  if (!url || !key) return null\n  return createAdminClient<Database>(url, key, {",
-      "impacto": "getSupabaseAdmin cria um cliente privilegiado dentro de endpoint humano, fora das exceções documentadas.",
-      "recomendacao": "Substituir o cliente privilegiado por operação autenticada com RLS ou RPC de domínio restrita e aprovada.",
-      "bloqueante": true,
-      "excecao": null
-    },
-    {
-      "id": "SEC-003-23f395db",
-      "regra": "SEC-003",
-      "severidade": "CRITICAL",
-      "status": "FAIL",
-      "ficheiro": "apps/web/src/app/api/escola/[id]/admin/calendario/copiar-eventos/route.ts",
-      "linha": "33-35",
-      "evidencia": "      .from('anos_letivos')\n      .select('id, ano')\n      .in('id', [fromAnoId, toAnoId]);",
-      "impacto": "A seleção de anos letivos depende apenas dos IDs recebidos e não contém o filtro obrigatório de escola; não existe .eq('escola_id', ...) neste ficheiro.",
-      "recomendacao": "Adicionar .eq('escola_id', userEscolaId) às consultas de anos_letivos e calendario_eventos antes da cópia.",
+      "ficheiro": "apps/web/src/app/api/fiscal/saft/export/[exportId]/download/route.ts",
+      "linha": "57-63",
+      "evidencia": "function getSupabaseAdmin() {\n  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? \"\").trim();\n  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? \"\").trim();",
+      "impacto": "O endpoint humano cria cliente privilegiado para assinar downloads fiscais, sem exceção documentada de SEC-002; a operação contorna o RLS do Storage após a autorização da aplicação.",
+      "recomendacao": "Migrar a assinatura para operação de domínio de máquina estritamente autorizada ou usar a sessão com política de leitura tenant-scoped aprovada; remover getSupabaseAdmin da rota humana.",
       "bloqueante": true,
       "excecao": null
     }
@@ -57,7 +31,7 @@
     "EXC-SEC-001-B:/api/webhooks/appypay",
     "EXC-SEC-002-A:/api/webhooks/appypay"
   ],
-  "scope": "AppyPay alterado + verificação de bloqueios globais; três violações confirmadas no legado, sem certificação dos demais candidatos",
+  "scope": "Reverificação dos três blockers confirmados e testes AppyPay; auditoria global integral ainda não certificada. Sem PASS parcial.",
   "validation": {
     "unit_http_tests": 29,
     "local_postgresql_scenarios": 3,
@@ -68,19 +42,24 @@
     "production_migration": "20261028224738_appypay_atomic_confirmation",
     "unit_http_environment": "retested successfully with restored locked project dependencies",
     "targeted_route_types": "passed for all AppyPay modules and three routes, using real locked project dependencies and imports",
-    "production_build": "passed; full local Next build including types and 182 pages; placeholder keys and APPYPAY_ENABLED=false",
+    "production_build": "Previous integration build passed; current legacy branch has no new full Next build. See current typecheck evidence in release-hardening.md.",
     "scoped_lint": "0 errors; 1 existing warning MAX_SPAN unused in student finance route",
     "visual_component": "student service paid, monthly uncertain with one POST, server-confirmed zero POST on open; synthetic fixture only",
     "local_service_sql_groups": 6,
     "local_postgresql_scenarios_previous_monthly": 3,
     "service_sql": "applied 20261029121743; approved exact SHA256; matching body MD5; invoker/privileges/indexes/RLS verified; nonexistent-reference probe passed; zero refs",
-    "production_state": "provider inactive; new service table and RPC absent; webhook list empty; no deploy or real charge",
-    "compiled_local_http": "passed: unsigned worker401, oversized worker413, invalid webhook400, unauthenticated student401; fixture config, no valid provider/db request"
+    "production_state": "External release #295 published integration disabled; POST webhook 503. Service SQL installed; provider inactive. Existing application-bound webhook name/URL/POST/active persisted after reopening. Type selector absent in existing webhook details; not certified transactional.",
+    "compiled_local_http": "passed: unsigned worker401, oversized worker413, invalid webhook400, unauthenticated student401; fixture config, no valid provider/db request",
+    "current_tests": "30 tests passed, including HTTP legacy isolation and no destructive class deletion; no real charge.",
+    "current_lint": "0 errors for three legacy routes.",
+    "current_types": "Full apps/web tsc --noEmit --incremental passed (exit 0), current legacy branch."
   },
   "warnings": [
     "APY-003",
     "APY-004",
-    "APY-007"
+    "APY-007",
+    "APY-008",
+    "APY-009"
   ],
   "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem regressões a reportar",
   "legacy_scan": "Rerun 2026-10-29 in /private/tmp/appypay-scans-final; 0 critical/high/medium; 6 LOW VALIDATED markers, legacy perf gate PASS. Does not implement complete contract 2.0.0; not global PASS evidence.",
@@ -91,22 +70,9 @@
   ],
   "tested_working_tree": true,
   "tested_source_hashes": {
-    "apps/web/src/lib/financeiro/servicosPagamento.ts": "b7674d046749d449e0663f2f65a6f53719e4a90d6522b105ae529df5c51037f7",
-    "apps/web/src/lib/server/payments/providers/appypay/portal-broker.ts": "22702a835500f5d43eef83612616dd1ed7ecb065c182824b0d7c76061e820892",
-    "apps/web/src/lib/server/payments/providers/appypay/portal-operations.ts": "ad9d1b613e0626c35169e69b3352691dc7cec39627a517ac9c3d9f5b10c9d926",
-    "apps/web/src/lib/server/payments/providers/appypay/core.ts": "d63eea061db09d7bc655916249f572c42d71eed8406b2a2953b3623cd58f7fcb",
-    "apps/web/src/lib/server/payments/providers/appypay/service.ts": "a55684744878d98b34b651f93002755407ba9c051d99d7fdd448334d2e430e60",
-    "apps/web/src/components/financeiro/AppyPayReferenceButton.tsx": "e5b41729975685b08858501da10221e20064a661ad0d4ffd8e58c0e6d5c6b6ed",
-    "apps/web/src/components/aluno/tabs/TabDocumentos.tsx": "cb0a47b645c9f007bc0fd9fdaed5033b4a79de78e32384b235d3cce9f442a9dd",
-    "apps/web/src/components/aluno/tabs/TabFinanceiro.tsx": "cc176dc325488a6de17daccbcb8e6c16a4f639901e0a27afe3ac052bea21eca4",
-    "apps/web/src/components/aluno/layout/ServicePaymentDrawer.tsx": "747de4c01a557003476e85c1c720d09851dcf890dd5cc4a4439f995670dd8144",
-    "apps/web/src/app/api/webhooks/appypay/route.ts": "df54a7764dde29291d9c63b830085718e7fe7589b9430ff77a3f180bfc9e2597",
-    "apps/web/src/app/api/jobs/appypay/portal/route.ts": "ea68c703ceec0d7af524e606dc6da8669c64ecf1fe7cf3b68797a43d468d56d6",
-    "apps/web/src/app/api/aluno/financeiro/route.ts": "6d2f3660bcd0bc2484fb35b89df45f17c9dfe7121efc89e1a15f0a42e31947f4",
-    "apps/web/src/app/api/aluno/financeiro/appypay/route.ts": "1e524e7f20a16c505da6ad5f12a8e14ecce7e036ea5bfb296d72d73514b72afd",
-    "apps/web/src/app/api/financeiro/appypay/reconcile/route.ts": "65190f05ff79813e210c2c922dde109ec96a28566f91c8140948b0400a719b5f",
-    "apps/web/src/app/api/financeiro/appypay/references/route.ts": "e0020a296cccf5965f12caa829c38903ec86358eb8e52bc6ea511f0e0f395c46",
-    "apps/web/src/app/api/financeiro/appypay/status/route.ts": "09423f2868adfa10d535c68fe3354b0cc8bf03875f36d2595ea4fce181a871a2"
+    "apps/web/src/app/api/teste-rpc/route.ts": "48e65ddde8118ea3da89947abe1a796df8d8d22fae4d89420baa2d46dcecfeee",
+    "apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/delete/route.ts": "e60156462bbeac5ef5c7533b75cbbe085af9ccd8c17438d3283b88331169c4aa",
+    "apps/web/src/app/api/escola/[id]/admin/calendario/copiar-eventos/route.ts": "c29bd2599140636eff0517f946cbd8bf701a4b4b16995b25d25072843486a442"
   },
   "legacy_gate_preflight": {
     "candidate_counts": {
@@ -117,5 +83,46 @@
     "confirmed": 3,
     "baseline": "all confirmed files byte-identical to origin/main",
     "warning": "candidate counts are not findings; remaining candidates not certified"
-  }
+  },
+  "resolved_previous_findings": [
+    {
+      "id": "SEC-001-b2dab294",
+      "regra": "SEC-001",
+      "severidade": "CRITICAL",
+      "status": "PASS",
+      "ficheiro": "apps/web/src/app/api/teste-rpc/route.ts",
+      "linha": "6-64",
+      "evidencia": "export async function GET(request: Request) {\n      const { data, error } = await supabase.rpc(\n        'secretaria_list_alunos_kf2',",
+      "impacto": "O endpoint executa uma RPC com escolaId recebido do pedido sem resolver a escola do utilizador; resolveEscolaIdForUser está ausente.",
+      "recomendacao": "Exigir sessão e resolver a escola com resolveEscolaIdForUser antes de qualquer RPC, removendo o fallback fixo.",
+      "bloqueante": false,
+      "excecao": null
+    },
+    {
+      "id": "SEC-002-ac701c12",
+      "regra": "SEC-002",
+      "severidade": "CRITICAL",
+      "status": "PASS",
+      "ficheiro": "apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/delete/route.ts",
+      "linha": "9-14",
+      "evidencia": "  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()\n  if (!url || !key) return null\n  return createAdminClient<Database>(url, key, {",
+      "impacto": "getSupabaseAdmin cria um cliente privilegiado dentro de endpoint humano, fora das exceções documentadas.",
+      "recomendacao": "Substituir o cliente privilegiado por operação autenticada com RLS ou RPC de domínio restrita e aprovada.",
+      "bloqueante": false,
+      "excecao": null
+    },
+    {
+      "id": "SEC-003-23f395db",
+      "regra": "SEC-003",
+      "severidade": "CRITICAL",
+      "status": "PASS",
+      "ficheiro": "apps/web/src/app/api/escola/[id]/admin/calendario/copiar-eventos/route.ts",
+      "linha": "33-35",
+      "evidencia": "      .from('anos_letivos')\n      .select('id, ano')\n      .in('id', [fromAnoId, toAnoId]);",
+      "impacto": "A seleção de anos letivos depende apenas dos IDs recebidos e não contém o filtro obrigatório de escola; não existe .eq('escola_id', ...) neste ficheiro.",
+      "recomendacao": "Adicionar .eq('escola_id', userEscolaId) às consultas de anos_letivos e calendario_eventos antes da cópia.",
+      "bloqueante": false,
+      "excecao": null
+    }
+  ]
 }
