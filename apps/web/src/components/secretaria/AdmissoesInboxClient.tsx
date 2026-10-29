@@ -1797,84 +1797,72 @@ export default function AdmissoesInboxClient({
                     </div>
                   </div>
 
-                  {/* Barra de Ação Sticky Bottom */}
-                  <div className="absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-card/95 p-3 backdrop-blur sm:p-4">
-                    {canReopenAdmission(selectedData.status) && (
-                      <button
-                        onClick={handleReopen}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-2 px-6 py-4 bg-white border-2 border-slate-900 text-slate-900 rounded-2xl font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
-                      >
-                        {loadingAction === 'reopening' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                        Reabrir Candidatura
-                      </button>
-                    )}
-
-                    {canArchiveAdmission(selectedData.status) && (
-                      <button
-                        onClick={handleArchive}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-2 px-6 py-4 border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
-                      >
-                        {loadingAction === 'archiving' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-                        Arquivar
-                      </button>
-                    )}
-
-                    {canRejectAdmission(selectedData.status) && (
-                      <button
-                        onClick={handleReject}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-2 px-6 py-4 border border-red-200 text-red-600 rounded-2xl font-bold hover:bg-red-50 transition-all disabled:opacity-50"
-                      >
-                        {loadingAction === 'rejecting' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                        Rejeitar
-                      </button>
-                    )}
-
-                    {selectedData.status === 'pre_candidatura' && (
-                      <button
-                        onClick={openPromoteModal}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-600/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        {loadingAction === 'promoting' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <School className="h-5 w-5" />}
-                        Promover para candidatura
-                      </button>
-                    )}
-
-                    {selectedData.status === 'documentos_reenviados' && (
-                      <button
-                        onClick={handleAcceptReuploadedDocuments}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
-                      >
-                        {loadingAction === 'accepting_documents' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-                        Aceitar Documentos
-                      </button>
-                    )}
-
-                    {canApproveAdmission(selectedData.status) && (
-                      <button
-                        onClick={handleApprove}
-                        disabled={!!loadingAction}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-bold text-amber-950 transition hover:brightness-95"
-                      >
-                        {loadingAction === 'approving' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-                        Aprovar Candidatura
-                      </button>
-                    )}
-
-                    {canConvertAdmission(selectedData.status) && (
-                      <button
-                        onClick={() => setIsConversionOpen(true)}
-                        disabled={!!loadingAction}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-bold text-amber-950 transition hover:brightness-95"
-                      >
-                        <Check className="h-5 w-5" />
-                        {getConversionActionLabel(selectedData.status)}
-                      </button>
-                    )}
+                  {/* Ações de decisão contextualizadas no mesmo atendimento */}
+                  <div className="absolute inset-x-0 bottom-0 z-10 border-t border-border bg-card/95 p-3 backdrop-blur">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {canRequestDocumentCorrection(selectedData.status) && (
+                        <button type="button" onClick={openPendenciasModal} disabled={!!loadingAction}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted disabled:opacity-50">
+                          <FileText className="h-4 w-4" />
+                          Pedir ajustes
+                        </button>
+                      )}
+                      {selectedData.status === 'pre_candidatura' && (
+                        <button type="button" onClick={openPromoteModal} disabled={!!loadingAction}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 disabled:opacity-50">
+                          {loadingAction === 'promoting' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <School className="h-4 w-4" />}
+                          Promover candidatura
+                        </button>
+                      )}
+                      {selectedData.status === 'documentos_reenviados' && (
+                        <button type="button" onClick={handleAcceptReuploadedDocuments} disabled={!!loadingAction}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 disabled:opacity-50">
+                          {loadingAction === 'accepting_documents' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                          Aceitar documentos
+                        </button>
+                      )}
+                      {canApproveAdmission(selectedData.status) && (
+                        <button type="button" onClick={handleApprove} disabled={!!loadingAction}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 disabled:opacity-50">
+                          {loadingAction === 'approving' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                          Aprovar candidatura
+                        </button>
+                      )}
+                      {canConvertAdmission(selectedData.status) && (
+                        <button type="button" onClick={() => setIsConversionOpen(true)} disabled={!!loadingAction}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 disabled:opacity-50">
+                          <Check className="h-4 w-4" />
+                          {getConversionActionLabel(selectedData.status)}
+                        </button>
+                      )}
+                      {(canReopenAdmission(selectedData.status) || canArchiveAdmission(selectedData.status) || canRejectAdmission(selectedData.status)) && (
+                        <details className="group relative">
+                          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber">
+                            Mais ações <ChevronRight className="h-3.5 w-3.5 rotate-90" />
+                          </summary>
+                          <div className="absolute bottom-full right-0 z-20 mb-2 flex w-48 flex-col gap-1 rounded-xl border border-border bg-card p-2 shadow-xl">
+                            {canReopenAdmission(selectedData.status) && (
+                              <button type="button" onClick={handleReopen} disabled={!!loadingAction}
+                                className="rounded-lg px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+                                Reabrir candidatura
+                              </button>
+                            )}
+                            {canArchiveAdmission(selectedData.status) && (
+                              <button type="button" onClick={handleArchive} disabled={!!loadingAction}
+                                className="rounded-lg px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+                                Arquivar candidatura
+                              </button>
+                            )}
+                            {canRejectAdmission(selectedData.status) && (
+                              <button type="button" onClick={handleReject} disabled={!!loadingAction}
+                                className="rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50">
+                                Rejeitar candidatura
+                              </button>
+                            )}
+                          </div>
+                        </details>
+                      )}
+                    </div>
                   </div>
                 </>
               ) : null}
