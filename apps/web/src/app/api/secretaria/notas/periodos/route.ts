@@ -50,6 +50,15 @@ export async function GET(req: Request) {
       }, { status: 409 });
     }
 
+    // The 2026/27 MED cycle cannot use legacy, unlinked dates as authority.
+    if (context.anoLetivoLabel.startsWith("2026/") &&
+        periods.some((row) => !row.source_template_id)) {
+      return NextResponse.json({
+        ok: false, code: "OFFICIAL_CALENDAR_NOT_RECONCILED",
+        error: "O calendário deste ano letivo precisa de ser sincronizado antes de lançar notas.",
+      }, { status: 409 });
+    }
+
     const now = new Date();
     const items = periods.map((row) => ({
       numero: row.numero,
