@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new PaymentError(401, 'Não autenticado');
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, request.headers.get('x-escola-id'));
     if (!escolaId) throw new PaymentError(403, 'Escola não identificada');
     const { data: allowed, error: permissionError } = await supabase.rpc('can_manage_school', { p_escola_id: escolaId });
     if (permissionError || !allowed) throw new PaymentError(403, 'Sem permissão financeira');

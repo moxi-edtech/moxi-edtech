@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AppyPayClient, configForSchool, newReference, verifiedCharge, type AppyPayConfig, type Charge } from '../../src/lib/server/payments/providers/appypay/core';
-import { issueReference, reconcileCharge } from '../../src/lib/server/payments/providers/appypay/service';
+import { issueReference, reconcileCharge, recoverPendingReference } from '../../src/lib/server/payments/providers/appypay/service';
 
 const school = 'f406f5a7-a077-431c-b118-297224925726';
 const config: AppyPayConfig = { schoolId: school, environment: 'sandbox', clientId: 'fixture-client', clientSecret: 'fixture-secret', paymentMethod: 'REF_00000000-0000-0000-0000-000000000000' };
@@ -37,7 +37,8 @@ class Store {
       return { data: result, error: null };
     };
     const q: any = {
-      select: () => q, eq: (k: string, v: any) => { predicates.push(r => r[k] === v); return q; },
+      select: () => q, eq: (k: string, v: any) => { predicates.push(r => k === 'provider_payload->>merchant_id' ? r.provider_payload?.merchant_id === v : r[k] === v); return q; },
+      neq: (k: string, v: any) => { predicates.push(r => r[k] !== v); return q; },
       in: (k: string, v: any[]) => { predicates.push(r => v.includes(r[k])); return q; },
       insert: (p: any) => { op = 'insert'; payload = p; return q; },
       update: (p: any) => { op = 'update'; payload = p; return q; },
@@ -160,4 +161,47 @@ test('balance changing inside the database lock returns manual review, never a s
   const store = new Store(); const r = reference(); store.concurrentBalanceChange = true;
   assert.equal((await reconcileCharge(db(store), clientFor(paid(r)), r)).status, 'manual_review');
   assert.equal(store.confirms, 0);
+});
+
+test('early webhook recovers a reservation only after authoritative identity and reference checks', async () => {
+  const store = new Store(); const r = newReference(school, 'provider1', 'obligation1', 1500); store.tables.payment_references.push(r);
+  const charge = { ...paid({ ...r, provider_reference_id: chargeId }), reference: { entity: '00123', referenceNumber: r.reference, dueDate: r.expires_at } };
+  const recovered = await recoverPendingReference(db(store), clientFor(charge), school, 'provider1', chargeId, r.provider_payload.merchant_id);
+  assert.equal(recovered?.provider_reference_id, chargeId);
+  assert.equal(recovered?.status, 'active');
+  assert.equal((await reconcileCharge(db(store), clientFor(charge), recovered!)).status, 'reconciled');
+  assert.equal(store.confirms, 1);
+});
+test('forged merchant, foreign school and wrong reference cannot recover a pending reservation', async () => {
+  const store = new Store(); const r = newReference(school, 'provider1', 'obligation1', 1500); store.tables.payment_references.push(r);
+  let queries = 0; const client = { getCharge: async () => { queries++; return { ...paid({ ...r, provider_reference_id: chargeId }), reference: { entity: '00123', referenceNumber: '999999999', dueDate: r.expires_at } }; } } as any;
+  assert.equal(await recoverPendingReference(db(store), client, 'foreign', 'provider1', chargeId, r.provider_payload.merchant_id), null);
+  assert.equal(queries, 0);
+  await assert.rejects(recoverPendingReference(db(store), client, school, 'provider1', chargeId, r.provider_payload.merchant_id));
+  assert.equal(r.status, 'pending'); assert.equal(store.confirms, 0);
+});
+test('issuer returning after a successful early callback never changes paid back to active', async () => {
+  const store = new Store();
+  const client = { createReference: async (input: any) => {
+    const r = store.tables.payment_references[0]; r.provider_reference_id = chargeId; r.entity = '00123'; r.status = 'paid';
+    return { id: chargeId, responseStatus: { successful: true, code: 101, reference: { entity: '00123', referenceNumber: input.reference, dueDate: input.expiresAt } } };
+  } } as any;
+  const result = await issueReference(db(store), client, school, 'provider1', 'obligation1');
+  assert.equal(result.status, 'paid'); assert.equal(store.tables.payment_references[0].status, 'paid');
+});
+
+test('amount changed after user preview is rejected before reservation or provider call', async () => {
+  const store = new Store(); let posts = 0;
+  const client = { createReference: async () => { posts++; } } as any;
+  await assert.rejects(issueReference(db(store), client, school, 'provider1', 'obligation1', 1000), /saldo foi alterado/);
+  assert.equal(posts, 0); assert.equal(store.tables.payment_references.length, 0);
+});
+
+test('duplicate callback preserves the original paid_at timestamp', async () => {
+  const store = new Store(); const r = reference(); store.tables.payment_references.push(r);
+  await reconcileCharge(db(store), clientFor(paid(r)), r);
+  store.tables.payment_references[0].paid_at = '2026-10-01T09:00:00Z';
+  await reconcileCharge(db(store), clientFor(paid(r)), r);
+  assert.equal(store.tables.payment_references[0].paid_at, '2026-10-01T09:00:00Z');
+  assert.equal(store.confirms, 1);
 });

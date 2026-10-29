@@ -1,10 +1,10 @@
 # KLASSE — Performance Gate
 contrato_versao: 2.0.0
-run_timestamp: 2026-10-28T22:43:15.571266+00:00
-run_id: a1338163-1df9-4a14-9f79-ff677e5f3e84
+run_timestamp: 2026-10-29T11:23:49.674784+00:00
+run_id: cd3c7ab6-d94f-4dc4-af69-b5c76cc0f235
 
 ## Status: FAIL
-Gate global não concluído: scanner legado não cobre o contrato integral e o build global está pendente; a nova tentativa de typecheck, após recuperar dependências, foi inconclusiva. Isto não é um finding de falha de performance confirmado. Não emitir PASS com base num scan parcial.
+Gate global não concluído: scanner legado não cobre o contrato integral (APY-004). Build global completo com validação de tipos aprovado; APY-002 resolvido. Isto não é finding de falha de performance confirmado. Não emitir PASS com base num scan parcial.
 
 ## MVs
 | MV | INDEX | Refresh Fn | Cron | Wrapper | Status |
@@ -45,7 +45,7 @@ Artefactos encontrados por nome exato; não equivale a replay de todas as migrat
 - Wrapper: supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql
 
 ## Dashboards cobertos
-Nenhuma mudança em dashboard nesta tarefa. A cobertura global MV-001, MV-003 e CACHE-002 permanece sem certificação neste run. Rotas AppyPay novas têm force-dynamic, revalidate=0, force-no-store e cabeçalhos no-store; chamadas ao provedor também no-store.
+Mudança limitada ao controle de pagamento/extrato; nenhuma query de dashboard alterada nesta finalização. A cobertura global MV-001, MV-003 e CACHE-002 permanece sem certificação neste run. Rotas AppyPay novas têm force-dynamic, revalidate=0, force-no-store e cabeçalhos no-store; chamadas ao provedor também no-store.
 
 ## Alertas de cálculo ao vivo
 Nenhum introduzido nas rotas AppyPay alteradas. Sem findings MV-001 fora do escopo por falta da evidência exigida.

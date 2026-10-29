@@ -10,8 +10,9 @@ import { pathToFileURL } from 'node:url';
 
 test('HTTP authentication, financial permission, tenant scope, input boundary and callback limits', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'appypay-http-'));
-  const saved = { enabled: process.env.APPYPAY_ENABLED, config: process.env.APPYPAY_CONFIG };
-  const state = { user: null as unknown, school: 'schoolA', allowed: false, dbCalls: 0 };
+  const saved = { enabled: process.env.APPYPAY_ENABLED, config: process.env.APPYPAY_CONFIG, url: process.env.NEXT_PUBLIC_SUPABASE_URL, role: process.env.SUPABASE_SERVICE_ROLE_KEY };
+  const originalFetch = globalThis.fetch;
+  const state = { user: null as unknown, school: 'f406f5a7-a077-431c-b118-297224925726', allowed: false, dbCalls: 0, requested: null as string | null, tables: {} as Record<string, any[]> };
   (globalThis as any).__appyHttp = state;
   const bundle = async (file: string, name: string) => {
     const outfile = join(folder, name + '.mjs');
@@ -20,13 +21,14 @@ test('HTTP authentication, financial permission, tenant scope, input boundary an
       b.onLoad({ filter: /.*/, namespace: 'mock' }, args => ({ contents: args.path === 'next/server'
         ? 'export const NextResponse = { json: (body, init) => Response.json(body, init) };'
         : args.path.includes('resolveEscola')
-        ? 'export async function resolveEscolaIdForUser() { return globalThis.__appyHttp.school; }'
-        : 'export async function createClient() { const s = globalThis.__appyHttp; return { auth: { getUser: async () => ({ data: { user: s.user } }) }, rpc: async () => ({ data: s.allowed }), from: () => { s.dbCalls++; throw Error("unexpected DB call"); } }; }' }));
+        ? 'export async function resolveEscolaIdForUser(db, uid, requested) { const s=globalThis.__appyHttp; s.requested=requested; return requested && requested !== s.school ? null : s.school; }'
+        : `export function createClient() { const s = globalThis.__appyHttp; return { auth: { getUser: async () => ({ data: { user: s.user } }) }, rpc: async () => ({ data: s.allowed }), from: table => { s.dbCalls++; const filters=[]; const q={select:()=>q,eq:(k,v)=>{filters.push(r=>r[k]===v);return q;},in:(k,v)=>{filters.push(r=>v.includes(r[k]));return q;},order:()=>q,limit:()=>q,maybeSingle:async()=>({data:(s.tables[table]||[]).find(r=>filters.every(f=>f(r)))??null,error:null})};return q;} }; }` }));
       b.onResolve({ filter: /^@\// }, args => ({ path: resolve('apps/web/src', args.path.slice(2) + '.ts') }));
     } }] });
     return import(pathToFileURL(outfile).href);
   };
   try {
+    const status = await bundle('apps/web/src/app/api/financeiro/appypay/status/route.ts', 'status');
     const human = await bundle('apps/web/src/app/api/financeiro/appypay/references/route.ts', 'human');
     const reconcile = await bundle('apps/web/src/app/api/financeiro/appypay/reconcile/route.ts', 'reconcile');
     const webhook = await bundle('apps/web/src/app/api/webhooks/appypay/route.ts', 'webhook');
@@ -49,7 +51,48 @@ test('HTTP authentication, financial permission, tenant scope, input boundary an
     // No Content-Length is needed for enforcement: streamed bytes are bounded.
     r = await webhook.POST(new Request('https://app.klasse.ao/api/webhooks/appypay', { method: 'POST', body: 'x'.repeat(16385) }));
     assert.equal(r.status, 413); assert.equal(state.dbCalls, 0);
+
+    // Enabling this provider never lets a requested school bypass membership.
+    process.env.APPYPAY_CONFIG = JSON.stringify({ schoolId: state.school, environment: 'sandbox', clientId: 'id', clientSecret: 'fixture', paymentMethod: 'REF_00000000-0000-0000-0000-000000000000' });
+    assert.equal((await status.GET(new Request('https://app.klasse.ao/api/financeiro/appypay/status', { headers: { 'x-escola-id': 'foreign' } }))).status, 403);
+    assert.equal(state.dbCalls, 0);
+    const obligationId='11111111-1111-4111-8111-111111111111';
+    state.tables.school_payment_providers=[{ id: 'provider1', school_id:state.school, provider_type:'appypay',status:'active',environment:'sandbox' }];
+    state.tables.mensalidades=[{ id:obligationId,escola_id:state.school,valor:1500,valor_previsto:1500,valor_pago_total:500,status:'pendente' }];
+    const capability=await status.GET(new Request('https://app.klasse.ao/api/financeiro/appypay/status',{headers:{'x-escola-id':state.school}}));
+    assert.equal((await capability.json()).enabled,true);
+    const previewRequest=()=>new Request(`https://app.klasse.ao/api/financeiro/appypay/references?obligationId=${obligationId}`,{headers:{'x-escola-id':state.school}});
+    const issue=(body:any)=>human.POST(new Request('https://app.klasse.ao/api/financeiro/appypay/references',{method:'POST',headers:{'x-escola-id':state.school},body:JSON.stringify(body)}));
+    assert.equal((await issue({obligationId})).status,400);
+    assert.equal((await issue({obligationId,expectedAmount:999,amount:999})).status,400);
+    assert.equal((await issue({obligationId,expectedAmount:999})).status,409);
+
+    let preview=await human.GET(previewRequest()); assert.equal(preview.status,200);
+    let value=await preview.json();assert.equal(value.amount,1000);assert.equal(value.canIssue,true);assert.equal(preview.headers.get('cache-control'),'no-store');
+    state.tables.payment_references=[{id:'ref1',school_id:state.school,obligation_id:obligationId,provider_id:'provider1',entity:'00123',reference:'123456789',amount:1000,status:'active',currency:'AOA',expires_at:'2030-12-31',provider_payload:{merchant_id:'private-merchant'}}];
+    preview=await human.GET(previewRequest());value=await preview.json();assert.equal(value.canIssue,false);assert.equal(value.reference.entity,'00123');assert.ok(!JSON.stringify(value).includes('private-merchant'));assert.ok(!JSON.stringify(value).includes('fixture'));
+    state.tables.mensalidades[0].valor_pago_total=1000;
+    const changedPreview=await human.GET(previewRequest());const changed=await changedPreview.json();
+    assert.equal(changed.amount,500);assert.equal(changed.reference,null);assert.equal(changed.canIssue,false);
+    const foreign=await human.GET(new Request(`https://app.klasse.ao/api/financeiro/appypay/references?obligationId=${obligationId}`,{headers:{'x-escola-id':'foreign'}}));
+    assert.equal(foreign.status,403);
+    // A forged Success callback must not settle when the authoritative GET is only accepted (101).
+    const remoteId='33333333-3333-4333-8333-333333333333';
+    state.tables.payment_references[0].provider_reference_id=remoteId;
+    process.env.NEXT_PUBLIC_SUPABASE_URL='https://fixture.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='fixture-only';
+    let providerReads=0;
+    globalThis.fetch=(async(url:any)=>{
+      providerReads++;
+      return new Response(JSON.stringify(String(url).includes('oauth2')?{access_token:'fixture-token',expires_in:3600}:{id:remoteId,merchantTransactionId:'private-merchant',amount:1000,currency:'AOA',responseStatus:{successful:true,status:'Success',code:101,source:'REF'}}));
+    }) as typeof fetch;
+    const callback=await webhook.POST(new Request('https://app.klasse.ao/api/webhooks/appypay',{method:'POST',body:JSON.stringify({id:remoteId,amount:999999,responseStatus:{successful:true,status:'Success',code:100}})}));
+    assert.equal(callback.status,200);assert.equal((await callback.json()).status,'pending');assert.equal(providerReads,2);
+    assert.equal(state.tables.payment_references[0].status,'active');assert.equal(state.tables.payment_provider_events?.length??0,0);
+
   } finally {
+    globalThis.fetch=originalFetch;
+    if(saved.url===undefined)delete process.env.NEXT_PUBLIC_SUPABASE_URL;else process.env.NEXT_PUBLIC_SUPABASE_URL=saved.url;
+    if(saved.role===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=saved.role;
     if (saved.enabled === undefined) delete process.env.APPYPAY_ENABLED; else process.env.APPYPAY_ENABLED = saved.enabled;
     if (saved.config === undefined) delete process.env.APPYPAY_CONFIG; else process.env.APPYPAY_CONFIG = saved.config;
     delete (globalThis as any).__appyHttp;

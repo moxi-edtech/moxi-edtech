@@ -6,12 +6,13 @@ function checked<T>(result: { data: T; error: unknown }): T {
   if (result.error) throw new PaymentError(503, 'Não foi possível persistir a operação');
   return result.data;
 }
-export async function issueReference(db: SupabaseClient, client: AppyPayClient, schoolId: string, providerId: string, obligationId: string) {
+export async function issueReference(db: SupabaseClient, client: AppyPayClient, schoolId: string, providerId: string, obligationId: string, expectedAmount?: number) {
   const obligation = checked(await db.from('mensalidades').select('id,valor,valor_previsto,valor_pago_total,status')
     .eq('id', obligationId).eq('escola_id', schoolId).maybeSingle());
   if (!obligation) throw new PaymentError(404, 'Mensalidade não encontrada');
   const amount = Math.round((Number(obligation.valor_previsto ?? obligation.valor) - Number(obligation.valor_pago_total ?? 0)) * 100) / 100;
   if (!(amount > 0) || ['pago', 'isento', 'cancelado'].includes(obligation.status)) throw new PaymentError(409, 'Mensalidade sem saldo pendente');
+  if (expectedAmount !== undefined && !sameAmount(amount, expectedAmount)) throw new PaymentError(409, 'O saldo foi alterado. Consulte a mensalidade antes de emitir.');
   const existing = checked(await db.from('payment_references').select('*').eq('school_id', schoolId).eq('obligation_id', obligationId)
     .in('status', ['pending', 'active']).maybeSingle()) as Reference | null;
   if (existing) {
@@ -30,8 +31,29 @@ export async function issueReference(db: SupabaseClient, client: AppyPayClient, 
       detail.referenceNumber !== reserved.reference || !Number.isFinite(Date.parse(detail.dueDate))) throw new PaymentError(502, 'Emissão requer verificação no provedor');
   const saved = checked(await db.from('payment_references').update({ provider_reference_id: charge.id, entity: detail.entity,
     expires_at: detail.dueDate, status: 'active', updated_at: new Date().toISOString() })
-    .eq('id', reserved.id).eq('school_id', schoolId).eq('provider_id', providerId).select('*').single()) as Reference;
-  return publicReference(saved);
+    .eq('id', reserved.id).eq('school_id', schoolId).eq('provider_id', providerId).eq('status', 'pending').select('*').maybeSingle()) as Reference | null;
+  // An early callback may already have linked and paid this reservation. Never downgrade it.
+  const current = saved ?? checked(await db.from('payment_references').select('*').eq('id', reserved.id)
+    .eq('school_id', schoolId).eq('provider_id', providerId).eq('provider_reference_id', charge.id).maybeSingle()) as Reference | null;
+  if (!current) throw new PaymentError(503, 'Emissão requer verificação no provedor');
+  return publicReference(current);
+}
+
+
+export async function recoverPendingReference(db: SupabaseClient, client: AppyPayClient, schoolId: string, providerId: string, chargeId: string, merchantId: unknown): Promise<Reference | null> {
+  if (typeof merchantId !== 'string' || !/^[a-z0-9]{15}$/i.test(merchantId)) return null;
+  const candidate = checked(await db.from('payment_references').select('*').eq('school_id', schoolId).eq('provider_id', providerId)
+    .eq('status', 'pending').eq('provider_payload->>merchant_id', merchantId).maybeSingle()) as Reference | null;
+  if (!candidate) return null;
+  const charge = await client.getCharge(chargeId);
+  verifiedCharge(charge, { ...candidate, provider_reference_id: chargeId });
+  const detail = charge.reference ?? charge.responseStatus.reference;
+  if (!detail?.entity || detail.referenceNumber !== candidate.reference || !Number.isFinite(Date.parse(detail.dueDate))) throw new PaymentError(409, 'Referência do provedor incompatível');
+  const saved = checked(await db.from('payment_references').update({ provider_reference_id: chargeId, entity: detail.entity,
+    expires_at: detail.dueDate, status: 'active', updated_at: new Date().toISOString() })
+    .eq('id', candidate.id).eq('school_id', schoolId).eq('provider_id', providerId).eq('status', 'pending').select('*').maybeSingle()) as Reference | null;
+  return saved ?? checked(await db.from('payment_references').select('*').eq('id', candidate.id)
+    .eq('school_id', schoolId).eq('provider_id', providerId).eq('provider_reference_id', chargeId).maybeSingle()) as Reference | null;
 }
 
 export async function reconcileCharge(db: SupabaseClient, client: AppyPayClient, reference: Reference) {
@@ -77,7 +99,7 @@ export async function reconcileCharge(db: SupabaseClient, client: AppyPayClient,
     amount: reference.amount, currency: 'AOA', status: 'reconciled', raw_metadata: { id: charge.id } },
     { onConflict: 'provider_id,provider_transaction_id', ignoreDuplicates: true }));
   checked(await db.from('payment_references').update({ status: 'paid', paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq('id', reference.id).eq('school_id', reference.school_id).eq('provider_id', reference.provider_id));
+    .eq('id', reference.id).eq('school_id', reference.school_id).eq('provider_id', reference.provider_id).neq('status', 'paid'));
   checked(await eventQuery());
   return { status: 'reconciled' };
 }

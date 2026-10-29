@@ -1,8 +1,8 @@
 {
   "contrato_versao": "2.0.0",
-  "run_id": "a1338163-1df9-4a14-9f79-ff677e5f3e84",
-  "run_timestamp": "2026-10-28T22:49:11.850144+00:00",
-  "commit": "42c9855c8",
+  "run_id": "cd3c7ab6-d94f-4dc4-af69-b5c76cc0f235",
+  "run_timestamp": "2026-10-29T11:23:49.674784+00:00",
+  "commit": "5c4964143a3e02ab88b7224ff61c2398bdb75fd5",
   "veredito": "WARN",
   "can_merge": false,
   "summary": {
@@ -19,23 +19,28 @@
   ],
   "scope": "AppyPay: rotas e módulos alterados; não é auditoria global integral",
   "validation": {
-    "unit_http_tests": 14,
+    "unit_http_tests": 19,
     "local_postgresql_scenarios": 3,
     "module_strict_types": "passed",
-    "global_typecheck": "inconclusive: after frozen-lockfile reinstall, interrupted after more than six minutes without diagnostics",
+    "global_typecheck": "passed as part of complete local Next production build; types not bypassed",
     "provider_authentication": "passed; no charges created",
     "supabase_atomic_rpc": "installed; body hash and permissions verified; nonexistent-intent probe passed without data mutation",
     "production_migration": "20261028224738_appypay_atomic_confirmation",
     "unit_http_environment": "retested successfully with restored locked project dependencies",
-    "targeted_route_types": "passed for all AppyPay modules and three routes, using real locked project dependencies and imports"
+    "targeted_route_types": "passed for all AppyPay modules and three routes, using real locked project dependencies and imports",
+    "production_build": "passed; 182 pages; placeholder credentials; APPYPAY_ENABLED=false",
+    "scoped_lint": "passed",
+    "visual_component": "passed with synthetic API fixture; not live provider end-to-end"
   },
   "warnings": [
-    "APY-002",
-    "APY-003"
+    "APY-003",
+    "APY-004"
   ],
   "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem regressões a reportar",
-  "legacy_scan": "Executado e arquivado com prefixo LEGACY_; formato/cobertura incompatíveis com contrato 2.0.0; não usado como prova de PASS.",
+  "legacy_scan": "Rerun 2026-10-29 in /private/tmp/appypay-scans-final; 0 critical/high/medium; 6 LOW VALIDATED markers, legacy perf gate PASS. Does not implement complete contract 2.0.0; not global PASS evidence.",
   "resolved_warnings": [
-    "APY-001"
-  ]
+    "APY-001",
+    "APY-002"
+  ],
+  "tested_working_tree": true
 }

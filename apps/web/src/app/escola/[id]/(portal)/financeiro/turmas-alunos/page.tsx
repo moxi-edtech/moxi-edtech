@@ -98,6 +98,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   // --- States ---
   const [data, setData] = useState<{ turmas: Turma[], alunos: Aluno[] }>({ turmas: [], alunos: [] });
   const [loading, setLoading] = useState(true);
+  const [paymentRevision, setPaymentRevision] = useState(0);
   const [mensalidadesByAluno, setMensalidadesByAluno] = useState<Record<string, MensalidadeAluno[]>>({});
   
   // UX States
@@ -144,7 +145,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       }
     };
     fetchData();
-  }, [escolaParam, anoLetivoId]);
+  }, [escolaParam, anoLetivoId, paymentRevision]);
 
   useEffect(() => {
     if (!escolaParam) return;
@@ -677,6 +678,14 @@ const TurmasAlunosFinanceiro: React.FC = () => {
             turma: modalExtrato.aluno.turmaNome 
           }}
           mensalidades={mensalidadesByAluno[modalExtrato.aluno.id] ?? []}
+          onPaymentConfirmed={(mensalidadeId) => {
+            const alunoId = modalExtrato.aluno!.id;
+            setMensalidadesByAluno(prev => ({
+              ...prev,
+              [alunoId]: (prev[alunoId] ?? []).map(item => item.id === mensalidadeId ? { ...item, status: 'paga' as const } : item),
+            }));
+            setPaymentRevision(value => value + 1);
+          }}
           onClose={() => setModalExtrato({ show: false, aluno: null })}
         />
       )}

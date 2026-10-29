@@ -1,8 +1,8 @@
 # KLASSE — Codex Scan Report
 contrato_versao: 2.0.0
-run_timestamp: 2026-10-28T22:43:15.571266+00:00
-run_id: a1338163-1df9-4a14-9f79-ff677e5f3e84
-commit: b425b0bd663959385a4b6ed202666d08e87f7a9c
+run_timestamp: 2026-10-29T11:23:49.674784+00:00
+run_id: cd3c7ab6-d94f-4dc4-af69-b5c76cc0f235
+commit: 5c4964143a3e02ab88b7224ff61c2398bdb75fd5 + working tree validada antes do commit final
 
 ## Sumário
 | Severidade | Total | Bloqueantes |
@@ -16,27 +16,29 @@ commit: b425b0bd663959385a4b6ed202666d08e87f7a9c
 ## Veredito
 WARN
 
-Escopo: integração AppyPay alterada; não certifica o repositório inteiro. Sem PASS parcial. can_merge: false.
+Escopo: alterações AppyPay; não certifica o repositório inteiro. Sem PASS parcial. can_merge: false.
 
 ## Blockers activos
-APY-002: typecheck/build global não validado por dependências ausentes.
-APY-003: sem fluxo de cobrança real ou sandbox no provedor; webhook não publicado.
+APY-003: fluxo com pagamento/entrega de webhook no provedor ainda não exercitado; antes da ativação.
+APY-004: cobertura integral do contrato 2.0.0 pendente; scanner legado não certifica gate global.
 
 ## Findings
-Nenhuma violação de regra reportada neste escopo. Os itens acima são limites de validação/execução, não findings de código inventados.
+Nenhuma violação de regra reportada neste escopo. Os itens acima são limites de validação, não findings de código sem evidência.
 
 ## Regressões
 REPORT_SCAN_LAST_PASS.json ausente. Sem regressões a reportar; baseline não atualizado.
 
 ## Excepções activas
-EXC-SEC-001-B e EXC-SEC-002-A, restritas ao callback de máquina /api/webhooks/appypay; documentadas em agents/exceptions/.
+EXC-SEC-001-B e EXC-SEC-002-A para callback de máquina /api/webhooks/appypay, documentadas em agents/exceptions/.
 
 ## Validação
-14 testes código/HTTP; 3 cenários PostgreSQL local; typecheck strict dos módulos aprovado; autenticação de produção confirmada sem cobrança. A RPC financeira existente é fixture no teste SQL. O scanner legado não implementa o contrato 2.0.0 integralmente e seu output foi arquivado como LEGACY_REPORT_SCAN.*.
+- 19 testes código/HTTP aprovados; fronteiras HTTP simuladas.
+- Lint dos ficheiros alterados aprovado separadamente.
+- Build Next de produção completo aprovado com verificação de tipos e 182 páginas, gateway desativado e credenciais fictícias. APY-002 resolvido.
+- Componente real validado no navegador com fixture sintética; detalhes em VISUAL_APPYPAY.md.
+- 3 cenários PostgreSQL local aprovados anteriormente; RPC financeira existente representada por fixture.
+- OAuth produção verificado anteriormente sem cobrança.
+- SQL aprovado aplicado anteriormente; corpo, privilégios e probe não mutável conferidos.
+- Scanner legado novamente executado: zero critical/high/medium, seis marcadores LOW VALIDATED; gate legado PASS. Não implementa o contrato integral; APY-004 aberto.
 
-## Atualização após aprovação SQL — 2026-10-28
-APY-001 resolvido: aprovação explícita registada no commit 42c9855c8. Migration 20261028224738 aplicada; hash/permissões/SECURITY INVOKER confirmados no Supabase e probe sem dados reais passou. Advisors consultados sem aviso específico AppyPay. Não houve teste financeiro real, build completo, merge ou publicação. WARN/can_merge=false preservados por APY-002 e APY-003; nenhum PASS global emitido.
-
-Dependências recuperadas via frozen-lockfile, sem alterações de lockfile. Os 14 testes passaram novamente. Typecheck global adicional inconclusivo: interrompido após mais de seis minutos sem diagnósticos. Não é evidência de erro AppyPay nem de PASS global; APY-002 permanece aberto.
-
-Typecheck direcionado dos módulos e das três rotas AppyPay aprovado após recuperar as dependências fixadas, usando imports/tipos reais do projeto. Não altera o estado inconclusivo do check global.
+Sem novo SQL, dados reais, deploy, merge ou ativação nesta finalização. APY-001 e APY-002 resolvidos; APY-003 e APY-004 registados no WARN_REGISTRY.md.
