@@ -1,4 +1,5 @@
 import { executarValidacoesFechamento } from "@/app/api/secretaria/fechamento-academico/validacoes/engine";
+import { readCanonicalCutoverTargetReview } from "@/lib/academico/validate-canonical-cutover";
 
 export const ESTADOS_FECHAMENTO = {
   PENDING_VALIDATION: "PENDING_VALIDATION",
@@ -78,6 +79,27 @@ export async function runFechamentoOrchestration(params: {
   allowReabertoOverride?: boolean;
 }) {
   const { supabase, runId, escolaId, executorUserId, acao, anoLetivoId, periodoLetivoId, turmaIds } = params;
+
+  // Check the next MED year before closing *any* student records. A late
+  // failure to activate the next session would otherwise leave this run
+  // partially finalized with no usable course calendar.
+  if (acao === "fechar_ano") {
+    const { data: source, error: sourceError } = await supabase.from("anos_letivos")
+      .select("ano").eq("escola_id", escolaId).eq("id", anoLetivoId).single();
+    if (sourceError || !source) throw sourceError ?? new Error("Ano de origem não encontrado.");
+    const { data: next, error: nextError } = await supabase.from("anos_letivos")
+      .select("id,ano").eq("escola_id", escolaId).eq("ano", source.ano + 1).maybeSingle();
+    if (nextError) throw nextError;
+    if (!next) throw new Error("O ano letivo de destino ainda não foi preparado.");
+    if (next.ano >= 2026) {
+      const review = await readCanonicalCutoverTargetReview(supabase as any, {
+        escolaId, targetYearId: next.id,
+      });
+      if (!review.ready) {
+        throw new Error(`O calendário do ano seguinte exige conciliação: ${review.blockers.join("; ")}`);
+      }
+    }
+  }
 
   const preflight = await executarValidacoesFechamento({
     supabase,
@@ -310,8 +332,24 @@ export async function runFechamentoOrchestration(params: {
         .eq("ano", Number(currentYear.ano) + 1)
         .maybeSingle();
       if (nextYear?.id) {
-        await supabase.from("anos_letivos").update({ ativo: false }).eq("escola_id", escolaId).eq("id", anoLetivoId);
-        await supabase.from("anos_letivos").update({ ativo: true }).eq("escola_id", escolaId).eq("id", nextYear.id);
+        const { data: selectedTarget, error: selectedTargetError } = await supabase
+          .from("anos_letivos").select("ano")
+          .eq("escola_id", escolaId).eq("id", nextYear.id).single();
+        if (selectedTargetError || !selectedTarget) {
+          throw selectedTargetError ?? new Error("Ano de destino não encontrado.");
+        }
+        if (selectedTarget.ano >= 2026) {
+          const review = await readCanonicalCutoverTargetReview(supabase as any, {
+            escolaId, targetYearId: nextYear.id,
+          });
+          if (!review.ready) throw new Error(review.blockers.join("; "));
+        }
+        const { error: deactivateError } = await supabase.from("anos_letivos")
+          .update({ ativo: false }).eq("escola_id", escolaId).eq("id", anoLetivoId);
+        if (deactivateError) throw deactivateError;
+        const { error: activateError } = await supabase.from("anos_letivos")
+          .update({ ativo: true }).eq("escola_id", escolaId).eq("id", nextYear.id);
+        if (activateError) throw activateError;
       }
     }
   }
