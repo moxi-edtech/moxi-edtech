@@ -153,7 +153,7 @@ export async function GET(request: Request) {
         .in("entity_id", ids).limit(500) : Promise.resolve({ data: [], error: null }),
     ]);
     if (origins.error || audit.error) throw origins.error ?? audit.error;
-    const sourceById = new Map((origins.data ?? []).map((m: any) => [m.id, m]));
+    const sourceById = new Map<string, any>((origins.data ?? []).map((m: any): [string, any] => [String(m.id), m]));
     const signed = new Set((audit.data ?? [])
       .filter((a: any) => Boolean(a.actor_id) && Boolean(a.details?.motivo))
       .map((a: any) => String(a.entity_id)));
