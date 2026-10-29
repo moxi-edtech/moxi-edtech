@@ -460,7 +460,7 @@ de classe. Rematrícula e financeiro preservam os seus gates existentes.
 «Histórico anterior por regularizar» para as 550 origens sem alterar
 nota/resultado; 511 destinos ativos e um pendente mantêm-se como estão.
 
-**Rollout:** aplicar primeiro a migration aditiva SQL v2; depois ativar o
+**Rollout:** view aplicada em produção nas versões remotas 20261029132302 (criação) e 20261029132512 (privilégios de leitura apenas), com shims de ledger e replay canónico em 20271029235900. Aplicar primeiro a migration aditiva SQL v2; depois ativar o
 backend consumidor e a UI. Em caso de falha da view, falhar explicitamente
 na consulta, nunca assumir aluno aprovado, matriculado ou reprovação.
 O âmbito histórico fechado dos exploradores continua sujeito à homologação

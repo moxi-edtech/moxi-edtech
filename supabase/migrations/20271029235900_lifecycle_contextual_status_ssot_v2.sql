@@ -64,7 +64,7 @@ SELECT classified.*,
   END AS acao_contextual
 FROM classified;
 
-REVOKE ALL ON public.v_student_lifecycle_status_v2 FROM PUBLIC, anon;
+REVOKE ALL ON public.v_student_lifecycle_status_v2 FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON public.v_student_lifecycle_status_v2 TO authenticated, service_role;
 COMMENT ON VIEW public.v_student_lifecycle_status_v2 IS
 'SSOT read projection: matrícula, regularização histórica, resultado oficial e próxima ação, distintos. Não permite inferir notas ou aprovação. Security invoker e RLS na origem.';

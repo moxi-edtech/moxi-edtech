@@ -24,7 +24,10 @@ test("read-only projection is invoker scoped, disambiguates historical pending, 
   assert.match(sql, /ano_superado_pelo_ativo OR possui_matricula_posterior/);
   assert.match(sql, /'regularizacao_historica'/);
   assert.match(sql, /resultado_oficial IN \('aprovado','reprovado','concluido'\)/);
-  assert.match(sql, /REVOKE ALL.*PUBLIC, anon/);
+  assert.match(sql, /REVOKE ALL.*PUBLIC, anon, authenticated, service_role/);
+  assert.match(sql, /GRANT SELECT.*authenticated, service_role/);
+  assert.match(read("supabase/migrations/20261029132302_lifecycle_contextual_status_ssot_v2.sql"), /SELECT 1 WHERE false/);
+  assert.match(read("supabase/migrations/20261029132512_lifecycle_contextual_status_v2_select_only.sql"), /SELECT 1 WHERE false/);
   assert.doesNotMatch(sql, /UPDATE public\.matriculas|INSERT INTO public\.notas|UPDATE public\.historico_anos/i);
 });
 
