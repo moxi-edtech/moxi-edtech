@@ -262,11 +262,24 @@ export async function POST(request: Request) {
       let numeroMatricula: string | null = null;
       const { data: matricula } = await supabase
         .from("matriculas")
-        .select("numero_matricula")
+        .select("numero_matricula, turma_id")
         .eq("id", candidatura.matricula_id)
         .eq("escola_id", candidatura.escola_id)
         .maybeSingle();
-      numeroMatricula = (matricula?.numero_matricula as string | null) ?? null;
+      if (!matricula) {
+        return NextResponse.json({
+          ok: false, code: "ADMISSION_MATRICULA_NOT_FOUND",
+          error: "A candidatura indica matrícula concluída, mas o vínculo não foi encontrado. Consulte o histórico do aluno.",
+        }, { status: 409 });
+      }
+      if (matricula.turma_id && matricula.turma_id !== turma_id) {
+        return NextResponse.json({
+          ok: false, code: "ADMISSION_ALREADY_MATRICULATED_OTHER_CLASS",
+          error: "Esta candidatura já foi matriculada noutra turma. Consulte a matrícula existente antes de alterar o destino.",
+          matricula_id: candidatura.matricula_id,
+        }, { status: 409 });
+      }
+      numeroMatricula = (matricula.numero_matricula as string | null) ?? null;
 
       return NextResponse.json({
         ok: true,
@@ -290,13 +303,15 @@ export async function POST(request: Request) {
       const idempotencyResult = existingIdempotency?.result ?? null;
       if (isJsonObject(idempotencyResult)) {
         if (
-          typeof idempotencyResult.candidatura_id === 'string' &&
-          idempotencyResult.candidatura_id !== candidatura_id
+          (typeof idempotencyResult.candidatura_id === 'string' &&
+            idempotencyResult.candidatura_id !== candidatura_id) ||
+          (typeof idempotencyResult.turma_id === 'string' &&
+            idempotencyResult.turma_id !== turma_id)
         ) {
           return NextResponse.json({
             ok: false,
             code: "ADMISSION_IDEMPOTENCY_SCOPE_MISMATCH",
-            error: "A chave de operação já está vinculada a outra candidatura.",
+            error: "A chave de operação já está vinculada a outra candidatura ou turma.",
           }, { status: 409 });
         }
         return NextResponse.json(idempotencyResult);
