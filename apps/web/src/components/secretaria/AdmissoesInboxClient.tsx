@@ -505,7 +505,10 @@ export default function AdmissoesInboxClient({
   }, [])
 
   const handleNextCandidate = useCallback(() => {
-    const next = filteredItems.find((item) => item.id !== selectedId && item.status !== 'matriculado')
+    const next = filteredItems.find((item) =>
+      item.id !== selectedId &&
+      !['matriculado', 'rejeitada', 'arquivada', 'arquivado'].includes(item.status)
+    )
     setCompletedCandidateId(null)
     setSelectedId(next?.id ?? null)
   }, [filteredItems, selectedId])
