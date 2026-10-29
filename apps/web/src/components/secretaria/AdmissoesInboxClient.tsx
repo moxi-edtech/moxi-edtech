@@ -139,21 +139,22 @@ type TurmaPromocao = {
   ano_letivo: number | null
 }
 
+// Cores de estado são semânticas; superfícies neutras seguem os tokens do Balcão.
 const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: string }> = {
-  rascunho: { label: 'Rascunho', color: 'text-slate-500', bg: 'bg-slate-100' },
-  pre_candidatura: { label: 'Pré-candidatura', color: 'text-indigo-700', bg: 'bg-indigo-50' },
-  submetida: { label: 'Nova', color: 'text-blue-600', bg: 'bg-blue-50' },
-  documentos_reenviados: { label: 'Documentos Re-enviados', color: 'text-blue-700', bg: 'bg-blue-100' },
-  pendente: { label: 'Documentos Pendentes', color: 'text-rose-700', bg: 'bg-rose-50' },
-  lista_espera: { label: 'Lista de Espera', color: 'text-amber-700', bg: 'bg-amber-100' },
-  em_analise: { label: 'Em Análise', color: 'text-amber-600', bg: 'bg-amber-50' },
-  aprovada: { label: 'Aprovada', color: 'text-emerald', bg: 'bg-emerald/10' },
-  aguardando_pagamento: { label: 'Reserva (Aguardando Pagamento)', color: 'text-amber-700', bg: 'bg-amber-100' },
-  aguardando_compensacao: { label: 'Reserva (Em Validação)', color: 'text-amber-700', bg: 'bg-amber-100' },
-  rejeitada: { label: 'Rejeitada', color: 'text-red-600', bg: 'bg-red-50' },
-  arquivada: { label: 'Arquivada', color: 'text-slate-600', bg: 'bg-slate-100' },
-  arquivado: { label: 'Arquivado', color: 'text-slate-600', bg: 'bg-slate-100' },
-  matriculado: { label: 'Matriculado', color: 'text-emerald', bg: 'bg-emerald/20' },
+  rascunho: { label: 'Rascunho', color: 'text-muted-foreground', bg: 'bg-muted' },
+  pre_candidatura: { label: 'Pré-candidatura', color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-500/15' },
+  submetida: { label: 'Nova', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-500/15' },
+  documentos_reenviados: { label: 'Documentos Re-enviados', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100 dark:bg-blue-500/20' },
+  pendente: { label: 'Documentos Pendentes', color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-500/15' },
+  lista_espera: { label: 'Lista de Espera', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-500/15' },
+  em_analise: { label: 'Em Análise', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15' },
+  aprovada: { label: 'Aprovada', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15' },
+  aguardando_pagamento: { label: 'Reserva (Aguardando Pagamento)', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-500/15' },
+  aguardando_compensacao: { label: 'Reserva (Em Validação)', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-500/15' },
+  rejeitada: { label: 'Rejeitada', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15' },
+  arquivada: { label: 'Arquivada', color: 'text-muted-foreground', bg: 'bg-muted' },
+  arquivado: { label: 'Arquivado', color: 'text-muted-foreground', bg: 'bg-muted' },
+  matriculado: { label: 'Matriculado', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100 dark:bg-emerald-500/20' },
 }
 
 const REJECTABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'pre_candidatura', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
@@ -1241,7 +1242,7 @@ export default function AdmissoesInboxClient({
               </div>
               <button
                 onClick={handleCopyLink}
-                className="flex items-center gap-1 px-2 py-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-500 text-[10px] font-bold"
+                className="flex items-center gap-1 px-2 py-1.5 hover:bg-muted rounded-lg transition-colors text-muted-foreground text-[10px] font-bold"
                 title="Copiar Link"
               >
                 <Copy className="h-3.5 w-3.5" />
@@ -1260,7 +1261,7 @@ export default function AdmissoesInboxClient({
           </details>
 
           <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Pesquisar candidatura..."
@@ -1295,9 +1296,9 @@ export default function AdmissoesInboxClient({
           </div>
 
           {statusFilter === 'pre_candidaturas' && (
-            <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+            <div className="mb-4 rounded-xl border border-indigo-100 dark:border-indigo-500/25 bg-indigo-50 dark:bg-indigo-500/10 p-3">
               <div className="flex items-center justify-between gap-3">
-                <label className="flex items-center gap-2 text-[11px] font-bold text-indigo-800">
+                <label className="flex items-center gap-2 text-[11px] font-bold text-indigo-800 dark:text-indigo-300">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-indigo-300"
@@ -1317,7 +1318,7 @@ export default function AdmissoesInboxClient({
                   Promover ({bulkSelectedIds.size})
                 </Button>
               </div>
-              <p className="mt-2 text-[10px] leading-relaxed text-indigo-700">
+              <p className="mt-2 text-[10px] leading-relaxed text-indigo-700 dark:text-indigo-300">
                 A promoção em lote exige uma turma oficial com capacidade para todos os selecionados.
               </p>
             </div>
@@ -1331,15 +1332,15 @@ export default function AdmissoesInboxClient({
               onClick={() => setStatusFilter('expirando')}
               className={`p-3 rounded-xl border text-left transition-all ${
                 statusFilter === 'expirando'
-                  ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-100'
-                  : 'bg-white border-slate-100 hover:border-slate-200'
+                  ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 ring-2 ring-amber-100 dark:ring-amber-500/20'
+                  : 'bg-card border-border hover:border-slate-200'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Timer className={`h-3 w-3 ${counts.expirando > 0 ? 'text-amber-600 animate-pulse' : 'text-slate-400'}`} />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Expirando</span>
+                <Timer className={`h-3 w-3 ${counts.expirando > 0 ? 'text-amber-700 dark:text-amber-300 animate-pulse' : 'text-muted-foreground'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Expirando</span>
               </div>
-              <p className={`text-lg font-black ${counts.expirando > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+              <p className={`text-lg font-black ${counts.expirando > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'}`}>
                 {counts.expirando || 0}
               </p>
             </button>
@@ -1347,15 +1348,15 @@ export default function AdmissoesInboxClient({
               onClick={() => setStatusFilter('reenviados')}
               className={`p-3 rounded-xl border text-left transition-all ${
                 statusFilter === 'reenviados'
-                  ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-100'
-                  : 'bg-white border-slate-100 hover:border-slate-200'
+                  ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 ring-2 ring-blue-100'
+                  : 'bg-card border-border hover:border-slate-200'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <RefreshCw className={`h-3 w-3 ${counts.reenviados > 0 ? 'text-blue-600' : 'text-slate-400'}`} />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Re-enviados</span>
+                <RefreshCw className={`h-3 w-3 ${counts.reenviados > 0 ? 'text-blue-600' : 'text-muted-foreground'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Re-enviados</span>
               </div>
-              <p className={`text-lg font-black ${counts.reenviados > 0 ? 'text-blue-700' : 'text-slate-400'}`}>
+              <p className={`text-lg font-black ${counts.reenviados > 0 ? 'text-blue-700 dark:text-blue-300' : 'text-muted-foreground'}`}>
                 {counts.reenviados || 0}
               </p>
             </button>
@@ -1363,15 +1364,15 @@ export default function AdmissoesInboxClient({
               onClick={() => setStatusFilter('lista_espera')}
               className={`p-3 rounded-xl border text-left transition-all col-span-2 ${
                 statusFilter === 'lista_espera'
-                  ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-100'
-                  : counts.oportunidades_espera > 0 ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200' : 'bg-white border-slate-100 hover:border-slate-200'
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 ring-2 ring-emerald-100'
+                  : counts.oportunidades_espera > 0 ? 'bg-emerald-50/50 border-emerald-100 dark:border-emerald-500/25 hover:border-emerald-200' : 'bg-card border-border hover:border-slate-200'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Check className={`h-3 w-3 ${counts.oportunidades_espera > 0 ? 'text-emerald-600 animate-bounce' : 'text-slate-400'}`} />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Vagas Disponíveis</span>
+                <Check className={`h-3 w-3 ${counts.oportunidades_espera > 0 ? 'text-emerald-600 animate-bounce' : 'text-muted-foreground'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Vagas Disponíveis</span>
               </div>
-              <p className={`text-sm font-bold ${counts.oportunidades_espera > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>
+              <p className={`text-sm font-bold ${counts.oportunidades_espera > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'}`}>
                 {counts.oportunidades_espera > 0
                   ? `${counts.oportunidades_espera} candidatos podem ser promovidos`
                   : 'Nenhuma vaga aberta para espera'}
@@ -1383,18 +1384,18 @@ export default function AdmissoesInboxClient({
 
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-muted/30 p-3">
           {listError ? (
-            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div role="alert" className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300">
               <p>Não foi possível carregar a fila: {listError}</p>
               <button type="button" className="mt-2 font-bold underline" onClick={() => void fetchList()}>Tentar novamente</button>
             </div>
           ) : loading ? (
             <div className="flex flex-col items-center justify-center h-32 space-y-2">
               <Spinner size={16} />
-              <p className="text-xs text-slate-400">Carregando fila...</p>
+              <p className="text-xs text-muted-foreground">Carregando fila...</p>
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <p className="text-sm text-slate-400">Nenhuma candidatura encontrada.</p>
+              <p className="text-sm text-muted-foreground">Nenhuma candidatura encontrada.</p>
             </div>
           ) : (
             filteredItems.map((item) => {
@@ -1444,17 +1445,17 @@ export default function AdmissoesInboxClient({
                     <p className="font-sans text-sm font-bold text-foreground transition-colors group-hover:text-emerald">
                       {item.nome_candidato}
                     </p>
-                    <p className="font-mono text-[11px] text-slate-500 mt-1 uppercase tracking-wider">
+                    <p className="font-mono text-[11px] text-muted-foreground mt-1 uppercase tracking-wider">
                       {displayProtocol(item)} • {item.classes?.nome || '—'} • {item.cursos?.nome || '—'}
                     </p>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {format(new Date(item.created_at), "dd MMM, HH:mm", { locale: ptBR })}
                     </span>
-                    <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'translate-x-1 text-amber' : 'text-slate-300'}`} />
+                    <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'translate-x-1 text-amber' : 'text-muted-foreground'}`} />
                   </div>
                 </div>
               )
@@ -1488,20 +1489,20 @@ export default function AdmissoesInboxClient({
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <Badge variant="outline" className="font-mono text-[10px] uppercase border-amber/30 text-amber-600">
+                          <Badge variant="outline" className="font-mono text-[10px] uppercase border-amber/30 text-amber-700 dark:text-amber-300">
                             Protocolo: {displayProtocol(selectedData)}
                           </Badge>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_CONFIG[selectedData.status]?.bg || 'bg-slate-100'} ${STATUS_CONFIG[selectedData.status]?.color || 'text-slate-500'}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_CONFIG[selectedData.status]?.bg || 'bg-muted'} ${STATUS_CONFIG[selectedData.status]?.color || 'text-muted-foreground'}`}>
                             {STATUS_CONFIG[selectedData.status]?.label || selectedData.status}
                           </span>
                           {selectedData.status === 'documentos_reenviados' && (
-                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                            <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
                               Revisão atribuída à Secretaria
                             </span>
                           )}
                         </div>
                         {selectedData.status === 'lista_espera' && (
-                          <p className="mb-3 max-w-2xl rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                          <p className="mb-3 max-w-2xl rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
                             Esta candidatura entrou em lista de espera porque a turma selecionada estava lotada no momento da submissão.
                           </p>
                         )}
@@ -1556,13 +1557,13 @@ export default function AdmissoesInboxClient({
                     <div role="tabpanel" id={`admission-panel-${detailTab}`} aria-labelledby={`admission-tab-${detailTab}`} className="space-y-4">
                     {/* Alerta de Conciliação Financeira */}
                     {detailTab === 'resumo' && (selectedData.status === 'aguardando_compensacao' || selectedData.status === 'aguardando_pagamento') && (
-                      <section className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+                      <section className="bg-amber-50 dark:bg-amber-500/10 p-6 rounded-2xl border-2 border-amber-200 dark:border-amber-500/30 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest flex items-center gap-2">
+                          <h3 className="text-sm font-black text-amber-900 dark:text-amber-200 uppercase tracking-widest flex items-center gap-2">
                             <CreditCard className="h-4 w-4" />
                             Conciliação Financeira
                           </h3>
-                          <Badge className="bg-amber-200 text-amber-900 border-amber-300">
+                          <Badge className="bg-amber-200 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-500/40">
                             {selectedData.status === 'aguardando_compensacao' ? 'Comprovativo Enviado' : 'Aguardando Talão'}
                           </Badge>
                         </div>
@@ -1584,18 +1585,18 @@ export default function AdmissoesInboxClient({
                           </div>
 
                           <div className="flex flex-col gap-2">
-                            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Documento de Prova</p>
+                            <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-widest">Documento de Prova</p>
                             {(() => {
                               const compPath = selectedData.dados_candidato?.pagamento?.comprovativo_path || selectedData.dados_candidato?.pagamento?.comprovativo_url;
                               if (!compPath) return (
-                                <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 border-2 border-dashed border-amber-200 rounded-xl text-amber-500 text-xs italic">
+                                <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 border-2 border-dashed border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-500 text-xs italic">
                                   Nenhum talão anexado pelo aluno
                                 </div>
                               );
                               return (
                                 <button
                                   onClick={() => handleViewDoc('Comprovativo', compPath)}
-                                  className="flex items-center justify-center gap-2 w-full py-4 bg-white border-2 border-dashed border-amber-300 rounded-xl text-amber-700 font-bold hover:bg-amber-100 transition-all group"
+                                  className="flex items-center justify-center gap-2 w-full py-4 bg-card border-2 border-dashed border-amber-300 dark:border-amber-500/40 rounded-xl text-amber-700 dark:text-amber-300 font-bold hover:bg-amber-100 transition-all group"
                                 >
                                   <FileText className="h-5 w-5 group-hover:scale-110 transition-transform" />
                                   Visualizar Talão Agora
@@ -1621,7 +1622,7 @@ export default function AdmissoesInboxClient({
                       {detailTab === 'resumo' && (<>
                       {/* Dados Pessoais */}
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <User className="h-4 w-4" />
                           Dados do candidato
                         </h3>
@@ -1636,7 +1637,7 @@ export default function AdmissoesInboxClient({
 
                       {/* Encarregado */}
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <User className="h-4 w-4" />
                           Responsável / Encarregado
                         </h3>
@@ -1650,14 +1651,14 @@ export default function AdmissoesInboxClient({
 
                       {/* Escolha Acadêmica */}
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <FileText className="h-4 w-4" />
                           Acadêmico
                         </h3>
                         <div className="space-y-4">
                           {selectedData.status === 'pre_candidatura' && selectedData.dados_candidato?.interesse ? (
-                            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3">
-                              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-indigo-700">
+                            <div className="rounded-xl border border-indigo-100 dark:border-indigo-500/25 bg-indigo-50 dark:bg-indigo-500/10 p-3">
+                              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300">
                                 Interesse declarado
                               </p>
                               <DataField label="Nível" value={selectedData.dados_candidato.interesse?.curso_nome || selectedData.cursos?.nome || '—'} />
@@ -1670,12 +1671,12 @@ export default function AdmissoesInboxClient({
                           <DataField label="Classe" value={selectedData.classes?.nome || '—'} />
                           <DataField label="Ano Letivo" value={selectedData.ano_letivo?.toString() || '—'} />
                           {selectedData.status === 'aguardando_pagamento' && (
-                            <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1 flex items-center gap-1">
+                            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-100 dark:border-amber-500/25">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1">
                                 <Timer size={10} />
                                 Reserva Expira em
                               </p>
-                              <p className="text-sm font-bold text-amber-900">
+                              <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
                                 {getReservaExpiraAt(selectedData)
                                   ? format(new Date(getReservaExpiraAt(selectedData) as string), "dd/MM/yyyy HH:mm")
                                   : 'Data não definida'}
@@ -1690,7 +1691,7 @@ export default function AdmissoesInboxClient({
                       <>
                       {/* Documentos */}
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <FileText className="h-4 w-4" />
                           Documentos Anexados
                         </h3>
@@ -1699,14 +1700,14 @@ export default function AdmissoesInboxClient({
                             documentEntries.map(([name, path]) => (
                               <div
                                 key={name}
-                                className="group relative w-24 h-32 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden hover:border-amber transition-all"
+                                className="group relative w-24 h-32 bg-muted rounded-xl border border-border overflow-hidden hover:border-amber transition-all"
                               >
                                 <button
                                   type="button"
                                   onClick={() => handleViewDoc(name, path as string)}
                                   className="absolute inset-0 flex items-center justify-center"
                                 >
-                                  <FileText className="h-8 w-8 text-slate-300" />
+                                  <FileText className="h-8 w-8 text-muted-foreground" />
                                 </button>
                                 <div className="absolute inset-x-0 bottom-0 truncate bg-card/90 p-2 text-center text-[8px] font-bold uppercase text-foreground">
                                   {name.replace('_', ' ')}
@@ -1721,14 +1722,14 @@ export default function AdmissoesInboxClient({
                               </div>
                             ))
                           ) : (
-                            <div className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-slate-200 rounded-xl text-slate-400">
+                            <div className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border rounded-xl text-muted-foreground">
                               <FileText className="h-8 w-8 mb-2 opacity-50" />
                               <p className="text-xs">Nenhum documento anexado</p>
                             </div>
                           )}
                         </div>
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                          <p className="text-xs text-slate-500">
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                          <p className="text-xs text-muted-foreground">
                             Se houver documento inválido ou ausente, envie a pendência para o Cofre do candidato.
                           </p>
                           {canRequestDocumentCorrection(selectedData.status) && (
@@ -1736,7 +1737,7 @@ export default function AdmissoesInboxClient({
                               type="button"
                               onClick={openPendenciasModal}
                               disabled={!!loadingAction}
-                              className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                              className="inline-flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 disabled:opacity-50"
                             >
                               <AlertCircle className="h-4 w-4" />
                               Solicitar correção
@@ -1751,7 +1752,7 @@ export default function AdmissoesInboxClient({
                       <>
                       {/* Histórico de Pendências */}
                       <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:col-span-2">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           Histórico de Pendências
                         </h3>
@@ -1763,16 +1764,16 @@ export default function AdmissoesInboxClient({
                                 <div key={item.id} className="rounded-xl border border-border bg-muted/40 p-4">
                                   <div className="flex flex-wrap items-center justify-between gap-2">
                                     <p className="text-sm font-bold text-foreground">{description.title}</p>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                       {formatLogDate(item.created_at)}
                                     </span>
                                   </div>
-                                  <p className="mt-2 text-xs leading-relaxed text-slate-600">{description.detail}</p>
-                                  <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{description.detail}</p>
+                                  <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                     Por {describeHistoryActor(item)}
                                   </p>
                                   {item.from_status || item.to_status ? (
-                                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                       {item.from_status || '—'} → {item.to_status || '—'}
                                     </p>
                                   ) : null}
@@ -1781,7 +1782,7 @@ export default function AdmissoesInboxClient({
                             })}
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400">
+                          <div className="rounded-xl border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
                             Nenhuma pendência documental registada.
                           </div>
                         )}
@@ -1863,11 +1864,11 @@ export default function AdmissoesInboxClient({
               ) : null}
             </motion.div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-12 text-center">
-              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                <Mail className="h-10 w-10 text-slate-300" />
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-12 text-center">
+              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+                <Mail className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-bold text-slate-600">Selecione uma candidatura</h3>
+              <h3 className="text-xl font-bold text-muted-foreground">Selecione uma candidatura</h3>
               <p className="mt-2 max-w-xs">Escolha uma candidatura na fila para consultar os dados, documentos, histórico e ações disponíveis.</p>
             </div>
           )}
@@ -1881,7 +1882,7 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             onClick={() => setIsBulkPromoteOpen(false)}
           >
             <motion.div
@@ -1891,23 +1892,23 @@ export default function AdmissoesInboxClient({
               className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="border-b border-slate-200 p-6">
+              <div className="border-b border-border p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
                       Operação em lote
                     </p>
-                    <h3 className="mt-1 text-xl font-bold text-slate-900">
+                    <h3 className="mt-1 text-xl font-bold text-foreground">
                       Promover pré-candidaturas
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       Reveja os candidatos selecionados e escolha a turma oficial que receberá o lote.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsBulkPromoteOpen(false)}
-                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -1915,7 +1916,7 @@ export default function AdmissoesInboxClient({
               </div>
 
               <div className="max-h-[62vh] space-y-5 overflow-y-auto p-6">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-xl border border-border bg-muted/50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-bold text-foreground">
                       {bulkSelectedItems.length} pré-candidatura(s) selecionada(s)
@@ -1923,23 +1924,23 @@ export default function AdmissoesInboxClient({
                     <button
                       type="button"
                       onClick={() => setBulkSelectedIds(new Set())}
-                      className="text-xs font-bold text-slate-500 hover:text-slate-800"
+                      className="text-xs font-bold text-muted-foreground hover:text-foreground"
                     >
                       Limpar seleção
                     </button>
                   </div>
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {bulkSelectedItems.slice(0, 8).map((item) => (
-                      <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-xs">
-                        <p className="font-bold text-slate-900">{item.nome_candidato}</p>
-                        <p className="text-slate-500">
+                      <div key={item.id} className="rounded-lg bg-card px-3 py-2 text-xs">
+                        <p className="font-bold text-foreground">{item.nome_candidato}</p>
+                        <p className="text-muted-foreground">
                           {item.dados_candidato?.interesse?.curso_nome || item.cursos?.nome || 'Nível não informado'}
                         </p>
                       </div>
                     ))}
                   </div>
                   {bulkSelectedItems.length > 8 && (
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-muted-foreground">
                       +{bulkSelectedItems.length - 8} outros selecionados.
                     </p>
                   )}
@@ -1948,16 +1949,16 @@ export default function AdmissoesInboxClient({
                 {bulkPromotionReport && (
                   <div className={`rounded-xl border p-4 ${
                     bulkPromotionReport.failures.length > 0
-                      ? 'border-amber-200 bg-amber-50'
-                      : 'border-emerald-200 bg-emerald-50'
+                      ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10'
+                      : 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10'
                   }`}>
                     <p className={`text-sm font-bold ${
-                      bulkPromotionReport.failures.length > 0 ? 'text-amber-900' : 'text-emerald-900'
+                      bulkPromotionReport.failures.length > 0 ? 'text-amber-900 dark:text-amber-200' : 'text-emerald-900 dark:text-emerald-200'
                     }`}>
                       Relatório do lote
                     </p>
                     <p className={`mt-1 text-xs ${
-                      bulkPromotionReport.failures.length > 0 ? 'text-amber-800' : 'text-emerald-800'
+                      bulkPromotionReport.failures.length > 0 ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'
                     }`}>
                       {bulkPromotionReport.promoted} promovida(s), {bulkPromotionReport.failures.length} não promovida(s).
                     </p>
@@ -1966,9 +1967,9 @@ export default function AdmissoesInboxClient({
                         {bulkPromotionReport.failures.map((failure) => {
                           const item = filteredItems.find((candidate) => candidate.id === failure.candidatura_id)
                           return (
-                            <div key={failure.candidatura_id} className="rounded-lg bg-white px-3 py-2 text-xs">
-                              <p className="font-bold text-slate-900">{item?.nome_candidato || failure.candidatura_id}</p>
-                              <p className="text-amber-700">{failure.error}</p>
+                            <div key={failure.candidatura_id} className="rounded-lg bg-card px-3 py-2 text-xs">
+                              <p className="font-bold text-foreground">{item?.nome_candidato || failure.candidatura_id}</p>
+                              <p className="text-amber-700 dark:text-amber-300">{failure.error}</p>
                             </div>
                           )
                         })}
@@ -1978,11 +1979,11 @@ export default function AdmissoesInboxClient({
                 )}
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Turma oficial
                   </span>
                   {loadingBulkPromoteTurmas ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       A carregar turmas...
                     </div>
@@ -1990,7 +1991,7 @@ export default function AdmissoesInboxClient({
                     <select
                       value={bulkPromoteTurmaId}
                       onChange={(event) => setBulkPromoteTurmaId(event.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                     >
                       <option value="">Selecionar turma...</option>
                       {bulkPromoteTurmas.map((turma) => (
@@ -2003,7 +2004,7 @@ export default function AdmissoesInboxClient({
                 </label>
 
                 {bulkPromoteTurmaId ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="rounded-xl border border-border bg-muted/50 p-4">
                     {(() => {
                       const turma = bulkPromoteTurmas.find((item) => item.id === bulkPromoteTurmaId)
                       if (!turma) return null
@@ -2019,7 +2020,7 @@ export default function AdmissoesInboxClient({
                             <DataField label="Vagas" value={turma.vagas_disponiveis.toString()} />
                           </div>
                           {insufficientCapacity && (
-                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                            <div className="rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
                               Esta turma não tem vagas suficientes para os {bulkSelectedItems.length} selecionados. Reduza o lote ou escolha outra turma.
                             </div>
                           )}
@@ -2030,20 +2031,20 @@ export default function AdmissoesInboxClient({
                 ) : null}
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Observação
                   </span>
                   <textarea
                     value={bulkPromoteObservacao}
                     onChange={(event) => setBulkPromoteObservacao(event.target.value)}
                     rows={3}
-                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                     placeholder="Ex: Lote promovido após abertura oficial do ano letivo."
                   />
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-6">
+              <div className="flex items-center justify-end gap-3 border-t border-border p-6">
                 <Button
                   type="button"
                   variant="outline"
@@ -2082,7 +2083,7 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             onClick={() => setIsPromoteOpen(false)}
           >
             <motion.div
@@ -2092,23 +2093,23 @@ export default function AdmissoesInboxClient({
               className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="border-b border-slate-200 p-6">
+              <div className="border-b border-border p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
                       Pré-candidatura
                     </p>
-                    <h3 className="mt-1 text-xl font-bold text-slate-900">
+                    <h3 className="mt-1 text-xl font-bold text-foreground">
                       Promover para candidatura oficial
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       Escolha uma turma real do ano letivo preparado para colocar esta candidatura no funil operacional.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsPromoteOpen(false)}
-                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -2116,8 +2117,8 @@ export default function AdmissoesInboxClient({
               </div>
 
               <div className="space-y-5 p-6">
-                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-indigo-700">
+                <div className="rounded-xl border border-indigo-100 dark:border-indigo-500/25 bg-indigo-50 dark:bg-indigo-500/10 p-4">
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300">
                     Interesse original
                   </p>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -2133,11 +2134,11 @@ export default function AdmissoesInboxClient({
                 </div>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Turma oficial
                   </span>
                   {loadingPromoteTurmas ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       A carregar turmas...
                     </div>
@@ -2145,7 +2146,7 @@ export default function AdmissoesInboxClient({
                     <select
                       value={promoteTurmaId}
                       onChange={(event) => setPromoteTurmaId(event.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                     >
                       <option value="">Selecionar turma...</option>
                       {promoteTurmas.map((turma) => (
@@ -2158,7 +2159,7 @@ export default function AdmissoesInboxClient({
                 </label>
 
                 {promoteTurmaId ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="rounded-xl border border-border bg-muted/50 p-4">
                     {(() => {
                       const turma = promoteTurmas.find((item) => item.id === promoteTurmaId)
                       if (!turma) return null
@@ -2177,20 +2178,20 @@ export default function AdmissoesInboxClient({
                 ) : null}
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Observação
                   </span>
                   <textarea
                     value={promoteObservacao}
                     onChange={(event) => setPromoteObservacao(event.target.value)}
                     rows={3}
-                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                     placeholder="Ex: Promovida após abertura das turmas do novo ano."
                   />
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-6">
+              <div className="flex items-center justify-end gap-3 border-t border-border p-6">
                 <Button
                   type="button"
                   variant="outline"
@@ -2221,7 +2222,7 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
             onClick={() => setViewingDoc(null)}
           >
             <motion.div
@@ -2232,18 +2233,18 @@ export default function AdmissoesInboxClient({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-border bg-card p-4">
-                <h3 className="font-bold text-slate-800 uppercase tracking-widest text-sm flex items-center gap-2">
+                <h3 className="font-bold text-foreground uppercase tracking-widest text-sm flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   {viewingDoc.name.replace('_', ' ')}
                 </h3>
                 <button
                   onClick={() => setViewingDoc(null)}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-muted rounded-full transition-colors"
                 >
-                  <X className="h-6 w-6 text-slate-500" />
+                  <X className="h-6 w-6 text-muted-foreground" />
                 </button>
               </div>
-              <div className="flex-1 bg-slate-100">
+              <div className="flex-1 bg-muted">
                 {(() => {
                   try {
                     const urlObj = new URL(viewingDoc.url);
@@ -2282,7 +2283,7 @@ export default function AdmissoesInboxClient({
                   );
                 })()}
               </div>
-              <div className="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
+              <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/50">
                 <Button variant="outline" onClick={() => window.open(viewingDoc.url, '_blank')}>
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Abrir em nova aba
@@ -2299,7 +2300,7 @@ export default function AdmissoesInboxClient({
       <AnimatePresence>
         {isPendenciasOpen && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2310,17 +2311,17 @@ export default function AdmissoesInboxClient({
               exit={{ scale: 0.96, y: 16 }}
               className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-2xl"
             >
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+              <div className="flex items-start justify-between gap-4 border-b border-border p-6">
                 <div>
                   <h3 className="text-lg font-black text-foreground">Documentação Pendente</h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Selecione documentos do catálogo oficial. Prazo padrão para correção: {pendenciaSlaHoras}h.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsPendenciasOpen(false)}
-                  className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -2334,26 +2335,26 @@ export default function AdmissoesInboxClient({
                         type="checkbox"
                         checked={item.selected}
                         onChange={(event) => updatePendingDraft(index, { selected: event.target.checked })}
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600"
+                        className="mt-1 h-4 w-4 rounded border-border text-amber-700 dark:text-amber-300"
                       />
                       <div className="grid flex-1 gap-3">
                         <label className="grid gap-1">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Documento</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Documento</span>
                           <input
                             value={item.label}
                             onChange={(event) => updatePendingDraft(index, { label: event.target.value })}
                             disabled={!item.custom}
-                            className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-amber-400"
+                            className="h-10 rounded-xl border border-border px-3 text-sm font-semibold text-foreground outline-none focus:border-amber-400"
                           />
                         </label>
                         <label className="grid gap-1">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Motivo para o candidato</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Motivo para o candidato</span>
                           <textarea
                             value={item.motivo}
                             onChange={(event) => updatePendingDraft(index, { motivo: event.target.value })}
                             rows={2}
                             placeholder="Ex: imagem ilegível, documento vencido, falta verso do BI"
-                            className="resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-400"
+                            className="resize-none rounded-xl border border-border px-3 py-2 text-sm text-foreground outline-none focus:border-amber-400"
                           />
                         </label>
                       </div>
@@ -2364,25 +2365,25 @@ export default function AdmissoesInboxClient({
                 <button
                   type="button"
                   onClick={addCustomPendingDocument}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-muted"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar documento em falta
                 </button>
 
                 <label className="grid gap-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Observação interna</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Observação interna</span>
                   <textarea
                     value={pendingGeneralMotivo}
                     onChange={(event) => setPendingGeneralMotivo(event.target.value)}
                     rows={2}
                     placeholder="Opcional. Fica no histórico interno da candidatura."
-                    className="resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-400"
+                    className="resize-none rounded-xl border border-border px-3 py-2 text-sm text-foreground outline-none focus:border-amber-400"
                   />
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 p-5">
+              <div className="flex justify-end gap-3 border-t border-border bg-muted/50 p-5">
                 <Button variant="outline" onClick={() => setIsPendenciasOpen(false)}>
                   Cancelar
                 </Button>
