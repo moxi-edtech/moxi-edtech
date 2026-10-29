@@ -29,6 +29,14 @@ BEGIN
 END;
 $status_write$;
 
+-- Postgres fires same-kind row triggers alphabetically. Canonicalize FIRST,
+-- before audit, numbering, status and school/year integrity validation.
+DROP TRIGGER IF EXISTS trg_matriculas_status_canonical ON public.matriculas;
+DROP TRIGGER IF EXISTS a_matriculas_status_canonical ON public.matriculas;
+CREATE TRIGGER a_matriculas_status_canonical
+  BEFORE INSERT OR UPDATE OF status ON public.matriculas
+  FOR EACH ROW EXECUTE FUNCTION public.matriculas_status_before_ins_upd();
+
 CREATE OR REPLACE FUNCTION public.finalizar_matricula_blindada(p_escola_id uuid, p_matricula_id uuid, p_motivo text DEFAULT NULL::text, p_is_override_manual boolean DEFAULT false, p_status_override text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1304,7 +1312,7 @@ CREATE OR REPLACE FUNCTION public.guard_matricula_status_numero()
 AS $function$
 begin
   -- normaliza status antes (se teu canonicalize roda em trigger separado, ok)
-  if new.status in ('ativo','ativa') then
+  if new.status = 'ativo' then
     if new.numero_matricula is null or btrim(new.numero_matricula::text) = '' then
       raise exception 'Matrícula não pode ficar ativa sem numero_matricula. Use confirmar_matricula().';
     end if;
@@ -1610,7 +1618,7 @@ AS $function$
 DECLARE
   v_num bigint;
 BEGIN
-  IF NEW.status IN ('ativo','ativa','active') AND (NEW.numero_matricula IS NULL OR btrim(NEW.numero_matricula) = '') THEN
+  IF NEW.status = 'ativo' AND (NEW.numero_matricula IS NULL OR btrim(NEW.numero_matricula) = '') THEN
     v_num := public.next_matricula_number(NEW.escola_id);
     NEW.numero_matricula := v_num::text; -- coluna é text
   END IF;

@@ -8,6 +8,8 @@ test("persisted matrícula has exactly eight distinct administrative states", ()
   assert.match(migration, /ACADEMIC_RESULT_NOT_ENROLLMENT_STATUS/);
   assert.match(migration, /MATRICULA_STATUS_INVALID/);
   assert.match(migration, /LEGACY_STATUS_ROWS_REQUIRE_RECONCILIATION/);
+  assert.match(migration, /CREATE TRIGGER a_matriculas_status_canonical/);
+  assert.match(migration, /IF NEW.status = 'ativo' AND/);
 });
 test("GradeEngine finalization always stores concluido and independent academic outcome", () => {
   assert.match(migration, /v_status_calculado := 'concluido'/);
