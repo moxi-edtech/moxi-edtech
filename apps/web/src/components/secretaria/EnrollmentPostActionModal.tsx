@@ -307,10 +307,10 @@ export function EnrollmentPostActionModal({
                 <option value="">Selecionar trimestre</option>
                 {periodos.map((item) => <option key={item.numero} value={String(item.numero)}
                   disabled={!item.disciplina_ativa || item.estado === "future" || item.estado === "unconfigured"}>
-                  {item.numero}.º período{item.estado === "current" ? " · atual" :
+                  {item.numero}.º período{!item.disciplina_ativa ? " · não lecionada" :
+                    item.estado === "current" ? " · atual" :
                     item.estado === "future" ? " · ainda não iniciado" :
-                    item.estado === "locked" ? " · encerrado" :
-                    !item.disciplina_ativa ? " · não lecionada" : ""}
+                    item.estado === "locked" ? " · encerrado" : ""}
                 </option>)}
               </select>
               <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading} />
