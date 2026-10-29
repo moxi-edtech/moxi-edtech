@@ -48,3 +48,26 @@ test("admissões preserva o aluno anterior, enquanto nova matrícula começa sem
   const href = buildBalcaoActionHref({ escolaParam: "escola-demo", actionId: "admissions" });
   assert.match(href, /action=admissions/);
 });
+
+test("a fila inicia em Todas e permite filtrar sem mudar os contratos académicos", () => {
+  const radar = read("app/api/secretaria/admissoes/radar/route.ts");
+  assert.match(radar, /'all'/);
+  assert.match(inbox, /useState<[^\n]+>\('all'\)/);
+  assert.match(inbox, /statusFilter === 'all'/);
+  assert.match(inbox, /label: 'Todas'/);
+  assert.match(inbox, /Partilhar link de inscrição/);
+  assert.match(inbox, /Indicadores e oportunidades/);
+});
+
+test("o detalhe tem navegação contextual e protege ações de decisão", () => {
+  assert.match(inbox, /role="tablist" aria-label="Detalhes da candidatura"/);
+  assert.match(inbox, /role="tab"/);
+  assert.match(inbox, /detailTab === 'resumo'/);
+  assert.match(inbox, /detailTab === 'documentos'/);
+  assert.match(inbox, /detailTab === 'historico'/);
+  assert.match(inbox, /title: 'Aprovar candidatura'/);
+  assert.match(inbox, /if \(!approved\) return/);
+  assert.match(inbox, /Mais ações/);
+  assert.match(inbox, /onClick=\{handleReject\}/);
+  assert.match(inbox, /onClick=\{openPendenciasModal\}/);
+});
