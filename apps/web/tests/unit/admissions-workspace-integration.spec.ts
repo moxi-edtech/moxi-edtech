@@ -118,3 +118,16 @@ test("confirmação global e exceção de capacidade ultrapassam a janela modal"
   assert.match(conversion, /<DialogTitle className="text-base font-bold text-foreground">Turma acima da capacidade/);
   assert.match(conversion, /overlayClassName="z-\[110\]"/);
 });
+
+test("avisos operacionais seguem o mesmo tema das candidaturas", () => {
+  const feedback = read("components/feedback/FeedbackSystem.tsx");
+  const start = feedback.indexOf("const TOAST_CONFIG:");
+  const end = feedback.indexOf("function ToastStack()", start);
+  assert.ok(start >= 0 && end > start);
+  const toasts = feedback.slice(start, end);
+  assert.doesNotMatch(toasts, /\bbg-white\b|\bbg-slate-\d+\b|\btext-slate-\d+\b|\bborder-slate-\d+\b/);
+  assert.match(toasts, /bg-card\/95/);
+  assert.match(toasts, /text-foreground/);
+  assert.match(toasts, /text-muted-foreground/);
+  assert.match(feedback, /overlayClassName="z-\[110\]"/);
+});
