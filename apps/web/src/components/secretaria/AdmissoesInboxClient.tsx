@@ -1404,7 +1404,7 @@ export default function AdmissoesInboxClient({
               const isBulkSelected = bulkSelectedIds.has(item.id)
 
               return (
-                <motion.div
+                <div
                   key={item.id}
                                     role="button"
                   tabIndex={0}
@@ -1456,7 +1456,7 @@ export default function AdmissoesInboxClient({
                     </span>
                     <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'translate-x-1 text-amber' : 'text-slate-300'}`} />
                   </div>
-                </motion.div>
+                </div>
               )
             })
           )}
