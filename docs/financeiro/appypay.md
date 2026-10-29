@@ -2,6 +2,20 @@
 
 ## Estado e limites de prova
 
+## Atualização de release — 29/10/2026 (fonte operacional)
+
+Esta secção prevalece sobre as notas históricas de desenvolvimento mais abaixo.
+A integração foi reconciliada sobre a `main` após a release académica, de recibos, faltas e IA, via PR #295, que absorve a PR #285.
+
+**O banco de produção já contém as três migrations AppyPay**, confirmadas no ledger `supabase_migrations.schema_migrations`: `20261028221211_allow_appypay_provider`, `20261028224738_appypay_atomic_confirmation` e `20261029121743_appypay_portal_services`. A tabela `public.appypay_service_references` e a função `public.appypay_confirm_service_payment(uuid,text)` existem; a função é `SECURITY INVOKER`, sem `EXECUTE` para `anon` ou `authenticated`, apenas para `service_role`. **Não reaplicar SQL como nova migration.**
+
+O fornecedor AppyPay da **Escola KLASSE** permanece `inactive` em `school_payment_providers`, ambiente `production`, com produto `ref`. Não foi identificada entidade de referência configurada nessa linha. A tabela de referências de serviços estava vazia na auditoria. Em Vercel `moxi-edtech`, `APPYPAY_CONFIG` existe como secret só de produção e `APPYPAY_ENABLED=false` está em produção. Nunca expor valores de secret nem ativar apenas pelo botão da interface.
+
+**A publicação do código não ativa a emissão.** Ativação com dinheiro real depende da validação da entidade REF e credenciais, cadastro e teste do webhook `POST https://app.klasse.ao/api/webhooks/appypay` no painel AppyPay, assinatura/origem aceites pelo provedor, homologação de GET autenticado do charge, valor/moeda/merchant, callback repetido, confirmação única de propina e serviço, recibo e reconciliação financeira; identificar pagador/finalidade/valor explícitos para qualquer pagamento de prova. Sem estes gates, preservar `inactive` e `APPYPAY_ENABLED=false`.
+
+A pipeline da PR reconciliada corrige o modal para tokens de tema e a resolução dos testes HTTP; inspeccionar CI final da PR #295 e deployment `READY` do SHA efectivamente integrado antes de declarar o código publicado. Os processos fiscais AGT/SAF-T, ledger e cobranças existentes não devem ser alterados para acelerar esta integração.
+
+
 Branch `codex/appypay-escola-klasse`, baseada em `origin/main` 074f96b21.
 Integração REF (pagamento por referência), API v2.0, produção. MCX/GPO não implementado: a aplicação GPO consultada está inactiva.
 
@@ -101,7 +115,7 @@ O guia OAuth diverge entre tabela e exemplo de produção. A URL da tabela (`log
 
 ## Portal do aluno — propinas, serviços e emolumentos (2026-10-29)
 
-O pedido atual autoriza colocar o fluxo em produção para a Escola KLASSE. Esta extensão ainda depende da aprovação financeira específica `cf8dc48d-6b39-47d3-af87-410afcf95ddb` em `agents/outputs/PENDING_APPROVAL.md`; o SQL proposto e testado está em `appypay-portal-services.proposed.sql` (SHA256 `989e97331e2ddcb0aaf89723af731d5cbbf6ffcb95362ac525e39ae948bbc60a`). Não foi aplicado no Supabase.
+O pedido atual autoriza colocar o fluxo em produção para a Escola KLASSE. Esta extensão tinha aprovação financeira específica registada sob `cf8dc48d-6b39-47d3-af87-410afcf95ddb` em `agents/outputs/PENDING_APPROVAL.md`; a proposta original permanece em `appypay-portal-services.proposed.sql` como evidência histórica. **A migração de serviços já foi instalada no Supabase em `20261029121743`; não reaplicar.**
 
 - Financeiro do aluno: botão Pagar com AppyPay em cada propina pendente e pedido de serviço com intenção draft, incluindo serviços não documentais. Débitos com comprovativo pendente não geram outra cobrança.
 - Secretaria Digital e notas: o mesmo botão está no drawer de pagamento dos serviços. O retorno de confirmação atualiza o catálogo; não exibe a mensagem de envio de comprovativo.
