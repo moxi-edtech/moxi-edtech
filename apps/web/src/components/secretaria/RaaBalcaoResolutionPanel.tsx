@@ -118,10 +118,27 @@ export function RaaBalcaoResolutionPanel({
     motivo: "", disciplinaId: "", examSessionId: "", examComponentId: "", examTurmaDisciplinaId: "", examNote: "",
   }, { submitting: saving, enabled: phase === "detail" || phase === "confirm" });
 
+  const hasUnsavedForm = Boolean(motivo.trim() || disciplinaId || examNote.trim());
+  function goToSummary() {
+    if (saving) return;
+    if (hasUnsavedForm && !window.confirm("Existem alterações ainda não guardadas. Deseja voltar e descartá-las?")) return;
+    setMotivo("");
+    setDisciplinaId("");
+    setExamNote("");
+    setExamSessionId("");
+    setExamComponentId("");
+    setExamTurmaDisciplinaId("");
+    setPhase("summary");
+  }
+
   function chooseCase(item: (typeof cases)[number]) {
     if (saving) return;
+    if (action === "documentos") {
+      onDocumentos();
+      return;
+    }
     // Moving between cases must not silently discard an unfinished decision.
-    if (phase === "detail" && (motivo.trim() || disciplinaId || examNote.trim()) &&
+    if (phase === "detail" && hasUnsavedForm &&
         !window.confirm("Existem alterações ainda não guardadas. Deseja mudar de pendência e descartá-las?")) return;
     setCaseId(item.id);
     setSelected("");
@@ -414,7 +431,7 @@ export function RaaBalcaoResolutionPanel({
         )}
         {phase === "detail" && (
           <div className="space-y-4">
-            <button type="button" onClick={() => setPhase("summary")} disabled={saving}
+            <button type="button" onClick={goToSummary} disabled={saving}
               className="inline-flex items-center gap-1 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald">
               <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Todas as pendências
             </button>
@@ -553,7 +570,7 @@ export function RaaBalcaoResolutionPanel({
                   className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
                   {saving ? "A guardar..." : "Rever e confirmar decisão"}
                 </button>
-                <button type="button" onClick={() => setPhase("summary")} className="rounded-lg border border-border px-3 py-2 text-xs font-bold">Voltar</button>
+                <button type="button" onClick={goToSummary} className="rounded-lg border border-border px-3 py-2 text-xs font-bold">Voltar</button>
               </div>
             </div>
           )}
@@ -564,7 +581,7 @@ export function RaaBalcaoResolutionPanel({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground disabled:opacity-50 sm:w-auto">
                 <RefreshCw className="h-4 w-4" aria-hidden="true" /> Verificar RAA
               </button>
-              <button type="button" onClick={() => setPhase("summary")} disabled={saving}
+              <button type="button" onClick={goToSummary} disabled={saving}
                 className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 sm:w-auto">
                 Voltar às pendências
               </button>

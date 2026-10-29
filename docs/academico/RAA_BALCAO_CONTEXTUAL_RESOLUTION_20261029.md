@@ -32,3 +32,15 @@ Branch: feat/balcao-raa-contextual-resolution-20261029 (empilhada sobre a PR #29
 - Uma nota de exame `submetido` não equivale ao estado `validado` ou à pauta legal publicada. A interface não cria atalhos para essa decisão.
 - Contextos históricos fechados exigem reabertura formal; a simples aprovação de pedido não reescreve histórico.
 - Testes unitários e GitHub CI não substituem ensaio autenticado em banco real; dependência da PR #296 permanece.
+
+## UI/UX contextual guiada (29/10/2026)
+- Substituição do painel com formulários simultâneos por passos **Identificar → Resolver → Revalidar**. O indicador representa etapas da interface, não aprovação académica.
+- Cartões representam somente evidências retornadas pelo RAA ou pedidos reais; o total e o número de decisões registadas não são inventados. Quando não existem pedidos, permanece uma orientação de bloqueio canónico.
+- A ação é apresentada por contexto (justificação, recurso, sessão de exame, indisciplina, pauta, conclusão de ciclo). Uma pendência selecionada abre o seu formulário.
+- Antes de qualquer escrita, há ecrã de revisão e confirmação; mensagens de confirmação distinguem **registo administrativo** de **autorização de rematrícula**.
+- A interface adapta-se a móvel, usa tokens de tema light/dark e evita navegações externas. Os formulários reportam estado de rascunho ao Command Center, com proteção ao descartar entradas dentro da lista.
+- Formulários continuam a usar os mesmos endpoints, idempotência e controlos de permissão, sem atualização manual de estados académicos.
+- A UI da rematrícula autorizada continua exclusivamente no wizard existente. A experiência RAA bloqueada não adiciona um botão para ignorar a decisão.
+
+### Validação não substituída
+A UI pode mostrar apenas a situação prioritária que a API de rematrícula devolve nesse momento; não promete uma fila simultânea de todos os tipos de bloqueios sem evidências oficiais. A elegibilidade deve ser reconsultada após cada resolução antes de prosseguir. Homologação autenticada (mobile, roles, EJA, anos fechados) permanece obrigatória.
