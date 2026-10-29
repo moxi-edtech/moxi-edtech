@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 24);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 26);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -36,6 +36,19 @@ test("global academic class metadata guard is allowlisted without fiscal excepti
     "CREATE TRIGGER trg_class_guard BEFORE INSERT ON classes EXECUTE FUNCTION class_guard();"), []);
   assert.match(checkFiscalAndSchemaScope([path], () =>
     "ALTER TABLE public.fiscal_config ADD COLUMN enabled boolean;")[0] ?? "", /Fiscal\/AGT activation/);
+});
+
+test("new atomic enrollment and live ledger markers stay within audited scope", () => {
+  for (const path of [
+    "20261029112728_enrollment_context_atomic_authorized_create_20261029.sql",
+    "20271029150000_enrollment_context_atomic_authorized_create.sql",
+  ]) {
+    const name = "supabase/migrations/" + path;
+    assert.deepEqual(checkFiscalAndSchemaScope([name], () =>
+      "CREATE TRIGGER enrollment_guard BEFORE INSERT ON matriculas EXECUTE FUNCTION check_year();"), []);
+    assert.match(checkFiscalAndSchemaScope([name], () =>
+      "CREATE TABLE public.agt_integrations (id uuid);")[0] ?? "", /Fiscal\/AGT activation/);
+  }
 });
 
 test("preserves the fiscal and AGT module freeze", () => {
