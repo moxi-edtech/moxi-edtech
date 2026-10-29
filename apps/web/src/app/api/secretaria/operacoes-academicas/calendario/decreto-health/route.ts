@@ -90,7 +90,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      healthy: result.ok,
+      healthy: result.verified,
+      operationally_aligned: result.ok,
       result,
       read_only: true,
       checked_at: new Date().toISOString(),
