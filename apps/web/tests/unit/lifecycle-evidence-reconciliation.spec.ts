@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const root = resolve(process.cwd(), "apps/web");
+const root = process.cwd().replace(/\\/g, "/").endsWith("/apps/web")
+  ? process.cwd()
+  : resolve(process.cwd(), "apps/web");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 const sql = read("../../supabase/migrations/20271029100000_lifecycle_reconciliation_evidence_guards.sql");
 const api = read("src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/route.ts");
