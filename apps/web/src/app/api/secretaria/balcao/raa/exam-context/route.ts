@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   if (!matricula || !matricula.turma_id || !matricula.session_id) {
     return NextResponse.json({ ok: false, error: "Não existe vínculo válido para este ano letivo." }, { status: 404 });
   }
-  const [{ data: disciplinas, error: dError }, { data: sessoes, error: sError }] = await Promise.all([
+  const [{ data: disciplinas, error: dError }, { data: sessoes, error: sError }, { data: resultados, error: rError }] = await Promise.all([
     supabase.from("turma_disciplinas").select("id,avaliacao_disciplina_id")
       .eq("escola_id", escolaId).eq("turma_id", matricula.turma_id).limit(100),
     supabase.from("exame_sessoes").select("id,tipo,estado,data_inicio,data_fim,turma_id,ano_letivo_id,exame_componentes(id,codigo,nota_max)")
@@ -39,8 +39,14 @@ export async function GET(request: Request) {
       .in("estado", ["aberta", "publicada"])
       .or("turma_id.is.null,turma_id.eq." + matricula.turma_id)
       .order("data_inicio", { ascending: true }).limit(50),
+    // Existing exam results belong to the origin enrollment, not to the current
+    // UI selection. Prevent the operator from accidentally re-submitting a
+    // component whose authoritative outcome is already recorded.
+    supabase.from("exame_resultados")
+      .select("id,exame_sessao_id,exame_componente_id,turma_disciplina_id,estado,nota")
+      .eq("escola_id", escolaId).eq("matricula_id", matricula.id).limit(200),
   ]);
-  if (dError || sError) return NextResponse.json({
+  if (dError || sError || rError) return NextResponse.json({
     ok: false, error: "Não foi possível confirmar as sessões e disciplinas do RAA.",
   }, { status: 503 });
 
@@ -48,8 +54,9 @@ export async function GET(request: Request) {
     ok: true,
     source: { matricula_id: matricula.id, aluno_id: matricula.aluno_id,
       turma_id: matricula.turma_id, ano_letivo_id: matricula.session_id,
-      locked: matricula.status === "concluido" },
+      locked: matricula.status !== "ativo" },
     disciplinas: disciplinas ?? [],
     sessoes: sessoes ?? [],
+    resultados: resultados ?? [],
   });
 }
