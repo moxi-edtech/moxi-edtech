@@ -1,9 +1,9 @@
 # SSOT do ciclo de vida do aluno — conciliação transversal (PR #282)
 
-**Data da auditoria:** 2026-10-28  
-**Âmbito:** todas as escolas, todos os alunos e todos os anos (não apenas 2026/2027).  
-**Estado em 28/10/2026:** dez migrações do SSOT aplicadas no Supabase e espelhadas nesta PR; **um vínculo histórico inequívoco foi conciliado com auditoria**. Nenhuma nota, aprovação ou snapshot foi alterado. O inventário da secção 3 documenta o diagnóstico anterior às correções.  
-**Ferramenta:** [`supabase/ops/scripts/audit_student_lifecycle_statuses.sql`](../../supabase/ops/scripts/audit_student_lifecycle_statuses.sql).  
+**Data da auditoria:** 2026-10-28
+**Âmbito:** todas as escolas, todos os alunos e todos os anos (não apenas 2026/2027).
+**Estado em 28/10/2026:** onze migrações do SSOT aplicadas no Supabase e espelhadas nesta PR; **um vínculo histórico inequívoco foi conciliado com auditoria**. Nenhuma nota, aprovação ou snapshot foi alterado. O inventário da secção 3 documenta o diagnóstico anterior às correções.
+**Ferramenta:** [`supabase/ops/scripts/audit_student_lifecycle_statuses.sql`](../../supabase/ops/scripts/audit_student_lifecycle_statuses.sql).
 **Contrato existente:** [`CONTRATO_ESTADOS_MATRICULA_REMATRICULA.md`](../CONTRATO_ESTADOS_MATRICULA_REMATRICULA.md).
 
 ## 1. O que a PR #282 resolve e o que não resolve
