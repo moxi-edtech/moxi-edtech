@@ -35,6 +35,7 @@ type EventoCalendario = {
   data_inicio: string;
   data_fim: string;
   cor_hex?: string | null;
+  source_template_id?: string | null;
 };
 
 type CalendarioTemplate = {
@@ -164,6 +165,10 @@ export default function CalendarioConfigPage({ params }: Props) {
   // --- HANDLERS ---
   const handleSetActiveAno = async () => {
     if (!anoLetivo || anoLetivo.ativo || !escolaUuid) return;
+    if (anoLetivo.ano >= 2026) {
+      error("Ative este ano letivo pelo fluxo académico oficial, após validar as ofertas educativas.");
+      return;
+    }
     
     const ok = await confirm({
       title: "Activar Ano Lectivo",
@@ -211,6 +216,10 @@ export default function CalendarioConfigPage({ params }: Props) {
     if (!anoStr) return;
     const anoNum = parseInt(anoStr);
     if (isNaN(anoNum)) return error("Ano inválido");
+    if (anoNum >= 2026) {
+      error("A partir de 2026/2027, crie o ano letivo através do calendário oficial.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -270,7 +279,12 @@ export default function CalendarioConfigPage({ params }: Props) {
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!anoLetivo?.id || !escolaUuid) return;
-    
+    if (anoLetivo.ano >= 2026 &&
+        !["FERIADO", "EVENTO_ESCOLA"].includes(newEvent.tipo)) {
+      error("Provas, exames e pausas oficiais são definidos pelo calendário do MED.");
+      return;
+    }
+
     setSaving(true);
     try {
       const { data, error: err } = await supabase
@@ -300,6 +314,11 @@ export default function CalendarioConfigPage({ params }: Props) {
   };
 
   const removeEvento = async (id: string) => {
+    const selected = eventos.find((event) => event.id === id);
+    if (anoLetivo?.ano && anoLetivo.ano >= 2026 && selected?.source_template_id) {
+      error("Este evento pertence ao calendário oficial e não pode ser removido.");
+      return;
+    }
     const ok = await confirm({
       title: "Remover evento",
       message: "Tem certeza que deseja remover este evento do calendário?",
@@ -661,7 +680,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                       <span className="text-xs font-bold uppercase tracking-widest">Adicionar Evento</span>
                     </button>
 
-                    {anosDisponiveis.some(a => a.ano < (anoLetivo?.ano || 0)) && (
+                    {anoLetivo?.ano && anoLetivo.ano < 2026 && anosDisponiveis.some(a => a.ano < anoLetivo.ano) && (
                       <button 
                         onClick={handleCopyEvents}
                         className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 p-6 text-slate-400 hover:border-amber hover:text-amber transition-all"
@@ -709,9 +728,9 @@ export default function CalendarioConfigPage({ params }: Props) {
                   onChange={e => setNewEvent(prev => ({ ...prev, tipo: e.target.value as EventoTipo }))}
                 >
                   <option value="FERIADO">Feriado</option>
-                  <option value="PAUSA_PEDAGOGICA">Pausa Pedagógica</option>
-                  <option value="PROVA_TRIMESTRAL">Época de Provas</option>
-                  <option value="EXAME_NACIONAL">Exame Nacional</option>
+                  <option value="PAUSA_PEDAGOGICA" disabled={(anoLetivo?.ano ?? 0) >= 2026}>Pausa Pedagógica</option>
+                  <option value="PROVA_TRIMESTRAL" disabled={(anoLetivo?.ano ?? 0) >= 2026}>Época de Provas</option>
+                  <option value="EXAME_NACIONAL" disabled={(anoLetivo?.ano ?? 0) >= 2026}>Exame Nacional</option>
                   <option value="EVENTO_ESCOLA">Outro Evento da Escola</option>
                 </select>
               </div>
