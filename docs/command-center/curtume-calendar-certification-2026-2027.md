@@ -40,6 +40,20 @@ O calendário operacional contém 31 eventos únicos, mas:
 
 Por isso, **filtrar apenas por source_template_id perde 15 eventos relevantes do ensino regular**, apesar de todos existirem no calendário da escola. A PR #299 introduz `selectApplicableOfficialEvents`, que compara nome, tipo, início e fim com os itens publicados aplicáveis ao curso, ao aluno autorizado e à sessão. A 6.ª e a 9.ª classes recebem ainda a proteção `is_classe_exame` para exames não classificados por série no modelo do MED.
 
+### Verificação de visibilidade por classe (Supabase, só leitura)
+
+A correspondência com os itens publicados, aplicada às turmas de 2026/2027, devolveu:
+
+| Turma | Eventos aplicáveis do perfil | Eventos de exame nacional |
+|---|---:|---:|
+| Pré-escolar | 17 | 0 |
+| 1.ª a 5.ª classes | 25 por classe | 0 |
+| 6.ª classe | 29 | 4 |
+| 7.ª e 8.ª classes | 25 por classe | 0 |
+| 9.ª classe | 29 | 4 |
+
+Os trimestres e as provas trimestrais são preservados; exames não classificados por série no catálogo são expostos apenas quando `turmas.is_classe_exame=true`. Isto demonstra coerência do **cálculo sobre os dados**, não uma execução autenticada do portal.
+
 **Esta lógica está codificada, não comprovada em produção.**
 
 ## Inventário dos consumidores examinados
@@ -52,10 +66,11 @@ Por isso, **filtrar apenas por source_template_id perde 15 eventos relevantes do
 | Professor: períodos letivos | `resolveAcademicYearContext` e `ano_letivo_id` | Contrato encontrado no código |
 | Escola: períodos por turma | `assertAcademicYearEntity` e `ano_letivo_id` | Contrato encontrado no código |
 | Escola: consulta de períodos | `resolveAcademicYearContext` e `ano_letivo_id` | Contrato encontrado no código |
-| Secretaria: pauta trimestral | Contexto académico, turma, disciplina e períodos | Contrato encontrado no código |
+| Secretaria: pauta trimestral | Contexto académico, turma, disciplina e período existente no ano | **Corrigido na PR #299** para recusar trimestre inexistente |
 | Professor: presenças | Contexto académico, turma e período por intervalo de datas | Contrato encontrado no código |
 | Secretaria: fecho de frequência | Ano e período validados | Contrato encontrado no código |
 | RAA: reapreciação | Contexto académico, trimestre do ano selecionado | Contrato encontrado no código |
+| Secretaria: pauta oficial e mapa de aproveitamento | Contexto académico, turma/períodos do ano | Contratos encontrados no código; E2E pendente |
 | Secretaria: fechamento académico | `ano_letivo_id` explícito e período de fecho | Contrato encontrado no código |
 | Matrícula/admissão | Novo preflight de ano/turma/calendário | **Corrigido na PR #299**, mantém candidatura em caso de desvio |
 
