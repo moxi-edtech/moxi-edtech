@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
 import DocumentosAprovacoesQueue from "@/components/secretaria/DocumentosAprovacoesQueue";
+import { FaltasJustificacoesQueue } from "@/components/secretaria/FaltasJustificacoesQueue";
 
 /** Uma composição para as rotas canónica e de compatibilidade da Secretaria. */
 export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: string }) {
@@ -29,6 +30,7 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
         </Link>
       </div>
       <DocumentosAprovacoesQueue />
+      <FaltasJustificacoesQueue />
       <DocumentosEmissaoHubClient escolaId={escolaId} />
     </div>
   );
