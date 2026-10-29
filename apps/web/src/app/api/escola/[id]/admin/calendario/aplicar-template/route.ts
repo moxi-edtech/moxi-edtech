@@ -3,6 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { requireRoleInSchool } from '@/lib/authz';
 import type { Database } from '~types/supabase';
+import { prepareCanonicalMedCalendar } from '@/lib/academico/prepare-canonical-calendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (authz.error) return authz.error;
 
     const body = await req.json();
-    const { templateId } = body;
+    const { templateId, anoBase } = body;
+
+    if (typeof anoBase === 'number' && Number.isInteger(anoBase) && anoBase >= 2026) {
+      return prepareCanonicalMedCalendar({
+        db: supabase as any, escolaId: userEscolaId, userId: user.id,
+        anoBase,
+        // No per-course overrides: installed course/profile mappings are used.
+      });
+    }
 
     if (!templateId) {
       return NextResponse.json({ ok: false, error: 'ID do template é obrigatório.' }, { status: 400 });
@@ -44,6 +53,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     if (tError || !template) {
       return NextResponse.json({ ok: false, error: 'Template não encontrado.' }, { status: 404 });
+    }
+
+    // The former single-profile path remains for historical years only.
+    // A published MED year must be applied as one canonical calendar with
+    // inherited course-specific profiles.
+    if (Number(template.ano_base) >= 2026) {
+      return NextResponse.json({
+        ok: false, code: 'CANONICAL_CALENDAR_SELECTION_REQUIRED',
+        error: 'Selecione o calendário oficial do ano; os perfis são herdados pelos cursos.',
+      }, { status: 409 });
     }
 
     // From 2026 onward only the published MED template may establish the
