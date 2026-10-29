@@ -26,6 +26,14 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20261029091406_lifecycle_academic_decisions_and_legal_lock_guard_20261029.sql",
   "20261029091637_lifecycle_historical_outcomes_ratification_20261029.sql",
   "20271029100000_lifecycle_reconciliation_evidence_guards.sql",
+  // Three migrations applied live plus the three full late replay migrations.
+  // Allow each exact audited academic file, never arbitrary database changes.
+  "20261029102650_curtume_class_metadata_and_transition_lineage_20261029.sql",
+  "20261029103216_curtume_legal_history_destination_guard_20261029.sql",
+  "20261029103555_curtume_turma_classe_number_consistency_20261029.sql",
+  "20271029110000_curtume_class_metadata_and_transition_lineage.sql",
+  "20271029120000_curtume_legal_history_destination_guard.sql",
+  "20271029130000_curtume_turma_classe_number_consistency.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
