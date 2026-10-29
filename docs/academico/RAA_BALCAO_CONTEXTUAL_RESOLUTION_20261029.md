@@ -76,3 +76,20 @@ Para as matrículas com `regime.escala = qualitativa`, o Balcão **não oferece 
 ### Testes da matriz
 
 `apps/web/tests/unit/raa-balcao-regime-guidance.spec.ts` valida a identificação de **12 regimes legais**, condicional autorizada versus bloqueada (7.ª/8.ª/10.ª/11.ª/EJA 1.º), recurso (6.ª/9.ª/12.ª), conclusão, EJA qualitativo e numérico, frequência anual, faltas trimestrais, indisciplina, falta de dados e ausência de decreto. O CI da PR também executa `raa-decreto-eligibility.spec.ts` como regressão do motor jurídico. A execução destes testes **não substitui** homologação autenticada e integração de fontes qualitativas.
+
+## Fecho da experiência na aba Rematrícula (29/10/2026)
+
+**Identidade académica:** `/api/secretaria/balcao/rematriculas/status` fornece `academic.source` com matrícula, turma e `session_id` da origem. Antes, o painel utilizava `dossier.aluno.matricula_id` (possivelmente já do destino). O ID efetivo do painel e a origem das notas seguem agora os dados verificados pelo servidor. Nunca usar a turma atual do dossier para um lançamento RAA na matrícula anterior.
+
+**Operações concluídas no mesmo Balcão:**
+- Justificações, decisões disciplinares, reapreciações, componentes de exames e revalidação RAA continuam no próprio painel, via endpoints autorizados.
+- Notas regulares e revisão de resultados abrem o `EnrollmentPostActionModal` existente no mesmo atendimento, agora com **ano letivo e turma da matrícula de origem**. A escrita permanece sujeita ao `resolveAcademicYearContext(operation: WRITE)` e ao escritor canónico; matrícula de origem fechada e escala qualitativa não oferecem o atalho numérico.
+- Documentos (gratuitos e pagos) aparecem **dentro da Rematrícula**, com emissão `checkout.emitirDocumento` ou adição ao carrinho e `CarrinhoPanel` existente. Sem mudança para a aba Documentos. Em `view=all`, a ação continua a deslocar a vista até aos documentos já renderizados.
+- A consulta de `exam-context` inclui resultados já submetidos para a matrícula de origem; o UI mostra nota/estado e não deixa reenviar a mesma combinação sessão/componente/disciplina, mantendo a idempotência do endpoint.
+- Erros de **revalidação após guardar** não são interpretados como erros da decisão persistida: o sucesso permanece visível e o operador pode revalidar sem duplicar o pedido.
+
+**Interface:** títulos e próximas ações curtas; referências do decreto e explicações extensas recolhidas em «Ver detalhes». Formulários continuam sujeitos a permissões e conferências no backend, sem botões de override do estado académico.
+
+**Limites que não podem ser declarados fechados:** abertura/publicação de sessões oficiais de exames, publicação de resultados de pauta, reabertura legal de matrículas anteriores e fonte de avaliação qualitativa EJA. Não existem fluxos ponta a ponta disponíveis com autorização e contratos suficientes para publicar essas operações por este painel. Ver #300 e #301.
+
+**Verificação:** `tests/unit/raa-balcao-workspace-contract.spec.ts` protege a origem, documentos no mesmo separador e resultados idempotentes, integrado no `Gracefulness Balcao P0`. Continuam obrigatórios CI verde, testes com autenticação para cada papel/ano, e homologação da migration antes de merge/deploy. Nenhuma escrita manual no banco nem publicação de produção foi feita.
