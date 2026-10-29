@@ -2029,10 +2029,17 @@ function Step3Pagamento(props: {
             { candidatura_id: candidaturaId }
           );
           if (!reopenResp.ok) {
-            return setResult({
+            const calendarIssue = responseCode === "ACADEMIC_CALENDAR_NOT_CONFIGURED" || responseCode === "ACADEMIC_CALENDAR_YEAR_MISMATCH";
+            setResult({
               ok: false,
-              error: "A conversão falhou e a candidatura não pôde ser reaberta automaticamente. Atualize a página e retome o rascunho.",
+              error: "A candidatura foi preservada, mas não foi possível reabrir automaticamente.",
+              details: convertResp.error,
+              code: responseCode ?? undefined,
+              action: calendarIssue
+                ? { id: "open_academic_calendar", label: "Rever calendário MED" }
+                : { id: "review_admission", label: "Rever matrícula" },
             });
+            return;
           }
           setBaseCanEditDraft(true);
           setEditOverride(true);
