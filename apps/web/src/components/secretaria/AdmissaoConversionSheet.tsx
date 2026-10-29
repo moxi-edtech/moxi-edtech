@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { DocumentUpload } from '@/app/(publico)/admissoes/[escolaSlug]/DocumentUpload'
 import { AdmissionCalendarResolution, type AdmissionCalendarIssue } from './AdmissionCalendarResolution'
+import { AdmissionReceiptRecovery } from './AdmissionReceiptRecovery'
 type Props = {
   isOpen: boolean
   onClose: () => void
@@ -103,6 +104,7 @@ type ConvertResponse = {
   details?: string
   code?: string
   matricula_id?: string
+  pagamento_id?: string | null
   aluno_id?: string
   numero_matricula?: string
 }
@@ -190,6 +192,7 @@ export function AdmissaoConversionSheet({
   const [enrollmentResult, setEnrollmentResult] = useState<{
     matriculaId: string;
     alunoId: string;
+    pagamentoId: string | null;
     numeroMatricula: string;
     comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null;
     recibo?: { ok?: boolean; status?: 'available' | 'pending' | 'error'; print_url?: string; error?: string } | null;
@@ -464,6 +467,7 @@ export function AdmissaoConversionSheet({
       setEnrollmentResult({
         matriculaId: json.matricula_id,
         alunoId: newAlunoId,
+        pagamentoId: json.pagamento_id ?? null,
         numeroMatricula: json?.numero_matricula ?? '',
         comprovante: json.comprovante ?? null,
         recibo: json.recibo ?? null,
@@ -689,6 +693,9 @@ export function AdmissaoConversionSheet({
                   <p className="mt-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3 text-xs text-rose-800 dark:text-rose-300">Não foi possível emitir o recibo automaticamente. Tente novamente pela área de documentos.</p>
                 )}
                 {enrollmentResult.recibo?.error && <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">Motivo técnico: {enrollmentResult.recibo.error}</p>}
+                {enrollmentResult.pagamentoId && !enrollmentResult.recibo?.ok && (
+                  <AdmissionReceiptRecovery pagamentoId={enrollmentResult.pagamentoId} escolaId={escolaId} />
+                )}
               </div>
 
               <div className="mb-6 w-full rounded-2xl border border-border bg-muted/50 p-4 text-left">
