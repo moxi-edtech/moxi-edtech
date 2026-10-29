@@ -22,6 +22,10 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20261028212425_lifecycle_aluno_activation_canonical_trigger_20261028.sql",
   "20261028214241_lifecycle_restrict_matricula_write_roles_20261028.sql",
   "20271027120000_lifecycle_ssot_post_replay_guard.sql",
+  "20261029090749_lifecycle_gradeengine_missing_evidence_fail_closed_20261029.sql",
+  "20261029091406_lifecycle_academic_decisions_and_legal_lock_guard_20261029.sql",
+  "20261029091637_lifecycle_historical_outcomes_ratification_20261029.sql",
+  "20271029100000_lifecycle_reconciliation_evidence_guards.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
@@ -46,7 +50,10 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
     }
 
     const content = readMigration(path);
-    if (FISCAL_SQL.test(content)) {
+    // Comments are documentation, not executable SQL.
+    // Scan executable SQL to prevent hidden fiscal activation.
+    const executableSql = content.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    if (FISCAL_SQL.test(executableSql)) {
       violations.push(`Fiscal/AGT activation marker in lifecycle migration: ${path}`);
     }
   }
