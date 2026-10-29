@@ -91,7 +91,7 @@ export function AdmissionCalendarResolution({
     const load = async () => {
       try {
         const [templatesResult, yearResult] = await Promise.all([
-          supabase.from("calendario_templates")
+          (supabase as any).from("calendario_templates")
             .select("id,nome,ano_base,subsistema,fonte_referencia")
             .eq("is_oficial", true)
             .eq("ano_base", anoLetivo!)
@@ -337,7 +337,9 @@ export function AdmissionCalendarResolution({
                             <label key={field} className="space-y-1 text-xs text-foreground">
                               <span>{field === "data_inicio" ? "Início" : "Fim"}</span>
                               <input type="date" value={periodo[field] || ""}
-                                onChange={(event) => changePeriod(index, { [field]: event.target.value })}
+                                onChange={(event) => changePeriod(index, field === "data_inicio"
+                                  ? { data_inicio: event.target.value }
+                                  : { data_fim: event.target.value })}
                                 className="w-full rounded border border-border bg-background p-2 text-xs text-foreground" />
                             </label>
                           ))}
