@@ -31,12 +31,16 @@ export function selectApplicableOfficialEvents<T extends SchoolCalendarEvent>(
   items: SchoolCalendarTemplateItem[],
   offeringIds: string[],
   gradeCode?: string | null,
+  isExamClass = false,
 ): T[] {
   const offeringSet = new Set(offeringIds);
   const accepted = new Map<string, SchoolCalendarTemplateItem[]>();
 
   for (const item of items) {
     if (item.tipo === "PERIODO_LETIVO") continue;
+    // O modelo MED de 2026/27 ainda não marca classes nas datas de exames
+    // nacionais; a turma de exame é o fallback já registado na escola.
+    if (item.tipo.startsWith("EXAME_") && !item.grade_codes?.length && !isExamClass) continue;
     if (item.grade_codes?.length && (!gradeCode || !item.grade_codes.includes(gradeCode))) continue;
     const k = key(item);
     const existing = accepted.get(k) ?? [];
