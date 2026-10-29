@@ -143,3 +143,24 @@ test("The canonical planner is pure and never modifies the source template or of
   buildCanonicalMedCalendarPlan(input);
   assert.equal(JSON.stringify(input), before);
 });
+
+test("A contradictory global flag cannot bypass explicit grade restrictions", () => {
+  const p = profile("regular", "REGULAR_ADULTOS", "Exames regulares");
+  p.items.push({
+    id: "ninth-only", numero: null, tipo: "EXAME_ORAL",
+    nome: "Prova específica da 9.ª classe",
+    data_inicio: "2027-06-25", data_fim: "2027-06-26",
+    peso: null, applies_to_all_offerings: true, grade_codes: ["9"],
+  });
+  const plan = buildCanonicalMedCalendarPlan({
+    calendar, profiles: [p],
+    offerings: [offerings[0], { ...offerings[0], id: "regular-12", grades: ["12"] }],
+    selections: [
+      { offering_id: "regular-9", template_id: "regular" },
+      { offering_id: "regular-12", template_id: "regular" },
+    ],
+  });
+  const matched = plan.events.filter((e) => e.source_item_id === "ninth-only");
+  assert.equal(matched.length, 1);
+  assert.equal(matched[0].offering_id, "regular-9");
+});
