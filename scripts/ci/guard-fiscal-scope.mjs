@@ -38,6 +38,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20261029110413_global_academic_class_metadata_contract_20261029.sql",
   "20261029112728_enrollment_context_atomic_authorized_create_20261029.sql",
   "20271029150000_enrollment_context_atomic_authorized_create.sql",
+  "20261029113302_enrollment_view_academic_year_ssot_20261029.sql",
+  "20271029151000_enrollment_view_academic_year_ssot.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
