@@ -7,6 +7,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { recordAuditServer } from '@/lib/audit';
 import { emitirComprovanteMatricula } from '@/lib/documentos/emitirComprovanteMatricula';
 import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from '@/lib/roles';
+import { inspectDecreeSync } from '@/lib/academic-calendar/decree-sync-server';
 import type { Json } from '~types/supabase';
 // import { enqueueOutboxEvent } from '@/lib/outbox';
 
@@ -216,7 +217,7 @@ export async function POST(request: Request) {
   try {
     const { data: candidatura, error: candError } = await supabase
         .from('candidaturas')
-        .select('escola_id, status, matricula_id, aluno_id, dados_candidato')
+        .select('escola_id, ano_letivo, status, matricula_id, aluno_id, dados_candidato')
         .eq('id', candidatura_id)
         .single();
 
@@ -286,6 +287,40 @@ export async function POST(request: Request) {
       const idempotencyResult = existingIdempotency?.result ?? null;
       if (isJsonObject(idempotencyResult)) {
         return NextResponse.json(idempotencyResult);
+      }
+    }
+
+    // Só avançar na matrícula se o calendário do ano da turma estiver
+    // sincronizado com os perfis oficiais. Nenhuma correção é executada aqui.
+    const { data: targetTurma, error: targetTurmaError } = await supabase
+      .from("turmas")
+      .select("id,ano_letivo,ano_letivo_id")
+      .eq("id", turma_id)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+    if (targetTurmaError) throw targetTurmaError;
+    if (!targetTurma) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CALENDAR_YEAR_MISMATCH",
+        error: "A turma seleccionada não está disponível nesta escola.",
+      }, { status: 409 });
+    }
+    if (candidatura.ano_letivo != null && targetTurma.ano_letivo !== candidatura.ano_letivo) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CALENDAR_YEAR_MISMATCH",
+        error: "A turma seleccionada pertence a outro ano letivo.",
+        details: "Selecione uma turma do ano da candidatura no próprio Balcão.",
+      }, { status: 409 });
+    }
+    if (targetTurma.ano_letivo >= 2026) {
+      const decreeHealth = await inspectDecreeSync(supabase as any, escolaId, targetTurma.ano_letivo);
+      if (!decreeHealth.ok) {
+        return NextResponse.json({
+          ok: false, code: "ACADEMIC_CALENDAR_NOT_CONFIGURED",
+          error: "O calendário do ano letivo não está sincronizado com a fonte oficial.",
+          details: "A candidatura foi preservada. A direcção deve reconciliar o calendário oficial antes de finalizar.",
+          diagnostics: decreeHealth.issues.filter((issue) => issue.severity === "blocker").map((issue) => issue.code),
+        }, { status: 409 });
       }
     }
 
