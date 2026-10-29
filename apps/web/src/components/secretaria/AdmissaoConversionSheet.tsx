@@ -36,6 +36,7 @@ type Props = {
   candidaturaId: string | null
   escolaId: string
   onSuccess: (matriculaId: string) => void
+  elevated?: boolean
 }
 
 type CandidaturaDetail = {
@@ -610,7 +611,7 @@ export function AdmissaoConversionSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="sm:max-w-[540px] p-0 flex flex-col h-full border-l-0 shadow-2xl overflow-hidden">
+      <SheetContent overlayClassName={elevated ? "z-[90]" : undefined} className={`sm:max-w-[540px] p-0 flex flex-col h-full border-l-0 shadow-2xl overflow-hidden ${elevated ? "z-[90]" : ""}`}>
         <SheetHeader className="p-8 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3 mb-2">
             <div className="bg-amber p-2 rounded-xl">
