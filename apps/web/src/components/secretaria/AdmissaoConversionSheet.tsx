@@ -31,6 +31,7 @@ import {
   Send
 } from 'lucide-react'
 import { DocumentUpload } from '@/app/(publico)/admissoes/[escolaSlug]/DocumentUpload'
+import { AdmissionCalendarResolution, type AdmissionCalendarIssue } from './AdmissionCalendarResolution'
 type Props = {
   isOpen: boolean
   onClose: () => void
@@ -170,6 +171,15 @@ export function AdmissaoConversionSheet({
   const [capacityOverrideOpen, setCapacityOverrideOpen] = useState(false)
   const [capacityOverrideMotivo, setCapacityOverrideMotivo] = useState('')
   const [capacityOverrideError, setCapacityOverrideError] = useState<string | null>(null)
+  const [calendarIssue, setCalendarIssue] = useState<{ code: AdmissionCalendarIssue; message: string } | null>(null)
+  const [financialIssue, setFinancialIssue] = useState<string | null>(null)
+
+  const reviewTurmaInPlace = () => {
+    setCalendarIssue(null)
+    setFinancialIssue(null)
+    document.getElementById('admission-conversion-turma')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    document.getElementById('admission-conversion-turma')?.focus()
+  }
 
   useEffect(() => {
     if (!isOpen || !candidaturaId) return
@@ -211,7 +221,9 @@ export function AdmissaoConversionSheet({
     setEnrollmentResult(null) // Reset on new ID
     setCredentials(null)
     setNotificationError(null)
-    
+    setCalendarIssue(null)
+    setFinancialIssue(null)
+
     fetch(`/api/secretaria/admissoes/lead?id=${candidaturaId}`)
       .then(res => res.json())
       .then(json => {
@@ -420,23 +432,16 @@ export function AdmissaoConversionSheet({
           setCapacityOverrideOpen(true)
           return
         }
-        const calendarIssue = json?.code === 'ACADEMIC_CALENDAR_NOT_CONFIGURED' || json?.code === 'ACADEMIC_CALENDAR_YEAR_MISMATCH'
-        if (calendarIssue) {
-          toastError(
-            'Ação necessária no calendário MED',
-            json?.details || json?.error || 'Corrija o calendário académico da turma antes de finalizar.',
-            {
-              label: 'Corrigir calendário MED',
-              onClick: () => window.open(`/escola/${escolaId}/admin/configuracoes/calendario`, '_blank', 'noopener,noreferrer'),
-            },
-          )
+        const code = json?.code
+        if (code === 'ACADEMIC_CALENDAR_NOT_CONFIGURED' || code === 'ACADEMIC_CALENDAR_YEAR_MISMATCH') {
+          setCalendarIssue({
+            code,
+            message: json?.details || json?.error || 'Reveja o calendário académico da turma.',
+          })
           return
         }
-        if (json?.code === 'FINANCIAL_ENTRY_DATE_CONFLICT' || json?.code === 'FINANCIAL_START_OUTSIDE_ACADEMIC_CALENDAR') {
-          toastError(
-            'Rever competência financeira',
-            json?.details || json?.error || 'Reveja a turma e a competência financeira antes de tentar novamente.',
-          )
+        if (code === 'FINANCIAL_ENTRY_DATE_CONFLICT' || code === 'FINANCIAL_START_OUTSIDE_ACADEMIC_CALENDAR') {
+          setFinancialIssue(json?.details || json?.error || 'Reveja a turma e o plano financeiro antes de finalizar.')
           return
         }
         throw new Error(json?.error || 'Erro ao converter matrícula')
@@ -629,6 +634,27 @@ export function AdmissaoConversionSheet({
         </SheetHeader>
 
         <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto bg-muted/30 p-4 sm:p-6">
+          {calendarIssue && (
+            <AdmissionCalendarResolution
+              escolaId={escolaId}
+              anoLetivo={detail?.ano_letivo ?? null}
+              issue={calendarIssue.code}
+              message={calendarIssue.message}
+              onReviewTurma={reviewTurmaInPlace}
+              onResume={() => setCalendarIssue(null)}
+            />
+          )}
+          {financialIssue && (
+            <section role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-foreground dark:border-amber-500/40 dark:bg-amber-500/10">
+              <p className="font-bold">Rever competência financeira</p>
+              <p className="mt-1 text-xs text-muted-foreground">{financialIssue}</p>
+              <p className="mt-2 text-xs text-muted-foreground">A candidatura está preservada. Reveja a turma e os valores neste formulário.</p>
+              <button type="button" onClick={reviewTurmaInPlace}
+                className="mt-3 min-h-10 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted">
+                Rever turma e pagamento
+              </button>
+            </section>
+          )}
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <Loader2 className="w-10 h-10 text-amber animate-spin" />
@@ -1019,10 +1045,15 @@ export function AdmissaoConversionSheet({
                     ]}
                   />
 
-                  <Select 
+                  <Select
+                    id="admission-conversion-turma"
                     label="Turma Designada"
-                    value={academic.turmaId} 
-                    onChange={(e) => setAcademic(prev => ({ ...prev, turmaId: e.target.value }))}
+                    value={academic.turmaId}
+                    onChange={(e) => {
+                      setAcademic(prev => ({ ...prev, turmaId: e.target.value }))
+                      setCalendarIssue(null)
+                      setFinancialIssue(null)
+                    }}
                     options={[
                       { value: '', label: 'Escolha a turma' },
                       ...filteredTurmas.map(t => ({ value: t.id, label: `${t.nome} (${t.classe_nome})` }))
