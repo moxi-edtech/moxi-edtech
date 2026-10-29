@@ -17,6 +17,7 @@ on:
       - "apps/web/src/components/secretaria/RaaBalcaoResolutionPanel.tsx"
       - "apps/web/src/lib/rematricula/raa-balcao-resolution.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-cases.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-regime-guidance.ts"
       - "apps/web/src/app/api/academico/raa/indisciplina/route.ts"
       - "apps/web/src/app/api/academico/exames/resultados/route.ts"
       - "apps/web/src/app/api/secretaria/balcao/raa/exam-context/route.ts"
@@ -110,6 +111,8 @@ jobs:
             tests/unit/rematricula-eligibility.spec.ts \
             tests/unit/raa-balcao-resolution.spec.ts \
             tests/unit/raa-balcao-cases.spec.ts \
+            tests/unit/raa-balcao-regime-guidance.spec.ts \
+            tests/unit/raa-decreto-eligibility.spec.ts \
             tests/unit/raa-exam-result-guard.spec.ts \
             tests/unit/raa-attendance-justification.spec.ts \
             tests/unit/rematricula-debt.spec.ts \
