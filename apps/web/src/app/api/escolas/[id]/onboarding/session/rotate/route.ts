@@ -108,6 +108,16 @@ export async function POST(
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
+    // This legacy rotation deletes/recreates period rows without the MED
+    // provenance and swallows errors. Never use it for decree-backed years.
+    const requestedYear = Number(String(data_inicio).slice(0, 4))
+    if (requestedYear >= 2026) {
+      return NextResponse.json({
+        ok: false, code: 'OFFICIAL_CALENDAR_CONTROLLED_WRITE_REQUIRED',
+        error: 'A rotação deste ano letivo deve ser feita pelo calendário oficial, sem apagar trimestres existentes.',
+      }, { status: 409 })
+    }
+
     // 1) Desativar anos letivos atuais
     await s
       .from('anos_letivos')
