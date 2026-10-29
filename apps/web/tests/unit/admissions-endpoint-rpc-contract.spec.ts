@@ -23,7 +23,9 @@ test('efetivar matrícula usa a folha, endpoint e RPC canónica', () => {
     assert.ok(api.includes(param), param);
   }
   assert.match(api, /if \(!idempotencyKey\)/);
-  assert.match(api, /inspectDecreeSync\(supabase as any, escolaId, targetTurma\.ano_letivo\)/);
+  assert.match(api, /inspectDecreeSync\\(supabase as any, escolaId, targetYear\\)/);
+  assert.match(api, /\\.eq\\("escola_id", escolaId\\)/);
+  assert.match(api, /targetYear == null/);
 });
 
 test('o endpoint financeiro separa pagamento do recibo e mantém idempotência', () => {
