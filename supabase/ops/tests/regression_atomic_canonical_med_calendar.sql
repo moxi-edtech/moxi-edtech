@@ -38,8 +38,8 @@ BEGIN
   INSERT INTO public.calendario_template_items
     (id,template_id,tipo,numero,nome,data_inicio,data_fim,peso,applies_to_all_offerings)
   VALUES
-    (v_item_a,v_regular,'EXAME_ESCRITO',99,'Exames regulares','2027-06-20','2027-06-23',NULL,false),
-    (v_item_b,v_technical,'EXAME_ESCRITO',99,'Exames técnicos','2027-06-20','2027-06-23',NULL,false);
+    (v_item_a,v_regular,'EXAME_ESCRITO',99,'Exames regulares','2027-06-20','2027-06-23',NULL,true),
+    (v_item_b,v_technical,'EXAME_ESCRITO',99,'Exames técnicos','2027-06-20','2027-06-23',NULL,true);
 
   SELECT jsonb_agg(jsonb_build_object(
     'numero', i.numero, 'tipo','TRIMESTRE',
