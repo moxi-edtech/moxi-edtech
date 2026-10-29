@@ -6,6 +6,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope, AcademicYearContextError } from "@/lib/academic-year/context";
+import { carregarSituacoesRoster } from "@/lib/command-center/roster-lifecycle";
 
 export const dynamic = "force-dynamic";
 const schema = z.object({
@@ -113,6 +114,9 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
       "Cache-Control": "private, no-store", "Retry-After": "60",
     } });
     const items = (data ?? []).filter((item) => Boolean(item.aluno_id)).slice(0, input.size);
+    const situacoes = await carregarSituacoesRoster(
+      supabase, escolaId, year.ano, items.map((row) => row.aluno_id!),
+    );
     const last = items[items.length - 1];
     return response({
       ok: true,
@@ -122,6 +126,9 @@ async function readRoster(req: NextRequest, { params }: { params: Promise<{ id: 
         documentosSinalizados: item.documentos_sinalizados,
         propinasVencidas: item.propinas_vencidas,
         pendenciasCount: item.pendencias_count,
+        situacaoMatricula: situacoes.get(item.aluno_id!)!.situacaoMatricula,
+        situacaoResultado: situacoes.get(item.aluno_id!)!.situacaoResultado,
+        resultadoOficial: situacoes.get(item.aluno_id!)!.resultadoOficial,
       })),
       total: data?.[0]?.total_filtrado ?? 0,
       hasMore: (data?.length ?? 0) > input.size,

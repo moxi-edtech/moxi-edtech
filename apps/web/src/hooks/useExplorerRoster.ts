@@ -4,9 +4,10 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { EntityContext } from "@/lib/command-center/entity-context";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import type { RosterLifecycle } from "@/lib/command-center/roster-lifecycle";
 
 type Cursor = { name: string; id: string; priority: number };
-export type RosterStudent = {
+export type RosterStudent = RosterLifecycle & {
   id: string;
   nome: string;
   numero: string | null;

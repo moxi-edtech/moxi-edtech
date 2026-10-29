@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
+import { rotuloSituacaoMatricula, textoResultadoAcademico } from "@/lib/matriculas/lifecycle-status-contract";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,7 +44,11 @@ export async function GET(request: Request) {
     const classeNome = (matricula as any)?.turma?.classe?.nome ?? null;
     const assiduidade = (matricula as any)?.percentagem_presencas ?? null;
 
-    const estadoAcademico =
+    const estadoAcademico = corrente?.situacaoContextual
+      ? (corrente.situacaoContextual === "ano_encerrado"
+        ? textoResultadoAcademico(corrente.situacaoResultado ?? "sem_resultado_oficial", corrente.academico.resultadoOficial)
+        : rotuloSituacaoMatricula(corrente.situacaoContextual))
+      :
       corrente?.estadoOperacional === "ativa" ? "Em curso"
       : corrente?.estadoOperacional === "pendente" ? "Matrícula pendente de confirmação"
       : corrente?.estadoOperacional === "encerrada" && corrente.academico.resultadoOficial

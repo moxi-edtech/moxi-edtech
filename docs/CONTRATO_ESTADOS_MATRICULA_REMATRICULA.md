@@ -1,6 +1,6 @@
 # Contrato de estados — Matrícula, resultado académico e rematrícula
 
-**Versão:** 1.3
+**Versão:** 1.4 — projeção contextual v2 (compatível com o contrato persistido)
 
 **Data:** 2026-10-02
 
@@ -425,3 +425,43 @@ Para uma aluna da 10.ª classe:
 - [ ] Dívida bloqueia a operação financeira, não o resultado académico.
 - [ ] Não existem estados paralelos fora deste contrato.
 - [ ] As transições críticas são auditadas.
+
+## Contrato de leitura contextual v2 — 2026-10-29
+
+A fonte persistida mantém os valores legados para não invalidar escrituras e
+históricos existentes; o contrato **exibido** em Balcão, Command Center,
+exploradores, Portal do Aluno e relatórios passa a ser
+`v_student_lifecycle_status_v2` (security_invoker/RLS).
+A view v1 continua sendo a autoridade de `resultado_oficial` quando o
+snapshot está fechado **e** existe lock legal.
+
+**Não confundir dimensão académica com situação de matrícula:**
+
+| Situação exibida | Origem canónica | Ação |
+|---|---|---|
+| `rascunho` | reserva em preparação | completar matrícula |
+| `aguarda_confirmacao` | `pendente` do ano vigente | confirmar matrícula com gates existentes |
+| `matriculado` | `ativo`, `ativo=true` | acompanhar ano |
+| `regularizacao_historica` | `pendente` do ano anterior ao ativo ou com matrícula posterior | conciliar histórico; nunca confirmar matrícula antiga |
+| `ano_encerrado` | fecho já registado | consultar ou homologar resultado |
+| `transferido` | transferência formal | consultar movimento |
+| `trancado`, `desistente`, `anulado` | movimentos formais próprios | consultar movimento |
+| `revisao_integridade` | estado desconhecido/incoerente ou `inativo` genérico | revisão de integridade |
+
+`situacao_resultado` é independente: `homologado`,
+`registado_nao_homologado` ou `sem_resultado_oficial`. Para impressão,
+separar sempre «Situação da matrícula» de «Resultado académico».
+A coluna `matriculas.status` permanece compatível com writers legados;
+não substituí-la por estados contextuais nem inferir nota/aprovação de mudança
+de classe. Rematrícula e financeiro preservam os seus gates existentes.
+
+**Curtume (leitura auditada em 2026-10-29):** 550 origens pendentes em
+2025/26, das quais 307 têm destino 2026/27 e 243 não. Exibir
+«Histórico anterior por regularizar» para as 550 origens sem alterar
+nota/resultado; 511 destinos ativos e um pendente mantêm-se como estão.
+
+**Rollout:** aplicar primeiro a migration aditiva SQL v2; depois ativar o
+backend consumidor e a UI. Em caso de falha da view, falhar explicitamente
+na consulta, nunca assumir aluno aprovado, matriculado ou reprovação.
+O âmbito histórico fechado dos exploradores continua sujeito à homologação
+existente; esta projeção não remove esse bloqueio.

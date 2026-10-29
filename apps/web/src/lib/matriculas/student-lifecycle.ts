@@ -5,6 +5,7 @@
  * O resultado académico só se torna oficial com histórico anual fechado.
  * Não corrigir estados persistidos a partir desta projeção.
  */
+import type { SituacaoMatriculaContextual, SituacaoResultadoContextual, AcaoMatriculaContextual } from "./lifecycle-status-contract";
 export type MatriculaOperacional = "pendente" | "ativa" | "encerrada" | "cancelada" | "revisao";
 export type ResultadoAcademico = "pendente" | "aprovado" | "reprovado" | "concluido";
 export type LifecycleIssueCode =
@@ -53,6 +54,9 @@ export type StudentLifecycleEntry = {
   turmaId: string | null;
   origemId: string | null;
   estadoOperacional: MatriculaOperacional;
+  situacaoContextual?: SituacaoMatriculaContextual;
+  situacaoResultado?: SituacaoResultadoContextual;
+  acaoContextual?: AcaoMatriculaContextual;
   statusPersistido: string | null;
   ativoPersistido: boolean | null;
   motivoFecho: string | null;

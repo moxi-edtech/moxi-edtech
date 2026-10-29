@@ -25,11 +25,13 @@ export type MinimalExportRow = {
   nome: string;
   numero: string | null;
   turma: string;
+  situacaoMatricula?: string;
+  resultadoAcademico?: string;
 };
 
 export function serializeRosterCsv(rows: readonly MinimalExportRow[], actorId: string, createdAt: string): string {
-  const header = ["Nome", "Número de processo", "Turma"].map(safeCsvCell).join(",");
-  const body = rows.map((row) => [row.nome, row.numero, row.turma].map(safeCsvCell).join(","));
+  const header = ["Nome", "Número de processo", "Turma", "Situação da matrícula", "Resultado académico"].map(safeCsvCell).join(",");
+  const body = rows.map((row) => [row.nome, row.numero, row.turma, row.situacaoMatricula ?? "", row.resultadoAcademico ?? ""].map(safeCsvCell).join(","));
   const footer = ["Emitido por", actorId, createdAt].map(safeCsvCell).join(",");
   return "\uFEFF" + [header, ...body, footer].join("\r\n") + "\r\n";
 }

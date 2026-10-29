@@ -12,6 +12,7 @@ import { ExplorerMetric } from "@/components/secretaria/command-center/ExplorerM
 import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-center/ExplorerHistoricalScopeNotice";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
+import { rotuloSituacaoMatricula } from "@/lib/matriculas/lifecycle-status-contract";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
 import { ExplorerRosterExportButton } from "@/components/secretaria/command-center/ExplorerRosterExportButton";
 import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
@@ -294,6 +295,11 @@ export function TurmaContextView({
                 className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
                 <span className="w-8 shrink-0 text-xs tabular-nums text-slate-500">{student.numeroChamada ?? "—"}</span>
                 <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{student.nome}</span>
+                {searchActive && "situacaoMatricula" in student && student.situacaoMatricula && (
+                  <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                    {rotuloSituacaoMatricula(student.situacaoMatricula)}
+                  </span>
+                )}
                 {searchActive && "documentosSinalizados" in student && student.documentosSinalizados === true && (
                   <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">Documentos sinalizados</span>
                 )}

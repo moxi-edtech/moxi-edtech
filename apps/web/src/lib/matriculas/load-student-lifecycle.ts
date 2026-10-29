@@ -6,6 +6,7 @@ import {
   type MatriculaOperacional,
   type StudentLifecycle,
 } from "@/lib/matriculas/student-lifecycle";
+import { isAcaoMatriculaContextual, isSituacaoMatriculaContextual, isSituacaoResultadoContextual, type SituacaoMatriculaContextual, type SituacaoResultadoContextual, type AcaoMatriculaContextual } from "@/lib/matriculas/lifecycle-status-contract";
 
 type EstadoDb = {
   matricula_id: string;
@@ -20,6 +21,9 @@ type EstadoDb = {
   motivo_fecho: string | null;
   estado_operacional: MatriculaOperacional;
   resultado_oficial: string | null;
+  situacao_contextual: SituacaoMatriculaContextual;
+  situacao_resultado: SituacaoResultadoContextual;
+  acao_contextual: AcaoMatriculaContextual;
 };
 
 /**
@@ -37,8 +41,8 @@ export async function carregarCicloVidaAluno(
 ): Promise<StudentLifecycle> {
   const [estadoResult, historicosResult] = await Promise.all([
     supabase
-      .from("v_student_lifecycle_ssot_v1")
-      .select("matricula_id, escola_id, aluno_id, ano_letivo, status_persistido, ativo_persistido, turma_id, origem_transicao_matricula_id, data_fecho, motivo_fecho, estado_operacional, resultado_oficial")
+      .from("v_student_lifecycle_status_v2")
+      .select("matricula_id, escola_id, aluno_id, ano_letivo, status_persistido, ativo_persistido, turma_id, origem_transicao_matricula_id, data_fecho, motivo_fecho, estado_operacional, resultado_oficial, situacao_contextual, situacao_resultado, acao_contextual")
       .eq("escola_id", escolaId)
       .eq("aluno_id", alunoId)
       .order("ano_letivo", { ascending: false })
@@ -81,5 +85,23 @@ export async function carregarCicloVidaAluno(
     motivo_fecho: row.motivo_fecho,
   }));
   const oficiais = new Map(estados.map((row) => [row.matricula_id, row.resultado_oficial]));
-  return construirCicloVidaAluno(matriculas, historicos, oficiais);
+  const ciclo = construirCicloVidaAluno(matriculas, historicos, oficiais);
+  const origem = new Map(estados.map((row) => [row.matricula_id, row]));
+  const enriquecidas = ciclo.matriculas.map((row) => {
+    const db = origem.get(row.matriculaId);
+    if (!db || !isSituacaoMatriculaContextual(db.situacao_contextual)
+      || !isSituacaoResultadoContextual(db.situacao_resultado)
+      || !isAcaoMatriculaContextual(db.acao_contextual)) {
+      throw new Error("O contrato contextual de matrícula não corresponde à projeção do banco.");
+    }
+    return {
+      ...row, situacaoContextual: db.situacao_contextual,
+      situacaoResultado: db.situacao_resultado, acaoContextual: db.acao_contextual,
+      // Não voltar a oferecer "confirmar matrícula" para um ano antigo.
+      proximaAcao: db.situacao_contextual === "regularizacao_historica"
+        ? "rever_integridade" as const : row.proximaAcao,
+    };
+  });
+  return { ...ciclo, matriculas: enriquecidas,
+    matriculaCorrente: enriquecidas.find((r) => r.matriculaId === ciclo.matriculaCorrente?.matriculaId) ?? null };
 }

@@ -6,6 +6,8 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAcademicYearScope } from "@/lib/academic-year/context";
+import { carregarSituacoesRoster } from "@/lib/command-center/roster-lifecycle";
+import { rotuloSituacaoMatricula, textoResultadoAcademico } from "@/lib/matriculas/lifecycle-status-contract";
 import {
   resolveRosterExportPolicy, rosterExportAudit, serializeRosterCsv, type MinimalExportRow,
 } from "@/lib/command-center/roster-export-policy";
@@ -94,8 +96,16 @@ async function readRosterExport(req: NextRequest, { params }: { params: Promise<
         return deny("Esta lista excede o limite de exportação da escola. Aplique um filtro autorizado.", 413);
       }
       const received = (data ?? []).filter((item) => item.aluno_id && item.nome && item.turma_nome);
+      const situacoes = await carregarSituacoesRoster(
+        supabase, escolaId, year.ano, received.map((row) => row.aluno_id!),
+      );
       for (const record of received) {
-        rows.push({ nome: record.nome!, numero: record.numero_processo, turma: record.turma_nome! });
+        const situacao = situacoes.get(record.aluno_id!)!;
+        rows.push({
+          nome: record.nome!, numero: record.numero_processo, turma: record.turma_nome!,
+          situacaoMatricula: rotuloSituacaoMatricula(situacao.situacaoMatricula),
+          resultadoAcademico: textoResultadoAcademico(situacao.situacaoResultado, situacao.resultadoOficial),
+        });
       }
       if (rows.length > policy.maxRows) {
         return deny("Limite de exportação excedido. Reduza a selecção.", 413);

@@ -19,6 +19,7 @@ type CurrentEnrollmentState = {
     matriculas: Array<{
       anoLetivo: number | null;
       estadoOperacional: string;
+      situacaoContextual?: string;
       academico: { resultadoRegistrado: string; resultadoOficial: string | null };
       pendencias: Array<{ codigo: string; mensagem: string }>;
     }>;
@@ -123,9 +124,9 @@ export function CurrentYearEnrollmentPanel({
   const historicosARever = (state?.cicloVida?.matriculas ?? []).filter(
     (matricula) => state?.anoLetivo && matricula.anoLetivo != null
       && matricula.anoLetivo < state.anoLetivo.ano
-      && matricula.pendencias.some((p) =>
+      && (matricula.situacaoContextual === "regularizacao_historica" || matricula.pendencias.some((p) =>
         ["ORIGEM_PENDENTE_COM_DESTINO_ATIVO", "HISTORICO_EM_CONSTRUCAO", "RESULTADO_AINDA_NAO_OFICIAL"].includes(p.codigo),
-      ),
+      )),
   ).length;
   const semVinculo = state?.cicloVida?.pendenciasGerais.length ?? 0;
   const registroAno = state?.cicloVida?.matriculas.find((item) => item.anoLetivo === state.anoLetivo?.ano);

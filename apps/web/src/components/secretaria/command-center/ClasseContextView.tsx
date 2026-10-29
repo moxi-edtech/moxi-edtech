@@ -14,6 +14,7 @@ import { ExplorerHistoricalScopeNotice } from "@/components/secretaria/command-c
 import { useClasseContext } from "@/hooks/useClasseContext";
 import { buildPortalHref } from "@/lib/navigation";
 import { useExplorerRoster, type RosterSort, type RosterFilter } from "@/hooks/useExplorerRoster";
+import { rotuloSituacaoMatricula } from "@/lib/matriculas/lifecycle-status-contract";
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
 import { ExplorerRosterExportButton } from "@/components/secretaria/command-center/ExplorerRosterExportButton";
 import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
@@ -297,6 +298,11 @@ export function ClasseContextView({
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-slate-900">{aluno.nome}</span>
                 <span className="mt-1 block truncate text-xs text-slate-500">{aluno.turmaNome}</span>
+                {searchActive && "situacaoMatricula" in aluno && aluno.situacaoMatricula && (
+                  <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                    {rotuloSituacaoMatricula(aluno.situacaoMatricula)}
+                  </span>
+                )}
                 {searchActive && "documentosSinalizados" in aluno && aluno.documentosSinalizados === true && (
                   <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">Documentos sinalizados</span>
                 )}
