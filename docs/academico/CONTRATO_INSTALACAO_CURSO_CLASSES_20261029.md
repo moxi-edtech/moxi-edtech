@@ -38,3 +38,12 @@ Uma instalação não está operacionalmente pronta só porque existe linha em `
 - `NULL` não é interpretado como Pré-Escolar.
 - Nenhuma nota, matrícula, decisão pedagógica, cobrança, recibo ou módulo fiscal é alterado.
 - Confirmar TypeScript, unit tests, CI e teste transacional no Supabase antes de integrar.
+
+## Implantação validada no Supabase — 29/10/2026
+
+Migração live: `20261029110413_global_academic_class_metadata_contract_20261029`.
+Repositório: shim com essa versão + migration completa `20271029140000_global_academic_class_metadata_contract.sql` (replay tardio).
+
+Pós-verificação por escola: 49 classes e 139 turmas; nenhum valor `numero` ou `ordem` em falta nas classes numéricas inequívocas; nenhuma turma com número de classe discordante; nenhum par classe/curso de outra escola; 0 divergências entre cursos das matrizes curriculares e 0 entre versões curriculares.
+
+Os antigos triggers de normalização restritos ao Curtume foram substituídos pelos guardas globais equivalentes para não haver duas regras concorrentes. O trigger independente de fecho histórico e o de linhagem de matrículas permanecem ativos. As 550 origens académicas pendentes do Curtume não foram alteradas.
