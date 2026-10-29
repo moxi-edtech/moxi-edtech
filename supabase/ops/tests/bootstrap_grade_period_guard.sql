@@ -3,6 +3,7 @@
 ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS data_inicio date;
 ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS data_fim date;
 ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS offering_id uuid;
+ALTER TABLE public.periodos_letivos ADD COLUMN IF NOT EXISTS source_template_id uuid;
 
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
