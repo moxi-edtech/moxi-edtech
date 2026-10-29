@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { CanonicalPeriodReadError, verifyCanonicalPeriodsRead } from "@/lib/academico/verify-canonical-periods-read";
 import {
   CalendarEventScopeError,
   readScopedAcademicCalendarEvents,
@@ -30,6 +31,10 @@ type PeriodoRow = {
   data_fim: string;
   trava_notas_em: string | null;
   peso: number | null;
+  offering_id: string | null;
+  source_template_id: string | null;
+  source_item_id: string | null;
+  source_version: string | null;
 };
 type EventoRow = {
   id: string;
@@ -210,7 +215,7 @@ export async function GET(req: Request) {
       ? applyKf2ListInvariants(
           supabase
             .from("periodos_letivos")
-            .select("id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso")
+            .select("id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso, offering_id, source_template_id, source_item_id, source_version")
             .eq("escola_id", escolaId)
             .eq("ano_letivo_id", anoLetivo.id),
           {
@@ -227,14 +232,26 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 });
     }
 
+    await verifyCanonicalPeriodsRead(supabase, {
+      escolaId, anoLetivoId: academicContext.anoLetivoId,
+      yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+      periods: (periodos ?? []) as PeriodoRow[],
+    });
+
     return NextResponse.json({
       ok: true,
       context: academicContext,
       ano_letivo: anoLetivo ?? null,
-      periodos: ((periodos as PeriodoRow[] | null) ?? []).filter(Boolean),
+      periodos: ((periodos as PeriodoRow[] | null) ?? [])
+        .filter(Boolean)
+        .map(({ id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso }) =>
+          ({ id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso })),
       items,
     });
   } catch (err) {
+    if (err instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: err.code, error: err.message }, { status: err.status });
+    }
     if (err instanceof CalendarEventScopeError) {
       return NextResponse.json({ ok: false, code: err.code, error: err.message },
         { status: err.code === "CALENDAR_INVALID_SCOPE" ? 400 : 409 });

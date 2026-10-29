@@ -26,6 +26,12 @@ on:
       - "apps/web/tests/unit/grade-period-context.spec.ts"
       - "apps/web/src/lib/academico/official-calendar-write-guard.ts"
       - "apps/web/tests/unit/official-calendar-write-guard.spec.ts"
+      - "apps/web/src/lib/academico/verify-canonical-periods-read.ts"
+      - "apps/web/tests/unit/verify-canonical-periods-read.spec.ts"
+      - "apps/web/src/app/api/professor/periodos/route.ts"
+      - "apps/web/src/app/api/professor/calendario/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/periodos-letivos/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/periodos-por-turma/route.ts"
       - "apps/web/src/lib/academico/calendar-events-read.ts"
       - "apps/web/src/app/api/aluno/home/academic-events/route.ts"
       - "apps/web/tests/unit/calendar-events-read.spec.ts"
@@ -165,6 +171,7 @@ jobs:
             tests/unit/official-calendar-write-guard.spec.ts \
             tests/unit/canonical-med-calendar.spec.ts \
             tests/unit/calendar-events-read.spec.ts \
+            tests/unit/verify-canonical-periods-read.spec.ts \
             tests/unit/validate-canonical-cutover.spec.ts \
             tests/unit/calendar-consumers-contract.spec.ts \
             tests/unit/raa-decreto-eligibility.spec.ts \

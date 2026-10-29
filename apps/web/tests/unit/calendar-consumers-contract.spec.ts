@@ -88,3 +88,21 @@ test("Legacy mixed-subsystem reconciliation cannot replace per-course official e
   assert.match(audit, /ev.offering_id/);
   assert.doesNotMatch(audit, /\b(UPDATE|DELETE|INSERT)\s+(?:INTO|FROM|public\.)/i);
 });
+
+test("All direct MED trimester endpoints use the same provenance guard and typed 409", () => {
+  const endpoints = [
+    "app/api/professor/calendario/route.ts",
+    "app/api/professor/periodos/route.ts",
+    "app/api/secretaria/notas/periodos/route.ts",
+    "app/api/escola/[id]/admin/periodos-letivos/route.ts",
+    "app/api/escola/[id]/admin/periodos-por-turma/route.ts",
+  ];
+  for (const endpoint of endpoints) {
+    const route = read(endpoint);
+    assert.match(route, /verifyCanonicalPeriodsRead/);
+    assert.match(route, /CanonicalPeriodReadError/);
+    assert.match(route, /source_version/);
+    assert.match(route, /source_item_id/);
+    assert.match(route, /anoLetivoId: .*anoLetivoId/);
+  }
+});

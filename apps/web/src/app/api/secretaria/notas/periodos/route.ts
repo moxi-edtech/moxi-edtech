@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { currentGradePeriod, gradePeriodState } from "@/lib/academico/grade-period-context";
+import { CanonicalPeriodReadError, verifyCanonicalPeriodsRead } from "@/lib/academico/verify-canonical-periods-read";
 
 const Params = z.object({
   ano_letivo_id: z.string().uuid(),
@@ -46,12 +47,17 @@ export async function GET(req: Request) {
     }
 
     const { data, error } = await supabase.from("periodos_letivos")
-      .select("id,numero,data_inicio,data_fim,trava_notas_em,source_template_id,source_item_id,offering_id")
+      .select("id,numero,tipo,data_inicio,data_fim,peso,trava_notas_em,source_template_id,source_item_id,source_version,offering_id")
       .eq("escola_id", context.escolaId)
       .eq("ano_letivo_id", context.anoLetivoId)
       .eq("tipo", "TRIMESTRE")
       .order("numero", { ascending: true }).limit(12);
     if (error) throw error;
+    await verifyCanonicalPeriodsRead(supabase, {
+      escolaId: context.escolaId, anoLetivoId: context.anoLetivoId,
+      yearBase: Number(context.anoLetivoLabel.split("/")[0]),
+      periods: data ?? [],
+    });
     const periods = (data ?? []).map((row) => ({
       id: row.id, numero: Number(row.numero), data_inicio: row.data_inicio,
       data_fim: row.data_fim, trava_notas_em: row.trava_notas_em,
@@ -94,6 +100,9 @@ export async function GET(req: Request) {
       read_only: context.mode !== "CURRENT",
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    if (cause instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: cause.code, error: cause.message }, { status: cause.status });
+    }
     if (cause instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: cause.message, code: cause.code }, { status: cause.status });
     }

@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { CanonicalPeriodReadError, verifyCanonicalPeriodsRead } from "@/lib/academico/verify-canonical-periods-read";
 
 export async function GET(
   req: NextRequest,
@@ -60,7 +61,7 @@ export async function GET(
 
     let periodosQuery = supabase
       .from('periodos_letivos')
-      .select('id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso')
+      .select('id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso, offering_id, source_template_id, source_item_id, source_version')
       .eq('escola_id', userEscolaId)
       .eq('ano_letivo_id', anoLetivo.id)
 
@@ -75,8 +76,23 @@ export async function GET(
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, context: academicContext, ano_letivo: anoLetivo, periodos: periodos ?? [] });
+    await verifyCanonicalPeriodsRead(supabase, {
+      escolaId: userEscolaId, anoLetivoId: academicContext.anoLetivoId,
+      yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+      periods: periodos ?? [],
+    });
+
+    return NextResponse.json({
+      ok: true, context: academicContext, ano_letivo: anoLetivo,
+      periodos: (periodos ?? []).map(
+        ({ id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso }) =>
+          ({ id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso })
+      ),
+    });
   } catch (e: unknown) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status });
+    }
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status });
     }
