@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   buildCanonicalMedCalendarPlan,
+  buildCanonicalMedCalendarSkeleton,
   CanonicalCalendarError,
   type CanonicalMedCalendar,
   type MedCourseProfile,
@@ -15,6 +16,7 @@ export async function prepareCanonicalMedCalendar(input: {
   userId: string;
   anoBase: number;
   selections?: CourseCalendarSelection[];
+  allowEmptyOfferings?: boolean;
 }) {
   const { db, escolaId, userId, anoBase } = input;
   const [calendarResult, profilesResult, offeringsResult, activeYearResult] = await Promise.all([
@@ -67,7 +69,13 @@ export async function prepareCanonicalMedCalendar(input: {
   }));
   let plan: ReturnType<typeof buildCanonicalMedCalendarPlan>;
   try {
-    plan = buildCanonicalMedCalendarPlan({
+    // The initial onboarding step precedes course installation. Create only
+    // the canonical year/terms, then apply course events during finalization.
+    plan = offerings.length === 0 && input.allowEmptyOfferings
+      ? buildCanonicalMedCalendarSkeleton({
+          calendar, profiles: (profilesResult.data ?? []) as MedCourseProfile[],
+        })
+      : buildCanonicalMedCalendarPlan({
       calendar,
       profiles: (profilesResult.data ?? []) as MedCourseProfile[],
       offerings: enrichedOfferings,
