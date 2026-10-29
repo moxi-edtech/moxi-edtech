@@ -86,10 +86,11 @@ export async function GET(req: Request) {
       calendar_verified: Boolean(row.source_template_id && row.source_item_id),
       disciplina_ativa: activePeriods === null || activePeriods.includes(row.numero),
     }));
+    const current = currentGradePeriod(periods, now, context.timezone);
     return NextResponse.json({
       ok: true, items,
-      current_trimestre: activePeriods === null || activePeriods.includes(currentGradePeriod(periods, now, context.timezone) ?? -1)
-        ? currentGradePeriod(periods, now, context.timezone) : null,
+      current_trimestre: current !== null && (activePeriods === null || activePeriods.includes(current))
+        ? current : null,
       read_only: context.mode !== "CURRENT",
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
