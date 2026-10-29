@@ -119,7 +119,8 @@ export function AdmissaoConversionSheet({
   onClose, 
   candidaturaId, 
   escolaId,
-  onSuccess 
+  onSuccess,
+  elevated = false,
 }: Props) {
   const { success, error: toastError } = useToast()
   const { turmas, loading: loadingTurmas } = useTurmas(escolaId)
