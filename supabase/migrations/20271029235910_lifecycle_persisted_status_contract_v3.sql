@@ -97,7 +97,7 @@ BEGIN
 
     IF v_grade->>'situacao_final' = 'aprovado' THEN
       v_status_calculado := 'concluido';
-    ELSIF v_grade->>'situacao_final' = 'reprovado' THEN
+    ELSIF v_grade->>'situacao_final' IN ('reprovado','reprovado_por_faltas') THEN
       v_status_calculado := 'concluido';
     ELSE
       RAISE EXCEPTION 'LOGIC: Situação final desconhecida retornada pelo GradeEngine.';
@@ -109,7 +109,9 @@ BEGIN
   IF v_origem='gradeengine' AND EXISTS (
     SELECT 1 FROM public.historico_anos h
     WHERE h.escola_id=v_escola_id AND h.matricula_id=p_matricula_id
-      AND h.resultado_final IS DISTINCT FROM v_grade->>'situacao_final'
+      AND h.resultado_final IS DISTINCT FROM
+        CASE WHEN v_grade->>'situacao_final'='reprovado_por_faltas'
+          THEN 'reprovado' ELSE v_grade->>'situacao_final' END
   ) THEN
     RAISE EXCEPTION 'ACADEMIC_RESULT_CONFLICT: historico diverge do GradeEngine' USING ERRCODE='23514';
   END IF;
@@ -138,7 +140,11 @@ BEGIN
     'secretaria',
     jsonb_build_object(
       'status', v_status_calculado,
-      'resultado_academico', CASE WHEN v_origem='gradeengine' THEN v_grade->>'situacao_final' ELSE NULL END,
+      'resultado_academico', CASE WHEN v_origem='gradeengine' THEN
+        CASE WHEN v_grade->>'situacao_final'='reprovado_por_faltas'
+          THEN 'reprovado' ELSE v_grade->>'situacao_final' END ELSE NULL END,
+      'motivos_academicos', CASE WHEN v_origem='gradeengine'
+        THEN v_grade->'motivos' ELSE NULL END,
       'origem', v_origem,
       'motivo', NULLIF(trim(p_motivo), '')
     )
@@ -151,8 +157,10 @@ BEGIN
     -- O status da matrícula continua apenas a fechar o vínculo administrativo.
     IF v_origem = 'gradeengine' THEN
       UPDATE public.historico_anos
-         SET resultado_final = v_grade->>'situacao_final',
-             status_final = v_grade->>'situacao_final'
+         SET resultado_final = CASE WHEN v_grade->>'situacao_final'='reprovado_por_faltas'
+               THEN 'reprovado' ELSE v_grade->>'situacao_final' END,
+             status_final = CASE WHEN v_grade->>'situacao_final'='reprovado_por_faltas'
+               THEN 'reprovado' ELSE v_grade->>'situacao_final' END
        WHERE escola_id = v_escola_id
          AND matricula_id = p_matricula_id
          AND snapshot_status = 'aberto';
@@ -162,7 +170,11 @@ BEGIN
   RETURN jsonb_build_object(
     'ok', true,
     'status', v_status_calculado,
-    'resultado_academico', CASE WHEN v_origem='gradeengine' THEN v_grade->>'situacao_final' ELSE NULL END,
+    'resultado_academico', CASE WHEN v_origem='gradeengine' THEN
+        CASE WHEN v_grade->>'situacao_final'='reprovado_por_faltas'
+          THEN 'reprovado' ELSE v_grade->>'situacao_final' END ELSE NULL END,
+      'motivos_academicos', CASE WHEN v_origem='gradeengine'
+        THEN v_grade->'motivos' ELSE NULL END,
     'status_fecho_origem', v_origem
   );
 END;
@@ -368,7 +380,9 @@ BEGIN
   END IF;
   IF v_resultado NOT IN ('aprovado','reprovado','concluido') OR v_resultado IS NULL THEN
     v_grade := public.gradeengine_calcular_situacao(p_matricula_id);
-    v_resultado := v_grade->>'situacao_final';
+    v_resultado := CASE
+      WHEN v_grade->>'situacao_final'='reprovado_por_faltas' THEN 'reprovado'
+      ELSE v_grade->>'situacao_final' END;
     IF v_resultado NOT IN ('aprovado','reprovado') OR v_resultado IS NULL THEN
       RAISE EXCEPTION 'ACADEMIC_RESULT_REQUIRED: pauta/decisao verificada obrigatoria' USING ERRCODE='23514';
     END IF;
@@ -495,7 +509,11 @@ BEGIN
     -- GradeEngine evaluation is authoritative only when it still matches the
     -- persisted decision. If data disappeared, a legal lock must be refused.
     v_grade := public.gradeengine_calcular_situacao(v_matricula.id);
-    v_evidence := (v_grade->>'situacao_final'=v_historico.resultado_final);
+    v_evidence := (
+      CASE WHEN v_grade->>'situacao_final'='reprovado_por_faltas'
+        THEN 'reprovado' ELSE v_grade->>'situacao_final' END
+      =v_historico.resultado_final
+    );
   END IF;
 
   IF NOT v_evidence THEN
