@@ -7,8 +7,9 @@ export type DecreeSyncIssueCode =
   | "YEAR_MISSING" | "OFFERINGS_MISSING" | "OFFICIAL_PROFILE_MISSING"
   | "OFFICIAL_PROFILE_INCOMPATIBLE" | "PROFILE_YEAR_RANGE_CONFLICT"
   | "YEAR_RANGE_MISMATCH" | "TRIMESTER_MISSING" | "TRIMESTER_DATES_MISMATCH"
-  | "TRIMESTER_PROFILE_CONFLICT" | "EXAM_EVENT_MISSING"
+  | "TRIMESTER_PROFILE_CONFLICT" | "TRIMESTER_SOURCE_MISMATCH" | "EXAM_EVENT_MISSING"
   | "OFFICIAL_EVENT_MISSING" | "OFFICIAL_EVENT_DATES_MISMATCH"
+  | "OFFICIAL_EVENT_PROFILE_CONFLICT" | "OFFICIAL_EVENT_SOURCE_MISSING" | "OFFICIAL_EVENT_SOURCE_MISMATCH"
   | "TRIMESTER_SOURCE_MISSING" | "DOCUMENT_REFERENCE_MISSING";
 
 export type DecreeSyncIssue = {
@@ -126,6 +127,17 @@ export function auditDecreeSync(input: DecreeSyncSnapshot) {
     if (found.some((p) => !p.source_template_id || !p.source_item_id || !p.source_version)) {
       addIssue(issues, "TRIMESTER_SOURCE_MISSING", "warning", "Falta rastreabilidade da origem dos trimestres.");
     }
+    for (const period of found.filter((p) => p.source_template_id && p.source_item_id && p.source_version)) {
+      const sourceProfile = profileById.get(period.source_template_id!);
+      const sourceItem = sourceProfile?.items.find((i) => i.id === period.source_item_id);
+      if (!sourceProfile || !expectedProfiles.has(sourceProfile.id)
+        || sourceProfile.versao_documento !== period.source_version
+        || sourceItem?.tipo !== "PERIODO_LETIVO"
+        || sourceItem.numero !== item.numero || sourceItem.data_inicio !== period.data_inicio
+        || sourceItem.data_fim !== period.data_fim) {
+        addIssue(issues, "TRIMESTER_SOURCE_MISMATCH", "blocker", "A origem registada do trimestre não corresponde ao modelo aplicável.");
+      }
+    }
   }
 
   const expectedEvents = new Map<string, TemplateItem>();
@@ -137,7 +149,12 @@ export function auditDecreeSync(input: DecreeSyncSnapshot) {
         ? correspondingOfferings.map((o) => o.id)
         : [null];
       for (const offeringId of scoped) {
-        expectedEvents.set(eventKey({ ...item, offering_id: offeringId }), item);
+        const key = eventKey({ ...item, offering_id: offeringId });
+        const previous = expectedEvents.get(key);
+        if (previous && previous.data_fim !== item.data_fim) {
+          addIssue(issues, "OFFICIAL_EVENT_PROFILE_CONFLICT", "blocker", "Modelos diferentes definem datas incompatíveis para o mesmo evento.");
+        }
+        expectedEvents.set(key, item);
       }
     }
   }
@@ -149,8 +166,22 @@ export function auditDecreeSync(input: DecreeSyncSnapshot) {
       addIssue(issues,
         item.tipo.startsWith("PROVA_") || item.tipo.startsWith("EXAME_") ? "EXAM_EVENT_MISSING" : "OFFICIAL_EVENT_MISSING",
         "blocker", "Faltam eventos académicos herdados do decreto.");
-    } else if (event.data_fim !== item.data_fim) {
-      addIssue(issues, "OFFICIAL_EVENT_DATES_MISMATCH", "blocker", "Um evento oficial tem datas diferentes do modelo.");
+    } else {
+      if (event.data_fim !== item.data_fim) {
+        addIssue(issues, "OFFICIAL_EVENT_DATES_MISMATCH", "blocker", "Um evento oficial tem datas diferentes do modelo.");
+      }
+      if (!event.source_template_id || !event.source_item_id || !event.source_version) {
+        addIssue(issues, "OFFICIAL_EVENT_SOURCE_MISSING", "warning", "Falta a proveniência de um evento oficial.");
+      } else {
+        const sourceProfile = profileById.get(event.source_template_id);
+        const sourceItem = sourceProfile?.items.find((i) => i.id === event.source_item_id);
+        if (!sourceProfile || !expectedProfiles.has(sourceProfile.id)
+          || sourceProfile.versao_documento !== event.source_version
+          || sourceItem?.tipo !== event.tipo || sourceItem.nome !== event.nome
+          || sourceItem.data_inicio !== event.data_inicio || sourceItem.data_fim !== event.data_fim) {
+          addIssue(issues, "OFFICIAL_EVENT_SOURCE_MISMATCH", "blocker", "A origem registada de um evento não corresponde ao decreto aplicável.");
+        }
+      }
     }
   }
 
