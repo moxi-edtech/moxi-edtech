@@ -20,6 +20,7 @@ on:
       - "apps/web/src/app/api/academico/exames/resultados/route.ts"
       - "apps/web/src/app/api/secretaria/balcao/raa/exam-context/route.ts"
       - "apps/web/src/lib/academico/raa-exam-result-guard.ts"
+      - "apps/web/src/lib/academico/raa-attendance-justification.ts"
       - "apps/web/src/app/api/secretaria/faltas/justificacoes/route.ts"
       - "apps/web/src/components/secretaria/PagamentoDividaModal.tsx"
       - "apps/web/src/components/secretaria/BalcaoWorkspace.tsx"
@@ -107,6 +108,7 @@ jobs:
             tests/unit/rematricula-eligibility.spec.ts \
             tests/unit/raa-balcao-resolution.spec.ts \
             tests/unit/raa-exam-result-guard.spec.ts \
+            tests/unit/raa-attendance-justification.spec.ts \
             tests/unit/rematricula-debt.spec.ts \
             tests/unit/rematricula-classe-numero.spec.ts \
             tests/unit/rematricula-balcao-destino.spec.ts \
