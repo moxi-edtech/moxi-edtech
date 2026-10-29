@@ -61,6 +61,7 @@ export async function GET(
         numero_matricula,
         numero_chamada,
         ano_letivo,
+        ano_letivo_id,
         session_id,
         turma_id,
         turma_nome,
@@ -83,7 +84,7 @@ export async function GET(
     query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     if (scope === "pending") {
-      return NextResponse.json({ ok: true, filters: { anoLetivoId, classeId, courseId, scope, turmaId: turmaId ?? null }, meta: { total: 0, pendentes: 0 }, matriculas: [] });
+      query = query.eq("status", "pendente");
     } else if (scope === "turma" && turmaId) {
       query = query.eq("turma_id", turmaId);
     }
@@ -100,15 +101,15 @@ export async function GET(
 
     const rows = data || [];
     const total = rows.length;
-    const pendentes = 0;
+    const pendentes = rows.filter((row) => row.status === "pendente").length;
 
     const matriculas = rows.map((row: any) => ({
       id: row.id,
       escola_id: row.escola_id,
-      ano_letivo_id: row.ano_letivo_id,
+      ano_letivo_id: row.ano_letivo_id ?? row.session_id,
       turma_id: row.turma_id,
       aluno_id: row.aluno_id,
-      status: row.status ?? 'ativa',
+      status: row.status ?? 'pendente',
       created_at: row.created_at,
       numero_matricula: row.numero_matricula,
       numero_chamada: row.numero_chamada,
