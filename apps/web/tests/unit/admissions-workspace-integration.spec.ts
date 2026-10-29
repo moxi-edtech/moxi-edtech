@@ -182,3 +182,25 @@ test("erros de recibo e duplicidade conservam o contexto da matrícula", () => {
   assert.match(wizard, /postActionDocumentError &&/);
   assert.match(wizard, /if \(embedded\) \{\s*onReset\(\);\s*onActionChange\?\.\("admissions"\);/);
 });
+
+test("períodos manuais usam o contrato auditado da escola, sem alterar turmas", () => {
+  const resolver = read("components/secretaria/AdmissionCalendarResolution.tsx");
+  assert.match(resolver, /fetchPeriodosLetivos\(escolaId, loadedYear\.id\)/);
+  assert.match(resolver, /admin\/calendario\/ajustes/);
+  assert.match(resolver, /ano_letivo_id: year\.id/);
+  assert.match(resolver, /manualMotivo\.trim\(\)/);
+  assert.match(resolver, /periodo\.data_inicio < year\.data_inicio/);
+  assert.match(resolver, /periodos\.reduce\(/);
+  assert.match(resolver, /A soma dos pesos deve ser 100%/);
+  assert.match(resolver, /ano_base", anoLetivo!/);
+  assert.doesNotMatch(resolver, /setup_active_ano_letivo/);
+});
+
+test("recibo em preparação ou erro mantém consulta recuperável pelo pagamento", () => {
+  const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
+  const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
+  assert.match(conversion, /pagamentoId: json\.pagamento_id \?\? null/);
+  assert.match(conversion, /<AdmissionReceiptRecovery pagamentoId=\{enrollmentResult\.pagamentoId\}/);
+  assert.match(wizard, /result\.pagamento_id && !result\.recibo\?\.ok/);
+  assert.match(wizard, /<AdmissionReceiptRecovery pagamentoId=\{result\.pagamento_id\}/);
+});
