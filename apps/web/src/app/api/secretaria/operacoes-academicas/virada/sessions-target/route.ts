@@ -6,18 +6,20 @@ import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { prepareCanonicalMedCalendar } from "@/lib/academico/prepare-canonical-calendar";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const CreateTargetBody = z.object({
+  ano_base: z.number().int().min(2026).max(2050).optional(),
   template_id: z.string().uuid().optional(),
   offerings: z.array(z.object({
     offering_id: z.string().uuid(),
     template_id: z.string().uuid(),
   })).min(1).optional(),
-}).refine((value) => Boolean(value.template_id || value.offerings?.length), {
-  message: "Selecione pelo menos um perfil regulatório",
+}).refine((value) => Boolean(value.ano_base || value.template_id || value.offerings?.length), {
+  message: "Selecione o ano letivo do calendário oficial",
 });
 
 export async function GET() {
@@ -70,6 +72,14 @@ export async function GET() {
 
     if (templatesError) throw templatesError;
 
+    const { data: officialCalendars, error: canonicalError } = await (supabase as any)
+      .from("calendarios_oficiais_anos")
+      .select("ano_base,data_inicio,data_fim,versao_documento,estado")
+      .eq("estado", "PUBLICADO")
+      .gte("ano_base", anoAtivo?.ano || 0)
+      .order("ano_base", { ascending: true });
+    if (canonicalError) throw canonicalError;
+
     const { data: offerings } = await (supabase as any)
       .from("school_education_offerings")
       .select("id,course_id,education_subsystem,education_level,cycle,grades,calendar_profile_id,status")
@@ -90,6 +100,7 @@ export async function GET() {
         ...s,
         has_data: sessionsWithData.has(s.id)
       })),
+      official_calendars: officialCalendars ?? [],
       official_templates: templates ?? [],
       education_offerings: (offerings ?? []).map((offering: { course_id: string | null }) => ({
         ...offering,
@@ -118,6 +129,13 @@ export async function POST(request: Request) {
     const parsed = CreateTargetBody.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: "Selecione pelo menos um perfil regulatório" }, { status: 400 });
+    }
+
+    if (parsed.data.ano_base) {
+      return prepareCanonicalMedCalendar({
+        db: supabase as any, escolaId, userId: user.id,
+        anoBase: parsed.data.ano_base, selections: parsed.data.offerings,
+      });
     }
 
     const db = supabase as any;
@@ -157,6 +175,14 @@ export async function POST(request: Request) {
     const templateList = templates ?? [];
     if (templateError || templateList.length !== templateIds.length) {
       return NextResponse.json({ ok: false, error: "Um ou mais templates oficiais não foram encontrados" }, { status: 404 });
+    }
+    // Historical clients cannot bypass the canonical-year contract by
+    // sending several independent official profiles as templates.
+    if (templateList.some((template) => template.ano_base >= 2026)) {
+      return NextResponse.json({
+        ok: false, code: "CANONICAL_CALENDAR_SELECTION_REQUIRED",
+        error: "Selecione um calendário oficial do ano e associe os perfis aos cursos.",
+      }, { status: 409 });
     }
     const primaryOfficial = templateList[0];
     if (primaryOfficial && primaryOfficial.ano_base >= 2026) {
