@@ -284,10 +284,14 @@ async function fetchRadar(url: string): Promise<AdmissoesRadarResponse> {
 
 export default function AdmissoesInboxClient({
   escolaId,
-  initialItems = []
+  initialItems = [],
+  embedded = false,
+  onNewAdmission,
 }: {
   escolaId: string;
   initialItems?: CandidaturaListItem[];
+  embedded?: boolean;
+  onNewAdmission?: () => void;
 }) {
   const router = useRouter()
   const { success, error: toastError } = useToast()
@@ -309,9 +313,9 @@ export default function AdmissoesInboxClient({
     [escolaSlug, slugFromPath, pathname]
   )
 
-  const [selectedId, setSelectedId] = useState<string | null>(searchParams?.get('id') || null)
-  const turmaId = searchParams?.get('turmaId')
-  const initialSearch = searchParams?.get('search')
+  const [selectedId, setSelectedId] = useState<string | null>(embedded ? null : searchParams?.get('id') || null)
+  const turmaId = embedded ? null : searchParams?.get('turmaId')
+  const initialSearch = embedded ? null : searchParams?.get('search')
 
   const [selectedData, setSelectedData] = useState<CandidaturaDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -360,8 +364,10 @@ export default function AdmissoesInboxClient({
     error: swrError,
     mutate,
   } = useSWR<AdmissoesRadarResponse>(listUrl, fetchRadar, {
-    fallbackData: { ok: true, counts: {}, items: initialItems, meta: {} },
+    fallbackData: initialItems.length ? { ok: true, counts: {}, items: initialItems, meta: {} } : undefined,
     keepPreviousData: true,
+    revalidateOnFocus: false,
+    dedupingInterval: 15000,
   })
 
   const items = radarData?.items || []
@@ -374,7 +380,11 @@ export default function AdmissoesInboxClient({
     return Object.entries(documentos).filter(([, path]) => typeof path === 'string' && path.trim())
   }, [selectedData])
 
+  const hasSelectedCandidate = Boolean(selectedId)
+  // Configuração documental só é necessária após abrir uma candidatura.
+  // Evita pedido extra no primeiro carregamento da fila.
   useEffect(() => {
+    if (!hasSelectedCandidate) return
     let cancelled = false
 
     async function loadAdmissionConfig() {
@@ -400,7 +410,7 @@ export default function AdmissoesInboxClient({
     return () => {
       cancelled = true
     }
-  }, [escolaId])
+  }, [escolaId, hasSelectedCandidate])
 
   const filteredItems = useMemo(() => {
     const list = items.filter(item => {
@@ -532,29 +542,39 @@ export default function AdmissoesInboxClient({
     await mutate()
   }, [mutate])
 
-  const fetchDetail = useCallback(async (id: string) => {
+  const fetchDetail = useCallback(async (id: string, signal: AbortSignal) => {
     setLoadingDetail(true)
+    setSelectedData(null)
     try {
-      const res = await fetch(`/api/secretaria/admissoes/lead?id=${id}`)
+      const res = await fetch(`/api/secretaria/admissoes/lead?id=${encodeURIComponent(id)}`, { signal })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao carregar detalhes')
-      setSelectedData(json.item)
+      if (!signal.aborted) setSelectedData(json.item)
     } catch (err: unknown) {
-      console.error(err)
+      if (!signal.aborted) {
+        console.error(err)
+        toastError('Não foi possível abrir a candidatura', 'Tente novamente selecionando a candidatura na fila.')
+      }
     } finally {
-      setLoadingDetail(false)
+      if (!signal.aborted) setLoadingDetail(false)
     }
-  }, [])
+  }, [toastError])
 
   useEffect(() => {
-    if (selectedId) {
-      fetchDetail(selectedId)
-      // Update URL without refresh
+    if (!selectedId) {
+      setSelectedData(null)
+      return
+    }
+    const controller = new AbortController()
+    void fetchDetail(selectedId, controller.signal)
+    if (!embedded) {
+      // A fila embutida não altera o URL do Balcão nem o contexto do aluno.
       const url = new URL(window.location.href)
       url.searchParams.set('id', selectedId)
-      window.history.replaceState({}, '', url.toString())
+      window.history.replaceState(window.history.state, '', url.toString())
     }
-  }, [selectedId, fetchDetail])
+    return () => controller.abort()
+  }, [selectedId, fetchDetail, embedded])
 
   const handleApprove = async () => {
     if (!selectedId) return
@@ -1144,12 +1164,12 @@ export default function AdmissoesInboxClient({
   };
 
   return (
-    <div className="flex h-[calc(100vh-160px)] gap-0 overflow-hidden bg-white rounded-2xl shadow-sm border border-slate-200">
+    <div className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row ${embedded ? "h-[min(76dvh,920px)] min-h-[540px]" : "h-[calc(100dvh-160px)] min-h-[560px]"}`} aria-label="Gestão de admissões">
       {/* Coluna Esquerda: Fila de Espera (30%) */}
-      <div className="w-[350px] md:w-[30%] border-r border-slate-200 flex flex-col bg-slate-50/50">
-        <div className="p-4 border-b border-slate-200 bg-white">
+      <div className={`min-h-0 w-full shrink-0 flex-col border-b border-border bg-card lg:w-[min(38%,400px)] lg:border-b-0 lg:border-r ${selectedId ? "hidden lg:flex" : "flex"}`}>
+        <div className="border-b border-border bg-card p-3 sm:p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-800">Inbox</h2>
+            <h2 className="text-base font-bold text-foreground">Candidaturas</h2>
             <div className="flex items-center gap-2">
               {turmaId && (
                 <Button
@@ -1171,14 +1191,16 @@ export default function AdmissoesInboxClient({
                 size="sm"
                 variant="outline"
                 className="h-8 w-8 p-0"
+                aria-label="Atualizar candidaturas"
+                title="Atualizar candidaturas"
                 onClick={() => fetchList()}
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
               <Button
                 size="sm"
-                className="h-8 bg-emerald hover:bg-emerald-600 text-white gap-1"
-                onClick={() => router.push(withSlug(`/secretaria/admissoes/nova`))}
+                className="h-8 gap-1 bg-amber text-slate-950 hover:brightness-95"
+                onClick={() => onNewAdmission ? onNewAdmission() : router.push(withSlug(`/secretaria/admissoes/nova`))}
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Novo</span>
@@ -1186,13 +1208,13 @@ export default function AdmissoesInboxClient({
             </div>
           </div>
 
-          <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+          <div className="mb-4 rounded-xl border border-border bg-muted/40 p-3">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
               <Share2 className="h-3 w-3" />
               Link de Inscrição Pública
             </p>
             <div className="flex items-center gap-2">
-              <div className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-mono text-slate-500 truncate">
+              <div className="min-w-0 flex-1 truncate rounded-xl border border-border bg-card px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
                 {publicLink}
               </div>
               <button
@@ -1218,14 +1240,14 @@ export default function AdmissoesInboxClient({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar aluno..."
+              placeholder="Pesquisar candidatura..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-amber/20 focus:border-amber rounded-xl text-sm transition-all outline-none"
+              className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-4 text-sm text-foreground outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
             />
           </div>
 
-          <div className="flex p-1 bg-slate-100 rounded-xl mb-4">
+          <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
             {([
               { id: 'novas', label: 'Novas' },
               { id: 'rascunhos', label: 'Rascunhos' },
@@ -1237,10 +1259,10 @@ export default function AdmissoesInboxClient({
               <button
                 key={f.id}
                 onClick={() => setStatusFilter(f.id)}
-                className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                className={`shrink-0 rounded-xl px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-all ${
                   statusFilter === f.id
-                    ? 'bg-white text-emerald shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {f.label}
@@ -1332,8 +1354,13 @@ export default function AdmissoesInboxClient({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {loading ? (
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-muted/30 p-3">
+          {listError ? (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <p>Não foi possível carregar a fila: {listError}</p>
+              <button type="button" className="mt-2 font-bold underline" onClick={() => void fetchList()}>Tentar novamente</button>
+            </div>
+          ) : loading ? (
             <div className="flex flex-col items-center justify-center h-32 space-y-2">
               <Spinner size={16} />
               <p className="text-xs text-slate-400">Carregando fila...</p>
@@ -1353,11 +1380,21 @@ export default function AdmissoesInboxClient({
                 <motion.div
                   key={item.id}
                   layoutId={item.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isActive}
+                  aria-label={`Abrir candidatura de ${item.nome_candidato}`}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      setSelectedId(item.id)
+                    }
+                  }}
                   onClick={() => setSelectedId(item.id)}
                   className={`group relative p-4 rounded-xl cursor-pointer transition-all border ${
                     isActive
-                      ? 'bg-white border-amber shadow-md ring-1 ring-amber/20'
-                      : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm'
+                      ? 'bg-card border-amber shadow-sm ring-1 ring-amber/20'
+                      : 'bg-card border-border hover:border-amber/50'
                   }`}
                 >
                   <div className={`absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold ${status.bg} ${status.color}`}>
@@ -1378,7 +1415,7 @@ export default function AdmissoesInboxClient({
                   )}
 
                   <div className={isBulkSelectable ? "pl-7 pr-16" : "pr-16"}>
-                    <p className="font-sans font-bold text-slate-900 group-hover:text-emerald transition-colors">
+                    <p className="font-sans text-sm font-bold text-foreground transition-colors group-hover:text-emerald">
                       {item.nome_candidato}
                     </p>
                     <p className="font-mono text-[11px] text-slate-500 mt-1 uppercase tracking-wider">
@@ -1401,7 +1438,7 @@ export default function AdmissoesInboxClient({
       </div>
 
       {/* Coluna Direita: Raio-X (70%) */}
-      <div className="flex-1 bg-slate-50 flex flex-col relative overflow-hidden">
+      <div className={`relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted/30 ${selectedId ? "flex" : "hidden lg:flex"}`}>
         <AnimatePresence mode="wait">
           {selectedId ? (
             <motion.div
@@ -1411,6 +1448,9 @@ export default function AdmissoesInboxClient({
               exit={{ opacity: 0, x: -20 }}
               className="flex-1 flex flex-col h-full overflow-y-auto"
             >
+              <div className="border-b border-border bg-card px-4 py-3 lg:hidden">
+                <button type="button" onClick={() => setSelectedId(null)} className="text-sm font-bold text-foreground">← Voltar às candidaturas</button>
+              </div>
               {loadingDetail ? (
                 <div className="flex-1 flex items-center justify-center">
                   <Spinner />
@@ -1418,7 +1458,7 @@ export default function AdmissoesInboxClient({
               ) : selectedData ? (
                 <>
                   {/* Cabeçalho Raio-X */}
-                  <div className="p-8 bg-white border-b border-slate-200">
+                  <div className="border-b border-border bg-card p-4 sm:p-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
@@ -1439,7 +1479,7 @@ export default function AdmissoesInboxClient({
                             Esta candidatura entrou em lista de espera porque a turma selecionada estava lotada no momento da submissão.
                           </p>
                         )}
-                        <h1 className="text-4xl font-sans font-bold text-emerald leading-tight">
+                        <h1 className="font-sans text-xl font-bold leading-tight text-emerald sm:text-2xl">
                           {selectedData.nome_candidato}
                         </h1>
                         <p className="text-slate-500 mt-1 flex items-center gap-2">
@@ -1475,7 +1515,7 @@ export default function AdmissoesInboxClient({
                   </div>
 
                   {/* Conteúdo Raio-X */}
-                  <div className="p-8 pb-32 space-y-8">
+                  <div className="space-y-6 p-4 pb-28 sm:p-6 sm:pb-28">
                     {/* Alerta de Conciliação Financeira */}
                     {(selectedData.status === 'aguardando_compensacao' || selectedData.status === 'aguardando_pagamento') && (
                       <section className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
@@ -1704,7 +1744,7 @@ export default function AdmissoesInboxClient({
                   </div>
 
                   {/* Barra de Ação Sticky Bottom */}
-                  <div className="absolute bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-md border-t border-slate-200 flex items-center justify-end gap-4 z-10">
+                  <div className="absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-card/95 p-3 backdrop-blur sm:p-4">
                     {canReopenAdmission(selectedData.status) && (
                       <button
                         onClick={handleReopen}
