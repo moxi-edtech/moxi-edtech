@@ -18,7 +18,7 @@ const periodoSchema = z.object({
   peso: z.number().int().min(0).max(100).optional().nullable(),
 });
 
-const upsertBulkSchema = z.array(periodoSchema);
+const upsertBulkSchema = z.array(periodoSchema).min(1).max(20);
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -58,6 +58,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Dados inválidos.', issues: parseResult.error.issues }, { status: 400 });
     }
 
+    const firstAnoLetivoId = parseResult.data[0].ano_letivo_id;
+    if (parseResult.data.some((item) => item.ano_letivo_id !== firstAnoLetivoId)) {
+      return NextResponse.json({ ok: false, error: 'Todos os períodos devem pertencer ao mesmo ano letivo.' }, { status: 400 });
+    }
+
     const academicContext = await resolveAcademicYearContext(supabase, {
       userId: user.id,
       requestedAcademicYearId: parseResult.data[0]?.ano_letivo_id,
@@ -71,18 +76,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     // This legacy generic writer cannot carry MED source provenance or an
     // audited justification. Use the official template/controlled-adjustment
     // routes for the 2026/27 decree instead of silently detaching the calendar.
-    if (academicContext.anoLetivoLabel.startsWith('2026/')) {
+    if (Number(academicContext.anoLetivoLabel.split('/')[0]) >= 2026) {
       return NextResponse.json({
         ok: false, code: 'OFFICIAL_CALENDAR_CONTROLLED_WRITE_REQUIRED',
         error: 'Utilize os ajustes do calendário oficial para este ano letivo.',
       }, { status: 409 });
     }
 
-    const firstAnoLetivoId = parseResult.data[0]?.ano_letivo_id;
-    const mixedAnoLetivoIds = parseResult.data.some((item) => item.ano_letivo_id !== firstAnoLetivoId);
-    if (mixedAnoLetivoIds) {
-      return NextResponse.json({ ok: false, error: 'Todos os períodos devem pertencer ao mesmo ano letivo.' }, { status: 400 });
-    }
     const { data, error } = await (supabase as any).rpc('upsert_bulk_periodos_letivos', {
       p_escola_id: userEscolaId,
       p_periodos_data: parseResult.data,
