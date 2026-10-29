@@ -96,3 +96,25 @@ test("modais de Admissões aparecem sobre o Workspace e mantêm o tema global", 
   assert.match(conversion, /overlayClassName=\{elevated \? "z-\[90\]" : undefined\}/);
   assert.match(conversion, /bg-card text-foreground/);
 });
+
+test("nova candidatura herda a paleta do Balcão em todas as três etapas", () => {
+  const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
+  const fixedNeutral = /\bbg-white\b|\bbg-slate-(?:50|100|200|300|400|500|600|700|800|900|950)(?:\/\d+)?\b|\b(?:text|border|ring|disabled:bg|disabled:text)-(?:slate|gray|zinc)-(?:[1-9]00|950)\b/;
+  assert.doesNotMatch(wizard, fixedNeutral);
+  assert.match(wizard, /bg-card/);
+  assert.match(wizard, /text-foreground/);
+  assert.match(wizard, /border-border/);
+  assert.match(wizard, /text-amber-950/);
+  assert.match(wizard, /dark:bg-rose-500\/10/);
+});
+
+test("confirmação global e exceção de capacidade ultrapassam a janela modal", () => {
+  const dialog = read("components/ui/dialog.tsx");
+  const feedback = read("components/feedback/FeedbackSystem.tsx");
+  const conversion = read("components/secretaria/AdmissaoConversionSheet.tsx");
+  assert.match(dialog, /overlayClassName\?: string/);
+  assert.match(dialog, /<DialogOverlay className=\{overlayClassName\}/);
+  assert.match(feedback, /overlayClassName="z-\[110\]"/);
+  assert.match(conversion, /<DialogTitle className="text-base font-bold text-foreground">Turma acima da capacidade/);
+  assert.match(conversion, /overlayClassName="z-\[110\]"/);
+});
