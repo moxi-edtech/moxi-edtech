@@ -61,7 +61,7 @@ export async function GET() {
 
     const { data: templates, error: templatesError } = await supabase
       .from("calendario_templates")
-      .select("id,nome,ano_base,data_inicio,data_fim,subsistema,versao_documento")
+      .select("id,nome,ano_base,data_inicio,data_fim,subsistema,calendario_canonico_ano,versao_documento")
       .eq("is_oficial", true)
       .eq("estado", "PUBLICADO")
       // O calendário 2026/2027 tem ano_base=2026. O ano-base coincide
