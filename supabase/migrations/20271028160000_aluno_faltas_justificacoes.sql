@@ -32,6 +32,7 @@ CREATE INDEX IF NOT EXISTS ix_falta_justificacoes_aluno
   ON public.aluno_falta_justificacoes(escola_id, matricula_id, created_at DESC);
 ALTER TABLE public.aluno_falta_justificacoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS aluno_falta_justificacoes_read ON public.aluno_falta_justificacoes;
 CREATE POLICY aluno_falta_justificacoes_read ON public.aluno_falta_justificacoes
   FOR SELECT TO authenticated USING (
     escola_id = public.current_tenant_escola_id()
@@ -41,6 +42,7 @@ CREATE POLICY aluno_falta_justificacoes_read ON public.aluno_falta_justificacoes
   );
 -- Submission is only for a verified guardian or the student if legally adult.
 -- Both API and RLS independently check authority, school, enrolment and underlying absence.
+DROP POLICY IF EXISTS aluno_falta_justificacoes_submit ON public.aluno_falta_justificacoes;
 CREATE POLICY aluno_falta_justificacoes_submit ON public.aluno_falta_justificacoes
   FOR INSERT TO authenticated WITH CHECK (
     escola_id = public.current_tenant_escola_id()
@@ -72,12 +74,15 @@ CREATE POLICY aluno_falta_justificacoes_submit ON public.aluno_falta_justificaco
       )
     )
   );
+DROP POLICY IF EXISTS aluno_falta_justificacoes_staff_decide ON public.aluno_falta_justificacoes;
 CREATE POLICY aluno_falta_justificacoes_staff_decide ON public.aluno_falta_justificacoes
   FOR UPDATE TO authenticated
-  USING (escola_id = public.current_tenant_escola_id()
+  USING (status = 'pending' AND escola_id = public.current_tenant_escola_id()
     AND public.user_has_role_in_school(escola_id,
       ARRAY['diretor','admin','admin_escola','staff_admin','secretaria','secretaria_financeiro','admin_financeiro']))
-  WITH CHECK (escola_id = public.current_tenant_escola_id()
+  WITH CHECK (status IN ('approved','rejected') AND reviewed_by = (SELECT auth.uid())
+    AND reviewed_at IS NOT NULL
+    AND escola_id = public.current_tenant_escola_id()
     AND public.user_has_role_in_school(escola_id,
       ARRAY['diretor','admin','admin_escola','staff_admin','secretaria','secretaria_financeiro','admin_financeiro']));
 
@@ -89,3 +94,31 @@ GRANT UPDATE (status,reviewed_by,reviewed_at,decision_reason)
   ON public.aluno_falta_justificacoes TO authenticated;
 COMMENT ON TABLE public.aluno_falta_justificacoes IS
   'Petitions for school review of recorded absences; decisions never erase presence or create payments.';
+
+-- A staff decision is terminal. The actor and timestamp are canonical, never client-supplied.
+CREATE OR REPLACE FUNCTION public.guard_aluno_falta_justificacao_decision_v1()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
+SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF OLD.status <> 'pending' OR NEW.status NOT IN ('approved','rejected') THEN
+    RAISE EXCEPTION 'A justificação já foi decidida ou a transição não é permitida';
+  END IF;
+  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.escola_id IS DISTINCT FROM OLD.escola_id
+     OR NEW.aluno_id IS DISTINCT FROM OLD.aluno_id OR NEW.matricula_id IS DISTINCT FROM OLD.matricula_id
+     OR NEW.frequencia_id IS DISTINCT FROM OLD.frequencia_id OR NEW.data_falta IS DISTINCT FROM OLD.data_falta
+     OR NEW.motivo IS DISTINCT FROM OLD.motivo OR NEW.submitted_by IS DISTINCT FROM OLD.submitted_by THEN
+    RAISE EXCEPTION 'Os dados originais da justificação são imutáveis';
+  END IF;
+  IF (SELECT auth.uid()) IS NULL THEN
+    RAISE EXCEPTION 'Decisão requer sessão autenticada';
+  END IF;
+  NEW.reviewed_by := (SELECT auth.uid());
+  NEW.reviewed_at := now();
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.guard_aluno_falta_justificacao_decision_v1() FROM PUBLIC, anon;
+DROP TRIGGER IF EXISTS trg_aluno_falta_justificacao_decision_v1 ON public.aluno_falta_justificacoes;
+CREATE TRIGGER trg_aluno_falta_justificacao_decision_v1
+BEFORE UPDATE ON public.aluno_falta_justificacoes
+FOR EACH ROW EXECUTE FUNCTION public.guard_aluno_falta_justificacao_decision_v1();

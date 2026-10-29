@@ -67,3 +67,13 @@ test("fila de decisão é ligada à secretaria e requer motivo para rejeição",
   assert.match(q, /decision === "rejected" && reason\.trim\(\)\.length < 8/);
   assert.match(q, /A ausência original continuará no histórico/);
 });
+
+
+test("decisão é terminal, ator autêntico e frequência imutável inclusive via Data API", () => {
+  assert.match(migration, /USING \(status = 'pending' AND escola_id/);
+  assert.match(migration, /WITH CHECK \(status IN \('approved','rejected'\) AND reviewed_by = \(SELECT auth\.uid\(\)\)/);
+  assert.match(migration, /NEW\.reviewed_by := \(SELECT auth\.uid\(\)\)/);
+  assert.match(migration, /NEW\.reviewed_at := now\(\)/);
+  assert.match(migration, /NEW\.frequencia_id IS DISTINCT FROM OLD\.frequencia_id/);
+  assert.match(migration, /BEFORE UPDATE ON public\.aluno_falta_justificacoes/);
+});
