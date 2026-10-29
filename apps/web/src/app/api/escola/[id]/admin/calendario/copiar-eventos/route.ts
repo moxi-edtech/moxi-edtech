@@ -32,6 +32,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { data: anos } = await supabase
       .from('anos_letivos')
       .select('id, ano')
+      .eq('escola_id', userEscolaId)
       .in('id', [fromAnoId, toAnoId]);
 
     const fromAno = anos?.find(a => a.id === fromAnoId);
@@ -47,6 +48,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { data: eventosOrigem, error: fetchError } = await supabase
       .from('calendario_eventos')
       .select('*')
+      .eq('escola_id', userEscolaId)
       .eq('ano_letivo_id', fromAnoId);
 
     if (fetchError) throw fetchError;
