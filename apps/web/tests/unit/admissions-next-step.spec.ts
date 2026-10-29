@@ -21,7 +21,7 @@ const expectedPrimary: Record<AdmissionInboxStatus, string> = {
   arquivado: 'next_candidate',
   matriculado: 'next_candidate',
   pendente: 'review_documents',
-  lista_espera: 'approve',
+  lista_espera: 'convert',
 };
 
 test('todos os 14 estados da candidatura possuem uma próxima ação explícita', () => {
@@ -102,4 +102,13 @@ test('fechar a conversão não equivale a avançar automaticamente o atendimento
   assert.doesNotMatch(sheet, /Fechar e atender próximo candidato/);
   assert.match(inbox, /const handleCloseConversion = useCallback\(\(\) => \{\s*setIsConversionOpen\(false\)/);
   assert.match(inbox, /const handleNextCandidate = useCallback/);
+});
+
+test('lista de espera usa finalização com validação de capacidade, não aprovação isolada', () => {
+  const step = getAdmissionInboxNextStep('lista_espera');
+  assert.equal(step.action, 'convert');
+  assert.match(step.actionLabel, /Rever turma/);
+  const api = readFileSync('src/app/api/secretaria/admissoes/convert/route.ts', 'utf8');
+  assert.match(api, /admissao_finalizar_matricula/);
+  assert.match(api, /TURMA_LOTADA_CAPACIDADE/);
 });
