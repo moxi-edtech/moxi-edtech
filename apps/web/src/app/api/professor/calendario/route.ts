@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import {
+  CalendarEventScopeError,
+  readScopedAcademicCalendarEvents,
+  resolveCalendarOfferingIdsForCourses,
+} from "@/lib/academico/calendar-events-read";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
@@ -36,6 +41,7 @@ type EventoRow = {
   tipo: string;
   publico_alvo: string | null;
   cor_hex: string | null;
+  offering_id?: string | null;
 };
 
 const toIsoDate = (date: Date) => {
@@ -105,21 +111,101 @@ export async function GET(req: Request) {
     const rangeEnd =
       anoLetivo?.data_fim ?? toIsoDate(new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()));
 
-    let eventosQuery = supabase
-      .from("vw_eventos_escola_unificados")
-      .select("id, escola_id, nome, descricao, data_inicio, data_fim, tipo, publico_alvo, cor_hex")
-      .eq("escola_id", escolaId)
-      .or("publico_alvo.eq.todos,publico_alvo.eq.professores,publico_alvo.is.null")
-      .gte("data_fim", rangeStart)
-      .lte("data_inicio", rangeEnd);
-
-    eventosQuery = applyKf2ListInvariants(eventosQuery, {
-      defaultLimit: 120,
-      order: [{ column: "data_inicio", ascending: true }],
-      tieBreakerColumn: "id",
+    // A teacher is authorized for their explicitly assigned disciplines,
+    // including shared teachers, or an assigned class-director relationship.
+    // Never infer ownership from arbitrary turma query parameters.
+    const [{ data: sharedLinks, error: sharedError },
+      { data: primaryLinks, error: primaryError },
+      { data: directedClasses, error: directedError }] = await Promise.all([
+      supabase.from("turma_disciplinas_professores")
+        .select("turma_id").eq("escola_id", escolaId)
+        .eq("professor_id", professor.id).limit(1000),
+      supabase.from("turma_disciplinas")
+        .select("turma_id").eq("escola_id", escolaId)
+        .eq("professor_id", professor.id).limit(1000),
+      supabase.from("turmas").select("id,curso_id")
+        .eq("escola_id", escolaId).eq("ano_letivo_id", academicContext.anoLetivoId)
+        .eq("diretor_turma_id", professor.id).limit(200),
+    ]);
+    if (sharedError || primaryError || directedError) {
+      throw sharedError ?? primaryError ?? directedError;
+    }
+    if ((sharedLinks ?? []).length >= 1000 || (primaryLinks ?? []).length >= 1000 ||
+      (directedClasses ?? []).length >= 200) {
+      return NextResponse.json({
+        ok: false, code: "CALENDAR_ASSIGNMENT_LIMIT_REACHED",
+        error: "Existem atribuições a mais para resolver este calendário com segurança.",
+      }, { status: 409 });
+    }
+    const turmaIds = [...new Set([
+      ...(sharedLinks ?? []).map((link: { turma_id: string }) => link.turma_id),
+      ...(primaryLinks ?? []).map((link: { turma_id: string }) => link.turma_id),
+    ])];
+    const { data: linkedClasses, error: classError } = turmaIds.length
+      ? await supabase.from("turmas").select("id,curso_id")
+          .eq("escola_id", escolaId)
+          .eq("ano_letivo_id", academicContext.anoLetivoId)
+          .in("id", turmaIds).limit(1000)
+      : { data: [], error: null };
+    if (classError) throw classError;
+    if ((linkedClasses ?? []).length >= 1000) {
+      return NextResponse.json({
+        ok: false, code: "CALENDAR_ASSIGNMENT_LIMIT_REACHED",
+        error: "O calendário do professor precisa de revisão das atribuições.",
+      }, { status: 409 });
+    }
+    const teacherClasses = [...(linkedClasses ?? []), ...(directedClasses ?? [])];
+    if (teacherClasses.some((row: { curso_id: string | null }) => !row.curso_id)) {
+      return NextResponse.json({
+        ok: false, code: "CALENDAR_COURSE_NOT_MAPPED",
+        error: "Uma das turmas atribuídas não possui curso associado.",
+      }, { status: 409 });
+    }
+    const courseIds = [...new Set(teacherClasses.map((row: { curso_id: string }) => row.curso_id))];
+    const offeringIds = await resolveCalendarOfferingIdsForCourses(supabase, {
+      escolaId, cursoIds: courseIds,
     });
 
-    const eventosPromise = eventosQuery;
+    const [academicEvents, { data: genericEvents, error: genericError }] = await Promise.all([
+      readScopedAcademicCalendarEvents(supabase, {
+        escolaId,
+        anoLetivoId: academicContext.anoLetivoId,
+        offeringIds,
+        rangeStart, rangeEnd,
+        columns: "id,escola_id,nome,data_inicio,data_fim,tipo,cor_hex,offering_id",
+        limit: 200,
+      }),
+      supabase.from("events")
+        .select("id,escola_id,titulo,descricao,inicio_at,fim_at,publico_alvo")
+        .eq("escola_id", escolaId)
+        .or("publico_alvo.eq.todos,publico_alvo.eq.professores,publico_alvo.is.null")
+        .lte("inicio_at", rangeEnd)
+        .order("inicio_at", { ascending: false }).limit(500),
+    ]);
+    if (genericError) throw genericError;
+    const genericItems: EventoRow[] = (genericEvents ?? [])
+      .filter((event: any) => {
+        const start = String(event.inicio_at ?? "").slice(0, 10);
+        const end = String(event.fim_at ?? event.inicio_at ?? "").slice(0, 10);
+        return start <= rangeEnd && end >= rangeStart;
+      }).map((event: any) => ({
+        id: event.id, escola_id: event.escola_id,
+        nome: event.titulo, descricao: event.descricao,
+        data_inicio: String(event.inicio_at).slice(0, 10),
+        data_fim: String(event.fim_at ?? event.inicio_at).slice(0, 10),
+        tipo: "EVENTO_GERAL", publico_alvo: event.publico_alvo, cor_hex: "#64748b",
+        offering_id: null,
+      }));
+    const calendarItems: EventoRow[] = (academicEvents as Array<{
+      id: string; escola_id: string; nome: string; data_inicio: string;
+      data_fim: string; tipo: string; cor_hex: string | null; offering_id: string | null;
+    }>).map((event) => ({
+      ...event, descricao: "Evento do Calendário Académico", publico_alvo: "todos",
+    }));
+    const items: EventoRow[] = [...genericItems, ...calendarItems]
+      .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio) || a.id.localeCompare(b.id))
+      .slice(0, 120);
+
     const periodosPromise = anoLetivo?.id
       ? applyKf2ListInvariants(
           supabase
@@ -135,14 +221,7 @@ export async function GET(req: Request) {
         )
       : Promise.resolve({ data: [] as PeriodoRow[], error: null });
 
-    const [{ data: items, error: eventosError }, { data: periodos, error: periodosError }] = await Promise.all([
-      eventosPromise,
-      periodosPromise,
-    ]);
-
-    if (eventosError) {
-      return NextResponse.json({ ok: false, error: eventosError.message }, { status: 400 });
-    }
+    const { data: periodos, error: periodosError } = await periodosPromise;
 
     if (periodosError) {
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 });
@@ -153,9 +232,13 @@ export async function GET(req: Request) {
       context: academicContext,
       ano_letivo: anoLetivo ?? null,
       periodos: ((periodos as PeriodoRow[] | null) ?? []).filter(Boolean),
-      items: ((items as EventoRow[] | null) ?? []).filter(Boolean),
+      items,
     });
   } catch (err) {
+    if (err instanceof CalendarEventScopeError) {
+      return NextResponse.json({ ok: false, code: err.code, error: err.message },
+        { status: err.code === "CALENDAR_INVALID_SCOPE" ? 400 : 409 });
+    }
     if (err instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: err.code, message: err.message }, { status: err.status });
     }
