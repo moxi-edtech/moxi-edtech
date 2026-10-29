@@ -127,6 +127,7 @@ export async function PATCH(request: Request) {
   const { data: decided, error: updateError } = await context.supabase.from("raa_indisciplina_eventos")
     .update({
       estado: parsed.data.estado,
+      decisao_motivo: parsed.data.motivo,
       resolvido_por: parsed.data.estado === "em_analise" ? null : context.auth.user.id,
       resolvido_em: parsed.data.estado === "em_analise" ? null : now,
       updated_at: now,
