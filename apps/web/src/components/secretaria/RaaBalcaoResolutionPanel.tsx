@@ -14,6 +14,12 @@ type EventoDisciplinar = {
   id: string; categoria: string; descricao: string; gravidade: string;
   estado: string; impacta_resultado: boolean;
 };
+type ExamContext = {
+  source: { matricula_id: string; aluno_id: string; turma_id: string; ano_letivo_id: string; locked: boolean };
+  disciplinas: Array<{ id: string; avaliacao_disciplina_id: string | null }>;
+  sessoes: Array<{ id: string; tipo: "recurso" | "extraordinario"; estado: string; data_inicio: string; exame_componentes: Array<{ id: string; codigo: string; nota_max: number }> }>;
+};
+
 type Academic = { reason?: string; disciplina_ids_pendentes?: string[] } | null;
 
 type Props = {
@@ -55,6 +61,12 @@ export function RaaBalcaoResolutionPanel({
   const [decision, setDecision] = useState("");
   const [motivo, setMotivo] = useState("");
   const [disciplinaId, setDisciplinaId] = useState("");
+  const [examContext, setExamContext] = useState<ExamContext | null>(null);
+  const [examSessionId, setExamSessionId] = useState("");
+  const [examComponentId, setExamComponentId] = useState("");
+  const [examTurmaDisciplinaId, setExamTurmaDisciplinaId] = useState("");
+  const [examNote, setExamNote] = useState("");
+
 
   const load = useCallback(async () => {
     if (!action || !matriculaId || !open) return;
@@ -68,6 +80,11 @@ export function RaaBalcaoResolutionPanel({
       } else if (action === "reapreciacao") {
         const response = await readJson("/api/academico/raa/reapreciacao?" + query);
         setPedidos(Array.isArray(response.items) ? response.items : []);
+        // The exam is different from a reapreciação petition. Read only official
+        // open sessions from the source enrolment's year, never the destination.
+        const context = await readJson("/api/secretaria/balcao/raa/exam-context?" + query);
+        setExamContext({ source: context.source, disciplinas: context.disciplinas ?? [], sessoes: context.sessoes ?? [] });
+
       } else if (action === "disciplina") {
         const response = await readJson("/api/academico/raa/indisciplina?" + query);
         setEventos(Array.isArray(response.items) ? response.items : []);
@@ -84,7 +101,7 @@ export function RaaBalcaoResolutionPanel({
   if (!plan || !matriculaId) return null;
 
   const submit = async () => {
-    if (saving || !selected || motivo.trim().length < 5) return;
+    if (saving || !selected || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)) return;
     setSaving(true);
     setError(null);
     setNotice(null);
@@ -174,6 +191,42 @@ export function RaaBalcaoResolutionPanel({
     }
   };
 
+  const submitExam = async () => {
+    if (!examContext || examContext.source.locked || saving) return;
+    const session = examContext.sessoes.find((item) => item.id === examSessionId);
+    const component = session?.exame_componentes?.find((item) => item.id === examComponentId);
+    const disciplina = examContext.disciplinas.find((item) => item.id === examTurmaDisciplinaId);
+    const value = Number(examNote.replace(",", "."));
+    if (!session || !component || !disciplina || !examNote.trim() ||
+        !Number.isFinite(value) || value < 0 || value > Number(component.nota_max)) {
+      setError("Selecione a sessão, disciplina, componente e nota dentro da escala autorizada.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await readJson("/api/academico/exames/resultados", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exame_sessao_id: session.id,
+          exame_componente_id: component.id,
+          matricula_id: examContext.source.matricula_id,
+          aluno_id: examContext.source.aluno_id,
+          turma_disciplina_id: disciplina.id,
+          nota: value,
+        }),
+      });
+      setExamNote("");
+      setNotice("Nota do exame guardada. A efetivação só será permitida após a decisão e o resultado oficial do RAA.");
+      await onRecheck();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível guardar a nota do exame.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <section key={alunoId + ":" + matriculaId} className="mb-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4" aria-label="Resolução RAA no Balcão">
       <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800">RAA · Análise contextual</p>
@@ -229,6 +282,53 @@ export function RaaBalcaoResolutionPanel({
                   <strong>Falta de {item.data_falta}</strong><span className="mt-1 block">{item.motivo}</span>
                 </button>
               ))}
+            </div>
+          )}
+          {action === "reapreciacao" && examContext && (
+            <div className="space-y-3 rounded-xl border border-border bg-card p-3" aria-label="Resultado do exame no Balcão">
+              <h4 className="text-sm font-bold text-foreground">Exames de recurso e extraordinários</h4>
+              <p className="text-xs text-muted-foreground">
+                As notas pertencem à matrícula do ano de origem. Guardar um componente não publica o resultado nem autoriza rematrícula.
+              </p>
+              {examContext.source.locked ? (
+                <p role="status" className="text-xs font-bold text-rose-700">Matrícula encerrada: só uma reabertura académica formal permite corrigir resultados.</p>
+              ) : examContext.sessoes.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma sessão oficial aberta para esta turma e ano letivo. A direção deve configurar e publicar a sessão pelo fluxo académico autorizado.</p>
+              ) : (
+                <div className="grid gap-2">
+                  <label htmlFor="raa-exam-session" className="text-xs font-bold text-foreground">Sessão oficial</label>
+                  <select id="raa-exam-session" value={examSessionId} onChange={(event) => {
+                    setExamSessionId(event.target.value); setExamComponentId("");
+                  }} className="rounded-lg border border-border bg-background p-2 text-sm">
+                    <option value="">Selecionar sessão</option>
+                    {examContext.sessoes.map((session) => (
+                      <option key={session.id} value={session.id}>{session.tipo} · {session.data_inicio}</option>
+                    ))}
+                  </select>
+                  <label htmlFor="raa-exam-curricular" className="text-xs font-bold text-foreground">Disciplina da turma</label>
+                  <select id="raa-exam-curricular" value={examTurmaDisciplinaId} onChange={(event) => setExamTurmaDisciplinaId(event.target.value)}
+                    className="rounded-lg border border-border bg-background p-2 text-sm">
+                    <option value="">Selecionar disciplina</option>
+                    {examContext.disciplinas
+                      .filter((d) => !academic?.disciplina_ids_pendentes?.length || academic.disciplina_ids_pendentes.includes(d.avaliacao_disciplina_id ?? ""))
+                      .map((d) => <option key={d.id} value={d.id}>{d.avaliacao_disciplina_id ?? d.id}</option>)}
+                  </select>
+                  <label htmlFor="raa-exam-component" className="text-xs font-bold text-foreground">Componente do exame</label>
+                  <select id="raa-exam-component" value={examComponentId} onChange={(event) => setExamComponentId(event.target.value)}
+                    className="rounded-lg border border-border bg-background p-2 text-sm">
+                    <option value="">Selecionar componente</option>
+                    {(examContext.sessoes.find((session) => session.id === examSessionId)?.exame_componentes ?? [])
+                      .map((component) => <option key={component.id} value={component.id}>{component.codigo} · máximo {component.nota_max}</option>)}
+                  </select>
+                  <label htmlFor="raa-exam-note" className="text-xs font-bold text-foreground">Nota do componente</label>
+                  <input id="raa-exam-note" type="number" min="0" step="0.1" value={examNote} onChange={(event) => setExamNote(event.target.value)}
+                    className="rounded-lg border border-border bg-background p-2 text-sm" />
+                  <button type="button" disabled={saving || !examSessionId || !examComponentId || !examTurmaDisciplinaId || !examNote.trim()}
+                    onClick={() => void submitExam()} className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
+                    {saving ? "A guardar..." : "Guardar resultado de exame"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {action === "reapreciacao" && (
@@ -292,7 +392,7 @@ export function RaaBalcaoResolutionPanel({
                 onChange={(event) => setMotivo(event.target.value)}
                 className="w-full rounded-lg border border-border bg-background p-2 text-sm" />
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={saving || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : 0)}
+                <button type="button" disabled={saving || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)}
                   onClick={() => void submit()}
                   className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
                   {saving ? "A guardar..." : "Guardar decisão"}
