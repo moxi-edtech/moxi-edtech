@@ -94,3 +94,12 @@ test('a UI usa a mesma fonte nas linhas e no detalhe e uma única ação princip
   assert.match(inbox, /case 'next_candidate':\s*handleNextCandidate\(\)/);
   assert.doesNotMatch(inbox, /setSelectedId\(filteredItems\[currentIndex \+ 1\]\.id\)/);
 });
+
+test('fechar a conversão não equivale a avançar automaticamente o atendimento', () => {
+  const sheet = readFileSync('src/components/secretaria/AdmissaoConversionSheet.tsx', 'utf8');
+  const inbox = readFileSync('src/components/secretaria/AdmissoesInboxClient.tsx', 'utf8');
+  assert.match(sheet, /Fechar e voltar à candidatura/);
+  assert.doesNotMatch(sheet, /Fechar e atender próximo candidato/);
+  assert.match(inbox, /const handleCloseConversion = useCallback\(\(\) => \{\s*setIsConversionOpen\(false\)/);
+  assert.match(inbox, /const handleNextCandidate = useCallback/);
+});
