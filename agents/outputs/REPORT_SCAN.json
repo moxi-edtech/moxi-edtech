@@ -3,16 +3,30 @@
   "run_id": "445389da-a77d-4bbc-a28d-a176e2735b35",
   "run_timestamp": "2026-10-29T15:28:20.183280+00:00",
   "commit": "d0b79c4a371b3856fbbd5bd02bbe613d25fae04b",
-  "veredito": "WARN",
+  "veredito": "FAIL",
   "can_merge": false,
   "summary": {
-    "critical": 0,
+    "critical": 1,
     "high": 0,
     "medium": 0,
     "low": 0,
     "regressions": 0
   },
-  "findings": [],
+  "findings": [
+    {
+      "id": "SEC-002-7e446b7f",
+      "regra": "SEC-002",
+      "severidade": "CRITICAL",
+      "status": "FAIL",
+      "ficheiro": "apps/web/src/app/api/fiscal/saft/export/[exportId]/download/route.ts",
+      "linha": "57-63",
+      "evidencia": "function getSupabaseAdmin() {\n  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? \"\").trim();\n  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? \"\").trim();",
+      "impacto": "O endpoint humano cria cliente privilegiado para assinar downloads fiscais, sem exceção documentada de SEC-002; a operação contorna o RLS do Storage após a autorização da aplicação.",
+      "recomendacao": "Migrar a assinatura para operação de domínio de máquina estritamente autorizada ou usar a sessão com política de leitura tenant-scoped aprovada; remover getSupabaseAdmin da rota humana.",
+      "bloqueante": true,
+      "excecao": null
+    }
+  ],
   "exceptions_applied": [
     "EXC-SEC-001-B:/api/webhooks/appypay",
     "EXC-SEC-002-A:/api/webhooks/appypay"
@@ -37,7 +51,8 @@
     "production_state": "External release #295 published integration disabled; POST webhook 503. Service SQL installed; provider inactive. Existing application-bound webhook name/URL/POST/active persisted after reopening. Type selector absent in existing webhook details; not certified transactional.",
     "compiled_local_http": "passed: unsigned worker401, oversized worker413, invalid webhook400, unauthenticated student401; fixture config, no valid provider/db request",
     "current_tests": "30 tests passed, including HTTP legacy isolation and no destructive class deletion; no real charge.",
-    "current_lint": "0 errors for three legacy routes."
+    "current_lint": "0 errors for three legacy routes.",
+    "current_types": "Full apps/web tsc --noEmit --incremental passed (exit 0), current legacy branch."
   },
   "warnings": [
     "APY-003",

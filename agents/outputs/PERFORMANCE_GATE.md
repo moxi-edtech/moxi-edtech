@@ -61,3 +61,5 @@ O SQL de serviços foi aprovado/aplicado e APY-005 está resolvido. A inspeção
 
 ## Reverificação de 2026-10-29 — hardening após release externo
 Os três blockers de segurança confirmados foram corrigidos nesta branch e cobertos por teste HTTP. A auditoria global/MV integral continua pendente: status FAIL, can_merge: false. Não há exceção autorizada. A publicação externa de #285/#295 foi observada, não executada por este run; APPYPAY_ENABLED permanece false.
+
+Triagem adicional confirmou SEC-002-7e446b7f na rota humana de download fiscal (REPORT_SCAN.md). Gate mantém FAIL/can_merge=false.
