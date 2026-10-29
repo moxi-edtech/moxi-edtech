@@ -222,6 +222,16 @@ export function RaaBalcaoResolutionPanel({
   }
   if (!plan || !matriculaId) return null;
 
+  async function refreshAfterSave() {
+    try {
+      await onRecheck();
+    } catch {
+      // The write was already committed. A refresh error must never make it
+      // look as though the save failed and invite a duplicate submission.
+      setNotice((current) => (current || "Registo guardado.") + " Atualize a situação para confirmar o próximo passo.");
+    }
+  }
+
   const submit = async () => {
     if (saving || !selected || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)) return;
     setSaving(true);
@@ -274,7 +284,7 @@ export function RaaBalcaoResolutionPanel({
       setMotivo("");
       await load();
       setPhase("feedback");
-      await onRecheck();
+      await refreshAfterSave();
     } catch (cause) {
       setPhase("detail");
       setError(cause instanceof Error ? cause.message : "A decisão não foi confirmada.");
@@ -308,7 +318,7 @@ export function RaaBalcaoResolutionPanel({
       setMotivo("");
       await load();
       setPhase("feedback");
-      await onRecheck();
+      await refreshAfterSave();
     } catch (cause) {
       setPhase("detail");
       setError(cause instanceof Error ? cause.message : "Não foi possível enviar o pedido.");
@@ -347,7 +357,7 @@ export function RaaBalcaoResolutionPanel({
       await load();
       setNotice("Nota do exame guardada. Aguarde a validação do resultado.");
       setPhase("feedback");
-      await onRecheck();
+      await refreshAfterSave();
     } catch (cause) {
       setPhase("detail");
       setError(cause instanceof Error ? cause.message : "Não foi possível guardar a nota do exame.");
@@ -508,10 +518,18 @@ export function RaaBalcaoResolutionPanel({
             </div>
           )}
           {action === "rever_resultado" && (
-            <p className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-              O resultado precisa de revisão pela direção;
-              não há botão para substituir a decisão. Consulte novamente após a publicação ou retificação formal.
-            </p>
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-sm text-muted-foreground">Este resultado precisa de revisão académica.</p>
+              {academic?.source?.status === "ativo" && academic?.regime?.escala !== "qualitativa" &&
+                academic?.source?.ano_letivo_id && academic?.source?.turma_id ? (
+                  <button type="button" onClick={onLancarNota}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground">
+                    Rever notas da turma
+                  </button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Peça a revisão à direção e volte a verificar.</p>
+                )}
+            </div>
           )}
           {action === "justificacao" && (
             <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
