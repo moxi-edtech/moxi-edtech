@@ -260,7 +260,7 @@ export function EnrollmentPostActionModal({
     <Dialog open={open} onOpenChange={(next) => { if (!loading) onOpenChange(next); }}>
       <DialogContent className="max-w-xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-slate-900"><Icon className="h-5 w-5 text-[#1F6B3B]" />{title}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-slate-900"><Icon className="h-5 w-5 text-primary" />{title}</DialogTitle>
           <DialogDescription>{alunoNome} · atendimento continua nesta ficha.</DialogDescription>
         </DialogHeader>
 
@@ -278,7 +278,7 @@ export function EnrollmentPostActionModal({
                 {result.senha && <div className="mt-3 flex gap-2"><button type="button" onClick={() => setShowPassword((value) => !value)} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800">{showPassword ? "Ocultar senha" : "Mostrar senha"}</button><button type="button" onClick={() => { void navigator.clipboard.writeText(`Login: ${result.login}\nSenha: ${result.senha}`); setCopied(true); setTimeout(() => setCopied(false), 1800); }} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800">{copied ? "Copiado" : "Copiar credenciais"}</button></div>}
               </div>
             ) : (
-              <button type="button" onClick={() => void liberarPortal()} disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">
+              <button type="button" onClick={() => void liberarPortal()} disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />} {loading ? "A gerar credenciais…" : "Liberar portal agora"}
               </button>
             )}
@@ -318,7 +318,7 @@ export function EnrollmentPostActionModal({
             {selectedPeriod && ["past", "locked"].includes(selectedPeriod.estado) &&
               <p role="status" className="text-xs text-muted-foreground">Este período exige autorização de reabertura para correções.</p>}
             {result?.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{result.error}</p>}
-            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || periodUnavailable || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
+            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || periodUnavailable || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
           </div>
         )}
 
