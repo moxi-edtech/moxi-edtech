@@ -26,7 +26,7 @@ Referência normativa para Angola: Decreto Presidencial n.º 162/23, artigos 33.
 
 ## Migração
 
-`supabase/migrations/20271028160000_aluno_faltas_justificacoes.sql` cria tabela de pedidos, índices para prevenção de duplicados e policies RLS. `frequencias` é particionada e, por isso, o vínculo com o registo da ausência é validado por chaves de domínio e por API/policy, em vez de uma FK direta inexistente. Aplicar a migração antes de ativar a UI.
+`supabase/migrations/20261029125633_aluno_faltas_justificacoes_20261029.sql` cria tabela de pedidos, índices para prevenção de duplicados e policies RLS. `frequencias` é particionada e, por isso, o vínculo com o registo da ausência é validado por chaves de domínio e por API/policy, em vez de uma FK direta inexistente. Aplicar a migração antes de ativar a UI.
 
 ## Homologação
 
@@ -40,3 +40,7 @@ Referência normativa para Angola: Decreto Presidencial n.º 162/23, artigos 33.
 - Conteúdo de períodos com mais de 100 ausências: mensagem de limitação visível, totais permanecem corretos.
 
 **Não publicar sem:** migração verificada, testes, CI, homologação com conta de aluno e conta de secretaria.
+
+## Evidência de instalação da migração (2026-10-29)
+
+A migração foi instalada no Supabase KLASSE com versão de ledger `20261029125633` após ensaio transacional com rollback. Confirmado: tabela com RLS, três policies, `anon` sem leitura, trigger de decisão terminal. O esquema instalado não constitui homologação da UI: o portal só fica operacional após o deployment do commit aprovado e testes autenticados com faltas reais. No momento da auditoria, a tabela `frequencias` continha zero registos; não inventar faltas ou pagamentos para testes.
