@@ -85,6 +85,7 @@ export async function POST(
 
     const { anoLetivo, data_inicio, data_fim, esquemaPeriodos, templateId, periodosConfig } = parseResult.data;
 
+    let officialVersion: string | null = null;
     if (anoLetivo >= 2026) {
       if (!templateId || (periodosConfig?.length ?? 0) > 0 || esquemaPeriodos !== "trimestral") {
         return NextResponse.json({
@@ -94,7 +95,7 @@ export async function POST(
       }
       const { data: official, error: officialError } = await supabase
         .from("calendario_templates")
-        .select("id,ano_base,estado,is_oficial,subsistema,data_inicio,data_fim,items:calendario_template_items(id,numero,tipo,data_inicio,data_fim)")
+         .select("id,ano_base,estado,is_oficial,subsistema,data_inicio,data_fim,versao_documento,items:calendario_template_items(id,numero,tipo,data_inicio,data_fim)")
         .eq("id", templateId).maybeSingle();
       if (officialError) throw officialError;
       const officialTerms = official?.items?.filter((item) => item.tipo === "PERIODO_LETIVO") ?? [];
@@ -109,6 +110,7 @@ export async function POST(
           error: "As datas ou os trimestres não correspondem ao decreto publicado.",
         }, { status: 409 });
       }
+      officialVersion = official.versao_documento;
       const { data: offerings, error: offeringsError } = await supabase
         .from("school_education_offerings")
         .select("education_subsystem")
@@ -140,6 +142,7 @@ export async function POST(
 
     // 2. Generate and save the periods and events
     let periodosPayload: Database['public']['Tables']['periodos_letivos']['Insert'][] = [];
+    let eventosPayload: Database['public']['Tables']['calendario_eventos']['Insert'][] = [];
     
     if (Array.isArray(periodosConfig) && periodosConfig.length > 0) {
       const sortedConfig = periodosConfig.slice().sort((a, b) => a.numero - b.numero);
@@ -186,11 +189,11 @@ export async function POST(
           ...(anoLetivo >= 2026 ? {
             source_template_id: templateId,
             source_item_id: i.id,
-            source_version: null,
+            source_version: officialVersion,
           } : {}),
         }));
 
-      const eventosPayload: Database['public']['Tables']['calendario_eventos']['Insert'][] = items
+      eventosPayload = items
         .filter(i => i.tipo !== periodoTipo)
         .map(i => ({
           escola_id: userEscolaId,
@@ -202,16 +205,12 @@ export async function POST(
           ...(anoLetivo >= 2026 ? {
             source_template_id: templateId,
             source_item_id: i.id,
+            source_version: officialVersion,
             applied_at: new Date().toISOString(),
             applied_by: user.id,
           } : {}),
         }));
 
-      if (eventosPayload.length > 0) {
-        const { error: eventsError } = await supabase.from('calendario_eventos')
-          .upsert(eventosPayload, { onConflict: 'escola_id,ano_letivo_id,nome,data_inicio' });
-        if (eventsError) throw eventsError;
-      }
     } else {
       const tipoUpper = (esquemaPeriodos === 'semestral' ? 'SEMESTRE' : esquemaPeriodos === 'bimestral' ? 'BIMESTRE' : 'TRIMESTRE') as Database['public']['Enums']['periodo_tipo'];
       const parts = tipoUpper === 'SEMESTRE' ? 2 : tipoUpper === 'BIMESTRE' ? 4 : 3;
@@ -237,6 +236,12 @@ export async function POST(
     });
 
     if (periodosError) throw new Error(`Erro ao salvar períodos letivos: ${periodosError.message}`);
+
+    if (eventosPayload.length > 0) {
+      const { error: eventsError } = await supabase.from('calendario_eventos')
+        .upsert(eventosPayload, { onConflict: 'escola_id,ano_letivo_id,nome,data_inicio' });
+      if (eventsError) throw new Error(`Erro ao salvar eventos do calendário: ${eventsError.message}`);
+    }
 
     // 3. School configuration
     await supabase.from("configuracoes_escola").upsert(
