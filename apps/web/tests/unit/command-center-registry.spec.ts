@@ -12,7 +12,7 @@ test("todas as ações do Command Center têm um painel canónico", () => {
 
   assert.deepEqual(
     actions.map((action) => action.id),
-    ["desk", "enrollment", "payment", "document", "reenrollment", "profile", "grade"],
+    ["desk", "admissions", "enrollment", "payment", "document", "reenrollment", "profile", "grade"],
   );
 
   for (const action of actions) {
@@ -24,6 +24,9 @@ test("todas as ações do Command Center têm um painel canónico", () => {
 test("ações operacionais mapeiam para as views canónicas do balcão", () => {
   assert.equal(BALCAO_ACTION_REGISTRY.desk.panel, "balcao");
   assert.equal(BALCAO_ACTION_REGISTRY.desk.balcaoView, "overview");
+
+  assert.equal(BALCAO_ACTION_REGISTRY.admissions.panel, "admissions");
+  assert.equal(BALCAO_ACTION_REGISTRY.admissions.requiresStudent, false);
 
   assert.equal(BALCAO_ACTION_REGISTRY.enrollment.panel, "enrollment");
   assert.equal(BALCAO_ACTION_REGISTRY.enrollment.requiresStudent, false);
@@ -39,6 +42,12 @@ test("ações operacionais mapeiam para as views canónicas do balcão", () => {
 
   assert.equal(BALCAO_ACTION_REGISTRY.profile.panel, "profile");
   assert.equal(BALCAO_ACTION_REGISTRY.grade.panel, "grade");
+});
+
+test("admissões abre no próprio Workspace sem exigir aluno", () => {
+  const href = buildBalcaoActionHref({ escolaParam: "escola-demo", portal: "secretaria", actionId: "admissions" });
+  assert.match(href, /\/secretaria\/balcao\?/);
+  assert.match(href, /action=admissions/);
 });
 
 test("Secretaria e Operações usam deep link do mesmo Command Center", () => {
