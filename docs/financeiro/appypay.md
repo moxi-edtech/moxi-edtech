@@ -127,3 +127,7 @@ Executar os testes de código com os dois ficheiros anteriores e `apps/web/tests
 Build final desta extensão: Next.js completo com validação de tipos e 182 páginas aprovado, usando chaves fictícias e gateway desligado. Lint: zero erros, um aviso preexistente MAX_SPAN não usado na rota financeira do aluno (presente no commit base). Nenhuma dependência ou lockfile alterados. A interface foi validada com API fictícia; ainda não há sessão autenticada de aluno no fluxo publicado.
 
 Verificação HTTP sobre o servidor local da versão compilada: worker sem assinatura → 401; corpo do worker maior que 4 KiB → 413; webhook com id inválido → 400; rota do aluno sem sessão → 401. Chaves/configuração fictícias, sem chamada válida à AppyPay/Supabase. Isto verifica as fronteiras negativas em runtime, não o fluxo autenticado de produção.
+
+## Aprovação e instalação do domínio de serviços
+Em 2026-10-29, o proprietário aprovou cf8dc48d-6b39-47d3-af87-410afcf95ddb. Proposta exata aplicada como migration 20261029121743_appypay_portal_services; aprovação registada no commit 5914e1c46. O MD5 do corpo da função instalada é 64672e0d92eeed6513c2266ce996d1b0 e coincide com o aprovado; SECURITY INVOKER/search_path e privilégios negativos foram conferidos. Probe sem dados reais passou; referências de serviço continuam zero.
+O advisor rls_enabled_no_policy é INFO e esperado: esta tabela privada nega acesso a anon/authenticated e é operada somente pelo worker assinado. Não adicionar políticas permissivas para silenciar o advisor.

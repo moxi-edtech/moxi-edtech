@@ -1,23 +1,63 @@
 {
   "contrato_versao": "2.0.0",
-  "run_id": "f4dfa5d5-f9f8-4e03-beaa-15f414f60da2",
-  "run_timestamp": "2026-10-29T12:08:25.233366+00:00",
-  "commit": "f9cbb42e413024b836e69c733357b7254fe1959e",
-  "veredito": "WARN",
+  "run_id": "069d9a59-315d-4cb9-8a45-c28be752f334",
+  "run_timestamp": "2026-10-29T12:24:23.769686+00:00",
+  "commit": "5914e1c4665b0a88b64a0f93fa0f75f49fe41a81",
+  "veredito": "FAIL",
   "can_merge": false,
   "summary": {
-    "critical": 0,
+    "critical": 3,
     "high": 0,
     "medium": 0,
     "low": 0,
     "regressions": 0
   },
-  "findings": [],
+  "findings": [
+    {
+      "id": "SEC-001-b2dab294",
+      "regra": "SEC-001",
+      "severidade": "CRITICAL",
+      "status": "FAIL",
+      "ficheiro": "apps/web/src/app/api/teste-rpc/route.ts",
+      "linha": "6-64",
+      "evidencia": "export async function GET(request: Request) {\n      const { data, error } = await supabase.rpc(\n        'secretaria_list_alunos_kf2',",
+      "impacto": "O endpoint executa uma RPC com escolaId recebido do pedido sem resolver a escola do utilizador; resolveEscolaIdForUser está ausente.",
+      "recomendacao": "Exigir sessão e resolver a escola com resolveEscolaIdForUser antes de qualquer RPC, removendo o fallback fixo.",
+      "bloqueante": true,
+      "excecao": null
+    },
+    {
+      "id": "SEC-002-ac701c12",
+      "regra": "SEC-002",
+      "severidade": "CRITICAL",
+      "status": "FAIL",
+      "ficheiro": "apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/delete/route.ts",
+      "linha": "9-14",
+      "evidencia": "  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()\n  if (!url || !key) return null\n  return createAdminClient<Database>(url, key, {",
+      "impacto": "getSupabaseAdmin cria um cliente privilegiado dentro de endpoint humano, fora das exceções documentadas.",
+      "recomendacao": "Substituir o cliente privilegiado por operação autenticada com RLS ou RPC de domínio restrita e aprovada.",
+      "bloqueante": true,
+      "excecao": null
+    },
+    {
+      "id": "SEC-003-23f395db",
+      "regra": "SEC-003",
+      "severidade": "CRITICAL",
+      "status": "FAIL",
+      "ficheiro": "apps/web/src/app/api/escola/[id]/admin/calendario/copiar-eventos/route.ts",
+      "linha": "33-35",
+      "evidencia": "      .from('anos_letivos')\n      .select('id, ano')\n      .in('id', [fromAnoId, toAnoId]);",
+      "impacto": "A seleção de anos letivos depende apenas dos IDs recebidos e não contém o filtro obrigatório de escola; não existe .eq('escola_id', ...) neste ficheiro.",
+      "recomendacao": "Adicionar .eq('escola_id', userEscolaId) às consultas de anos_letivos e calendario_eventos antes da cópia.",
+      "bloqueante": true,
+      "excecao": null
+    }
+  ],
   "exceptions_applied": [
     "EXC-SEC-001-B:/api/webhooks/appypay",
     "EXC-SEC-002-A:/api/webhooks/appypay"
   ],
-  "scope": "AppyPay portal aluno + tesouraria; não é certificação global integral do repositório",
+  "scope": "AppyPay alterado + verificação de bloqueios globais; três violações confirmadas no legado, sem certificação dos demais candidatos",
   "validation": {
     "unit_http_tests": 29,
     "local_postgresql_scenarios": 3,
@@ -33,21 +73,21 @@
     "visual_component": "student service paid, monthly uncertain with one POST, server-confirmed zero POST on open; synthetic fixture only",
     "local_service_sql_groups": 6,
     "local_postgresql_scenarios_previous_monthly": 3,
-    "service_sql": "proposed only; exact proposal and existing boletim/materialization trigger snapshots executed on disposable PG14; not Supabase",
+    "service_sql": "applied 20261029121743; approved exact SHA256; matching body MD5; invoker/privileges/indexes/RLS verified; nonexistent-reference probe passed; zero refs",
     "production_state": "provider inactive; new service table and RPC absent; webhook list empty; no deploy or real charge",
     "compiled_local_http": "passed: unsigned worker401, oversized worker413, invalid webhook400, unauthenticated student401; fixture config, no valid provider/db request"
   },
   "warnings": [
     "APY-003",
     "APY-004",
-    "APY-005",
     "APY-007"
   ],
   "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem regressões a reportar",
   "legacy_scan": "Rerun 2026-10-29 in /private/tmp/appypay-scans-final; 0 critical/high/medium; 6 LOW VALIDATED markers, legacy perf gate PASS. Does not implement complete contract 2.0.0; not global PASS evidence.",
   "resolved_warnings": [
     "APY-001",
-    "APY-002"
+    "APY-002",
+    "APY-005"
   ],
   "tested_working_tree": true,
   "tested_source_hashes": {
@@ -67,5 +107,15 @@
     "apps/web/src/app/api/financeiro/appypay/reconcile/route.ts": "65190f05ff79813e210c2c922dde109ec96a28566f91c8140948b0400a719b5f",
     "apps/web/src/app/api/financeiro/appypay/references/route.ts": "e0020a296cccf5965f12caa829c38903ec86358eb8e52bc6ea511f0e0f395c46",
     "apps/web/src/app/api/financeiro/appypay/status/route.ts": "09423f2868adfa10d535c68fe3354b0cc8bf03875f36d2595ea4fce181a871a2"
+  },
+  "legacy_gate_preflight": {
+    "candidate_counts": {
+      "SEC-001": 114,
+      "SEC-002": 4,
+      "SEC-003": 8
+    },
+    "confirmed": 3,
+    "baseline": "all confirmed files byte-identical to origin/main",
+    "warning": "candidate counts are not findings; remaining candidates not certified"
   }
 }

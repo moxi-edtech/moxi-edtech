@@ -1,4 +1,4 @@
-# Aprovação necessária — Agent 3
+# Aprovação aplicada — Agent 3
 run_id: cf8dc48d-6b39-47d3-af87-410afcf95ddb
 timestamp: 2026-10-29T12:02:40.057637+00:00
 
@@ -133,3 +133,6 @@ Commit com mensagem: `REJECT: cf8dc48d-6b39-47d3-af87-410afcf95ddb [motivo]`
 
 ## Após aprovação
 Criar migration pelo CLI com o texto SQL exato, verificar instalação/permissões sem baixar dados reais, concluir o gate de release, publicar e registrar o webhook REF. Só habilitar o provedor/flag da Escola KLASSE após o endpoint estar alcançável. Um pagamento real de validação exige finalidade, valor e pagador expressamente definidos; não foi iniciado.
+
+## Aplicação verificada
+Aprovação explícita recebida do proprietário nesta conversa e registada no commit 5914e1c46. Migration aplicada no Supabase como 20261029121743_appypay_portal_services; ficheiro local alinhado ao histórico remoto sem mudar o SQL. SHA256 da proposta permanece 989e97331e2ddcb0aaf89723af731d5cbbf6ffcb95362ac525e39ae948bbc60a. Corpo da função MD5 64672e0d92eeed6513c2266ce996d1b0, igual ao aprovado. RLS ativo; anon/authenticated sem SELECT na tabela e sem EXECUTE na função; service_role autorizado. Índices presentes; probe de referência inexistente devolveu APPYPAY_REFERENCE_INVALID e a tabela continuou com zero registros. Nenhuma cobrança emitida.

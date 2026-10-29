@@ -55,3 +55,6 @@ can_merge: false
 
 ## Extensão portal aluno
 29 testes aprovados; seis grupos SQL locais aprovados. Build completo com tipos e 182 páginas aprovado; lint zero erros/um aviso preexistente. Novos endpoints e transporte interno usam no-store/force-dynamic. Broker usa destino fixo, assinatura com expiração e escopo derivado da sessão. Não altera consultas de dashboard. SQL de serviços proposto, ainda não aplicado; ver APY-005. Autorização de produção recebida; sem liberação enquanto a proposta financeira e o gate contratual não estiverem resolvidos.
+
+## Bloqueio de release após instalação SQL
+O SQL de serviços foi aprovado/aplicado e APY-005 está resolvido. A inspeção global confirmou três violações CRITICAL preexistentes em REPORT_SCAN.md. Mesmo com build e testes AppyPay aprovados, o contrato exige FAIL/can_merge=false; nenhuma liberação ou exceção foi aplicada. A matriz MV integral ainda requer certificação.
