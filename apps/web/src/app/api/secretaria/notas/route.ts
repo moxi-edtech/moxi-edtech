@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { gradePeriodState } from '@/lib/academico/grade-period-context'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
@@ -63,6 +64,33 @@ export async function POST(req: Request) {
       escolaId: academicContext.escolaId,
       anoLetivoId: academicContext.anoLetivoId,
     })
+
+    const { data: candidatePeriods, error: periodsError } = await supabase
+      .from('periodos_letivos')
+      .select('id,numero,data_inicio,data_fim,trava_notas_em,offering_id')
+      .eq('escola_id', escolaId)
+      .eq('ano_letivo_id', academicContext.anoLetivoId)
+      .eq('tipo', 'TRIMESTRE')
+      .eq('numero', body.trimestre)
+      .limit(2)
+    if (periodsError) throw periodsError
+    if (!candidatePeriods || candidatePeriods.length !== 1 || candidatePeriods[0].offering_id !== null) {
+      return NextResponse.json({
+        ok: false, code: 'GRADE_PERIOD_UNRESOLVED',
+        error: 'O trimestre desta turma não está configurado de forma inequívoca.',
+      }, { status: 409 })
+    }
+    const periodStatus = gradePeriodState(candidatePeriods[0])
+    if (periodStatus === 'future' || periodStatus === 'unconfigured') {
+      return NextResponse.json({
+        ok: false, code: 'GRADE_PERIOD_NOT_AVAILABLE',
+        error: periodStatus === 'future'
+          ? 'Este trimestre ainda não começou.'
+          : 'As datas do trimestre precisam de ser confirmadas.',
+      }, { status: 409 })
+    }
+    // Past/locked writes are adjudicated by the database trigger and its
+    // formally authorized pauta-reopening exception; never bypass it here.
 
     const alunoIds = Array.from(new Set(body.notas.map((nota) => nota.aluno_id)))
     const { data: activeMatriculas, error: matriculasError } = await supabase
