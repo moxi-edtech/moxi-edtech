@@ -77,7 +77,7 @@ export async function GET(req: Request) {
       : { data: [], error: null };
     if (coursesError) throw coursesError;
     const names = new Map<string, string>((courses ?? [])
-      .map((course: any) => [String(course.id), String(course.nome)]));
+      .map((course: any) => [String(course.id), String(course.nome)] as const));
     const courseOptions = (courseOfferings ?? [])
       .filter((offering: any) => offering.course_id)
       .map((offering: any) => ({
