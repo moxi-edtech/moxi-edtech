@@ -210,3 +210,23 @@ test("grade-restricted and offering-specific events are not leaked to unrelated 
   assert.deepEqual(selectApplicableOfficialEvents(events, items, ["offer-b"], "8"), []);
   assert.deepEqual(selectApplicableOfficialEvents(events, items, ["offer-a"], "9").map((item) => item.id), ["exam", "course"]);
 });
+
+test("national exams without grade metadata are shown only for documented examination classes", () => {
+  const exams = [{
+    id: "national-exam", nome: "Exame nacional", tipo: "EXAME_ESCRITO",
+    data_inicio: "2027-06-21", data_fim: "2027-07-02", offering_id: null,
+  }];
+  const items = [{
+    nome: "Exame nacional", tipo: "EXAME_ESCRITO",
+    data_inicio: "2027-06-21", data_fim: "2027-07-02",
+    grade_codes: [],
+  }];
+  assert.equal(selectApplicableOfficialEvents(exams, items, ["regular"], "8", false).length, 0);
+  assert.equal(selectApplicableOfficialEvents(exams, items, ["regular"], "9", true).length, 1);
+});
+
+test("student endpoint checks turma exam-class source before publishing national exam dates", () => {
+  const source = readFileSync("src/app/api/aluno/home/academic-events/route.ts", "utf8");
+  assert.match(source, /turmas!inner\(id,curso_id,classe_num,is_classe_exame\)/);
+  assert.match(source, /turma\.is_classe_exame === true/);
+});
