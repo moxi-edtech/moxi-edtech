@@ -55,6 +55,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271029235923_apply_canonical_med_calendar_atomic.sql",
   // PR #303: role-scoped RLS for academic closure jobs only.
   "20271029235924_guard_fechamento_academico_jobs_rls.sql",
+  // #299: decree provenance RPCs already applied independently; no fiscal/AGT changes.
+  "20261029181138_official_decree_period_provenance_guard.sql",
+  "20261029181554_preserve_legacy_2025_calendar_provenance_compatibility.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
