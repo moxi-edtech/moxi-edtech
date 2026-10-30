@@ -141,6 +141,40 @@ export function buildCanonicalMedCalendarSkeleton(input: {
   };
 }
 
+/**
+ * Derive the target-year MED profile from the permanent subsystem of each
+ * installed course. The compatibility pointer on the offering may still refer
+ * to the ACTIVE year, so it must never be used for a FUTURE-year selection.
+ */
+export function deriveCanonicalMedCourseSelections(input: {
+  calendar: CanonicalMedCalendar;
+  profiles: readonly MedCourseProfile[];
+  offerings: readonly MedCourseOffering[];
+}): CourseCalendarSelection[] {
+  const { calendar, profiles, offerings } = input;
+  const matches = (subsystem: string) => profiles.filter((profile) =>
+    profile.ano_base === calendar.ano_base &&
+    profile.calendario_canonico_ano === calendar.ano_base &&
+    profile.data_inicio === calendar.data_inicio &&
+    profile.data_fim === calendar.data_fim &&
+    profile.versao_documento === calendar.versao_documento &&
+    profile.subsistema === subsystem &&
+    profile.is_oficial === true && profile.estado === "PUBLICADO"
+  );
+  return offerings.map((offering) => {
+    const eligible = matches(offering.education_subsystem);
+    if (eligible.length !== 1) {
+      invalid(
+        "OFFICIAL_CALENDAR_PROFILE_NOT_UNIQUE",
+        eligible.length === 0
+          ? "O calendário MED deste ano não tem perfil para um dos cursos instalados."
+          : "Existem vários perfis MED do mesmo subsistema. Reveja a publicação oficial.",
+      );
+    }
+    return { offering_id: offering.id, template_id: eligible[0].id };
+  });
+}
+
 export function buildCanonicalMedCalendarPlan(input: {
   calendar: CanonicalMedCalendar;
   profiles: readonly MedCourseProfile[];
