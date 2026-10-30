@@ -4,14 +4,15 @@
 
 Projeto: `wjtifcpxxxotsbmvbgoq`; branch: `feat/global-curriculum-med-inheritance-20261030`; PR: [#306](https://github.com/moxi-edtech/moxi-edtech/pull/306).
 
-**16 migrações já executadas no Supabase foram reconciliadas com os identificadores de ficheiro do GitHub, sem executar SQL de aplicação.** O conteúdo `statements[1]` de cada registo foi comparado integralmente, byte a byte, ao conteúdo do ficheiro correspondente no HEAD da branch, e as diferenças foram **zero**. Cada alteração foi protegida por verificações de nome, checksum MD5, origem e destino, e aplicada atomicamente ao ledger `supabase_migrations.schema_migrations`. As colunas de conteúdo, histórico, autor, chave de idempotência e rollback não foram tocadas.
+**19 migrações já executadas no Supabase foram reconciliadas com os identificadores de ficheiro do GitHub, sem executar SQL de aplicação.** O conteúdo `statements[1]` de cada registo foi comparado integralmente, byte a byte, ao conteúdo do ficheiro correspondente no HEAD da branch, e as diferenças foram **zero**. Cada alteração foi protegida por verificações de nome, checksum MD5, origem e destino, e aplicada atomicamente ao ledger `supabase_migrations.schema_migrations`. As colunas de conteúdo, histórico, autor, chave de idempotência e rollback não foram tocadas.
 
 Scripts operacionais versionados **fora** de `supabase/migrations`:
 
 - `scripts/ops/reconcile-med-lifecycle-migration-ledger-20261030.sql` — 13 entradas.
 - `scripts/ops/reconcile-legacy-verified-migration-ledger-20261030.sql` — 3 entradas.
+- `scripts/ops/reconcile-additional-exact-migrations-20261030.sql` — 3 entradas.
 
-Ambos foram executados duas vezes; a segunda execução não encontrou operações pendentes, confirmando idempotência.
+Todos foram executados duas vezes; a segunda execução não encontrou operações pendentes, confirmando idempotência.
 
 ### Versões antes → depois
 
@@ -33,10 +34,13 @@ Ambos foram executados duas vezes; a segunda execução não encontrou operaçõ
 | 20260928105542 | 20260928120000 | klasse_chatgpt_write_rpcs |
 | 20261023120619 | 20271023100000 | command_center_internal_roles |
 | 20261023120624 | 20271023101000 | command_center_internal_global_search |
+| 20261024230025 | 20271015100001 | command_center_course_reused_classes |
+| 20261024230032 | 20271015100002 | command_center_course_turmas_page |
+| 20261026111331 | 20271026123000 | operational_receipt_outbox_worker |
 
 ## Validação pós-correção
 
-- As 13 versões da cadeia MED/RAA estão todas presentes com os timestamps da branch; **0 origens antigas** restantes. As 3 migrações independentes estão alinhadas; **0 origens antigas** restantes.
+- As 13 versões da cadeia MED/RAA estão todas presentes com os timestamps da branch; **0 origens antigas** restantes. As 6 migrações independentes estão alinhadas; **0 origens antigas** restantes.
 - Nenhuma migração foi reaplicada ou desfeita e a contagem de linhas do ledger manteve-se em **696**.
 - Indicadores académicos preservados: **1.115 matrículas, 949 notas, 7.167 avaliações, 14 históricos**.
 - Calendário MED 2026/2027: Escola KLASSE **8/8** perfis anuais e Curtume **3/3**, preflight `READY`.
@@ -46,10 +50,11 @@ Ambos foram executados duas vezes; a segunda execução não encontrou operaçõ
 
 A árvore Git da branch contém **940** migrações e o histórico remoto contém **696** entradas. Após as 16 correções, ainda existem:
 
-- **311 ficheiros Git** sem timestamp correspondente no ledger remoto; podem ser migrações não executadas, migrações executadas com outro nome/versão e/ou migrações destinadas a outros ambientes.
-- **70 registos remotos** sem timestamp correspondente no conjunto local; podem ser aplicações históricas diretas, scripts operacionais sem ficheiro de migração ou outras versões.
+- **308 ficheiros Git** sem timestamp correspondente no ledger remoto; podem ser migrações não executadas, migrações executadas com outro nome/versão e/ou migrações destinadas a outros ambientes.
+- **67 registos remotos** sem timestamp correspondente no conjunto local; podem ser aplicações históricas diretas, scripts operacionais sem ficheiro de migração ou outras versões.
 - A migração remota **20261030102120** (`reconcile_klasse_2026_med_calendar_preserve_academic_ids`) foi uma reconciliação pontual de dados escolares sem ficheiro SQL equivalente no Git. **Não** atribuir um timestamp arbitrário a esse registo, não criar um ficheiro replayable fictício e não repetir essa correção na Escola KLASSE.
 - Outros dois exemplos de aplicações diretas sem correspondência local: **20261028102053** e **20261028102450**.
+- Foram calculados hashes Git blob SHA-1 de todos os registos remotos sem versão local com uma única instrução SQL: **não há mais correspondências byte a byte** entre esses registos e os ficheiros locais ainda pendentes. Para os 67 restantes, não há evidência suficiente para atualizar o ledger automaticamente.
 - A cadeia PR #306 tem agora **0** ficheiros `202710292359xx` ausentes do ledger, mas isto **não prova** que todo o histórico passado esteja reconciliado.
 
 **Bloqueio operacional:** Não executar `supabase db push`, em particular `--include-all`, nem marcar indiscriminadamente as 311 migrações como aplicadas. A reconciliação global exige analisar migrações pendentes e os efeitos reais no esquema. O Supabase CLI compara versões do Git com `supabase_migrations.schema_migrations`; marcar uma migração como aplicada sem executar a definição pode causar perda de funcionalidade ou falhas no próximo deploy.
