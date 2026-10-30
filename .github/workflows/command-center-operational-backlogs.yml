@@ -82,6 +82,10 @@ jobs:
   web-operational:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Match the proven TypeScript heap policy used by command-center-explorer.
+    # This does not skip or relax typecheck, lint, or unit regressions.
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
