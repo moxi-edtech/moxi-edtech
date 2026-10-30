@@ -135,3 +135,40 @@ test("Indirect calendar consumers use the scoped MED trimester reader", () => {
   const annualClose = read("app/api/secretaria/fechamento-academico/validacoes/engine.ts");
   assert.match(annualClose, /requireVerifiedTrimester\(verifiedPeriods/);
 });
+
+test("Closure events do not override stored job scope; retry is failed-only and tenant-scoped", () => {
+  const worker = read("inngest/functions/fechamento-academico-run.ts");
+  const route = read("app/api/secretaria/fechamento-academico/route.ts");
+  const orchestration = read("lib/secretaria/fechamentoAcademicoOrchestrator.ts");
+  const sanidade = read("app/api/secretaria/fechamento-academico/sanidade/route.ts");
+  assert.match(worker, /resolveVerifiedClosureExecution/);
+  assert.match(worker, /auth\.getUser\(executor_access_token\)/);
+  assert.match(worker, /user_has_role_in_school/);
+  assert.match(worker, /\.is\("started_at", null\)/);
+  assert.match(worker, /\.eq\("escola_id", escola_id\)\.eq\("run_id", run_id\)/);
+  assert.doesNotMatch(worker, /const \{[^}]*\bacao\b[^}]*\} = event\.data/);
+  assert.match(route, /approvedClosureCriticalKeys/);
+  assert.match(route, /parametros: storedParameters/);
+  assert.match(route, /ACADEMIC_CLOSURE_RETRY_NOT_ALLOWED/);
+  assert.match(route, /ACADEMIC_CLOSURE_PARTIAL_RECONCILIATION_REQUIRED/);
+  assert.match(route, /\.from\("fechamento_academico_job_steps"\)/);
+  assert.match(route, /dispatchAcademicClosureOrFail/);
+  assert.match(route, /resolveAcademicYearScope/);
+  assert.match(worker, /\.neq\("estado", ESTADOS_FECHAMENTO\.DONE\)/);
+  assert.match(route, /\.eq\("estado", ESTADOS\.FAILED\)/);
+  assert.match(orchestration, /assertAuthorizedClosurePreflight/);
+  assert.match(sanidade, /CanonicalPeriodReadError/);
+});
+
+test("Academic closure jobs and audit steps require leadership RLS on both write checks", () => {
+  const migration = readFileSync(resolve(process.cwd(),
+    "../../supabase/migrations/20271029235924_guard_fechamento_academico_jobs_rls.sql"), "utf8");
+  assert.match(migration, /CREATE POLICY fechamento_academico_jobs_insert/);
+  assert.match(migration, /CREATE POLICY fechamento_academico_jobs_update/);
+  assert.match(migration, /CREATE POLICY fechamento_academico_steps_insert/);
+  assert.match(migration, /user_has_role_in_school/);
+  assert.match(migration, /current_tenant_escola_id\(\)/);
+  assert.match(migration, /WITH CHECK/);
+  assert.match(migration, /FOR UPDATE TO authenticated[\s\S]*?USING \([\s\S]*?WITH CHECK \(/);
+  assert.doesNotMatch(migration, /FOR (UPDATE|INSERT) TO authenticated\s+USING \(escola_id = public\.current_tenant_escola_id\(\)\);/);
+});

@@ -28,6 +28,12 @@ on:
       - "apps/web/tests/unit/official-calendar-write-guard.spec.ts"
       - "apps/web/src/lib/academico/verify-canonical-periods-read.ts"
       - "apps/web/src/lib/academico/read-verified-academic-trimesters.ts"
+      - "apps/web/src/lib/secretaria/fechamento-execution-contract.ts"
+      - "apps/web/tests/unit/fechamento-execution-contract.spec.ts"
+      - "supabase/migrations/20271029235924_guard_fechamento_academico_jobs_rls.sql"
+      - "apps/web/src/lib/secretaria/fechamentoAcademicoOrchestrator.ts"
+      - "apps/web/src/inngest/functions/fechamento-academico-run.ts"
+      - "apps/web/src/app/api/secretaria/fechamento-academico/sanidade/route.ts"
       - "apps/web/tests/unit/read-verified-academic-trimesters.spec.ts"
       - "apps/web/src/app/api/secretaria/relatorios/mapa-aproveitamento/route.ts"
       - "apps/web/src/app/api/secretaria/turmas/[id]/mini-pauta/route.ts"
@@ -187,6 +193,7 @@ jobs:
             tests/unit/calendar-events-read.spec.ts \
             tests/unit/verify-canonical-periods-read.spec.ts \
             tests/unit/read-verified-academic-trimesters.spec.ts \
+            tests/unit/fechamento-execution-contract.spec.ts \
             tests/unit/validate-canonical-cutover.spec.ts \
             tests/unit/calendar-consumers-contract.spec.ts \
             tests/unit/raa-decreto-eligibility.spec.ts \

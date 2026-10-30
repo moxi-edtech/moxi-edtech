@@ -1,4 +1,5 @@
 import { executarValidacoesFechamento } from "@/app/api/secretaria/fechamento-academico/validacoes/engine";
+import { assertAuthorizedClosurePreflight } from "@/lib/secretaria/fechamento-execution-contract";
 import { readCanonicalCutoverTargetReview } from "@/lib/academico/validate-canonical-cutover";
 
 export const ESTADOS_FECHAMENTO = {
@@ -77,6 +78,7 @@ export async function runFechamentoOrchestration(params: {
   matriculaIds: string[];
   motivo?: string;
   allowReabertoOverride?: boolean;
+  approvedCriticalKeys?: string[];
 }) {
   const { supabase, runId, escolaId, executorUserId, acao, anoLetivoId, periodoLetivoId, turmaIds } = params;
 
@@ -126,6 +128,8 @@ export async function runFechamentoOrchestration(params: {
 
     throw new Error("Snapshot legal já congelado para uma ou mais matrículas. Reabertura auditada é obrigatória.");
   }
+
+  assertAuthorizedClosurePreflight(preflight, params.approvedCriticalKeys);
 
   let matriculaIds = [...params.matriculaIds];
 
