@@ -23,12 +23,13 @@ type Props = {
   alunoNome: string;
   turmaId?: string | null;
   originAnoLetivoId?: string | null;
+  elevated?: boolean;
   onPayment: () => void;
   onAcademicSaved?: () => void;
 };
 
 export function EnrollmentPostActionModal({
-  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, originAnoLetivoId, onPayment, onAcademicSaved,
+  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, originAnoLetivoId, onPayment, onAcademicSaved, elevated = false,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
@@ -258,7 +259,7 @@ export function EnrollmentPostActionModal({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!loading) onOpenChange(next); }}>
-      <DialogContent className="max-w-xl rounded-2xl">
+      <DialogContent overlayClassName={elevated ? "z-[110]" : undefined} className={`max-w-xl rounded-2xl border-border bg-card text-foreground ${elevated ? "z-[110]" : ""}`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground"><Icon className="h-5 w-5 text-primary" />{title}</DialogTitle>
           <DialogDescription>{alunoNome} · atendimento continua nesta ficha.</DialogDescription>
