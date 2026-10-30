@@ -64,9 +64,9 @@ export async function GET() {
       .select("id,nome,ano_base,data_inicio,data_fim,subsistema,calendario_canonico_ano,versao_documento")
       .eq("is_oficial", true)
       .eq("estado", "PUBLICADO")
-      // O calendário 2026/2027 tem ano_base=2026. O ano-base coincide
-      // com o ano letivo de origem e deve aparecer como destino elegível.
-      .gte("ano_base", anoAtivo?.ano || 0)
+      // A virada só propõe calendários posteriores ao ano ativo.
+      // Reaplicação do ano corrente pertence à configuração académica.
+      .gt("ano_base", anoAtivo?.ano || 0)
       .order("ano_base", { ascending: true })
       .order("subsistema", { ascending: true });
 
@@ -76,7 +76,7 @@ export async function GET() {
       .from("calendarios_oficiais_anos")
       .select("ano_base,data_inicio,data_fim,versao_documento,estado")
       .eq("estado", "PUBLICADO")
-      .gte("ano_base", anoAtivo?.ano || 0)
+      .gt("ano_base", anoAtivo?.ano || 0)
       .order("ano_base", { ascending: true });
     if (canonicalError) throw canonicalError;
 
