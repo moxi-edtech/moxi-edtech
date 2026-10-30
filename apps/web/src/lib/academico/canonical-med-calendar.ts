@@ -112,7 +112,11 @@ export function buildCanonicalMedCalendarSkeleton(input: {
     profile.data_fim === calendar.data_fim &&
     profile.versao_documento === calendar.versao_documento &&
     profile.is_oficial === true && profile.estado === "PUBLICADO"
-  ).sort((a, b) => a.id.localeCompare(b.id));
+  ).sort((a, b) => {
+    const aRegular = a.subsistema === "REGULAR_ADULTOS";
+    const bRegular = b.subsistema === "REGULAR_ADULTOS";
+    return aRegular === bRegular ? a.id.localeCompare(b.id) : aRegular ? -1 : 1;
+  });
   if (published.length === 0) {
     invalid("OFFICIAL_TRIMESTERS_INCOMPLETE", "Não existem perfis oficiais publicados para o calendário deste ano.");
   }
