@@ -14,6 +14,39 @@ export type VerifiedAcademicTrimester = MedPeriod & {
   trava_notas_em: string | null;
 };
 
+const calendarWarningAt = new Map<string, number>();
+const CALENDAR_WARNING_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * A privacy-minimal structured event for operational alerts in server logs.
+ * Throttled per school/year/runtime to avoid noisy repeated 409 responses.
+ * Logs no student, teacher, grade or financial information.
+ */
+export function reportCalendarReconciliationFailure(
+  input: { escolaId: string; anoLetivoId: string; yearBase: number },
+  periodCount: number,
+  now = Date.now(),
+  sink: (message: string) => void = (message) => console.warn(message),
+): boolean {
+  const key = [input.escolaId, input.anoLetivoId, input.yearBase].join(":");
+  const last = calendarWarningAt.get(key);
+  if (last !== undefined && now - last >= 0 && now - last < CALENDAR_WARNING_INTERVAL_MS) {
+    return false;
+  }
+  if (calendarWarningAt.size >= 256) calendarWarningAt.clear();
+  calendarWarningAt.set(key, now);
+  sink(JSON.stringify({
+    event: "academic_calendar_reconciliation_blocked",
+    code: "OFFICIAL_CALENDAR_NOT_RECONCILED",
+    escola_id: input.escolaId,
+    ano_letivo_id: input.anoLetivoId,
+    ano_base: input.yearBase,
+    trimester_count: periodCount,
+    severity: "warning",
+  }));
+  return true;
+}
+
 export async function readVerifiedAcademicTrimesters(
   db: any,
   input: { escolaId: string; anoLetivoId: string; yearBase: number },
@@ -30,7 +63,14 @@ export async function readVerifiedAcademicTrimesters(
     .limit(12);
   if (error) throw error;
   const rows = (data ?? []) as VerifiedAcademicTrimester[];
-  await verifyCanonicalPeriodsRead(db, { ...input, periods: rows });
+  try {
+    await verifyCanonicalPeriodsRead(db, { ...input, periods: rows });
+  } catch (cause) {
+    if (cause instanceof CanonicalPeriodReadError) {
+      reportCalendarReconciliationFailure(input, rows.length);
+    }
+    throw cause;
+  }
   return rows;
 }
 
