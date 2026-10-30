@@ -357,7 +357,7 @@ export function EnrollmentPostActionModal({
         {action === "mensalidade" && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">O pagamento será aberto mantendo o aluno e o atendimento em contexto.</p>
-            <button type="button" onClick={onPayment} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-bold text-slate-950">Adicionar ao pagamento do balcão</button>
+            <button type="button" onClick={onPayment} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-bold text-amber-950">Adicionar ao pagamento do balcão</button>
           </div>
         )}
       </DialogContent>
