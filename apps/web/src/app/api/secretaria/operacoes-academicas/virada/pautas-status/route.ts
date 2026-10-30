@@ -5,6 +5,9 @@ import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters } from "@/lib/academico/read-verified-academic-trimesters";
+
 
 export const dynamic = "force-dynamic";
 
@@ -42,15 +45,10 @@ export async function GET(request: Request) {
 
     const turmaIds = (turmas || []).map(t => t.id);
 
-    const { data: periodos, error: periodosError } = await supabase
-      .from("periodos_letivos")
-      .select("id")
-      .eq("escola_id", escolaId)
-      .eq("ano_letivo_id", anoAtivo.id);
-
-    if (periodosError) throw periodosError;
-
-    const periodoIds = (periodos || []).map(periodo => periodo.id);
+    const periodos = await readVerifiedAcademicTrimesters(supabase, {
+      escolaId, anoLetivoId: anoAtivo.id, yearBase: Number(anoAtivo.ano),
+    });
+    const periodoIds = periodos.map((periodo) => periodo.id);
 
     // 3. Verificar Pautas Anuais Geradas no ano letivo ativo
     const { data: pautas, error: pautasError } = await supabase
@@ -88,6 +86,10 @@ export async function GET(request: Request) {
       ano_ativo: anoAtivo
     });
   } catch (e: unknown) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status });
+    }
+
     const message = e instanceof Error ? e.message : "Erro interno";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

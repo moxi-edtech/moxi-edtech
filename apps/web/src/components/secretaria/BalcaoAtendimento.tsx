@@ -27,6 +27,8 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
+import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
+import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
@@ -1381,6 +1383,12 @@ function Catalogo({
   rematriculaSchoolId,
   rematriculaWindow,
   rematriculaAcademic,
+  raaMatriculaId,
+  raaAlunoId,
+  onLancarNota,
+  onDocumentos,
+  raaDocumentsOpen,
+  onCloseRaaDocuments,
   reconcilingPedido,
   rematriculaError,
   onResolverPedido,
@@ -1409,10 +1417,13 @@ function Catalogo({
   rematriculaContextYear: { id: string; ano: number; label: string } | null;
   rematriculaSchoolId: string;
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
-  rematriculaAcademic: {
-    reason?: string;
-    disciplina_ids_pendentes?: string[];
-  } | null | undefined;
+  rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
+  raaMatriculaId: string | null;
+  raaAlunoId: string | null;
+  onLancarNota: () => void;
+  onDocumentos: () => void;
+  raaDocumentsOpen: boolean;
+  onCloseRaaDocuments: () => void;
   reconcilingPedido: boolean;
   rematriculaError: string | null;
   onResolverPedido: () => Promise<void>;
@@ -1687,114 +1698,18 @@ function Catalogo({
                 )}
               </div>
             ) : null}
-            {rematriculaState === "ACADEMIC_PENDING" ? (
-              <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
-                <strong className="block">Rematrícula bloqueada: faltam notas ou dados académicos</strong>
-                <p className="mt-1 text-amber-900/80">
-                  Não existe bypass por “lançar depois”. Conclua os dados exigidos pelo RAA e verifique novamente.
-                </p>
-                <CodigoEstado estado="ACADEMIC_PENDING" />
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Link href="/secretaria/notas" className="rounded-xl bg-amber-700 px-3 py-2 text-center font-bold text-white hover:bg-amber-800">
-                    Abrir notas
-                  </Link>
-                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-amber-300 bg-white px-3 py-2 font-bold text-amber-900 hover:bg-amber-100">
-                    Verificar novamente
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_REVIEW_REQUIRED" ? (
-              <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 p-3.5 text-xs text-sky-950">
-                <strong className="block">Recurso académico em aberto</strong>
-                <p className="mt-1 text-sky-900/80">
-                  {rematriculaAcademic?.reason ?? "O RAA ainda não autorizou a efetivação da rematrícula."}
-                </p>
-                {(rematriculaAcademic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
-                  <p className="mt-2 font-semibold">
-                    Disciplinas pendentes: {rematriculaAcademic?.disciplina_ids_pendentes?.length}
-                  </p>
-                ) : null}
-                <CodigoEstado estado="ACADEMIC_REVIEW_REQUIRED" />
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Link href="/secretaria/raa/reapreciacoes" className="rounded-xl bg-sky-700 px-3 py-2 text-center font-bold text-white hover:bg-sky-800">
-                    Abrir recursos
-                  </Link>
-                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-sky-200 bg-white px-3 py-2 font-bold text-sky-900 hover:bg-sky-100">
-                    Verificar novamente
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_CONDITIONAL_BLOCKED" ? (
-              <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-3.5 text-xs text-violet-950">
-                <strong className="block">Inscrição condicional reconhecida, mas ainda não efetivável</strong>
-                <p className="mt-1 text-violet-900/80">
-                  {rematriculaAcademic?.reason ?? "O RAA exige resolver a pendência académica antes da ativação da matrícula."}
-                </p>
-                {(rematriculaAcademic?.disciplina_ids_pendentes?.length ?? 0) > 0 ? (
-                  <p className="mt-2 font-semibold">
-                    Disciplinas pendentes: {rematriculaAcademic?.disciplina_ids_pendentes?.length}
-                  </p>
-                ) : null}
-                <CodigoEstado estado="ACADEMIC_CONDITIONAL_BLOCKED" />
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Link href="/secretaria/raa/reapreciacoes" className="rounded-xl bg-violet-700 px-3 py-2 text-center font-bold text-white hover:bg-violet-800">
-                    Resolver pendência
-                  </Link>
-                  <button type="button" onClick={() => void onRefreshRematricula()} className="rounded-xl border border-violet-200 bg-white px-3 py-2 font-bold text-violet-900 hover:bg-violet-100">
-                    Verificar novamente
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED" ? (
-              <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-950">
-                <strong className="block">Retenção por faltas — validar regra escolar</strong>
-                <p className="mt-1 text-amber-900/80">
-                  O aluno não pode ser rematriculado automaticamente. Confirme frequência e a regra aplicável antes de autorizar a repetição.
-                </p>
-                <CodigoEstado estado="ACADEMIC_ATTENDANCE_REVIEW_REQUIRED" />
-                <Link href="/secretaria/operacoes-academicas/fechamento-academico" className="mt-3 block rounded-xl bg-amber-700 px-3 py-2 text-center font-bold text-white hover:bg-amber-800">
-                  Rever frequência e decisão
-                </Link>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED" ? (
-              <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-950">
-                <strong className="block">Retenção por indisciplina — decisão administrativa</strong>
-                <p className="mt-1 text-rose-900/80">
-                  O Balcão não deve criar automaticamente uma nova matrícula enquanto a decisão disciplinar aplicável não estiver concluída.
-                </p>
-                <CodigoEstado estado="ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED" />
-                <Link href="/secretaria/raa/indisciplina" className="mt-3 block rounded-xl bg-rose-700 px-3 py-2 text-center font-bold text-white hover:bg-rose-800">
-                  Abrir decisão disciplinar
-                </Link>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_NOT_APPROVED" ? (
-              <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-900">
-                <strong className="block">Resultado académico não autoriza rematrícula</strong>
-                <p className="mt-1 text-rose-800/80">
-                  O Balcão não altera a decisão académica. Reveja o resultado no RAA e corrija somente dados comprovadamente incorretos.
-                </p>
-                <CodigoEstado estado="ACADEMIC_NOT_APPROVED" />
-                <Link href="/secretaria/fechamento-academico" className="mt-3 block rounded-xl bg-rose-700 px-3 py-2 text-center font-bold text-white hover:bg-rose-800">
-                  Abrir fechamento académico
-                </Link>
-              </div>
-            ) : null}
-            {rematriculaState === "ACADEMIC_CYCLE_COMPLETED" ? (
-              <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-3.5 text-xs text-violet-950">
-                <strong className="block">Ciclo concluído — não há rematrícula seguinte</strong>
-                <p className="mt-1 text-violet-900/80">
-                  O aluno terminou a etapa académica. O próximo passo é o fecho documental, não uma nova rematrícula.
-                </p>
-                <CodigoEstado estado="ACADEMIC_CYCLE_COMPLETED" />
-                <Link href="/secretaria/documentos-oficiais" className="mt-3 block rounded-xl bg-violet-700 px-3 py-2 text-center font-bold text-white hover:bg-violet-800">
-                  Abrir documentos oficiais
-                </Link>
-              </div>
+            {/* All seven non-standard academic cases are resolved in-place. */}
+            {raaMatriculaId && raaAlunoId ? (
+              <RaaBalcaoResolutionPanel
+                key={raaMatriculaId}
+                status={rematriculaState}
+                matriculaId={raaMatriculaId}
+                alunoId={raaAlunoId}
+                academic={rematriculaAcademic ?? null}
+                onLancarNota={onLancarNota}
+                onDocumentos={onDocumentos}
+                onRecheck={onRefreshRematricula}
+              />
             ) : null}
             {rematriculaError ? (
               <p role="alert" className="mb-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-800">
@@ -1920,6 +1835,48 @@ function Catalogo({
               })}
             </div>
           </div>
+        )}
+
+        {view === "reenrollment" && raaDocumentsOpen && (
+          <section data-balcao-raa-documents className="mt-5 space-y-3 rounded-xl border border-border bg-card p-3 sm:p-4"
+            aria-label="Documentos do aluno na rematrícula">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Documentos do aluno</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Emita aqui ou adicione à cobrança.</p>
+              </div>
+              <button type="button" onClick={onCloseRaaDocuments}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground">
+                Fechar
+              </button>
+            </div>
+            {documentos.length === 0 ? (
+              <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">Nenhum documento disponível para esta escola.</p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {documentos.map((servico) => {
+                  const busy = emittingDocId === servico.id;
+                  const selected = selectedItemKeys.has("servico:" + servico.id);
+                  const paid = servico.preco > 0;
+                  return (
+                    <div key={servico.id} className="flex min-w-0 flex-col justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground" title={servico.nome}>{servico.nome}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{paid ? kwanza.format(servico.preco) : "Gratuito"}</p>
+                      </div>
+                      <button type="button" disabled={busy || (paid && selected)}
+                        onClick={() => { if (paid) void onAdicionarServico(servico); else void onEmitirDocumento(servico); }}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-60">
+                        {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> A emitir...</> :
+                          paid ? selected ? "Adicionado à cobrança" : "Adicionar à cobrança" :
+                          <><Printer className="h-4 w-4" /> Emitir agora</>}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
 
         {(view === "all" || view === "document") && documentos.length > 0 && (
@@ -2786,7 +2743,8 @@ export default function BalcaoAtendimento({
   });
   const audit = useAuditTrail();
 
-  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null } | null>(null);
+  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null } | null>(null);
+  const [raaDocumentsOpen, setRaaDocumentsOpen] = useState(false);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
   const hasOverdueDebt = useMemo(
     () => dossier.mensalidades.some((item) => item.preco > 0 && item.atrasada),
@@ -2940,6 +2898,19 @@ export default function BalcaoAtendimento({
     search.clear();
     void dossier.load(selectedAlunoId);
   }, [selectedAlunoId, effectiveAcademicYearId]);
+
+  // The document sub-flow remains inside Rematrícula. Switching students
+  // closes it without clearing the shared checkout or rematrícula draft.
+  useEffect(() => { setRaaDocumentsOpen(false); }, [selectedAlunoId]);
+  useEffect(() => {
+    if (view !== "reenrollment" || !raaDocumentsOpen) return;
+    const frame = window.requestAnimationFrame(() =>
+      workspaceRootRef.current?.querySelector<HTMLElement>('[data-balcao-raa-documents]')?.scrollIntoView({
+        behavior: "smooth", block: "nearest",
+      })
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [raaDocumentsOpen, view]);
 
   useEffect(() => {
     if (dossier.aluno?.id) void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
@@ -3145,7 +3116,7 @@ export default function BalcaoAtendimento({
               className={
                 view === "payment"
                   ? "lg:col-span-7"
-                  : view === "document" || view === "all"
+                  : view === "document" || view === "all" || (view === "reenrollment" && raaDocumentsOpen && selectedItemKeys.size > 0)
                     ? "lg:col-span-8"
                     : "lg:col-span-12"
               }
@@ -3181,6 +3152,28 @@ export default function BalcaoAtendimento({
                   rematriculaSchoolId={escolaId}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
+                  raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
+                  raaAlunoId={dossier.aluno.id}
+                  onLancarNota={() => {
+                    const source = rematricula.academic?.source;
+                    if (!source?.turma_id || !source.ano_letivo_id) {
+                      error("Não foi possível identificar a turma e o ano de origem.");
+                      return;
+                    }
+                    setPostAction({
+                      action: "notas",
+                      turmaId: source.turma_id,
+                      originAnoLetivoId: source.ano_letivo_id,
+                    });
+                  }}
+                  onDocumentos={() => {
+                    if (view === "reenrollment") setRaaDocumentsOpen(true);
+                    else workspaceRootRef.current?.querySelector<HTMLElement>('[data-balcao-action="document"]')?.scrollIntoView({
+                      behavior: "smooth", block: "center",
+                    });
+                  }}
+                  raaDocumentsOpen={raaDocumentsOpen}
+                  onCloseRaaDocuments={() => setRaaDocumentsOpen(false)}
                   reconcilingPedido={rematricula.reconciling}
                   rematriculaError={rematricula.apiError}
                   onResolverPedido={rematricula.resolveLegacyPedido}
@@ -3193,7 +3186,7 @@ export default function BalcaoAtendimento({
               </div>
             </div>
 
-            {(view === "payment" || view === "document" || view === "all") && (
+            {(view === "payment" || view === "document" || view === "all" || (view === "reenrollment" && raaDocumentsOpen && selectedItemKeys.size > 0)) && (
               <div className={view === "payment" ? "lg:col-span-5" : "lg:col-span-4"}>
                 <CarrinhoPanel
                   carrinho={carrinho}
@@ -3201,7 +3194,7 @@ export default function BalcaoAtendimento({
                   audit={audit}
                   aluno={dossier.aluno}
                   embedded={embedded}
-                  mode={view === "payment" ? "payment" : view === "document" ? "document" : "all"}
+                  mode={view === "payment" ? "payment" : view === "document" || view === "reenrollment" ? "document" : "all"}
                   atalhoActivo={
                     !rematricula.modalOpen &&
                     !debtModalOpen &&
@@ -3307,6 +3300,8 @@ export default function BalcaoAtendimento({
           alunoId={dossier.aluno.id}
           alunoNome={dossier.aluno.nome}
           turmaId={postAction?.turmaId ?? null}
+          originAnoLetivoId={postAction?.originAnoLetivoId ?? null}
+          onAcademicSaved={() => void rematricula.refreshStatus()}
           onPayment={() => {
             setPostAction(null);
             const next = dossier.mensalidades[0];

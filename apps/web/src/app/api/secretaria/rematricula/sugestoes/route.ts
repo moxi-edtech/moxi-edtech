@@ -78,13 +78,31 @@ export async function GET(req: Request) {
         .select('id, aluno_id, turma_id, status, ano_letivo, alunos(nome)')
         .eq('escola_id', escolaId)
         .in('turma_id', turmaIds)
-        .in('status', ['ativo', 'ativa', 'active', 'reprovado', 'reprovada', 'reprovado_por_faltas'])
+        .in('status', ['ativo', 'concluido'])
 
       matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 2000 })
       const { data: matriculas } = await matriculasQuery
 
       const matriculaIds = (matriculas || []).map((m: any) => m.id).filter(Boolean)
       const inadimplenciaPorMatricula = new Set<string>()
+
+      // Reprovação é um resultado académico oficial, nunca matriculas.status.
+      // Uma única consulta por lote evita N+1 e respeita RLS/lock legal.
+      const reprovacoesOficiais = new Set<string>()
+      if (matriculaIds.length > 0) {
+        const { data: resultados, error: resultadosError } = await supabase
+          .from('v_student_lifecycle_status_v2')
+          .select('matricula_id, resultado_oficial')
+          .eq('escola_id', escolaId)
+          .in('matricula_id', matriculaIds)
+          .limit(2001)
+        if (resultadosError) {
+          return NextResponse.json({ ok: false, error: 'Não foi possível verificar os resultados académicos oficiais.' }, { status: 503 })
+        }
+        for (const item of resultados ?? []) {
+          if (item.resultado_oficial === 'reprovado') reprovacoesOficiais.add(item.matricula_id)
+        }
+      }
 
       if (bloquearInadimplentes && matriculaIds.length > 0) {
         const { data: mensalidades } = await supabase
@@ -104,14 +122,13 @@ export async function GET(req: Request) {
         const turmaId = (m as any).turma_id as string
         if (!turmaId) continue
         const entry = bloqueioPorTurma.get(turmaId) || { inadimplencia: 0, reprovacao: 0, detalhes: [] }
-        const status = String((m as any).status || '').toLowerCase()
         const motivos: string[] = []
 
         if (bloquearInadimplentes && inadimplenciaPorMatricula.has((m as any).id)) {
           motivos.push('inadimplencia')
           entry.inadimplencia += 1
         }
-        if (['reprovado', 'reprovada', 'reprovado_por_faltas'].includes(status)) {
+        if (reprovacoesOficiais.has((m as any).id)) {
           motivos.push('reprovacao')
           entry.reprovacao += 1
         }

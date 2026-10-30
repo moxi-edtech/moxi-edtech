@@ -2,17 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const REMATRICULA_SOURCE_STATUSES = [
   "ativo",
-  "ativa",
-  "active",
-  "em_andamento",
-  "matriculado",
-  "transferido",
   "concluido",
-  "concluida",
-  "aprovado",
-  "aprovada",
-  "reprovado",
-  "reprovada",
+  "transferido",
 ] as const;
 
 export type RematriculaSource = {
@@ -34,7 +25,7 @@ export function isRematriculaSourceStatus(status: string | null | undefined): bo
 /**
  * Resolves the academic origin for a new-year rematriculation.
  *
- * A historical year may be closed as `concluido` or `reprovado`; requiring an
+ * A historical year is administratively closed as `concluido` regardless of approval; requiring an
  * active row in the target year would make the portal depend on a matrícula
  * that should only be created after confirmation.
  */

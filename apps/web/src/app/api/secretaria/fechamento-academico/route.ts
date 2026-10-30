@@ -6,6 +6,10 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { requireRoleInSchool } from "@/lib/authz";
 import { executarValidacoesFechamento } from "./validacoes/engine";
+import { assertAuthorizedClosurePreflight, approvedClosureCriticalKeys, FechamentoExecutionError, type FechamentoStoredParameters } from "@/lib/secretaria/fechamento-execution-contract";
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
+import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import { inngest } from "@/inngest/client";
 
 export const dynamic = "force-dynamic";
@@ -63,11 +67,37 @@ const RetrySchema = z.object({
   executar_assincrono: z.boolean().default(true),
 });
 
-async function dispatchAsyncRun(eventPayload: Record<string, unknown>) {
+async function dispatchAsyncRun(eventPayload: {
+  run_id: string;
+  escola_id: string;
+  executor_user_id: string;
+  executor_access_token: string;
+}) {
   await inngest.send({
     name: "academico/fechamento.run.requested",
     data: eventPayload,
   });
+}
+
+/** A queue error must not strand a PENDING_VALIDATION job indefinitely. */
+async function dispatchAcademicClosureOrFail(
+  supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>,
+  eventPayload: Parameters<typeof dispatchAsyncRun>[0],
+) {
+  try {
+    await dispatchAsyncRun(eventPayload);
+  } catch (error) {
+    await supabase.from("fechamento_academico_jobs")
+      .update({
+        estado: ESTADOS.FAILED,
+        finished_at: new Date().toISOString(),
+        errors: [{ stage: ESTADOS.PENDING_VALIDATION, error: "Não foi possível agendar o fecho." }],
+      })
+      .eq("escola_id", eventPayload.escola_id)
+      .eq("run_id", eventPayload.run_id)
+      .eq("estado", ESTADOS.PENDING_VALIDATION);
+    throw error;
+  }
 }
 
 async function getExecutorAccessToken(supabase: any) {
@@ -137,6 +167,7 @@ async function runOrchestration(params: {
   matriculaIds: string[];
   motivo?: string;
   allowReabertoOverride?: boolean;
+  approvedCriticalKeys?: string[];
 }) {
   const { supabase, runId, escolaId, executorUserId, acao, anoLetivoId, periodoLetivoId, turmaIds } = params;
 
@@ -160,6 +191,8 @@ async function runOrchestration(params: {
     });
     throw new Error("Snapshot legal já congelado para uma ou mais matrículas. Reabertura auditada é obrigatória.");
   }
+
+  assertAuthorizedClosurePreflight(preflight, params.approvedCriticalKeys);
 
   let finalMatriculaIds = [...params.matriculaIds];
 
@@ -253,10 +286,25 @@ async function runOrchestration(params: {
   // 4. Abrir Próximo Período
   await setJobState(supabase, runId, ESTADOS.OPENING_NEXT_PERIOD);
   if (acao === "fechar_trimestre" && periodoLetivoId) {
-    const { data: curr } = await supabase.from("periodos_letivos").select("numero,tipo").eq("id", periodoLetivoId).single();
-    if (curr) {
-      await supabase.from("periodos_letivos").update({ trava_notas_em: null })
-        .eq("escola_id", escolaId).eq("ano_letivo_id", anoLetivoId).eq("tipo", curr.tipo).eq("numero", (curr.numero || 0) + 1);
+    const [{ data: curr, error: currentError },
+      { data: ano, error: yearError }] = await Promise.all([
+      supabase.from("periodos_letivos")
+        .select("numero,tipo").eq("escola_id", escolaId)
+        .eq("ano_letivo_id", anoLetivoId).eq("id", periodoLetivoId).single(),
+      supabase.from("anos_letivos")
+        .select("ano").eq("escola_id", escolaId).eq("id", anoLetivoId).single(),
+    ]);
+    if (currentError || yearError || !curr || !ano) {
+      throw currentError ?? yearError ?? new Error("Período ou ano académico não encontrado.");
+    }
+    // MED terms have independent, auditable grade deadlines. Closing one
+    // term must not silently clear the lock on the following term.
+    if (ano.ano < 2026) {
+      const { error: nextLockError } = await supabase.from("periodos_letivos")
+        .update({ trava_notas_em: null })
+        .eq("escola_id", escolaId).eq("ano_letivo_id", anoLetivoId)
+        .eq("tipo", curr.tipo).eq("numero", (curr.numero || 0) + 1);
+      if (nextLockError) throw nextLockError;
     }
   }
 
@@ -286,6 +334,12 @@ export async function POST(req: Request) {
 
     const { error: roleError } = await requireRoleInSchool({ supabase, escolaId, roles: ["admin", "admin_escola", "staff_admin", "admin_financeiro"] });
     if (roleError) return roleError;
+
+    // A MED calendar may be reconciled while its academic year is closed.
+    // Closure is a write: never select a historical or another school's year.
+    await resolveAcademicYearScope(supabase as any, {
+      escolaId, requestedAcademicYearId: payload.data.ano_letivo_id, operation: "WRITE",
+    });
 
     const { data: activeRun } = await supabase
       .from("fechamento_academico_jobs")
@@ -344,22 +398,48 @@ export async function POST(req: Request) {
     }
 
     const idempotencyKey = `${payload.data.ano_letivo_id}:${payload.data.periodo_letivo_id ?? "ano"}:${payload.data.acao}`;
-    const { data: existing } = await supabase.from("fechamento_academico_jobs")
-      .select("run_id,estado,counters").eq("idempotency_key", idempotencyKey).maybeSingle();
-
-    if (existing && existing.estado !== ESTADOS.FAILED) {
-      return NextResponse.json({ ok: true, idempotent: true, run_id: existing.run_id, estado: existing.estado });
+    const { data: existing, error: existingError } = await supabase.from("fechamento_academico_jobs")
+      .select("run_id,estado,counters")
+      .eq("escola_id", escolaId).eq("ano_letivo_id", payload.data.ano_letivo_id)
+      .eq("idempotency_key", idempotencyKey).maybeSingle();
+    if (existingError) throw existingError;
+    if (existing) {
+      return NextResponse.json({
+        ok: existing.estado !== ESTADOS.FAILED,
+        idempotent: existing.estado !== ESTADOS.FAILED,
+        run_id: existing.run_id, estado: existing.estado,
+        ...(existing.estado === ESTADOS.FAILED
+          ? { code: "ACADEMIC_CLOSURE_RETRY_REQUIRED", error: "O fecho anterior falhou. Utilize a recuperação do próprio job." }
+          : {}),
+      }, { status: existing.estado === ESTADOS.FAILED ? 409 : 200 });
     }
 
-    const runId = existing?.run_id ?? randomUUID();
-    if (!existing) {
-      await supabase.from("fechamento_academico_jobs").insert({
-        run_id: runId, escola_id: escolaId, executor_user_id: user.id, fechamento_tipo: payload.data.acao,
-        estado: ESTADOS.PENDING_VALIDATION, ano_letivo_id: payload.data.ano_letivo_id,
-        periodo_letivo_id: payload.data.periodo_letivo_id ?? null, idempotency_key: idempotencyKey,
-        execution_mode: payload.data.executar_assincrono ? "async" : "sync",
-      });
+    // Persist the exact preflight-approved scope; never rely on arbitrary
+    // fields later attached to an Inngest event.
+    const approvedCriticalKeys = preflight.ok ? [] : approvedClosureCriticalKeys(
+      preflight, payload.data.excecao_pendencia_ids ?? [],
+    );
+    const storedParameters: FechamentoStoredParameters = {
+      motivo: payload.data.motivo,
+      permitir_reaberto_override: payload.data.permitir_reaberto_override,
+      approved_critical_keys: approvedCriticalKeys,
+    };
+    const executorToken = payload.data.executar_assincrono
+      ? await getExecutorAccessToken(supabase)
+      : null;
+    if (payload.data.executar_assincrono && !executorToken) {
+      return NextResponse.json({ ok: false, error: "Sessão do executor expirada. Autentique-se novamente." }, { status: 401 });
     }
+    const runId = randomUUID();
+    const { error: createError } = await supabase.from("fechamento_academico_jobs").insert({
+      run_id: runId, escola_id: escolaId, executor_user_id: user.id, fechamento_tipo: payload.data.acao,
+      estado: ESTADOS.PENDING_VALIDATION, ano_letivo_id: payload.data.ano_letivo_id,
+      periodo_letivo_id: payload.data.periodo_letivo_id ?? null,
+      turma_ids: payload.data.turma_ids ?? [], matricula_ids: payload.data.matricula_ids ?? [],
+      parametros: storedParameters, idempotency_key: idempotencyKey,
+      execution_mode: payload.data.executar_assincrono ? "async" : "sync",
+    });
+    if (createError) throw createError;
 
     if (exceptionAudit) {
       await supabase.from("audit_logs").insert({
@@ -374,8 +454,10 @@ export async function POST(req: Request) {
     }
 
     if (payload.data.executar_assincrono) {
-      const token = await getExecutorAccessToken(supabase);
-      await dispatchAsyncRun({ ...payload.data, run_id: runId, executor_access_token: token, executor_user_id: user.id, escola_id: escolaId });
+      await dispatchAcademicClosureOrFail(supabase, {
+        run_id: runId, executor_access_token: executorToken!,
+        executor_user_id: user.id, escola_id: escolaId,
+      });
       return NextResponse.json({ ok: true, run_id: runId, estado: ESTADOS.PENDING_VALIDATION, queued: true }, { status: 202 });
     }
 
@@ -384,10 +466,15 @@ export async function POST(req: Request) {
       anoLetivoId: payload.data.ano_letivo_id, periodoLetivoId: payload.data.periodo_letivo_id,
       turmaIds: payload.data.turma_ids ?? [], matriculaIds: payload.data.matricula_ids ?? [],
       allowReabertoOverride: payload.data.permitir_reaberto_override,
+      approvedCriticalKeys,
     });
 
     return NextResponse.json({ ok: true, run_id: runId, estado: result.failed ? ESTADOS.FAILED : ESTADOS.DONE, errors: result.errors });
   } catch (err) {
+    if (err instanceof CanonicalPeriodReadError || err instanceof FechamentoExecutionError ||
+        err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, code: err.code, error: err.message }, { status: err.status });
+    }
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
@@ -415,6 +502,10 @@ export async function GET(req: Request) {
       jobs: jobs?.map(j => ({ ...j, steps: steps?.filter(s => s.run_id === j.run_id) ?? [] }))
     });
   } catch (err) {
+    if (err instanceof CanonicalPeriodReadError || err instanceof FechamentoExecutionError ||
+        err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, code: err.code, error: err.message }, { status: err.status });
+    }
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
@@ -430,15 +521,88 @@ export async function PATCH(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
-    const { data: job } = await supabase.from("fechamento_academico_jobs").select("*").eq("run_id", payload.data.run_id).single();
+    if (!escolaId) return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
+    const { error: roleError } = await requireRoleInSchool({
+      supabase, escolaId, roles: ["admin", "admin_escola", "staff_admin", "admin_financeiro"],
+    });
+    if (roleError) return roleError;
+    const { data: job } = await supabase.from("fechamento_academico_jobs")
+      .select("*").eq("escola_id", escolaId).eq("run_id", payload.data.run_id).maybeSingle();
     if (!job) return NextResponse.json({ ok: false, error: "Não encontrado" }, { status: 404 });
+    await resolveAcademicYearScope(supabase as any, {
+      escolaId, requestedAcademicYearId: job.ano_letivo_id, operation: "WRITE",
+    });
+    const { data: sourceYear, error: sourceError } = await supabase.from("anos_letivos")
+      .select("ano").eq("escola_id", escolaId).eq("id", job.ano_letivo_id).single();
+    if (sourceError || !sourceYear) {
+      throw new CanonicalPeriodReadError("O ano letivo do fecho não pertence à escola.");
+    }
+    const periods = await readVerifiedAcademicTrimesters(supabase, {
+      escolaId, anoLetivoId: job.ano_letivo_id, yearBase: Number(sourceYear.ano),
+    });
+    if (job.fechamento_tipo === "fechar_trimestre") {
+      requireVerifiedTrimester(periods, { id: job.periodo_letivo_id });
+    }
 
-    await setJobState(supabase, job.run_id, ESTADOS.PENDING_VALIDATION, { started_at: new Date().toISOString(), finished_at: null });
+    if (job.estado !== ESTADOS.FAILED) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CLOSURE_RETRY_NOT_ALLOWED",
+        error: "Apenas um fecho falhado pode ser recuperado.", estado: job.estado,
+      }, { status: 409 });
+    }
+    // Replaying a partially completed close can duplicate side effects. A
+    // failed run with finished mutating stages needs a stage-aware recovery,
+    // not a restart disguised as retry_failed_only.
+    const { data: finishedStages, error: stageError } = await supabase
+      .from("fechamento_academico_job_steps")
+      .select("id").eq("escola_id", escolaId).eq("run_id", job.run_id)
+      .eq("status", "DONE")
+      .in("etapa", [
+        ESTADOS.CLOSING_PERIOD, ESTADOS.FINALIZING_ENROLLMENTS,
+        ESTADOS.GENERATING_HISTORY, ESTADOS.OPENING_NEXT_PERIOD,
+      ]).limit(1);
+    if (stageError) throw stageError;
+    if (finishedStages?.length) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CLOSURE_PARTIAL_RECONCILIATION_REQUIRED",
+        error: "O fecho executou etapas académicas. É necessária uma recuperação por etapa.",
+      }, { status: 409 });
+    }
+    if (!payload.data.retry_failed_only ||
+        (payload.data.turma_ids &&
+          JSON.stringify([...payload.data.turma_ids].sort()) !== JSON.stringify([...(job.turma_ids ?? [])].sort())) ||
+        (payload.data.matricula_ids &&
+          JSON.stringify([...payload.data.matricula_ids].sort()) !== JSON.stringify([...(job.matricula_ids ?? [])].sort()))) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CLOSURE_SCOPE_IMMUTABLE",
+        error: "A recuperação mantém o âmbito original do fecho.",
+      }, { status: 409 });
+    }
+    const executorToken = payload.data.executar_assincrono
+      ? await getExecutorAccessToken(supabase)
+      : null;
+    if (payload.data.executar_assincrono && !executorToken) {
+      return NextResponse.json({ ok: false, error: "Sessão do executor expirada. Autentique-se novamente." }, { status: 401 });
+    }
+    const { data: reopened, error: retryError } = await supabase.from("fechamento_academico_jobs")
+      .update({
+        estado: ESTADOS.PENDING_VALIDATION, started_at: null, finished_at: null,
+        executor_user_id: user.id,
+      })
+      .eq("escola_id", escolaId).eq("run_id", job.run_id)
+      .eq("estado", ESTADOS.FAILED)
+      .select("run_id").maybeSingle();
+    if (retryError) throw retryError;
+    if (!reopened?.run_id) {
+      return NextResponse.json({ ok: false, error: "Outro executor já iniciou a recuperação." }, { status: 409 });
+    }
 
     if (payload.data.executar_assincrono) {
-      const token = await getExecutorAccessToken(supabase);
-      await dispatchAsyncRun({ ...job, run_id: job.run_id, executor_access_token: token, executor_user_id: user.id, escola_id: escolaId });
-      return NextResponse.json({ ok: true, run_id: job.run_id, estado: ESTADOS.PENDING_VALIDATION, queued: true }, { status: 202 });
+      await dispatchAcademicClosureOrFail(supabase, {
+        run_id: reopened.run_id, escola_id: escolaId,
+        executor_user_id: user.id, executor_access_token: executorToken!,
+      });
+      return NextResponse.json({ ok: true, run_id: reopened.run_id, estado: ESTADOS.PENDING_VALIDATION, queued: true }, { status: 202 });
     }
 
     const acao = job.fechamento_tipo === "fechar_trimestre" || job.fechamento_tipo === "fechar_ano"
@@ -457,10 +621,17 @@ export async function PATCH(req: Request) {
       periodoLetivoId: job.periodo_letivo_id ?? undefined,
       turmaIds: job.turma_ids ?? [],
       matriculaIds: job.matricula_ids ?? [],
+      motivo: (job.parametros as FechamentoStoredParameters | null)?.motivo,
+      allowReabertoOverride: (job.parametros as FechamentoStoredParameters | null)?.permitir_reaberto_override,
+      approvedCriticalKeys: (job.parametros as FechamentoStoredParameters | null)?.approved_critical_keys ?? [],
     });
 
     return NextResponse.json({ ok: true, run_id: job.run_id, estado: result.failed ? ESTADOS.FAILED : ESTADOS.DONE });
   } catch (err) {
+    if (err instanceof CanonicalPeriodReadError || err instanceof FechamentoExecutionError ||
+        err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, code: err.code, error: err.message }, { status: err.status });
+    }
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

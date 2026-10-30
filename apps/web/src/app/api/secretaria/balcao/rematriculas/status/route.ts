@@ -167,7 +167,7 @@ export async function GET(request: Request) {
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
     let { data: matriculaOrigem } = await supabase
       .from("matriculas")
-      .select("id, ano_letivo, status, turma_id")
+      .select("id, ano_letivo, status, turma_id, session_id")
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
@@ -187,7 +187,7 @@ export async function GET(request: Request) {
     if (Number(matriculaOrigem.ano_letivo ?? 0) >= targetAnoLetivoAno) {
       const { data: matriculaAnteriorPorAno } = await supabase
         .from("matriculas")
-        .select("id, ano_letivo, status, turma_id")
+        .select("id, ano_letivo, status, turma_id, session_id")
         .eq("escola_id", escolaId)
         .eq("aluno_id", aluno_id)
         .lt("ano_letivo", targetAnoLetivoAno)
@@ -214,7 +214,7 @@ export async function GET(request: Request) {
       const { data: matriculaAnteriorPorCohort } = cohortOrigin?.matricula_origem_id
         ? await supabase
             .from("matriculas")
-            .select("id, ano_letivo, status, turma_id")
+            .select("id, ano_letivo, status, turma_id, session_id")
             .eq("escola_id", escolaId)
             .eq("aluno_id", aluno_id)
             .eq("id", cohortOrigin.matricula_origem_id)
@@ -258,6 +258,11 @@ export async function GET(request: Request) {
     // explícitos e orientados pelo próprio RAA.
     let academicDecision: any = null;
     let academicGuidance: any = null;
+    let academicRegime: {
+      nivel_ensino: string; classe_num: number | null; ano_numero: number | null;
+      modulo_numero: number | null; eh_classe_exame: boolean; escala: "quantitativa_primario" | "quantitativa_secundario" | "qualitativa";
+    } | null = null;
+    let academicDecreto: import("@/lib/academico/raa-decreto-eligibility").RaaDecretoResult | null = null;
     let academicEligibility = classifyRematriculaAcademicEligibility(null);
     if (matriculaOrigem.turma_id) {
       try {
@@ -268,6 +273,18 @@ export async function GET(request: Request) {
         });
         academicDecision = academic.progression.decision;
         academicGuidance = academic.orientacao;
+        // The source-enrolment's actual RAA regime and legal findings, not the
+        // destination class or any front-end guess. Never infer a decree when
+        // its evaluation was unavailable.
+        academicRegime = {
+          nivel_ensino: academic.regime.nivel_ensino,
+          classe_num: academic.regime.classe_num,
+          ano_numero: academic.regime.ano_numero,
+          modulo_numero: academic.regime.modulo_numero,
+          eh_classe_exame: academic.regime.eh_classe_exame,
+          escala: academic.regime.escala,
+        };
+        academicDecreto = academic.decreto;
         academicEligibility = classifyRematriculaAcademicEligibility({
           decision: academic.progression.decision,
           destino: academic.progression.destino,
@@ -507,6 +524,23 @@ export async function GET(request: Request) {
         mode: academicEligibility.mode,
         reason: academicEligibility.reason,
         disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
+        source: {
+          matricula_id: matriculaOrigem.id,
+          turma_id: matriculaOrigem.turma_id ?? null,
+          ano_letivo_id: matriculaOrigem.session_id ?? null,
+          status: matriculaOrigem.status,
+        },
+        regime: academicRegime,
+        decreto: academicDecreto ? {
+          decision: academicDecreto.decision,
+          motivo: academicDecreto.motivo,
+          baseLegal: academicDecreto.baseLegal,
+          elegivelRecurso: academicDecreto.elegivelRecurso,
+          exameExtraordinario: academicDecreto.exameExtraordinario,
+          efetivacaoMatriculaBloqueada: academicDecreto.efetivacaoMatriculaBloqueada,
+          disciplinasNegativas: academicDecreto.disciplinasNegativas,
+          disciplinasPendentes: academicDecreto.disciplinasPendentes,
+        } : null,
         guidance: academicGuidance,
       },
       pedido: pedidoExistente

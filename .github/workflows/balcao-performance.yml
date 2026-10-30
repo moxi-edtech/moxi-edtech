@@ -1,5 +1,9 @@
 name: Balcao Performance Budgets
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   pull_request:
     paths:
@@ -68,7 +72,7 @@ jobs:
         run: |
           node --test --import tsx agents/scan/kf2-search-audit.test.ts
           cd apps/web
-          node --test --import tsx tests/unit/workspace-student-dossier.spec.tsx tests/unit/balcao-return-context-reconciliation.spec.ts tests/unit/balcao-performance-contract.spec.ts tests/unit/balcao-draft-state.spec.ts
+          node --test --import tsx tests/unit/workspace-student-dossier.spec.tsx tests/unit/balcao-return-context-reconciliation.spec.ts tests/unit/balcao-performance-contract.spec.ts tests/unit/balcao-draft-state.spec.ts tests/unit/admissions-workspace-integration.spec.ts tests/unit/admissions-next-step.spec.ts tests/unit/admissions-endpoint-rpc-contract.spec.ts
       - name: Typecheck and full eslint
         run: |
           pnpm -C apps/web typecheck

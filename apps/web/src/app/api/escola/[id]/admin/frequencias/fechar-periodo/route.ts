@@ -10,6 +10,9 @@ import { applyKf2ListInvariants } from '@/lib/kf2';
 
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context';
 import { recordAuditServer } from '@/lib/audit';
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
+
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -170,8 +173,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           'O período letivo não pertence ao ano académico selecionado.',
         );
       }
+      const verifiedPeriods = await readVerifiedAcademicTrimesters(supabase, {
+        escolaId: academicContext.escolaId, anoLetivoId: academicContext.anoLetivoId,
+        yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+      });
+      requireVerifiedTrimester(verifiedPeriods, { id: periodo_letivo_id });
     } catch (err: any) {
-      if (err instanceof AcademicYearContextError) {
+      if (err instanceof AcademicYearContextError || err instanceof CanonicalPeriodReadError) {
         return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
       }
       return NextResponse.json({ ok: false, error: 'Erro de validação do contexto académico' }, { status: 500 });

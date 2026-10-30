@@ -186,7 +186,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         <ToastStack />
 
         <Dialog open={!!confirmState} onOpenChange={(open) => !open && handleCancel()}>
-          <DialogContent className="max-w-md">
+          <DialogContent overlayClassName="z-[110]" className="z-[110] max-w-md border-border bg-card text-foreground">
             <DialogHeader>
               <DialogTitle className={confirmState?.variant === "danger" ? "text-rose-600" : ""}>
                 {confirmState?.title}
@@ -239,52 +239,52 @@ const TOAST_CONFIG: Record<
   { bg: string; border: string; icon: React.ReactNode; textColor: string; iconColor: string; barColor: string }
 > = {
   success: {
-    bg: "bg-white/90",
-    border: "border-emerald/20",
+    bg: "bg-card/95",
+    border: "border-emerald/30",
     icon: <CheckCircle2 size={18} />,
-    textColor: "text-slate-900",
+    textColor: "text-foreground",
     iconColor: "text-emerald",
     barColor: "bg-emerald",
   },
   error: {
-    bg: "bg-white/90",
-    border: "border-rose-200",
+    bg: "bg-card/95",
+    border: "border-rose-500/30",
     icon: <AlertCircle size={18} />,
-    textColor: "text-slate-900",
-    iconColor: "text-rose-600",
+    textColor: "text-foreground",
+    iconColor: "text-rose-700 dark:text-rose-300",
     barColor: "bg-rose-600",
   },
   warning: {
-    bg: "bg-white/90",
-    border: "border-amber/20",
+    bg: "bg-card/95",
+    border: "border-amber/30",
     icon: <AlertTriangle size={18} />,
-    textColor: "text-slate-900",
+    textColor: "text-foreground",
     iconColor: "text-amber",
     barColor: "bg-amber",
   },
   info: {
-    bg: "bg-white/90",
-    border: "border-slate-200",
+    bg: "bg-card/95",
+    border: "border-border",
     icon: <Info size={18} />,
-    textColor: "text-slate-900",
-    iconColor: "text-slate-500",
-    barColor: "bg-slate-500",
+    textColor: "text-foreground",
+    iconColor: "text-muted-foreground",
+    barColor: "bg-muted-foreground",
   },
   offline: {
-    bg: "bg-slate-900/90",
-    border: "border-white/10",
+    bg: "bg-card/95",
+    border: "border-border",
     icon: <WifiOff size={18} />,
-    textColor: "text-white",
-    iconColor: "text-slate-300",
-    barColor: "bg-white/20",
+    textColor: "text-foreground",
+    iconColor: "text-muted-foreground",
+    barColor: "bg-muted-foreground",
   },
   syncing: {
-    bg: "bg-white/90",
-    border: "border-slate-100",
+    bg: "bg-card/95",
+    border: "border-border",
     icon: <Loader2 size={18} className="animate-spin" />,
-    textColor: "text-slate-900",
-    iconColor: "text-slate-400",
-    barColor: "bg-slate-200",
+    textColor: "text-foreground",
+    iconColor: "text-muted-foreground",
+    barColor: "bg-muted-foreground",
   },
 }
 
@@ -306,19 +306,19 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
       className={`group relative flex items-start gap-4 rounded-[1.25rem] border ${cfg.border} ${cfg.bg} p-4 shadow-2xl backdrop-blur-xl min-w-[320px] max-w-md overflow-hidden`}
     >
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${cfg.iconColor} bg-slate-50`}>
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${cfg.iconColor} bg-muted`}>
         {toast.icon ?? cfg.icon}
       </div>
 
       <div className="flex-1 min-w-0 pr-4 pt-0.5">
         <p className={`text-sm font-black tracking-tight ${cfg.textColor}`}>{toast.title}</p>
         {toast.message && (
-          <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">{toast.message}</p>
+          <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">{toast.message}</p>
         )}
         {toast.action && (
           <button
             onClick={toast.action.onClick}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-900 hover:text-emerald transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:text-emerald"
           >
             {toast.action.label} <ArrowRight size={12} />
           </button>
@@ -327,7 +327,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 
       <button
         onClick={onDismiss}
-        className="shrink-0 rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        className="shrink-0 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Fechar"
       >
         <X size={16} />
@@ -439,7 +439,7 @@ export function OfflineBanner() {
 
   return (
     <div
-      className="fixed top-0 inset-x-0 z-[300] bg-amber text-white text-xs font-semibold
+      className="fixed top-0 inset-x-0 z-[300] bg-amber text-amber-950 text-xs font-semibold
       flex items-center justify-center gap-2 py-2 px-4 animate-in slide-in-from-top duration-200"
     >
       <WifiOff size={13} />

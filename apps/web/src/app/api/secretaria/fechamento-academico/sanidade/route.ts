@@ -5,6 +5,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { executarValidacoesFechamento } from "../validacoes/engine";
 import type { Database } from "~types/supabase";
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -73,6 +74,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, relatorio });
   } catch (error) {
+    if (error instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: error.code, error: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

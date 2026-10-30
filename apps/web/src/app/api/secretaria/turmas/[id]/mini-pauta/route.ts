@@ -12,6 +12,9 @@ import {
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
+
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -101,15 +104,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .eq('ano', turma.ano_letivo)
       .maybeSingle()
 
-    const { data: periodosRows } = anoLetivo?.id
-      ? await supabase
-          .from('periodos_letivos')
-          .select('id, numero')
-          .eq('escola_id', escolaId)
-          .eq('ano_letivo_id', anoLetivo.id)
-          .eq('tipo', 'TRIMESTRE')
-          .order('numero', { ascending: true })
-      : { data: [] as any[] }
+    if (!anoLetivo?.id && Number(turma.ano_letivo) >= 2026) {
+      throw new CanonicalPeriodReadError("A turma não tem ano letivo oficial configurado.");
+    }
+    const periodosRows = anoLetivo?.id
+      ? await readVerifiedAcademicTrimesters(supabase, {
+          escolaId, anoLetivoId: anoLetivo.id, yearBase: Number(turma.ano_letivo),
+        })
+      : []
+    if (parsed.data.periodoNumero) {
+      requireVerifiedTrimester(periodosRows, { numero: parsed.data.periodoNumero })
+    }
 
     const modelo = await resolveModeloAvaliacao({
       supabase,
@@ -311,6 +316,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     return NextResponse.json({ ok: true, payload })
   } catch (e) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

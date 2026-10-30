@@ -465,3 +465,29 @@ backend consumidor e a UI. Em caso de falha da view, falhar explicitamente
 na consulta, nunca assumir aluno aprovado, matriculado ou reprovação.
 O âmbito histórico fechado dos exploradores continua sujeito à homologação
 existente; esta projeção não remove esse bloqueio.
+
+## v3 — Contrato persistido sem ambiguidades (2026-10-29)
+
+A coluna `matriculas.status` admite exclusivamente:
+`rascunho`, `pendente`, `ativo`, `concluido`, `transferido`,
+`anulado`, `trancado` e `desistente`.
+
+`ativa` e `active` são aliases de entrada normalizados para `ativo`.
+`indefinido`, `inativo` e estados desconhecidos são recusados (23514).
+`reprovado`, `reprovado_por_faltas` e `aprovado` não são valores
+persistíveis na matrícula: representam resultados académicos e devem ser
+registados por GradeEngine, RAA ou decisão documental em
+`historico_anos.resultado_final`.
+
+`concluido` significa **vínculo administrativo encerrado**, nunca
+aprovação. O resultado da escola só é oficial após histórico fechado e
+lock legal, sem inferência por mudança de classe. A função de fecho anual
+antiga delega para GradeEngine; o caminho de rematrícula RAA regista
+decisões verificadas no histórico antes do fecho da origem. Uma inscrição
+condicional não autoriza aprovação automática. A importação aprovada
+associa a decisão documental a um histórico aberto e à auditoria do lote.
+
+A migração v3 aborta se encontrar estados persistidos incompatíveis:
+não executa backfill cego, não muda notas existentes e não converte
+reprovações em aprovações. O SSOT de leitura v2 permanece a base comum
+para Secretaria, Balcão, Command Center, exploradores e relatórios.

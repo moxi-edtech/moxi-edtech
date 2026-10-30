@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { requireRoleInSchool } from '@/lib/authz';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -21,9 +22,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Acesso negado.' }, { status: 403 });
     }
 
+    const authz = await requireRoleInSchool({
+      supabase: supabase as any, escolaId: userEscolaId,
+      roles: ['admin', 'admin_escola', 'diretor', 'admin_secretaria'],
+    });
+    if (authz.error) return authz.error;
+
     const body = await req.json();
     const { fromAnoId, toAnoId } = body;
 
+    if (fromAnoId === toAnoId) {
+      return NextResponse.json({ ok: false, error: 'A origem e o destino precisam ser anos diferentes.' }, { status: 400 });
+    }
     if (!fromAnoId || !toAnoId) {
       return NextResponse.json({ ok: false, error: 'IDs de origem e destino são obrigatórios.' }, { status: 400 });
     }
@@ -32,6 +42,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { data: anos } = await supabase
       .from('anos_letivos')
       .select('id, ano')
+      .eq('escola_id', userEscolaId)
       .in('id', [fromAnoId, toAnoId]);
 
     const fromAno = anos?.find(a => a.id === fromAnoId);
@@ -41,13 +52,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Anos letivos não encontrados.' }, { status: 404 });
     }
 
+    if (Number(toAno.ano) >= 2026) {
+      return NextResponse.json({
+        ok: false, code: 'OFFICIAL_CALENDAR_COPY_NOT_ALLOWED',
+        error: 'Eventos nacionais e provas não podem ser copiados de outro ano. Aplique o calendário oficial.',
+      }, { status: 409 });
+    }
+
     const yearDiff = toAno.ano - fromAno.ano;
 
     // 2. Buscar eventos do ano de origem
     const { data: eventosOrigem, error: fetchError } = await supabase
       .from('calendario_eventos')
       .select('*')
-      .eq('ano_letivo_id', fromAnoId);
+      .eq('ano_letivo_id', fromAnoId)
+      .eq('escola_id', userEscolaId);
 
     if (fetchError) throw fetchError;
     if (!eventosOrigem || eventosOrigem.length === 0) {
@@ -76,7 +95,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     // 4. Inserir (Upsert por nome/data para evitar duplicados se rodar 2x)
     const { error: insertError } = await supabase
       .from('calendario_eventos')
-      .upsert(novosEventos, { onConflict: 'escola_id,ano_letivo_id,nome,data_inicio' });
+      .upsert(novosEventos, { onConflict: 'escola_id,ano_letivo_id,offering_id,nome,data_inicio' });
 
     if (insertError) throw insertError;
 

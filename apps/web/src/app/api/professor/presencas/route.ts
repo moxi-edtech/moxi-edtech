@@ -6,6 +6,9 @@ import { markOutboxEventFailed } from '@/lib/outbox'
 import { dispatchAlunoNotificacao } from '@/lib/notificacoes/dispatchAlunoNotificacao'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 import { recordAuditServer } from '@/lib/audit'
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, verifiedTrimesterForDate } from "@/lib/academico/read-verified-academic-trimesters";
+
 import type { Database } from '~types/supabase'
 
 const Body = z.object({
@@ -22,6 +25,7 @@ export async function POST(req: Request) {
   let escolaId: string | null = null
   let idempotencyKey: string | null = null
   let mutationCommitted = false
+  let idempotencyReserved = false
 
   try {
     supabase = await supabaseServerTyped<Database>()
@@ -55,6 +59,15 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ ok: false, error: 'Erro de validação do contexto académico' }, { status: 500 })
     }
+
+    // No attendance write can proceed on an unlinked or guessed MED trimester.
+    // Preflight precedes the idempotency-key reservation so a 409 leaves no
+    // orphan in-progress key that would block a corrected submission.
+    const verifiedPeriods = await readVerifiedAcademicTrimesters(supabase, {
+      escolaId, anoLetivoId: academicContext.anoLetivoId,
+      yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+    })
+    const verifiedPeriod = verifiedTrimesterForDate(verifiedPeriods, body.data)
 
     const { data: existingIdempotency } = await supabase
       .from('idempotency_keys')
@@ -95,6 +108,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Uma requisição idêntica está em andamento.' }, { status: 409 })
     }
 
+    idempotencyReserved = true
+
     const { data: professor } = await supabase
       .from('professores')
       .select('id')
@@ -134,23 +149,13 @@ export async function POST(req: Request) {
     const anoLetivoId = academicContext.anoLetivoId
 
     if (anoLetivoId) {
-      const { data: periodo } = await supabase
-        .from('periodos_letivos')
-        .select('id')
-        .eq('escola_id', escolaId)
-        .eq('ano_letivo_id', anoLetivoId)
-        .eq('tipo', 'TRIMESTRE')
-        .lte('data_inicio', body.data)
-        .gte('data_fim', body.data)
-        .maybeSingle()
-
-      if (periodo?.id) {
+      if (verifiedPeriod?.id) {
         const { data: closed } = await supabase
           .from('frequencia_status_periodo')
           .select('id')
           .eq('escola_id', escolaId)
           .eq('turma_id', body.turma_id)
-          .eq('periodo_letivo_id', periodo.id)
+          .eq('periodo_letivo_id', verifiedPeriod.id)
           .limit(1)
           .maybeSingle()
 
@@ -314,7 +319,7 @@ export async function POST(req: Request) {
     return NextResponse.json(responsePayload);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    if (supabase && escolaId && idempotencyKey && !mutationCommitted) {
+    if (supabase && escolaId && idempotencyKey && idempotencyReserved && !mutationCommitted) {
       try {
         await supabase
           .from('idempotency_keys')
@@ -328,6 +333,9 @@ export async function POST(req: Request) {
     }
     if (supabase) {
       await markOutboxEventFailed(supabase, outboxEventId, message).catch(() => null)
+    }
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status })
     }
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

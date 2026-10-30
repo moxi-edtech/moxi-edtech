@@ -2,6 +2,7 @@ import { buildPortalHref } from "@/lib/navigation";
 
 export type BalcaoActionId =
   | "desk"
+  | "admissions"
   | "payment"
   | "document"
   | "reenrollment"
@@ -12,7 +13,7 @@ export type BalcaoActionId =
 export type BalcaoFocusAction = Extract<BalcaoActionId, "payment" | "document" | "reenrollment">;
 
 export type BalcaoActionSurface = "command-center";
-export type CommandCenterPanelKind = "balcao" | "enrollment" | "profile" | "grade";
+export type CommandCenterPanelKind = "balcao" | "admissions" | "enrollment" | "profile" | "grade";
 export type CommandCenterBalcaoView = "overview" | "payment" | "document" | "reenrollment";
 
 export type BalcaoActionDefinition = {
@@ -37,6 +38,15 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
     surface: "command-center",
     panel: "balcao",
     balcaoView: "overview",
+  },
+  admissions: {
+    id: "admissions",
+    label: "Admissões",
+    shortLabel: "Admissões",
+    description: "Analisar candidaturas e concluir decisões no atendimento.",
+    requiresStudent: false,
+    surface: "command-center",
+    panel: "admissions",
   },
   payment: {
     id: "payment",
@@ -102,6 +112,7 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
 
 export const STUDENT_BALCAO_ACTION_IDS: BalcaoActionId[] = [
   "desk",
+  "admissions",
   "enrollment",
   "payment",
   "document",
@@ -112,6 +123,7 @@ export const STUDENT_BALCAO_ACTION_IDS: BalcaoActionId[] = [
 
 export const BALCAO_WORKSPACE_ACTION_IDS: BalcaoActionId[] = [
   "desk",
+  "admissions",
   "enrollment",
   "payment",
   "document",
@@ -152,6 +164,10 @@ export function buildBalcaoActionHref(params: {
 
   const encodedAlunoId = alunoId ? encodeURIComponent(alunoId) : "";
   const encodedLabel = alunoLabel ? encodeURIComponent(alunoLabel) : "";
+
+  if (actionId === "admissions") {
+    return buildPortalHref(escolaParam, "/secretaria/admissoes");
+  }
 
   if (actionId === "enrollment") {
     return buildPortalHref(escolaParam, "/secretaria/admissoes/nova");

@@ -9,6 +9,9 @@ import type { Database } from "~types/supabase";
 
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { recordAuditServer } from "@/lib/audit";
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
+
 
 export const dynamic = "force-dynamic";
 
@@ -53,22 +56,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Nenhuma turma encontrada nesta sessão." });
     }
 
-    const { data: periodoFinal, error: periodoFinalError } = await supabase
-      .from("periodos_letivos")
-      .select("id")
-      .eq("escola_id", escolaId)
-      .eq("ano_letivo_id", academicContext.anoLetivoId)
-      .order("data_fim", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (periodoFinalError) throw periodoFinalError;
-    if (!periodoFinal?.id) {
-      return NextResponse.json({
-        ok: false,
-        error: "Ano letivo ativo sem período final configurado para pauta anual.",
-      }, { status: 409 });
-    }
+    const verifiedPeriods = await readVerifiedAcademicTrimesters(supabase, {
+      escolaId, anoLetivoId: academicContext.anoLetivoId,
+      yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+    });
+    const periodoFinal = requireVerifiedTrimester(verifiedPeriods, { numero: 3 });
 
     const turmaIds = turmas.map(t => t.id);
 
@@ -142,6 +134,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, job_id: job.id, status: "STARTED" });
 
   } catch (e: unknown) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : "Erro interno";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

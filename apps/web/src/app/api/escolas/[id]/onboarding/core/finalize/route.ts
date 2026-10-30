@@ -14,6 +14,7 @@ import { supabaseServerRole } from "@/lib/supabaseServerRole"
 import { buildBaseHorarioAssignments } from "@/lib/horarios/buildBaseHorarioAssignments"
 import { resolveUniversalLoginUrl } from "@/middleware"
 import { ensureCurriculumCourseOffering } from "@/lib/academico/curriculo-operacao"
+import { prepareCanonicalMedCalendar } from "@/lib/academico/prepare-canonical-calendar"
 
 type FinalizePendingAction = {
   title: string
@@ -536,7 +537,7 @@ export async function POST(
 
       const { data: periodosRows, error: periodosError } = await sserver
         .from('periodos_letivos')
-        .select('id, numero, peso')
+        .select('id, numero, peso, source_template_id, source_item_id, offering_id, tipo')
         .eq('escola_id', escolaIdResolved)
         .eq('ano_letivo_id', anoLetivoRow.id)
         .order('numero', { ascending: true })
@@ -547,7 +548,15 @@ export async function POST(
 
       const periodos = periodosRows ?? []
       const totalPeso = periodos.reduce((sum, periodo: any) => sum + Number(periodo.peso ?? 0), 0)
-      if (periodos.length > 0 && totalPeso !== 100) {
+      if (anoParaSetup >= 2026 &&
+        (periodos.length !== 3 || totalPeso !== 100 ||
+          periodos.some((periodo) => periodo.tipo !== 'TRIMESTRE' ||
+            periodo.offering_id !== null || !periodo.source_template_id || !periodo.source_item_id))) {
+        throw new Error('Os três trimestres devem estar sincronizados com o calendário oficial antes de finalizar.')
+      }
+      // Historical setup may normalize legacy weights; the published MED
+      // weights must never be silently recalculated during finalization.
+      if (anoParaSetup < 2026 && periodos.length > 0 && totalPeso !== 100) {
         const basePeso = Math.floor(100 / periodos.length)
         const pesoRemainder = 100 - (basePeso * periodos.length)
 
@@ -828,6 +837,19 @@ export async function POST(
 
         if (pricingError) {
           throw new Error(`Erro ao salvar preços por curso e classe: ${pricingError.message}`)
+        }
+      }
+
+      // The first step creates the MED year/terms. Only after the courses
+      // have been installed can their own exam/event rules be applied.
+      if (anoParaSetup >= 2026) {
+        const calendarApplied = await prepareCanonicalMedCalendar({
+          db: sserver as any, escolaId: escolaIdResolved,
+          userId: user.id, anoBase: anoParaSetup,
+        })
+        const response = await calendarApplied.json()
+        if (!calendarApplied.ok || response?.ok !== true) {
+          throw new Error(response?.error || 'O calendário dos cursos ainda não está reconciliado.')
         }
       }
 

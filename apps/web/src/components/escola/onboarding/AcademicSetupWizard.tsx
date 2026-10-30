@@ -314,7 +314,18 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   useEffect(() => {
     async function loadTemplates() {
       const { data } = await supabase.from('calendario_templates').select('*').order('ano_base', { ascending: false });
-      if (data) setTemplates(data);
+      if (data) {
+        const byYear = new Map<number, (typeof data)[number]>();
+        for (const profile of data.filter((item) =>
+          item.ano_base >= 2026 && item.is_oficial === true && item.estado === "PUBLICADO")) {
+          const previous = byYear.get(profile.ano_base);
+          if (!previous || profile.subsistema === "REGULAR_ADULTOS") byYear.set(profile.ano_base, profile);
+        }
+        setTemplates([
+          ...data.filter((item) => item.ano_base < 2026),
+          ...byYear.values(),
+        ]);
+      }
     }
     loadTemplates();
   }, [supabase]);
@@ -343,7 +354,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           numero: Number(i.numero || 1),
           data_inicio: i.data_inicio,
           data_fim: i.data_fim,
-          trava_notas_em: buildRecommendedLock(i.data_fim)
+          trava_notas_em: t.ano_base >= 2026 ? "" : buildRecommendedLock(i.data_fim)
         })));
       }
       setShowTemplates(false);
@@ -414,6 +425,10 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const handleTurnoToggle = (t: keyof TurnosState) => setTurnos(p => ({ ...p, [t]: !p[t] }));
 
   const applyRecommendedLocks = () => {
+    if (anoLetivo >= 2026) {
+      error("Os fechos de notas devem ser definidos no calendário académico.");
+      return;
+    }
     setPeriodosConfig((prev) =>
       prev.map((periodo) => ({
         ...periodo,
@@ -427,6 +442,10 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     field: "data_inicio" | "data_fim" | "trava_notas_em",
     value: string
   ) => {
+    if (anoLetivo >= 2026) {
+      error("Os trimestres são herdados do calendário oficial do MED.");
+      return;
+    }
     setPeriodosConfig((prev) =>
       prev.map((periodo) => {
         if (periodo.numero !== numero) return periodo;

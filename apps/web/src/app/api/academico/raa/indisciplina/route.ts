@@ -4,6 +4,7 @@ import { requireRoleInSchool } from "@/lib/authz"
 import { resolveAcademicYearContext } from "@/lib/academic-year/context"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
+import { recordAuditServer } from "@/lib/audit"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -85,4 +86,61 @@ export async function GET(request: Request) {
   const { data, error } = await builder
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true, items: data ?? [] })
+}
+
+
+// Revisão contextual do RAA: apenas a direção pode decidir sobre eventos graves.
+// Nem a secretaria nem o Balcão ganham permissão para alterar um resultado legal.
+const reviewRoles = ["admin", "admin_escola", "diretor"] as const
+const reviewSchema = z.object({
+  id: z.string().uuid(),
+  estado: z.enum(["em_analise", "resolvido", "cancelado"]),
+  motivo: z.string().trim().min(15).max(2000),
+  confirmar_decisao: z.boolean().optional(),
+})
+
+export async function PATCH(request: Request) {
+  const context = await resolveContext()
+  if (context.error || !context.auth || !context.escolaId) return context.error
+  const authz = await requireRoleInSchool({ supabase: context.supabase, escolaId: context.escolaId, roles: [...reviewRoles] })
+  if (authz.error) return authz.error
+  const parsed = reviewSchema.safeParse(await request.json().catch(() => ({})))
+  if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Decisão inválida." }, { status: 400 })
+  if (parsed.data.estado !== "em_analise" && parsed.data.confirmar_decisao !== true) {
+    return NextResponse.json({ ok: false, error: "Confirme expressamente a decisão disciplinar." }, { status: 422 })
+  }
+  const { data: existing, error: readError } = await context.supabase.from("raa_indisciplina_eventos")
+    .select("id,estado,matricula_id,ano_letivo_id,impacta_resultado")
+    .eq("id", parsed.data.id).eq("escola_id", context.escolaId).maybeSingle()
+  if (readError) return NextResponse.json({ ok: false, error: "Não foi possível confirmar o evento." }, { status: 503 })
+  if (!existing) return NextResponse.json({ ok: false, error: "Evento não encontrado nesta escola." }, { status: 404 })
+  if (!["registado", "em_analise"].includes(existing.estado)) {
+    return NextResponse.json({ ok: false, error: "Esta decisão já foi encerrada.", code: "RAA_INDISCIPLINA_FINAL" }, { status: 409 })
+  }
+  const { data: matricula } = await context.supabase.from("matriculas")
+    .select("id,status").eq("id", existing.matricula_id).eq("escola_id", context.escolaId).maybeSingle()
+  if (!matricula || matricula.status === "concluido") {
+    return NextResponse.json({ ok: false, error: "A matrícula tem fecho legal ou não existe. Exige reabertura académica formal.", code: "RAA_LEGAL_LOCK" }, { status: 409 })
+  }
+  // Mantém o evento e o fundamento auditáveis; não altera a nota, matrícula ou histórico.
+  const now = new Date().toISOString()
+  const { data: decided, error: updateError } = await context.supabase.from("raa_indisciplina_eventos")
+    .update({
+      estado: parsed.data.estado,
+      decisao_motivo: parsed.data.motivo,
+      resolvido_por: parsed.data.estado === "em_analise" ? null : context.auth.user.id,
+      resolvido_em: parsed.data.estado === "em_analise" ? null : now,
+      updated_at: now,
+    })
+    .eq("id", existing.id).eq("escola_id", context.escolaId)
+    .eq("estado", existing.estado)
+    .select("id,estado").maybeSingle()
+  if (updateError) return NextResponse.json({ ok: false, error: "Não foi possível guardar a revisão." }, { status: 503 })
+  if (!decided) return NextResponse.json({ ok: false, error: "O evento foi alterado por outra pessoa. Atualize a análise.", code: "RAA_INDISCIPLINA_CONFLICT" }, { status: 409 })
+  await recordAuditServer({
+    escolaId: context.escolaId, portal: "secretaria", acao: "RAA_INDISCIPLINA_REVISAO",
+    entity: "raa_indisciplina_eventos", entityId: existing.id,
+    details: { matricula_id: existing.matricula_id, estado_anterior: existing.estado, estado_novo: decided.estado, motivo: parsed.data.motivo, impactava_resultado: existing.impacta_resultado },
+  })
+  return NextResponse.json({ ok: true, item: decided, message: "Revisão registada. Revalide a decisão oficial do RAA antes de continuar." })
 }

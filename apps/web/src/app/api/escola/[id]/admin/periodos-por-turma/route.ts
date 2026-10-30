@@ -5,6 +5,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import type { Database } from '~types/supabase';
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context';
+import { CanonicalPeriodReadError, verifyCanonicalPeriodsRead } from '@/lib/academico/verify-canonical-periods-read';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -73,7 +74,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const { data: periodos, error: periodosError } = await supabase
       .from('periodos_letivos')
-      .select('id, numero, tipo, data_inicio, data_fim')
+      .select('id, numero, tipo, data_inicio, data_fim, peso, offering_id, source_template_id, source_item_id, source_version')
       .eq('escola_id', effectiveEscolaId)
       .eq('ano_letivo_id', academicContext.anoLetivoId)
       .eq('tipo', 'TRIMESTRE')
@@ -85,8 +86,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, context: academicContext, items: periodos || [] });
+    await verifyCanonicalPeriodsRead(supabase, {
+      escolaId: effectiveEscolaId, anoLetivoId: academicContext.anoLetivoId,
+      yearBase: Number(academicContext.anoLetivoLabel.split('/')[0]),
+      periods: periodos ?? [],
+    });
+    return NextResponse.json({
+      ok: true, context: academicContext,
+      items: (periodos ?? []).map(({ id, numero, tipo, data_inicio, data_fim }) =>
+        ({ id, numero, tipo, data_inicio, data_fim })),
+    });
   } catch (e: unknown) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status });
+    }
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status });
     }

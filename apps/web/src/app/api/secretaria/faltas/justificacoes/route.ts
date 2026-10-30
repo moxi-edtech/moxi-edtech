@@ -30,15 +30,24 @@ async function auth() {
   return { supabase, escolaId, userId: data.user.id };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const params = new URL(request.url).searchParams;
+    const matriculaId = params.get("matricula_id");
+    if (matriculaId && !z.string().uuid().safeParse(matriculaId).success) {
+      return NextResponse.json({ ok: false, error: "Matrícula inválida." }, { status: 400 });
+    }
     const result = await auth();
     if (result.error || !result.escolaId) return result.error;
     const { supabase, escolaId } = result;
-    const { data, error } = await supabase.from("aluno_falta_justificacoes")
+    // A scoped Balcão case shows the real historical decisions as well as
+    // pending requests; the school-wide secretary queue remains pending-only.
+    let builder = supabase.from("aluno_falta_justificacoes")
       .select("id,aluno_id,matricula_id,frequencia_id,data_falta,motivo,status,created_at")
-      .eq("escola_id", escolaId).eq("status", "pending")
-      .order("created_at", { ascending: true }).limit(100);
+      .eq("escola_id", escolaId);
+    if (matriculaId) builder = builder.eq("matricula_id", matriculaId);
+    else builder = builder.eq("status", "pending");
+    const { data, error } = await builder.order("created_at", { ascending: true }).limit(100);
     if (error) throw error;
     const ids: string[] = [...new Set((data ?? []).map((item: {aluno_id: string}) => item.aluno_id))];
     const { data: alunos, error: alunosError } = ids.length

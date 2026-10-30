@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { gradePeriodState } from '@/lib/academico/grade-period-context'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
@@ -63,6 +64,63 @@ export async function POST(req: Request) {
       escolaId: academicContext.escolaId,
       anoLetivoId: academicContext.anoLetivoId,
     })
+
+    const { data: turmaDisciplina, error: turmaDisciplinaError } = await supabase
+      .from('turma_disciplinas')
+      .select('id,periodos_ativos')
+      .eq('id', body.turma_disciplina_id)
+      .eq('escola_id', escolaId)
+      .eq('turma_id', body.turma_id)
+      .maybeSingle()
+    if (turmaDisciplinaError) throw turmaDisciplinaError
+    if (!turmaDisciplina) {
+      return NextResponse.json({
+        ok: false, code: 'GRADE_DISCIPLINE_MISMATCH',
+        error: 'Esta disciplina não pertence à turma selecionada.',
+      }, { status: 409 })
+    }
+    if (Array.isArray(turmaDisciplina.periodos_ativos) &&
+        turmaDisciplina.periodos_ativos.length > 0 &&
+        !turmaDisciplina.periodos_ativos.includes(body.trimestre)) {
+      return NextResponse.json({
+        ok: false, code: 'GRADE_DISCIPLINE_INACTIVE_TRIMESTER',
+        error: 'A disciplina não está prevista neste trimestre.',
+      }, { status: 409 })
+    }
+
+    const { data: candidatePeriods, error: periodsError } = await supabase
+      .from('periodos_letivos')
+      .select('id,numero,data_inicio,data_fim,trava_notas_em,offering_id,source_template_id,source_item_id')
+      .eq('escola_id', escolaId)
+      .eq('ano_letivo_id', academicContext.anoLetivoId)
+      .eq('tipo', 'TRIMESTRE')
+      .eq('numero', body.trimestre)
+      .limit(2)
+    if (periodsError) throw periodsError
+    if (!candidatePeriods || candidatePeriods.length !== 1 || candidatePeriods[0].offering_id !== null) {
+      return NextResponse.json({
+        ok: false, code: 'GRADE_PERIOD_UNRESOLVED',
+        error: 'O trimestre desta turma não está configurado de forma inequívoca.',
+      }, { status: 409 })
+    }
+    if (academicContext.anoLetivoLabel.startsWith('2026/') &&
+        (!candidatePeriods[0].source_template_id || !candidatePeriods[0].source_item_id)) {
+      return NextResponse.json({
+        ok: false, code: 'OFFICIAL_CALENDAR_NOT_RECONCILED',
+        error: 'O calendário oficial de 2026/2027 ainda não está sincronizado nesta escola.',
+      }, { status: 409 })
+    }
+    const periodStatus = gradePeriodState(candidatePeriods[0])
+    if (periodStatus === 'future' || periodStatus === 'unconfigured') {
+      return NextResponse.json({
+        ok: false, code: 'GRADE_PERIOD_NOT_AVAILABLE',
+        error: periodStatus === 'future'
+          ? 'Este trimestre ainda não começou.'
+          : 'As datas do trimestre precisam de ser confirmadas.',
+      }, { status: 409 })
+    }
+    // Past/locked writes are adjudicated by the database trigger and its
+    // formally authorized pauta-reopening exception; never bypass it here.
 
     const alunoIds = Array.from(new Set(body.notas.map((nota) => nota.aluno_id)))
     const { data: activeMatriculas, error: matriculasError } = await supabase

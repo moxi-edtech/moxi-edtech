@@ -4,6 +4,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 import { resolveProfessorAcademicContext } from '@/lib/professor/resolveProfessorAcademicContext'
+import { CanonicalPeriodReadError, verifyCanonicalPeriodsRead } from '@/lib/academico/verify-canonical-periods-read'
 
 const Query = z.object({
   turma_id: z.string().uuid(),
@@ -59,7 +60,7 @@ export async function GET(req: Request) {
 
     const { data: periodos, error: periodosError } = await supabase
       .from('periodos_letivos')
-      .select('id, numero, tipo, data_inicio, data_fim')
+      .select('id, numero, tipo, data_inicio, data_fim, peso, offering_id, source_template_id, source_item_id, source_version')
       .eq('escola_id', escolaId)
       .eq('ano_letivo_id', academicContext.anoLetivoId)
       .eq('tipo', 'TRIMESTRE')
@@ -71,8 +72,20 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 })
     }
 
-    return NextResponse.json({ ok: true, context: academicContext, items: periodos || [] })
+    await verifyCanonicalPeriodsRead(supabase, {
+      escolaId, anoLetivoId: academicContext.anoLetivoId,
+      yearBase: Number(academicContext.anoLetivoLabel.split('/')[0]),
+      periods: periodos ?? [],
+    })
+    return NextResponse.json({
+      ok: true, context: academicContext,
+      items: (periodos ?? []).map(({ id, numero, tipo, data_inicio, data_fim }: any) =>
+        ({ id, numero, tipo, data_inicio, data_fim })),
+    })
   } catch (e) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status });
+    }
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status })
     }

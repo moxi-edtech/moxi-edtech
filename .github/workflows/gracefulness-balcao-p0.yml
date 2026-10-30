@@ -1,5 +1,9 @@
 name: Gracefulness Balcao P0
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   pull_request:
     paths:
@@ -14,6 +18,89 @@ on:
       - "apps/web/src/components/aluno/home/RematriculaBanner.tsx"
       - "apps/web/src/app/api/secretaria/documentos/emitir/route.ts"
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/RaaBalcaoResolutionPanel.tsx"
+      - "apps/web/src/components/secretaria/EnrollmentPostActionModal.tsx"
+      - "apps/web/src/app/api/secretaria/notas/route.ts"
+      - "apps/web/src/app/api/secretaria/notas/periodos/route.ts"
+      - "apps/web/src/lib/academico/grade-period-context.ts"
+      - "apps/web/tests/unit/grade-period-context.spec.ts"
+      - "apps/web/src/lib/academico/official-calendar-write-guard.ts"
+      - "apps/web/tests/unit/official-calendar-write-guard.spec.ts"
+      - "apps/web/src/lib/academico/verify-canonical-periods-read.ts"
+      - "apps/web/src/lib/academico/read-verified-academic-trimesters.ts"
+      - "apps/web/src/lib/secretaria/fechamento-execution-contract.ts"
+      - "apps/web/tests/unit/fechamento-execution-contract.spec.ts"
+      - "apps/web/tests/unit/global-curriculum-med-inheritance.spec.ts"
+      - "supabase/migrations/20271029235926_global_curriculum_med_calendar_contract.sql"
+      - "supabase/migrations/20271029235924_guard_fechamento_academico_jobs_rls.sql"
+      - "apps/web/src/lib/secretaria/fechamentoAcademicoOrchestrator.ts"
+      - "apps/web/src/inngest/functions/fechamento-academico-run.ts"
+      - "apps/web/src/app/api/secretaria/fechamento-academico/sanidade/route.ts"
+      - "apps/web/tests/unit/read-verified-academic-trimesters.spec.ts"
+      - "apps/web/src/app/api/secretaria/relatorios/mapa-aproveitamento/route.ts"
+      - "apps/web/src/app/api/secretaria/turmas/[id]/mini-pauta/route.ts"
+      - "apps/web/src/app/api/secretaria/turmas/[id]/pauta-trimestral/route.ts"
+      - "apps/web/src/app/api/secretaria/turmas/[id]/pauta-geral/route.ts"
+      - "apps/web/src/app/api/secretaria/turmas/[id]/pauta-geral/oficial/route.ts"
+      - "apps/web/src/app/api/secretaria/turmas/[id]/disciplinas/route.ts"
+      - "apps/web/src/app/api/professor/presencas/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/frequencias/fechar-periodo/route.ts"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/virada/gerar-pautas-lote/route.ts"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/virada/pautas-status/route.ts"
+      - "apps/web/src/app/api/secretaria/fechamento-academico/validacoes/engine.ts"
+      - "apps/web/src/app/api/secretaria/fechamento-academico/route.ts"
+      - "apps/web/tests/unit/verify-canonical-periods-read.spec.ts"
+      - "apps/web/src/app/api/professor/periodos/route.ts"
+      - "apps/web/src/app/api/professor/calendario/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/periodos-letivos/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/periodos-por-turma/route.ts"
+      - "apps/web/src/lib/academico/calendar-events-read.ts"
+      - "apps/web/src/app/api/aluno/home/academic-events/route.ts"
+      - "apps/web/tests/unit/calendar-events-read.spec.ts"
+      - "apps/web/src/lib/academico/canonical-med-calendar.ts"
+      - "apps/web/src/lib/academico/prepare-canonical-calendar.ts"
+      - "apps/web/tests/unit/canonical-med-calendar.spec.ts"
+      - "apps/web/src/components/secretaria/virada-ano/ConfigStep.tsx"
+      - "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/calendario/page.tsx"
+      - "supabase/migrations/20271029235922_canonical_med_calendar_offering_profiles.sql"
+      - "supabase/ops/tests/bootstrap_canonical_med_calendar.sql"
+      - "supabase/ops/tests/regression_canonical_med_calendar.sql"
+      - "supabase/migrations/20271029235923_apply_canonical_med_calendar_atomic.sql"
+      - "supabase/ops/tests/bootstrap_atomic_canonical_med_calendar.sql"
+      - "supabase/ops/tests/regression_atomic_canonical_med_calendar.sql"
+      - "apps/web/src/lib/academico/validate-canonical-cutover.ts"
+      - "apps/web/tests/unit/validate-canonical-cutover.spec.ts"
+      - "apps/web/tests/unit/calendar-consumers-contract.spec.ts"
+      - "supabase/ops/reconcile_klasse_school_2026_2027_calendar.sql"
+      - "supabase/ops/audit_klasse_2026_2027_course_calendars.sql"
+      - "apps/web/src/lib/assistant/data-copilot/tools/academic-calendar-operations.ts"
+      - "apps/web/src/app/api/professor/calendario/route.ts"
+      - "apps/web/src/app/api/secretaria/calendario/route.ts"
+      - "apps/web/src/app/secretaria/(portal-secretaria)/calendario/page.tsx"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/virada/dry-run/route.ts"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/virada/clone-structure/route.ts"
+      - "apps/web/src/app/api/escolas/[id]/onboarding/core/finalize/route.ts"
+      - "apps/web/src/app/api/escolas/[id]/onboarding/session/[sessionId]/route.ts"
+      - "apps/web/src/lib/secretaria/fechamentoAcademicoOrchestrator.ts"
+      - "apps/web/src/app/api/secretaria/fechamento-academico/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/calendario/ajustes/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/calendario/aplicar-template/route.ts"
+      - "apps/web/src/app/api/escola/[id]/admin/periodos-letivos/upsert-bulk/route.ts"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts"
+      - "apps/web/src/app/api/escola/*/admin/calendario/aplicar-template/route.ts"
+      - "apps/web/src/app/api/escola/*/admin/calendario/ajustes/route.ts"
+      - "apps/web/src/app/api/escola/*/admin/periodos-letivos/upsert-bulk/route.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-resolution.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-cases.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-regime-guidance.ts"
+      - "apps/web/tests/unit/raa-balcao-workspace-contract.spec.ts"
+      - "apps/web/src/app/api/academico/raa/indisciplina/route.ts"
+      - "apps/web/src/app/api/academico/exames/resultados/route.ts"
+      - "apps/web/src/app/api/secretaria/balcao/raa/exam-context/route.ts"
+      - "apps/web/src/lib/academico/raa-exam-result-guard.ts"
+      - "apps/web/src/lib/academico/raa-attendance-justification.ts"
+      - "supabase/migrations/20271029235920_raa_balcao_authoritative_permissions.sql"
+      - "apps/web/src/app/api/secretaria/faltas/justificacoes/route.ts"
       - "apps/web/src/components/secretaria/PagamentoDividaModal.tsx"
       - "apps/web/src/components/secretaria/BalcaoWorkspace.tsx"
       - "apps/web/src/components/secretaria/BalcaoActionBar.tsx"
@@ -98,6 +185,23 @@ jobs:
             tests/unit/mensalidades-preview.spec.ts \
             tests/unit/rematricula-result.spec.ts \
             tests/unit/rematricula-eligibility.spec.ts \
+            tests/unit/raa-balcao-resolution.spec.ts \
+            tests/unit/raa-balcao-cases.spec.ts \
+            tests/unit/raa-balcao-regime-guidance.spec.ts \
+            tests/unit/raa-balcao-workspace-contract.spec.ts \
+            tests/unit/grade-period-context.spec.ts \
+            tests/unit/official-calendar-write-guard.spec.ts \
+            tests/unit/canonical-med-calendar.spec.ts \
+            tests/unit/calendar-events-read.spec.ts \
+            tests/unit/verify-canonical-periods-read.spec.ts \
+            tests/unit/read-verified-academic-trimesters.spec.ts \
+            tests/unit/fechamento-execution-contract.spec.ts \
+            tests/unit/global-curriculum-med-inheritance.spec.ts \
+            tests/unit/validate-canonical-cutover.spec.ts \
+            tests/unit/calendar-consumers-contract.spec.ts \
+            tests/unit/raa-decreto-eligibility.spec.ts \
+            tests/unit/raa-exam-result-guard.spec.ts \
+            tests/unit/raa-attendance-justification.spec.ts \
             tests/unit/rematricula-debt.spec.ts \
             tests/unit/rematricula-classe-numero.spec.ts \
             tests/unit/rematricula-balcao-destino.spec.ts \
@@ -136,6 +240,8 @@ jobs:
             src/components/aluno/home/RematriculaBanner.tsx \
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
+            src/components/secretaria/RaaBalcaoResolutionPanel.tsx \
+            src/components/secretaria/EnrollmentPostActionModal.tsx \
             src/components/secretaria/PagamentoDividaModal.tsx \
             src/components/secretaria/BalcaoWorkspace.tsx \
             src/components/secretaria/BalcaoActionBar.tsx \
@@ -289,3 +395,48 @@ jobs:
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_notas_writer_authz_scale.sql
+
+      - name: Bootstrap trimester context in isolated database
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_grade_period_guard.sql
+
+      - name: Apply trimester grade safety migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271029235921_guard_grade_period_source_and_window.sql
+
+      - name: Grade trimester boundary and formal reopening regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_grade_period_guard.sql
+
+      - name: Bootstrap single MED year and course profiles
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_canonical_med_calendar.sql
+
+      - name: Apply canonical MED year migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271029235922_canonical_med_calendar_offering_profiles.sql
+
+      - name: Canonical year and course-scoped event regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_canonical_med_calendar.sql
+
+      - name: Bootstrap transactional MED calendar on isolated PostgreSQL
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_atomic_canonical_med_calendar.sql
+
+      - name: Apply atomic MED calendar migration
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271029235923_apply_canonical_med_calendar_atomic.sql
+
+      - name: Atomic MED year, source, scope and rollback regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_grade_writer
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_atomic_canonical_med_calendar.sql

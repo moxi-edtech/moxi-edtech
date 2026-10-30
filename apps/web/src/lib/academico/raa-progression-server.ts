@@ -1,4 +1,5 @@
 import type { RaaAcademicStatus } from "@/lib/academico/raa-eligibility"
+import { isUnjustifiedRaaAbsence } from "@/lib/academico/raa-attendance-justification"
 import { resolveRaaProgression, type RaaProgressionResult } from "@/lib/academico/raa-progression"
 import { resolveRegimeAcademico, type RegimeAcademico } from "@/lib/academico/regime-academico"
 import { resolveRaaDecretoEligibility, type RaaDecretoRegime, type RaaDecretoResult } from "@/lib/academico/raa-decreto-eligibility"
@@ -194,9 +195,20 @@ export async function resolveDecretoDecision(
   const aulaRows = (aulas ?? []) as Array<{ id: string; turma_disciplina_id: string }>
   const aulaIds = aulaRows.map((row) => row.id)
   const { data: frequencias } = aulaIds.length > 0
-    ? await supabase.from("frequencias").select("aula_id, periodo_letivo_id, status").eq("escola_id", escolaId).eq("matricula_id", matriculaId).in("aula_id", aulaIds)
+    ? await supabase.from("frequencias").select("id, aula_id, periodo_letivo_id, status").eq("escola_id", escolaId).eq("matricula_id", matriculaId).in("aula_id", aulaIds)
     : { data: [] }
-  const frequenciaRows = (frequencias ?? []) as Array<{ aula_id: string; periodo_letivo_id: string | null; status: string }>
+  const frequenciaRows = (frequencias ?? []) as Array<{ id: string; aula_id: string; periodo_letivo_id: string | null; status: string }>;
+  // Keep the original frequency row immutable, but distinguish a formally
+  // justified absence from an unjustified one for the decree's legal threshold.
+  const { data: justificacoes, error: justificacoesError } = await supabase
+    .from("aluno_falta_justificacoes")
+    .select("frequencia_id")
+    .eq("escola_id", escolaId).eq("matricula_id", matriculaId)
+    .eq("status", "approved").limit(5000);
+  // Absence decisions are not optional evidence: never infer an approval when
+  // RLS, the migration or the database is unavailable.
+  if (justificacoesError) return null;
+  const justified = new Set<string>((justificacoes ?? []).map((item: { frequencia_id: string }) => item.frequencia_id));
   const periodoIds = Array.from(new Set(frequenciaRows.map((row) => row.periodo_letivo_id).filter((id): id is string => Boolean(id))))
   const { data: periodos } = periodoIds.length > 0
     ? await supabase.from("periodos_letivos").select("id, numero, tipo").eq("escola_id", escolaId).in("id", periodoIds)
@@ -205,7 +217,7 @@ export async function resolveDecretoDecision(
   const aulaDisciplina = new Map<string, string>(aulaRows.map((row) => [row.id, row.turma_disciplina_id]))
   const faltasPorTurmaDisciplina = new Map<string, number[]>()
   for (const row of frequenciaRows) {
-    if (!['falta', 'ausente'].includes(String(row.status).toLowerCase())) continue
+    if (!isUnjustifiedRaaAbsence(row, justified)) continue
     const turmaDisciplinaId = aulaDisciplina.get(row.aula_id)
     const trimestre = row.periodo_letivo_id ? periodoNumero.get(row.periodo_letivo_id) : null
     if (!turmaDisciplinaId || !trimestre || trimestre < 1 || trimestre > 3) continue

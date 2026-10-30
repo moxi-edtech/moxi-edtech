@@ -9,6 +9,9 @@ import { buildPautaGeralPayload, renderPautaGeralBuffer } from "@/lib/pedagogico
 import { requireFeature } from "@/lib/plan/requireFeature"
 import { HttpError } from "@/lib/errors"
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context"
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
+
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -64,6 +67,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }
       throw err
     }
+
+    const verifiedPeriods = await readVerifiedAcademicTrimesters(supabase, {
+      escolaId, anoLetivoId: academicContext.anoLetivoId,
+      yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+    })
+    const verifiedPeriodo = requireVerifiedTrimester(verifiedPeriods, {
+      id: parsed.data.periodoLetivoId,
+    })
 
     const mode = searchParams.get("mode") ?? ""
 
@@ -136,14 +147,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     try {
-      const { data: periodo } = await supabase
-        .from("periodos_letivos")
-        .select("numero")
-        .eq("escola_id", escolaId)
-        .eq("id", parsed.data.periodoLetivoId)
-        .maybeSingle()
-
-      const periodoNumero = periodo?.numero ?? null
+      const periodoNumero = verifiedPeriodo.numero
       if (!periodoNumero) {
         throw new Error("Período letivo inválido")
       }
@@ -186,6 +190,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ ok: false, status: "FAILED", error: message }, { status: 500 })
     }
   } catch (e) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status })
+    }
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
     }

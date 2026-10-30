@@ -20,6 +20,14 @@ type Session = {
   has_data: boolean;
 };
 
+type OfficialCalendar = {
+  ano_base: number;
+  data_inicio: string;
+  data_fim: string;
+  versao_documento: string;
+  estado: string;
+};
+
 type OfficialTemplate = {
   id: string;
   nome: string;
@@ -27,6 +35,7 @@ type OfficialTemplate = {
   data_inicio: string;
   data_fim: string;
   subsistema: string | null;
+  calendario_canonico_ano?: number | null;
   versao_documento: string | null;
 };
 
@@ -76,6 +85,7 @@ type SessionsTargetResponse = {
   ok?: boolean;
   current_session?: Session | null;
   target_sessions?: Session[];
+  official_calendars?: OfficialCalendar[];
   official_templates?: OfficialTemplate[];
   education_offerings?: EducationOffering[];
 };
@@ -110,6 +120,8 @@ export function ConfigStep({
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [targets, setTargets] = useState<Session[]>([]);
   const [templates, setTemplates] = useState<OfficialTemplate[]>([]);
+  const [officialCalendars, setOfficialCalendars] = useState<OfficialCalendar[]>([]);
+  const [selectedCalendarYear, setSelectedCalendarYear] = useState("");
   const [offerings, setOfferings] = useState<EducationOffering[]>([]);
   const [offeringTemplates, setOfferingTemplates] = useState<Record<string, string>>({});
   const [selectedTarget, setSelectedTarget] = useState<string>("");
@@ -132,6 +144,8 @@ export function ConfigStep({
           setCurrentSession(json.current_session ?? null);
           setTargets(json.target_sessions ?? []);
           setTemplates(json.official_templates ?? []);
+          setOfficialCalendars(json.official_calendars ?? []);
+          setSelectedCalendarYear((current) => current || String(json.official_calendars?.[0]?.ano_base ?? ""));
           const loadedOfferings = json.education_offerings ?? [];
           setOfferings(loadedOfferings);
           setOfferingTemplates(Object.fromEntries(
@@ -154,20 +168,46 @@ export function ConfigStep({
     void loadSessions();
   }, [loadSessions]);
 
+  const profilesForCalendar = templates.filter((profile) =>
+    profile.calendario_canonico_ano === Number(selectedCalendarYear));
+  const resolveProfile = (offering: EducationOffering) => {
+    const eligible = profilesForCalendar.filter((profile) =>
+      profile.subsistema === offering.education_subsystem);
+    const current = eligible.find((profile) => profile.id === offeringTemplates[offering.id]);
+    return current?.id ?? (eligible.length === 1 ? eligible[0].id : "");
+  };
+
   const handleCreateTarget = async () => {
+    const canonicalYear = Number(selectedCalendarYear);
+    const usingCanonical = canonicalYear >= 2026 &&
+      officialCalendars.some((calendar) => calendar.ano_base === canonicalYear);
     const mappings = offerings.length > 0
-      ? offerings
-        .map((offering) => ({ offering_id: offering.id, template_id: offeringTemplates[offering.id] }))
-        .filter((mapping): mapping is { offering_id: string; template_id: string } => Boolean(mapping.template_id))
-      : undefined;
-    if (offerings.length > 0 && mappings?.length !== offerings.length) return;
-    if (offerings.length === 0 && !selectedTemplate) return;
+      ? offerings.map((offering) => ({
+          offering_id: offering.id,
+          template_id: usingCanonical
+            ? resolveProfile(offering)
+            : offeringTemplates[offering.id],
+        }))
+      : [];
+    if (offerings.length > 0 && mappings.some((mapping) => !mapping.template_id)) {
+      error("Confirme o perfil de calendário de cada curso.");
+      return;
+    }
+    if (usingCanonical && offerings.length === 0) {
+      error("Configure as ofertas educativas dos cursos antes de preparar o ano.");
+      return;
+    }
+    if (!usingCanonical && !selectedTemplate) return;
+
     setCreatingTarget(true);
     try {
+      const body = usingCanonical
+        ? { ano_base: canonicalYear, offerings: mappings }
+        : offerings.length > 0 ? { offerings: mappings } : { template_id: selectedTemplate };
       const response = await fetch("/api/secretaria/operacoes-academicas/virada/sessions-target", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(offerings.length > 0 ? { offerings: mappings } : { template_id: selectedTemplate }),
+        body: JSON.stringify(body),
       });
       const json = (await response.json()) as CreateTargetResponse;
       if (!response.ok || !json.ok || !json.target_session) {
@@ -176,7 +216,9 @@ export function ConfigStep({
       }
       await loadSessions();
       setSelectedTarget(json.target_session.id);
-      success("Ano letivo de destino criado como inativo; a estrutura será preparada no próximo passo.");
+      success("Ano preparado com os perfis MED dos cursos. O calendário atual permanece inalterado até à virada.");
+    } catch {
+      error("Não foi possível preparar o ano letivo.");
     } finally {
       setCreatingTarget(false);
     }
@@ -249,7 +291,7 @@ export function ConfigStep({
     };
   }, [currentSession, selectedTarget, reajuste, targets]);
 
-  if (loading) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-slate-300" /></div>;
+  if (loading) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-muted-foreground" /></div>;
 
   if (result) {
     const createdAnything = result.created
@@ -267,35 +309,35 @@ export function ConfigStep({
             </p>
             
             <div className="mt-8 grid grid-cols-2 gap-3 max-w-sm mx-auto">
-                <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Turmas no destino</p>
-                    <p className="text-xl font-black text-slate-800">{result.totals?.turmas ?? result.turmas}</p>
-                    <p className="text-[10px] text-slate-400">+{result.turmas ?? 0} nesta execução</p>
+                <div className="bg-background p-3 rounded-xl border border-emerald-100 shadow-sm">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Turmas no destino</p>
+                    <p className="text-xl font-black text-foreground">{result.totals?.turmas ?? result.turmas}</p>
+                    <p className="text-[10px] text-muted-foreground">+{result.turmas ?? 0} nesta execução</p>
                 </div>
-                <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Preços no destino</p>
-                    <p className="text-xl font-black text-slate-800">{result.totals?.precos ?? result.precos}</p>
-                    <p className="text-[10px] text-slate-400">+{result.precos ?? 0} nesta execução</p>
+                <div className="bg-background p-3 rounded-xl border border-emerald-100 shadow-sm">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Preços no destino</p>
+                    <p className="text-xl font-black text-foreground">{result.totals?.precos ?? result.precos}</p>
+                    <p className="text-[10px] text-muted-foreground">+{result.precos ?? 0} nesta execução</p>
                 </div>
-                <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Períodos no destino</p>
-                    <p className="text-xl font-black text-slate-800">{result.totals?.periodos ?? result.periodos}</p>
-                    <p className="text-[10px] text-slate-400">+{result.periodos ?? 0} nesta execução</p>
+                <div className="bg-background p-3 rounded-xl border border-emerald-100 shadow-sm">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Períodos no destino</p>
+                    <p className="text-xl font-black text-foreground">{result.totals?.periodos ?? result.periodos}</p>
+                    <p className="text-[10px] text-muted-foreground">+{result.periodos ?? 0} nesta execução</p>
                 </div>
-                <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Disciplinas no destino</p>
-                    <p className="text-xl font-black text-slate-800">{result.totals?.disciplinas ?? result.disciplinas}</p>
-                    <p className="text-[10px] text-slate-400">+{result.disciplinas ?? 0} nesta execução</p>
+                <div className="bg-background p-3 rounded-xl border border-emerald-100 shadow-sm">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Disciplinas no destino</p>
+                    <p className="text-xl font-black text-foreground">{result.totals?.disciplinas ?? result.disciplinas}</p>
+                    <p className="text-[10px] text-muted-foreground">+{result.disciplinas ?? 0} nesta execução</p>
                 </div>
             </div>
             {result.created && result.reused && (
-              <div className="mx-auto mt-5 max-w-md rounded-xl border border-emerald-100 bg-white p-4 text-left">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resultado desta execução</p>
+              <div className="mx-auto mt-5 max-w-md rounded-xl border border-emerald-100 bg-background p-4 text-left">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resultado desta execução</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                   <span className="font-semibold text-emerald-700">Novos registos: {Object.values(result.created).reduce((total, count) => total + count, 0)}</span>
-                  <span className="font-semibold text-slate-600">Já existentes: {Object.values(result.reused).reduce((total, count) => total + count, 0)}</span>
+                  <span className="font-semibold text-muted-foreground">Já existentes: {Object.values(result.reused).reduce((total, count) => total + count, 0)}</span>
                 </div>
-                <p className="mt-2 text-[11px] text-slate-500">
+                <p className="mt-2 text-[11px] text-muted-foreground">
                   {result.idempotent ? "A execução foi idempotente: nada novo foi criado." : "Os itens novos foram criados e os itens existentes foram reutilizados."}
                 </p>
               </div>
@@ -320,11 +362,11 @@ export function ConfigStep({
         {/* Lado Esquerdo: Configuração */}
         <section className="space-y-4">
           <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Sessão de Destino</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Sessão de Destino</label>
             <select 
               value={selectedTarget}
               onChange={(e) => setSelectedTarget(e.target.value)}
-              className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
+              className="w-full h-12 rounded-xl border border-border bg-background px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
             >
               {targets.map(s => (
                 <option key={s.id} value={s.id}>
@@ -333,66 +375,88 @@ export function ConfigStep({
               ))}
               {targets.length === 0 && <option disabled>Nenhum ano futuro cadastrado</option>}
             </select>
-            {targets.length === 0 && (
+            {(targets.length === 0 || officialCalendars.length > 0 || (currentSession?.ano ?? 0) >= 2026) && (
               <div className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-xs font-semibold text-amber-900">
-                  Escolha explicitamente o perfil regulatório aplicável à oferta educativa. Em escolas mistas, não assuma um único calendário para toda a instituição.
+                  O calendário do ano seguinte é configurado uma única vez. Os perfis MED são herdados por curso sem alterar o ano ativo.
                 </p>
-                {templates.length > 0 ? (
+                {officialCalendars.length > 0 ? (
                   <div className="space-y-3">
-                    {offerings.length > 0 ? offerings.map((offering) => (
-                      <div key={offering.id} className="grid gap-2 sm:grid-cols-[1fr_1.4fr] sm:items-center">
-                        <span className="text-xs font-semibold text-slate-700">
-                          <span className="block">{offering.course_name || "Oferta educativa"}</span>
-                          <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
-                            {OFFERING_SUBSYSTEM_LABELS[offering.education_subsystem] || "Perfil educativo"}
-                            {" · "}
-                            {OFFERING_LEVEL_LABELS[offering.education_level] || "Nível de ensino"}
-                          </span>
-                        </span>
-                        <select
-                          value={offeringTemplates[offering.id] ?? ""}
-                          onChange={(event) => setOfferingTemplates((current) => ({
-                            ...current,
-                            [offering.id]: event.target.value,
-                          }))}
-                          className="h-11 rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-slate-800"
-                          aria-label="Perfil regulatório da oferta"
-                        >
-                          <option value="" disabled>Selecionar perfil regulatório</option>
-                          {templates.map((template) => (
-                            <option key={template.id} value={template.id}>{template.nome}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )) : (
-                      <select
-                        value={selectedTemplate}
-                        onChange={(event) => setSelectedTemplate(event.target.value)}
-                        className="h-11 w-full rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-slate-800"
-                        aria-label="Calendário oficial do subsistema"
-                      >
-                        <option value="" disabled>Selecionar perfil regulatório</option>
-                        {templates.map((template) => (
-                          <option key={template.id} value={template.id}>{template.nome}</option>
+                    <label className="block text-xs font-semibold text-foreground">
+                      Calendário oficial do ano
+                      <select value={selectedCalendarYear}
+                        onChange={(event) => setSelectedCalendarYear(event.target.value)}
+                        className="mt-1 h-11 w-full rounded-lg border border-amber-200 bg-background px-3 text-sm font-semibold"
+                        aria-label="Calendário oficial do ano letivo">
+                        {officialCalendars.map((calendar) => (
+                          <option key={calendar.ano_base} value={String(calendar.ano_base)}>
+                            {calendar.ano_base}/{calendar.ano_base + 1} · MED · {calendar.versao_documento}
+                          </option>
                         ))}
                       </select>
-                    )}
-                    <Button
-                      tone="gold"
-                      size="sm"
-                      onClick={handleCreateTarget}
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      {offerings.length} oferta(s) educativa(s) herdam este ano; os perfis abaixo
+                      aplicam apenas as particularidades do respetivo curso.
+                    </p>
+                    {offerings.map((offering) => {
+                      const eligible = profilesForCalendar.filter((profile) =>
+                        profile.subsistema === offering.education_subsystem);
+                      return (
+                        <div key={offering.id} className="grid gap-2 sm:grid-cols-[1fr_1.4fr] sm:items-center">
+                          <span className="text-xs font-semibold text-foreground">
+                            <span className="block">{offering.course_name || "Oferta educativa"}</span>
+                            <span className="text-[10px] font-normal text-muted-foreground">
+                              {OFFERING_SUBSYSTEM_LABELS[offering.education_subsystem] || "Perfil educativo"}
+                              {" · "}
+                              {OFFERING_LEVEL_LABELS[offering.education_level] || "Nível de ensino"}
+                            </span>
+                          </span>
+                          {eligible.length === 1 ? (
+                            <span className="rounded-lg border border-amber-200 bg-background px-3 py-2 text-xs font-medium text-foreground">
+                              {eligible[0].nome}
+                            </span>
+                          ) : (
+                            <select value={resolveProfile(offering)}
+                              onChange={(event) => setOfferingTemplates((current) => ({
+                                ...current, [offering.id]: event.target.value,
+                              }))}
+                              className="h-11 rounded-lg border border-amber-200 bg-background px-3 text-xs"
+                              aria-label={`Perfil académico de ${offering.course_name || offering.id}`}>
+                              <option value="">Selecionar perfil do curso</option>
+                              {eligible.map((profile) => (
+                                <option key={profile.id} value={profile.id}>{profile.nome}</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <Button tone="gold" size="sm" onClick={handleCreateTarget}
                       loading={creatingTarget}
-                      disabled={offerings.length > 0
-                        ? offerings.some((offering) => !offeringTemplates[offering.id])
-                        : !selectedTemplate}
-                    >
-                      Criar próximo ano
+                      disabled={!selectedCalendarYear || offerings.length === 0 ||
+                        offerings.some((offering) => !resolveProfile(offering))}>
+                      Preparar ano com calendário oficial
+                    </Button>
+                  </div>
+                ) : templates.length > 0 ? (
+                  <div className="space-y-3">
+                    <select value={selectedTemplate} onChange={(event) => setSelectedTemplate(event.target.value)}
+                      className="h-11 w-full rounded-lg border border-amber-200 bg-background px-3 text-xs"
+                      aria-label="Calendário histórico">
+                      <option value="">Selecione um calendário histórico</option>
+                      {templates.filter((template) => template.ano_base < 2026).map((template) => (
+                        <option key={template.id} value={template.id}>{template.nome}</option>
+                      ))}
+                    </select>
+                    <Button tone="gold" size="sm" onClick={handleCreateTarget}
+                      loading={creatingTarget} disabled={!selectedTemplate}>
+                      Criar ano histórico
                     </Button>
                   </div>
                 ) : (
                   <p className="text-xs font-semibold text-rose-700">
-                    Nenhum template oficial posterior foi publicado. Solicite a publicação ao Super Admin.
+                    O MED ainda não publicou um calendário para o próximo ano letivo. O ano atual continua disponível; a virada só será liberada após a publicação.
                   </p>
                 )}
               </div>
@@ -400,21 +464,21 @@ export function ConfigStep({
           </div>
 
           <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Reajuste de Mensalidades (%)</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Reajuste de Mensalidades (%)</label>
             <div className="relative">
-              <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Percent className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input 
                 type="number"
                 value={reajuste}
                 onChange={(e) => setReajuste(Number(e.target.value))}
-                className="w-full h-12 rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
+                className="w-full h-12 rounded-xl border border-border bg-background pl-12 pr-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-amber/10 transition-all"
                 placeholder="Ex: 10"
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">O valor será aplicado sobre a tabela de preços do ano atual.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">O valor será aplicado sobre a tabela de preços do ano atual.</p>
             <div className="mt-3 flex items-center gap-3" aria-live="polite">
               {previewingPricing && (
-                <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
+                <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> A validar preços…
                 </span>
               )}
@@ -429,25 +493,25 @@ export function ConfigStep({
         </section>
 
         {/* Lado Direito: Resumo do Espelhamento */}
-        <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+        <section className="rounded-2xl border border-border bg-muted/50 p-5 space-y-4">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Copy className="h-4 w-4 text-amber" /> O que será transportado:
           </h3>
           <ul className="space-y-3">
-            <li className="flex items-center gap-3 text-xs text-slate-600">
-                <div className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-purple-500"><Calendar className="h-3.5 w-3.5" /></div>
+            <li className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-border text-purple-500"><Calendar className="h-3.5 w-3.5" /></div>
                 <span>Estrutura de <strong>Períodos Letivos</strong> (Trimestres/Datas)</span>
             </li>
-            <li className="flex items-center gap-3 text-xs text-slate-600">
-                <div className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
+            <li className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-border text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
                 <span><strong>Currículos, matrizes e disciplinas</strong> preparados para o novo ano</span>
             </li>
-            <li className="flex items-center gap-3 text-xs text-slate-600">
-                <div className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
+            <li className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-border text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
                 <span>Catálogo de <strong>Turmas sem alunos</strong>, com capacidade, turnos e estrutura académica</span>
             </li>
-            <li className="flex items-center gap-3 text-xs text-slate-600">
-                <div className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-emerald-500"><Database className="h-3.5 w-3.5" /></div>
+            <li className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="p-1.5 rounded-lg bg-background shadow-sm border border-border text-emerald-500"><Database className="h-3.5 w-3.5" /></div>
                 <span>Tabela de <strong>Preços</strong> com o reajuste configurado</span>
             </li>
           </ul>

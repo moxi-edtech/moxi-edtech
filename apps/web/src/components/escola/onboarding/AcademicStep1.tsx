@@ -106,7 +106,7 @@ export default function AcademicStep1({
                   onClick={() => { onApplyTemplate?.(t); setShowTemplates(false); }}
                   className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-between"
                 >
-                  {t.nome}
+                  {t.ano_base >= 2026 ? `Calendário MED ${t.ano_base}/${t.ano_base + 1}` : t.nome}
                   <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{t.ano_base}</span>
                 </button>
               ))}
@@ -198,6 +198,7 @@ export default function AcademicStep1({
                   type="date"
                   value={dataInicio}
                   onChange={(e) => setDataInicio(e.target.value)}
+                  disabled={anoLetivo >= 2026}
                   className={inputClass}
                 />
               </div>
@@ -207,6 +208,7 @@ export default function AcademicStep1({
                   type="date"
                   value={dataFim}
                   onChange={(e) => setDataFim(e.target.value)}
+                  disabled={anoLetivo >= 2026}
                   className={inputClass}
                 />
               </div>
@@ -272,6 +274,7 @@ export default function AcademicStep1({
           <button
             type="button"
             onClick={onApplyRecommendedLocks}
+            disabled={anoLetivo >= 2026}
             className="inline-flex items-center justify-center rounded-lg border border-amber-200 bg-white px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100"
           >
             Aplicar travas recomendadas
@@ -293,6 +296,7 @@ export default function AcademicStep1({
                   type="date"
                   value={periodo.data_inicio}
                   onChange={(e) => onPeriodoChange(periodo.numero, "data_inicio", e.target.value)}
+                  disabled={anoLetivo >= 2026}
                   className={`${inputClass} bg-white`}
                 />
               </div>
@@ -303,6 +307,7 @@ export default function AcademicStep1({
                   type="date"
                   value={periodo.data_fim}
                   onChange={(e) => onPeriodoChange(periodo.numero, "data_fim", e.target.value)}
+                  disabled={anoLetivo >= 2026}
                   className={`${inputClass} bg-white`}
                 />
               </div>
@@ -313,6 +318,7 @@ export default function AcademicStep1({
                   type="datetime-local"
                   value={periodo.trava_notas_em}
                   onChange={(e) => onPeriodoChange(periodo.numero, "trava_notas_em", e.target.value)}
+                  disabled={anoLetivo >= 2026}
                   className={`${inputClass} bg-white border-amber-200 focus:border-amber-400 focus:ring-amber-400`}
                 />
               </div>

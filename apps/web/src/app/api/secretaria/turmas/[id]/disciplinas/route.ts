@@ -3,6 +3,9 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters } from "@/lib/academico/read-verified-academic-trimesters";
+
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -85,6 +88,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       new Set(((discRes as any).data || []).map((d: any) => d.disciplina_id).filter(Boolean))
     ) as string[]
 
+    if (!anoLetivoId && Number(turmaRes.data?.ano_letivo) >= 2026) {
+      throw new CanonicalPeriodReadError("A turma não tem ano letivo oficial configurado.")
+    }
     const [curriculosRes, periodosRes, tdpRes] = await Promise.all([
       turmaRes.data?.curso_id && turmaRes.data?.classe_id && anoLetivoId
         ? supabase
@@ -96,13 +102,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
             .eq('ano_letivo_id', anoLetivoId)
         : Promise.resolve({ data: [] as any[] }),
       anoLetivoId
-        ? supabase
-            .from('periodos_letivos')
-            .select('id, numero, dt_inicio, dt_fim')
-            .eq('escola_id', escolaId)
-            .eq('ano_letivo_id', anoLetivoId)
-            .order('numero', { ascending: true })
-        : Promise.resolve({ data: [] as any[] }),
+        ? readVerifiedAcademicTrimesters(supabase, {
+            escolaId, anoLetivoId, yearBase: Number(turmaRes.data?.ano_letivo),
+          })
+        : Promise.resolve([]),
       disciplinaCatalogIdsFromDiscRes.length
         ? supabase
             .from('turma_disciplinas_professores')
@@ -141,7 +144,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         draftMatrixMap.set(row.disciplina_id, row)
       }
     }
-    const periodosRows = periodosRes.data ?? []
+    const periodosRows = periodosRes ?? []
 
     const discMap = new Map<
       string,
@@ -235,8 +238,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     let periodos = (periodosRows ?? []).map((periodo: any) => ({
       id: periodo.id,
       numero: periodo.numero,
-      dt_inicio: periodo.dt_inicio,
-      dt_fim: periodo.dt_fim,
+      dt_inicio: periodo.data_inicio,
+      dt_fim: periodo.data_fim,
     }))
     if (periodos.length === 0) {
       periodos = [1, 2, 3].map((numero) => ({
@@ -381,6 +384,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     return NextResponse.json({ ok: true, items, total: items.length, periodos }, { headers })
   } catch (e) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { validateOfficialCalendarAdjustment } from "@/lib/academico/official-calendar-write-guard";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -81,6 +82,56 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: "O ano letivo encerrado não pode ser alterado.", code: "ACADEMIC_YEAR_CLOSED" }, { status: 409 });
     }
 
+    let periodsForWrite: Array<Record<string, unknown>> = body.periodos;
+    const yearNumber = Number(context.anoLetivoLabel.split("/")[0]);
+    if (yearNumber >= 2026) {
+      const [{ data: currentYear, error: yearReadError }, { data: configured, error: periodReadError }] = await Promise.all([
+        supabase.from("anos_letivos").select("data_inicio,data_fim")
+          .eq("id", body.ano_letivo_id).eq("escola_id", escolaId).maybeSingle(),
+        supabase.from("periodos_letivos")
+          .select("id,numero,tipo,data_inicio,data_fim,peso,trava_notas_em,source_template_id,source_item_id,source_version,offering_id")
+          .eq("ano_letivo_id", body.ano_letivo_id).eq("escola_id", escolaId)
+          .eq("tipo", "TRIMESTRE"),
+      ]);
+      if (yearReadError || periodReadError) throw yearReadError ?? periodReadError;
+      const existing = configured ?? [];
+      const sourceIds = [...new Set(existing.map((periodo) => periodo.source_template_id).filter(Boolean))];
+      let officialTemplate: any = null;
+      if (sourceIds.length === 1) {
+        const { data, error } = await supabase.from("calendario_templates")
+          .select("id,ano_base,data_inicio,data_fim,is_oficial,estado,versao_documento,items:calendario_template_items(id,numero,tipo,data_inicio,data_fim,peso)")
+          .eq("id", sourceIds[0]).maybeSingle();
+        if (error) throw error;
+        officialTemplate = data;
+      }
+
+      const validated = validateOfficialCalendarAdjustment({
+        academicYear: yearNumber, academicYearId: body.ano_letivo_id,
+        requestedYearStart: body.data_inicio, requestedYearEnd: body.data_fim,
+        currentYearStart: currentYear?.data_inicio ?? "",
+        currentYearEnd: currentYear?.data_fim ?? "",
+        existing, requested: body.periodos, template: officialTemplate,
+        motivo: body.motivo,
+      });
+      if (!validated.ok) {
+        const missingReason = validated.code === "CALENDAR_LOCK_CHANGE_REASON_REQUIRED";
+        return NextResponse.json({
+          ok: false, code: validated.code,
+          error: missingReason
+            ? "Indique o motivo antes de alterar os prazos das notas."
+            : "O ano e os períodos devem coincidir com o calendário oficial publicado. Solicite conciliação.",
+        }, { status: missingReason ? 400 : 409 });
+      }
+      if (validated.lockChanged) {
+        const director = await requireRoleInSchool({
+          supabase, escolaId,
+          roles: ["admin", "admin_escola", "diretor"],
+        });
+        if (director.error) return director.error;
+      }
+      periodsForWrite = validated.periods;
+    }
+
     const { data: year, error: yearError } = await supabase
       .from("anos_letivos")
       .update({ data_inicio: body.data_inicio, data_fim: body.data_fim })
@@ -93,7 +144,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const { error: periodsError } = await supabase.rpc("upsert_bulk_periodos_letivos", {
       p_escola_id: escolaId,
-      p_periodos_data: body.periodos,
+      p_periodos_data: periodsForWrite,
     });
     if (periodsError) throw periodsError;
 

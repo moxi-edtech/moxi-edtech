@@ -3,7 +3,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 const root = process.cwd();
 const dir = join(root, "supabase/migrations");
-const finalName = "20271029100000_lifecycle_reconciliation_evidence_guards.sql";
+const finalName = "20271029235910_lifecycle_persisted_status_contract_v3.sql";
+const evidenceName = "20271029100000_lifecycle_reconciliation_evidence_guards.sql";
 const migrations = readdirSync(dir).filter((f) => /^\d{14}_.*\.sql$/.test(f)).sort();
 assert.ok(migrations.includes(finalName), "Lifecycle SSOT consolidation migration missing");
 const prerequisites = [
@@ -11,6 +12,8 @@ const prerequisites = [
   "20261215010000_canonicalize_matricula_status_ativo.sql",
   "20271022142000_cc003_canonical_polo_rls.sql",
   "20271027120000_lifecycle_ssot_post_replay_guard.sql",
+  evidenceName,
+  "20271029235900_lifecycle_contextual_status_ssot_v2.sql",
 ];
 for (const required of prerequisites) {
   assert.ok(migrations.includes(required), "Missing SSOT prerequisite: " + required);
@@ -31,7 +34,12 @@ for (const file of archives) {
   const shim = readFileSync(join(dir, file), "utf8");
   assert.match(shim, /SELECT 1 WHERE false;/, file + " must defer until late replay");
 }
-const content = readFileSync(join(dir, finalName), "utf8");
+const content = readFileSync(join(dir, evidenceName), "utf8");
+const v3 = readFileSync(join(dir, finalName), "utf8");
+assert.match(v3, /ACADEMIC_RESULT_NOT_ENROLLMENT_STATUS/);
+assert.match(v3, /MATRICULA_STATUS_INVALID/);
+assert.match(v3, /matriculas_status_check/);
+assert.match(v3, /resultado_final/);
 const oldRebuild = readFileSync(join(dir, "20271027120000_lifecycle_ssot_post_replay_guard.sql"),"utf8");
 assert.match(oldRebuild,/security_invoker=true/,"Original SSOT rebuild must remain stable");
 const remoteArchive = readdirSync(join(root, "supabase/ops/applied_lifecycle_20261029"))

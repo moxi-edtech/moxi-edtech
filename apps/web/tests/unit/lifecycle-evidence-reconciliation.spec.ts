@@ -22,7 +22,7 @@ test("empty official gradebook cannot silently approve an enrollment", () => {
 test("academic reconciliation validates authorized cohorts and documentary source", () => {
   assert.match(sql, /ASSISTED_TRANSITION_COHORT_REQUIRED/);
   assert.match(sql, /ACADEMIC_DOCUMENT_REQUIRED/);
-  assert.match(sql, /v_status := CASE WHEN v_resultado='reprovado' THEN 'reprovado' ELSE 'concluido' END/);
+  assert.match(read("../../supabase/migrations/20271029235910_lifecycle_persisted_status_contract_v3.sql"), /v_status := 'concluido'/);
   assert.match(sql, /matricula_id=excluded\.matricula_id/);
   assert.match(sql, /snapshot_status','aberto'/);
 });
@@ -40,7 +40,7 @@ test("school-ratification RPC requires admin, documentary evidence, and result m
   assert.match(sql, /ARRAY\['admin','admin_escola','staff_admin'\]/);
   assert.match(sql, /RATIFICATION_DOCUMENT_REQUIRED/);
   assert.match(sql, /v_h\.resultado_final IS DISTINCT FROM v_resultado/);
-  assert.match(sql, /v_resultado='reprovado' AND v_m\.status='concluido'/);
+  assert.match(read("../../supabase/migrations/20271029235910_lifecycle_persisted_status_contract_v3.sql"), /v_m.status IS DISTINCT FROM 'concluido'/);
   assert.match(sql, /'snapshot_status','aberto'/);
 });
 

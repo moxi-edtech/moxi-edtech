@@ -102,7 +102,10 @@ export function RetainedActionPanels({
   const mounted = visited.includes(activeAction) ? visited : [...visited, activeAction];
   return (
     <>
-      {mounted.filter(action => action !== "enrollment" || activeAction === "enrollment").map(action => (
+      {mounted.filter(action =>
+        (action !== "enrollment" || activeAction === "enrollment") &&
+        (action !== "admissions" || activeAction === "admissions")
+      ).map(action => (
         <ActionSlot key={action} action={action} active={action === activeAction}
           contextSignature={contextSignature} renderAction={renderAction} onStatus={onStatus} />
       ))}

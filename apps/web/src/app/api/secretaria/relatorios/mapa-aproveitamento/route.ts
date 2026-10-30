@@ -3,6 +3,9 @@ import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
+
 
 export const dynamic = "force-dynamic";
 
@@ -38,27 +41,24 @@ export async function GET(req: Request) {
     const turmaId = url.searchParams.get("turma_id");
     const periodoId = url.searchParams.get("periodo_letivo_id");
 
-    const [turmasRes, periodosRes] = await Promise.all([
+    const [turmasRes, periodos] = await Promise.all([
       supabase
         .from("turmas")
         .select("id, nome, turma_codigo, turno")
         .eq("escola_id", escolaId)
+        .eq("session_id", academicContext.anoLetivoId)
         .order("nome", { ascending: true })
         .limit(200),
-      supabase
-        .from("periodos_letivos")
-        .select("id, numero, tipo")
-        .eq("escola_id", escolaId)
-        .order("numero", { ascending: true }),
+      readVerifiedAcademicTrimesters(supabase, {
+        escolaId, anoLetivoId: academicContext.anoLetivoId,
+        yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+      }),
     ]);
 
     if (turmasRes.error) {
       return NextResponse.json({ ok: false, error: turmasRes.error.message }, { status: 500 });
     }
 
-    if (periodosRes.error) {
-      return NextResponse.json({ ok: false, error: periodosRes.error.message }, { status: 500 });
-    }
 
     const turmas: TurmaOption[] = (turmasRes.data ?? []).map((t: any) => ({
       id: String(t.id),
@@ -67,14 +67,18 @@ export async function GET(req: Request) {
       turno: t.turno ? String(t.turno) : null,
     }));
 
-    const periodos: PeriodoOption[] = (periodosRes.data ?? []).map((p: any) => ({
+    const periodoOptions: PeriodoOption[] = periodos.map((p) => ({
       id: String(p.id),
       numero: typeof p.numero === "number" ? p.numero : null,
       tipo: p.tipo ? String(p.tipo) : null,
     }));
 
+    if (periodoId) {
+      requireVerifiedTrimester(periodos, { id: periodoId });
+    }
+
     if (!turmaId) {
-      return NextResponse.json({ ok: true, context: academicContext, filtros: { turmas, periodos }, report: null });
+      return NextResponse.json({ ok: true, context: academicContext, filtros: { turmas, periodos: periodoOptions }, report: null });
     }
 
     await assertAcademicYearEntity(supabase, {
@@ -91,11 +95,14 @@ export async function GET(req: Request) {
     });
 
     if (rpcError) {
-      return NextResponse.json({ ok: false, error: rpcError.message, filtros: { turmas, periodos } }, { status: 500 });
+      return NextResponse.json({ ok: false, error: rpcError.message, filtros: { turmas, periodos: periodoOptions } }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, context: academicContext, filtros: { turmas, periodos }, report: report ?? { colunas: [], linhas: [] } });
+    return NextResponse.json({ ok: true, context: academicContext, filtros: { turmas, periodos: periodoOptions }, report: report ?? { colunas: [], linhas: [] } });
   } catch (error) {
+    if (error instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: error.code, error: error.message }, { status: error.status });
+    }
     if (error instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
     }

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { createPortal } from 'react-dom'
 import useSWR from 'swr'
 import {
   Search,
   MessageCircle,
-  Pencil,
   Check,
   ChevronRight,
   Clock,
@@ -36,25 +37,15 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { toContextualPortalPath } from '@/lib/navigation'
-import { AdmissaoConversionSheet } from './AdmissaoConversionSheet'
+const AdmissaoConversionSheet = dynamic(
+  () => import('./AdmissaoConversionSheet').then((module) => module.AdmissaoConversionSheet),
+  { ssr: false, loading: () => <p role="status" className="p-4 text-sm text-muted-foreground">A preparar confirmação de matrícula...</p> }
+)
 import { createClient } from '@/lib/supabase/client'
 import { formatTurnoDisplay } from '@/utils/formatters'
+import { getAdmissionInboxNextStep, type AdmissionInboxStatus } from '@/lib/admissoes/inbox-next-step'
 
-type AdmissaoStatus =
-  | 'rascunho'
-  | 'pre_candidatura'
-  | 'submetida'
-  | 'documentos_reenviados'
-  | 'em_analise'
-  | 'aprovada'
-  | 'aguardando_pagamento'
-  | 'aguardando_compensacao'
-  | 'rejeitada'
-  | 'arquivada'
-  | 'arquivado'
-  | 'matriculado'
-  | 'pendente'
-  | 'lista_espera'
+type AdmissaoStatus = AdmissionInboxStatus
 
 type AdmissoesRadarResponse = {
   ok: boolean;
@@ -136,28 +127,28 @@ type TurmaPromocao = {
   ano_letivo: number | null
 }
 
+// Cores de estado são semânticas; superfícies neutras seguem os tokens do Balcão.
 const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: string }> = {
-  rascunho: { label: 'Rascunho', color: 'text-slate-500', bg: 'bg-slate-100' },
-  pre_candidatura: { label: 'Pré-candidatura', color: 'text-indigo-700', bg: 'bg-indigo-50' },
-  submetida: { label: 'Nova', color: 'text-blue-600', bg: 'bg-blue-50' },
-  documentos_reenviados: { label: 'Documentos Re-enviados', color: 'text-blue-700', bg: 'bg-blue-100' },
-  pendente: { label: 'Documentos Pendentes', color: 'text-rose-700', bg: 'bg-rose-50' },
-  lista_espera: { label: 'Lista de Espera', color: 'text-amber-700', bg: 'bg-amber-100' },
-  em_analise: { label: 'Em Análise', color: 'text-amber-600', bg: 'bg-amber-50' },
-  aprovada: { label: 'Aprovada', color: 'text-emerald', bg: 'bg-emerald/10' },
-  aguardando_pagamento: { label: 'Reserva (Aguardando Pagamento)', color: 'text-amber-700', bg: 'bg-amber-100' },
-  aguardando_compensacao: { label: 'Reserva (Em Validação)', color: 'text-amber-700', bg: 'bg-amber-100' },
-  rejeitada: { label: 'Rejeitada', color: 'text-red-600', bg: 'bg-red-50' },
-  arquivada: { label: 'Arquivada', color: 'text-slate-600', bg: 'bg-slate-100' },
-  arquivado: { label: 'Arquivado', color: 'text-slate-600', bg: 'bg-slate-100' },
-  matriculado: { label: 'Matriculado', color: 'text-emerald', bg: 'bg-emerald/20' },
+  rascunho: { label: 'Rascunho', color: 'text-muted-foreground', bg: 'bg-muted' },
+  pre_candidatura: { label: 'Pré-candidatura', color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-500/15' },
+  submetida: { label: 'Nova', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-500/15' },
+  documentos_reenviados: { label: 'Documentos Re-enviados', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100 dark:bg-blue-500/20' },
+  pendente: { label: 'Documentos Pendentes', color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-500/15' },
+  lista_espera: { label: 'Lista de Espera', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-500/15' },
+  em_analise: { label: 'Em Análise', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15' },
+  aprovada: { label: 'Aprovada', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15' },
+  aguardando_pagamento: { label: 'Reserva (Aguardando Pagamento)', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-500/15' },
+  aguardando_compensacao: { label: 'Reserva (Em Validação)', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-100 dark:bg-amber-500/15' },
+  rejeitada: { label: 'Rejeitada', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15' },
+  arquivada: { label: 'Arquivada', color: 'text-muted-foreground', bg: 'bg-muted' },
+  arquivado: { label: 'Arquivado', color: 'text-muted-foreground', bg: 'bg-muted' },
+  matriculado: { label: 'Matriculado', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100 dark:bg-emerald-500/20' },
 }
 
-const REJECTABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'pre_candidatura', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
-const APPROVABLE_STATUSES: AdmissaoStatus[] = ['submetida', 'em_analise', 'pendente', 'lista_espera']
-const CONVERTIBLE_STATUSES: AdmissaoStatus[] = ['aprovada', 'aguardando_pagamento', 'aguardando_compensacao']
-const REOPENABLE_STATUSES: AdmissaoStatus[] = ['rejeitada', 'arquivada', 'arquivado']
-const ARCHIVABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'pre_candidatura', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera', 'rejeitada']
+const REJECTABLE_STATUSES: AdmissaoStatus[] = ['submetida', 'documentos_reenviados', 'em_analise', 'aprovada', 'aguardando_pagamento', 'aguardando_compensacao', 'pendente']
+const APPROVABLE_STATUSES: AdmissaoStatus[] = ['submetida', 'em_analise', 'pendente']
+const REOPENABLE_STATUSES: AdmissaoStatus[] = ['rejeitada', 'arquivada']
+const ARCHIVABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'submetida', 'documentos_reenviados', 'em_analise', 'aprovada', 'aguardando_pagamento', 'aguardando_compensacao', 'pendente', 'lista_espera']
 const DOCUMENT_CORRECTION_STATUSES: AdmissaoStatus[] = ['submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: 'Dinheiro',
@@ -170,22 +161,12 @@ function formatPaymentMethod(value?: unknown) {
   return PAYMENT_METHOD_LABELS[key] || 'Transferência'
 }
 
-function getConversionActionLabel(status: AdmissaoStatus) {
-  if (status === 'aguardando_compensacao') return 'Validar Pagamento e Matricular'
-  if (status === 'aguardando_pagamento') return 'Registar Pagamento e Matricular'
-  return 'Efetivar Matrícula'
-}
-
 function canRejectAdmission(status: AdmissaoStatus) {
   return REJECTABLE_STATUSES.includes(status)
 }
 
 function canApproveAdmission(status: AdmissaoStatus) {
   return APPROVABLE_STATUSES.includes(status)
-}
-
-function canConvertAdmission(status: AdmissaoStatus) {
-  return CONVERTIBLE_STATUSES.includes(status)
 }
 
 function canReopenAdmission(status: AdmissaoStatus) {
@@ -284,13 +265,22 @@ async function fetchRadar(url: string): Promise<AdmissoesRadarResponse> {
 
 export default function AdmissoesInboxClient({
   escolaId,
-  initialItems = []
+  initialItems = [],
+  embedded = false,
+  inModal = false,
+  onNewAdmission,
 }: {
   escolaId: string;
   initialItems?: CandidaturaListItem[];
+  embedded?: boolean;
+  inModal?: boolean;
+  onNewAdmission?: () => void;
 }) {
   const router = useRouter()
   const { success, error: toastError } = useToast()
+  // useToast returns new wrapper functions on re-render; keep detail fetching stable.
+  const toastErrorRef = useRef(toastError)
+  toastErrorRef.current = toastError
   const confirm = useConfirm()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -309,15 +299,16 @@ export default function AdmissoesInboxClient({
     [escolaSlug, slugFromPath, pathname]
   )
 
-  const [selectedId, setSelectedId] = useState<string | null>(searchParams?.get('id') || null)
-  const turmaId = searchParams?.get('turmaId')
-  const initialSearch = searchParams?.get('search')
+  const [selectedId, setSelectedId] = useState<string | null>(embedded ? null : searchParams?.get('id') || null)
+  const turmaId = embedded ? null : searchParams?.get('turmaId')
+  const initialSearch = embedded ? null : searchParams?.get('search')
 
   const [selectedData, setSelectedData] = useState<CandidaturaDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const [search, setSearch] = useState(initialSearch || '')
-  const [statusFilter, setStatusFilter] = useState<'novas' | 'rascunhos' | 'pre_candidaturas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('novas')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'novas' | 'rascunhos' | 'pre_candidaturas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('all')
+  const [detailTab, setDetailTab] = useState<'resumo' | 'documentos' | 'historico'>('resumo')
   const debouncedSearch = useDebouncedValue(search.trim(), 300)
   const supabase = useMemo(() => createClient(), [])
 
@@ -360,8 +351,10 @@ export default function AdmissoesInboxClient({
     error: swrError,
     mutate,
   } = useSWR<AdmissoesRadarResponse>(listUrl, fetchRadar, {
-    fallbackData: { ok: true, counts: {}, items: initialItems, meta: {} },
+    fallbackData: initialItems.length ? { ok: true, counts: {}, items: initialItems, meta: {} } : undefined,
     keepPreviousData: true,
+    revalidateOnFocus: false,
+    dedupingInterval: 15000,
   })
 
   const items = radarData?.items || []
@@ -374,7 +367,11 @@ export default function AdmissoesInboxClient({
     return Object.entries(documentos).filter(([, path]) => typeof path === 'string' && path.trim())
   }, [selectedData])
 
+  const hasSelectedCandidate = Boolean(selectedId)
+  // Configuração documental só é necessária após abrir uma candidatura.
+  // Evita pedido extra no primeiro carregamento da fila.
   useEffect(() => {
+    if (!hasSelectedCandidate) return
     let cancelled = false
 
     async function loadAdmissionConfig() {
@@ -400,7 +397,7 @@ export default function AdmissoesInboxClient({
     return () => {
       cancelled = true
     }
-  }, [escolaId])
+  }, [escolaId, hasSelectedCandidate])
 
   const filteredItems = useMemo(() => {
     const list = items.filter(item => {
@@ -412,7 +409,9 @@ export default function AdmissoesInboxClient({
       const matchesSearch = matchesName || matchesProtocol
 
       let matchesStatus = false
-      if (statusFilter === 'novas') {
+      if (statusFilter === 'all') {
+        matchesStatus = true
+      } else if (statusFilter === 'novas') {
         matchesStatus = item.status === 'submetida' || item.status === 'documentos_reenviados'
       } else if (statusFilter === 'rascunhos') {
         matchesStatus = item.status === 'rascunho'
@@ -459,27 +458,36 @@ export default function AdmissoesInboxClient({
     })
   }, [visiblePreCandidaturaIds])
 
-  const [wasSuccess, setWasSuccess] = useState(false)
+  // Guardar e concluir são eventos distintos: nenhum seleciona outro candidato.
+  const [detailRevision, setDetailRevision] = useState(0)
+  const [completedCandidateId, setCompletedCandidateId] = useState<string | null>(null)
+
+  const refreshCurrentCandidate = useCallback(async () => {
+    setDetailRevision((value) => value + 1)
+    await mutate()
+  }, [mutate])
+
+  const handleConversionSaved = useCallback(async () => {
+    await refreshCurrentCandidate()
+  }, [refreshCurrentCandidate])
 
   const handleConversionSuccess = useCallback(async () => {
-    await mutate()
-    setWasSuccess(true)
-  }, [mutate])
+    setCompletedCandidateId(selectedId)
+    await refreshCurrentCandidate()
+  }, [refreshCurrentCandidate, selectedId])
 
   const handleCloseConversion = useCallback(() => {
     setIsConversionOpen(false)
+  }, [])
 
-    if (wasSuccess) {
-      // Find current index and select next pending if available
-      const currentIndex = filteredItems.findIndex(item => item.id === selectedId)
-      if (currentIndex !== -1 && filteredItems[currentIndex + 1]) {
-        setSelectedId(filteredItems[currentIndex + 1].id)
-      } else {
-        setSelectedId(null)
-      }
-      setWasSuccess(false)
-    }
-  }, [wasSuccess, filteredItems, selectedId])
+  const handleNextCandidate = useCallback(() => {
+    const next = filteredItems.find((item) =>
+      item.id !== selectedId &&
+      !['matriculado', 'rejeitada', 'arquivada', 'arquivado'].includes(item.status)
+    )
+    setCompletedCandidateId(null)
+    setSelectedId(next?.id ?? null)
+  }, [filteredItems, selectedId])
 
   const publicLink = typeof window !== 'undefined'
     ? `${window.location.origin}/admissoes/${escolaParam}`
@@ -532,32 +540,50 @@ export default function AdmissoesInboxClient({
     await mutate()
   }, [mutate])
 
-  const fetchDetail = useCallback(async (id: string) => {
+  const fetchDetail = useCallback(async (id: string, signal: AbortSignal) => {
     setLoadingDetail(true)
+    setSelectedData(null)
     try {
-      const res = await fetch(`/api/secretaria/admissoes/lead?id=${id}`)
+      const res = await fetch(`/api/secretaria/admissoes/lead?id=${encodeURIComponent(id)}`, { signal })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao carregar detalhes')
-      setSelectedData(json.item)
+      if (!signal.aborted) setSelectedData(json.item)
     } catch (err: unknown) {
-      console.error(err)
+      if (!signal.aborted) {
+        console.error(err)
+        toastErrorRef.current('Não foi possível abrir a candidatura', 'Tente novamente selecionando a candidatura na fila.')
+      }
     } finally {
-      setLoadingDetail(false)
+      if (!signal.aborted) setLoadingDetail(false)
     }
   }, [])
 
+  useEffect(() => { setDetailTab("resumo") }, [selectedId])
+
   useEffect(() => {
-    if (selectedId) {
-      fetchDetail(selectedId)
-      // Update URL without refresh
+    if (!selectedId) {
+      setSelectedData(null)
+      return
+    }
+    const controller = new AbortController()
+    void fetchDetail(selectedId, controller.signal)
+    if (!embedded) {
+      // A fila embutida não altera o URL do Balcão nem o contexto do aluno.
       const url = new URL(window.location.href)
       url.searchParams.set('id', selectedId)
-      window.history.replaceState({}, '', url.toString())
+      window.history.replaceState(window.history.state, '', url.toString())
     }
-  }, [selectedId, fetchDetail])
+    return () => controller.abort()
+  }, [selectedId, fetchDetail, embedded, detailRevision])
 
   const handleApprove = async () => {
-    if (!selectedId) return
+    if (!selectedId || !selectedData || !canApproveAdmission(selectedData.status)) return
+    const approved = await confirm({
+      title: 'Aprovar candidatura',
+      message: `Confirma a aprovação da candidatura de ${selectedData.nome_candidato}? O processo avançará para a etapa de matrícula ou reserva, conforme a configuração da escola.`,
+      confirmLabel: 'Aprovar candidatura',
+    })
+    if (!approved) return
     setLoadingAction('approving')
     try {
       const res = await fetch('/api/secretaria/admissoes/approve', {
@@ -710,12 +736,10 @@ export default function AdmissoesInboxClient({
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao arquivar')
 
-      // Remove from list or move to concluded depending on business logic
-      // In this UI, concluded means matriculado or rejeitada. Let's just refresh.
+      // Arquivar não perde o candidato nem termina o atendimento.
+      setSelectedData((current) => current?.id === selectedId ? { ...current, status: 'arquivada' } : current)
       await mutate()
-      setSelectedId(null)
-      setSelectedData(null)
-      success('Candidatura arquivada', 'A candidatura foi movida para o arquivo e já não aparece na fila de espera principal.')
+      success('Candidatura arquivada', 'O processo foi arquivado. Consulte o histórico ou escolha outro candidato.')
     } catch (err: unknown) {
       toastError('Falha ao arquivar', 'Houve um erro técnico ao tentar arquivar este registo. Por favor, tente novamente.')
     } finally {
@@ -1014,7 +1038,7 @@ export default function AdmissoesInboxClient({
         `${promotedIds.length} pré-candidatura(s) promovida(s). ${failures.length} bloqueada(s).`
       )
       if (selectedId && promotedSet.has(selectedId)) {
-        await fetchDetail(selectedId)
+        await fetchDetail(selectedId, new AbortController().signal)
       }
     } catch (err: unknown) {
       toastError('Falha na promoção em lote', err instanceof Error ? err.message : 'Não foi possível promover o lote.')
@@ -1143,13 +1167,50 @@ export default function AdmissoesInboxClient({
     }
   };
 
+  const selectedNextStep = selectedData
+    ? getAdmissionInboxNextStep(
+        completedCandidateId === selectedId ? 'matriculado' : selectedData.status,
+        detailTab,
+      )
+    : null
+
+  const handleNextAction = () => {
+    if (!selectedData || !selectedNextStep || loadingAction) return
+    switch (selectedNextStep.action) {
+      case 'share_link':
+        handleCopyLink()
+        break
+      case 'promote':
+        void openPromoteModal()
+        break
+      case 'review_documents':
+        setDetailTab('documentos')
+        break
+      case 'review_history':
+        setDetailTab('historico')
+        break
+      case 'approve':
+        void handleApprove()
+        break
+      case 'accept_documents':
+        void handleAcceptReuploadedDocuments()
+        break
+      case 'convert':
+        setIsConversionOpen(true)
+        break
+      case 'next_candidate':
+        handleNextCandidate()
+        break
+    }
+  }
+
   return (
-    <div className="flex h-[calc(100vh-160px)] gap-0 overflow-hidden bg-white rounded-2xl shadow-sm border border-slate-200">
+    <div className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row ${embedded ? "h-[min(69dvh,760px)] min-h-[420px]" : "h-[calc(100dvh-160px)] min-h-[560px]"}`} aria-label="Gestão de admissões">
       {/* Coluna Esquerda: Fila de Espera (30%) */}
-      <div className="w-[350px] md:w-[30%] border-r border-slate-200 flex flex-col bg-slate-50/50">
-        <div className="p-4 border-b border-slate-200 bg-white">
+      <div className={`min-h-0 w-full shrink-0 flex-col border-b border-border bg-card lg:w-[min(38%,400px)] lg:border-b-0 lg:border-r ${selectedId ? "hidden lg:flex" : "flex"}`}>
+        <div className="border-b border-border bg-card p-3 sm:p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-800">Inbox</h2>
+            <h2 className="text-base font-bold text-foreground">Candidaturas</h2>
             <div className="flex items-center gap-2">
               {turmaId && (
                 <Button
@@ -1171,33 +1232,38 @@ export default function AdmissoesInboxClient({
                 size="sm"
                 variant="outline"
                 className="h-8 w-8 p-0"
+                aria-label="Atualizar candidaturas"
+                title="Atualizar candidaturas"
                 onClick={() => fetchList()}
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
               <Button
                 size="sm"
-                className="h-8 bg-emerald hover:bg-emerald-600 text-white gap-1"
-                onClick={() => router.push(withSlug(`/secretaria/admissoes/nova`))}
+                className="h-8 gap-1 bg-amber text-amber-950 hover:brightness-95"
+                aria-label="Iniciar nova candidatura"
+                onClick={() => onNewAdmission ? onNewAdmission() : router.push(withSlug(`/secretaria/admissoes/nova`))}
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Novo</span>
+                <span>Nova</span>
               </Button>
             </div>
           </div>
 
-          <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+          <details open={!embedded} className="mb-3 rounded-xl border border-border bg-muted/40 text-foreground">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground">Partilhar link de inscrição</summary>
+            <div className="border-t border-border p-3">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1">
               <Share2 className="h-3 w-3" />
               Link de Inscrição Pública
             </p>
             <div className="flex items-center gap-2">
-              <div className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-mono text-slate-500 truncate">
+              <div className="min-w-0 flex-1 truncate rounded-xl border border-border bg-card px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
                 {publicLink}
               </div>
               <button
                 onClick={handleCopyLink}
-                className="flex items-center gap-1 px-2 py-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-500 text-[10px] font-bold"
+                className="flex items-center gap-1 px-2 py-1.5 hover:bg-muted rounded-lg transition-colors text-muted-foreground text-[10px] font-bold"
                 title="Copiar Link"
               >
                 <Copy className="h-3.5 w-3.5" />
@@ -1212,21 +1278,23 @@ export default function AdmissoesInboxClient({
                 <span>WhatsApp</span>
               </button>
             </div>
-          </div>
+            </div>
+          </details>
 
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Buscar aluno..."
+              placeholder="Pesquisar candidatura..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-amber/20 focus:border-amber rounded-xl text-sm transition-all outline-none"
+              className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-4 text-sm text-foreground outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
             />
           </div>
 
-          <div className="flex p-1 bg-slate-100 rounded-xl mb-4">
+          <div className="mb-3 flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
             {([
+              { id: 'all', label: 'Todas' },
               { id: 'novas', label: 'Novas' },
               { id: 'rascunhos', label: 'Rascunhos' },
               { id: 'pre_candidaturas', label: 'Pré' },
@@ -1237,10 +1305,10 @@ export default function AdmissoesInboxClient({
               <button
                 key={f.id}
                 onClick={() => setStatusFilter(f.id)}
-                className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                className={`shrink-0 rounded-xl px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-all ${
                   statusFilter === f.id
-                    ? 'bg-white text-emerald shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {f.label}
@@ -1249,9 +1317,9 @@ export default function AdmissoesInboxClient({
           </div>
 
           {statusFilter === 'pre_candidaturas' && (
-            <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+            <div className="mb-4 rounded-xl border border-indigo-100 dark:border-indigo-500/25 bg-indigo-50 dark:bg-indigo-500/10 p-3">
               <div className="flex items-center justify-between gap-3">
-                <label className="flex items-center gap-2 text-[11px] font-bold text-indigo-800">
+                <label className="flex items-center gap-2 text-[11px] font-bold text-indigo-800 dark:text-indigo-300">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-indigo-300"
@@ -1265,33 +1333,35 @@ export default function AdmissoesInboxClient({
                   type="button"
                   onClick={openBulkPromoteModal}
                   disabled={bulkSelectedIds.size === 0 || !!loadingAction}
-                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="bg-amber text-amber-950 hover:brightness-95"
                 >
                   <School className="h-4 w-4" />
                   Promover ({bulkSelectedIds.size})
                 </Button>
               </div>
-              <p className="mt-2 text-[10px] leading-relaxed text-indigo-700">
+              <p className="mt-2 text-[10px] leading-relaxed text-indigo-700 dark:text-indigo-300">
                 A promoção em lote exige uma turma oficial com capacidade para todos os selecionados.
               </p>
             </div>
           )}
 
-          {/* Gargalos de Conversão */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Indicadores secundários disponíveis sem sobrecarregar a fila */}
+          <details open={!embedded} className="mt-1 rounded-xl border border-border bg-card">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground">Indicadores e oportunidades</summary>
+          <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
             <button
               onClick={() => setStatusFilter('expirando')}
               className={`p-3 rounded-xl border text-left transition-all ${
                 statusFilter === 'expirando'
-                  ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-100'
-                  : 'bg-white border-slate-100 hover:border-slate-200'
+                  ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 ring-2 ring-amber-100 dark:ring-amber-500/20'
+                  : 'bg-card border-border hover:border-border'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Timer className={`h-3 w-3 ${counts.expirando > 0 ? 'text-amber-600 animate-pulse' : 'text-slate-400'}`} />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Expirando</span>
+                <Timer className={`h-3 w-3 ${counts.expirando > 0 ? 'text-amber-700 dark:text-amber-300 animate-pulse' : 'text-muted-foreground'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Expirando</span>
               </div>
-              <p className={`text-lg font-black ${counts.expirando > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+              <p className={`text-lg font-black ${counts.expirando > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'}`}>
                 {counts.expirando || 0}
               </p>
             </button>
@@ -1299,15 +1369,15 @@ export default function AdmissoesInboxClient({
               onClick={() => setStatusFilter('reenviados')}
               className={`p-3 rounded-xl border text-left transition-all ${
                 statusFilter === 'reenviados'
-                  ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-100'
-                  : 'bg-white border-slate-100 hover:border-slate-200'
+                  ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 ring-2 ring-blue-100 dark:ring-blue-500/20'
+                  : 'bg-card border-border hover:border-border'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <RefreshCw className={`h-3 w-3 ${counts.reenviados > 0 ? 'text-blue-600' : 'text-slate-400'}`} />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Re-enviados</span>
+                <RefreshCw className={`h-3 w-3 ${counts.reenviados > 0 ? 'text-blue-600' : 'text-muted-foreground'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Re-enviados</span>
               </div>
-              <p className={`text-lg font-black ${counts.reenviados > 0 ? 'text-blue-700' : 'text-slate-400'}`}>
+              <p className={`text-lg font-black ${counts.reenviados > 0 ? 'text-blue-700 dark:text-blue-300' : 'text-muted-foreground'}`}>
                 {counts.reenviados || 0}
               </p>
             </button>
@@ -1315,49 +1385,65 @@ export default function AdmissoesInboxClient({
               onClick={() => setStatusFilter('lista_espera')}
               className={`p-3 rounded-xl border text-left transition-all col-span-2 ${
                 statusFilter === 'lista_espera'
-                  ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-100'
-                  : counts.oportunidades_espera > 0 ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200' : 'bg-white border-slate-100 hover:border-slate-200'
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 ring-2 ring-emerald-100'
+                  : counts.oportunidades_espera > 0 ? 'bg-emerald-50/50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/25 hover:border-emerald-200 dark:hover:border-emerald-500/40' : 'bg-card border-border hover:border-border'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Check className={`h-3 w-3 ${counts.oportunidades_espera > 0 ? 'text-emerald-600 animate-bounce' : 'text-slate-400'}`} />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Vagas Disponíveis</span>
+                <Check className={`h-3 w-3 ${counts.oportunidades_espera > 0 ? 'text-emerald-600 animate-bounce' : 'text-muted-foreground'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Vagas Disponíveis</span>
               </div>
-              <p className={`text-sm font-bold ${counts.oportunidades_espera > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>
+              <p className={`text-sm font-bold ${counts.oportunidades_espera > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'}`}>
                 {counts.oportunidades_espera > 0
                   ? `${counts.oportunidades_espera} candidatos podem ser promovidos`
                   : 'Nenhuma vaga aberta para espera'}
               </p>
             </button>
           </div>
+          </details>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {loading ? (
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-muted/30 p-3">
+          {listError ? (
+            <div role="alert" className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300">
+              <p>Não foi possível carregar a fila: {listError}</p>
+              <button type="button" className="mt-2 font-bold underline" onClick={() => void fetchList()}>Tentar novamente</button>
+            </div>
+          ) : loading ? (
             <div className="flex flex-col items-center justify-center h-32 space-y-2">
               <Spinner size={16} />
-              <p className="text-xs text-slate-400">Carregando fila...</p>
+              <p className="text-xs text-muted-foreground">Carregando fila...</p>
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <p className="text-sm text-slate-400">Nenhuma candidatura encontrada.</p>
+              <p className="text-sm text-muted-foreground">Nenhuma candidatura encontrada.</p>
             </div>
           ) : (
             filteredItems.map((item) => {
               const isActive = selectedId === item.id
               const status = STATUS_CONFIG[item.status] || STATUS_CONFIG.rascunho
+              const nextForList = getAdmissionInboxNextStep(item.status)
               const isBulkSelectable = statusFilter === 'pre_candidaturas' && item.status === 'pre_candidatura'
               const isBulkSelected = bulkSelectedIds.has(item.id)
 
               return (
-                <motion.div
+                <div
                   key={item.id}
-                  layoutId={item.id}
+                                    role="button"
+                  tabIndex={0}
+                  aria-pressed={isActive}
+                  aria-label={`Abrir candidatura de ${item.nome_candidato}`}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      setSelectedId(item.id)
+                    }
+                  }}
                   onClick={() => setSelectedId(item.id)}
                   className={`group relative p-4 rounded-xl cursor-pointer transition-all border ${
                     isActive
-                      ? 'bg-white border-amber shadow-md ring-1 ring-amber/20'
-                      : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm'
+                      ? 'bg-card border-amber shadow-sm ring-1 ring-amber/20'
+                      : 'bg-card border-border hover:border-amber/50'
                   }`}
                 >
                   <div className={`absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold ${status.bg} ${status.color}`}>
@@ -1378,22 +1464,25 @@ export default function AdmissoesInboxClient({
                   )}
 
                   <div className={isBulkSelectable ? "pl-7 pr-16" : "pr-16"}>
-                    <p className="font-sans font-bold text-slate-900 group-hover:text-emerald transition-colors">
+                    <p className="font-sans text-sm font-bold text-foreground transition-colors group-hover:text-emerald">
                       {item.nome_candidato}
                     </p>
-                    <p className="font-mono text-[11px] text-slate-500 mt-1 uppercase tracking-wider">
+                    <p className="font-mono text-[11px] text-muted-foreground mt-1 uppercase tracking-wider">
                       {displayProtocol(item)} • {item.classes?.nome || '—'} • {item.cursos?.nome || '—'}
                     </p>
                   </div>
 
+                  <p className="mt-2 text-[11px] font-medium text-muted-foreground">
+                    A seguir: <span className="text-foreground">{nextForList.listLabel}</span>
+                  </p>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {format(new Date(item.created_at), "dd MMM, HH:mm", { locale: ptBR })}
                     </span>
-                    <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'translate-x-1 text-amber' : 'text-slate-300'}`} />
+                    <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'translate-x-1 text-amber' : 'text-muted-foreground'}`} />
                   </div>
-                </motion.div>
+                </div>
               )
             })
           )}
@@ -1401,7 +1490,7 @@ export default function AdmissoesInboxClient({
       </div>
 
       {/* Coluna Direita: Raio-X (70%) */}
-      <div className="flex-1 bg-slate-50 flex flex-col relative overflow-hidden">
+      <div className={`relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted/30 ${selectedId ? "flex" : "hidden lg:flex"}`}>
         <AnimatePresence mode="wait">
           {selectedId ? (
             <motion.div
@@ -1411,6 +1500,9 @@ export default function AdmissoesInboxClient({
               exit={{ opacity: 0, x: -20 }}
               className="flex-1 flex flex-col h-full overflow-y-auto"
             >
+              <div className="border-b border-border bg-card px-4 py-3 lg:hidden">
+                <button type="button" onClick={() => setSelectedId(null)} className="text-sm font-bold text-foreground">← Voltar às candidaturas</button>
+              </div>
               {loadingDetail ? (
                 <div className="flex-1 flex items-center justify-center">
                   <Spinner />
@@ -1418,31 +1510,31 @@ export default function AdmissoesInboxClient({
               ) : selectedData ? (
                 <>
                   {/* Cabeçalho Raio-X */}
-                  <div className="p-8 bg-white border-b border-slate-200">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="border-b border-border bg-card p-4 sm:p-6">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <Badge variant="outline" className="font-mono text-[10px] uppercase border-amber/30 text-amber-600">
+                          <Badge variant="outline" className="font-mono text-[10px] uppercase border-amber/30 text-amber-700 dark:text-amber-300">
                             Protocolo: {displayProtocol(selectedData)}
                           </Badge>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_CONFIG[selectedData.status]?.bg || 'bg-slate-100'} ${STATUS_CONFIG[selectedData.status]?.color || 'text-slate-500'}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_CONFIG[selectedData.status]?.bg || 'bg-muted'} ${STATUS_CONFIG[selectedData.status]?.color || 'text-muted-foreground'}`}>
                             {STATUS_CONFIG[selectedData.status]?.label || selectedData.status}
                           </span>
                           {selectedData.status === 'documentos_reenviados' && (
-                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                            <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
                               Revisão atribuída à Secretaria
                             </span>
                           )}
                         </div>
                         {selectedData.status === 'lista_espera' && (
-                          <p className="mb-3 max-w-2xl rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                          <p className="mb-3 max-w-2xl rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
                             Esta candidatura entrou em lista de espera porque a turma selecionada estava lotada no momento da submissão.
                           </p>
                         )}
-                        <h1 className="text-4xl font-sans font-bold text-emerald leading-tight">
+                        <h1 className="font-sans text-xl font-bold leading-tight text-foreground">
                           {selectedData.nome_candidato}
                         </h1>
-                        <p className="text-slate-500 mt-1 flex items-center gap-2">
+                        <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                           <Calendar className="h-4 w-4" />
                           Submetido em {format(new Date(selectedData.created_at), "PPP", { locale: ptBR })}
                         </p>
@@ -1455,36 +1547,57 @@ export default function AdmissoesInboxClient({
                               const contato = selectedData.dados_candidato?.responsavel_contato;
                               if (contato) openWhatsApp(contato);
                             }}
-                            className="flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-2xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95"
+                            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
                           >
-                            <MessageCircle className="h-5 w-5 fill-white" />
+                            <MessageCircle className="h-4 w-4 text-green-600" />
                             WhatsApp
                           </button>
                         )}
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          className="rounded-2xl h-12"
-                          onClick={() => setIsConversionOpen(true)}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
-                        </Button>
                       </div>
                     </div>
                   </div>
 
+                  {/* Orientação compacta, específica do estado, sem tirar o atendente do Balcão */}
+                  {selectedNextStep && (
+                    <section aria-label="Próxima ação da candidatura" className="mx-3 mt-3 rounded-xl border border-border bg-muted/40 p-3 sm:mx-5 sm:mt-4 sm:p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Próxima ação</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">{selectedNextStep.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{selectedNextStep.description}</p>
+                    </section>
+                  )}
+
                   {/* Conteúdo Raio-X */}
-                  <div className="p-8 pb-32 space-y-8">
+                  <div className="space-y-4 p-3 pb-28 sm:p-5 sm:pb-28">
+                    <div role="tablist" aria-label="Detalhes da candidatura" className="flex gap-1 overflow-x-auto border-b border-border pb-2">
+                      {([
+                        { id: 'resumo', label: 'Resumo' },
+                        { id: 'documentos', label: 'Documentos' },
+                        { id: 'historico', label: 'Histórico' },
+                      ] as const).map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          role="tab"
+                          id={`admission-tab-${tab.id}`}
+                          aria-controls={`admission-panel-${tab.id}`}
+                          aria-selected={detailTab === tab.id}
+                          onClick={() => setDetailTab(tab.id)}
+                          className={`min-h-10 shrink-0 rounded-lg px-4 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber ${detailTab === tab.id ? 'bg-muted text-foreground ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div role="tabpanel" id={`admission-panel-${detailTab}`} aria-labelledby={`admission-tab-${detailTab}`} className="space-y-4">
                     {/* Alerta de Conciliação Financeira */}
-                    {(selectedData.status === 'aguardando_compensacao' || selectedData.status === 'aguardando_pagamento') && (
-                      <section className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+                    {detailTab === 'resumo' && (selectedData.status === 'aguardando_compensacao' || selectedData.status === 'aguardando_pagamento') && (
+                      <section className="bg-amber-50 dark:bg-amber-500/10 p-6 rounded-2xl border-2 border-amber-200 dark:border-amber-500/30 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest flex items-center gap-2">
+                          <h3 className="text-sm font-black text-amber-900 dark:text-amber-200 uppercase tracking-widest flex items-center gap-2">
                             <CreditCard className="h-4 w-4" />
                             Conciliação Financeira
                           </h3>
-                          <Badge className="bg-amber-200 text-amber-900 border-amber-300">
+                          <Badge className="bg-amber-200 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-500/40">
                             {selectedData.status === 'aguardando_compensacao' ? 'Comprovativo Enviado' : 'Aguardando Talão'}
                           </Badge>
                         </div>
@@ -1506,18 +1619,18 @@ export default function AdmissoesInboxClient({
                           </div>
 
                           <div className="flex flex-col gap-2">
-                            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Documento de Prova</p>
+                            <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-widest">Documento de Prova</p>
                             {(() => {
                               const compPath = selectedData.dados_candidato?.pagamento?.comprovativo_path || selectedData.dados_candidato?.pagamento?.comprovativo_url;
                               if (!compPath) return (
-                                <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 border-2 border-dashed border-amber-200 rounded-xl text-amber-500 text-xs italic">
+                                <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 dark:bg-amber-500/15 border-2 border-dashed border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-500 text-xs italic">
                                   Nenhum talão anexado pelo aluno
                                 </div>
                               );
                               return (
                                 <button
                                   onClick={() => handleViewDoc('Comprovativo', compPath)}
-                                  className="flex items-center justify-center gap-2 w-full py-4 bg-white border-2 border-dashed border-amber-300 rounded-xl text-amber-700 font-bold hover:bg-amber-100 transition-all group"
+                                  className="flex items-center justify-center gap-2 w-full py-4 bg-card border-2 border-dashed border-amber-300 dark:border-amber-500/40 rounded-xl text-amber-700 dark:text-amber-300 font-bold hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-all group"
                                 >
                                   <FileText className="h-5 w-5 group-hover:scale-110 transition-transform" />
                                   Visualizar Talão Agora
@@ -1529,7 +1642,7 @@ export default function AdmissoesInboxClient({
 
                         <div className="mt-6 flex gap-3">
                           <Button
-                            className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-11 font-bold"
+                            className="h-11 w-full rounded-xl bg-amber font-bold text-amber-950 transition hover:brightness-95"
                             onClick={() => setIsConversionOpen(true)}
                           >
                             {selectedData.status === 'aguardando_compensacao' ? 'Validar Pagamento e Matricular' : 'Registar Pagamento e Matricular'}
@@ -1539,12 +1652,13 @@ export default function AdmissoesInboxClient({
                     )}
 
                     {/* Grid de Dados */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className={detailTab === 'resumo' ? 'grid grid-cols-1 gap-4 lg:grid-cols-2' : 'grid grid-cols-1 gap-4'}>
+                      {detailTab === 'resumo' && (<>
                       {/* Dados Pessoais */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <User className="h-4 w-4" />
-                          Dados do Aluno
+                          Dados do candidato
                         </h3>
                         <div className="space-y-4">
                           <DataField label="Documento" value={`${selectedData.dados_candidato?.tipo_documento || '—'}: ${selectedData.dados_candidato?.numero_documento || selectedData.dados_candidato?.bi_numero || '—'}`} />
@@ -1556,8 +1670,8 @@ export default function AdmissoesInboxClient({
                       </section>
 
                       {/* Encarregado */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <User className="h-4 w-4" />
                           Responsável / Encarregado
                         </h3>
@@ -1570,15 +1684,15 @@ export default function AdmissoesInboxClient({
                       </section>
 
                       {/* Escolha Acadêmica */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <FileText className="h-4 w-4" />
                           Acadêmico
                         </h3>
                         <div className="space-y-4">
                           {selectedData.status === 'pre_candidatura' && selectedData.dados_candidato?.interesse ? (
-                            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3">
-                              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-indigo-700">
+                            <div className="rounded-xl border border-indigo-100 dark:border-indigo-500/25 bg-indigo-50 dark:bg-indigo-500/10 p-3">
+                              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300">
                                 Interesse declarado
                               </p>
                               <DataField label="Nível" value={selectedData.dados_candidato.interesse?.curso_nome || selectedData.cursos?.nome || '—'} />
@@ -1591,12 +1705,12 @@ export default function AdmissoesInboxClient({
                           <DataField label="Classe" value={selectedData.classes?.nome || '—'} />
                           <DataField label="Ano Letivo" value={selectedData.ano_letivo?.toString() || '—'} />
                           {selectedData.status === 'aguardando_pagamento' && (
-                            <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1 flex items-center gap-1">
+                            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-100 dark:border-amber-500/25">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1">
                                 <Timer size={10} />
                                 Reserva Expira em
                               </p>
-                              <p className="text-sm font-bold text-amber-900">
+                              <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
                                 {getReservaExpiraAt(selectedData)
                                   ? format(new Date(getReservaExpiraAt(selectedData) as string), "dd/MM/yyyy HH:mm")
                                   : 'Data não definida'}
@@ -1606,9 +1720,12 @@ export default function AdmissoesInboxClient({
                         </div>
                       </section>
 
+                      </>)}
+                      {detailTab === 'documentos' && (
+                      <>
                       {/* Documentos */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <FileText className="h-4 w-4" />
                           Documentos Anexados
                         </h3>
@@ -1617,16 +1734,16 @@ export default function AdmissoesInboxClient({
                             documentEntries.map(([name, path]) => (
                               <div
                                 key={name}
-                                className="group relative w-24 h-32 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden hover:border-amber transition-all"
+                                className="group relative w-24 h-32 bg-muted rounded-xl border border-border overflow-hidden hover:border-amber transition-all"
                               >
                                 <button
                                   type="button"
                                   onClick={() => handleViewDoc(name, path as string)}
                                   className="absolute inset-0 flex items-center justify-center"
                                 >
-                                  <FileText className="h-8 w-8 text-slate-300" />
+                                  <FileText className="h-8 w-8 text-muted-foreground" />
                                 </button>
-                                <div className="absolute bottom-0 inset-x-0 p-2 bg-white/90 text-[8px] font-bold text-center truncate uppercase">
+                                <div className="absolute inset-x-0 bottom-0 truncate bg-card/90 p-2 text-center text-[8px] font-bold uppercase text-foreground">
                                   {name.replace('_', ' ')}
                                 </div>
                                 <button
@@ -1639,14 +1756,14 @@ export default function AdmissoesInboxClient({
                               </div>
                             ))
                           ) : (
-                            <div className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-slate-200 rounded-xl text-slate-400">
+                            <div className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border rounded-xl text-muted-foreground">
                               <FileText className="h-8 w-8 mb-2 opacity-50" />
                               <p className="text-xs">Nenhum documento anexado</p>
                             </div>
                           )}
                         </div>
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                          <p className="text-xs text-slate-500">
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                          <p className="text-xs text-muted-foreground">
                             Se houver documento inválido ou ausente, envie a pendência para o Cofre do candidato.
                           </p>
                           {canRequestDocumentCorrection(selectedData.status) && (
@@ -1654,7 +1771,7 @@ export default function AdmissoesInboxClient({
                               type="button"
                               onClick={openPendenciasModal}
                               disabled={!!loadingAction}
-                              className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                              className="inline-flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 disabled:opacity-50"
                             >
                               <AlertCircle className="h-4 w-4" />
                               Solicitar correção
@@ -1663,9 +1780,13 @@ export default function AdmissoesInboxClient({
                         </div>
                       </section>
 
+                      </>
+                      )}
+                      {detailTab === 'historico' && (
+                      <>
                       {/* Histórico de Pendências */}
-                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:col-span-2">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           Histórico de Pendências
                         </h3>
@@ -1674,19 +1795,19 @@ export default function AdmissoesInboxClient({
                             {selectedData.pendencias_historico.map((item) => {
                               const description = describeHistoryItem(item)
                               return (
-                                <div key={item.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                                <div key={item.id} className="rounded-xl border border-border bg-muted/40 p-4">
                                   <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <p className="text-sm font-bold text-slate-900">{description.title}</p>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                    <p className="text-sm font-bold text-foreground">{description.title}</p>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                       {formatLogDate(item.created_at)}
                                     </span>
                                   </div>
-                                  <p className="mt-2 text-xs leading-relaxed text-slate-600">{description.detail}</p>
-                                  <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{description.detail}</p>
+                                  <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                     Por {describeHistoryActor(item)}
                                   </p>
                                   {item.from_status || item.to_status ? (
-                                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                       {item.from_status || '—'} → {item.to_status || '—'}
                                     </p>
                                   ) : null}
@@ -1695,108 +1816,82 @@ export default function AdmissoesInboxClient({
                             })}
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400">
+                          <div className="rounded-xl border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
                             Nenhuma pendência documental registada.
                           </div>
                         )}
                       </section>
+                      </>
+                      )}
+                    </div>
                     </div>
                   </div>
 
-                  {/* Barra de Ação Sticky Bottom */}
-                  <div className="absolute bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-md border-t border-slate-200 flex items-center justify-end gap-4 z-10">
-                    {canReopenAdmission(selectedData.status) && (
-                      <button
-                        onClick={handleReopen}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-2 px-6 py-4 bg-white border-2 border-slate-900 text-slate-900 rounded-2xl font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
-                      >
-                        {loadingAction === 'reopening' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                        Reabrir Candidatura
-                      </button>
-                    )}
-
-                    {canArchiveAdmission(selectedData.status) && (
-                      <button
-                        onClick={handleArchive}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-2 px-6 py-4 border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
-                      >
-                        {loadingAction === 'archiving' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-                        Arquivar
-                      </button>
-                    )}
-
-                    {canRejectAdmission(selectedData.status) && (
-                      <button
-                        onClick={handleReject}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-2 px-6 py-4 border border-red-200 text-red-600 rounded-2xl font-bold hover:bg-red-50 transition-all disabled:opacity-50"
-                      >
-                        {loadingAction === 'rejecting' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                        Rejeitar
-                      </button>
-                    )}
-
-                    {selectedData.status === 'pre_candidatura' && (
-                      <button
-                        onClick={openPromoteModal}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-600/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        {loadingAction === 'promoting' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <School className="h-5 w-5" />}
-                        Promover para candidatura
-                      </button>
-                    )}
-
-                    {selectedData.status === 'documentos_reenviados' && (
-                      <button
-                        onClick={handleAcceptReuploadedDocuments}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
-                      >
-                        {loadingAction === 'accepting_documents' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-                        Aceitar Documentos
-                      </button>
-                    )}
-
-                    {canApproveAdmission(selectedData.status) && (
-                      <button
-                        onClick={handleApprove}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-amber/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
-                      >
-                        {loadingAction === 'approving' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-                        Aprovar Candidatura
-                      </button>
-                    )}
-
-                    {canConvertAdmission(selectedData.status) && (
-                      <button
-                        onClick={() => setIsConversionOpen(true)}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-amber/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
-                      >
-                        <Check className="h-5 w-5" />
-                        {getConversionActionLabel(selectedData.status)}
-                      </button>
-                    )}
+                  {/* Uma única próxima ação principal; outras decisões continuam explícitas */}
+                  <div className="absolute inset-x-0 bottom-0 z-10 border-t border-border bg-card/95 p-3 backdrop-blur">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {canRequestDocumentCorrection(selectedData.status) && (
+                        <button type="button" onClick={openPendenciasModal} disabled={!!loadingAction}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted disabled:opacity-50">
+                          <FileText className="h-4 w-4" />
+                          Pedir ajustes
+                        </button>
+                      )}
+                      {(canReopenAdmission(selectedData.status) || canArchiveAdmission(selectedData.status) || canRejectAdmission(selectedData.status)) && (
+                        <details className="group relative">
+                          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber">
+                            Mais ações <ChevronRight className="h-3.5 w-3.5 rotate-90" />
+                          </summary>
+                          <div className="absolute bottom-full right-0 z-20 mb-2 flex w-48 flex-col gap-1 rounded-xl border border-border bg-card p-2 shadow-xl">
+                            {canReopenAdmission(selectedData.status) && (
+                              <button type="button" onClick={handleReopen} disabled={!!loadingAction}
+                                className="rounded-lg px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+                                Reabrir candidatura
+                              </button>
+                            )}
+                            {canArchiveAdmission(selectedData.status) && (
+                              <button type="button" onClick={handleArchive} disabled={!!loadingAction}
+                                className="rounded-lg px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+                                Arquivar candidatura
+                              </button>
+                            )}
+                            {canRejectAdmission(selectedData.status) && (
+                              <button type="button" onClick={handleReject} disabled={!!loadingAction}
+                                className="rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10">
+                                Rejeitar candidatura
+                              </button>
+                            )}
+                          </div>
+                        </details>
+                      )}
+                      {selectedNextStep && (
+                        <button type="button" onClick={handleNextAction} disabled={!!loadingAction}
+                          aria-label={selectedNextStep.actionLabel}
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-amber px-4 py-2 text-xs font-semibold text-amber-950 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-50">
+                          {loadingAction ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+                          {selectedNextStep.actionLabel}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </>
               ) : null}
             </motion.div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-12 text-center">
-              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                <Mail className="h-10 w-10 text-slate-300" />
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-12 text-center">
+              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+                <Mail className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-bold text-slate-600">Selecione uma candidatura</h3>
-              <p className="mt-2 max-w-xs">Escolha um item na fila de espera para ver o raio-x detalhado e processar a matrícula.</p>
+              <h3 className="text-xl font-bold text-muted-foreground">Selecione uma candidatura</h3>
+              <p className="mt-2 max-w-xs">Escolha uma candidatura na fila para consultar os dados, documentos, histórico e ações disponíveis.</p>
             </div>
           )}
         </AnimatePresence>
       </div>
 
+      {/* Portais de diálogo acima do modal do Workspace, sem herdar o seu empilhamento */}
+      {typeof document !== 'undefined' && createPortal(
+        <>
       {/* Modal de Promoção em Lote */}
       <AnimatePresence>
         {isBulkPromoteOpen && (
@@ -1804,33 +1899,33 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             onClick={() => setIsBulkPromoteOpen(false)}
           >
             <motion.div
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
-              className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+              className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="border-b border-slate-200 p-6">
+              <div className="border-b border-border p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
                       Operação em lote
                     </p>
-                    <h3 className="mt-1 text-xl font-bold text-slate-900">
+                    <h3 className="mt-1 text-xl font-bold text-foreground">
                       Promover pré-candidaturas
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       Reveja os candidatos selecionados e escolha a turma oficial que receberá o lote.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsBulkPromoteOpen(false)}
-                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -1838,31 +1933,31 @@ export default function AdmissoesInboxClient({
               </div>
 
               <div className="max-h-[62vh] space-y-5 overflow-y-auto p-6">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-xl border border-border bg-muted/50 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-bold text-slate-900">
+                    <p className="text-sm font-bold text-foreground">
                       {bulkSelectedItems.length} pré-candidatura(s) selecionada(s)
                     </p>
                     <button
                       type="button"
                       onClick={() => setBulkSelectedIds(new Set())}
-                      className="text-xs font-bold text-slate-500 hover:text-slate-800"
+                      className="text-xs font-bold text-muted-foreground hover:text-foreground"
                     >
                       Limpar seleção
                     </button>
                   </div>
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {bulkSelectedItems.slice(0, 8).map((item) => (
-                      <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-xs">
-                        <p className="font-bold text-slate-900">{item.nome_candidato}</p>
-                        <p className="text-slate-500">
+                      <div key={item.id} className="rounded-lg bg-card px-3 py-2 text-xs">
+                        <p className="font-bold text-foreground">{item.nome_candidato}</p>
+                        <p className="text-muted-foreground">
                           {item.dados_candidato?.interesse?.curso_nome || item.cursos?.nome || 'Nível não informado'}
                         </p>
                       </div>
                     ))}
                   </div>
                   {bulkSelectedItems.length > 8 && (
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-muted-foreground">
                       +{bulkSelectedItems.length - 8} outros selecionados.
                     </p>
                   )}
@@ -1871,16 +1966,16 @@ export default function AdmissoesInboxClient({
                 {bulkPromotionReport && (
                   <div className={`rounded-xl border p-4 ${
                     bulkPromotionReport.failures.length > 0
-                      ? 'border-amber-200 bg-amber-50'
-                      : 'border-emerald-200 bg-emerald-50'
+                      ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10'
+                      : 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10'
                   }`}>
                     <p className={`text-sm font-bold ${
-                      bulkPromotionReport.failures.length > 0 ? 'text-amber-900' : 'text-emerald-900'
+                      bulkPromotionReport.failures.length > 0 ? 'text-amber-900 dark:text-amber-200' : 'text-emerald-900 dark:text-emerald-200'
                     }`}>
                       Relatório do lote
                     </p>
                     <p className={`mt-1 text-xs ${
-                      bulkPromotionReport.failures.length > 0 ? 'text-amber-800' : 'text-emerald-800'
+                      bulkPromotionReport.failures.length > 0 ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'
                     }`}>
                       {bulkPromotionReport.promoted} promovida(s), {bulkPromotionReport.failures.length} não promovida(s).
                     </p>
@@ -1889,9 +1984,9 @@ export default function AdmissoesInboxClient({
                         {bulkPromotionReport.failures.map((failure) => {
                           const item = filteredItems.find((candidate) => candidate.id === failure.candidatura_id)
                           return (
-                            <div key={failure.candidatura_id} className="rounded-lg bg-white px-3 py-2 text-xs">
-                              <p className="font-bold text-slate-900">{item?.nome_candidato || failure.candidatura_id}</p>
-                              <p className="text-amber-700">{failure.error}</p>
+                            <div key={failure.candidatura_id} className="rounded-lg bg-card px-3 py-2 text-xs">
+                              <p className="font-bold text-foreground">{item?.nome_candidato || failure.candidatura_id}</p>
+                              <p className="text-amber-700 dark:text-amber-300">{failure.error}</p>
                             </div>
                           )
                         })}
@@ -1901,11 +1996,11 @@ export default function AdmissoesInboxClient({
                 )}
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Turma oficial
                   </span>
                   {loadingBulkPromoteTurmas ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       A carregar turmas...
                     </div>
@@ -1913,7 +2008,7 @@ export default function AdmissoesInboxClient({
                     <select
                       value={bulkPromoteTurmaId}
                       onChange={(event) => setBulkPromoteTurmaId(event.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                     >
                       <option value="">Selecionar turma...</option>
                       {bulkPromoteTurmas.map((turma) => (
@@ -1926,7 +2021,7 @@ export default function AdmissoesInboxClient({
                 </label>
 
                 {bulkPromoteTurmaId ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="rounded-xl border border-border bg-muted/50 p-4">
                     {(() => {
                       const turma = bulkPromoteTurmas.find((item) => item.id === bulkPromoteTurmaId)
                       if (!turma) return null
@@ -1942,7 +2037,7 @@ export default function AdmissoesInboxClient({
                             <DataField label="Vagas" value={turma.vagas_disponiveis.toString()} />
                           </div>
                           {insufficientCapacity && (
-                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                            <div className="rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
                               Esta turma não tem vagas suficientes para os {bulkSelectedItems.length} selecionados. Reduza o lote ou escolha outra turma.
                             </div>
                           )}
@@ -1953,20 +2048,20 @@ export default function AdmissoesInboxClient({
                 ) : null}
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Observação
                   </span>
                   <textarea
                     value={bulkPromoteObservacao}
                     onChange={(event) => setBulkPromoteObservacao(event.target.value)}
                     rows={3}
-                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                     placeholder="Ex: Lote promovido após abertura oficial do ano letivo."
                   />
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-6">
+              <div className="flex items-center justify-end gap-3 border-t border-border p-6">
                 <Button
                   type="button"
                   variant="outline"
@@ -1987,7 +2082,7 @@ export default function AdmissoesInboxClient({
                       return Boolean(turma && turma.capacidade_maxima > 0 && turma.vagas_disponiveis < bulkSelectedItems.length)
                     })()
                   }
-                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="bg-amber text-amber-950 hover:brightness-95"
                 >
                   {loadingAction === 'bulk_promoting' ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <School className="mr-2 h-4 w-4" />}
                   Promover lote
@@ -2005,33 +2100,33 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             onClick={() => setIsPromoteOpen(false)}
           >
             <motion.div
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
-              className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl"
+              className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="border-b border-slate-200 p-6">
+              <div className="border-b border-border p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
                       Pré-candidatura
                     </p>
-                    <h3 className="mt-1 text-xl font-bold text-slate-900">
+                    <h3 className="mt-1 text-xl font-bold text-foreground">
                       Promover para candidatura oficial
                     </h3>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       Escolha uma turma real do ano letivo preparado para colocar esta candidatura no funil operacional.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsPromoteOpen(false)}
-                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -2039,8 +2134,8 @@ export default function AdmissoesInboxClient({
               </div>
 
               <div className="space-y-5 p-6">
-                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-indigo-700">
+                <div className="rounded-xl border border-indigo-100 dark:border-indigo-500/25 bg-indigo-50 dark:bg-indigo-500/10 p-4">
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300">
                     Interesse original
                   </p>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -2056,11 +2151,11 @@ export default function AdmissoesInboxClient({
                 </div>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Turma oficial
                   </span>
                   {loadingPromoteTurmas ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       A carregar turmas...
                     </div>
@@ -2068,7 +2163,7 @@ export default function AdmissoesInboxClient({
                     <select
                       value={promoteTurmaId}
                       onChange={(event) => setPromoteTurmaId(event.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                     >
                       <option value="">Selecionar turma...</option>
                       {promoteTurmas.map((turma) => (
@@ -2081,7 +2176,7 @@ export default function AdmissoesInboxClient({
                 </label>
 
                 {promoteTurmaId ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="rounded-xl border border-border bg-muted/50 p-4">
                     {(() => {
                       const turma = promoteTurmas.find((item) => item.id === promoteTurmaId)
                       if (!turma) return null
@@ -2100,20 +2195,20 @@ export default function AdmissoesInboxClient({
                 ) : null}
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Observação
                   </span>
                   <textarea
                     value={promoteObservacao}
                     onChange={(event) => setPromoteObservacao(event.target.value)}
                     rows={3}
-                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                     placeholder="Ex: Promovida após abertura das turmas do novo ano."
                   />
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-6">
+              <div className="flex items-center justify-end gap-3 border-t border-border p-6">
                 <Button
                   type="button"
                   variant="outline"
@@ -2126,7 +2221,7 @@ export default function AdmissoesInboxClient({
                   type="button"
                   onClick={handlePromotePreCandidatura}
                   disabled={!promoteTurmaId || loadingPromoteTurmas || loadingAction === 'promoting'}
-                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                  className="bg-amber text-amber-950 hover:brightness-95"
                 >
                   {loadingAction === 'promoting' ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <School className="mr-2 h-4 w-4" />}
                   Promover
@@ -2144,29 +2239,29 @@ export default function AdmissoesInboxClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
             onClick={() => setViewingDoc(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl overflow-hidden w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl"
+              className="flex h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
-                <h3 className="font-bold text-slate-800 uppercase tracking-widest text-sm flex items-center gap-2">
+              <div className="flex items-center justify-between border-b border-border bg-card p-4">
+                <h3 className="font-bold text-foreground uppercase tracking-widest text-sm flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   {viewingDoc.name.replace('_', ' ')}
                 </h3>
                 <button
                   onClick={() => setViewingDoc(null)}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-muted rounded-full transition-colors"
                 >
-                  <X className="h-6 w-6 text-slate-500" />
+                  <X className="h-6 w-6 text-muted-foreground" />
                 </button>
               </div>
-              <div className="flex-1 bg-slate-100">
+              <div className="flex-1 bg-muted">
                 {(() => {
                   try {
                     const urlObj = new URL(viewingDoc.url);
@@ -2205,7 +2300,7 @@ export default function AdmissoesInboxClient({
                   );
                 })()}
               </div>
-              <div className="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
+              <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/50">
                 <Button variant="outline" onClick={() => window.open(viewingDoc.url, '_blank')}>
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Abrir em nova aba
@@ -2222,7 +2317,7 @@ export default function AdmissoesInboxClient({
       <AnimatePresence>
         {isPendenciasOpen && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2231,19 +2326,19 @@ export default function AdmissoesInboxClient({
               initial={{ scale: 0.96, y: 16 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.96, y: 16 }}
-              className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl"
+              className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-2xl"
             >
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+              <div className="flex items-start justify-between gap-4 border-b border-border p-6">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Documentação Pendente</h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <h3 className="text-lg font-black text-foreground">Documentação Pendente</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Selecione documentos do catálogo oficial. Prazo padrão para correção: {pendenciaSlaHoras}h.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsPendenciasOpen(false)}
-                  className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -2251,32 +2346,32 @@ export default function AdmissoesInboxClient({
 
               <div className="max-h-[65vh] space-y-4 overflow-y-auto p-6">
                 {pendingDraft.map((item, index) => (
-                  <div key={`${item.id}-${index}`} className="rounded-2xl border border-slate-200 p-4">
+                  <div key={`${item.id}-${index}`} className="rounded-xl border border-border p-4">
                     <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
                         checked={item.selected}
                         onChange={(event) => updatePendingDraft(index, { selected: event.target.checked })}
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600"
+                        className="mt-1 h-4 w-4 rounded border-border text-amber-700 dark:text-amber-300"
                       />
                       <div className="grid flex-1 gap-3">
                         <label className="grid gap-1">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Documento</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Documento</span>
                           <input
                             value={item.label}
                             onChange={(event) => updatePendingDraft(index, { label: event.target.value })}
                             disabled={!item.custom}
-                            className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-amber-400"
+                            className="h-10 rounded-xl border border-border px-3 text-sm font-semibold text-foreground outline-none focus:border-amber-400"
                           />
                         </label>
                         <label className="grid gap-1">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Motivo para o candidato</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Motivo para o candidato</span>
                           <textarea
                             value={item.motivo}
                             onChange={(event) => updatePendingDraft(index, { motivo: event.target.value })}
                             rows={2}
                             placeholder="Ex: imagem ilegível, documento vencido, falta verso do BI"
-                            className="resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-400"
+                            className="resize-none rounded-xl border border-border px-3 py-2 text-sm text-foreground outline-none focus:border-amber-400"
                           />
                         </label>
                       </div>
@@ -2287,25 +2382,25 @@ export default function AdmissoesInboxClient({
                 <button
                   type="button"
                   onClick={addCustomPendingDocument}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-muted"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar documento em falta
                 </button>
 
                 <label className="grid gap-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Observação interna</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Observação interna</span>
                   <textarea
                     value={pendingGeneralMotivo}
                     onChange={(event) => setPendingGeneralMotivo(event.target.value)}
                     rows={2}
                     placeholder="Opcional. Fica no histórico interno da candidatura."
-                    className="resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-400"
+                    className="resize-none rounded-xl border border-border px-3 py-2 text-sm text-foreground outline-none focus:border-amber-400"
                   />
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 p-5">
+              <div className="flex justify-end gap-3 border-t border-border bg-muted/50 p-5">
                 <Button variant="outline" onClick={() => setIsPendenciasOpen(false)}>
                   Cancelar
                 </Button>
@@ -2317,14 +2412,19 @@ export default function AdmissoesInboxClient({
           </motion.div>
         )}
       </AnimatePresence>
+        </>,
+        document.body
+      )}
 
-      <AdmissaoConversionSheet
+      {isConversionOpen && <AdmissaoConversionSheet
         isOpen={isConversionOpen}
+        elevated={inModal}
         onClose={handleCloseConversion}
         candidaturaId={selectedId}
         escolaId={escolaId}
+        onSaved={handleConversionSaved}
         onSuccess={handleConversionSuccess}
-      />
+      />}
     </div>
   )
 }
@@ -2332,9 +2432,9 @@ export default function AdmissoesInboxClient({
 function DataField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{label}</p>
-      <div className="flex items-center gap-2 text-slate-800 font-medium">
-        {icon && <span className="text-slate-400">{icon}</span>}
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2 break-words text-sm font-medium text-foreground">
+        {icon && <span className="text-muted-foreground">{icon}</span>}
         {value}
       </div>
     </div>
