@@ -649,7 +649,7 @@ BEGIN
     'status_corrigido',v_fixed,'snapshot_status','aberto',
     'proximo_passo','Confirmar documentação e fechar histórico pelo fluxo oficial');
 END;
-$function$
+$function$;
 
 
 
