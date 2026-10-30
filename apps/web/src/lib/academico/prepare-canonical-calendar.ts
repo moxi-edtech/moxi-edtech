@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   buildCanonicalMedCalendarPlan,
   buildCanonicalMedCalendarSkeleton,
+  deriveCanonicalMedCourseSelections,
   CanonicalCalendarError,
   type CanonicalMedCalendar,
   type MedCourseProfile,
@@ -61,14 +62,17 @@ export async function prepareCanonicalMedCalendar(input: {
     ...offering, course_type: offering.course_id ? courseTypeById.get(offering.course_id) ?? null : null,
   }));
 
-  // By default reuse the school's already installed course/profile bindings
-  // if they belong to the requested year. Never select a foreign profile.
-  const selections = input.selections ?? offerings.map((offering) => ({
-    offering_id: offering.id,
-    template_id: String((offering as MedCourseOffering & { calendar_profile_id?: string }).calendar_profile_id ?? ""),
-  }));
+  // An offering's calendar_profile_id is only a compatibility pointer for
+  // the active year. Future-year selections come from the official profiles
+  // for the target year, preserving existing academic year bindings.
   let plan: ReturnType<typeof buildCanonicalMedCalendarPlan>;
   try {
+    const selections = input.selections ??
+      deriveCanonicalMedCourseSelections({
+        calendar,
+        profiles: (profilesResult.data ?? []) as MedCourseProfile[],
+        offerings: enrichedOfferings,
+      });
     // The initial onboarding step precedes course installation. Create only
     // the canonical year/terms, then apply course events during finalization.
     plan = offerings.length === 0 && input.allowEmptyOfferings
