@@ -206,10 +206,10 @@ export default function BalcaoPageClient({
       }
       trailing={<AcademicYearSelector escolaId={escolaId} />}
     >
-      <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={caixaRefreshKey} />
+      {activeAction !== "admissions" && <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={caixaRefreshKey} />}
 
       <section className="mt-4 min-w-0 pb-2">
-        {selectedAlunoId || activeAction === "enrollment" ? (
+        {selectedAlunoId || activeAction === "enrollment" || activeAction === "admissions" ? (
           <RetainedActionPanels
             key={`${userScope}:${escolaId}:${searchParams?.get("polo_id") ?? "-"}:${selectedAlunoId ?? "-"}:${atendimentoKey}`}
             activeAction={activeAction}

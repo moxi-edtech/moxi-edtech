@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import {
   BriefcaseBusiness,
+  Inbox,
   CreditCard,
   FileText,
   RefreshCcw,
@@ -18,6 +19,7 @@ import {
 
 const ACTION_ICONS = {
   desk: BriefcaseBusiness,
+  admissions: Inbox,
   payment: CreditCard,
   document: FileText,
   reenrollment: RefreshCcw,

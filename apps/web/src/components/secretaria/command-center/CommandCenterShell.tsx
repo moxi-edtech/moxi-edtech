@@ -55,10 +55,10 @@ export function CommandCenterShell({
               </p>
             </div>
             <h1 className="mt-1 truncate text-lg font-black text-foreground">
-              {activeAction === "enrollment" ? "Nova matrícula" : (student?.label || "Atendimento")}
+              {activeAction === "enrollment" ? "Nova matrícula" : activeAction === "admissions" ? "Admissões" : (student?.label || "Atendimento")}
             </h1>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {(activeAction === "enrollment" ? action.description : student?.subtitle) || (student || activeAction === "enrollment"
+              {(activeAction === "enrollment" || activeAction === "admissions" ? action.description : student?.subtitle) || (student || activeAction === "enrollment" || activeAction === "admissions"
                 ? action.description
                 : "Pesquise um aluno para iniciar um atendimento.")}
             </p>
@@ -66,7 +66,7 @@ export function CommandCenterShell({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {student && activeAction !== "enrollment" && onSwitchStudent ? (
+          {student && activeAction !== "enrollment" && activeAction !== "admissions" && onSwitchStudent ? (
             <button
               type="button"
               onClick={onSwitchStudent}
@@ -110,7 +110,7 @@ export function CommandCenterShell({
       <CommandCenterActionBar
         value={activeAction}
         onChange={onActionChange}
-        label={activeAction === "enrollment" ? "Novo atendimento" : student ? "Atendimento" : "Iniciar"}
+        label={activeAction === "enrollment" ? "Novo atendimento" : activeAction === "admissions" ? "Candidaturas" : student ? "Atendimento" : "Iniciar"}
         hasStudent={Boolean(student)}
         pendingActions={pendingActions}
       />
@@ -123,7 +123,7 @@ export function CommandCenterShell({
         className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:p-5"
         role="dialog"
         aria-modal="true"
-        aria-label={`KLASSE · Central de atendimento — ${activeAction === "enrollment" ? "Nova matrícula" : student?.label || "Atendimento"}`}
+        aria-label={`KLASSE · Central de atendimento — ${activeAction === "enrollment" ? "Nova matrícula" : activeAction === "admissions" ? "Admissões" : student?.label || "Atendimento"}`}
       >
         <button
           type="button"

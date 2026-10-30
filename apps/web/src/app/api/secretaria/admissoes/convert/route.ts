@@ -7,6 +7,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { recordAuditServer } from '@/lib/audit';
 import { emitirComprovanteMatricula } from '@/lib/documentos/emitirComprovanteMatricula';
 import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from '@/lib/roles';
+import { inspectDecreeSync } from '@/lib/academic-calendar/decree-sync-server';
 import type { Json } from '~types/supabase';
 // import { enqueueOutboxEvent } from '@/lib/outbox';
 
@@ -216,7 +217,7 @@ export async function POST(request: Request) {
   try {
     const { data: candidatura, error: candError } = await supabase
         .from('candidaturas')
-        .select('escola_id, status, matricula_id, aluno_id, dados_candidato')
+        .select('escola_id, ano_letivo, status, matricula_id, aluno_id, dados_candidato')
         .eq('id', candidatura_id)
         .single();
 
@@ -225,38 +226,8 @@ export async function POST(request: Request) {
     }
 
     escolaIdContext = candidatura.escola_id as string;
-    const statusAtual = String(candidatura.status ?? "").toLowerCase();
-    if (statusAtual === "pre_candidatura") {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Pré-candidatura ainda não pode ser convertida em matrícula. Primeiro transforme-a em candidatura formal para um ano letivo e turma.",
-          code: "PRE_CANDIDATURA_NOT_CONVERTIBLE",
-        },
-        { status: 400 }
-      );
-    }
 
-    if (statusAtual === "matriculado" && candidatura.matricula_id) {
-      let numeroMatricula: string | null = null;
-      const { data: matricula } = await supabase
-        .from("matriculas")
-        .select("numero_matricula")
-        .eq("id", candidatura.matricula_id)
-        .eq("escola_id", candidatura.escola_id)
-        .maybeSingle();
-      numeroMatricula = (matricula?.numero_matricula as string | null) ?? null;
-
-      return NextResponse.json({
-        ok: true,
-        idempotent: true,
-        message: "Matrícula já havia sido finalizada.",
-        matricula_id: candidatura.matricula_id,
-        aluno_id: candidatura.aluno_id,
-        numero_matricula: numeroMatricula,
-      });
-    }
-
+    // Autorizar antes de devolver qualquer dado de matrícula já concluída.
   // 2. Authorize
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
@@ -274,6 +245,52 @@ export async function POST(request: Request) {
   });
     if (authError) return authError;
 
+
+    const statusAtual = String(candidatura.status ?? "").toLowerCase();
+    if (statusAtual === "pre_candidatura") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Pré-candidatura ainda não pode ser convertida em matrícula. Primeiro transforme-a em candidatura formal para um ano letivo e turma.",
+          code: "PRE_CANDIDATURA_NOT_CONVERTIBLE",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (statusAtual === "matriculado" && candidatura.matricula_id) {
+      let numeroMatricula: string | null = null;
+      const { data: matricula } = await supabase
+        .from("matriculas")
+        .select("numero_matricula, turma_id")
+        .eq("id", candidatura.matricula_id)
+        .eq("escola_id", candidatura.escola_id)
+        .maybeSingle();
+      if (!matricula) {
+        return NextResponse.json({
+          ok: false, code: "ADMISSION_MATRICULA_NOT_FOUND",
+          error: "A candidatura indica matrícula concluída, mas o vínculo não foi encontrado. Consulte o histórico do aluno.",
+        }, { status: 409 });
+      }
+      if (matricula.turma_id && matricula.turma_id !== turma_id) {
+        return NextResponse.json({
+          ok: false, code: "ADMISSION_ALREADY_MATRICULATED_OTHER_CLASS",
+          error: "Esta candidatura já foi matriculada noutra turma. Consulte a matrícula existente antes de alterar o destino.",
+          matricula_id: candidatura.matricula_id,
+        }, { status: 409 });
+      }
+      numeroMatricula = (matricula.numero_matricula as string | null) ?? null;
+
+      return NextResponse.json({
+        ok: true,
+        idempotent: true,
+        message: "Matrícula já havia sido finalizada.",
+        matricula_id: candidatura.matricula_id,
+        aluno_id: candidatura.aluno_id,
+        numero_matricula: numeroMatricula,
+      });
+    }
+
     // Idempotência canônica: se já temos resultado persistido para esta chave/scope, devolvemos.
     if (idempotencyKey) {
       const { data: existingIdempotency } = await supabase
@@ -285,7 +302,74 @@ export async function POST(request: Request) {
         .maybeSingle();
       const idempotencyResult = existingIdempotency?.result ?? null;
       if (isJsonObject(idempotencyResult)) {
+        if (
+          (typeof idempotencyResult.candidatura_id === 'string' &&
+            idempotencyResult.candidatura_id !== candidatura_id) ||
+          (typeof idempotencyResult.turma_id === 'string' &&
+            idempotencyResult.turma_id !== turma_id)
+        ) {
+          return NextResponse.json({
+            ok: false,
+            code: "ADMISSION_IDEMPOTENCY_SCOPE_MISMATCH",
+            error: "A chave de operação já está vinculada a outra candidatura ou turma.",
+          }, { status: 409 });
+        }
         return NextResponse.json(idempotencyResult);
+      }
+    }
+
+    // Só avançar na matrícula se o calendário do ano da turma estiver
+    // sincronizado com os perfis oficiais. Nenhuma correção é executada aqui.
+    const { data: targetTurma, error: targetTurmaError } = await supabase
+      .from("turmas")
+      .select("id,ano_letivo,ano_letivo_id")
+      .eq("id", turma_id)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+    if (targetTurmaError) throw targetTurmaError;
+    if (!targetTurma) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CALENDAR_YEAR_MISMATCH",
+        error: "A turma seleccionada não está disponível nesta escola.",
+      }, { status: 409 });
+    }
+    // The turma's legacy ano_letivo is nullable. Resolve the official year
+    // from ano_letivo_id before inspecting decree synchronization; never
+    // treat an absent year as zero or skip the academic calendar gate.
+    const { data: destinationYear, error: destinationYearError } = targetTurma.ano_letivo_id
+      ? await supabase.from("anos_letivos")
+          .select("ano")
+          .eq("id", targetTurma.ano_letivo_id)
+          .eq("escola_id", escolaId)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (destinationYearError) throw destinationYearError;
+    const targetYear = destinationYear?.ano ?? targetTurma.ano_letivo;
+    if (targetYear == null || !Number.isInteger(targetYear) ||
+        (targetTurma.ano_letivo != null && destinationYear?.ano != null &&
+          targetTurma.ano_letivo !== destinationYear.ano)) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CALENDAR_YEAR_MISMATCH",
+        error: "Não foi possível confirmar o ano letivo da turma selecionada.",
+        details: "Confirme o vínculo entre a turma e o ano letivo antes de finalizar a matrícula.",
+      }, { status: 409 });
+    }
+    if (candidatura.ano_letivo != null && targetYear !== candidatura.ano_letivo) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_CALENDAR_YEAR_MISMATCH",
+        error: "A turma seleccionada pertence a outro ano letivo.",
+        details: "Selecione uma turma do ano da candidatura no próprio Balcão.",
+      }, { status: 409 });
+    }
+    if (targetYear >= 2026) {
+      const decreeHealth = await inspectDecreeSync(supabase as any, escolaId, targetYear);
+      if (!decreeHealth.ok) {
+        return NextResponse.json({
+          ok: false, code: "ACADEMIC_CALENDAR_NOT_CONFIGURED",
+          error: "O calendário do ano letivo não está sincronizado com a fonte oficial.",
+          details: "A candidatura foi preservada. A direcção deve reconciliar o calendário oficial antes de finalizar.",
+          diagnostics: decreeHealth.issues.filter((issue) => issue.severity === "blocker").map((issue) => issue.code),
+        }, { status: 409 });
       }
     }
 
