@@ -216,7 +216,7 @@ export function ConfigStep({
       }
       await loadSessions();
       setSelectedTarget(json.target_session.id);
-      success("Calendário oficial aplicado ao ano; os cursos mantêm os seus perfis.");
+      success("Ano preparado com os perfis MED dos cursos. O calendário atual permanece inalterado até à virada.");
     } catch {
       error("Não foi possível preparar o ano letivo.");
     } finally {
@@ -436,7 +436,7 @@ export function ConfigStep({
                       loading={creatingTarget}
                       disabled={!selectedCalendarYear || offerings.length === 0 ||
                         offerings.some((offering) => !resolveProfile(offering))}>
-                      Criar ano com calendário oficial
+                      Preparar ano com calendário oficial
                     </Button>
                   </div>
                 ) : templates.length > 0 ? (
@@ -456,7 +456,7 @@ export function ConfigStep({
                   </div>
                 ) : (
                   <p className="text-xs font-semibold text-rose-700">
-                    Nenhum calendário oficial foi publicado. Solicite a publicação à administração.
+                    O MED ainda não publicou um calendário para o próximo ano letivo. O ano atual continua disponível; a virada só será liberada após a publicação.
                   </p>
                 )}
               </div>
