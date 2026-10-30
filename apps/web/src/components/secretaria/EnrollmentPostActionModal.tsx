@@ -43,6 +43,9 @@ export function EnrollmentPostActionModal({
   const [periodo, setPeriodo] = useState("");
   const [periodos, setPeriodos] = useState<GradePeriodOption[]>([]);
   const [periodLoading, setPeriodLoading] = useState(false);
+  const [periodRetry, setPeriodRetry] = useState(0);
+  const [pautaRetry, setPautaRetry] = useState(0);
+  const [yearRetry, setYearRetry] = useState(0);
   const [periodError, setPeriodError] = useState<string | null>(null);
   const [periodReadOnly, setPeriodReadOnly] = useState(false);
   const [nota, setNota] = useState("");
@@ -106,7 +109,7 @@ export function EnrollmentPostActionModal({
         if (active) setAcademicYearError("Não foi possível identificar o ano letivo ativo.");
       });
     return () => { active = false; };
-  }, [action, escolaId, open, originAnoLetivoId]);
+  }, [action, escolaId, open, originAnoLetivoId, yearRetry]);
 
   useEffect(() => {
     let active = true;
@@ -125,7 +128,9 @@ export function EnrollmentPostActionModal({
       .then(async (response) => {
         const payload = await response.json();
         if (!response.ok || !payload.ok || !Array.isArray(payload.items)) {
-          throw new Error(payload.error || "Não foi possível identificar os trimestres deste ano.");
+          throw new Error(payload.code === "OFFICIAL_CALENDAR_NOT_RECONCILED"
+            ? "O calendário MED deste ano precisa de sincronização pela direção."
+            : payload.error || "Não foi possível identificar os trimestres deste ano.");
         }
         return payload;
       })
@@ -143,7 +148,7 @@ export function EnrollmentPostActionModal({
       })
       .finally(() => { if (active) setPeriodLoading(false); });
     return () => { active = false; };
-  }, [action, alunoId, academicYearId, open, turmaId, turmaDisciplinaId]);
+  }, [action, alunoId, academicYearId, open, turmaId, turmaDisciplinaId, periodRetry]);
 
   useEffect(() => {
     if (!open || action !== "notas" || !turmaId) return;
@@ -192,7 +197,7 @@ export function EnrollmentPostActionModal({
         if (active) setNotaContextError(error instanceof Error ? error.message : "Não foi possível confirmar a pauta.");
       });
     return () => { active = false; };
-  }, [action, academicYearId, alunoId, disciplinaId, open, periodo, turmaDisciplinaId, turmaId]);
+  }, [action, academicYearId, alunoId, disciplinaId, open, periodo, turmaDisciplinaId, turmaId, pautaRetry]);
 
   const lancarNota = async () => {
     const selected = disciplinas.find((item) => item.disciplina?.id === disciplinaId);
@@ -290,15 +295,41 @@ export function EnrollmentPostActionModal({
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Lançar nota na turma e no ano letivo da matrícula de origem de {alunoNome}.</p>
             {!turmaId && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">A turma desta matrícula não foi identificada.</p>}
-            {academicYearError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{academicYearError}</p>}
-            {notaContextError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{notaContextError}</p>}
+            {academicYearError && (
+              <div role="alert" className="space-y-2 rounded-xl border border-border bg-card p-3 text-sm text-foreground">
+                <p>{academicYearError}</p>
+                <button type="button" onClick={() => setYearRetry((value) => value + 1)}
+                  className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">
+                  Verificar ano letivo novamente
+                </button>
+              </div>
+            )}
+            {notaContextError && (
+              <div role="alert" className="space-y-2 rounded-xl border border-border bg-card p-3 text-sm text-foreground">
+                <p>{notaContextError}</p>
+                <button type="button" onClick={() => setPautaRetry((value) => value + 1)}
+                  className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">
+                  Atualizar pauta nesta ficha
+                </button>
+              </div>
+            )}
             {!academicYearId && !academicYearError && <p className="text-xs text-muted-foreground">A confirmar o ano letivo ativo...</p>}
-            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={!turmaId || loading}>
+            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={!turmaId || loading}>
               <option value="">Selecionar disciplina</option>
               {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
             </select>
             {periodLoading && <p role="status" className="text-xs text-muted-foreground">A confirmar o trimestre da matrícula...</p>}
-            {periodError && <p role="alert" className="text-sm text-red-700">{periodError}</p>}
+            {periodError && (
+              <div role="alert" className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-foreground">
+                <p>{periodError}</p>
+                <p className="text-xs">A matrícula permanece selecionada. Se persistir, a direção deve rever a sincronização do decreto.</p>
+                <button type="button" onClick={() => setPeriodRetry((value) => value + 1)}
+                  disabled={periodLoading}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
+                  Verificar trimestres novamente
+                </button>
+              </div>
+            )}
             {periodReadOnly && <p role="status" className="text-xs text-muted-foreground">Este ano letivo está encerrado. Consulte a direção para reabertura.</p>}
             <div className="grid grid-cols-2 gap-3">
               <select aria-label="Trimestre da matrícula de origem" value={periodo}
@@ -314,7 +345,7 @@ export function EnrollmentPostActionModal({
                     item.estado === "locked" ? " · encerrado" : ""}
                 </option>)}
               </select>
-              <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" disabled={loading} />
+              <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={loading} />
             </div>
             {selectedPeriod && ["past", "locked"].includes(selectedPeriod.estado) &&
               <p role="status" className="text-xs text-muted-foreground">Este período exige autorização de reabertura para correções.</p>}
