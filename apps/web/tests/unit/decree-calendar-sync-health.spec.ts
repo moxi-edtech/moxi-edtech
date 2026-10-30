@@ -97,18 +97,19 @@ test("official year preparation persists template/item/version, and refuses edit
   assert.match(route, /source_template_id: periodTemplate\.id/);
   assert.match(route, /source_item_id: item\.id/);
   assert.match(route, /source_version: periodTemplate\.versao_documento/);
-  assert.match(route, /CALENDAR_PROVENANCE_NOT_PERSISTED/);
-  assert.match(route, /ACTIVE_YEAR_RECONCILIATION_REQUIRED/);
-  assert.match(route, /CALENDAR_PROFILES_CONFLICT/);
+  assert.match(route, /prepareCanonicalMedCalendar/);
+  assert.match(route, /CANONICAL_CALENDAR_SELECTION_REQUIRED/);
+  assert.match(route, /ACADEMIC_YEAR_CALENDAR_MISMATCH/);
+  assert.match(route, /ACADEMIC_PERIOD_LOCK_REVIEW_REQUIRED/);
 });
 
 test("legacy template application cannot overwrite active multi-offering schools silently", () => {
   const route = readFileSync("src/app/api/escola/[id]/admin/calendario/aplicar-template/route.ts", "utf8");
-  assert.match(route, /CALENDAR_MULTI_OFFERING_REQUIRED/);
-  assert.match(route, /ACTIVE_YEAR_RECONCILIATION_REQUIRED/);
-  assert.match(route, /\.eq\('is_oficial', true\)/);
-  assert.match(route, /\.eq\('estado', 'PUBLICADO'\)/);
-  assert.match(route, /source_item_id: i\.id/);
+  assert.match(route, /prepareCanonicalMedCalendar/);
+  assert.match(route, /CANONICAL_CALENDAR_SELECTION_REQUIRED/);
+  assert.match(route, /OFFICIAL_CALENDAR_REQUIRED/);
+  assert.match(route, /ACADEMIC_YEAR_CALENDAR_MISMATCH/);
+  assert.match(route, /source_item_id/);
 });
 
 test("calendar provenance RPC accepts legacy 2025 only in the absence of period items", () => {
@@ -151,26 +152,26 @@ test("student calendar is scoped by authorized pupil, active enrollment year and
   assert.match(source, /getAlunoContext\(\)/);
   assert.match(source, /resolveSelectedStudentId/);
   assert.match(source, /authorizedIds: ctx\.alunoIds/);
-  assert.match(source, /from\("matriculas"\)/);
-  assert.match(source, /\.eq\("ano_letivo", activeYear\.ano\)/);
-  assert.match(source, /\.in\("status", ACTIVE_MATRICULA_STATUSES\)/);
-  assert.match(source, /\.eq\("course_id", turma\.curso_id\)/);
+  assert.match(source, /resolveBoletimMatricula/);
+  assert.match(source, /\.eq\("escola_id", ctx\.escolaId\)/);
+  assert.match(source, /\.eq\("ano_letivo_id", context\.anoLetivoId\)/);
+  assert.match(source, /resolveCalendarOfferingForCourse/);
+  assert.match(source, /readScopedAcademicCalendarEvents/);
   assert.match(source, /selectApplicableOfficialEvents/);
   assert.match(source, /from\("calendario_template_items"\)/);
-  assert.match(source, /\.in\("template_id", templateIds\)/);
-  assert.match(source, /\.eq\("ano_letivo_id", activeYear\.id\)/);
-  assert.match(source, /timeZone: "Africa\/Luanda"/);
+  assert.match(source, /\.eq\("template_id", calendarProfileId\)/);
+  assert.match(source, /schoolCalendarDate\(new Date\(\), context\.timezone\)/);
 });
 
 test("teacher calendar isolates school events from the selected academic year", () => {
   const source = readFileSync("src/app/api/professor/calendario/route.ts", "utf8");
   assert.match(source, /resolveAcademicYearContext/);
-  assert.match(source, /from\("vw_eventos_escola_unificados"\)/);
-  assert.match(source, /\.eq\("tipo", "EVENTO_GERAL"\)/);
-  assert.match(source, /from\("calendario_eventos"\)/);
-  assert.match(source, /\.eq\("ano_letivo_id", anoLetivo\.id\)/);
-  assert.match(source, /\.eq\("escola_id", escolaId\)/);
-  assert.match(source, /items: calendarItems/);
+  assert.match(source, /readScopedAcademicCalendarEvents/);
+  assert.match(source, /resolveCalendarOfferingIdsForCourses/);
+  assert.match(source, /verifyCanonicalPeriodsRead/);
+  assert.match(source, /escolaId/);
+  assert.match(source, /anoLetivoId/);
+  assert.doesNotMatch(source, /from\("vw_eventos_escola_unificados"\)/);
 });
 
 test("other period and calendar readers use the same academic year and turma context", () => {
@@ -231,35 +232,36 @@ test("national exams without grade metadata are shown only for documented examin
 
 test("student endpoint checks turma exam-class source before publishing national exam dates", () => {
   const source = readFileSync("src/app/api/aluno/home/academic-events/route.ts", "utf8");
-  assert.match(source, /turmas!inner\(id,curso_id,classe_num,is_classe_exame\)/);
-  assert.match(source, /turma\.is_classe_exame === true/);
+  assert.match(source, /select\("curso_id,classe_num,is_classe_exame"\)/);
+  assert.match(source, /isExamClass = turma\.is_classe_exame === true/);
+  assert.match(source, /selectApplicableOfficialEvents/);
 });
 
 test("quarterly report cannot expose a period not present in its official academic year", () => {
   const source = readFileSync("src/app/api/secretaria/turmas/[id]/pauta-trimestral/route.ts", "utf8");
   assert.match(source, /assertAcademicYearEntity/);
-  assert.match(source, /\.eq\('ano_letivo_id', academicContext\.anoLetivoId\)/);
-  assert.match(source, /ACADEMIC_PERIOD_NOT_CONFIGURED/);
-  assert.match(source, /periodosRows \?\? \[\]/);
+  assert.match(source, /readVerifiedAcademicTrimesters/);
+  assert.match(source, /requireVerifiedTrimester/);
+  assert.match(source, /CanonicalPeriodReadError/);
 });
 
-test("attendance, RAA, academic closure and official report consumers retain year/period scope", () => {
+test("attendance, RAA, closure, documents and dashboards retain MED-scoped operations", () => {
   const routes: Array<[string, RegExp[]]> = [
     ["src/app/api/professor/presencas/route.ts",
-      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /from\('periodos_letivos'\)/, /ano_letivo_id/]],
+      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /readVerifiedAcademicTrimesters/, /verifiedTrimesterForDate/]],
     ["src/app/api/escola/[id]/admin/frequencias/fechar-periodo/route.ts",
-      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /from\('periodos_letivos'\)/, /ano_letivo_id/]],
+      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /readVerifiedAcademicTrimesters/, /requireVerifiedTrimester/]],
     ["src/app/api/academico/raa/reapreciacao/route.ts",
-      [/resolveAcademicYearContext/, /from\("periodos_letivos"\)/, /ano_letivo_id/]],
+      [/resolveAcademicYearContext/, /ano_letivo_id/]],
     ["src/app/api/secretaria/fechamento-academico/route.ts",
-      [/ano_letivo_id/, /periodo_letivo_id/, /from\("periodos_letivos"\)/]],
+      [/ano_letivo_id/, /periodo_letivo_id/, /readVerifiedAcademicTrimesters/]],
     ["src/app/api/secretaria/turmas/[id]/pauta-geral/oficial/route.ts",
-      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /periodos_letivos/]],
+      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /readVerifiedAcademicTrimesters/]],
     ["src/app/api/secretaria/relatorios/mapa-aproveitamento/route.ts",
-      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /periodos_letivos/]],
+      [/resolveAcademicYearContext/, /assertAcademicYearEntity/, /readVerifiedAcademicTrimesters/]],
   ];
-  for (const [path, contracts] of routes) {
-    const source = readFileSync(path, "utf8");
-    for (const contract of contracts) assert.match(source, contract, path);
+  for (const [sourcePath, contracts] of routes) {
+    const source = readFileSync(sourcePath, "utf8");
+    for (const contract of contracts) assert.match(source, contract, sourcePath);
   }
 });
