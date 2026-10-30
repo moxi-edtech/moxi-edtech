@@ -24,7 +24,8 @@
 3. A RPC `aplicar_calendario_med_canonico_v1` grava ano, períodos, eventos e vínculos. O trigger `trg_stage_med_annual_profile` guarda `school_offering_med_year_profiles` de 2027, mas preserva `calendar_profile_id` de 2026 enquanto 2026 estiver ativo.
 4. A pré-validação `med_year_cutover_preflight(escola_id,ano_letivo_id)` exige fonte oficial, três trimestres, todas as ofertas com perfil anual e eventos aplicados. Repetir é seguro quando os dados coincidem.
 5. O cutover académico existente valida pautas, matrículas, snapshots e destinos. Ao ativar 2027, o trigger `trg_guard_med_year_activation` repete a verificação MED **na transação**; o trigger posterior atualiza o ponteiro de compatibilidade para 2027.
-6. Matrículas, notas, avaliações, IDs de períodos e eventos históricos de 2026 ficam associados ao seu ano de origem, sem serem reescritos pela troca de perfil.
+6. A RPC de cutover desativa primeiro o ano antigo e ativa depois o destino, na mesma transação, respeitando o índice único de ano ativo por escola.
+7. Matrículas, notas, avaliações, IDs de períodos e eventos históricos de 2026 ficam associados ao seu ano de origem, sem serem reescritos pela troca de perfil.
 
 ## Homologação
 
@@ -44,8 +45,9 @@ Os ficheiros de código deste contrato são:
 - `20271029235928_med_year_activation_readiness.sql`
 - `20271029235929_guard_med_initial_year.sql`
 - `20271029235930_bootstrap_med_terms_on_new_school.sql`
+- `20271029235931_cutover_activate_year_order.sql`
 
-Estes cinco contratos foram aplicados ao projeto Supabase `wjtifcpxxxotsbmvbgoq` em 2026-10-30 através do conector, que registou versões **20261030103711, 20261030105217, 20261030105229, 20261030110307 e 20261030110318**. As versões no histórico remoto **não correspondem** aos nomes de migração deste branch. Não executar `supabase db push` sem reconciliar explicitamente o ledger (`supabase migration list` / `supabase migration repair` após inspeção), e sem validar a cadeia #296 → #298 → #302 → #303 → #304 → #305 em staging. O contrato MED anterior também contém versões históricas já aplicadas sob outros números.
+Estes seis contratos foram aplicados ao projeto Supabase `wjtifcpxxxotsbmvbgoq` em 2026-10-30 através do conector, que registou versões **20261030103711, 20261030105217, 20261030105229, 20261030110307, 20261030110318 e **20261030111053****. As versões no histórico remoto **não correspondem** aos nomes de migração deste branch. Não executar `supabase db push` sem reconciliar explicitamente o ledger (`supabase migration list` / `supabase migration repair` após inspeção), e sem validar a cadeia #296 → #298 → #302 → #303 → #304 → #305 em staging. O contrato MED anterior também contém versões históricas já aplicadas sob outros números.
 
 ### Estado conferido em 2026-10-30
 
