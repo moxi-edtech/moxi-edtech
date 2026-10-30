@@ -5,6 +5,7 @@ import {
 } from "../../src/lib/academico/verify-canonical-periods-read";
 import {
   readVerifiedAcademicTrimesters,
+  reportCalendarReconciliationFailure,
   requireVerifiedTrimester,
   verifiedTrimesterForDate,
 } from "../../src/lib/academico/read-verified-academic-trimesters";
@@ -128,4 +129,28 @@ test("Historical years do not require the 2026/2027 official document", async ()
   });
   assert.equal(rows.length, 2);
   assert.equal(calls.some((entry) => entry.table === "calendarios_oficiais_anos"), false);
+});
+
+test("MED reconciliation warnings are structured, tenant-scoped, throttled and contain no pupil data", () => {
+  const emitted: string[] = [];
+  const capture = (message: string) => emitted.push(message);
+  const input = {
+    escolaId: "50000000-0000-0000-0000-000000000001",
+    anoLetivoId: "50000000-0000-0000-0000-000000000002",
+    yearBase: 2026,
+  };
+  assert.equal(reportCalendarReconciliationFailure(input, 2, 1000, capture), true);
+  assert.equal(reportCalendarReconciliationFailure(input, 2, 2000, capture), false);
+  assert.equal(reportCalendarReconciliationFailure(input, 3, 301001, capture), true);
+  assert.equal(emitted.length, 2);
+  const diagnostic = JSON.parse(emitted[0]);
+  assert.equal(diagnostic.event, "academic_calendar_reconciliation_blocked");
+  assert.equal(diagnostic.code, "OFFICIAL_CALENDAR_NOT_RECONCILED");
+  assert.equal(diagnostic.escola_id, input.escolaId);
+  assert.equal(diagnostic.ano_letivo_id, input.anoLetivoId);
+  assert.equal(diagnostic.trimester_count, 2);
+  assert.deepEqual(Object.keys(diagnostic).sort(), [
+    "ano_base", "ano_letivo_id", "code", "escola_id",
+    "event", "severity", "trimester_count",
+  ]);
 });
