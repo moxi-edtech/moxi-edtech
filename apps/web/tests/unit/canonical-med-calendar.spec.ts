@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   buildCanonicalMedCalendarPlan,
   buildCanonicalMedCalendarSkeleton,
+  deriveCanonicalMedCourseSelections,
   CanonicalCalendarError,
   type MedCourseProfile,
   type MedCourseOffering,
@@ -193,4 +194,36 @@ test("The setup endpoint uses one atomic database RPC rather than separate write
   assert.match(source, /allowEmptyOfferings/);
   assert.doesNotMatch(source, /upsert_bulk_periodos_letivos/);
   assert.doesNotMatch(source, /setup_active_ano_letivo/);
+});
+
+
+test("The next MED year inherits course classification, never the previous year's profile UUID", () => {
+  const nextCalendar = {
+    ...calendar, ano_base: 2027, data_inicio: "2027-09-01",
+    data_fim: "2028-08-31", versao_documento: "NEXT-PUBLISHED",
+  };
+  const futureProfiles = profiles.map((existing) => ({
+    ...existing, id: existing.id + "-2027", ano_base: 2027,
+    calendario_canonico_ano: 2027,
+    data_inicio: nextCalendar.data_inicio, data_fim: nextCalendar.data_fim,
+    versao_documento: nextCalendar.versao_documento,
+  }));
+  const resolved = deriveCanonicalMedCourseSelections({
+    calendar: nextCalendar, profiles: [...profiles, ...futureProfiles], offerings,
+  });
+  assert.deepEqual(resolved, [
+    { offering_id: "regular-9", template_id: "regular-2027" },
+    { offering_id: "technical-12", template_id: "technical-2027" },
+  ]);
+});
+
+test("A missing or duplicated official profile blocks automatic future-year inheritance", () => {
+  assert.throws(() => deriveCanonicalMedCourseSelections({
+    calendar, profiles: [profiles[0]], offerings,
+  }), (e: unknown) => e instanceof CanonicalCalendarError &&
+    e.code === "OFFICIAL_CALENDAR_PROFILE_NOT_UNIQUE");
+  assert.throws(() => deriveCanonicalMedCourseSelections({
+    calendar, profiles: [profiles[0], profiles[0]], offerings: [offerings[0]],
+  }), (e: unknown) => e instanceof CanonicalCalendarError &&
+    e.code === "OFFICIAL_CALENDAR_PROFILE_NOT_UNIQUE");
 });
