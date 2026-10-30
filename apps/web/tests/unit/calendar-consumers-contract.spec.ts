@@ -172,3 +172,15 @@ test("Academic closure jobs and audit steps require leadership RLS on both write
   assert.match(migration, /FOR UPDATE TO authenticated[\s\S]*?USING \([\s\S]*?WITH CHECK \(/);
   assert.doesNotMatch(migration, /FOR (UPDATE|INSERT) TO authenticated\s+USING \(escola_id = public\.current_tenant_escola_id\(\)\);/);
 });
+
+test("Balcão grade modal recovers year, trimester and pauta inline with the same enrolment", () => {
+  const modal = read("components/secretaria/EnrollmentPostActionModal.tsx");
+  assert.match(modal, /originAnoLetivoId/);
+  assert.match(modal, /setYearRetry\(\(value\) => value \+ 1\)/);
+  assert.match(modal, /setPeriodRetry\(\(value\) => value \+ 1\)/);
+  assert.match(modal, /setPautaRetry\(\(value\) => value \+ 1\)/);
+  assert.match(modal, /Verificar trimestres novamente/);
+  assert.match(modal, /Atualizar pauta nesta ficha/);
+  assert.match(modal, /A matrícula permanece selecionada/);
+  assert.doesNotMatch(modal, /window\.location|location\.href/);
+});
