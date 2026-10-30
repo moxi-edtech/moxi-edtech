@@ -28,7 +28,9 @@ else
     fi
 
     if [[ "$remote_sha" =~ ^0+$ ]]; then
-      git rev-list "$local_sha" >>"$commits_file"
+      # New branch: scan commits not already present on origin; scanning all
+      # shared history is redundant and makes every first push unbounded.
+      git rev-list "$local_sha" --not --remotes=origin >>"$commits_file"
     elif git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
       git rev-list "${remote_sha}..${local_sha}" >>"$commits_file"
     else

@@ -12,9 +12,29 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path TO 'pg_catalog', 'public'
 AS $$
+DECLARE
+  -- Only signed service-role calls may bypass an interactive tenant context.
+  v_service_role boolean := coalesce(auth.jwt()->>'role', '') = 'service_role';
 BEGIN
+  IF p_escola_id IS NULL OR p_ano_letivo IS NULL
+     OR p_ano_letivo NOT BETWEEN 1900 AND 2100 THEN
+    RAISE EXCEPTION 'INVALID_SCOPE: escola e ano letivo obrigatórios'
+      USING ERRCODE = '22023';
+  END IF;
+
+  IF NOT v_service_role THEN
+    IF p_escola_id IS DISTINCT FROM public.current_tenant_escola_id()
+       OR NOT coalesce(public.user_has_role_in_school(
+         p_escola_id,
+         ARRAY['admin','admin_escola','staff_admin','diretor',
+               'admin_financeiro','secretaria_financeiro','secretaria']::text[]
+       ), false) THEN
+      RAISE EXCEPTION 'AUTH: acesso à auditoria financeira não autorizado'
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
   RETURN QUERY
   SELECT 'mensalidades_sem_matricula',
     CASE WHEN count(*) > 0 THEN 'CRITICAL' ELSE 'PASS' END,
@@ -87,5 +107,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.audit_mensalidades_integrity(uuid, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.audit_mensalidades_integrity(uuid, integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.audit_mensalidades_integrity(uuid, integer) TO authenticated, service_role;

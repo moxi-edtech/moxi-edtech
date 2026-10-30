@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Verify every versioned original+runner-only migration was applied exactly once.
 
-Unversioned MIGRATION_ADMISSAO_P0.sql is rejected by Supabase CLI itself.
-Don't silently count it as an applied migration.
+All non-versioned SQL is stored under supabase/ops/legacy, not migrations.
+Fail if a legacy/ad hoc script re-enters the replayable migrations directory.
 """
 import os
 from pathlib import Path
@@ -18,7 +18,7 @@ expected = {
     if (name := re.fullmatch(r"([0-9]{14})_.+\.sql", file.name))
 }
 unversioned = [file.name for file in files if not re.fullmatch(r"[0-9]{14}_.+\.sql", file.name)]
-if sorted(unversioned) != ["MIGRATION_ADMISSAO_P0.sql"]:
+if unversioned:
     raise SystemExit(f"Unexpected unversioned migrations: {sorted(unversioned)!r}")
 if len(expected) != len(files) - len(unversioned):
     raise SystemExit("Duplicate version IDs in staging; cannot verify exactly")
@@ -34,7 +34,7 @@ actual = set(versions)
 missing = sorted(expected - actual)
 unexpected = sorted(actual - expected)
 print(f"Expected {len(expected)} individual versioned migrations, applied {len(versions)}")
-print(f"Supabase CLI rightly ignores unversioned: {unversioned}")
+print("Migration directory contains no unversioned SQL")
 if missing or unexpected or len(versions) != len(actual):
     print(f"Missing: {missing[:20]}; unexpected: {unexpected[:20]}",
           file=sys.stderr)
