@@ -170,9 +170,28 @@ $stage$;
 
 DROP TRIGGER IF EXISTS trg_stage_med_annual_profile ON public.school_education_offerings;
 CREATE TRIGGER trg_stage_med_annual_profile
-BEFORE INSERT OR UPDATE OF calendar_profile_id,education_subsystem,education_level,status
+BEFORE UPDATE OF calendar_profile_id,education_subsystem,education_level,status
 ON public.school_education_offerings
 FOR EACH ROW EXECUTE FUNCTION internal.stage_med_annual_profile();
+
+-- On first installation the offering row must exist before its annual FK
+-- can be recorded. Do not attempt the FK insert in a BEFORE INSERT trigger.
+CREATE OR REPLACE FUNCTION internal.record_new_offering_med_profile()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO pg_catalog,public,internal,pg_temp AS $new_offering$
+BEGIN
+  IF NEW.status='active' THEN
+    PERFORM internal.record_med_annual_profile(
+      NEW.escola_id,NEW.id,NEW.calendar_profile_id
+    );
+  END IF;
+  RETURN NULL;
+END;
+$new_offering$;
+DROP TRIGGER IF EXISTS trg_record_new_offering_med_profile ON public.school_education_offerings;
+CREATE TRIGGER trg_record_new_offering_med_profile
+AFTER INSERT ON public.school_education_offerings
+FOR EACH ROW EXECUTE FUNCTION internal.record_new_offering_med_profile();
 
 -- Snapshot currently verified 2026 associations. Older schools still using
 -- 2025 calendars are not assigned a fictitious historical 2026 relation.
@@ -215,6 +234,7 @@ REVOKE ALL ON FUNCTION internal.guard_offering_med_annual_profile() FROM PUBLIC,
 REVOKE ALL ON FUNCTION internal.reject_delete_med_annual_profile() FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION internal.record_med_annual_profile(uuid,uuid,uuid) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION internal.stage_med_annual_profile() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION internal.record_new_offering_med_profile() FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION internal.activate_med_annual_offering_pointers() FROM PUBLIC,anon,authenticated;
 
 COMMENT ON TABLE public.school_offering_med_year_profiles IS
