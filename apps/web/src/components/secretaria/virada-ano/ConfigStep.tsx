@@ -375,10 +375,10 @@ export function ConfigStep({
               ))}
               {targets.length === 0 && <option disabled>Nenhum ano futuro cadastrado</option>}
             </select>
-            {targets.length === 0 && (
+            {(targets.length === 0 || officialCalendars.length > 0 || (currentSession?.ano ?? 0) >= 2026) && (
               <div className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-xs font-semibold text-amber-900">
-                  Um calendário oficial para todo o ano letivo. As particularidades são aplicadas por curso.
+                  O calendário do ano seguinte é configurado uma única vez. Os perfis MED são herdados por curso sem alterar o ano ativo.
                 </p>
                 {officialCalendars.length > 0 ? (
                   <div className="space-y-3">
