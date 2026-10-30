@@ -93,3 +93,26 @@ test("Preparation and cutover use yearly inheritance with role-scoped MED prefli
   assert.match(route, /MED_YEAR_PREFLIGHT_FAILED/);
   assert.match(route, /calendar_readiness/);
 });
+
+
+test("A newly provisioned school inherits official year bounds and three teaching terms", () => {
+  const preflight = readFileSync("../../supabase/migrations/20271029235929_guard_med_initial_year.sql", "utf8");
+  const bootstrap = readFileSync("../../supabase/migrations/20271029235930_bootstrap_med_terms_on_new_school.sql", "utf8");
+  assert.match(preflight, /NEW\.data_inicio:=v_cal\.data_inicio/);
+  assert.match(preflight, /NEW\.data_fim:=v_cal\.data_fim/);
+  assert.match(preflight, /OFFICIAL_CALENDAR_NOT_PUBLISHED/);
+  assert.match(preflight, /FROM public\.cursos/);
+  assert.match(bootstrap, /AFTER INSERT ON public\.anos_letivos/);
+  assert.match(bootstrap, /INSERT INTO public\.periodos_letivos/);
+  assert.match(bootstrap, /source_template_id,source_item_id,source_version/);
+  assert.match(bootstrap, /v_distinct_terms<>3/);
+  assert.match(bootstrap, /internal\.med_year_readiness/);
+});
+
+test("Rollover page only offers future MED calendars and allows target-year re-preparation", () => {
+  const endpoint = readFileSync("src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts", "utf8");
+  const wizard = readFileSync("src/components/secretaria/virada-ano/ConfigStep.tsx", "utf8");
+  assert.match(endpoint, /\.gt\("ano_base", anoAtivo\?\.ano \|\| 0\)/);
+  assert.match(wizard, /officialCalendars\.length > 0/);
+  assert.match(wizard, /Preparar ano com calendário oficial/);
+});
