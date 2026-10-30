@@ -39,6 +39,32 @@ export async function POST(request: Request) {
     const parsed = Body.safeParse(body);
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
 
+    // Verify the destination MED year before any cutover/RAA mutation.
+    // The database activation trigger repeats this check transactionally.
+    const rpcLoose = supabase.rpc.bind(supabase) as unknown as (
+      fn: string,
+      args?: Record<string, unknown>
+    ) => Promise<LooseRpcResult>;
+    const { data: medReadiness, error: medError } = await rpcLoose("med_year_cutover_preflight", {
+      p_escola_id: escolaId,
+      p_ano_letivo_id: parsed.data.to_session_id,
+    });
+    if (medError) {
+      return NextResponse.json({
+        ok: false, code: "MED_YEAR_PREFLIGHT_FAILED",
+        error: "Não foi possível validar o calendário oficial do ano de destino.",
+      }, { status: 409 });
+    }
+    const med = medReadiness as { ok?: boolean; code?: string; ano_base?: number } | null;
+    if (med?.ok !== true) {
+      return NextResponse.json({
+        ok: false, code: med?.code ?? "MED_YEAR_NOT_READY",
+        error: "Prepare o calendário MED, os trimestres e os vínculos dos cursos antes de ativar o ano.",
+        next_action: "Configurar o calendário oficial do ano de destino.",
+        calendar_readiness: med,
+      }, { status: 409 });
+    }
+
     const health = await buildCutoverHealthReport(supabase, escolaId);
     if (health.status === "BLOCKED" && parsed.data.cutover_mode !== "retroactive_pending") {
       return NextResponse.json(
@@ -52,11 +78,6 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-
-    const rpcLoose = supabase.rpc.bind(supabase) as unknown as (
-      fn: string,
-      args?: Record<string, unknown>
-    ) => Promise<LooseRpcResult>;
 
     const rpcName = parsed.data.cutover_mode === "retroactive_pending"
       ? "cutover_ano_letivo_retroativo"
