@@ -49,3 +49,47 @@ test("School onboarding and academic installer invoke shared course offering con
     assert.match(src, /ensureCurriculumCourseOffering/);
   }
 });
+
+
+const readAnnualSql = () => readFileSync(
+  "../../supabase/migrations/20271029235927_med_annual_offering_profiles.sql", "utf8",
+);
+const readGuardSql = () => readFileSync(
+  "../../supabase/migrations/20271029235928_med_year_activation_readiness.sql", "utf8",
+);
+
+test("Annual offering profiles are tenant-bound, immutable and separate from active pointers", () => {
+  const sql = readAnnualSql();
+  assert.match(sql, /PRIMARY KEY \(offering_id,ano_letivo_id\)/);
+  assert.match(sql, /FOREIGN KEY \(offering_id,escola_id\)/);
+  assert.match(sql, /FOREIGN KEY \(ano_letivo_id,escola_id\)/);
+  assert.match(sql, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(sql, /MED_YEAR_PROFILE_IMMUTABLE/);
+  assert.match(sql, /MED_YEAR_PROFILE_COLLISION/);
+  assert.match(sql, /BEFORE UPDATE OF calendar_profile_id/);
+  assert.match(sql, /AFTER INSERT ON public\.school_education_offerings/);
+  assert.match(sql, /NEW\.calendar_profile_id:=OLD\.calendar_profile_id/);
+  assert.match(sql, /AFTER UPDATE OF ativo ON public\.anos_letivos/);
+});
+
+test("Cutover fails closed on missing MED year, trimester, course or event lineage", () => {
+  const sql = readGuardSql();
+  assert.match(sql, /OFFICIAL_CALENDAR_NOT_PUBLISHED_OR_YEAR_MISMATCH/);
+  assert.match(sql, /OFFICIAL_TRIMESTERS_INCOMPLETE/);
+  assert.match(sql, /COURSES_WITHOUT_ACTIVE_OFFERING/);
+  assert.match(sql, /MED_YEAR_OFFERING_PROFILES_MISSING/);
+  assert.match(sql, /OFFICIAL_CALENDAR_EVENTS_NOT_APPLIED/);
+  assert.match(sql, /MED_YEAR_NOT_READY/);
+  assert.match(sql, /BEFORE INSERT OR UPDATE OF ativo ON public\.anos_letivos/);
+  assert.match(sql, /auth\.uid\(\) IS NULL/);
+  assert.match(sql, /user_has_role_in_school/);
+});
+
+test("Preparation and cutover use yearly inheritance with role-scoped MED preflight", () => {
+  const prepare = readFileSync("src/lib/academico/prepare-canonical-calendar.ts", "utf8");
+  const route = readFileSync("src/app/api/secretaria/operacoes-academicas/virada/cutover/route.ts", "utf8");
+  assert.match(prepare, /deriveCanonicalMedCourseSelections/);
+  assert.match(route, /med_year_cutover_preflight/);
+  assert.match(route, /MED_YEAR_PREFLIGHT_FAILED/);
+  assert.match(route, /calendar_readiness/);
+});
