@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 36);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 37);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -114,7 +114,25 @@ test("four PR #298 RAA/MED migrations are individually audited without unfreezin
     }
   }
   assert.match(checkFiscalAndSchemaScope([
-    "supabase/migrations/20271029235924_unreviewed.sql",
+    "supabase/migrations/20271029235925_unreviewed.sql",
+  ])[0] ?? "", /Unapproved database migration/);
+});
+
+test("P0 academic closure RLS is the only newly audited migration", () => {
+  const name = "20271029235924_guard_fechamento_academico_jobs_rls.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  for (const activation of [
+    "CREATE TABLE public.fiscal_config (enabled boolean);",
+    "CREATE OR REPLACE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1 $;",
+    "CREATE TABLE public.saft_export (id uuid);",
+  ]) {
+    assert.match(checkFiscalAndSchemaScope([path], () => activation)[0] ?? "",
+      /Fiscal\/AGT activation marker/);
+  }
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271029235925_unreviewed.sql"
   ])[0] ?? "", /Unapproved database migration/);
 });
 
