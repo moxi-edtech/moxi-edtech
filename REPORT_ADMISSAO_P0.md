@@ -13,7 +13,7 @@ Este relatório detalha a implementação do P0 do novo fluxo de admissão unifi
 
 | Caminho | Descrição |
 | :--- | :--- |
-| `MIGRATION_ADMISSAO_P0.sql` | Script SQL contendo as alterações de schema e os novos RPCs para o fluxo. |
+| `supabase/ops/legacy/MIGRATION_ADMISSAO_P0.sql` | Script histórico de admissão P0 arquivado; não pertence ao replay automático de migrações. |
 | `E2E_CHECKLIST_ADMISSAO.md` | Checklist para validação manual do fluxo de ponta a ponta. |
 | `apps/web/src/app/api/secretaria/admissoes/` | Nova fachada de API para o processo de admissão. |
 | `.../config/route.ts` | Endpoint para carregar configurações (cursos, classes) para o wizard. |

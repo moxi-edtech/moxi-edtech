@@ -1,0 +1,30 @@
+name: Supabase Migration Ledger Guard
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/ci/check-supabase-migration-ledger.mjs'
+      - '.github/workflows/supabase-migration-ledger-guard.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/ci/check-supabase-migration-ledger.mjs'
+      - '.github/workflows/supabase-migration-ledger-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migration-version-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reject collisions, unversioned SQL and replayable rollback files
+        run: node scripts/ci/check-supabase-migration-ledger.mjs
