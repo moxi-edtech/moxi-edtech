@@ -53,6 +53,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271029235921_guard_grade_period_source_and_window.sql",
   "20271029235922_canonical_med_calendar_offering_profiles.sql",
   "20271029235923_apply_canonical_med_calendar_atomic.sql",
+  // PR #303: role-scoped RLS for academic closure jobs only.
+  "20271029235924_guard_fechamento_academico_jobs_rls.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
