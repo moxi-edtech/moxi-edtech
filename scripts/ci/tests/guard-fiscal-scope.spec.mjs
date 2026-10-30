@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 37);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 39);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -134,6 +134,20 @@ test("P0 academic closure RLS is the only newly audited migration", () => {
   assert.match(checkFiscalAndSchemaScope([
     "supabase/migrations/20271029235925_unreviewed.sql"
   ])[0] ?? "", /Unapproved database migration/);
+});
+
+test("admissions decree RPC provenance migrations are audited without fiscal activation", () => {
+  const entries = [
+    "20261029181138_official_decree_period_provenance_guard.sql",
+    "20261029181554_preserve_legacy_2025_calendar_provenance_compatibility.sql",
+  ];
+  for (const name of entries) {
+    assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name), name);
+    const path = "supabase/migrations/" + name;
+    assert.deepEqual(checkFiscalAndSchemaScope([path]), [], name);
+    assert.match(checkFiscalAndSchemaScope([path], () =>
+      "CREATE TABLE public.fiscal_controls (id uuid)")[0] ?? "", /Fiscal\/AGT activation/);
+  }
 });
 
 test("preserves the fiscal and AGT module freeze", () => {
