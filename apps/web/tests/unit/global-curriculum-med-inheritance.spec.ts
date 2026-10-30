@@ -116,3 +116,13 @@ test("Rollover page only offers future MED calendars and allows target-year re-p
   assert.match(wizard, /officialCalendars\.length > 0/);
   assert.match(wizard, /Preparar ano com calendário oficial/);
 });
+
+
+test("Cutover deactivates the source before activating the destination within one transaction", () => {
+  const sql = readFileSync("../../supabase/migrations/20271029235931_cutover_activate_year_order.sql", "utf8");
+  const deactivate = sql.indexOf("id <> p_to_session_id AND ativo IS TRUE");
+  const activate = sql.indexOf("id = p_to_session_id");
+  assert.ok(deactivate > 0 && activate > deactivate);
+  assert.match(sql, /pg_get_functiondef/);
+  assert.match(sql, /MED_CUTOVER_PATCH_MISMATCH/);
+});
