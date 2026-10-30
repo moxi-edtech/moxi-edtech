@@ -186,7 +186,7 @@ BEGIN
     'status_fecho_origem', v_origem
   );
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.finalizar_origem_academica(p_escola_id uuid, p_matricula_id uuid, p_resultado_final text, p_fonte text DEFAULT 'raa'::text, p_motivo text DEFAULT NULL::text, p_observacao text DEFAULT NULL::text)
@@ -325,7 +325,7 @@ BEGIN
     'historico_ano_id',v_historico.id,'resultado_final',v_resultado,
     'fonte',v_fonte,'status',v_status,'snapshot_status','aberto');
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.gerar_historico_anual(p_matricula_id uuid)
@@ -464,7 +464,7 @@ BEGIN
 
   RETURN v_historico_ano_id;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.lifecycle_validate_historico_legal_lock()
@@ -541,7 +541,7 @@ BEGIN
   NEW.historico_ano_id := v_historico.id;
   RETURN NEW;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.ratificar_resultado_historico_escola(p_escola_id uuid, p_matricula_id uuid, p_resultado_confirmado text, p_referencia_documental text, p_motivo text)
@@ -875,8 +875,7 @@ BEGIN
     'notas', v_notas,
     'resultados', v_resultados
   );
-END
-$function$
+END;$function$;
 
 
 CREATE OR REPLACE FUNCTION public.confirmar_matricula(p_matricula_id uuid)
@@ -915,7 +914,7 @@ BEGIN
 
   RETURN v_numero;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.finalizar_rematricula_balcao(p_escola_id uuid, p_aluno_id uuid, p_matricula_origem_id uuid, p_ano_letivo_id uuid, p_destino_turma_id uuid, p_pedido_id uuid)
@@ -1163,7 +1162,7 @@ BEGIN
     'decisao_academica', v_decisao_origem
   );
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.fn_transitar_alunos(p_escola_id uuid, p_turma_origem_id uuid, p_turma_destino_id uuid, p_ano_letivo_origem integer, p_ano_letivo_dest integer, p_aluno_ids uuid[])
@@ -1302,7 +1301,7 @@ BEGIN
     END;
   END LOOP;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.guard_matricula_status_numero()
@@ -1325,7 +1324,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.rematricula_em_massa(p_escola_id uuid, p_origem_turma_id uuid, p_destino_turma_id uuid)
@@ -1607,7 +1606,7 @@ BEGIN
 
   RETURN QUERY SELECT v_inserted, v_skipped, v_errors;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.trg_set_matricula_number()
@@ -1625,7 +1624,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.finalizar_matricula_anual(
