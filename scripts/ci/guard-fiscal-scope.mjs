@@ -57,6 +57,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271029235924_guard_fechamento_academico_jobs_rls.sql",
   // Global preset classification and authorized MED course installation.
   "20271029235926_global_curriculum_med_calendar_contract.sql",
+  // Annual MED lineage and fail-closed academic year activation only.
+  "20271029235927_med_annual_offering_profiles.sql",
+  "20271029235928_med_year_activation_readiness.sql",
   // #299: decree provenance RPCs already applied independently; no fiscal/AGT changes.
   "20261029181138_official_decree_period_provenance_guard.sql",
   "20261029181554_preserve_legacy_2025_calendar_provenance_compatibility.sql",
