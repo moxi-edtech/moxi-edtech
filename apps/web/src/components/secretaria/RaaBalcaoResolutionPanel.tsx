@@ -478,7 +478,7 @@ export function RaaBalcaoResolutionPanel({
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
                   Analisar pendência <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
-              )}
+              ) : null}
               <button type="button" onClick={() => void load()} disabled={loading || saving}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50 sm:w-auto">
                 <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} aria-hidden="true" /> Atualizar lista

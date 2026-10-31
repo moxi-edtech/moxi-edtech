@@ -1475,7 +1475,7 @@ function Catalogo({
   const activeProgress = raaMatriculaId && raaProgress?.matriculaId === raaMatriculaId ? raaProgress : null;
 
   return (
-    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} ${view === "reenrollment" ? "rounded-2xl border border-border bg-card p-4 text-foreground sm:p-6" : "rounded-xl border border-slate-200 bg-white p-5 sm:p-6"}`}>
+    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} ${view === "reenrollment" ? "rounded-2xl border border-border bg-card p-4 text-foreground sm:p-6" : "rounded-xl border border-border bg-card p-5 sm:p-6"}`}>
       {view === "payment" ? (
         <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -3051,7 +3051,7 @@ export default function BalcaoAtendimento({
         <>
           <div
             data-atalho-pagamento="off"
-            className={view === "reenrollment" ? "mb-4 rounded-2xl border border-border bg-card p-3 sm:p-4" : "mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"}
+            className={view === "reenrollment" ? "mb-4 rounded-2xl border border-border bg-card p-3 sm:p-4" : "mb-6 rounded-2xl border border-border bg-card p-4 shadow-xs"}
           >
             <OmniSearchInput
               query={search.searchTerm}
