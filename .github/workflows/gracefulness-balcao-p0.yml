@@ -99,6 +99,10 @@ on:
       - "apps/web/src/lib/rematricula/raa-balcao-cases.ts"
       - "apps/web/src/components/secretaria/RematriculaWorkspaceChrome.tsx"
       - "apps/web/tests/unit/raa-balcao-workspace-cases.spec.ts"
+      - "apps/web/tests/unit/raa-balcao-temporal-context.spec.ts"
+      - "apps/web/tests/unit/raa-balcao-trimester-contract.spec.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-temporal-context.ts"
+      - "apps/web/src/components/secretaria/EnrollmentPostActionModal.tsx"
       - "apps/web/tests/unit/rematricula-workspace-ui.spec.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-regime-guidance.ts"
       - "apps/web/tests/unit/raa-balcao-workspace-contract.spec.ts"
@@ -196,6 +200,8 @@ jobs:
             tests/unit/raa-balcao-resolution.spec.ts \
             tests/unit/raa-balcao-cases.spec.ts \
             tests/unit/raa-balcao-workspace-cases.spec.ts \
+            tests/unit/raa-balcao-temporal-context.spec.ts \
+            tests/unit/raa-balcao-trimester-contract.spec.ts \
             tests/unit/rematricula-workspace-ui.spec.ts \
             tests/unit/raa-balcao-regime-guidance.spec.ts \
             tests/unit/raa-balcao-workspace-contract.spec.ts \
@@ -254,6 +260,8 @@ jobs:
             src/components/secretaria/RaaBalcaoResolutionPanel.tsx \
             src/components/secretaria/RematriculaWorkspaceChrome.tsx \
             src/lib/rematricula/raa-balcao-cases.ts \
+            src/lib/rematricula/raa-balcao-temporal-context.ts \
+            src/app/api/secretaria/faltas/justificacoes/route.ts \
             src/components/secretaria/EnrollmentPostActionModal.tsx \
             src/components/secretaria/PagamentoDividaModal.tsx \
             src/components/secretaria/BalcaoWorkspace.tsx \
