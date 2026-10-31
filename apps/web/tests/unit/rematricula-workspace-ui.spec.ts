@@ -14,7 +14,7 @@ test("rematrícula owns an accessible, dark/light token-based UX",()=>{
  assert.match(frame,/canContinue \? "Continuar rematrícula"/);
  assert.match(balc,/RematriculaWorkspaceHeader/);
  assert.match(balc,/RematriculaAcademicDestination/);
- assert.match(balc,/rematriculaDestinoTurma=\{rematricula\.destinoTurma\}/);
+ assert.match(balc,/rematriculaDestinoTurma=\{rematricula\.destinoTurma \?\? null\}/);
 });
 test("source eligibility gates destination and never creates a client-side RAA override",()=>{
  const frame=source("components/secretaria/RematriculaWorkspaceChrome.tsx");
