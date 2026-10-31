@@ -69,6 +69,8 @@ export function RaaBalcaoResolutionPanel({
   const [notice, setNotice] = useState<string | null>(null);
   const [faltas, setFaltas] = useState<PeticaoFalta[]>([]);
   const [pedidos, setPedidos] = useState<PedidoReapreciacao[]>([]);
+  const [canDecideReapreciacao, setCanDecideReapreciacao] = useState(false);
+  const [canReviewDisciplina, setCanReviewDisciplina] = useState(false);
   const [eventos, setEventos] = useState<EventoDisciplinar[]>([]);
   const [selected, setSelected] = useState("");
   const [decision, setDecision] = useState("");
@@ -86,6 +88,8 @@ export function RaaBalcaoResolutionPanel({
     if (!planAction || !matriculaId) return;
     setLoading(true);
     setError(null);
+    setCanDecideReapreciacao(false);
+    setCanReviewDisciplina(false);
     const query = new URLSearchParams({ matricula_id: matriculaId }).toString();
     const labels = ["justificações", "reapreciações", "exames", "ocorrências disciplinares"];
     // A school-year process may contain several independent issues. All reads
@@ -103,6 +107,8 @@ export function RaaBalcaoResolutionPanel({
     };
     setFaltas(Array.isArray(loaded(0)?.items) ? loaded(0).items : []);
     setPedidos(Array.isArray(loaded(1)?.items) ? loaded(1).items : []);
+    setCanDecideReapreciacao(loaded(1)?.can_decide === true);
+    setCanReviewDisciplina(loaded(3)?.can_review === true);
     const exams = loaded(2);
     setExamContext(exams
       ? { source: exams.source, disciplinas: exams.disciplinas ?? [], sessoes: exams.sessoes ?? [], resultados: exams.resultados ?? [] }
@@ -219,6 +225,11 @@ export function RaaBalcaoResolutionPanel({
   function prepareConfirmation(kind: "decisao" | "pedido" | "exame") {
     setError(null);
     if (kind === "decisao") {
+      if ((action === "reapreciacao" && !canDecideReapreciacao) ||
+          (action === "disciplina" && !canReviewDisciplina)) {
+        setError("A decisão académica exige autorização da direção.");
+        return;
+      }
       const minLength = action === "disciplina" ? 15
         : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0;
       if (!canDecide || motivo.trim().length < minLength) {
@@ -278,6 +289,11 @@ export function RaaBalcaoResolutionPanel({
   }
 
   const submit = async () => {
+    if ((action === "reapreciacao" && !canDecideReapreciacao) ||
+        (action === "disciplina" && !canReviewDisciplina)) {
+      setError("Esta decisão exige autorização da direção.");
+      return;
+    }
     if (saving || !selected || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)) return;
     setSaving(true);
     setError(null);
@@ -339,6 +355,11 @@ export function RaaBalcaoResolutionPanel({
   };
 
   const submitPedido = async () => {
+    const anoOrigemId = academic?.source?.ano_letivo_id;
+    if (!anoOrigemId || academic?.source?.matricula_id !== matriculaId) {
+      setError("Não foi possível confirmar o ano letivo e a matrícula de origem. Atualize a situação académica.");
+      return;
+    }
     if (!disciplinaId || motivo.trim().length < 10 || saving) {
       setError("Selecione a disciplina e descreva a reapreciação com pelo menos 10 caracteres.");
       return;
@@ -351,6 +372,7 @@ export function RaaBalcaoResolutionPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           matricula_id: matriculaId,
+          ano_letivo_id: anoOrigemId,
           disciplina_id: disciplinaId,
           motivo: motivo.trim(),
           idempotency_key: crypto.randomUUID(),
@@ -682,7 +704,17 @@ export function RaaBalcaoResolutionPanel({
                 "Nenhum evento ativo foi selecionado. Só a direção pode encerrar ou cancelar uma ocorrência."}
             </p>
           )}
-          {!!selected && activeCase?.estado !== "registado" && (action === "justificacao" || action === "reapreciacao" || action === "disciplina") && (
+          {!!selected && activeCase?.estado !== "registado" &&
+            ((action === "reapreciacao" && !canDecideReapreciacao) ||
+              (action === "disciplina" && !canReviewDisciplina)) && (
+              <p role="status" className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                Decisão reservada à direção. O processo mantém-se disponível para acompanhamento.
+              </p>
+            )}
+          {!!selected && activeCase?.estado !== "registado" &&
+            (action === "justificacao" ||
+              (action === "reapreciacao" && canDecideReapreciacao) ||
+              (action === "disciplina" && canReviewDisciplina)) && (
             <div className="space-y-2 rounded-lg border border-amber-200 bg-card p-3">
               <label htmlFor="raa-balcao-decisao" className="block text-xs font-bold text-foreground">Decisão autorizada</label>
               <select id="raa-balcao-decisao" value={decision} onChange={(event) => setDecision(event.target.value)}
