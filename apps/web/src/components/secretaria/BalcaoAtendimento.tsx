@@ -25,9 +25,10 @@ import { useSearchParams } from "next/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
-import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
+import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem, type TurmaOption } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
+import { RematriculaWorkspaceHeader, RematriculaAcademicDestination, type RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
@@ -1383,6 +1384,7 @@ function Catalogo({
   rematriculaSchoolId,
   rematriculaWindow,
   rematriculaAcademic,
+  rematriculaDestinoTurma,
   raaMatriculaId,
   raaAlunoId,
   onLancarNota,
@@ -1418,6 +1420,7 @@ function Catalogo({
   rematriculaSchoolId: string;
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
+  rematriculaDestinoTurma: TurmaOption | null;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
   onLancarNota: () => void;
@@ -1465,9 +1468,12 @@ function Catalogo({
 
   const operacaoCopy = rematriculaState ? ESTADO_OPERACAO[rematriculaState] : null;
   const selectedCount = selectedItemKeys.size;
+  const [raaProgress, setRaaProgress] = useState<RaaProgressSnapshot | null>(null);
+  // A progress snapshot must never leak into the next selected student's case.
+  const activeProgress = raaMatriculaId && raaProgress?.matriculaId === raaMatriculaId ? raaProgress : null;
 
   return (
-    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} rounded-xl border border-slate-200 bg-white p-5 sm:p-6`}>
+    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} ${view === "reenrollment" ? "rounded-2xl border border-border bg-card p-4 text-foreground sm:p-6" : "rounded-xl border border-slate-200 bg-white p-5 sm:p-6"}`}>
       {view === "payment" ? (
         <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -1485,13 +1491,12 @@ function Catalogo({
           ) : null}
         </div>
       ) : view === "reenrollment" ? (
-        <div className="mb-5 border-b border-slate-100 pb-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Rematrícula</p>
-          <h2 className="mt-1 text-base font-black text-slate-900">O que precisa concluir?</h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            Confirme a situação académica, resolva bloqueios e avance para a cobrança quando estiver elegível.
-          </p>
-        </div>
+        <RematriculaWorkspaceHeader
+          anoDestino={rematriculaAnoLabel}
+          status={rematriculaState}
+          motivo={rematriculaAcademic?.reason ?? null}
+          progress={activeProgress}
+        />
       ) : view === "all" ? (
         <div className="mb-4 flex items-center gap-2">
           <Plus className="h-4 w-4 text-amber" />
@@ -1501,7 +1506,7 @@ function Catalogo({
 
       {/* No painel de pagamentos o próprio Command Center já controla o scroll.
           Nos fluxos legados, preserva-se o limite interno anterior. */}
-      <div className={view === "payment" ? "space-y-5" : "space-y-6 xl:max-h-[620px] xl:overflow-y-auto xl:pr-2"}>
+      <div className={view === "payment" ? "space-y-5" : view === "reenrollment" ? "mt-5 space-y-5" : "space-y-6 xl:max-h-[620px] xl:overflow-y-auto xl:pr-2"}>
         {(view === "all" || view === "payment") && dividaHistorica.total > 0 && (
           <div
             data-balcao-action="payment"
@@ -1527,7 +1532,7 @@ function Catalogo({
           <div data-balcao-action="reenrollment">
             <div className={["mb-2 flex items-center gap-3", view === "reenrollment" ? "justify-end" : "justify-between"].join(" ")}>
               {view === "all" ? <SecaoLabel>Operações escolares</SecaoLabel> : null}
-              {rematriculaAnoLabel && (
+              {view !== "reenrollment" && rematriculaAnoLabel && (
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
                   Ano: {rematriculaAnoLabel}
                 </span>
@@ -1709,6 +1714,7 @@ function Catalogo({
                 onLancarNota={onLancarNota}
                 onDocumentos={onDocumentos}
                 onRecheck={onRefreshRematricula}
+                onProgressChange={setRaaProgress}
               />
             ) : null}
             {rematriculaError ? (
@@ -1716,7 +1722,7 @@ function Catalogo({
                 {rematriculaError}
               </p>
             ) : null}
-            {rematriculaState && operacaoCopy && rematriculaReady ? (
+            {view !== "reenrollment" && rematriculaState && operacaoCopy && rematriculaReady ? (
               <button
                 type="button"
                 onClick={onRematricula}
@@ -1736,6 +1742,15 @@ function Catalogo({
                 </div>
               </button>
             ) : null}
+            {view === "reenrollment" && (
+              <RematriculaAcademicDestination
+                status={rematriculaState}
+                anoDestino={rematriculaAnoLabel}
+                turma={rematriculaDestinoTurma}
+                canContinue={rematriculaReady}
+                onContinue={onRematricula}
+              />
+            )}
           </div>
         )}
 
@@ -3152,6 +3167,7 @@ export default function BalcaoAtendimento({
                   rematriculaSchoolId={escolaId}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
+                  rematriculaDestinoTurma={rematricula.destinoTurma}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
                   onLancarNota={() => {
