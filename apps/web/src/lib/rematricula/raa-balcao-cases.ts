@@ -94,6 +94,7 @@ export function raaBalcaoProgress(items: readonly RaaBalcaoCase[]) {
 export function buildRaaBalcaoWorkspaceCases(
   source: Omit<RaaBalcaoCaseSources, "action"> & { primaryAction: RaaBalcaoAction },
 ): RaaBalcaoCase[] {
+  if (source.primaryAction === "documentos") return buildRaaBalcaoCases({ ...source, action: "documentos" });
   const kinds = ["justificacao", "nota", "reapreciacao", "disciplina"] as const;
   const all = kinds.flatMap((action) =>
     buildRaaBalcaoCases({ ...source, action }).filter((item) => item.kind !== "orientacao"),

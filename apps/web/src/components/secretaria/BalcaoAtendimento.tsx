@@ -1377,6 +1377,7 @@ function Catalogo({
   selectedItemKeys,
   selectedTotal,
   rematriculaReady,
+  rematriculaWizardOpen,
   rematriculaState,
   rematriculaPrice,
   rematriculaAnoLabel,
@@ -1411,6 +1412,7 @@ function Catalogo({
   selectedItemKeys: Set<string>;
   selectedTotal: number;
   rematriculaReady: boolean;
+  rematriculaWizardOpen: boolean;
   /** `CHECKING` é rótulo sintético do cliente, para o intervalo antes de a
    *  primeira leitura da elegibilidade responder. */
   rematriculaState: RematriculaCardState | "CHECKING" | null;
@@ -1747,7 +1749,7 @@ function Catalogo({
                 status={rematriculaState}
                 anoDestino={rematriculaAnoLabel}
                 turma={rematriculaDestinoTurma}
-                canContinue={rematriculaReady}
+                canContinue={rematriculaReady && !rematriculaWizardOpen}
                 onContinue={onRematricula}
               />
             )}
@@ -3158,6 +3160,7 @@ export default function BalcaoAtendimento({
                   unlockedMensalidadeIds={unlockedMensalidadeIds}
                   selectedItemKeys={selectedItemKeys}
                   selectedTotal={carrinho.total}
+                  rematriculaWizardOpen={rematricula.modalOpen}
                   rematriculaReady={
                     rematricula.cardState === "READY" ||
                     rematricula.cardState === "RECONFIRMATION_REQUIRED" ||

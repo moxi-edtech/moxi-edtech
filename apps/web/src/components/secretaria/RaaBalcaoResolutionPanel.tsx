@@ -118,12 +118,12 @@ export function RaaBalcaoResolutionPanel({
 
   useEffect(() => { void load(); }, [load]);
 
-  const cases = buildRaaBalcaoWorkspaceCases({
+  const cases = plan ? buildRaaBalcaoWorkspaceCases({
     primaryAction: planAction ?? "rever_resultado",
-    title: plan?.titulo ?? "Revisão académica",
+    title: plan.titulo,
     disciplinaIds: academic?.disciplina_ids_pendentes,
     faltas, pedidos, eventos, sessoes: examContext?.sessoes,
-  });
+  }) : [];
   const progress = raaBalcaoProgress(cases);
   const activeCase = cases.find((item) => item.id === caseId) ?? null;
   const action = activeCase?.kind === "nota" ? "nota" :
@@ -156,6 +156,7 @@ export function RaaBalcaoResolutionPanel({
     setExamSessionId("");
     setExamComponentId("");
     setExamTurmaDisciplinaId("");
+    setCaseId(null);
     setPhase("summary");
   }
 
@@ -443,7 +444,8 @@ export function RaaBalcaoResolutionPanel({
                 <button type="button" key={item.id} onClick={() => chooseCase(item)}
                   disabled={saving || loading}
                   className={"group flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 sm:p-4 " + (activeCase?.id === item.id ? "border-amber bg-amber/5" : "border-border bg-background hover:border-amber/40 hover:bg-muted/40")}
-                  aria-label={"Abrir " + item.titulo}>
+                  aria-label={"Abrir " + item.titulo}
+                  aria-expanded={phase === "detail" && activeCase?.id === item.id}>
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                     {iconForCase(item.kind)}
                   </span>
@@ -468,12 +470,12 @@ export function RaaBalcaoResolutionPanel({
             {error && <p role="alert" className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300">{error}</p>}
             <div className="flex flex-wrap gap-2 border-t border-border pt-3">
               {action === "documentos" ? (
-                <button type="button" onClick={onDocumentos} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white sm:w-auto">
+                <button type="button" onClick={onDocumentos} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white sm:w-auto">
                   <FileText className="h-4 w-4" aria-hidden="true" /> Emitir documentos <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
-              ) : (
-                <button type="button" onClick={() => chooseCase(cases[0])} disabled={loading || saving || phase === "detail"}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
+              ) : phase === "summary" ? (
+                <button type="button" onClick={() => chooseCase(cases[0])} disabled={loading || saving}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
                   Analisar pendência <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
@@ -485,7 +487,7 @@ export function RaaBalcaoResolutionPanel({
           </div>
         )}
         {phase === "detail" && (
-          <div className="space-y-4">
+          <div className="space-y-4 rounded-xl border border-border bg-card p-3 sm:p-4">
             <button type="button" onClick={goToSummary} disabled={saving}
               className="inline-flex items-center gap-1 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald">
               <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Todas as pendências
@@ -591,7 +593,7 @@ export function RaaBalcaoResolutionPanel({
                     </p>
                   )}
                   <button type="button" disabled={saving || Boolean(previousExamResult) || !examSessionId || !examComponentId || !examTurmaDisciplinaId || !examNote.trim()}
-                    onClick={() => prepareConfirmation("exame")} className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
+                    onClick={() => prepareConfirmation("exame")} className="rounded-lg bg-amber px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
                     {saving ? "A guardar..." : "Rever resultado do exame"}
                   </button>
                 </div>
@@ -645,7 +647,7 @@ export function RaaBalcaoResolutionPanel({
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={saving || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)}
                   onClick={() => prepareConfirmation("decisao")}
-                  className="rounded-lg bg-emerald px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
+                  className="rounded-lg bg-amber px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
                   {saving ? "A guardar..." : "Rever e confirmar decisão"}
                 </button>
                 <button type="button" onClick={goToSummary} className="rounded-lg border border-border px-3 py-2 text-xs font-bold">Voltar</button>
@@ -688,7 +690,7 @@ export function RaaBalcaoResolutionPanel({
               <button type="button" disabled={saving} onClick={() => setPhase("detail")}
                 className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50">Voltar e corrigir</button>
               <button type="button" disabled={saving} onClick={() => void confirmOperation()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
                 {saving ? "A guardar..." : "Confirmar e guardar"}
               </button>
@@ -715,7 +717,7 @@ export function RaaBalcaoResolutionPanel({
                 Próxima pendência
               </button>
               <button type="button" onClick={() => void onRecheck()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white">
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white">
                 <RefreshCw className="h-4 w-4" aria-hidden="true" /> Verificar situação
               </button>
             </div>
