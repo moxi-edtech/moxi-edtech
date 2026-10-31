@@ -32,3 +32,27 @@ test("não inventa notas, faltas, sessões ou ocorrências sem registos", () => 
   assert.deepEqual(items.map((item) => item.kind), ["orientacao"]);
   assert.equal(raaBalcaoProgress(items).registados, 0);
 });
+
+
+test("faltas têm trimestre do registo oficial; notas sem período não herdam o trimestre atual", () => {
+  const items = buildRaaBalcaoWorkspaceCases({
+    primaryAction: "justificacao", title: "Retenção por faltas",
+    disciplinaIds: ["d1"],
+    faltas: [
+      { id:"f1", data_falta:"2026-09-12", status:"pending", motivo:"Pedido 1", trimestre: 1 },
+      { id:"f2", data_falta:"2026-11-12", status:"pending", motivo:"Pedido 2", trimestre: 2 },
+      { id:"f3", data_falta:"2027-03-12", status:"pending", motivo:"Pedido 3", trimestre: null },
+    ],
+  });
+  assert.deepEqual(items.filter((i)=>i.kind==="justificacao").map((i)=>i.periodo), [1,2,"nao_identificado"]);
+  assert.equal(items.find((i)=>i.kind==="nota")?.periodo,"nao_identificado");
+});
+test("recurso e disciplina permanecem no contexto anual quando o registo não aponta um trimestre", () => {
+  const items = buildRaaBalcaoWorkspaceCases({
+    primaryAction:"reapreciacao", title:"Revisão",
+    sessoes:[{ id:"s1", tipo:"recurso",estado:"aberta",data_inicio:"2026-12-15" }],
+    pedidos:[{ id:"p1", protocolo_publico:"RAA-1", estado:"pendente", motivo:"Recurso" }],
+    eventos:[{ id:"e1",categoria:"Conduta",estado:"em_analise",descricao:"Pendência" }],
+  });
+  assert.deepEqual(items.map((i)=>i.periodo),["ano_letivo","ano_letivo","ano_letivo"]);
+});
