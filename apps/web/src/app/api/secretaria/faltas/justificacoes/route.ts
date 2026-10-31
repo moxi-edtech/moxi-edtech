@@ -5,6 +5,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { recordAuditServer } from "@/lib/audit";
+import { resolveRaaTrimestre, type RaaTrimestre } from "@/lib/rematricula/raa-balcao-temporal-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -55,11 +56,56 @@ export async function GET(request: Request) {
         .eq("escola_id", escolaId).in("id", ids)
       : { data: [], error: null };
     if (alunosError) throw alunosError;
+    const trimesterByPetition = new Map<string, RaaTrimestre>();
+    if (matriculaId && (data ?? []).length > 0) {
+      // Resolve the academic period by the attendance row's official period ID.
+      // Never infer a trimester from data_falta: offering calendars may differ.
+      const { data: source, error: sourceError } = await supabase.from("matriculas")
+        .select("id,session_id").eq("id", matriculaId).eq("escola_id", escolaId).maybeSingle();
+      if (sourceError) throw sourceError;
+      if (!source?.session_id) {
+        return NextResponse.json({
+          ok: false, error: "Não foi possível confirmar o ano letivo da matrícula de origem.",
+        }, { status: 409 });
+      }
+      const idsFrequencia = [...new Set((data ?? [])
+        .map((item: { frequencia_id?: string | null }) => item.frequencia_id)
+        .filter((id: string | null | undefined): id is string => Boolean(id)))];
+      if (idsFrequencia.length > 0) {
+        const { data: frequencias, error: frequenciasError } = await supabase.from("frequencias")
+          .select("id,periodo_letivo_id").eq("escola_id", escolaId)
+          .eq("matricula_id", matriculaId).in("id", idsFrequencia).limit(100);
+        if (frequenciasError) throw frequenciasError;
+        const periodIds = [...new Set((frequencias ?? [])
+          .map((item: { periodo_letivo_id?: string | null }) => item.periodo_letivo_id)
+          .filter((id: string | null | undefined): id is string => Boolean(id)))];
+        const { data: periods, error: periodsError } = periodIds.length > 0
+          ? await supabase.from("periodos_letivos")
+            .select("id,numero,tipo,ano_letivo_id").eq("escola_id", escolaId)
+            .eq("ano_letivo_id", source.session_id).in("id", periodIds).limit(100)
+          : { data: [], error: null };
+        if (periodsError) throw periodsError;
+        const periodsById = new Map((periods ?? []).map((item: {
+          id: string; numero: number; tipo: string; ano_letivo_id: string;
+        }) => [item.id, item] as const));
+        const frequenciesById = new Map((frequencias ?? []).map((item: {
+          id: string; periodo_letivo_id: string | null;
+        }) => [item.id, item] as const));
+        for (const item of data ?? []) {
+          const attendance = frequenciesById.get(String(item.frequencia_id));
+          const trimestre = resolveRaaTrimestre(
+            attendance ?? null, periodsById, source.session_id,
+          );
+          if (trimestre !== null) trimesterByPetition.set(String(item.id), trimestre);
+        }
+      }
+    }
     const byId = new Map((alunos ?? []).map((item: {id: string}) => [item.id, item] as const));
     return NextResponse.json({
       ok: true,
-      items: (data ?? []).map((item: { aluno_id: string }) => ({
+      items: (data ?? []).map((item: { id: string; aluno_id: string }) => ({
         ...item, aluno: byId.get(item.aluno_id) ?? null,
+        ...(matriculaId ? { trimestre: trimesterByPetition.get(item.id) ?? null } : {}),
       })),
     });
   } catch (error) {
