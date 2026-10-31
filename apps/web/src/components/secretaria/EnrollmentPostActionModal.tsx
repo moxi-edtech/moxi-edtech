@@ -23,13 +23,14 @@ type Props = {
   alunoNome: string;
   turmaId?: string | null;
   originAnoLetivoId?: string | null;
+  initialTrimestre?: 1 | 2 | 3 | null;
   elevated?: boolean;
   onPayment: () => void;
   onAcademicSaved?: () => void;
 };
 
 export function EnrollmentPostActionModal({
-  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, originAnoLetivoId, onPayment, onAcademicSaved, elevated = false,
+  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, originAnoLetivoId, initialTrimestre, onPayment, onAcademicSaved, elevated = false,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
@@ -141,14 +142,22 @@ export function EnrollmentPostActionModal({
         setPeriodReadOnly(payload.read_only === true);
         const current = items.find((item) =>
           item.numero === payload.current_trimestre && item.estado === "current" && item.disciplina_ativa);
-        setPeriodo(current ? String(current.numero) : "");
+        // A trimester passed from a verified case is merely a suggestion.
+        // The canonical period API still decides what can be edited.
+        const requested = initialTrimestre != null
+          ? items.find((item) => item.numero === initialTrimestre && item.disciplina_ativa &&
+              item.estado !== "unconfigured" && item.estado !== "future")
+          : null;
+        setPeriodo(initialTrimestre != null
+          ? (requested ? String(requested.numero) : "")
+          : (current ? String(current.numero) : ""));
       })
       .catch((cause) => {
         if (active) setPeriodError(cause instanceof Error ? cause.message : "Não foi possível confirmar o período.");
       })
       .finally(() => { if (active) setPeriodLoading(false); });
     return () => { active = false; };
-  }, [action, alunoId, academicYearId, open, turmaId, turmaDisciplinaId, periodRetry]);
+  }, [action, alunoId, academicYearId, open, turmaId, turmaDisciplinaId, initialTrimestre, periodRetry]);
 
   useEffect(() => {
     if (!open || action !== "notas" || !turmaId) return;

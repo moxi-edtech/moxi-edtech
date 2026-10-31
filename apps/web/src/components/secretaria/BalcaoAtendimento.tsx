@@ -1425,7 +1425,7 @@ function Catalogo({
   rematriculaDestinoTurma: TurmaOption | null;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
-  onLancarNota: () => void;
+  onLancarNota: (trimestre?: 1 | 2 | 3 | null) => void;
   onDocumentos: () => void;
   raaDocumentsOpen: boolean;
   onCloseRaaDocuments: () => void;
@@ -2759,7 +2759,7 @@ export default function BalcaoAtendimento({
   });
   const audit = useAuditTrail();
 
-  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null } | null>(null);
+  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null; initialTrimestre?: 1 | 2 | 3 | null } | null>(null);
   const [raaDocumentsOpen, setRaaDocumentsOpen] = useState(false);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
   const hasOverdueDebt = useMemo(
@@ -3187,7 +3187,7 @@ export default function BalcaoAtendimento({
                   rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
-                  onLancarNota={() => {
+                  onLancarNota={(trimestre) => {
                     const source = rematricula.academic?.source;
                     if (!source?.turma_id || !source.ano_letivo_id) {
                       error("Não foi possível identificar a turma e o ano de origem.");
@@ -3197,6 +3197,7 @@ export default function BalcaoAtendimento({
                       action: "notas",
                       turmaId: source.turma_id,
                       originAnoLetivoId: source.ano_letivo_id,
+                      initialTrimestre: trimestre ?? null,
                     });
                   }}
                   onDocumentos={() => {
@@ -3336,6 +3337,7 @@ export default function BalcaoAtendimento({
           alunoNome={dossier.aluno.nome}
           turmaId={postAction?.turmaId ?? null}
           originAnoLetivoId={postAction?.originAnoLetivoId ?? null}
+          initialTrimestre={postAction?.initialTrimestre ?? null}
           onAcademicSaved={() => void rematricula.refreshStatus()}
           onPayment={() => {
             setPostAction(null);
