@@ -80,3 +80,28 @@ export function raaBalcaoProgress(items: readonly RaaBalcaoCase[]) {
     pendentes: items.filter(item => item.estado !== "registado").length,
   };
 }
+
+
+/**
+ * A unified PROCESS list. Evidence may coexist: a student can have missing
+ * grades and an attendance petition in the same source school year.
+ *
+ * We never manufacture a case for an empty data source. The primary canonical
+ * RAA blocker is retained as an orientation when there is no attached record,
+ * so the operator still sees why the official eligibility remains blocked.
+ * The progress counter describes evidence decisions, NOT approval to enroll.
+ */
+export function buildRaaBalcaoWorkspaceCases(
+  source: Omit<RaaBalcaoCaseSources, "action"> & { primaryAction: RaaBalcaoAction },
+): RaaBalcaoCase[] {
+  const kinds = ["justificacao", "nota", "reapreciacao", "disciplina"] as const;
+  const all = kinds.flatMap((action) =>
+    buildRaaBalcaoCases({ ...source, action }).filter((item) => item.kind !== "orientacao"),
+  );
+  const deduplicated = Array.from(new Map(all.map((item) => [item.id, item])).values());
+  const primary = buildRaaBalcaoCases({ ...source, action: source.primaryAction });
+  const fallback = primary.find((item) => item.kind === "orientacao");
+  if (fallback && source.primaryAction !== "documentos") deduplicated.push(fallback);
+  if (deduplicated.length === 0) return primary;
+  return deduplicated;
+}
