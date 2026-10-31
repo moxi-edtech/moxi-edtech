@@ -73,3 +73,34 @@ Ledger remoto esperado e observado após migração de admissões: **701** entra
 - O repositório está **público**, o que exige decisão de configuração e revisão de integridade dos históricos de commits (não só ficheiros atuais); não mudar sem avaliar integrações e deployment.
 - A migração de controlo de acesso das candidaturas já foi instalada no banco; sincronizar a branch/PR com a `main` após CI.
 - O teste funcional positivo autenticado do histórico transitado continua pendente, sem escrita de teste na produção.
+
+## Conciliação de permissões académicas — PR #309, lote 2 (30/10/2026)
+
+### Causa comprovada
+- `requireRoleInSchool` inclui herança de papéis compostos através de `roleMatchesAllowedRoles` e da função `user_has_role_in_school`; esta última expande os pedidos `admin`/`secretaria` para `admin_financeiro` e `secretaria_financeiro`.
+- As 8 políticas RLS de `historico_transitado_anos` / `historico_transitado_notas` usavam `is_staff_escola`, que só aceitava `admin`, `admin_escola`, `staff_admin` e `secretaria` (ou `is_super_admin`). Resultado: a API podia autorizar um administrador operacional composto enquanto o `SELECT` na tabela era negado.
+- `apps/web/src/lib/permissions.ts` atribui explicitamente `lançar_notas` e outras capacidades académicas a `admin_financeiro` / `secretaria_financeiro`; são papéis compostos, **não** equivalentes a `financeiro`.
+- Uma escola tinha operador `admin_financeiro` sem outro papel académico entre os vínculos inspeccionados; negar todos os perfis compostos bloquearia a operação dessa escola.
+
+### Solução aplicada e versionada
+- `20271031001000_historico_transitado_academic_permissions_ssot_20261030.sql` (SQL **já executado** no Supabase; ficheiro e statement remoto exatamente iguais). `can_manage_historico_transitado(uuid)` usa uma whitelist explícita: `admin`, `admin_escola`, `staff_admin`, `secretaria`, `admin_secretaria`, `admin_financeiro`, `secretaria_financeiro`, e o super-administrador global autenticado. `financeiro`, `aluno` e `professor` não recebem autorização administrativa.
+- A função é `STABLE SECURITY DEFINER`, com `search_path=''`, identidade `auth.uid()` obrigatória e conferência de vínculo via `escola_users`; `anon` não recebe `EXECUTE`.
+- Alteradas **8 políticas** existentes via `ALTER POLICY` (sem `DROP`), atualizadas duas RPCs `upsert_historico_transitado` / `upsert_historico_transitado_lote` para usar a mesma capacidade, sem alterar as validações transacionais dos respectivos corpos.
+- As duas rotas da secretaria passaram a usar o mesmo guard de RPC; em vez de depender da herança geral de papéis, retornam `403` quando não autorizado, `503` ao falhar a verificação (fail-closed).
+- O mapeamento `user_has_role_in_school` e a helper `is_staff_escola` foram **preservados** para não alargar permissões de outros módulos.
+- O ledger da migração foi corrigido após execução para a versão `20271031001000`, por update guardado por hash e conferência literal do SQL; sem reparação fictícia.
+
+### Ensaios sem alterar dados académicos
+- **7/7 perfis reais** (`admin`, `admin_escola`, `admin_financeiro`, `secretaria`, `financeiro`, `professor`, `aluno`): verificação do predicado de autorização.
+- **7/7** tentativas de escola distinta rejeitadas, e escola nula / sem identidade recusadas.
+- **14/14** verificações negativas das duas RPCs: atores autorizados chegaram à validação de `DATA:`; os não autorizados falharam com `AUTH:` sem modificar linhas.
+- RLS continua ativo; nomes e comandos das oito políticas preservados; `anon` sem EXECUTE nas três funções de histórico.
+- O papel `secretaria_financeiro` e `admin_secretaria` foram cobertos pela whitelist, mas **não há amostra atual desses papéis no banco** para prova dinâmica. Ficam para ensaios de homologação.
+- Adicionado `apps/web/tests/unit/historico-transitado-permissions.spec.ts` ao CI de Balcão, com verificações da API, falha fechada, matriz explícita e cobertura das oito políticas.
+
+### Pendências / exclusões
+- Os testes com JWTs simulados não substituem um teste HTTP real com utilizadores autenticados, nem execução positiva da escrita de histórico.
+- Verificar separadamente o contrato da RPC individual de histórico com `ano_letivo_id` obrigatório em `historico_transitado_anos` antes de homologar uma inserção; **não** preencher um ano por heurística.
+- Não houve alterações de dados financeiros, fiscais, matrículas ou notas neste lote.
+- A PR continua draft até CI do HEAD final e revisão de deployment; não confundir migração aplicada com UI publicada.
+- Contagem após integração esperada: **941** SQL locais e **702** entradas remotas; **306** exceções locais e **67** remotas, por confirmar com novo inventário integral.
