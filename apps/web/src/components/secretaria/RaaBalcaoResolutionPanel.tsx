@@ -110,7 +110,10 @@ export function RaaBalcaoResolutionPanel({
     setIncompleteSources(missing);
     const requiredIndex = planAction === "justificacao" ? 0 :
       planAction === "reapreciacao" ? 1 : planAction === "disciplina" ? 3 : -1;
-    if (requiredIndex >= 0 && results[requiredIndex]?.status === "rejected") {
+    const required = requiredIndex === 0 ? results[0] :
+      requiredIndex === 1 ? results[1] :
+      requiredIndex === 3 ? results[3] : null;
+    if (required?.status === "rejected") {
       setError("Não foi possível consultar a fonte oficial desta pendência. Tente novamente.");
     }
     setLoading(false);

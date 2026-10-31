@@ -102,7 +102,7 @@ export function buildRaaBalcaoWorkspaceCases(
   const deduplicated = Array.from(new Map(all.map((item) => [item.id, item])).values());
   const primary = buildRaaBalcaoCases({ ...source, action: source.primaryAction });
   const fallback = primary.find((item) => item.kind === "orientacao");
-  if (fallback && source.primaryAction !== "documentos") deduplicated.push(fallback);
+  if (fallback) deduplicated.push(fallback);
   if (deduplicated.length === 0) return primary;
   return deduplicated;
 }

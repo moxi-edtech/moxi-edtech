@@ -3033,6 +3033,11 @@ export default function BalcaoAtendimento({
   ]);
 
   useEffect(() => {
+    setSearchListOpen(false);
+    setSearchActiveIndex(-1);
+  }, [view]);
+
+  useEffect(() => {
     if (view !== "reenrollment" || !rematricula.modalOpen) return;
     // The existing wizard remains in this workspace. Scroll to the next step
     // rather than replacing the selected pupil's evidence or losing context.
@@ -3073,7 +3078,7 @@ export default function BalcaoAtendimento({
               autoFocus
             />
           </div>
-          {searchListOpen && (
+          {searchListOpen && searchOpen && view !== "reenrollment" && (
             <div className="fixed inset-0 z-30" onClick={() => setSearchListOpen(false)} />
           )}
         </>
@@ -3179,7 +3184,7 @@ export default function BalcaoAtendimento({
                   rematriculaSchoolId={escolaId}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
-                  rematriculaDestinoTurma={rematricula.destinoTurma}
+                  rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
                   onLancarNota={() => {
