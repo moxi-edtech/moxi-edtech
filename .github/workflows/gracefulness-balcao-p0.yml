@@ -20,6 +20,11 @@ on:
       - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
       - "apps/web/src/components/secretaria/RaaBalcaoResolutionPanel.tsx"
       - "apps/web/src/components/secretaria/EnrollmentPostActionModal.tsx"
+      - "apps/web/src/app/api/secretaria/historico-transitado/route.ts"
+      - "apps/web/src/app/api/secretaria/alunos/[id]/historico-transitado/route.ts"
+      - "apps/web/src/lib/authz/historicoTransitado.ts"
+      - "apps/web/tests/unit/historico-transitado-permissions.spec.ts"
+      - "supabase/migrations/20271031001000_historico_transitado_academic_permissions_ssot_20261030.sql"
       - "apps/web/src/app/api/secretaria/notas/route.ts"
       - "apps/web/src/app/api/secretaria/notas/periodos/route.ts"
       - "apps/web/src/lib/academico/grade-period-context.ts"
@@ -208,6 +213,7 @@ jobs:
             tests/unit/rematricula-balcao-year-guard.spec.ts \
             tests/unit/balcao-rematricula-target-year.spec.ts \
             tests/unit/rematricula-window-recovery.spec.ts \
+            tests/unit/historico-transitado-permissions.spec.ts \
             tests/unit/student-lifecycle-ssot.spec.ts
 
       - name: Web typecheck
@@ -267,6 +273,10 @@ jobs:
             src/lib/rematricula/debt.ts \
             src/lib/rematricula/classe-numero.ts \
             src/lib/rematricula/balcao-destino.ts \
+            src/lib/authz/historicoTransitado.ts \
+            src/app/api/secretaria/historico-transitado/route.ts \
+            "src/app/api/secretaria/alunos/[id]/historico-transitado/route.ts" \
+            tests/unit/historico-transitado-permissions.spec.ts \
             src/lib/academico/raa-progression-server.ts \
             tests/unit/checkout-payment-state.spec.ts \
             tests/unit/command-center-registry.spec.ts \
