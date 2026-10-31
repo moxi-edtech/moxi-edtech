@@ -35,7 +35,7 @@ test("Command Center roster is scoped and paginated by the current API, not the 
 
 test("CSV export of student rosters is disabled by default, school-scoped and audit-gated", () => {
   const policy = read("apps/web/src/lib/command-center/roster-export-policy.ts");
-  assert.match(policy, /DEFAULT_ROSTER_EXPORT_POLICY[\\s\\S]*?enabled: false/);
+  assert.match(policy, /DEFAULT_ROSTER_EXPORT_POLICY[\s\S]*?enabled: false/);
   assert.match(policy, /safeCsvCell/);
   assert.match(policy, /serializeRosterCsv/);
   const route = read("apps/web/src/app/api/escolas/[id]/command-center/roster/export/route.ts");
@@ -51,14 +51,14 @@ test("CSV export of student rosters is disabled by default, school-scoped and au
 test("Student portal shares a single Notice component without replacing payment workflows", () => {
   const primitive = read("apps/web/src/components/ui/alert.tsx");
   assert.match(primitive, /export function Notice/);
-  assert.match(primitive, /export \\{ Alert, AlertTitle, AlertDescription \\}/);
+  assert.match(primitive, /export \{ Alert, AlertTitle, AlertDescription \}/);
   assert.equal(existsSync(new URL("apps/web/src/components/ui/notice.tsx", repo)), false,
     "Do not restore an independently diverging Notice component from PR #204");
   for (const file of [
     "apps/web/src/components/aluno/home/RematriculaBanner.tsx",
     "apps/web/src/components/aluno/home/FinanceAlertBanner.tsx",
     "apps/web/src/components/aluno/dashboard/AvisosRecentesCard.tsx",
-  ]) assert.match(read(file), /components\\/ui\\/alert/, file);
+  ]) assert.match(read(file), /components\/ui\/alert/, file);
   const rematricula = read("apps/web/src/components/aluno/home/RematriculaBanner.tsx");
   assert.match(rematricula, /comprovativo/);
   assert.match(rematricula, /paymentIntent/);
@@ -66,7 +66,7 @@ test("Student portal shares a single Notice component without replacing payment 
 
 test("Student grades are released only after authorization, with the latest payment UI", () => {
   const grades = read("apps/web/src/components/aluno/tabs/TabNotas.tsx");
-  assert.match(grades, /json\\.is_liberado\\s*\\?\\s*json\\.disciplinas\\s*\\?\\?\\s*\\[\\]\\s*:\\s*\\[\\]/);
+  assert.match(grades, /json\.is_liberado\s*\?\s*json\.disciplinas\s*\?\?\s*\[\]\s*:\s*\[\]/);
   assert.match(grades, /ServicePaymentDrawer/);
   assert.match(grades, /accessPresentation/);
   assert.match(read("apps/web/src/lib/aluno/gradesPresentation.ts"), /isSubjectOffered/);
@@ -93,6 +93,6 @@ test("Operational receipt recovery is payment-identified, idempotent and tenant-
   const lookup = read("apps/web/src/app/api/secretaria/recibos/consultar/route.ts");
   assert.match(lookup, /pagamento_id/);
   assert.match(lookup, /findConsolidatedReceipt/);
-  assert.match(lookup, /\\.eq\\("escola_id", escolaId\\)\\.eq\\("aluno_id", alunoId\\)/);
+  assert.match(lookup, /\.eq\("escola_id", escolaId\)\.eq\("aluno_id", alunoId\)/);
   assert.match(lookup, /Não repita o pagamento/);
 });
