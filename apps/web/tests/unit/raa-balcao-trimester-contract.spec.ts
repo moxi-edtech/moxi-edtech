@@ -27,7 +27,7 @@ test("a filter never moves unrelated yearly evidence into a selected trimester",
   assert.deepEqual(cases.filter((c)=>matchesRaaPeriodFilter(c.periodo,"1")).map((c)=>c.id),["falta:f1"]);
   assert.deepEqual(cases.filter((c)=>matchesRaaPeriodFilter(c.periodo,"2")).map((c)=>c.id),["falta:f2"]);
   assert.deepEqual(cases.filter((c)=>matchesRaaPeriodFilter(c.periodo,"3")).map((c)=>c.id),["falta:f3"]);
-  assert.equal(cases.filter((c)=>matchesRaaPeriodFilter(c.periodo,"outros")).length,4);
+  assert.equal(cases.filter((c)=>matchesRaaPeriodFilter(c.periodo,"outros")).length,5);
   assert.equal(raaBalcaoProgress(cases).total,8);
 });
 
