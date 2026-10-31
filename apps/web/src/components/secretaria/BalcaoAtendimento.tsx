@@ -2723,7 +2723,6 @@ export default function BalcaoAtendimento({
   const [searchListOpen, setSearchListOpen] = useState(false);
   const [searchActiveIndex, setSearchActiveIndex] = useState(-1);
   const workspaceRootRef = useRef<HTMLDivElement | null>(null);
-  const autoOpenedRematriculaRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (academicYearId) return;
@@ -3032,32 +3031,25 @@ export default function BalcaoAtendimento({
   ]);
 
   useEffect(() => {
-    if (view !== "reenrollment" || !dossier.aluno?.id || rematricula.modalOpen) return;
-    if (!rematricula.service || !rematricula.anoLetivo) return;
-    if (!["READY", "RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING", "FINALIST_PENDING"].includes(rematricula.cardState ?? "")) return;
-
-    const key = `${dossier.aluno.id}:${rematricula.cardState}`;
-    if (autoOpenedRematriculaRef.current === key) return;
-    autoOpenedRematriculaRef.current = key;
-    rematricula.openModal();
-  }, [
-    view,
-    dossier.aluno?.id,
-    rematricula.modalOpen,
-    rematricula.service,
-    rematricula.anoLetivo,
-    rematricula.cardState,
-    rematricula.openModal,
-  ]);
+    if (view !== "reenrollment" || !rematricula.modalOpen) return;
+    // The existing wizard remains in this workspace. Scroll to the next step
+    // rather than replacing the selected pupil's evidence or losing context.
+    const handle = window.setTimeout(() => {
+      document.getElementById("balcao-rematricula-wizard")?.scrollIntoView({
+        behavior: "smooth", block: "start",
+      });
+    }, 80);
+    return () => window.clearTimeout(handle);
+  }, [view, rematricula.modalOpen]);
 
   return (
     <>
       <div ref={workspaceRootRef} className="w-full">
-      {searchOpen && (
+      {(searchOpen || view === "reenrollment") && (
         <>
           <div
             data-atalho-pagamento="off"
-            className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"
+            className={view === "reenrollment" ? "mb-4 rounded-2xl border border-border bg-card p-3 sm:p-4" : "mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"}
           >
             <OmniSearchInput
               query={search.searchTerm}
@@ -3098,6 +3090,25 @@ export default function BalcaoAtendimento({
           ) : null}
         </div>
       ) : null}
+      {view === "reenrollment" && dossier.aluno && (
+        <section aria-label="Aluno selecionado para rematrícula"
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground" aria-hidden="true">
+            {dossier.aluno.nome.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-sm font-semibold text-foreground">{dossier.aluno.nome}</h2>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {[dossier.aluno.turma_codigo, dossier.aluno.numero_processo && "Processo " + dossier.aluno.numero_processo].filter(Boolean).join(" · ") || "Ficha do aluno"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">A decisão académica será consultada no vínculo do ano de origem.</p>
+          </div>
+          <button type="button" onClick={handleTrocarAluno}
+            className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
+            Trocar aluno
+          </button>
+        </section>
+      )}
       {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
           <Loader2 className="h-8 w-8 animate-spin text-amber" />
@@ -3121,8 +3132,6 @@ export default function BalcaoAtendimento({
             onTrocarAluno={handleTrocarAluno}
           />
           </div>
-        ) : view === "reenrollment" && rematricula.modalOpen ? (
-          <div className="min-h-[1px]" aria-hidden="true" />
         ) : (
           <div inert={dossier.loading || dossier.loadError || refreshingRevision}
             aria-disabled={dossier.loading || dossier.loadError || refreshingRevision}
@@ -3157,7 +3166,7 @@ export default function BalcaoAtendimento({
                     rematricula.cardState === "FINALIST_PENDING"
                   }
                   rematriculaState={
-                    servicos.some(isServicoRematricula)
+                    view === "reenrollment" || servicos.some(isServicoRematricula)
                       ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
                       : null
                   }
@@ -3232,6 +3241,7 @@ export default function BalcaoAtendimento({
       </div>
 
       {rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && dossier.aluno && (
+        <div id={view === "reenrollment" ? "balcao-rematricula-wizard" : undefined} className={view === "reenrollment" ? "mt-4 scroll-mt-24" : undefined}>
         <RematriculaBalcaoModal
           open={rematricula.modalOpen}
           embedded={view === "reenrollment"}
@@ -3305,6 +3315,7 @@ export default function BalcaoAtendimento({
           submit={rematricula.submit}
           onPostAction={(action, turmaId) => setPostAction({ action, turmaId })}
         />
+        </div>
       )}
 
       {dossier.aluno && (
