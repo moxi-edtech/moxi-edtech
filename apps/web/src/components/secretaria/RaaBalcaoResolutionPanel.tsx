@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
-import { buildRaaBalcaoCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
+import { buildRaaBalcaoWorkspaceCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
 import { buildRaaBalcaoRegimeGuidance, type RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardList, FileText, GraduationCap, CalendarDays, Scale, CircleAlert, ShieldCheck } from "lucide-react";
 import type { RematriculaCardState } from "@/hooks/useRematriculaBalcao";
 import { raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
+import type { RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 
 type PeticaoFalta = { id: string; data_falta: string; motivo: string; status: string };
 type PedidoReapreciacao = {
@@ -34,6 +35,7 @@ type Props = {
   onLancarNota: () => void;
   onDocumentos: () => void;
   onRecheck: () => Promise<unknown>;
+  onProgressChange?: (snapshot: RaaProgressSnapshot) => void;
 };
 
 async function readJson(url: string, init?: RequestInit) {
@@ -49,10 +51,10 @@ async function readJson(url: string, init?: RequestInit) {
  * A saved request/decision never becomes an implicit authorization to enroll.
  */
 export function RaaBalcaoResolutionPanel({
-  status, matriculaId, alunoId, academic, onLancarNota, onDocumentos, onRecheck,
+  status, matriculaId, alunoId, academic, onLancarNota, onDocumentos, onRecheck, onProgressChange,
 }: Props) {
   const plan = raaBalcaoPlan(status);
-  const action = plan?.acao;
+  const planAction = plan?.acao;
   const regimeGuidance = buildRaaBalcaoRegimeGuidance(academic);
   const conditionalReady = status === "READY" && academic?.eligible === true &&
     regimeGuidance?.estado === "condicional_autorizada" && regimeGuidance.podeEfetivar;
@@ -75,48 +77,64 @@ export function RaaBalcaoResolutionPanel({
   const [examComponentId, setExamComponentId] = useState("");
   const [examTurmaDisciplinaId, setExamTurmaDisciplinaId] = useState("");
   const [examNote, setExamNote] = useState("");
+  const [incompleteSources, setIncompleteSources] = useState<string[]>([]);
 
 
   const load = useCallback(async () => {
-    if (!action || !matriculaId || !["justificacao", "reapreciacao", "disciplina"].includes(action)) return;
+    if (!planAction || !matriculaId) return;
     setLoading(true);
     setError(null);
-    try {
-      const query = new URLSearchParams({ matricula_id: matriculaId }).toString();
-      if (action === "justificacao") {
-        const response = await readJson("/api/secretaria/faltas/justificacoes?" + query);
-        setFaltas(Array.isArray(response.items) ? response.items : []);
-      } else if (action === "reapreciacao") {
-        const response = await readJson("/api/academico/raa/reapreciacao?" + query);
-        setPedidos(Array.isArray(response.items) ? response.items : []);
-        // The exam is different from a reapreciação petition. Read only official
-        // open sessions from the source enrolment's year, never the destination.
-        const context = await readJson("/api/secretaria/balcao/raa/exam-context?" + query);
-        setExamContext({ source: context.source, disciplinas: context.disciplinas ?? [], sessoes: context.sessoes ?? [], resultados: context.resultados ?? [] });
-
-      } else if (action === "disciplina") {
-        const response = await readJson("/api/academico/raa/indisciplina?" + query);
-        setEventos(Array.isArray(response.items) ? response.items : []);
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Não foi possível consultar a análise.");
-    } finally {
-      setLoading(false);
+    const query = new URLSearchParams({ matricula_id: matriculaId }).toString();
+    const labels = ["justificações", "reapreciações", "exames", "ocorrências disciplinares"];
+    // A school-year process may contain several independent issues. All reads
+    // are tenant-scoped by their canonical endpoints; a failure is explicit,
+    // never misrepresented as "zero pending cases".
+    const results = await Promise.allSettled([
+      readJson("/api/secretaria/faltas/justificacoes?" + query),
+      readJson("/api/academico/raa/reapreciacao?" + query),
+      readJson("/api/secretaria/balcao/raa/exam-context?" + query),
+      readJson("/api/academico/raa/indisciplina?" + query),
+    ]);
+    const loaded = (index: number) => {
+      const item = results[index];
+      return item?.status === "fulfilled" ? item.value : null;
+    };
+    setFaltas(Array.isArray(loaded(0)?.items) ? loaded(0).items : []);
+    setPedidos(Array.isArray(loaded(1)?.items) ? loaded(1).items : []);
+    const exams = loaded(2);
+    setExamContext(exams
+      ? { source: exams.source, disciplinas: exams.disciplinas ?? [], sessoes: exams.sessoes ?? [], resultados: exams.resultados ?? [] }
+      : null);
+    setEventos(Array.isArray(loaded(3)?.items) ? loaded(3).items : []);
+    const missing = labels.filter((_, i) => results[i]?.status === "rejected");
+    setIncompleteSources(missing);
+    const requiredIndex = planAction === "justificacao" ? 0 :
+      planAction === "reapreciacao" ? 1 : planAction === "disciplina" ? 3 : -1;
+    if (requiredIndex >= 0 && results[requiredIndex]?.status === "rejected") {
+      setError("Não foi possível consultar a fonte oficial desta pendência. Tente novamente.");
     }
-  }, [action, matriculaId]);
+    setLoading(false);
+  }, [planAction, matriculaId]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const cases = buildRaaBalcaoCases({
-    action: action ?? "rever_resultado",
+  const cases = buildRaaBalcaoWorkspaceCases({
+    primaryAction: planAction ?? "rever_resultado",
     title: plan?.titulo ?? "Revisão académica",
     disciplinaIds: academic?.disciplina_ids_pendentes,
     faltas, pedidos, eventos, sessoes: examContext?.sessoes,
   });
   const progress = raaBalcaoProgress(cases);
   const activeCase = cases.find((item) => item.id === caseId) ?? null;
+  const action = activeCase?.kind === "nota" ? "nota" :
+    activeCase?.kind === "justificacao" ? "justificacao" :
+    activeCase?.kind === "pedido" || activeCase?.kind === "exame" ? "reapreciacao" :
+    activeCase?.kind === "disciplina" ? "disciplina" : planAction;
   const hasEvidence = cases.some((item) => item.kind !== "orientacao");
   const canDecide = Boolean(selected) && !saving;
+  useEffect(() => {
+    onProgressChange?.({ matriculaId, total: progress.total, registados: progress.registados, loading });
+  }, [matriculaId, progress.total, progress.registados, loading, onProgressChange]);
   const previousExamResult = examContext?.resultados.find((row) =>
     row.exame_sessao_id === examSessionId &&
     row.exame_componente_id === examComponentId &&
@@ -366,7 +384,6 @@ export function RaaBalcaoResolutionPanel({
     }
   };
 
-  const flowIndex = phase === "summary" ? 0 : phase === "detail" ? 1 : 2;
   const iconForCase = (kind: (typeof cases)[number]["kind"]) => {
     if (kind === "nota") return <GraduationCap className="h-5 w-5" aria-hidden="true" />;
     if (kind === "justificacao") return <CalendarDays className="h-5 w-5" aria-hidden="true" />;
@@ -377,31 +394,14 @@ export function RaaBalcaoResolutionPanel({
   };
 
   return (
-    <section key={alunoId + ":" + matriculaId} className="mb-4 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label="Resolução RAA no Balcão">
-      <header className="border-b border-border bg-muted/30 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-            <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" /> Pendência académica
-          </span>
-          <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Decisão oficial RAA
-          </span>
-        </div>
-        {regimeGuidance && <p className="mt-3 text-xs font-semibold text-foreground">{regimeGuidance.regime}</p>}
-        <h3 className="mt-1 text-base font-semibold tracking-tight text-foreground sm:text-lg">{regimeGuidance?.titulo ?? plan.titulo}</h3>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{academic?.reason || plan.detalhe}</p>
-        <div className="mt-4 grid grid-cols-3 gap-1.5" aria-label="Etapas do tratamento RAA">
-          {(["Identificar", "Resolver", "Revalidar"] as const).map((name, index) => (
-            <div key={name} className="min-w-0 space-y-1.5">
-              <div className={"h-1.5 rounded-full " + (index <= flowIndex ? "bg-emerald" : "bg-border")} aria-hidden="true" />
-              <span className={"block text-[11px] font-medium " + (index === flowIndex ? "text-foreground" : "text-muted-foreground")}>
-                {index + 1}. {name}
-              </span>
-            </div>
-          ))}
-        </div>
+    <section key={alunoId + ":" + matriculaId} className="space-y-3" aria-label="Resolução RAA no Balcão">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-foreground">Pendências do processo</h3>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {loading ? "A consultar…" : progress.total + " registo" + (progress.total === 1 ? "" : "s")}
+        </span>
       </header>
-      <div className="space-y-4 p-4 sm:p-5" aria-live="polite">
+      <div className="space-y-4" aria-live="polite">
         {regimeGuidance && (
           <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4" aria-label="Orientação da classe">
             <p className="text-sm font-medium text-foreground">{regimeGuidance.instrucao}</p>
@@ -413,11 +413,11 @@ export function RaaBalcaoResolutionPanel({
             </details>
           </div>
         )}
-        {phase === "summary" && (
+        {(phase === "summary" || phase === "detail") && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div>
-                <h4 className="text-sm font-semibold text-foreground">Pendências deste processo</h4>
+                <h4 className="text-sm font-semibold text-foreground">Registos e próximas ações</h4>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {loading ? "A consultar evidências oficiais..." : hasEvidence
                     ? "Registos existentes para a decisão RAA atual."
@@ -430,6 +430,11 @@ export function RaaBalcaoResolutionPanel({
                 </span>
               )}
             </div>
+            {incompleteSources.length > 0 && !loading && (
+              <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
+                Consulta parcial: {incompleteSources.join(", ")} indisponíveis. Não considere estas fontes sem pendências.
+              </p>
+            )}
             {loading && <p role="status" className="flex items-center gap-2 rounded-xl border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> A carregar as pendências...
             </p>}
@@ -437,7 +442,7 @@ export function RaaBalcaoResolutionPanel({
               {cases.map(item => (
                 <button type="button" key={item.id} onClick={() => chooseCase(item)}
                   disabled={saving || loading}
-                  className="group flex w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-background p-3 text-left transition-colors hover:border-emerald/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald disabled:opacity-60 sm:p-4"
+                  className={"group flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 sm:p-4 " + (activeCase?.id === item.id ? "border-amber bg-amber/5" : "border-border bg-background hover:border-amber/40 hover:bg-muted/40")}
                   aria-label={"Abrir " + item.titulo}>
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                     {iconForCase(item.kind)}
@@ -467,7 +472,7 @@ export function RaaBalcaoResolutionPanel({
                   <FileText className="h-4 w-4" aria-hidden="true" /> Emitir documentos <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               ) : (
-                <button type="button" onClick={() => chooseCase(cases[0])} disabled={loading || saving}
+                <button type="button" onClick={() => chooseCase(cases[0])} disabled={loading || saving || phase === "detail"}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
                   Analisar pendência <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
