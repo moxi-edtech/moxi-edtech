@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { buildRaaBalcaoWorkspaceCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
+import { isRaaTrimestre, matchesRaaPeriodFilter, raaCasePeriodLabel } from "@/lib/rematricula/raa-balcao-temporal-context";
 import { buildRaaBalcaoRegimeGuidance, type RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardList, FileText, GraduationCap, CalendarDays, Scale, CircleAlert, ShieldCheck } from "lucide-react";
 import type { RematriculaCardState } from "@/hooks/useRematriculaBalcao";
 import { raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
 import type { RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 
-type PeticaoFalta = { id: string; data_falta: string; motivo: string; status: string };
+type PeticaoFalta = { id: string; data_falta: string; motivo: string; status: string; trimestre?: 1 | 2 | 3 | null };
 type PedidoReapreciacao = {
   id: string; protocolo_publico: string; estado: string; disciplina_id: string;
   motivo: string; prazo_em: string; decisao_motivo?: string | null;
@@ -32,7 +33,7 @@ type Props = {
   matriculaId: string;
   alunoId: string;
   academic: Academic;
-  onLancarNota: () => void;
+  onLancarNota: (trimestre?: 1 | 2 | 3 | null) => void;
   onDocumentos: () => void;
   onRecheck: () => Promise<unknown>;
   onProgressChange?: (snapshot: RaaProgressSnapshot) => void;
@@ -60,6 +61,7 @@ export function RaaBalcaoResolutionPanel({
     regimeGuidance?.estado === "condicional_autorizada" && regimeGuidance.podeEfetivar;
   const [phase, setPhase] = useState<"summary" | "detail" | "confirm" | "feedback">("summary");
   const [caseId, setCaseId] = useState<string | null>(null);
+  const [periodFilter, setPeriodFilter] = useState<"todos" | "1" | "2" | "3" | "outros">("todos");
   const [confirmKind, setConfirmKind] = useState<"decisao" | "pedido" | "exame" | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -128,6 +130,8 @@ export function RaaBalcaoResolutionPanel({
     faltas, pedidos, eventos, sessoes: examContext?.sessoes,
   }) : [];
   const progress = raaBalcaoProgress(cases);
+  const visibleCases = cases.filter((item) => matchesRaaPeriodFilter(item.periodo, periodFilter));
+  const visibleProgress = raaBalcaoProgress(visibleCases);
   const activeCase = cases.find((item) => item.id === caseId) ?? null;
   const action = activeCase?.kind === "nota" ? "nota" :
     activeCase?.kind === "justificacao" ? "justificacao" :
@@ -160,6 +164,25 @@ export function RaaBalcaoResolutionPanel({
     setExamComponentId("");
     setExamTurmaDisciplinaId("");
     setCaseId(null);
+    setPhase("summary");
+  }
+
+  function selectPeriodFilter(next: typeof periodFilter) {
+    if (saving || next === periodFilter) return;
+    if ((phase === "detail" || phase === "confirm") && hasUnsavedForm &&
+      !window.confirm("Existem alterações ainda não guardadas. Deseja mudar o trimestre e descartá-las?")) return;
+    // A filter is presentational; never mutate a grade, a stored trimester,
+    // the student's enrolment or the RAA's authoritative decision.
+    setPeriodFilter(next);
+    setCaseId(null);
+    setSelected("");
+    setDecision("");
+    setMotivo("");
+    setDisciplinaId("");
+    setExamNote("");
+    setExamSessionId("");
+    setExamComponentId("");
+    setExamTurmaDisciplinaId("");
     setPhase("summary");
   }
 
@@ -442,8 +465,35 @@ export function RaaBalcaoResolutionPanel({
             {loading && <p role="status" className="flex items-center gap-2 rounded-xl border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> A carregar as pendências...
             </p>}
+            <div role="group" aria-label="Filtrar pendências por trimestre"
+              className="flex flex-wrap gap-1.5">
+              {([
+                ["todos", "Todos"],
+                ["1", "1.º Trim."],
+                ["2", "2.º Trim."],
+                ["3", "3.º Trim."],
+                ["outros", "Outros"],
+              ] as const).map(([value, label]) => (
+                <button key={value} type="button" aria-pressed={periodFilter === value}
+                  onClick={() => selectPeriodFilter(value)} disabled={saving}
+                  className={"rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-50 " +
+                    (periodFilter === value ? "border-amber bg-amber text-white" : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {periodFilter === "todos" ? "Visão anual" : periodFilter === "outros" ?
+                "Registos anuais ou sem trimestre oficialmente identificado" :
+                periodFilter + ".º trimestre"} · {visibleProgress.total} registo{visibleProgress.total === 1 ? "" : "s"}
+            </p>
+            {visibleCases.length === 0 && !loading && (
+              <p role="status" className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+                Não existem registos classificados neste período. Consulte «Todos» ou «Outros» para pendências sem trimestre.
+              </p>
+            )}
             <div className="space-y-2">
-              {cases.map(item => (
+              {visibleCases.map(item => (
                 <button type="button" key={item.id} onClick={() => chooseCase(item)}
                   disabled={saving || loading}
                   className={"group flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 sm:p-4 " + (activeCase?.id === item.id ? "border-amber bg-amber/5" : "border-border bg-background hover:border-amber/40 hover:bg-muted/40")}
@@ -455,6 +505,7 @@ export function RaaBalcaoResolutionPanel({
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-foreground">{item.titulo}</span>
                     <span className="mt-1 block line-clamp-2 text-xs leading-5 text-muted-foreground">{item.resumo}</span>
+                    <span className="mt-1 block text-[11px] font-medium text-muted-foreground">{raaCasePeriodLabel(item.periodo)}</span>
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1.5">
                     <span className={"rounded-md px-1.5 py-0.5 text-[10px] font-semibold " +
@@ -476,8 +527,8 @@ export function RaaBalcaoResolutionPanel({
                 <button type="button" onClick={onDocumentos} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white sm:w-auto">
                   <FileText className="h-4 w-4" aria-hidden="true" /> Emitir documentos <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
-              ) : phase === "summary" ? (
-                <button type="button" onClick={() => chooseCase(cases[0])} disabled={loading || saving}
+              ) : phase === "summary" && visibleCases.length > 0 ? (
+                <button type="button" onClick={() => chooseCase(visibleCases[0])} disabled={loading || saving}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
                   Analisar pendência <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -499,6 +550,7 @@ export function RaaBalcaoResolutionPanel({
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">{iconForCase(activeCase?.kind ?? "orientacao")}</span>
                 <h4 className="text-sm font-semibold text-foreground">{activeCase?.titulo ?? plan.titulo}</h4>
+                {activeCase && <span className="ml-auto text-xs font-medium text-muted-foreground">{raaCasePeriodLabel(activeCase.periodo)}</span>}
               </div>
               <p className="mt-1 text-sm leading-5 text-muted-foreground">{activeCase?.resumo ?? plan.detalhe}</p>
               {activeCase?.estado === "registado" && <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald">
@@ -523,7 +575,7 @@ export function RaaBalcaoResolutionPanel({
               ) : !["ativo", "ativa", "active"].includes(academic.source.status.toLowerCase()) ? (
                 <p role="status" className="mt-2 text-sm text-muted-foreground">Matrícula de origem encerrada. Peça a reabertura académica à direção.</p>
               ) : (
-                <button type="button" onClick={onLancarNota}
+                <button type="button" onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null)}
                   className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
                   Lançar nota nesta ficha
                 </button>
@@ -536,7 +588,7 @@ export function RaaBalcaoResolutionPanel({
               <p className="text-sm text-muted-foreground">Este resultado precisa de revisão académica.</p>
               {["ativo", "ativa", "active"].includes(academic?.source?.status?.toLowerCase() ?? "") && academic?.regime?.escala !== "qualitativa" &&
                 academic?.source?.ano_letivo_id && academic?.source?.turma_id ? (
-                  <button type="button" onClick={onLancarNota}
+                  <button type="button" onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null)}
                     className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground">
                     Rever notas da turma
                   </button>
