@@ -3,6 +3,7 @@ import { z } from "zod"
 import { requireRoleInSchool } from "@/lib/authz"
 import { resolveAcademicYearContext } from "@/lib/academic-year/context"
 import { calculateReapreciacaoDeadline } from "@/lib/academico/raa-eligibility"
+import { RAA_ACADEMIC_DECISION_ROLES } from "@/lib/academico/raa-academic-decision-roles"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 
@@ -105,6 +106,12 @@ export async function POST(request: Request) {
 
   const publishedAt = new Date(pautaPublicada.generated_at)
   const prazo = calculateReapreciacaoDeadline(publishedAt)
+  if (prazo.getTime() <= Date.now()) {
+    return NextResponse.json({
+      ok: false, code: "RAA_REAPRECIACAO_EXPIRED",
+      error: "O prazo para solicitar reapreciação deste resultado terminou.",
+    }, { status: 409 })
+  }
   const { data: item, error } = await context.supabase
     .from("reapreciacao_pedidos")
     .insert({
@@ -139,5 +146,12 @@ export async function GET(request: Request) {
   if (query.data.disciplina_id) builder = builder.eq("disciplina_id", query.data.disciplina_id)
   const { data, error } = await builder
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, items: data ?? [] })
+  const decisionAccess = await requireRoleInSchool({
+    supabase: context.supabase, escolaId: context.escolaId,
+    roles: [...RAA_ACADEMIC_DECISION_ROLES],
+  })
+  // Client hint only. The PATCH endpoint and RLS enforce the real permission.
+  return NextResponse.json({
+    ok: true, items: data ?? [], can_decide: !decisionAccess.error,
+  })
 }

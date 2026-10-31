@@ -3,6 +3,7 @@ import { z } from "zod"
 import { requireRoleInSchool } from "@/lib/authz"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
+import { RAA_ACADEMIC_DECISION_ROLES } from "@/lib/academico/raa-academic-decision-roles"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -13,7 +14,7 @@ const bodySchema = z.object({
   decisao_motivo: z.string().trim().min(5).max(2000),
 })
 
-const decisionRoles = ["admin", "admin_escola", "staff_admin", "admin_financeiro", "diretor", "secretaria"] as const
+const decisionRoles = RAA_ACADEMIC_DECISION_ROLES
 
 export async function PATCH(request: Request) {
   const supabase = await supabaseServerTyped<any>()

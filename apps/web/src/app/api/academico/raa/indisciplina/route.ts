@@ -5,6 +5,7 @@ import { resolveAcademicYearContext } from "@/lib/academic-year/context"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { recordAuditServer } from "@/lib/audit"
+import { RAA_ACADEMIC_DECISION_ROLES } from "@/lib/academico/raa-academic-decision-roles"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -85,13 +86,19 @@ export async function GET(request: Request) {
   if (query.data.estado) builder = builder.eq("estado", query.data.estado)
   const { data, error } = await builder
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, items: data ?? [] })
+  const reviewAccess = await requireRoleInSchool({
+    supabase: context.supabase, escolaId: context.escolaId,
+    roles: [...RAA_ACADEMIC_DECISION_ROLES],
+  })
+  return NextResponse.json({
+    ok: true, items: data ?? [], can_review: !reviewAccess.error,
+  })
 }
 
 
 // Revisão contextual do RAA: apenas a direção pode decidir sobre eventos graves.
 // Nem a secretaria nem o Balcão ganham permissão para alterar um resultado legal.
-const reviewRoles = ["admin", "admin_escola", "diretor"] as const
+const reviewRoles = RAA_ACADEMIC_DECISION_ROLES
 const reviewSchema = z.object({
   id: z.string().uuid(),
   estado: z.enum(["em_analise", "resolvido", "cancelado"]),
