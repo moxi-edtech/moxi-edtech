@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { requireRoleInSchool } from "@/lib/authz";
-import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
+import { requireHistoricoTransitadoPermission } from "@/lib/authz/historicoTransitado";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -57,15 +56,11 @@ async function resolveRouteContext(alunoId: string) {
     };
   }
 
-  const roleCheck = await requireRoleInSchool({
-    supabase,
-    escolaId,
-    roles: [...K12_ADMIN_SECRETARIA_ROLE_GROUP, "secretaria_financeiro"],
-  });
-  if (roleCheck.error) {
+  const permissionError = await requireHistoricoTransitadoPermission(supabase, escolaId);
+  if (permissionError) {
     return {
       ok: false as const,
-      response: roleCheck.error,
+      response: permissionError,
     };
   }
 
