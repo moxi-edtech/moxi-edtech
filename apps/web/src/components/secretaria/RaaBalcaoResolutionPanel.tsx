@@ -486,7 +486,7 @@ export function RaaBalcaoResolutionPanel({
             </div>
             {incompleteSources.length > 0 && !loading && (
               <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
-                Não foi possível consultar {incompleteSources.join(", ")}. Tente atualizar antes de concluir.
+                Consulta parcial: não foi possível consultar {incompleteSources.join(", ")}. Atualize antes de concluir.
               </p>
             )}
             {loading && <p role="status" className="flex items-center gap-2 rounded-xl border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
