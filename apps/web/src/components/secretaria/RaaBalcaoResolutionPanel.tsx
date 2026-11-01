@@ -448,7 +448,7 @@ export function RaaBalcaoResolutionPanel({
   };
 
   return (
-    <section key={alunoId + ":" + matriculaId} className="space-y-3" aria-label="Resolução RAA no Balcão">
+    <section id="balcao-pendencias" key={alunoId + ":" + matriculaId} className="space-y-3 scroll-mt-24" aria-label="Pendências do aluno no Balcão">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">Pendências do processo</h3>
         <span className="text-xs tabular-nums text-muted-foreground">
@@ -474,8 +474,8 @@ export function RaaBalcaoResolutionPanel({
                 <h4 className="text-sm font-semibold text-foreground">Registos e próximas ações</h4>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {loading ? "A consultar evidências oficiais..." : hasEvidence
-                    ? "Registos existentes para a decisão RAA atual."
-                    : "Há uma pendência antes da rematrícula."}
+                    ? "Selecione um registo para continuar."
+                    : "Consulte a próxima ação abaixo."}
                 </p>
               </div>
               {hasEvidence && !loading && (
@@ -486,7 +486,7 @@ export function RaaBalcaoResolutionPanel({
             </div>
             {incompleteSources.length > 0 && !loading && (
               <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
-                Consulta parcial: {incompleteSources.join(", ")} indisponíveis. Não considere estas fontes sem pendências.
+                Não foi possível consultar {incompleteSources.join(", ")}. Tente atualizar antes de concluir.
               </p>
             )}
             {loading && <p role="status" className="flex items-center gap-2 rounded-xl border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
@@ -511,12 +511,12 @@ export function RaaBalcaoResolutionPanel({
             </div>
             <p className="text-xs text-muted-foreground">
               {periodFilter === "todos" ? "Visão anual" : periodFilter === "outros" ?
-                "Registos anuais ou sem trimestre oficialmente identificado" :
+                "Outros registos" :
                 periodFilter + ".º trimestre"} · {visibleProgress.total} registo{visibleProgress.total === 1 ? "" : "s"}
             </p>
             {visibleCases.length === 0 && !loading && (
               <p role="status" className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
-                Não existem registos classificados neste período. Consulte «Todos» ou «Outros» para pendências sem trimestre.
+                Sem registos neste trimestre. Veja «Outros» para situações sem período identificado.
               </p>
             )}
             <div className="space-y-2">
@@ -595,7 +595,7 @@ export function RaaBalcaoResolutionPanel({
               </p>
               {academic?.regime?.escala === "qualitativa" ? (
                 <p role="status" className="mt-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-                  Esta turma usa Suficiente/Não suficiente. Complete a pauta qualitativa.
+                  Esta turma usa avaliação qualitativa. Complete a pauta correspondente.
                 </p>
               ) : !academic?.source?.turma_id || !academic.source.ano_letivo_id ? (
                 <p role="status" className="mt-2 text-sm text-muted-foreground">A confirmar a turma e o ano letivo de origem.</p>
