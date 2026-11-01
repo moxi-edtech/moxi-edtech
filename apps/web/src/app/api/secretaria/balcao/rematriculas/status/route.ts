@@ -514,12 +514,14 @@ export async function GET(request: Request) {
       status = "WINDOW_CLOSED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
+    } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
+      // Não mostrar CTA ativo se o wizard não puder abrir por falta do serviço.
+      // Isenção explícita por classe (preço 0) continua permitida.
+      status = "PRICE_NOT_CONFIGURED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {
       status = "RECONFIRMATION_REQUIRED";
     } else if (reclassificacao) {
       status = "FINALIST_PENDING";
-    } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
-      status = "PRICE_NOT_CONFIGURED";
     }
 
     // ── Extract turma_id from granted pedido contexto ─────────────────────
